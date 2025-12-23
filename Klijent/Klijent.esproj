@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.3864779">
+  <PropertyGroup>
+    <SpaRoot>ClientApp\</SpaRoot>
+    <PackageJsonDirectory>$(MSBuildProjectDirectory)\ClientApp</PackageJsonDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="clientapp\src\components\cprodaja\**" />
+    <TypeScriptConfiguration Remove="clientapp\src\components\cprodaja\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="clientapp\src\types\Prodaja\" />
+  </ItemGroup>
+</Project>

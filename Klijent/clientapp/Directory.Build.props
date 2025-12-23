@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- Disable automatic npm install / build steps during dotnet build for this clientapp folder -->
+    <ShouldRunNpmInstall>false</ShouldRunNpmInstall>
+    <ShouldRunNpmAudit>false</ShouldRunNpmAudit>
+    <ShouldRunBuildScript>false</ShouldRunBuildScript>
+  </PropertyGroup>
+</Project>
