@@ -3,10 +3,10 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy only the API project file
-COPY Trendplus2/*.csproj Trendplus2/
+COPY Trendplus2/Api.csproj Trendplus2/
 
 # Restore dependencies
-RUN dotnet restore Trendplus2/Trendplus2.csproj
+RUN dotnet restore Trendplus2/Api.csproj
 
 # Copy the rest of the repo
 COPY . .
@@ -22,4 +22,4 @@ COPY --from=build /app/publish .
 
 ENV ASPNETCORE_URLS=http://+:8080
 
-ENTRYPOINT ["dotnet", "Trendplus2.dll"]
+ENTRYPOINT ["dotnet", "Api.dll"]
