@@ -83,11 +83,16 @@ app.UseMiddleware<ExceptionLoggingMiddleware>();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseHsts();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    // Render already handles HTTPS externally
+    // Do NOT call UseHttpsRedirection() in production
+}
+app.UseSwagger();
+app.UseSwaggerUI();
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 app.UseCors();
