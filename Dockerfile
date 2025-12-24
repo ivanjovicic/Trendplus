@@ -12,7 +12,7 @@ RUN dotnet restore Trendplus2/Trendplus2.csproj
 COPY . .
 
 # Publish only the API project
-RUN dotnet publish Trendplus2/Trendplus2.csproj -c Release -o /app/publish
+RUN dotnet publish Trendplus2/Api.csproj -c Release -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
