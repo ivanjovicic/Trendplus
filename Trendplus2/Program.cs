@@ -1,4 +1,4 @@
-using Application.Artikli.Commands.CreateArtikal;
+﻿using Application.Artikli.Commands.CreateArtikal;
 using Application.Artikli.Common.Interfaces;
 using Application.Artikli.Queries.GetArtikal;
 using Application.Artikli.Queries.VratiArtikle;
@@ -17,9 +17,11 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql; // <- opcionalno, ali može stajati
 using System.Data;
 using System.IO;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore.Design;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration
@@ -31,19 +33,18 @@ var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-// Add services to the container.
+// Add services to the container.  ✅ PostgreSQL umesto SQL Server
 builder.Services.AddDbContext<TrendplusDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
            .EnableSensitiveDataLogging()
            .LogTo(Console.WriteLine, LogLevel.Information));
 builder.Services.AddScoped<ITrendplusDbContext>(sp =>
     sp.GetRequiredService<TrendplusDbContext>());
 
 builder.Services.AddDbContext<AnalyticsDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AnalyticsConnection"))
+    options.UseNpgsql(builder.Configuration.GetConnectionString("AnalyticsConnection"))
            .EnableSensitiveDataLogging()
            .LogTo(Console.WriteLine, LogLevel.Information));
-
 builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
     sp.GetRequiredService<AnalyticsDbContext>());
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
@@ -97,7 +98,7 @@ app.UseSwaggerUI();
 app.UseAuthorization();
 app.UseCors();
 // Health endpoint
-app.MapGet("/health", () => Results.Ok("Backend je �iv"));
+app.MapGet("/health", () => Results.Ok("Backend je živ"));
 
 // Endpoint to return logged errors
 app.MapGet("/errors", async (IErrorStore store) =>

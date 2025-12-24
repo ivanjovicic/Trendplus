@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Application.Artikli.Common.Interfaces;
-using Domain.Model;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 
 namespace Application.Artikli.Commands.CreateArtikal
 {
@@ -23,53 +23,43 @@ namespace Application.Artikli.Commands.CreateArtikal
         public async Task<int> Handle(CreateArtikalCommand request, CancellationToken ct)
         {
             if (request is null)
+            {
                 throw new ArgumentNullException(nameof(request));
+            }
 
-            var newIdParam = new SqlParameter("@NewArtikalId", System.Data.SqlDbType.Int)
+            _logger.LogInformation("CreateArtikalHandler incoming request: {@Request}", request);
+
+            var connection = _db.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                Direction = System.Data.ParameterDirection.Output
-            };
+                await connection.OpenAsync(ct);
+            }
 
-            var parameters = new[]
-            {
-    new SqlParameter("@PLU", request.PLU),
-    new SqlParameter("@Naziv", request.Naziv),
-    new SqlParameter("@IDTipObuce", (object?)request.IDTipObuce ?? DBNull.Value),
-    new SqlParameter("@IDDobavljac", (object?)request.IDDobavljac ?? DBNull.Value),
-    new SqlParameter("@NabavnaCena", (object?)request.NabavnaCena ?? DBNull.Value),
-    new SqlParameter("@NabavnaCenaDin", (object?)request.NabavnaCenaDin ?? DBNull.Value),
-    new SqlParameter("@PrvaProdajnaCena", (object?)request.PrvaProdajnaCena ?? DBNull.Value),
-    new SqlParameter("@ProdajnaCena", (object?)request.ProdajnaCena ?? DBNull.Value),
-    new SqlParameter("@Kolicina", request.Kolicina),
-    new SqlParameter("@Komentar", (object?)request.Komentar ?? DBNull.Value),
-    new SqlParameter("@IDObjekat", (object?)request.IDObjekat ?? DBNull.Value),
-    new SqlParameter("@IDSezona", (object?)request.IDSezona ?? DBNull.Value),
-    newIdParam
-};
+            await using var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT new_artikal_id FROM unos_artikla(
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+                )";
 
-            var newId = await _db.ExecuteStoredProcedureWithOutputAsync(
-                @"EXEC dbo.UnosArtikla 
-        @PLU,
-        @Naziv,
-        @IDTipObuce,
-        @IDDobavljac,
-        @NabavnaCena,
-        @NabavnaCenaDin,
-        @PrvaProdajnaCena,
-        @ProdajnaCena,
-        @Kolicina,
-        @Komentar,
-        @IDObjekat,
-        @IDSezona,
-        @NewArtikalId OUTPUT",
-                parameters,
-                ct
-            );
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.PLU ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.Naziv ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.IDTipObuce ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.IDDobavljac ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.NabavnaCena ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.NabavnaCenaDin ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.PrvaProdajnaCena ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.ProdajnaCena ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.Kolicina ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.Komentar ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.IDObjekat ?? DBNull.Value });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.IDSezona ?? DBNull.Value });
 
-            _logger.LogInformation("Artikal created via stored procedure with Id {Id}", newId);
+            var result = await command.ExecuteScalarAsync(ct);
+            var newId = Convert.ToInt32(result);
+
+            _logger.LogInformation("Artikal created via PostgreSQL function with Id {Id}", newId);
 
             return newId;
-
         }
     }
 }

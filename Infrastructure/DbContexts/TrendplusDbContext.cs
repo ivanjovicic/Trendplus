@@ -1,6 +1,6 @@
-﻿using Application.Artikli.Common.Interfaces;
+﻿using System.Data.Common;
+using Application.Artikli.Common.Interfaces;
 using Domain.Model;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.DbContexts
@@ -11,8 +11,8 @@ namespace Infrastructure.DbContexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Map entity to the actual table name in the database
             modelBuilder.Entity<Artikli>().ToTable("Artikli");
+
             modelBuilder.Entity<ErrorRecord>(eb =>
             {
                 eb.ToTable("ErrorRecords");
@@ -25,30 +25,23 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.UserName).HasMaxLength(200);
                 eb.Property(e => e.ClientApp).HasMaxLength(1000);
             });
+
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
         }
+
         public DbSet<CreatedIdDto> CreatedIds => Set<CreatedIdDto>();
-        public DbSet<Artikli> Artikli { get; set; }
+        public DbSet<Artikli> Artikli { get; set; } = null!;
+        public DbSet<TipObuce> TipoviObuce { get; set; } = null!;
+        public DbSet<Dobavljac> Dobavljaci { get; set; } = null!;
+        public DbSet<ErrorRecord> ErrorRecords { get; set; } = null!;
 
-        public DbSet<TipObuce> TipoviObuce { get; set; }
-
-        public DbSet<Dobavljac> Dobavljaci { get; set; }
-
-        // Added error records DbSet
-        public DbSet<ErrorRecord> ErrorRecords { get; set; }
-
-        public async Task<int> ExecuteStoredProcedureWithOutputAsync(string sql, SqlParameter[] parameters, CancellationToken cancellationToken = default)
+        public DbConnection GetDbConnection()
         {
-            if (parameters == null) throw new ArgumentNullException(nameof(parameters));
-
-            // Pozovi SP
-            await Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
-
-            // Pronađi OUTPUT parametar (pretpostavljamo da je poslednji)
-            var outputParam = parameters.FirstOrDefault(p => p.Direction == System.Data.ParameterDirection.Output);
-            if (outputParam == null) throw new InvalidOperationException("OUTPUT parameter not found");
-
-            return (int)outputParam.Value!;
+            return Database.GetDbConnection();
         }
+
+        // ✔️ Ovo je nedostajalo
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+            => base.SaveChangesAsync(cancellationToken);
     }
 }

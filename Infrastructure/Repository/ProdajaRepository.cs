@@ -1,59 +1,51 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using Application.Common.Interfaces;
+using Application.Prodaja.Commands.ProdajArtikle;
+using Microsoft.Extensions.Configuration;
+using Npgsql;
+using NpgsqlTypes;
 
 namespace Infrastructure.Repository
 {
-    using Application.Common.Interfaces;
-    using Application.Prodaja.Commands.ProdajArtikle;
-    using Microsoft.Data.SqlClient;
-    using Microsoft.Extensions.Configuration;
-    using System.Data;
-
     public class ProdajaRepository : IProdajaRepository
     {
         private readonly string _connStr;
 
         public ProdajaRepository(IConfiguration config)
         {
-            _connStr = config.GetConnectionString("Default");
+            // koristimo DefaultConnection (PostgreSQL connection string)
+            _connStr = config.GetConnectionString("DefaultConnection")
+                       ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
         }
 
         public async Task<int> ProdajAsync(
             ProdajArtikleCommand command,
             CancellationToken ct)
         {
-            using var conn = new SqlConnection(_connStr);
-            using var cmd = new SqlCommand("sp_ProdajArtikle", conn);
-
-            cmd.CommandType = CommandType.StoredProcedure;
-
-            cmd.Parameters.AddWithValue("@BrojRacuna", command.BrojRacuna);
-            cmd.Parameters.AddWithValue("@IDObjekat", command.IdObjekat);
-            cmd.Parameters.AddWithValue("@NacinPlacanja", command.NacinPlacanja);
-
-            // TVP
-            var table = new DataTable();
-            table.Columns.Add("IDArtikal", typeof(int));
-            table.Columns.Add("Kolicina", typeof(int));
-            table.Columns.Add("Cena", typeof(decimal));
-
-            foreach (var s in command.Stavke)
-                table.Rows.Add(s.IdArtikal, s.Kolicina, s.Cena);
-
-            var tvp = cmd.Parameters.AddWithValue("@Stavke", table);
-            tvp.SqlDbType = SqlDbType.Structured;
-            tvp.TypeName = "ProdajaStavkeType";
-
+            await using var conn = new NpgsqlConnection(_connStr);
             await conn.OpenAsync(ct);
 
-            // Ako želiš ID prodaje → SELECT SCOPE_IDENTITY() u SP
-            await cmd.ExecuteNonQueryAsync(ct);
+            // Serijalizuj stavke u JSON (camelCase da se poklopi sa funkcijom)
+            var stavkeJson = JsonSerializer.Serialize(command.Stavke, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
 
-            return 0;
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT sp_prodaj_artikle_json($1::varchar, $2::integer, $3::varchar, $4::jsonb)";
+
+            cmd.Parameters.Add(new NpgsqlParameter { Value = command.BrojRacuna ?? string.Empty, NpgsqlDbType = NpgsqlDbType.Varchar });
+            cmd.Parameters.Add(new NpgsqlParameter { Value = command.IdObjekat, NpgsqlDbType = NpgsqlDbType.Integer });
+            cmd.Parameters.Add(new NpgsqlParameter { Value = command.NacinPlacanja ?? string.Empty, NpgsqlDbType = NpgsqlDbType.Varchar });
+            cmd.Parameters.Add(new NpgsqlParameter { Value = stavkeJson, NpgsqlDbType = NpgsqlDbType.Jsonb });
+
+            var result = await cmd.ExecuteScalarAsync(ct);
+            var prodajaId = Convert.ToInt32(result);
+
+            return prodajaId;
         }
     }
-
 }
