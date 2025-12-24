@@ -7,12 +7,14 @@ export interface CreateArtikalFormProps {
     tipoviObuce: { id: number; naziv: string }[];
     dobavljaci: { id: number; naziv: string }[];
     onSubmit: (data: ArtikalFormData) => Promise<number | void>;
+    loadingOptions?: boolean;
 }
 
 export default function CreateArtikalForm({
     tipoviObuce,
     dobavljaci,
     onSubmit,
+    loadingOptions = false,
 }: CreateArtikalFormProps) {
     const [plu, setPlu] = useState("");
     const [naziv, setNaziv] = useState("");
