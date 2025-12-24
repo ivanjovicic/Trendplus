@@ -17,7 +17,7 @@ Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "Klijent", "Klijent\Klijent.
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E309594B-9835-401C-982A-A71BDEDAE703}"
 	ProjectSection(SolutionItems) = preProject
-		Dockerfile.txt = Dockerfile.txt
+		.renderignore = .renderignore
 	EndProjectSection
 EndProject
 Global
