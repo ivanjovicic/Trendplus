@@ -5,14 +5,15 @@ import { KreirajProdajuDto, ProdajaStavkaDto } from "../types/prodaja/prodaja";
 export default function ProdajaPage() {
     const [loadingArtikli, setLoadingArtikli] = React.useState(true);
     const [artikli, setArtikli] = React.useState<{ id: number; naziv: string; cena: number }[]>([]);
-
+    const API = import.meta.env.VITE_API_BASE_URL;
     React.useEffect(() => {
         let aborted = false;
         const controller = new AbortController();
+        
 
         const fetchArtikli = async () => {
             try {
-                const res = await fetch("/artikli", { signal: controller.signal });
+                const res = await fetch(`${API}/artikli`, { signal: controller.signal });
                 if (res.ok) {
                     const data = await res.json();
                     if (!aborted) {
@@ -43,7 +44,7 @@ export default function ProdajaPage() {
         console.debug("Outgoing prodaja DTO:", data);
 
         try {
-            const res = await fetch("/prodaja", {
+            const res = await fetch(`${API}/prodaja`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),

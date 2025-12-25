@@ -1,4 +1,4 @@
-@Trendplus2_HostAddress = http://localhost:5230
+@Trendplus2_HostAddress = http://localhost:8080
 
 GET {{Trendplus2_HostAddress}}/weatherforecast/
 Accept: application/json

@@ -15,9 +15,10 @@ export type CreateArtikalDto = {
     idObjekat?: number | null;
     idSezona?: number | null;
 };
+const API = import.meta.env.VITE_API_BASE_URL;
 
 export async function createArtikal(payload: CreateArtikalDto): Promise<number> {
-    const res = await fetch("/artikli", {
+    const res = await fetch(`${API}/artikli`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -48,7 +49,7 @@ export async function createArtikal(payload: CreateArtikalDto): Promise<number> 
 }
 
 export async function getArtikal(id: number): Promise<Artikal> {
-    const res = await fetch(`/artikli/${id}`);
+    const res = await fetch(`${ API }/artikli/${id}`);
     if (!res.ok) throw new Error("Artikal ne postoji");
     return res.json();
 }

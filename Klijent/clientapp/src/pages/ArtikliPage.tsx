@@ -7,6 +7,7 @@ export default function ArtikliPage() {
   const [tipovi, setTipovi] = React.useState<{ id: number; naziv: string }[]>([]);
   const [dobavljaci, setDobavljaci] = React.useState<{ id: number; naziv: string }[]>([]);
   const [loadingOptions, setLoadingOptions] = React.useState(true);
+  const API = import.meta.env.VITE_API_BASE_URL;
 
   React.useEffect(() => {
     let aborted = false;
@@ -17,8 +18,8 @@ export default function ArtikliPage() {
       while (!aborted) {
         try {
           const [tipRes, dobRes] = await Promise.all([
-            fetch("/tipovi-obuce", { signal: controller.signal }),
-            fetch("/dobavljaci", { signal: controller.signal }),
+              fetch(`${API}/tipovi-obuce`, { signal: controller.signal }),
+              fetch(`${API}/dobavljaci`, { signal: controller.signal }),
           ]);
 
           if (tipRes.ok && dobRes.ok) {
