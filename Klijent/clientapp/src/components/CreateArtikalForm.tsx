@@ -70,14 +70,14 @@ export default function CreateArtikalForm({
         setMsg("");
         setError("");
 
-        if (!naziv.trim() || Number(prodajnaCena) <= 0) {
-            setError("SUnesite ispravne vrednosti.");
-            return;
-        }
+        //if (!naziv.trim() || Number(prodajnaCena) <= 0) {
+        //    setError("Unesite ispravne vrednosti.");
+        //    return;
+        //}
 
         // Formiraš objekat koji šalješ spolja
         const formData: ArtikalFormData = {
-            plu: plu || null,
+          /*  plu: plu || null,*/
             naziv,
             prodajnaCena: Number(prodajnaCena),
             nabavnaCena: nabavnaCena ? Number(nabavnaCena) : null,
@@ -126,14 +126,14 @@ export default function CreateArtikalForm({
 
             <div className="form-grid" style={{ gap: '1.25rem' }}>
                 <div>
-                    <label className="field-label">PLU</label>
-                    <input
-                        className="input-big mb-4"
-                        placeholder="PLU (šifra)"
-                        value={plu}
-                        onChange={(e) => setPlu(e.target.value)}
-                        style={{ maxWidth: '240px' }}
-                    />
+                    {/*<label className="field-label">PLU</label>*/}
+                    {/*<input*/}
+                    {/*    className="input-big mb-4"*/}
+                    {/*    placeholder="PLU (šifra)"*/}
+                    {/*    value={plu}*/}
+                    {/*    onChange={(e) => setPlu(e.target.value)}*/}
+                    {/*    style={{ maxWidth: '240px' }}*/}
+                    {/*/>*/}
 
                     <label className="field-label">Naziv</label>
                     <input

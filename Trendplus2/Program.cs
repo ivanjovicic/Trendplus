@@ -138,7 +138,7 @@ app.MapPost("/artikli", async (
     IMediator mediator) =>
 {
     var cmd = new CreateArtikalCommand(
-        dto.PLU,
+        //dto.PLU,
         dto.Naziv,
         dto.TipObuceId,
         dto.DobavljacId,

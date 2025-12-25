@@ -1,5 +1,5 @@
 export interface ArtikalFormData {
-    plu: string | null;
+   /* plu: string | null;*/
     naziv: string;
     prodajnaCena: number;
     nabavnaCena: number | null;
