@@ -1,13 +1,15 @@
-﻿import { useState } from "react";
-import { ArtikalFormData } from "../types/artikalformdata";
+﻿import { ArtikalFormData } from "../types/artikalformdata";
 import { createTipObuce } from "../services/tipoviObuceApi";
 import { createDobavljac } from "../services/dobavljaciApi";
+import React, { useState, useEffect } from "react";
 
 export interface CreateArtikalFormProps {
     tipoviObuce: { id: number; naziv: string }[];
     dobavljaci: { id: number; naziv: string }[];
     onSubmit: (data: ArtikalFormData) => Promise<number | void>;
     loadingOptions?: boolean;
+    initialData?: ArtikalFormData; // 👈 za edit
+    mode?: "create" | "edit";      // 👈 za naslov/dugme
 }
 
 export default function CreateArtikalForm({
@@ -15,21 +17,49 @@ export default function CreateArtikalForm({
     dobavljaci,
     onSubmit,
     loadingOptions = false,
+    initialData,
+    mode = "create",
 }: CreateArtikalFormProps) {
-    const [plu, setPlu] = useState("");
-    const [naziv, setNaziv] = useState("");
-    const [prodajnaCena, setProdajnaCena] = useState("");
-    const [nabavnaCena, setNabavnaCena] = useState("");
-    const [nabavnaCenaDin, setNabavnaCenaDin] = useState("");
-    const [prvaProdajnaCena, setPrvaProdajnaCena] = useState("");
-    const [kolicina, setKolicina] = useState("");
-    const [komentar, setKomentar] = useState("");
+    React.useEffect(() => {
+        if (!initialData) return;
+        setNaziv(initialData.naziv);
+        setProdajnaCena(initialData.prodajnaCena != null ? String(initialData.prodajnaCena) : "");
+        setNabavnaCena(initialData.nabavnaCena != null ? String(initialData.nabavnaCena) : "");
+        setNabavnaCenaDin(initialData.nabavnaCenaDin != null ? String(initialData.nabavnaCenaDin) : "");
+        setPrvaProdajnaCena(
+            initialData.prvaProdajnaCena != null ? String(initialData.prvaProdajnaCena) : ""
+        );
+        setKolicina(initialData.kolicina != null ? String(initialData.kolicina) : "");
+        setKomentar(initialData.komentar ?? "");
+        setSelectedTip(initialData.tipObuceId ?? null);
+        setSelectedDobavljac(initialData.dobavljacId ?? null);
+    }, [initialData]);
+
+    const [naziv, setNaziv] = useState(initialData?.naziv ?? "");
+    const [prodajnaCena, setProdajnaCena] = useState(
+        initialData?.prodajnaCena != null ? String(initialData.prodajnaCena) : ""
+    );
+    const [nabavnaCena, setNabavnaCena] = useState(
+        initialData?.nabavnaCena != null ? String(initialData.nabavnaCena) : ""
+    );
+    const [nabavnaCenaDin, setNabavnaCenaDin] = useState(
+        initialData?.nabavnaCenaDin != null ? String(initialData.nabavnaCenaDin) : ""
+    );
+    const [prvaProdajnaCena, setPrvaProdajnaCena] = useState(
+        initialData?.prvaProdajnaCena != null ? String(initialData.prvaProdajnaCena) : ""
+    );
+    const [kolicina, setKolicina] = useState(
+        initialData?.kolicina != null ? String(initialData.kolicina) : ""
+    );
+    const [komentar, setKomentar] = useState(initialData?.komentar ?? "");
+    const [selectedTip, setSelectedTip] = useState<number | null>(initialData?.tipObuceId ?? null);
+    const [selectedDobavljac, setSelectedDobavljac] = useState<number | null>(
+        initialData?.dobavljacId ?? null
+    );
     const [msg, setMsg] = useState("");
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [selectedTip, setSelectedTip] = useState<number | null>(null);
-    const [selectedDobavljac, setSelectedDobavljac] = useState<number | null>(null);
 
     // new tip UI
     const [newTip, setNewTip] = useState("");
@@ -73,11 +103,11 @@ export default function CreateArtikalForm({
         //if (!naziv.trim() || Number(prodajnaCena) <= 0) {
         //    setError("Unesite ispravne vrednosti.");
         //    return;
-        //}
+        ///}
 
         // Formiraš objekat koji šalješ spolja
         const formData: ArtikalFormData = {
-          /*  plu: plu || null,*/
+            // plu: plu || null,  // ⬅ izbaci
             naziv,
             prodajnaCena: Number(prodajnaCena),
             nabavnaCena: nabavnaCena ? Number(nabavnaCena) : null,
@@ -89,17 +119,15 @@ export default function CreateArtikalForm({
             dobavljacId: selectedDobavljac,
         };
 
-        // Debug: log what will be sent
-        /*try {*/
             console.debug("CreateArtikalForm submitting formData:", formData);
-     /*   } catch {}*/
+ 
 
         setIsSubmitting(true);
         try {
             await onSubmit(formData); // await the async submit
             // Optionally assert result (e.g., created id)
             setMsg("Artikal uspešno kreiran ✔️");
-            setPlu("");
+           
             setNaziv("");
             setProdajnaCena("");
             setNabavnaCena("");
@@ -125,16 +153,7 @@ export default function CreateArtikalForm({
             <h2 className="text-2xl font-semibold mb-6">➕ Kreiraj artikal</h2>
 
             <div className="form-grid" style={{ gap: '1.25rem' }}>
-                <div>
-                    {/*<label className="field-label">PLU</label>*/}
-                    {/*<input*/}
-                    {/*    className="input-big mb-4"*/}
-                    {/*    placeholder="PLU (šifra)"*/}
-                    {/*    value={plu}*/}
-                    {/*    onChange={(e) => setPlu(e.target.value)}*/}
-                    {/*    style={{ maxWidth: '240px' }}*/}
-                    {/*/>*/}
-
+                <div>                   
                     <label className="field-label">Naziv</label>
                     <input
                         className="input-big mb-4"

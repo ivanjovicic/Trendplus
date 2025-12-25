@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Application.Artikli.Commands.CreateArtikal
 {
     public record CreateArtikalCommand(
-    string? PLU,
+    //string? PLU,
     string Naziv,
     int? IDTipObuce,
     int? IDDobavljac,

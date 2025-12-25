@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import CreateArtikalForm from "../components/CreateArtikalForm";
 import { createArtikal } from "../services/artikliApi";
 import { ArtikalFormData } from "../types/artikalformdata";
@@ -18,8 +18,8 @@ export default function ArtikliPage() {
       while (!aborted) {
         try {
           const [tipRes, dobRes] = await Promise.all([
-              fetch(`${API}/tipovi-obuce`, { signal: controller.signal }),
-              fetch(`${API}/dobavljaci`, { signal: controller.signal }),
+            fetch(`${API}/tipovi-obuce`, { signal: controller.signal }),
+            fetch(`${API}/dobavljaci`, { signal: controller.signal }),
           ]);
 
           if (tipRes.ok && dobRes.ok) {
@@ -45,11 +45,10 @@ export default function ArtikliPage() {
       aborted = true;
       controller.abort();
     };
-  }, []);
+  }, [API]);
 
   const handleSubmit = async (data: ArtikalFormData): Promise<number | void> => {
     const dto = {
-     /* PLU: data.plu ?? null,*/
       Naziv: data.naziv,
       ProdajnaCena: data.prodajnaCena,
       NabavnaCena: data.nabavnaCena ?? null,
@@ -67,5 +66,12 @@ export default function ArtikliPage() {
     return id;
   };
 
-  return <CreateArtikalForm tipoviObuce={tipovi} dobavljaci={dobavljaci} onSubmit={handleSubmit} loadingOptions={loadingOptions} />;
+  return (
+    <CreateArtikalForm
+      tipoviObuce={tipovi}
+      dobavljaci={dobavljaci}
+      onSubmit={handleSubmit}
+      loadingOptions={loadingOptions}
+    />
+  );
 }

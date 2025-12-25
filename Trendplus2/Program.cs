@@ -1,4 +1,5 @@
 ﻿using Application.Artikli.Commands.CreateArtikal;
+using Application.Artikli.Commands.UpdateArtikal;
 using Application.Artikli.Common.Interfaces;
 using Application.Artikli.Queries.GetArtikal;
 using Application.Artikli.Queries.VratiArtikle;
@@ -69,13 +70,17 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
+        //policy
+        //    .WithOrigins(
+        //        "http://localhost:8080",          // local dev
+        //        "https://trendplus.vercel.app"    // Vercel prod
+        //    )
+        //    .AllowAnyHeader()
+        //    .AllowAnyMethod();
         policy
-            .WithOrigins(
-                "http://localhost:8080",          // local dev
-                "https://trendplus.vercel.app"    // Vercel prod
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+           .AllowAnyOrigin()
+           .AllowAnyHeader()
+           .AllowAnyMethod();
     });
 });
 var app = builder.Build();
@@ -168,7 +173,7 @@ app.MapGet("/artikli", async (IMediator mediator) =>
     return Results.Ok(result);
 });
 
-// Tipovi obuće
+// Tipovi obuća
 app.MapGet("/tipovi-obuce", async (IMediator mediator) =>
 {
     var result = await mediator.Send(new GetTipObuceQuery());
@@ -203,6 +208,46 @@ app.MapPost("/api/prodaja", async (ProdajArtikleCommand command, IMediator media
 {
     var prodajaId = await mediator.Send(command);
     return Results.Ok(prodajaId);
+});
+
+app.MapPut("/artikli/{id:int}", async (
+    int id,
+    Application.Artikli.Commands.UpdateArtikal.UpdateArtikalDto dto,
+    IMediator mediator,
+    ILogger<Program> logger) =>
+{
+    logger.LogInformation("Received PUT /artikli/{Id} DTO: {@Dto}", id, dto);
+
+    var cmd = new UpdateArtikalCommand(
+        id,
+        dto.Naziv,
+        dto.TipObuceId,
+        dto.DobavljacId,
+        dto.NabavnaCena,
+        dto.NabavnaCenaDin,
+        dto.PrvaProdajnaCena,
+        dto.ProdajnaCena,
+        dto.Kolicina,
+        dto.Komentar,
+        dto.IDObjekat,
+        dto.IDSezona
+    );
+
+    try
+    {
+        await mediator.Send(cmd);
+        return Results.NoContent();
+    }
+    catch (InvalidOperationException ex)
+    {
+        logger.LogWarning(ex, "UpdateArtikal failed for Id {Id}", id);
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error while handling UpdateArtikalCommand");
+        return Results.Problem(detail: ex.Message);
+    }
 });
 
 app.MapControllers();

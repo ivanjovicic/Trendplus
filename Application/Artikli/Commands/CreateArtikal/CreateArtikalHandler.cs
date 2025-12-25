@@ -41,7 +41,7 @@ namespace Application.Artikli.Commands.CreateArtikal
                     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
                 )";
 
-            command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.PLU ?? DBNull.Value });
+            //command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.PLU ?? DBNull.Value });
             command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.Naziv ?? DBNull.Value });
             command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.IDTipObuce ?? DBNull.Value });
             command.Parameters.Add(new NpgsqlParameter { Value = (object?)request.IDDobavljac ?? DBNull.Value });
