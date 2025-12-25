@@ -49,7 +49,7 @@ export default function ArtikliPage() {
 
   const handleSubmit = async (data: ArtikalFormData): Promise<number | void> => {
     const dto = {
-      PLU: data.plu ?? null,
+     /* PLU: data.plu ?? null,*/
       Naziv: data.naziv,
       ProdajnaCena: data.prodajnaCena,
       NabavnaCena: data.nabavnaCena ?? null,
