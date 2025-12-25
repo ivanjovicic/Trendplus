@@ -2,14 +2,82 @@
 using Application.Artikli.Common.Interfaces;
 using Application.Artikli.Queries.GetArtikal;
 using Application.Artikli.Queries.VratiArtikle;
+using Application.Behaviors;
 using Application.Common.Interfaces;
 using Application.Dobavljaci.Queries;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.TipObuce.Queries;
+using Domain.Model;
+using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Infrastructure.Middleware;
+using Infrastructure.Repository;
+using Infrastructure.Services;
 using MediatR;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Npgsql; // <- opcionalno, ali može stajati
+using System.Data;
+using System.IO;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore.Design;
 
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddEnvironmentVariables();
+
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
+// Add services to the container.  ✅ PostgreSQL umesto SQL Server
+builder.Services.AddDbContext<TrendplusDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .EnableSensitiveDataLogging()
+           .LogTo(Console.WriteLine, LogLevel.Information));
+builder.Services.AddScoped<ITrendplusDbContext>(sp =>
+    sp.GetRequiredService<TrendplusDbContext>());
+
+builder.Services.AddDbContext<AnalyticsDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("AnalyticsConnection"))
+           .EnableSensitiveDataLogging()
+           .LogTo(Console.WriteLine, LogLevel.Information));
+builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
+    sp.GetRequiredService<AnalyticsDbContext>());
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+
+// Register DB-backed error store
+builder.Services.AddScoped<IErrorStore, DbErrorStore>();
+builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
+
+builder.Services.AddControllers();
+// Make minimal API JSON binding case-insensitive so DTO model-binding matches client payload
+builder.Services.ConfigureHttpJsonOptions(opts =>
+{
+    opts.SerializerOptions.PropertyNameCaseInsensitive = true;
+});
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(CreateArtikalHandler).Assembly));
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:8080",          // local dev
+                "https://trendplus.vercel.app"    // Vercel prod
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 var app = builder.Build();
 
 // middleware koji loguje exceptione
@@ -140,3 +208,6 @@ app.MapPost("/api/prodaja", async (ProdajArtikleCommand command, IMediator media
 app.MapControllers();
 
 app.Run();
+
+// DTO used by /dobavljaci endpoint
+record CreateDobavljacDto(string Naziv);
