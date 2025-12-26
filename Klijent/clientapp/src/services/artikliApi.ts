@@ -78,7 +78,13 @@ export async function updateArtikal(id: number, data: ArtikalFormData): Promise<
     });
 
     if (!resp.ok) {
-        throw new Error(`UpdateArtikal failed: ${resp.status}`);
+        // u catch granama, ako body ima correlationId:
+        const body = await resp.json().catch(() => null);
+        const correlationId = body?.correlationId;
+        const message = body?.detail ?? body?.title ?? `HTTP ${resp.status}`;
+        throw new Error(
+          correlationId ? `${message} (CorrelationId: ${correlationId})` : message
+        );
     }
 }
 

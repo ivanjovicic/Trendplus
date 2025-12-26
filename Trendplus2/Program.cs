@@ -8,23 +8,27 @@ using Application.Common.Interfaces;
 using Application.Dobavljaci.Queries;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.TipObuce.Queries;
-using Domain.Model;
-using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Infrastructure.Middleware;
 using Infrastructure.Repository;
 using Infrastructure.Services;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Npgsql; // <- opcionalno, ali može stajati
-using System.Data;
-using System.IO;
-using System.Text.Json;
-using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Serilog;
+using Serilog.Events;
+using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog bootstrap iz appsettings.json
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
@@ -34,69 +38,73 @@ var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-// Add services to the container.  ✅ PostgreSQL umesto SQL Server
+// DbContext‑ovi – logovanje upita preko Serilog-a
 builder.Services.AddDbContext<TrendplusDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .EnableSensitiveDataLogging()
-           .LogTo(Console.WriteLine, LogLevel.Information));
+           .EnableSensitiveDataLogging());
+
 builder.Services.AddScoped<ITrendplusDbContext>(sp =>
     sp.GetRequiredService<TrendplusDbContext>());
 
 builder.Services.AddDbContext<AnalyticsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("AnalyticsConnection"))
-           .EnableSensitiveDataLogging()
-           .LogTo(Console.WriteLine, LogLevel.Information));
+           .EnableSensitiveDataLogging());
+
 builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
     sp.GetRequiredService<AnalyticsDbContext>());
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
-// Register DB-backed error store
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 builder.Services.AddScoped<IErrorStore, DbErrorStore>();
 builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
 
 builder.Services.AddControllers();
-// Make minimal API JSON binding case-insensitive so DTO model-binding matches client payload
 builder.Services.ConfigureHttpJsonOptions(opts =>
 {
     opts.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(CreateArtikalHandler).Assembly));
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        //policy
-        //    .WithOrigins(
-        //        "http://localhost:8080",          // local dev
-        //        "https://trendplus.vercel.app"    // Vercel prod
-        //    )
-        //    .AllowAnyHeader()
-        //    .AllowAnyMethod();
         policy
            .AllowAnyOrigin()
            .AllowAnyHeader()
            .AllowAnyMethod();
     });
 });
+
 var app = builder.Build();
 
-// middleware koji loguje exceptione
+// Serilog request logging – detaljan log svakog HTTP zahteva
+app.UseSerilogRequestLogging(opts =>
+{
+    // EnrichContext se poziva za svaki request
+    opts.EnrichDiagnosticContext = (diag, http) =>
+    {
+        diag.Set("RequestHost", http.Request.Host.Value);
+        diag.Set("RequestScheme", http.Request.Scheme);
+        diag.Set("UserAgent", http.Request.Headers.UserAgent.ToString());
+        diag.Set("RequestPath", http.Request.Path);
+    };
+});
+
+// global exception logging u DB (tvoj middleware)
 app.UseMiddleware<ExceptionLoggingMiddleware>();
 
-app.UseRouting();                 // ✅ OBAVEZNO
-app.UseCors("AllowFrontend");     // ✅ MORA PRE auth
+app.UseRouting();
+app.UseCors("AllowFrontend");
 
 if (app.Environment.IsDevelopment())
 {
     app.UseHsts();
 }
 
-// Swagger dozvoljen i u Production (Render)
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -128,6 +136,7 @@ app.MapPost("/diagnostics/test-insert", async (TrendplusDbContext db, ILogger<Pr
 
         db.Artikli.Add(test);
         await db.SaveChangesAsync();
+        logger.LogInformation("Diagnostic insert created artikal with Id {Id}", test.Id);
         return Results.Ok(new { test.Id });
     }
     catch (Exception ex)
@@ -140,10 +149,12 @@ app.MapPost("/diagnostics/test-insert", async (TrendplusDbContext db, ILogger<Pr
 // Artikli
 app.MapPost("/artikli", async (
     Application.Artikli.Commands.CreateArtikal.ClientCreateArtikalDto dto,
-    IMediator mediator) =>
+    IMediator mediator,
+    ILogger<Program> logger) =>
 {
+    logger.LogInformation("POST /artikli payload: {@Dto}", dto);
+
     var cmd = new CreateArtikalCommand(
-        //dto.PLU,
         dto.Naziv,
         dto.TipObuceId,
         dto.DobavljacId,
@@ -158,17 +169,28 @@ app.MapPost("/artikli", async (
     );
 
     var id = await mediator.Send(cmd);
-    return Results.Created($"/artikli/{id}", new { id });
+
+    logger.LogInformation("Artikal kreiran sa Id {Id}", id);
+
+    return Results.Created(
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"/artikli/{id}"
+        ),
+        new { id }
+    );
 });
 
-app.MapGet("/artikli/{id:int}", async (int id, IMediator mediator) =>
+app.MapGet("/artikli/{id:int}", async (int id, IMediator mediator, ILogger<Program> logger) =>
 {
+    logger.LogInformation("GET /artikli/{Id}", id);
     var result = await mediator.Send(new GetArtikalQuery(id));
     return Results.Ok(result);
 });
 
-app.MapGet("/artikli", async (IMediator mediator) =>
+app.MapGet("/artikli", async (IMediator mediator, ILogger<Program> logger) =>
 {
+    logger.LogInformation("GET /artikli (lista)");
     var result = await mediator.Send(new GetArtikliQuery());
     return Results.Ok(result);
 });
@@ -204,9 +226,11 @@ app.MapPost("/dobavljaci", async (CreateDobavljacDto dto, ITrendplusDbContext db
 });
 
 // Prodaja
-app.MapPost("/api/prodaja", async (ProdajArtikleCommand command, IMediator mediator) =>
+app.MapPost("/api/prodaja", async (ProdajArtikleCommand command, IMediator mediator, ILogger<Program> logger) =>
 {
+    logger.LogInformation("POST /api/prodaja payload: {@Command}", command);
     var prodajaId = await mediator.Send(command);
+    logger.LogInformation("Prodaja kreirana sa Id {Id}", prodajaId);
     return Results.Ok(prodajaId);
 });
 
@@ -236,6 +260,7 @@ app.MapPut("/artikli/{id:int}", async (
     try
     {
         await mediator.Send(cmd);
+        logger.LogInformation("Artikal {Id} uspešno izmenjen", id);
         return Results.NoContent();
     }
     catch (InvalidOperationException ex)

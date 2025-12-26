@@ -6,7 +6,9 @@ namespace Application.Common.Interfaces
 {
     public interface IErrorStore
     {
-        Task LogAsync(ErrorRecord record);
-        Task<IReadOnlyList<ErrorRecord>> GetAllAsync();
+        Task<IReadOnlyList<ErrorRecord>> GetAllAsync(CancellationToken cancellationToken = default);
+        Task SaveAsync(
+           ErrorRecord error,
+           CancellationToken cancellationToken = default);
     }
 }
