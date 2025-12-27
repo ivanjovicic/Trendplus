@@ -21,13 +21,13 @@ namespace Infrastructure.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task LogAsync(ErrorRecord record)
+        public async Task SaveAsync(ErrorRecord record, CancellationToken cancellationToken)
         {
             try
             {
                 record.Timestamp = record.Timestamp == default ? DateTime.UtcNow : record.Timestamp;
                 _db.Set<ErrorRecord>().Add(record);
-                await _db.SaveChangesAsync().ConfigureAwait(false);
+                await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -36,12 +36,12 @@ namespace Infrastructure.Services
             }
         }
 
-        public async Task<IReadOnlyList<ErrorRecord>> GetAllAsync()
+        public async Task<IReadOnlyList<ErrorRecord>> GetAllAsync(CancellationToken cancellationToken)
         {
             return await _db.Set<ErrorRecord>()
                             .AsNoTracking()
                             .OrderByDescending(x => x.Timestamp)
-                            .ToListAsync()
+                            .ToListAsync(cancellationToken)
                             .ConfigureAwait(false);
         }
     }

@@ -1,15 +1,15 @@
 ﻿import { ArtikalFormData } from "../types/artikalformdata";
 import { createTipObuce } from "../services/tipoviObuceApi";
 import { createDobavljac } from "../services/dobavljaciApi";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 export interface CreateArtikalFormProps {
     tipoviObuce: { id: number; naziv: string }[];
     dobavljaci: { id: number; naziv: string }[];
     onSubmit: (data: ArtikalFormData) => Promise<number | void>;
     loadingOptions?: boolean;
-    initialData?: ArtikalFormData; // 👈 za edit
-    mode?: "create" | "edit";      // 👈 za naslov/dugme
+    initialData?: ArtikalFormData;
+    mode?: "create" | "edit";
 }
 
 export default function CreateArtikalForm({
@@ -60,8 +60,6 @@ export default function CreateArtikalForm({
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-
-    // new tip UI
     const [newTip, setNewTip] = useState("");
     const [newDob, setNewDob] = useState("");
     const [showNewTipConfirm, setShowNewTipConfirm] = useState(false);
@@ -74,7 +72,6 @@ export default function CreateArtikalForm({
             const idTip = await createTipObuce(newTip.trim());
             setSelectedTip(idTip);
             setNewTip("");
-            // ideally refresh dropdowns here; useDropdownData doesn't expose refresh, so reload page
             window.location.reload();
         } catch (e) {
             console.error(e);
@@ -100,14 +97,7 @@ export default function CreateArtikalForm({
         setMsg("");
         setError("");
 
-        //if (!naziv.trim() || Number(prodajnaCena) <= 0) {
-        //    setError("Unesite ispravne vrednosti.");
-        //    return;
-        ///}
-
-        // Formiraš objekat koji šalješ spolja
         const formData: ArtikalFormData = {
-            // plu: plu || null,  // ⬅ izbaci
             naziv,
             prodajnaCena: Number(prodajnaCena),
             nabavnaCena: nabavnaCena ? Number(nabavnaCena) : null,
@@ -119,13 +109,11 @@ export default function CreateArtikalForm({
             dobavljacId: selectedDobavljac,
         };
 
-            console.debug("CreateArtikalForm submitting formData:", formData);
- 
+        console.debug("CreateArtikalForm submitting formData:", formData);
 
         setIsSubmitting(true);
         try {
-            await onSubmit(formData); // await the async submit
-            // Optionally assert result (e.g., created id)
+            await onSubmit(formData);
             setMsg("Artikal uspešno kreiran ✔️");
            
             setNaziv("");
@@ -149,14 +137,16 @@ export default function CreateArtikalForm({
     const newDobIsEmpty = !newDob.trim();
 
     return (
-        <div className="card" style={{ margin: '2rem auto', maxWidth: 1000 }}>
-            <h2 className="text-2xl font-semibold mb-6">➕ Kreiraj artikal</h2>
+        <div className="card">
+            <h2 className="text-2xl font-semibold mb-6">
+                {mode === "edit" ? "✏️ Izmeni artikal" : "➕ Kreiraj artikal"}
+            </h2>
 
-            <div className="form-grid" style={{ gap: '1.25rem' }}>
+            <div className="form-grid">
                 <div>                   
                     <label className="field-label">Naziv</label>
                     <input
-                        className="input-big mb-4"
+                        className="input-big"
                         placeholder="Naziv artikla"
                         value={naziv}
                         onChange={(e) => setNaziv(e.target.value)}
@@ -164,64 +154,57 @@ export default function CreateArtikalForm({
 
                     <label className="field-label">Prodajna cena (RSD)</label>
                     <input
-                        className="input-big mb-4"
+                        className="input-big"
                         placeholder="Prodajna cena"
                         type="number"
                         value={prodajnaCena}
                         onChange={(e) => setProdajnaCena(e.target.value)}
-                        style={{ maxWidth: '240px' }}
                     />
 
                     <label className="field-label">Nabavna cena</label>
                     <input
-                        className="input-big mb-4"
+                        className="input-big"
                         placeholder="Nabavna cena"
                         type="number"
                         value={nabavnaCena}
                         onChange={(e) => setNabavnaCena(e.target.value)}
-                        style={{ maxWidth: '240px' }}
                     />
 
                     <label className="field-label">Nabavna cena (din)</label>
                     <input
-                        className="input-big mb-4"
+                        className="input-big"
                         placeholder="Nabavna cena (din)"
                         type="number"
                         value={nabavnaCenaDin}
                         onChange={(e) => setNabavnaCenaDin(e.target.value)}
-                        style={{ maxWidth: '240px' }}
                     />
 
                     <label className="field-label">Prva prodajna cena</label>
                     <input
-                        className="input-big mb-4"
+                        className="input-big"
                         placeholder="Prva prodajna cena"
                         type="number"
                         value={prvaProdajnaCena}
                         onChange={(e) => setPrvaProdajnaCena(e.target.value)}
-                        style={{ maxWidth: '240px' }}
                     />
 
                     <label className="field-label">Količina</label>
                     <input
-                        className="input-big mb-4"
+                        className="input-big"
                         placeholder="Količina"
                         type="number"
                         value={kolicina}
                         onChange={(e) => setKolicina(e.target.value)}
-                        style={{ maxWidth: '240px' }}
                     />
                 </div>
 
                 <div>
-                    
                     <label className="field-label">Komentar</label>
                     <textarea
-                        className="input-big mb-4 form-full"
+                        className="input-big"
                         placeholder="Komentar"
                         value={komentar}
                         onChange={(e) => setKomentar(e.target.value)}
-                        style={{ maxWidth: '100%', minHeight: 100 }}
                     />
 
                     <label className="field-label">Tip obuće</label>
@@ -234,7 +217,6 @@ export default function CreateArtikalForm({
                                 console.debug('selectedTip change ->', v);
                                 setSelectedTip(v);
                             }}
-                            style={{ maxWidth: '320px' }}
                         >
                             <option value="">-- izaberite --</option>
                             {tipoviObuce.map((t) => (
@@ -243,17 +225,15 @@ export default function CreateArtikalForm({
                         </select>
 
                         <input
-                            className="input-big mb-4"
+                            className="input-big"
                             placeholder="Novi tip..."
                             value={newTip}
                             onChange={(e) => setNewTip(e.target.value)}
-                            style={{ flex: '1 1 360px', minWidth: 220, height: 40 }}
                         />
 
                         <button
                             type="button"
                             className="button-big"
-                            style={{ width: 'auto', height: 40, marginTop: -14, alignSelf: 'center', ...(newTipIsEmpty ? { opacity: 0.6, cursor: 'not-allowed' } : {}), }}
                             disabled={newTipIsEmpty}
                             onClick={() => setShowNewTipConfirm(true)}
                         >
@@ -261,86 +241,104 @@ export default function CreateArtikalForm({
                         </button>
                     </div>
 
-                    <label className="field-label" style={{ marginTop: '6px' }}>Dobavljac</label>
+                    <label className="field-label">Dobavljač</label>
                     <div className="flex-row">
-                    <select
-                        className="input-big mb-4"
-                        value={selectedDobavljac ?? ""}
-                        onChange={(e) => {
-                            const v = e.target.value ? Number(e.target.value) : null;
-                            console.debug('selectedDobavljac change ->', v);
-                            setSelectedDobavljac(v);
-                        }}
-                        style={{ maxWidth: '320px' }}
-                    >
-                        <option value="">-- izaberite --</option>
-                        {dobavljaci.map((d) => (
-                            <option key={d.id} value={d.id}>{d.naziv}</option>
-                        ))}
-                            </select>
-                            <input
+                        <select
+                            className="input-big"
+                            value={selectedDobavljac ?? ""}
+                            onChange={(e) => {
+                                const v = e.target.value ? Number(e.target.value) : null;
+                                console.debug('selectedDobavljac change ->', v);
+                                setSelectedDobavljac(v);
+                            }}
+                        >
+                            <option value="">-- izaberite --</option>
+                            {dobavljaci.map((d) => (
+                                <option key={d.id} value={d.id}>{d.naziv}</option>
+                            ))}
+                        </select>
+
+                        <input
                             type="text"
-                            className="input-big mb-4"
+                            className="input-big"
                             placeholder="Novi dobavljač..."
                             value={newDob}
-                                onChange={(e) => setNewDob(e.target.value)}
-                                style={{ flex: '1 1 360px', minWidth: 220, height: 50, padding: '8px 12px', marginBottom: 12 }}
-                            />
+                            onChange={(e) => setNewDob(e.target.value)}
+                        />
 
-                            <button
-                                type="button"
-                                className="button-big"
-                                style={{
-                                    padding: '8px 12px',
-                                    width: 'auto',
-                                    alignSelf: 'center',
-                                    height: 40,
-                                    flexShrink: 0,
-                                    marginTop: 6, // move button slightly down
-                                   /* marginTop: 2, */// nudge 2px up
-                                    marginBottom: 0,
-                                    ...(newDobIsEmpty ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
-                                }}
-                                onClick={() => setShowNewDobConfirm(true)}
+                        <button
+                            type="button"
+                            className="button-big"
+                            onClick={() => setShowNewDobConfirm(true)}
                             disabled={newDobIsEmpty}
-                            >
-                                Dodaj
-                            </button>
-                      
+                        >
+                            Dodaj
+                        </button>
                     </div>
                 </div> 
+
                 <div className="form-full">
-                    <button className="button-big" onClick={handleSubmit} style={{ maxWidth: 420 }} disabled={isSubmitting}>
-                        {isSubmitting ? "Kreiram..." : "Kreiraj artikal"}
+                    <button 
+                        className="button-big" 
+                        onClick={handleSubmit} 
+                        disabled={isSubmitting}
+                        style={{ maxWidth: '420px' }}
+                    >
+                        {isSubmitting ? "Kreiram..." : mode === "edit" ? "Sačuvaj izmene" : "Kreiraj artikal"}
                     </button>
                 </div>
 
-                {msg && <p className="mt-4 text-lg font-medium success-msg">{msg}</p>}
-                {error && <p className="mt-4 text-lg font-medium error-msg">{error}</p>}
+                {msg && <p className="form-full success-msg">{msg}</p>}
+                {error && <p className="form-full error-msg">{error}</p>}
             </div>
 
             {showNewTipConfirm && (
                 <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-                    <div style={{ background: 'rgba(0,0,0,0.4)', position: 'absolute', inset: 0 }} />
-                    <div style={{ background: '#fff', padding: 24, borderRadius: 12, zIndex: 2001, minWidth: 320 }}>
-                        <p style={{ fontWeight: 600, marginBottom: 12 }}>Potvrdi kreiranje tipa obuće</p>
+                    <div style={{ background: 'rgba(0,0,0,0.4)', position: 'absolute', inset: 0 }} onClick={() => setShowNewTipConfirm(false)} />
+                    <div style={{ background: '#fff', padding: 24, borderRadius: 12, zIndex: 2001, minWidth: 320, maxWidth: 480 }}>
+                        <p style={{ fontWeight: 600, marginBottom: 12, fontSize: '1.125rem' }}>Potvrdi kreiranje tipa obuće</p>
                         <p style={{ marginBottom: 16 }}>Da li želite da kreirate tip: <strong>{newTip}</strong>?</p>
                         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                            <button className="button-big" style={{ background: '#e5e7eb', color: '#111', width: 'auto', padding: '8px 12px' }} onClick={() => setShowNewTipConfirm(false)}>Otkaži</button>
-                            <button className="button-big" style={{ width: 'auto', padding: '8px 12px' }} onClick={handleCreateTip}>Potvrdi</button>
+                            <button 
+                                className="button-big" 
+                                style={{ background: '#e5e7eb', color: '#111', width: 'auto', padding: '10px 20px', marginTop: 0 }} 
+                                onClick={() => setShowNewTipConfirm(false)}
+                            >
+                                Otkaži
+                            </button>
+                            <button 
+                                className="button-big" 
+                                style={{ width: 'auto', padding: '10px 20px', marginTop: 0 }} 
+                                onClick={handleCreateTip}
+                            >
+                                Potvrdi
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
+
             {showNewDobConfirm && (
                 <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-                    <div style={{ background: 'rgba(0,0,0,0.4)', position: 'absolute', inset: 0 }} />
-                    <div style={{ background: '#fff', padding: 24, borderRadius: 12, zIndex: 2001, minWidth: 320 }}>
-                        <p style={{ fontWeight: 600, marginBottom: 12 }}>Potvrdi kreiranje novog dobavljača</p>
+                    <div style={{ background: 'rgba(0,0,0,0.4)', position: 'absolute', inset: 0 }} onClick={() => setShowNewDobConfirm(false)} />
+                    <div style={{ background: '#fff', padding: 24, borderRadius: 12, zIndex: 2001, minWidth: 320, maxWidth: 480 }}>
+                        <p style={{ fontWeight: 600, marginBottom: 12, fontSize: '1.125rem' }}>Potvrdi kreiranje novog dobavljača</p>
                         <p style={{ marginBottom: 16 }}>Da li želite da kreirate dobavljača: <strong>{newDob}</strong>?</p>
                         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                            <button className="button-big" style={{ background: '#e5e7eb', color: '#111', width: 'auto', padding: '8px 12px' }} onClick={() => setShowNewDobConfirm(false)}>Otkaži</button>
-                            <button className="button-big" style={{ width: 'auto', padding: '8px 12px' }} onClick={handleCreateDob}>Potvrdi</button>
+                            <button 
+                                className="button-big" 
+                                style={{ background: '#e5e7eb', color: '#111', width: 'auto', padding: '10px 20px', marginTop: 0 }} 
+                                onClick={() => setShowNewDobConfirm(false)}
+                            >
+                                Otkaži
+                            </button>
+                            <button 
+                                className="button-big" 
+                                style={{ width: 'auto', padding: '10px 20px', marginTop: 0 }} 
+                                onClick={handleCreateDob}
+                            >
+                                Potvrdi
+                            </button>
                         </div>
                     </div>
                 </div>

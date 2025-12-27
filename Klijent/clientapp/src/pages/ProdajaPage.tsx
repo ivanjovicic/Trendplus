@@ -1,15 +1,15 @@
 ﻿import React from "react";
 import CreateProdajaForm from "../components/prodaja/CreateProdajaForm";
-import { KreirajProdajuDto, ProdajaStavkaDto } from "../types/prodaja/prodaja";
+import { KreirajProdajuDto } from "../types/prodaja/prodaja";
 
 export default function ProdajaPage() {
     const [loadingArtikli, setLoadingArtikli] = React.useState(true);
     const [artikli, setArtikli] = React.useState<{ id: number; naziv: string; cena: number }[]>([]);
     const API = import.meta.env.VITE_API_BASE_URL;
+
     React.useEffect(() => {
         let aborted = false;
         const controller = new AbortController();
-        
 
         const fetchArtikli = async () => {
             try {
@@ -37,10 +37,9 @@ export default function ProdajaPage() {
             aborted = true;
             controller.abort();
         };
-    }, []);
+    }, [API]);
 
     const handleSubmit = async (data: KreirajProdajuDto): Promise<void> => {
-        // Debug outgoing DTO
         console.debug("Outgoing prodaja DTO:", data);
 
         try {
@@ -50,7 +49,6 @@ export default function ProdajaPage() {
                 body: JSON.stringify(data),
             });
 
-            // Always read response body so we can log it on error
             const raw = await res.text();
             let parsedBody: unknown = raw;
             const contentType = res.headers.get("content-type") ?? "";
@@ -71,20 +69,29 @@ export default function ProdajaPage() {
             }
 
             console.debug("Prodaja POST succeeded:", parsedBody);
-            alert("Prodaja uspešno kreirana ✔️");
         } catch (err: any) {
             console.error("Error submitting prodaja:", err);
-            alert("Greška: " + (err?.message ?? "Nepoznata greška"));
+            throw err;
         }
     };
 
-    return (
-        <div>
-            {loadingArtikli ? (
-                <p>Učitavanje artikala...</p>
-            ) : (
-                <CreateProdajaForm artikli={artikli} onSubmit={handleSubmit} />
-            )}
-        </div>
-    );
+    if (loadingArtikli) {
+        return (
+            <div className="card">
+                <p style={{ textAlign: 'center', padding: '2rem' }}>Učitavanje artikala...</p>
+            </div>
+        );
+    }
+
+    if (artikli.length === 0) {
+        return (
+            <div className="card">
+                <p style={{ textAlign: 'center', padding: '2rem', color: '#dc2626' }}>
+                    Nema dostupnih artikala. Molimo kreirajte artikle pre prodaje.
+                </p>
+            </div>
+        );
+    }
+
+    return <CreateProdajaForm artikli={artikli} onSubmit={handleSubmit} />;
 }

@@ -3,17 +3,22 @@ import { Link } from "react-router-dom";
 
 export default function HomePage() {
   return (
-    <div className="card" style={{ margin: "2rem auto", maxWidth: 600 }}>
-      <h1 className="text-2xl font-bold mb-4">Trendplus</h1>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="card" style={{ maxWidth: "600px" }}>
+      <h1
+        className="text-2xl font-bold mb-6"
+        style={{ marginBottom: "2rem", fontSize: "2rem" }}
+      >
+        📦 Trendplus
+      </h1>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         <Link to="/artikli" className="button-big">
-          Kreiraj artikal
+          ➕ Kreiraj artikal
         </Link>
         <Link to="/artikli/lista" className="button-big">
-          Pregled i izmena artikala
+          📋 Pregled i izmena artikala
         </Link>
         <Link to="/prodaja" className="button-big">
-          Prodaja
+          🛒 Prodaja
         </Link>
       </div>
     </div>

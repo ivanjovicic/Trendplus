@@ -64,9 +64,14 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
         }
     };
 
+    const ukupno = stavke.reduce((sum, s) => sum + s.kolicina * s.cena, 0);
+
     return (
-        <div>
-            <div style={{ marginBottom: 12 }}>
+        <div className="card">
+            <h2 className="text-2xl font-semibold mb-6">🛒 Nova prodaja</h2>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+                <label className="field-label">Broj računa</label>
                 <input
                     placeholder="Broj računa"
                     value={brojRacuna}
@@ -75,68 +80,111 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
                 />
             </div>
 
-            {stavke.map((s, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                    <select
-                        value={s.idArtikal}
-                        onChange={(e) => {
-                            const id = Number(e.target.value);
-                            const art = artikli.find((a) => a.id === id);
-                            updateStavka(i, { idArtikal: id, cena: art?.cena ?? s.cena });
-                        }}
-                        style={{ minWidth: 220 }}
-                        className="input-big"
-                        aria-label={`Artikal ${i + 1}`}
-                    >
-                        {artikli.map((a) => (
-                            <option key={a.id} value={a.id}>
-                                {a.naziv} — {a.cena}
-                            </option>
-                        ))}
-                    </select>
+            <div style={{ marginBottom: '1.5rem' }}>
+                <h3 className="text-lg font-semibold mb-4">Stavke</h3>
+                
+                {stavke.map((s, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <div style={{ flex: '1 1 200px', minWidth: '200px' }}>
+                            <label className="field-label" style={{ fontSize: '0.875rem' }}>Artikal</label>
+                            <select
+                                value={s.idArtikal}
+                                onChange={(e) => {
+                                    const id = Number(e.target.value);
+                                    const art = artikli.find((a) => a.id === id);
+                                    updateStavka(i, { idArtikal: id, cena: art?.cena ?? s.cena });
+                                }}
+                                className="input-big"
+                                style={{ marginTop: '0.25rem', marginBottom: 0 }}
+                                aria-label={`Artikal ${i + 1}`}
+                            >
+                                {artikli.map((a) => (
+                                    <option key={a.id} value={a.id}>
+                                        {a.naziv} — {a.cena} RSD
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-                    <input
-                        type="number"
-                        min={1}
-                        value={s.kolicina}
-                        onChange={(e) => updateStavka(i, { kolicina: Number(e.target.value) })}
-                        style={{ width: 100 }}
-                        className="input-big"
-                        aria-label={`Količina ${i + 1}`}
-                    />
+                        <div style={{ flex: '0 1 100px' }}>
+                            <label className="field-label" style={{ fontSize: '0.875rem' }}>Količina</label>
+                            <input
+                                type="number"
+                                min={1}
+                                value={s.kolicina}
+                                onChange={(e) => updateStavka(i, { kolicina: Number(e.target.value) })}
+                                className="input-big"
+                                style={{ marginTop: '0.25rem', marginBottom: 0 }}
+                                aria-label={`Količina ${i + 1}`}
+                            />
+                        </div>
 
-                    <input
-                        type="number"
-                        min={0}
-                        value={s.cena}
-                        onChange={(e) => updateStavka(i, { cena: Number(e.target.value) })}
-                        style={{ width: 140 }}
-                        className="input-big"
-                        aria-label={`Cena ${i + 1}`}
-                    />
+                        <div style={{ flex: '0 1 120px' }}>
+                            <label className="field-label" style={{ fontSize: '0.875rem' }}>Cena (RSD)</label>
+                            <input
+                                type="number"
+                                min={0}
+                                value={s.cena}
+                                onChange={(e) => updateStavka(i, { cena: Number(e.target.value) })}
+                                className="input-big"
+                                style={{ marginTop: '0.25rem', marginBottom: 0 }}
+                                aria-label={`Cena ${i + 1}`}
+                            />
+                        </div>
 
-                    <button
-                        type="button"
-                        className="button-big"
-                        onClick={() => removeStavka(i)}
-                        style={{ height: 40 }}
-                    >
-                        Ukloni
-                    </button>
-                </div>
-            ))}
+                        <div style={{ flex: '0 0 auto', paddingTop: '1.75rem' }}>
+                            <button
+                                type="button"
+                                className="button-big"
+                                onClick={() => removeStavka(i)}
+                                style={{ 
+                                    background: '#dc2626', 
+                                    width: 'auto', 
+                                    padding: '10px 16px',
+                                    marginTop: 0
+                                }}
+                            >
+                                Ukloni
+                            </button>
+                        </div>
+                    </div>
+                ))}
 
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button type="button" className="button-big" onClick={addStavka}>
-                    Dodaj stavku
-                </button>
-
-                <button type="button" className="button-big" onClick={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting ? "Kreiram..." : "Sačuvaj prodaju"}
+                <button 
+                    type="button" 
+                    className="button-big" 
+                    onClick={addStavka}
+                    style={{ 
+                        background: '#059669', 
+                        maxWidth: '200px',
+                        marginTop: '1rem'
+                    }}
+                >
+                    + Dodaj stavku
                 </button>
             </div>
 
-            {error && <p className="mt-4 text-lg font-medium error-msg">{error}</p>}
+            <div style={{ 
+                borderTop: '2px solid #e5e7eb', 
+                paddingTop: '1rem', 
+                marginBottom: '1rem',
+                fontSize: '1.25rem',
+                fontWeight: 600
+            }}>
+                Ukupno: {ukupno.toFixed(2)} RSD
+            </div>
+
+            <button 
+                type="button" 
+                className="button-big" 
+                onClick={handleSubmit} 
+                disabled={isSubmitting}
+                style={{ maxWidth: '300px' }}
+            >
+                {isSubmitting ? "Kreiram..." : "💰 Sačuvaj prodaju"}
+            </button>
+
+            {error && <p className="error-msg" style={{ marginTop: '1rem' }}>{error}</p>}
         </div>
     );
 }

@@ -13,16 +13,16 @@ namespace Infrastructure.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionLoggingMiddleware> _logger;
-        private readonly IErrorStore _errorStore;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public ExceptionLoggingMiddleware(
             RequestDelegate next,
             ILogger<ExceptionLoggingMiddleware> logger,
-            IErrorStore errorStore)
+            IServiceScopeFactory scopeFactory)
         {
             _next = next ?? throw new ArgumentNullException(nameof(next));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _errorStore = errorStore ?? throw new ArgumentNullException(nameof(errorStore));
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         }
 
         public async Task Invoke(HttpContext context)
@@ -31,9 +31,7 @@ namespace Infrastructure.Middleware
 
             try
             {
-                // Propaguj CorrelationId u response header da ga front vidi
                 context.Response.Headers["X-Correlation-ID"] = correlationId;
-
                 await _next(context);
             }
             catch (Exception ex)
@@ -46,7 +44,6 @@ namespace Infrastructure.Middleware
         {
             var request = context.Request;
 
-            // Log preko Serilog/ILogger sa strukturiranim podacima
             _logger.LogError(
                 ex,
                 "Unhandled exception. Path: {Path}, Method: {Method}, CorrelationId: {CorrelationId}",
@@ -54,9 +51,12 @@ namespace Infrastructure.Middleware
                 request.Method,
                 correlationId);
 
-            // Upis u DB (ErrorRecords)
+            // Create a scope to resolve IErrorStore
             try
             {
+                using var scope = _scopeFactory.CreateScope();
+                var errorStore = scope.ServiceProvider.GetRequiredService<IErrorStore>();
+                
                 var error = new ErrorRecord
                 {
                     Timestamp = DateTime.UtcNow,
@@ -66,19 +66,16 @@ namespace Infrastructure.Middleware
                     Path = request.Path,
                     UserName = context.User?.Identity?.Name ?? "anonymous",
                     ClientApp = request.Headers["User-Agent"].ToString(),
-                    // ako imaš kolonu CorrelationId u ErrorRecord:
                     CorrelationId = correlationId
                 };
 
-                await _errorStore.SaveAsync(error);
+                await errorStore.SaveAsync(error);
             }
             catch (Exception storeEx)
             {
-                // fallback log ako DB logging fail‑uje
                 _logger.LogError(storeEx, "Failed to persist error record for CorrelationId {CorrelationId}", correlationId);
             }
 
-            // Standardizovan error response
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             context.Response.ContentType = "application/json";
 
@@ -94,7 +91,6 @@ namespace Infrastructure.Middleware
 
         private static string GetOrCreateCorrelationId(HttpContext context)
         {
-            // Pokušaj da pročitaš iz request headera, inače generiši novi
             if (context.Request.Headers.TryGetValue("X-Correlation-ID", out var headerValue)
                 && !string.IsNullOrWhiteSpace(headerValue.ToString()))
             {
