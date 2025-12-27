@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Serilog;
 using Serilog.Events;
 using System.Globalization;
+using Application.Logs.Queries;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -120,6 +121,25 @@ app.MapGet("/errors", async (IErrorStore store) =>
 {
     var errors = await store.GetAllAsync();
     return Results.Ok(errors);
+});
+
+// Logs endpoint
+app.MapGet("/api/logs", async (
+    IMediator mediator,
+    ILogger<Program> logger,
+    int pageNumber = 1,
+    int pageSize = 100,
+    string? level = null,
+    DateTime? fromDate = null,
+    DateTime? toDate = null) =>
+{
+    logger.LogInformation("GET /api/logs - PageNumber: {PageNumber}, PageSize: {PageSize}, Level: {Level}", 
+        pageNumber, pageSize, level);
+
+    var query = new GetLogsQuery(pageNumber, pageSize, level, fromDate, toDate);
+    var result = await mediator.Send(query);
+
+    return Results.Ok(result);
 });
 
 // Diagnostic test-insert

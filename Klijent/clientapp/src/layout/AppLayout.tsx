@@ -88,6 +88,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link to="/prodaja" className="button-small">
             Prodaja
           </Link>
+          <Link to="/logs" className="button-small">
+            📋 Logovi
+          </Link>
         </nav>
 
         {children}

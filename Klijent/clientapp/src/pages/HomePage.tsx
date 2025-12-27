@@ -20,6 +20,9 @@ export default function HomePage() {
         <Link to="/prodaja" className="button-big">
           🛒 Prodaja
         </Link>
+        <Link to="/logs" className="button-big" style={{ background: "#059669" }}>
+          📋 Pregled logova
+        </Link>
       </div>
     </div>
   );

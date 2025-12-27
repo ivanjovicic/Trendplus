@@ -6,6 +6,7 @@ import ArtikliPage from "./pages/ArtikliPage";
 import ArtikliListPage from "./pages/ArtikliListPage";
 import ArtikalEditPage from "./pages/ArtikalEditPage";
 import ProdajaPage from "./pages/ProdajaPage";
+import LogsPage from "./pages/LogsPage";
 import { BackendStatusContext } from "./context/BackendStatusContext";
 
 function AppShell() {
@@ -41,6 +42,7 @@ function AppShell() {
                     <Route path="/artikli/lista" element={<ArtikliListPage />} />
                     <Route path="/artikli/:id/edit" element={<ArtikalEditPage />} />
                     <Route path="/prodaja" element={<ProdajaPage />} />
+                    <Route path="/logs" element={<LogsPage />} />
                 </Routes>
             </main>
         </div>
