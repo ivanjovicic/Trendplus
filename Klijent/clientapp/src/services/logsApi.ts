@@ -18,7 +18,12 @@ export async function getLogs(
     if (fromDate) params.append("fromDate", fromDate);
     if (toDate) params.append("toDate", toDate);
 
-    const response = await fetch(`${API}/api/logs?${params.toString()}`);
+    // Use relative path in development (proxied by Vite), absolute in production
+    const url = import.meta.env.DEV 
+        ? `/api/logs?${params.toString()}`
+        : `${API}/api/logs?${params.toString()}`;
+
+    const response = await fetch(url);
 
     if (!response.ok) {
         throw new Error(`Failed to fetch logs: ${response.statusText}`);
