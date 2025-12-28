@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Application.Artikli.Common.Interfaces
@@ -12,5 +13,8 @@ namespace Application.Artikli.Common.Interfaces
     {
         public DbSet<ProductsDim> ProductsDim { get; }
         public DbSet<StoresDim> StoresDim { get; }
+        public DbSet<PerformanceLog> PerformanceLogs { get; }
+        
+        Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }
