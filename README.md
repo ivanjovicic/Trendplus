@@ -1,4 +1,4 @@
-# Trendplus - Inventory & Sales Management System
+# ?? Trendplus - Inventory & Sales Management System
 
 Modern inventory and sales management system built with **.NET 8** and **React + TypeScript**.
 
