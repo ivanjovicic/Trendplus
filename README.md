@@ -1,4 +1,4 @@
-# ?? Trendplus - Inventory & Sales Management System
+# :package: Trendplus - Inventory & Sales Management System
 
 Modern inventory and sales management system built with **.NET 8** and **React + TypeScript**.
 
@@ -7,21 +7,21 @@ Modern inventory and sales management system built with **.NET 8** and **React +
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)](https://www.postgresql.org/)
 
-## ?? Features
+## :rocket: Features
 
 ### Core Functionality
-- ? **Inventory Management** - Create, update, and track products (Artikli)
-- ? **Sales Management** - Process sales with multiple items per transaction
-- ? **Supplier Management** - Track suppliers (Dobavlja?i)
-- ? **Product Categories** - Manage product types (Tipovi Obu?e)
+- :white_check_mark: **Inventory Management** - Create, update, and track products (Artikli)
+- :white_check_mark: **Sales Management** - Process sales with multiple items per transaction
+- :white_check_mark: **Supplier Management** - Track suppliers (Dobavlja?i)
+- :white_check_mark: **Product Categories** - Manage product types (Tipovi Obu?e)
 
 ### Advanced Features
-- ? **Performance Dashboard** - Real-time tracking of slow operations (>1s)
-- ?? **Logs Viewer** - Comprehensive log viewing with filtering
-- ?? **Search & Filter** - Quick product and sales lookup
-- ?? **Analytics** - Performance metrics and request tracking
+- :zap: **Performance Dashboard** - Real-time tracking of slow operations (>1s)
+- :clipboard: **Logs Viewer** - Comprehensive log viewing with filtering
+- :mag: **Search & Filter** - Quick product and sales lookup
+- :bar_chart: **Analytics** - Performance metrics and request tracking
 
-## ??? Architecture
+## :building_construction: Architecture
 
 ### Backend (.NET 8)
 ```
@@ -58,7 +58,7 @@ Klijent/clientapp/
 - Tailwind CSS 4.x
 - React Router 7.x
 
-## ??? Database
+## :card_file_box: Database
 
 ### Databases:
 1. **trendplus** (Main) - Products, Sales, Suppliers
@@ -68,7 +68,7 @@ Klijent/clientapp/
 - Hosted on [Neon.tech](https://neon.tech) (Serverless PostgreSQL)
 - Region: EU Central (Frankfurt)
 
-## ?? Installation
+## :package: Installation
 
 ### Prerequisites
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
@@ -99,7 +99,7 @@ npm run dev
 
 Frontend will run on: **http://localhost:5173**
 
-## ?? Configuration
+## :key: Configuration
 
 ### Backend Configuration
 Edit `Trendplus2/appsettings.json`:
@@ -120,7 +120,7 @@ Create `Klijent/clientapp/.env.development`:
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
-## ?? API Endpoints
+## :book: API Endpoints
 
 ### Products (Artikli)
 - `GET /artikli` - List all products
@@ -142,7 +142,7 @@ VITE_API_BASE_URL=http://localhost:8080
 - `GET /api/performance` - Performance statistics
 - `GET /health` - Health check
 
-## ?? Usage
+## :dart: Usage
 
 ### Create Product
 1. Navigate to "Kreiraj artikal"
@@ -168,7 +168,7 @@ VITE_API_BASE_URL=http://localhost:8080
 2. Filter by level, date range
 3. View exceptions and stack traces
 
-## ?? Testing
+## :test_tube: Testing
 
 ### Backend Tests
 ```bash
@@ -182,7 +182,7 @@ cd Klijent/clientapp
 npm test
 ```
 
-## ?? Performance Features
+## :bar_chart: Performance Features
 
 ### Automatic Tracking
 - All MediatR requests tracked
@@ -197,14 +197,14 @@ npm test
 - Average duration
 - Max duration
 
-## ?? Security Notes
+## :lock: Security Notes
 
-- ?? Connection strings contain credentials - **DO NOT COMMIT** to public repos
+- :warning: Connection strings contain credentials - **DO NOT COMMIT** to public repos
 - Use environment variables in production
 - Enable HTTPS in production
 - Implement authentication/authorization for production use
 
-## ??? Development
+## :hammer_and_wrench: Development
 
 ### Backend Development
 ```bash
@@ -225,12 +225,12 @@ Automatic migrations run on startup. Manual migrations:
 psql -h <host> -U <user> -d <database> -f <migration.sql>
 ```
 
-## ?? Documentation
+## :books: Documentation
 
 - [Logs Feature](LOGS_FEATURE.md) - Log viewing documentation
 - [Performance Tracking](PERFORMANCE_TRACKING.md) - Performance monitoring guide
 
-## ?? Contributing
+## :handshake: Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/AmazingFeature`)
@@ -238,16 +238,16 @@ psql -h <host> -U <user> -d <database> -f <migration.sql>
 4. Push to branch (`git push origin feature/AmazingFeature`)
 5. Open Pull Request
 
-## ?? License
+## :memo: License
 
 This project is private and proprietary.
 
-## ?? Author
+## :bust_in_silhouette: Author
 
 **Ivan Jovicic**
 - GitHub: [@ivanjovicic](https://github.com/ivanjovicic)
 
-## ?? Acknowledgments
+## :pray: Acknowledgments
 
 - Built with [MediatR](https://github.com/jbogard/MediatR)
 - Logging with [Serilog](https://serilog.net/)
@@ -256,4 +256,4 @@ This project is private and proprietary.
 
 ---
 
-**Made with ?? for efficient inventory management**
+**Made with :heart: for efficient inventory management**
