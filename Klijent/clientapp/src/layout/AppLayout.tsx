@@ -10,7 +10,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div style={{ minHeight: "100vh", background: "#f3f4f6" }}>
       <AutoReloadOnBackendOnline />
 
-      {/* Header / status bar */}
       <header
         style={{
           background: "#111827",
@@ -25,6 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span style={{ fontWeight: 600 }}>Trendplus</span>{" "}
           <span style={{ opacity: 0.7, fontSize: 14 }}>– backoffice</span>
         </div>
+
         <div style={{ fontSize: 14 }}>
           <span style={{ color: online ? "#6ee7b7" : "#fecaca" }}>
             Backend: {online ? "ONLINE" : "OFFLINE"}
@@ -32,7 +32,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Glavni sadržaj + globalna navigacija */}
       <main style={{ maxWidth: 1200, margin: "1.5rem auto", padding: "0 1rem" }}>
         <nav
           style={{
@@ -53,6 +52,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
           <Link to="/prodaja" className="button-small">
             Prodaja
+          </Link>
+          <Link to="/unos-robe" className="button-small">
+            Unos robe
           </Link>
           <Link to="/logs" className="button-small">
             📋 Logovi
