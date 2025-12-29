@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Serilog;
 using Serilog.Events;
 using System.Globalization;
+using Application.Performance.Queries;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +55,7 @@ builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
     sp.GetRequiredService<AnalyticsDbContext>());
 
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceLoggingBehavior<,>));
 builder.Services.AddScoped<IErrorStore, DbErrorStore>();
 builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
 
@@ -80,6 +82,25 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Ensure PerformanceLogs table exists
+using (var scope = app.Services.CreateScope())
+{
+    var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        await Infrastructure.DbContexts.DatabaseMigrationHelper.EnsurePerformanceLogsTableExistsAsync(
+            analyticsDb, 
+            logger
+        );
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to initialize PerformanceLogs table. Performance tracking may not work.");
+    }
+}
 
 // Serilog request logging – detaljan log svakog HTTP zahteva
 app.UseSerilogRequestLogging(opts =>
@@ -110,9 +131,7 @@ app.UseSwaggerUI();
 
 app.UseAuthorization();
 
-// ================= ENDPOINTS =================
-
-// Health
+// ================= ENDPOINTS ==========// Health
 app.MapGet("/health", () => Results.Ok("Backend je živ"));
 
 // Errors
@@ -189,6 +208,24 @@ app.MapGet("/api/logs", async (
             title: "Database Error"
         );
     }
+});
+
+// Performance stats endpoint
+app.MapGet("/api/performance", async (
+    IMediator mediator,
+    ILogger<Program> logger,
+    int topCount = 20,
+    int minDurationMs = 1000,
+    DateTime? fromDate = null,
+    DateTime? toDate = null) =>
+{
+    logger.LogInformation("GET /api/performance - TopCount: {TopCount}, MinDuration: {MinDuration}ms", 
+        topCount, minDurationMs);
+
+    var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate);
+    var result = await mediator.Send(query);
+
+    return Results.Ok(result);
 });
 
 // Diagnostic test-insert

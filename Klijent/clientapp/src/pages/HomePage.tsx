@@ -26,6 +26,9 @@ export default function HomePage() {
         <Link to="/logs" className="button-big" style={{ background: "#059669" }}>
           📋 Pregled logova
         </Link>
+        <Link to="/performance" className="button-big" style={{ background: "#f59e0b" }}>
+          ⚡ Performance Dashboard
+        </Link>
       </div>
     </div>
   );

@@ -7,7 +7,11 @@ import ArtikliListPage from "./pages/ArtikliListPage";
 import ArtikalEditPage from "./pages/ArtikalEditPage";
 import ProdajaPage from "./pages/ProdajaPage";
 import LogsPage from "./pages/LogsPage";
+<<<<<<< HEAD
 import UnosRobePage from "./pages/UnosRobePage";
+=======
+import PerformanceDashboard from "./pages/PerformanceDashboard";
+>>>>>>> d02157d9ed8b2a830e03a0a23003aa43726588f7
 import { BackendStatusContext } from "./context/BackendStatusContext";
 
 function AppShell() {
@@ -45,6 +49,7 @@ function AppShell() {
                     <Route path="/unos-robe" element={<UnosRobePage />} />
                     <Route path="/prodaja" element={<ProdajaPage />} />
                     <Route path="/logs" element={<LogsPage />} />
+                    <Route path="/performance" element={<PerformanceDashboard />} />
                 </Routes>
             </main>
         </div>

@@ -57,6 +57,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link to="/logs" className="button-small">
             📋 Logovi
           </Link>
+          <Link to="/performance" className="button-small">
+            ⚡ Performance
+          </Link>
         </nav>
 
         {children}
