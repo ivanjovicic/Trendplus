@@ -26,6 +26,18 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.ClientApp).HasMaxLength(1000);
             });
 
+            modelBuilder.Entity<DnevnikPromena>(eb =>
+            {
+                eb.ToTable("DnevnikPromena");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.TipPromene).IsRequired().HasMaxLength(100);
+                eb.Property(e => e.Datum).IsRequired();
+                eb.Property(e => e.Iznos).HasColumnType("decimal(18,2)");
+                eb.Property(e => e.BrojRacuna).HasMaxLength(100);
+                eb.Property(e => e.Komentar).HasMaxLength(500);
+                eb.Property(e => e.KorisnikIme).HasMaxLength(200);
+            });
+
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
         }
 
@@ -34,6 +46,7 @@ namespace Infrastructure.DbContexts
         public DbSet<TipObuce> TipoviObuce { get; set; } = null!;
         public DbSet<Dobavljac> Dobavljaci { get; set; } = null!;
         public DbSet<ErrorRecord> ErrorRecords { get; set; } = null!;
+        public DbSet<DnevnikPromena> DnevnikPromena { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {

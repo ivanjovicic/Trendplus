@@ -1,26 +1,40 @@
-﻿import { defineConfig, loadEnv } from "vite";
+﻿import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, process.cwd());
-
-    return {
-        build: {
-            sourcemap: true,
+export default defineConfig({
+    build: {
+        sourcemap: true,
+        minify: 'esbuild',  // Changed from 'terser' to 'esbuild' for proper UTF-8 support
+    },
+    plugins: [react()],
+    server: {
+        port: 5173,
+        strictPort: true,
+        proxy: {
+            "/api": {
+                target: "http://localhost:28136",
+                changeOrigin: true,
+            },
+            "/artikli": {
+                target: "http://localhost:28136",
+                changeOrigin: true,
+            },
+            "/tipovi-obuce": {
+                target: "http://localhost:28136",
+                changeOrigin: true,
+            },
+            "/dobavljaci": {
+                target: "http://localhost:28136",
+                changeOrigin: true,
+            },
+            "/errors": {
+                target: "http://localhost:28136",
+                changeOrigin: true,
+            },
+            "/health": {
+                target: "http://localhost:28136",
+                changeOrigin: true,
+            },
         },
-        plugins: [react()],
-        server: {
-            port: 5173,
-            strictPort: true,
-            proxy:
-                mode === "development"
-                    ? {
-                        "/api": { target: env.VITE_API_BASE_URL, changeOrigin: true },
-                        "/artikli": { target: env.VITE_API_BASE_URL, changeOrigin: true },
-                        "/tipovi-obuce": { target: env.VITE_API_BASE_URL, changeOrigin: true },
-                        "/dobavljaci": { target: env.VITE_API_BASE_URL, changeOrigin: true },
-                    }
-                    : undefined,
-        },
-    };
+    },
 });

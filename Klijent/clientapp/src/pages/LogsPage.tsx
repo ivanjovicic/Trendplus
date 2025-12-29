@@ -94,7 +94,9 @@ export default function LogsPage() {
 
     return (
         <div className="card" style={{ maxWidth: "1400px" }}>
-            <h2 className="text-2xl font-semibold mb-6">?? Pregled logova</h2>
+            <h2 className="text-2xl font-semibold mb-6">
+                {"\u{1F4CB}"} Pregled logova
+            </h2>
 
             {/* Filters */}
             <div style={{ 

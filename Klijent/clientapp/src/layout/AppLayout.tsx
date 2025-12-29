@@ -1,43 +1,15 @@
-﻿import React from "react";
+﻿import React, { useContext } from "react";
 import { Link } from "react-router-dom";
-
-const API = import.meta.env.VITE_API_BASE_URL;
+import AutoReloadOnBackendOnline from "../components/AutoReloadOnBackendOnline";
+import { BackendStatusContext } from "../context/BackendStatusContext";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [backendOk, setBackendOk] = React.useState<boolean | null>(null);
-  const [backendError, setBackendError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    let aborted = false;
-
-    const check = async () => {
-      try {
-        const res = await fetch(`${API}/health`);
-        if (aborted) return;
-
-        if (res.ok) {
-          setBackendOk(true);
-          setBackendError(null);
-        } else {
-          setBackendOk(false);
-          setBackendError(`Status: ${res.status}`);
-        }
-      } catch (e: any) {
-        if (aborted) return;
-        setBackendOk(false);
-        setBackendError(e?.message ?? "Backend nije dostupan.");
-      }
-    };
-
-    check();
-
-    return () => {
-      aborted = true;
-    };
-  }, []);
+  const { online } = useContext(BackendStatusContext);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6" }}>
+      <AutoReloadOnBackendOnline />
+
       {/* Header / status bar */}
       <header
         style={{
@@ -54,15 +26,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span style={{ opacity: 0.7, fontSize: 14 }}>– backoffice</span>
         </div>
         <div style={{ fontSize: 14 }}>
-          {backendOk === null && <span>Provera backenda...</span>}
-          {backendOk === true && (
-            <span style={{ color: "#6ee7b7" }}>Backend OK</span>
-          )}
-          {backendOk === false && (
-            <span style={{ color: "#fecaca" }}>
-              Backend ERROR{backendError ? `: ${backendError}` : ""}
-            </span>
-          )}
+          <span style={{ color: online ? "#6ee7b7" : "#fecaca" }}>
+            Backend: {online ? "ONLINE" : "OFFLINE"}
+          </span>
         </div>
       </header>
 

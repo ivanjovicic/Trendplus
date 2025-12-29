@@ -7,6 +7,7 @@ import ArtikliListPage from "./pages/ArtikliListPage";
 import ArtikalEditPage from "./pages/ArtikalEditPage";
 import ProdajaPage from "./pages/ProdajaPage";
 import LogsPage from "./pages/LogsPage";
+import UnosRobePage from "./pages/UnosRobePage";
 import { BackendStatusContext } from "./context/BackendStatusContext";
 
 function AppShell() {
@@ -35,12 +36,13 @@ function AppShell() {
             </header>
 
             {/* Ovde ide routing sadržaj */}
-            <main style={{ maxWidth: 1200, margin: "1.5rem auto", padding: "0 1rem" }}>
+            <main style={{ maxWidth: 1400, margin: "1.5rem auto", padding: "0 1rem", width: '100%' }}>
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/artikli" element={<ArtikliPage />} />
                     <Route path="/artikli/lista" element={<ArtikliListPage />} />
                     <Route path="/artikli/:id/edit" element={<ArtikalEditPage />} />
+                    <Route path="/unos-robe" element={<UnosRobePage />} />
                     <Route path="/prodaja" element={<ProdajaPage />} />
                     <Route path="/logs" element={<LogsPage />} />
                 </Routes>

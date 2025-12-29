@@ -18,7 +18,6 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Serilog;
 using Serilog.Events;
 using System.Globalization;
-using Application.Logs.Queries;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -123,23 +122,73 @@ app.MapGet("/errors", async (IErrorStore store) =>
     return Results.Ok(errors);
 });
 
-// Logs endpoint
+// Logs endpoint – paginisano vraćanje grešaka iz ErrorRecords
 app.MapGet("/api/logs", async (
-    IMediator mediator,
+    IErrorStore store,
     ILogger<Program> logger,
     int pageNumber = 1,
-    int pageSize = 100,
+    int pageSize = 50,
     string? level = null,
     DateTime? fromDate = null,
     DateTime? toDate = null) =>
 {
-    logger.LogInformation("GET /api/logs - PageNumber: {PageNumber}, PageSize: {PageSize}, Level: {Level}", 
-        pageNumber, pageSize, level);
+    try
+    {
+        var errors = await store.GetAllAsync();
 
-    var query = new GetLogsQuery(pageNumber, pageSize, level, fromDate, toDate);
-    var result = await mediator.Send(query);
+        // Filtriranje po datumu ako je dostavljeno
+        var filtered = errors.AsEnumerable();
 
-    return Results.Ok(result);
+        if (fromDate.HasValue)
+        {
+            filtered = filtered.Where(e => e.Timestamp >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            filtered = filtered.Where(e => e.Timestamp <= toDate.Value);
+        }
+
+        // Paginacija
+        var paged = filtered
+            .OrderByDescending(e => e.Timestamp)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(e => new
+            {
+                timestamp = e.Timestamp.ToString("o"), // ISO 8601 format
+                level = "Error", // ErrorRecords are all errors
+                message = e.Message,
+                exception = !string.IsNullOrEmpty(e.StackTrace) 
+                    ? $"{e.ExceptionType}\n{e.StackTrace}" 
+                    : null,
+                properties = new
+                {
+                    path = e.Path,
+                    userName = e.UserName,
+                    clientApp = e.ClientApp,
+                    correlationId = e.CorrelationId
+                }
+            })
+            .ToList();
+
+        return Results.Ok(new
+        {
+            logs = paged,
+            totalCount = filtered.Count(),
+            pageNumber,
+            pageSize
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to fetch logs from ErrorRecords table");
+        return Results.Problem(
+            detail: "Unable to fetch logs. The database table may not exist. Please run migrations: dotnet ef database update",
+            statusCode: 500,
+            title: "Database Error"
+        );
+    }
 });
 
 // Diagnostic test-insert

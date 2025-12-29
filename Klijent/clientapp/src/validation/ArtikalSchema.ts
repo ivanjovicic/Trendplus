@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 export const ArtikalSchema = z.object({
     naziv: z.string().min(2, "Naziv mora imati bar 2 slova"),
@@ -8,6 +8,6 @@ export const ArtikalSchema = z.object({
     prvaProdajnaCena: z.number().min(1),
     kolicina: z.number().min(0),
     komentar: z.string().optional(),
-    tipObuceId: z.string().min(1, "Izaberite tip obu?e"),
-    dobavljacId: z.string().min(1, "Izaberite dobavlja?a"),
+    tipObuceId: z.string().min(1, "Izaberite tip obuće"),
+    dobavljacId: z.string().min(1, "Izaberite dobavljača"),
 });

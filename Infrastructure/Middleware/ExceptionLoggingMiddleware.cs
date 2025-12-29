@@ -3,7 +3,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Application.Common.Interfaces;
 using Domain.Model;
-using Microsoft.AspNetCore.Http;        
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -13,16 +13,13 @@ namespace Infrastructure.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionLoggingMiddleware> _logger;
-        private readonly IServiceScopeFactory _scopeFactory;
 
         public ExceptionLoggingMiddleware(
             RequestDelegate next,
-            ILogger<ExceptionLoggingMiddleware> logger,
-            IServiceScopeFactory scopeFactory)
+            ILogger<ExceptionLoggingMiddleware> logger)
         {
             _next = next ?? throw new ArgumentNullException(nameof(next));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         }
 
         public async Task Invoke(HttpContext context)
@@ -31,7 +28,9 @@ namespace Infrastructure.Middleware
 
             try
             {
+                // Propaguj CorrelationId u response header
                 context.Response.Headers["X-Correlation-ID"] = correlationId;
+
                 await _next(context);
             }
             catch (Exception ex)
@@ -44,49 +43,60 @@ namespace Infrastructure.Middleware
         {
             var request = context.Request;
 
+            // 1) Log preko ILogger/Serilog
             _logger.LogError(
                 ex,
-                "Unhandled exception. Path: {Path}, Method: {Method}, CorrelationId: {CorrelationId}",
+                "Unhandled exception. CorrelationId={CorrelationId}, Path={Path}, Method={Method}",
+                correlationId,
                 request.Path,
-                request.Method,
-                correlationId);
+                request.Method);
 
-            // Create a scope to resolve IErrorStore
-            try
+            // 2) Upis u ErrorRecords preko IErrorStore (uzmi iz request scope-a)
+            var errorStore = context.RequestServices.GetService<IErrorStore>();
+            if (errorStore != null)
             {
-                using var scope = _scopeFactory.CreateScope();
-                var errorStore = scope.ServiceProvider.GetRequiredService<IErrorStore>();
-                
-                var error = new ErrorRecord
+                try
                 {
-                    Timestamp = DateTime.UtcNow,
-                    Message = ex.Message,
-                    ExceptionType = ex.GetType().FullName ?? string.Empty,
-                    StackTrace = ex.StackTrace ?? string.Empty,
-                    Path = request.Path,
-                    UserName = context.User?.Identity?.Name ?? "anonymous",
-                    ClientApp = request.Headers["User-Agent"].ToString(),
-                    CorrelationId = correlationId
+                    var error = new ErrorRecord
+                    {
+                        Timestamp = DateTime.UtcNow,
+                        Message = ex.Message,
+                        ExceptionType = ex.GetType().FullName ?? string.Empty,
+                        StackTrace = ex.StackTrace ?? string.Empty,
+                        Path = request.Path,
+                        UserName = context.User?.Identity?.Name ?? "anonymous",
+                        ClientApp = request.Headers["User-Agent"].ToString(),
+                        CorrelationId = correlationId
+                    };
+
+                    await errorStore.SaveAsync(error);
+                }
+                catch (Exception storeEx)
+                {
+                    // Log but swallow the error - we don't want the error store to break the error handling
+                    _logger.LogWarning(
+                        storeEx,
+                        "Failed to persist error record for CorrelationId={CorrelationId}. This might indicate missing database migrations.",
+                        correlationId);
+                }
+            }
+
+            // 3) JSON response prema klijentu
+            if (!context.Response.HasStarted)
+            {
+                context.Response.Clear();
+                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                context.Response.ContentType = "application/json";
+
+                var problem = new
+                {
+                    title = "Dogodila se greška prilikom obrade zahteva.",
+                    status = context.Response.StatusCode,
+                    correlationId
                 };
 
-                await errorStore.SaveAsync(error);
+                await context.Response.WriteAsJsonAsync(problem);
             }
-            catch (Exception storeEx)
-            {
-                _logger.LogError(storeEx, "Failed to persist error record for CorrelationId {CorrelationId}", correlationId);
-            }
-
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-            context.Response.ContentType = "application/json";
-
-            var problem = new
-            {
-                title = "Dogodila se greška prilikom obrade zahteva.",
-                status = context.Response.StatusCode,
-                correlationId
-            };
-
-            await context.Response.WriteAsJsonAsync(problem);
         }
 
         private static string GetOrCreateCorrelationId(HttpContext context)

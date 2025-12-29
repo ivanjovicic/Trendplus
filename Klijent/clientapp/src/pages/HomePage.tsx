@@ -14,6 +14,9 @@ export default function HomePage() {
         <Link to="/artikli" className="button-big">
           ➕ Kreiraj artikal
         </Link>
+        <Link to="/unos-robe" className="button-big" style={{ background: "#7c3aed" }}>
+          📦 Unos robe
+        </Link>
         <Link to="/artikli/lista" className="button-big">
           📋 Pregled i izmena artikala
         </Link>
