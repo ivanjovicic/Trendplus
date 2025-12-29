@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { getPerformanceStats } from "../services/performanceApi";
 import { PerformanceStat, PerformanceSummary } from "../types/performance";
 
@@ -30,7 +30,7 @@ export default function PerformanceDashboard() {
             setSummary(result.summary);
         } catch (err: any) {
             console.error("Error fetching performance stats:", err);
-            setError(err?.message ?? "Gre�ka pri u?itavanju performansi");
+            setError(err?.message ?? "Greška pri u?itavanju performansi");
         } finally {
             setLoading(false);
         }
@@ -66,7 +66,7 @@ export default function PerformanceDashboard() {
 
     return (
         <div className="card" style={{ maxWidth: "1400px" }}>
-            <h2 className="text-2xl font-semibold mb-6">? Performance Dashboard</h2>
+            <h2 className="text-2xl font-semibold mb-6">⚡ Performance Dashboard</h2>
 
             {/* Summary Cards */}
             {summary && (
@@ -240,7 +240,7 @@ export default function PerformanceDashboard() {
             {!loading && !error && (
                 <>
                     <h3 className="text-lg font-semibold" style={{ marginBottom: "1rem" }}>
-                        ?? Najsporiji zahtevi
+                         Najsporiji zahtevi
                     </h3>
 
                     <div style={{ overflowX: "auto" }}>

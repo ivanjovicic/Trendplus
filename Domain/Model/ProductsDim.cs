@@ -29,6 +29,8 @@ namespace Domain.Model
         public decimal? SalePrice { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+        public DateTime Timestamp { get; set; }
     }
 
 }

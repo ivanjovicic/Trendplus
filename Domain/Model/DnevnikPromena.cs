@@ -10,6 +10,11 @@ namespace Domain.Model
         public decimal Iznos { get; set; }
         public string? BrojRacuna { get; set; }
         public int? DobavljacId { get; set; }
+
+        public int? ArtikalId { get; set; }
+        public decimal? StaraProdajnaCena { get; set; }
+        public decimal? NovaProdajnaCena { get; set; }
+
         public string? Komentar { get; set; }
         public string? KorisnikIme { get; set; }
     }

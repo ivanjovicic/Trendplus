@@ -268,7 +268,7 @@ export default function LogsPage() {
                                                             color: "#dc2626",
                                                             marginBottom: "8px"
                                                         }}>
-                                                            ?? Exception Details
+                                                            {"\u{1F41E}"} Exception Details
                                                         </summary>
                                                         <pre style={{
                                                             background: "#ffffff",

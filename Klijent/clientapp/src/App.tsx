@@ -8,6 +8,7 @@ import ProdajaPage from "./pages/ProdajaPage";
 import LogsPage from "./pages/LogsPage";
 import UnosRobePage from "./pages/UnosRobePage";
 import PerformanceDashboard from "./pages/PerformanceDashboard";
+import NivelacijaCenaPage from "./pages/NivelacijaCenaPage";
 
 function AppShell() {
     return (
@@ -18,8 +19,10 @@ function AppShell() {
             <Route path="/artikli/:id/edit" element={<ArtikalEditPage />} />
             <Route path="/unos-robe" element={<UnosRobePage />} />
             <Route path="/prodaja" element={<ProdajaPage />} />
+            <Route path="/nivelacija" element={<NivelacijaCenaPage />} />
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/performance" element={<PerformanceDashboard />} />
+            
         </Routes>
     );
 }

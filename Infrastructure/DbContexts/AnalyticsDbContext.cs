@@ -15,6 +15,16 @@ namespace Infrastructure.DbContexts
         {
             modelBuilder.Entity<ProductsDim>()
                 .HasKey(x => x.ProductKey);
+
+            modelBuilder.Entity<ProductsDim>()
+                .Property(x => x.Timestamp)
+                .IsRequired();
+
+            modelBuilder.Entity<ProductsDim>()
+                .HasIndex(x => x.ProductId);
+
+            modelBuilder.Entity<ProductsDim>()
+                .HasIndex(x => x.Timestamp);
             
             modelBuilder.Entity<StoresDim>()
                 .HasKey(x => x.StoreKey);

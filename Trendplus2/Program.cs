@@ -84,23 +84,23 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Ensure PerformanceLogs table exists
-using (var scope = app.Services.CreateScope())
-{
-    var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+//using (var scope = app.Services.CreateScope())
+//{
+//    var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
+//    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     
-    try
-    {
-        await Infrastructure.DbContexts.DatabaseMigrationHelper.EnsurePerformanceLogsTableExistsAsync(
-            analyticsDb, 
-            logger
-        );
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Failed to initialize PerformanceLogs table. Performance tracking may not work.");
-    }
-}
+//    try
+//    {
+//        await Infrastructure.DbContexts.DatabaseMigrationHelper.EnsurePerformanceLogsTableExistsAsync(
+//            analyticsDb, 
+//            logger
+//        );
+//    }
+//    catch (Exception ex)
+//    {
+//        logger.LogError(ex, "Failed to initialize PerformanceLogs table. Performance tracking may not work.");
+//    }
+//}
 
 // Serilog request logging – detaljan log svakog HTTP zahteva
 app.UseSerilogRequestLogging(opts =>
@@ -155,7 +155,6 @@ app.MapGet("/api/logs", async (
     {
         var errors = await store.GetAllAsync();
 
-        // Filtriranje po datumu ako je dostavljeno
         var filtered = errors.AsEnumerable();
 
         if (fromDate.HasValue)
@@ -168,18 +167,25 @@ app.MapGet("/api/logs", async (
             filtered = filtered.Where(e => e.Timestamp <= toDate.Value);
         }
 
-        // Paginacija
+        if (!string.IsNullOrWhiteSpace(level))
+        {
+            var lvl = level.Trim();
+            filtered = filtered.Where(e => string.Equals(e.Level, lvl, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var total = filtered.Count();
+
         var paged = filtered
             .OrderByDescending(e => e.Timestamp)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .Select(e => new
             {
-                timestamp = e.Timestamp.ToString("o"), // ISO 8601 format
-                level = "Error", // ErrorRecords are all errors
+                timestamp = e.Timestamp.ToString("o"),
+                level = string.IsNullOrWhiteSpace(e.Level) ? "Error" : e.Level,
                 message = e.Message,
-                exception = !string.IsNullOrEmpty(e.StackTrace) 
-                    ? $"{e.ExceptionType}\n{e.StackTrace}" 
+                exception = !string.IsNullOrEmpty(e.StackTrace)
+                    ? $"{e.ExceptionType}\n{e.StackTrace}"
                     : null,
                 properties = new
                 {
@@ -194,7 +200,7 @@ app.MapGet("/api/logs", async (
         return Results.Ok(new
         {
             logs = paged,
-            totalCount = filtered.Count(),
+            totalCount = total,
             pageNumber,
             pageSize
         });
@@ -381,9 +387,61 @@ app.MapPut("/artikli/{id:int}", async (
     }
 });
 
+// Price leveling (nivelacija) - logs old->new price in DnevnikPromena
+app.MapPost("/api/nivelacija", async (
+    ITrendplusDbContext db,
+    ILogger<Program> logger,
+    HttpContext http,
+    NivelacijaCenaRequest req,
+    CancellationToken ct) =>
+{
+    if (req.ArtikalId <= 0)
+    {
+        return Results.BadRequest(new { error = "ArtikalId je obavezan." });
+    }
+
+    var artikal = await db.Artikli.FirstOrDefaultAsync(a => a.Id == req.ArtikalId, ct);
+    if (artikal == null)
+    {
+        return Results.NotFound(new { error = "Artikal ne postoji." });
+    }
+
+    var stara = artikal.ProdajnaCena;
+    var nova = req.NovaProdajnaCena;
+
+    if (nova < 0)
+    {
+        return Results.BadRequest(new { error = "NovaProdajnaCena mora biti >= 0." });
+    }
+
+    artikal.ProdajnaCena = nova;
+
+    db.DnevnikPromena.Add(new Domain.Model.DnevnikPromena
+    {
+        TipPromene = "Nivelacija",
+        Datum = DateTime.UtcNow,
+        Iznos = 0,
+        ArtikalId = artikal.Id,
+        StaraProdajnaCena = stara,
+        NovaProdajnaCena = nova,
+        KorisnikIme = http.User?.Identity?.Name,
+        Komentar = string.IsNullOrWhiteSpace(req.Komentar)
+            ? $"Nivelacija cene: {stara} -> {nova}"
+            : req.Komentar
+    });
+
+    await db.SaveChangesAsync(ct);
+
+    logger.LogInformation("Nivelacija cene za ArtikalId {Id}: {Old} -> {New}", artikal.Id, stara, nova);
+
+    return Results.Ok(new { artikalId = artikal.Id, staraCena = stara, novaCena = nova });
+});
+
 app.MapControllers();
 
 app.Run();
 
 // DTO used by /dobavljaci endpoint
 record CreateDobavljacDto(string Naziv);
+
+public sealed record NivelacijaCenaRequest(int ArtikalId, decimal NovaProdajnaCena, string? Komentar);

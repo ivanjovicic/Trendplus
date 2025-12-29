@@ -21,6 +21,7 @@ namespace Domain.Model
         public string? Komentar { get; set; }
         public int? IDObjekat { get; set; }
         public int? IDSezona { get; set; }
+        public DateTime UpdatedAt { get; set; }
     }
 
 }

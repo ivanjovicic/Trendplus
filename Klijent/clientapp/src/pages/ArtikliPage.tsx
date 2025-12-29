@@ -96,7 +96,7 @@ export default function ArtikliPage() {
   if (loadingOptions) {
     return (
       <div className="card">
-        <p style={{ textAlign: 'center', padding: '2rem' }}>Ucitavanje...</p>
+        <p style={{ textAlign: 'center', padding: '2rem' }}>Učitavanje...</p>
       </div>
     );
   }

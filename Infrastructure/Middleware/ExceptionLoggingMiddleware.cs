@@ -60,6 +60,7 @@ namespace Infrastructure.Middleware
                     var error = new ErrorRecord
                     {
                         Timestamp = DateTime.UtcNow,
+                        Level = "Error",
                         Message = ex.Message,
                         ExceptionType = ex.GetType().FullName ?? string.Empty,
                         StackTrace = ex.StackTrace ?? string.Empty,

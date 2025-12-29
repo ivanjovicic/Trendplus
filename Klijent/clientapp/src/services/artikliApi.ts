@@ -95,3 +95,18 @@ export async function getArtikli(): Promise<Artikal[]> {
     }
     return res.json();
 }
+
+export async function nivelacijaCena(artikalId: number, novaProdajnaCena: number, komentar?: string): Promise<void> {
+    const resp = await fetch(`${API}/api/nivelacija`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artikalId, novaProdajnaCena, komentar: komentar ?? null }),
+    });
+
+    if (!resp.ok) {
+        const body = await resp.json().catch(() => null);
+        const correlationId = body?.correlationId;
+        const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${resp.status}`;
+        throw new Error(correlationId ? `${message} (CorrelationId: ${correlationId})` : message);
+    }
+}

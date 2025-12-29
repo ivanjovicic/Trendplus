@@ -6,10 +6,10 @@
 }
 
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Helvetica Neue', Arial, sans-serif, ui-sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* Ensure labels and controls inside .card have clear spacing */

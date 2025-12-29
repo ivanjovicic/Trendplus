@@ -36,6 +36,9 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.BrojRacuna).HasMaxLength(100);
                 eb.Property(e => e.Komentar).HasMaxLength(500);
                 eb.Property(e => e.KorisnikIme).HasMaxLength(200);
+
+                eb.Property(e => e.StaraProdajnaCena).HasColumnType("decimal(18,2)");
+                eb.Property(e => e.NovaProdajnaCena).HasColumnType("decimal(18,2)");
             });
 
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
@@ -53,8 +56,19 @@ namespace Infrastructure.DbContexts
             return Database.GetDbConnection();
         }
 
-        // ✔️ Ovo je nedostajalo
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-            => base.SaveChangesAsync(cancellationToken);
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+
+            foreach (var entry in ChangeTracker.Entries<Artikli>())
+            {
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                {
+                    entry.Entity.UpdatedAt = now;
+                }
+            }
+
+            return base.SaveChangesAsync(cancellationToken);
+        }
     }
 }
