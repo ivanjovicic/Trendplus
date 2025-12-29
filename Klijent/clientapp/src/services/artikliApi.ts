@@ -1,5 +1,6 @@
 ﻿import { type Artikal } from "../types/Artikal";
 import { ArtikalFormData } from "../types/artikalformdata";
+import { NivelacijeResponse } from "../types/nivelacije";
 
 export type CreateArtikalDto = {
     PLU?: string | null;
@@ -109,4 +110,38 @@ export async function nivelacijaCena(artikalId: number, novaProdajnaCena: number
         const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${resp.status}`;
         throw new Error(correlationId ? `${message} (CorrelationId: ${correlationId})` : message);
     }
+}
+
+export async function getNivelacije(
+    pageNumber: number = 1,
+    pageSize: number = 50,
+    filters?: {
+        artikalId?: number;
+        naziv?: string;
+        fromDate?: string;
+        toDate?: string;
+        sortBy?: string;
+        sortDir?: "asc" | "desc";
+    }
+): Promise<NivelacijeResponse> {
+    const params = new URLSearchParams({
+        pageNumber: String(pageNumber),
+        pageSize: String(pageSize),
+    });
+
+    if (filters?.artikalId) params.append("artikalId", String(filters.artikalId));
+    if (filters?.naziv) params.append("naziv", filters.naziv);
+    if (filters?.fromDate) params.append("fromDate", filters.fromDate);
+    if (filters?.toDate) params.append("toDate", filters.toDate);
+    if (filters?.sortBy) params.append("sortBy", filters.sortBy);
+    if (filters?.sortDir) params.append("sortDir", filters.sortDir);
+
+    const resp = await fetch(`${API}/api/nivelacije?${params.toString()}`);
+    if (!resp.ok) {
+        const body = await resp.json().catch(() => null);
+        const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${resp.status}`;
+        throw new Error(message);
+    }
+
+    return resp.json();
 }

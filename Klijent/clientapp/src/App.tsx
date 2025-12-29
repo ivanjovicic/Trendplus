@@ -9,6 +9,7 @@ import LogsPage from "./pages/LogsPage";
 import UnosRobePage from "./pages/UnosRobePage";
 import PerformanceDashboard from "./pages/PerformanceDashboard";
 import NivelacijaCenaPage from "./pages/NivelacijaCenaPage";
+import NivelacijePage from "./pages/NivelacijePage";
 
 function AppShell() {
     return (
@@ -22,7 +23,7 @@ function AppShell() {
             <Route path="/nivelacija" element={<NivelacijaCenaPage />} />
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/performance" element={<PerformanceDashboard />} />
-            
+            <Route path="/nivelacije" element={<NivelacijePage />} />
         </Routes>
     );
 }

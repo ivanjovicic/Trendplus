@@ -58,6 +58,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/nivelacija" className="button-small">
                         Nivelacija cena
                     </Link>
+                    <Link to="/nivelacije" className="button-small">
+                        Pregled nivelacija
+                    </Link>
                     <Link to="/logs" className="button-small">
                         📋 Logovi
                     </Link>

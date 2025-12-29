@@ -437,6 +437,85 @@ app.MapPost("/api/nivelacija", async (
     return Results.Ok(new { artikalId = artikal.Id, staraCena = stara, novaCena = nova });
 });
 
+// Nivelacije pregled - filtering/sorting/paging
+app.MapGet("/api/nivelacije", async (
+    ITrendplusDbContext db,
+    int pageNumber = 1,
+    int pageSize = 50,
+    int? artikalId = null,
+    string? naziv = null,
+    DateTime? fromDate = null,
+    DateTime? toDate = null,
+    string sortBy = "datum",
+    string sortDir = "desc",
+    CancellationToken ct = default) =>
+{
+    var baseQuery = db.DnevnikPromena.AsNoTracking()
+        .Where(x => x.TipPromene == "Nivelacija");
+
+    if (artikalId.HasValue)
+        baseQuery = baseQuery.Where(x => x.ArtikalId == artikalId.Value);
+
+    if (fromDate.HasValue)
+        baseQuery = baseQuery.Where(x => x.Datum >= fromDate.Value);
+
+    if (toDate.HasValue)
+        baseQuery = baseQuery.Where(x => x.Datum <= toDate.Value);
+
+    var query = baseQuery
+        .GroupJoin(
+            db.Artikli.AsNoTracking(),
+            p => p.ArtikalId,
+            a => (int?)a.Id,
+            (p, arts) => new { p, a = arts.FirstOrDefault() });
+
+    if (!string.IsNullOrWhiteSpace(naziv))
+    {
+        var n = naziv.Trim();
+        query = query.Where(x => x.a != null && EF.Functions.ILike(x.a.Naziv, $"%{n}%"));
+    }
+
+    var total = await query.CountAsync(ct);
+
+    var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+
+    query = (sortBy?.ToLowerInvariant()) switch
+    {
+        "datum" => desc ? query.OrderByDescending(x => x.p.Datum) : query.OrderBy(x => x.p.Datum),
+        "artikalid" => desc ? query.OrderByDescending(x => x.p.ArtikalId) : query.OrderBy(x => x.p.ArtikalId),
+        "stara" => desc ? query.OrderByDescending(x => x.p.StaraProdajnaCena) : query.OrderBy(x => x.p.StaraProdajnaCena),
+        "nova" => desc ? query.OrderByDescending(x => x.p.NovaProdajnaCena) : query.OrderBy(x => x.p.NovaProdajnaCena),
+        "naziv" => desc ? query.OrderByDescending(x => x.a != null ? x.a.Naziv : "") : query.OrderBy(x => x.a != null ? x.a.Naziv : ""),
+        _ => desc ? query.OrderByDescending(x => x.p.Datum) : query.OrderBy(x => x.p.Datum)
+    };
+
+    var items = await query
+        .Skip((pageNumber - 1) * pageSize)
+        .Take(pageSize)
+        .Select(x => new
+        {
+            id = x.p.Id,
+            datum = x.p.Datum,
+            artikalId = x.p.ArtikalId,
+            artikalNaziv = x.a != null ? x.a.Naziv : null,
+            staraProdajnaCena = x.p.StaraProdajnaCena,
+            novaProdajnaCena = x.p.NovaProdajnaCena,
+            komentar = x.p.Komentar,
+            korisnikIme = x.p.KorisnikIme
+        })
+        .ToListAsync(ct);
+
+    return Results.Ok(new
+    {
+        items,
+        totalCount = total,
+        pageNumber,
+        pageSize,
+        sortBy,
+        sortDir
+    });
+});
+
 app.MapControllers();
 
 app.Run();
