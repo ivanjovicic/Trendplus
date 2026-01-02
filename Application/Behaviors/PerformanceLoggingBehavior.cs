@@ -14,9 +14,8 @@ namespace Application.Behaviors
     /// Performance logging behavior that tracks execution time of all MediatR requests
     /// and logs slow operations (>1000ms) to the database.
     /// </summary>
-    public class PerformanceLoggingBehavior<TRequest, TResponse>
-        : IPipelineBehavior<TRequest, TResponse>
-        where TRequest : notnull
+    public class PerformanceLoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : IRequest<TResponse>
     {
         private readonly ILogger<PerformanceLoggingBehavior<TRequest, TResponse>> _logger;
         private readonly IAnalyticsDbContext _analyticsDb;
@@ -31,9 +30,9 @@ namespace Application.Behaviors
         }
 
         public async Task<TResponse> Handle(
-            TRequest request,
-            RequestHandlerDelegate<TResponse> next,
-            CancellationToken cancellationToken)
+    TRequest request,
+    CancellationToken cancellationToken,
+    RequestHandlerDelegate<TResponse> next)
         {
             var requestName = typeof(TRequest).Name;
             var stopwatch = Stopwatch.StartNew();

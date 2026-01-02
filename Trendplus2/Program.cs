@@ -68,9 +68,7 @@ builder.Services.ConfigureHttpJsonOptions(opts =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(CreateArtikalHandler).Assembly));
-
+builder.Services.AddMediatR(typeof(CreateArtikalHandler).Assembly);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
