@@ -31,6 +31,8 @@ namespace Domain.Model
         public bool IsActive { get; set; } = true;
 
         public DateTime Timestamp { get; set; }
+
+        public int? Kolicina { get; set; }
     }
 
 }

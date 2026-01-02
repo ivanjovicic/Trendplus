@@ -60,6 +60,7 @@ builder.Services.AddScoped<IErrorStore, DbErrorStore>();
 builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
 
 builder.Services.AddControllers();
+builder.Services.AddHostedService<Workers.SyncWorker>();
 builder.Services.ConfigureHttpJsonOptions(opts =>
 {
     opts.SerializerOptions.PropertyNameCaseInsensitive = true;
@@ -296,8 +297,17 @@ app.MapPost("/artikli", async (
 app.MapGet("/artikli/{id:int}", async (int id, IMediator mediator, ILogger<Program> logger) =>
 {
     logger.LogInformation("GET /artikli/{Id}", id);
-    var result = await mediator.Send(new GetArtikalQuery(id));
-    return Results.Ok(result);
+    try
+    {
+        var result = await mediator.Send(new GetArtikalQuery(id));
+        if (result == null)
+            return Results.NotFound(new { error = "Artikal nije pronađen." });
+        return Results.Ok(result);
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound(new { error = "Artikal nije pronađen." });
+    }
 });
 
 app.MapGet("/artikli", async (IMediator mediator, ILogger<Program> logger) =>

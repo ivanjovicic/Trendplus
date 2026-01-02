@@ -118,16 +118,14 @@ namespace Workers
         {
             dim.ProductId = p.Id;
             dim.ProductName = p.Naziv;
-
             dim.FootwearTypeId = p.IDTipObuce;
             dim.SupplierId = p.IDDobavljac;
             dim.SeasonId = p.IDSezona;
-
             dim.PurchasePrice = p.NabavnaCena;
             dim.PurchasePriceRsd = p.NabavnaCenaDin;
             dim.FirstSalePrice = p.PrvaProdajnaCena;
             dim.SalePrice = p.ProdajnaCena;
-
+            dim.Kolicina = p.Kolicina;
             dim.IsActive = true;
             dim.Timestamp = p.UpdatedAt;
         }

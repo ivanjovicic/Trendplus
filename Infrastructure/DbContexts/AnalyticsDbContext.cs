@@ -46,6 +46,10 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => e.DurationMs);
                 entity.HasIndex(e => e.RequestName);
             });
+
+            modelBuilder.Entity<ProductsDim>()
+                .Property(x => x.Kolicina)
+                .HasColumnType("integer");
         }
 
         public DbSet<ProductsDim> ProductsDim => Set<ProductsDim>();
