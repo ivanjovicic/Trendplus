@@ -111,7 +111,7 @@ app.UseSerilogRequestLogging(opts =>
         diag.Set("RequestScheme", http.Request.Scheme);
         diag.Set("UserAgent", http.Request.Headers.UserAgent.ToString());
         diag.Set("RequestPath", http.Request.Path);
-    };
+    }
 });
 
 // global exception logging u DB (tvoj middleware)
@@ -343,7 +343,13 @@ app.MapGet("/api/dobavljaci", async (IMediator mediator) =>
 
 app.MapPost("/api/dobavljaci", async (CreateDobavljacDto dto, ITrendplusDbContext db) =>
 {
-    var entity = new Domain.Model.Dobavljac { Naziv = dto.Naziv };
+    var entity = new Domain.Model.Dobavljac 
+    { 
+        Naziv = dto.Naziv,
+        Adresa = dto.Adresa,
+        Telefon = dto.Telefon,
+        Napomena = dto.Napomena
+    };
     db.Dobavljaci.Add(entity);
     await db.SaveChangesAsync();
     return Results.Created($"/api/dobavljaci/{entity.Id}", new { id = entity.Id });
@@ -561,7 +567,7 @@ using (var scope = app.Services.CreateScope())
 app.Run();
 
 // DTO used by /dobavljaci endpoint
-record CreateDobavljacDto(string Naziv);
+record CreateDobavljacDto(string Naziv, string? Adresa, string? Telefon, string? Napomena);
 
 record CreateSezonaDto(string Naziv, DateTime DatumOd, DateTime DatumDo);
 

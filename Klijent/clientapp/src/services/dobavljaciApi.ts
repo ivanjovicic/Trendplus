@@ -1,17 +1,28 @@
 ﻿import type { Dobavljac } from "../types/Dobavljaci";
 
+const API = import.meta.env.VITE_API_BASE_URL;
+
 export async function getDobavljaci(): Promise<Dobavljac[]> {
-    const res = await fetch("/dobavljaci"); // backend endpoint za dobavljače
+    const res = await fetch(`${API}/api/dobavljaci`);
     if (!res.ok) throw new Error("Ne mogu da dohvatim dobavljače");
     return res.json();
 }
-const API = import.meta.env.VITE_API_BASE_URL;
 
-export async function createDobavljac(naziv: string) {
+export async function createDobavljac(
+    naziv: string, 
+    adresa?: string, 
+    telefon?: string, 
+    napomena?: string
+): Promise<number> {
     const res = await fetch(`${API}/api/dobavljaci`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ Naziv: naziv })
+        body: JSON.stringify({ 
+            Naziv: naziv,
+            Adresa: adresa || null,
+            Telefon: telefon || null,
+            Napomena: napomena || null
+        })
     });
 
     if (!res.ok) throw new Error('Ne mogu da kreiram dobavljača');

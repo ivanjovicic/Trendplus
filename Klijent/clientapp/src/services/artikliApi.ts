@@ -69,7 +69,7 @@ export async function updateArtikal(id: number, data: ArtikalFormData): Promise<
         tipObuceId: data.tipObuceId ?? null,
         dobavljacId: data.dobavljacId ?? null,
         idObjekat: null,
-        idSezona: null,
+        idSezona: data.idSezona ?? null,
     };
 
     const resp = await fetch(`${API}/artikli/${id}`, {

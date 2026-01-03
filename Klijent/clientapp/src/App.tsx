@@ -12,6 +12,7 @@ import NivelacijaCenaPage from "./pages/NivelacijaCenaPage";
 import NivelacijePage from "./pages/NivelacijePage";
 import SezonaPage from "./pages/SezonaPage";
 import TipObucePage from "./pages/TipObucePage";
+import DobavljaciPage from "./pages/DobavljaciPage";
 
 function AppShell() {
     return (
@@ -28,6 +29,7 @@ function AppShell() {
             <Route path="/nivelacije" element={<NivelacijePage />} />
             <Route path="/sezone" element={<SezonaPage />} />
             <Route path="/tipovi-obuce" element={<TipObucePage />} />
+            <Route path="/dobavljaci" element={<DobavljaciPage />} />
         </Routes>
     );
 }

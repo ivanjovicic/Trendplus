@@ -9,4 +9,5 @@ export type Artikal = {
   komentar: string | null;
   tipObuceId: number | null;
   dobavljacId: number | null;   
+  idSezona: number | null;
 };

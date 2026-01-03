@@ -30,8 +30,8 @@ export default function ArtikalEditPage() {
             try {
                 // 1) šifre (tipovi, dobavljači)
                 const [tipRes, dobRes] = await Promise.all([
-                    fetch(`${API}/tipovi-obuce`, { signal: controller.signal }),
-                    fetch(`${API}/dobavljaci`, { signal: controller.signal }),
+                    fetch(`${API}/api/tipovi-obuce`, { signal: controller.signal }),
+                    fetch(`${API}/api/dobavljaci`, { signal: controller.signal }),
                 ]);
 
                 if (!tipRes.ok || !dobRes.ok) {
@@ -59,6 +59,7 @@ export default function ArtikalEditPage() {
                     komentar: artikal.komentar ?? null,
                     tipObuceId: artikal.tipObuceId ?? null,
                     dobavljacId: artikal.dobavljacId ?? null,
+                    idSezona: artikal.idSezona ?? null,
                 };
 
                 setInitialData(data);

@@ -43,9 +43,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/" className="button-small">
                         Početna
                     </Link>
-                    <Link to="/artikli" className="button-small">
-                        Kreiraj artikal
-                    </Link>
+                    {/*<Link to="/artikli" className="button-small">*/}
+                    {/*    Kreiraj artikal*/}
+                    {/*</Link>*/}
                     <Link to="/artikli/lista" className="button-small">
                         Pregled/izmene artikala
                     </Link>
@@ -61,17 +61,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/nivelacije" className="button-small">
                         Pregled nivelacija
                     </Link>
-                    <Link to="/logs" className="button-small">
-                        📋 Logovi
-                    </Link>
-                    <Link to="/performance" className="button-small">
-                        ⚡ Performance
-                    </Link>
+                 
                     <Link to="/sezone" className="button-small">
                         Sezone
                     </Link>
                     <Link to="/tipovi-obuce" className="button-small">
                         👟 Tipovi obuće
+                    </Link>
+                    <Link to="/dobavljaci" className="button-small">
+                        🏢 Dobavljači
+                    </Link>
+                    <Link to="/logs" className="button-small">
+                        📋 Logovi
+                    </Link>
+                    <Link to="/performance" className="button-small">
+                        ⚡ Performance
                     </Link>
                 </nav>
 
