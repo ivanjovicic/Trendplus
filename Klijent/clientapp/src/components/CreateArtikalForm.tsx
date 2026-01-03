@@ -4,6 +4,7 @@ import { createDobavljac } from "../services/dobavljaciApi";
 import { getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 export interface CreateArtikalFormProps {
     tipoviObuce: { id: number; naziv: string }[];
@@ -228,73 +229,145 @@ export default function CreateArtikalForm({
                     />
 
                     <label className="field-label">Tip obuće</label>
-                    <div className="flex-row">
-                        <select
-                            className="input-big"
-                            value={selectedTip ?? ""}
-                            onChange={(e) => {
-                                const v = e.target.value ? Number(e.target.value) : null;
-                                console.debug('selectedTip change ->', v);
-                                setSelectedTip(v);
-                            }}
-                        >
-                            <option value="">-- izaberite --</option>
-                            {tipoviObuce.map((t) => (
-                                <option key={t.id} value={t.id}>{t.naziv}</option>
-                            ))}
-                        </select>
+                    {mode === "create" ? (
+                        <div className="flex-row">
+                            <select
+                                className="input-big"
+                                value={selectedTip ?? ""}
+                                onChange={(e) => {
+                                    const v = e.target.value ? Number(e.target.value) : null;
+                                    console.debug('selectedTip change ->', v);
+                                    setSelectedTip(v);
+                                }}
+                            >
+                                <option value="">-- izaberite --</option>
+                                {tipoviObuce.map((t) => (
+                                    <option key={t.id} value={t.id}>{t.naziv}</option>
+                                ))}
+                            </select>
 
-                        <input
-                            className="input-big"
-                            placeholder="Novi tip..."
-                            value={newTip}
-                            onChange={(e) => setNewTip(e.target.value)}
-                        />
+                            <input
+                                className="input-big"
+                                placeholder="Novi tip..."
+                                value={newTip}
+                                onChange={(e) => setNewTip(e.target.value)}
+                            />
 
-                        <button
-                            type="button"
-                            className="button-big"
-                            disabled={newTipIsEmpty}
-                            onClick={() => setShowNewTipConfirm(true)}
-                        >
-                            Dodaj
-                        </button>
-                    </div>
+                            <button
+                                type="button"
+                                className="button-big"
+                                disabled={newTipIsEmpty}
+                                onClick={() => setShowNewTipConfirm(true)}
+                            >
+                                Dodaj
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                            <select
+                                className="input-big"
+                                value={selectedTip ?? ""}
+                                onChange={(e) => {
+                                    const v = e.target.value ? Number(e.target.value) : null;
+                                    console.debug('selectedTip change ->', v);
+                                    setSelectedTip(v);
+                                }}
+                                style={{ flex: 1 }}
+                            >
+                                <option value="">-- izaberite --</option>
+                                {tipoviObuce.map((t) => (
+                                    <option key={t.id} value={t.id}>{t.naziv}</option>
+                                ))}
+                            </select>
+                            <Link
+                                to="/tipovi-obuce"
+                                style={{
+                                    background: "#0891b2",
+                                    color: "white",
+                                    padding: "10px 20px",
+                                    borderRadius: "8px",
+                                    textDecoration: "none",
+                                    fontSize: "0.875rem",
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                    display: "inline-block"
+                                }}
+                            >
+                                ➕ Novi tip
+                            </Link>
+                        </div>
+                    )}
 
                     <label className="field-label">Dobavljač</label>
-                    <div className="flex-row">
-                        <select
-                            className="input-big"
-                            value={selectedDobavljac ?? ""}
-                            onChange={(e) => {
-                                const v = e.target.value ? Number(e.target.value) : null;
-                                console.debug('selectedDobavljac change ->', v);
-                                setSelectedDobavljac(v);
-                            }}
-                        >
-                            <option value="">-- izaberite --</option>
-                            {dobavljaci.map((d) => (
-                                <option key={d.id} value={d.id}>{d.naziv}</option>
-                            ))}
-                        </select>
+                    {mode === "create" ? (
+                        <div className="flex-row">
+                            <select
+                                className="input-big"
+                                value={selectedDobavljac ?? ""}
+                                onChange={(e) => {
+                                    const v = e.target.value ? Number(e.target.value) : null;
+                                    console.debug('selectedDobavljac change ->', v);
+                                    setSelectedDobavljac(v);
+                                }}
+                            >
+                                <option value="">-- izaberite --</option>
+                                {dobavljaci.map((d) => (
+                                    <option key={d.id} value={d.id}>{d.naziv}</option>
+                                ))}
+                            </select>
 
-                        <input
-                            type="text"
-                            className="input-big"
-                            placeholder="Novi dobavljač..."
-                            value={newDob}
-                            onChange={(e) => setNewDob(e.target.value)}
-                        />
+                            <input
+                                type="text"
+                                className="input-big"
+                                placeholder="Novi dobavljač..."
+                                value={newDob}
+                                onChange={(e) => setNewDob(e.target.value)}
+                            />
 
-                        <button
-                            type="button"
-                            className="button-big"
-                            onClick={() => setShowNewDobConfirm(true)}
-                            disabled={newDobIsEmpty}
-                        >
-                            Dodaj
-                        </button>
-                    </div>
+                            <button
+                                type="button"
+                                className="button-big"
+                                onClick={() => setShowNewDobConfirm(true)}
+                                disabled={newDobIsEmpty}
+                            >
+                                Dodaj
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                            <select
+                                className="input-big"
+                                value={selectedDobavljac ?? ""}
+                                onChange={(e) => {
+                                    const v = e.target.value ? Number(e.target.value) : null;
+                                    console.debug('selectedDobavljac change ->', v);
+                                    setSelectedDobavljac(v);
+                                }}
+                                style={{ flex: 1 }}
+                            >
+                                <option value="">-- izaberite --</option>
+                                {dobavljaci.map((d) => (
+                                    <option key={d.id} value={d.id}>{d.naziv}</option>
+                                ))}
+                            </select>
+                            <Link
+                                to="/dobavljaci"
+                                style={{
+                                    background: "#059669",
+                                    color: "white",
+                                    padding: "10px 20px",
+                                    borderRadius: "8px",
+                                    textDecoration: "none",
+                                    fontSize: "0.875rem",
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                    display: "inline-block"
+                                }}
+                            >
+                                ➕ Novi dobavljač
+                            </Link>
+                        </div>
+                    )}
 
                     <label className="field-label">Sezona</label>
                     <select
