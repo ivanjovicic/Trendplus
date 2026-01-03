@@ -21,7 +21,7 @@ export default function UnosRobePage() {
 
         const fetchDobavljaci = async () => {
             try {
-                const res = await fetch(`${API}/dobavljaci`, { signal: controller.signal });
+                const res = await fetch(`${API}/api/dobavljaci`, { signal: controller.signal });
                 if (res.ok) {
                     const data = await res.json();
                     if (!aborted) {

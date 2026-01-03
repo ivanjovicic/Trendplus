@@ -11,28 +11,9 @@ export default defineConfig({
         port: 5173,
         strictPort: true,
         proxy: {
+            // Proxy all /api requests to backend
             "/api": {
-                target: "http://localhost:28136",
-                changeOrigin: true,
-            },
-            "/artikli": {
-                target: "http://localhost:28136",
-                changeOrigin: true,
-            },
-            "/tipovi-obuce": {
-                target: "http://localhost:28136",
-                changeOrigin: true,
-            },
-            "/dobavljaci": {
-                target: "http://localhost:28136",
-                changeOrigin: true,
-            },
-            "/errors": {
-                target: "http://localhost:28136",
-                changeOrigin: true,
-            },
-            "/health": {
-                target: "http://localhost:28136",
+                target: "http://localhost:8080",
                 changeOrigin: true,
             },
         },

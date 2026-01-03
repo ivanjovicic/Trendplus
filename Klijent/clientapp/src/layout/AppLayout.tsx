@@ -67,6 +67,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/performance" className="button-small">
                         ⚡ Performance
                     </Link>
+                    <Link to="/sezone" className="button-small">
+                        Sezone
+                    </Link>
+                    <Link to="/tipovi-obuce" className="button-small">
+                        👟 Tipovi obuće
+                    </Link>
                 </nav>
 
                 {children}

@@ -6,7 +6,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <UseAppHost>false</UseAppHost>
+    <ClientAppDir>$(MSBuildProjectDirectory)\..\Klijent\clientapp</ClientAppDir>
   </PropertyGroup>
+
+  <!-- Auto-build React app and copy to wwwroot -->
+  <Target Name="BuildReactApp" BeforeTargets="Build" Condition="!Exists('wwwroot/index.html')">
+    <Message Text="Building React app from $(ClientAppDir)" Importance="high" />
+    <Exec Command="npm install" WorkingDirectory="$(ClientAppDir)" />
+    <Exec Command="npm run build" WorkingDirectory="$(ClientAppDir)" />
+    <ItemGroup>
+      <DistFiles Include="$(ClientAppDir)\dist\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DistFiles)" DestinationFolder="wwwroot\%(RecursiveDir)" />
+    <Message Text="React app copied to wwwroot" Importance="high" />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="MediatR" Version="10.0.1" />

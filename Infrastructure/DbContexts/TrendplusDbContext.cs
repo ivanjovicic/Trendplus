@@ -41,6 +41,15 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.NovaProdajnaCena).HasColumnType("decimal(18,2)");
             });
 
+            modelBuilder.Entity<Sezona>(eb =>
+            {
+                eb.ToTable("Sezone");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.Naziv).IsRequired().HasMaxLength(100);
+                eb.Property(e => e.DatumOd).IsRequired();
+                eb.Property(e => e.DatumDo).IsRequired();
+            });
+
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
         }
 
@@ -50,6 +59,7 @@ namespace Infrastructure.DbContexts
         public DbSet<Dobavljac> Dobavljaci { get; set; } = null!;
         public DbSet<ErrorRecord> ErrorRecords { get; set; } = null!;
         public DbSet<DnevnikPromena> DnevnikPromena { get; set; } = null!;
+        public DbSet<Sezona> Sezone { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {

@@ -9,4 +9,5 @@ export interface ArtikalFormData {
     dobavljacId: number | null;
     komentar?: string | null;
     kolicina?: number | null;
+    idSezona?: number | null;
 }

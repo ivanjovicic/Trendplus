@@ -10,6 +10,8 @@ import UnosRobePage from "./pages/UnosRobePage";
 import PerformanceDashboard from "./pages/PerformanceDashboard";
 import NivelacijaCenaPage from "./pages/NivelacijaCenaPage";
 import NivelacijePage from "./pages/NivelacijePage";
+import SezonaPage from "./pages/SezonaPage";
+import TipObucePage from "./pages/TipObucePage";
 
 function AppShell() {
     return (
@@ -24,6 +26,8 @@ function AppShell() {
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/performance" element={<PerformanceDashboard />} />
             <Route path="/nivelacije" element={<NivelacijePage />} />
+            <Route path="/sezone" element={<SezonaPage />} />
+            <Route path="/tipovi-obuce" element={<TipObucePage />} />
         </Routes>
     );
 }

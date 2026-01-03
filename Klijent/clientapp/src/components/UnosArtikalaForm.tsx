@@ -1,6 +1,8 @@
-﻿import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { createArtikal, getArtikli } from "../services/artikliApi";
+import { getSezone } from "../services/sezoneApi";
 import { Artikal } from "../types/Artikal";
+import type { Sezona } from "../types/Sezona";
 
 interface ArtikalStavka {
     id?: number;
@@ -9,6 +11,7 @@ interface ArtikalStavka {
     nabavnaCena: number;
     prodajnaCena: number;
     tipObuceId: number | null;
+    sezonaId: number | null;
     komentar: string;
     isExisting: boolean;
 }
@@ -26,6 +29,7 @@ export default function UnosArtikalaForm({
     brojRacuna, 
     tipoviObuce 
 }: UnosArtikalaFormProps) {
+    const [sezone, setSezone] = useState<Sezona[]>([]);
     const [stavke, setStavke] = useState<ArtikalStavka[]>([
         {
             naziv: "",
@@ -33,6 +37,7 @@ export default function UnosArtikalaForm({
             nabavnaCena: 0,
             prodajnaCena: 0,
             tipObuceId: null,
+            sezonaId: null,
             komentar: "",
             isExisting: false
         }
@@ -80,6 +85,18 @@ export default function UnosArtikalaForm({
         loadArtikli();
     });
 
+    useEffect(() => {
+        const loadSezone = async () => {
+            try {
+                const data = await getSezone();
+                setSezone(data);
+            } catch (err) {
+                console.error("Failed to load sezone:", err);
+            }
+        };
+        loadSezone();
+    }, []);
+
     const getFilteredArtikli = (rowIndex: number): Artikal[] => {
         const query = searchQuery[rowIndex]?.toLowerCase() || "";
         if (!query.trim()) return [];
@@ -98,6 +115,7 @@ export default function UnosArtikalaForm({
                 nabavnaCena: 0,
                 prodajnaCena: 0,
                 tipObuceId: null,
+                sezonaId: null,
                 komentar: "",
                 isExisting: false
             }
@@ -126,6 +144,7 @@ export default function UnosArtikalaForm({
                 nabavnaCena: artikal.nabavnaCena || 0,
                 prodajnaCena: artikal.prodajnaCena,
                 tipObuceId: null,
+                sezonaId: null,
                 komentar: "",
                 isExisting: true
             };
@@ -190,7 +209,7 @@ export default function UnosArtikalaForm({
                         tipObuceId: stavka.tipObuceId,
                         dobavljacId: dobavljacId,
                         IDObjekat: null,
-                        IDSezona: null,
+                        IDSezona: stavka.sezonaId,
                     };
 
                     await createArtikal(dto);
@@ -215,6 +234,7 @@ export default function UnosArtikalaForm({
                 nabavnaCena: 0,
                 prodajnaCena: 0,
                 tipObuceId: null,
+                sezonaId: null,
                 komentar: "",
                 isExisting: false
             }]);
@@ -279,25 +299,28 @@ export default function UnosArtikalaForm({
                             background: '#f3f4f6',
                             borderBottom: '2px solid #e5e7eb'
                         }}>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '25%', minWidth: '200px' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '20%', minWidth: '200px' }}>
                                 Naziv artikla (pretraga)
                             </th>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '15%', minWidth: '150px' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '12%', minWidth: '120px' }}>
                                 Tip obuće
                             </th>
-                            <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600, width: '10%', minWidth: '100px' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '13%', minWidth: '130px' }}>
+                                Sezona
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600, width: '8%', minWidth: '90px' }}>
                                 Kolicina
                             </th>
-                            <th style={{ padding: '12px', textAlign: 'right', fontWeight: 600, width: '12%', minWidth: '120px' }}>
+                            <th style={{ padding: '12px', textAlign: 'right', fontWeight: 600, width: '11%', minWidth: '110px' }}>
                                 Nabavna cena
                             </th>
-                            <th style={{ padding: '12px', textAlign: 'right', fontWeight: 600, width: '12%', minWidth: '120px' }}>
+                            <th style={{ padding: '12px', textAlign: 'right', fontWeight: 600, width: '11%', minWidth: '110px' }}>
                                 Prodajna cena
                             </th>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '20%', minWidth: '150px' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '18%', minWidth: '140px' }}>
                                 Komentar
                             </th>
-                            <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600, width: '6%', minWidth: '80px' }}>
+                            <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600, width: '7%', minWidth: '80px' }}>
                                 Akcija
                             </th>
                         </tr>
@@ -396,6 +419,24 @@ export default function UnosArtikalaForm({
                                             <option value="">-- izaberite --</option>
                                             {tipoviObuce.map(t => (
                                                 <option key={t.id} value={t.id}>{t.naziv}</option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    <td style={{ padding: '8px' }}>
+                                        <select
+                                            value={stavka.sezonaId ?? ""}
+                                            onChange={(e) => updateStavka(index, 'sezonaId', e.target.value ? Number(e.target.value) : null)}
+                                            className="input-big"
+                                            style={{
+                                                marginBottom: 0,
+                                                padding: inputPadding,
+                                                fontSize: fontSize,
+                                                width: '100%'
+                                            }}
+                                        >
+                                            <option value="">-- izaberite --</option>
+                                            {sezone.map(s => (
+                                                <option key={s.id} value={s.id}>{s.naziv}</option>
                                             ))}
                                         </select>
                                     </td>

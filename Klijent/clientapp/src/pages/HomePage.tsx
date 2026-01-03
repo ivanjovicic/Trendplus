@@ -23,6 +23,12 @@ export default function HomePage() {
         <Link to="/prodaja" className="button-big">
           🛒 Prodaja
         </Link>
+        <Link to="/tipovi-obuce" className="button-big" style={{ background: "#0891b2" }}>
+          👟 Kreiraj tip obuće
+        </Link>
+        <Link to="/sezone" className="button-big" style={{ background: "#7c3aed" }}>
+          📅 Sezone
+        </Link>
         <Link to="/logs" className="button-big" style={{ background: "#059669" }}>
           📋 Pregled logova
         </Link>

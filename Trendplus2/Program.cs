@@ -117,6 +117,10 @@ app.UseSerilogRequestLogging(opts =>
 // global exception logging u DB (tvoj middleware)
 app.UseMiddleware<ExceptionLoggingMiddleware>();
 
+// Serve static files BEFORE UseRouting
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseRouting();
 app.UseCors("AllowFrontend");
 
@@ -315,34 +319,54 @@ app.MapGet("/artikli", async (IMediator mediator, ILogger<Program> logger) =>
     return Results.Ok(result);
 });
 
-// Tipovi obuća
-app.MapGet("/tipovi-obuce", async (IMediator mediator) =>
+// Tipovi obuća - API endpoints
+app.MapGet("/api/tipovi-obuce", async (IMediator mediator) =>
 {
     var result = await mediator.Send(new GetTipObuceQuery());
     return Results.Ok(result);
 });
 
-app.MapPost("/tipovi-obuce", async (
+app.MapPost("/api/tipovi-obuce", async (
     Application.TipObuce.Commands.CreateTipObuceCommand cmd,
     IMediator mediator) =>
 {
     var id = await mediator.Send(cmd);
-    return Results.Created($"/tipovi-obuce/{id}", new { id });
+    return Results.Created($"/api/tipovi-obuce/{id}", new { id });
 });
 
-// Dobavljači
-app.MapGet("/dobavljaci", async (IMediator mediator) =>
+// Dobavljači - API endpoints
+app.MapGet("/api/dobavljaci", async (IMediator mediator) =>
 {
     var result = await mediator.Send(new GetDobavljacQuery());
     return Results.Ok(result);
 });
 
-app.MapPost("/dobavljaci", async (CreateDobavljacDto dto, ITrendplusDbContext db) =>
+app.MapPost("/api/dobavljaci", async (CreateDobavljacDto dto, ITrendplusDbContext db) =>
 {
     var entity = new Domain.Model.Dobavljac { Naziv = dto.Naziv };
     db.Dobavljaci.Add(entity);
     await db.SaveChangesAsync();
-    return Results.Created($"/dobavljaci/{entity.Id}", new { id = entity.Id });
+    return Results.Created($"/api/dobavljaci/{entity.Id}", new { id = entity.Id });
+});
+
+// Sezone - API endpoints
+app.MapGet("/api/sezone", async (ITrendplusDbContext db) =>
+{
+    var result = await db.Sezone.OrderBy(s => s.DatumOd).ToListAsync();
+    return Results.Ok(result);
+});
+
+app.MapPost("/api/sezone", async (CreateSezonaDto dto, ITrendplusDbContext db) =>
+{
+    var entity = new Domain.Model.Sezona
+    {
+        Naziv = dto.Naziv,
+        DatumOd = dto.DatumOd,
+        DatumDo = dto.DatumDo
+    };
+    db.Sezone.Add(entity);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/sezone/{entity.Id}", new { id = entity.Id });
 });
 
 // Prodaja
@@ -526,9 +550,19 @@ app.MapGet("/api/nivelacije", async (
 
 app.MapControllers();
 
+// SPA fallback: return index.html for all non-API routes
+app.MapFallbackToFile("index.html");
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+    db.Database.Migrate(); // Automatski primenjuje migracije
+}
 app.Run();
 
 // DTO used by /dobavljaci endpoint
 record CreateDobavljacDto(string Naziv);
+
+record CreateSezonaDto(string Naziv, DateTime DatumOd, DateTime DatumDo);
 
 public sealed record NivelacijaCenaRequest(int ArtikalId, decimal NovaProdajnaCena, string? Komentar);

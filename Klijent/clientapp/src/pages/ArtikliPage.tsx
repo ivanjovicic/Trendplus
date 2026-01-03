@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from "react";
+﻿import React, { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import CreateArtikalForm from "../components/CreateArtikalForm";
 import UnosArtikalaForm from "../components/UnosArtikalaForm";
@@ -10,31 +10,20 @@ export default function ArtikliPage() {
   const [tipovi, setTipovi] = React.useState<{ id: number; naziv: string }[]>([]);
   const [dobavljaci, setDobavljaci] = React.useState<{ id: number; naziv: string }[]>([]);
   const [loadingOptions, setLoadingOptions] = React.useState(true);
-  const [initialDobavljacId, setInitialDobavljacId] = React.useState<number | null>(null);
-  const [dobavljacNaziv, setDobavljacNaziv] = React.useState<string>("");
-  const [brojRacuna, setBrojRacuna] = React.useState<string>("");
   const API = import.meta.env.VITE_API_BASE_URL;
 
-  // Determine if coming from Unos Robe
-  const isUnosRobe = location.state && 
-    (location.state as any).dobavljacId && 
-    (location.state as any).brojRacuna;
-
-  // Extract state from navigation
-  useEffect(() => {
-    if (location.state) {
-      const state = location.state as { dobavljacId?: number; dobavljacNaziv?: string; brojRacuna?: string };
-      if (state.dobavljacId) {
-        setInitialDobavljacId(state.dobavljacId);
-      }
-      if (state.dobavljacNaziv) {
-        setDobavljacNaziv(state.dobavljacNaziv);
-      }
-      if (state.brojRacuna) {
-        setBrojRacuna(state.brojRacuna);
-      }
-    }
+  // Extract state from navigation using useMemo (no setState in effect)
+  const navigationState = useMemo(() => {
+    const state = location.state as { dobavljacId?: number; dobavljacNaziv?: string; brojRacuna?: string } | null;
+    return {
+      dobavljacId: state?.dobavljacId ?? null,
+      dobavljacNaziv: state?.dobavljacNaziv ?? "",
+      brojRacuna: state?.brojRacuna ?? ""
+    };
   }, [location.state]);
+
+  // Determine if coming from Unos Robe
+  const isUnosRobe = navigationState.dobavljacId !== null && navigationState.brojRacuna !== "";
 
   React.useEffect(() => {
     let aborted = false;
@@ -45,8 +34,8 @@ export default function ArtikliPage() {
       while (!aborted) {
         try {
           const [tipRes, dobRes] = await Promise.all([
-            fetch(`${API}/tipovi-obuce`, { signal: controller.signal }),
-            fetch(`${API}/dobavljaci`, { signal: controller.signal }),
+            fetch(`${API}/api/tipovi-obuce`, { signal: controller.signal }),
+            fetch(`${API}/api/dobavljaci`, { signal: controller.signal }),
           ]);
 
           if (tipRes.ok && dobRes.ok) {
@@ -86,7 +75,7 @@ export default function ArtikliPage() {
       tipObuceId: data.tipObuceId ?? null,
       dobavljacId: data.dobavljacId ?? null,
       IDObjekat: null,
-      IDSezona: null,
+      IDSezona: data.idSezona ?? null,
     };
 
     const id = await createArtikal(dto);
@@ -102,12 +91,12 @@ export default function ArtikliPage() {
   }
 
   // Show Unos Artikala Form if coming from Unos Robe
-  if (isUnosRobe && initialDobavljacId && brojRacuna) {
+  if (isUnosRobe && navigationState.dobavljacId) {
     return (
       <UnosArtikalaForm
-        dobavljacId={initialDobavljacId}
-        dobavljacNaziv={dobavljacNaziv}
-        brojRacuna={brojRacuna}
+        dobavljacId={navigationState.dobavljacId}
+        dobavljacNaziv={navigationState.dobavljacNaziv}
+        brojRacuna={navigationState.brojRacuna}
         tipoviObuce={tipovi}
       />
     );
@@ -120,7 +109,7 @@ export default function ArtikliPage() {
       dobavljaci={dobavljaci}
       onSubmit={handleSubmit}
       loadingOptions={loadingOptions}
-      initialData={initialDobavljacId ? { dobavljacId: initialDobavljacId } as ArtikalFormData : undefined}
+      initialData={navigationState.dobavljacId ? { dobavljacId: navigationState.dobavljacId } as ArtikalFormData : undefined}
     />
   );
 }

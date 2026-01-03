@@ -1,7 +1,9 @@
 ﻿import { ArtikalFormData } from "../types/artikalformdata";
 import { createTipObuce } from "../services/tipoviObuceApi";
 import { createDobavljac } from "../services/dobavljaciApi";
-import React, { useState } from "react";
+import { getSezone } from "../services/sezoneApi";
+import type { Sezona } from "../types/Sezona";
+import React, { useState, useEffect } from "react";
 
 export interface CreateArtikalFormProps {
     tipoviObuce: { id: number; naziv: string }[];
@@ -20,6 +22,20 @@ export default function CreateArtikalForm({
     initialData,
     mode = "create",
 }: CreateArtikalFormProps) {
+    const [sezone, setSezone] = useState<Sezona[]>([]);
+    
+    useEffect(() => {
+        const loadSezone = async () => {
+            try {
+                const data = await getSezone();
+                setSezone(data);
+            } catch (e) {
+                console.error("Failed to load sezone:", e);
+            }
+        };
+        loadSezone();
+    }, []);
+
     React.useEffect(() => {
         if (!initialData) return;
         setNaziv(initialData.naziv);
@@ -33,6 +49,7 @@ export default function CreateArtikalForm({
         setKomentar(initialData.komentar ?? "");
         setSelectedTip(initialData.tipObuceId ?? null);
         setSelectedDobavljac(initialData.dobavljacId ?? null);
+        setSelectedSezona(initialData.idSezona ?? null);
     }, [initialData]);
 
     const [naziv, setNaziv] = useState(initialData?.naziv ?? "");
@@ -56,6 +73,7 @@ export default function CreateArtikalForm({
     const [selectedDobavljac, setSelectedDobavljac] = useState<number | null>(
         initialData?.dobavljacId ?? null
     );
+    const [selectedSezona, setSelectedSezona] = useState<number | null>(initialData?.idSezona ?? null);
     const [msg, setMsg] = useState("");
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -107,6 +125,7 @@ export default function CreateArtikalForm({
             komentar: komentar || null,
             tipObuceId: selectedTip,
             dobavljacId: selectedDobavljac,
+            idSezona: selectedSezona,
         };
 
         console.debug("CreateArtikalForm submitting formData:", formData);
@@ -125,6 +144,7 @@ export default function CreateArtikalForm({
             setKomentar("");
             setSelectedTip(null);
             setSelectedDobavljac(null);
+            setSelectedSezona(null);
         } catch (e) {
             setError("Greška pri kreiranju artikla.");
             console.error(e);
@@ -275,6 +295,22 @@ export default function CreateArtikalForm({
                             Dodaj
                         </button>
                     </div>
+
+                    <label className="field-label">Sezona</label>
+                    <select
+                        className="input-big"
+                        value={selectedSezona ?? ""}
+                        onChange={(e) => {
+                            const v = e.target.value ? Number(e.target.value) : null;
+                            console.debug('selectedSezona change ->', v);
+                            setSelectedSezona(v);
+                        }}
+                    >
+                        <option value="">-- izaberite sezonu --</option>
+                        {sezone.map((s) => (
+                            <option key={s.id} value={s.id}>{s.naziv}</option>
+                        ))}
+                    </select>
                 </div> 
 
                 <div className="form-full">
