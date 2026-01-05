@@ -111,7 +111,7 @@ app.UseSerilogRequestLogging(opts =>
         diag.Set("RequestScheme", http.Request.Scheme);
         diag.Set("UserAgent", http.Request.Headers.UserAgent.ToString());
         diag.Set("RequestPath", http.Request.Path);
-    }
+    };
 });
 
 // global exception logging u DB (tvoj middleware)

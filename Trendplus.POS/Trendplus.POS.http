@@ -1,0 +1,6 @@
+@Trendplus.POS_HostAddress = http://localhost:5083
+
+GET {{Trendplus.POS_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

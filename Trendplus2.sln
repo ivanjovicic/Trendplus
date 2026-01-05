@@ -20,6 +20,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.renderignore = .renderignore
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trendplus.POS", "Trendplus.POS\Trendplus.POS.csproj", "{2877404B-43F2-4BD7-9079-E40C28EA1CCD}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "Trendplus.POS.Ui", "Trendplus.POS.Ui\Trendplus.POS.Ui.esproj", "{FACCE32A-A653-182F-8C85-6E27A5343E4B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -52,6 +56,16 @@ Global
 		{2B7DFBBB-0FE8-BAB7-0B6F-61DC89558453}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2B7DFBBB-0FE8-BAB7-0B6F-61DC89558453}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2B7DFBBB-0FE8-BAB7-0B6F-61DC89558453}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{2877404B-43F2-4BD7-9079-E40C28EA1CCD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2877404B-43F2-4BD7-9079-E40C28EA1CCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2877404B-43F2-4BD7-9079-E40C28EA1CCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2877404B-43F2-4BD7-9079-E40C28EA1CCD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FACCE32A-A653-182F-8C85-6E27A5343E4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FACCE32A-A653-182F-8C85-6E27A5343E4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FACCE32A-A653-182F-8C85-6E27A5343E4B}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{FACCE32A-A653-182F-8C85-6E27A5343E4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FACCE32A-A653-182F-8C85-6E27A5343E4B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FACCE32A-A653-182F-8C85-6E27A5343E4B}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
