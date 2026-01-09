@@ -5,8 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Application.Common.Interfaces;
 using Infrastructure.Configuration;
+using Infrastructure.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly;
+using Polly.CircuitBreaker;
 using RabbitMQ.Client;
 
 namespace Infrastructure.Services
@@ -15,12 +18,16 @@ namespace Infrastructure.Services
     {
         private readonly RabbitMqSettings _settings;
         private readonly ILogger<RabbitMqMessageBroker> _logger;
+        private readonly ResiliencePipeline _circuitBreaker;
         private IConnection? _connection;
         private IModel? _channel;
         private readonly object _lock = new();
         private bool _disposed;
 
         public bool IsEnabled => _settings.Enabled;
+        
+        // Circuit breaker state for health checks
+        public bool IsCircuitOpen { get; private set; }
 
         public RabbitMqMessageBroker(
             IOptions<RabbitMqSettings> settings,
@@ -28,6 +35,13 @@ namespace Infrastructure.Services
         {
             _settings = settings.Value;
             _logger = logger;
+
+            // Initialize circuit breaker
+            _circuitBreaker = CircuitBreakerPolicies.CreateAsyncPipeline(
+                logger: _logger,
+                name: "RabbitMQ",
+                failureThreshold: 3,
+                breakDuration: TimeSpan.FromSeconds(60));
 
             if (_settings.Enabled)
             {
@@ -86,14 +100,37 @@ namespace Infrastructure.Services
             }
         }
 
-        public Task PublishAsync<T>(string eventType, T payload, string? routingKey = null, CancellationToken ct = default)
+        public async Task PublishAsync<T>(string eventType, T payload, string? routingKey = null, CancellationToken ct = default)
         {
             if (!_settings.Enabled)
             {
                 _logger.LogWarning("RabbitMQ is disabled - Message not published: {EventType}", eventType);
-                return Task.CompletedTask;
+                return;
             }
 
+            try
+            {
+                // Execute through circuit breaker
+                await _circuitBreaker.ExecuteAsync(async token =>
+                {
+                    await PublishInternalAsync(eventType, payload, routingKey);
+                }, ct);
+                
+                IsCircuitOpen = false;
+            }
+            catch (BrokenCircuitException ex)
+            {
+                IsCircuitOpen = true;
+                _logger.LogWarning(
+                    "?? RabbitMQ Circuit Breaker OPEN - Message queued for later: {EventType}",
+                    eventType);
+                throw new InvalidOperationException(
+                    $"RabbitMQ is temporarily unavailable. Circuit breaker is open.", ex);
+            }
+        }
+
+        private Task PublishInternalAsync<T>(string eventType, T payload, string? routingKey)
+        {
             if (_channel == null || !_channel.IsOpen)
             {
                 lock (_lock)
@@ -105,44 +142,33 @@ namespace Infrastructure.Services
                 }
             }
 
-            try
+            var message = JsonSerializer.Serialize(payload, new JsonSerializerOptions
             {
-                var message = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
 
-                var body = Encoding.UTF8.GetBytes(message);
+            var body = Encoding.UTF8.GetBytes(message);
 
-                var properties = _channel!.CreateBasicProperties();
-                properties.Persistent = true;
-                properties.ContentType = "application/json";
-                properties.Type = eventType;
-                properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            var properties = _channel!.CreateBasicProperties();
+            properties.Persistent = true;
+            properties.ContentType = "application/json";
+            properties.Type = eventType;
+            properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
-                var effectiveRoutingKey = routingKey ?? eventType.ToLowerInvariant();
+            var effectiveRoutingKey = routingKey ?? eventType.ToLowerInvariant();
 
-                _channel.BasicPublish(
-                    exchange: _settings.ExchangeName,
-                    routingKey: effectiveRoutingKey,
-                    basicProperties: properties,
-                    body: body);
+            _channel.BasicPublish(
+                exchange: _settings.ExchangeName,
+                routingKey: effectiveRoutingKey,
+                basicProperties: properties,
+                body: body);
 
-                _logger.LogInformation(
-                    "Message published to RabbitMQ - EventType: {EventType}, RoutingKey: {RoutingKey}",
-                    eventType,
-                    effectiveRoutingKey);
+            _logger.LogInformation(
+                "Message published to RabbitMQ - EventType: {EventType}, RoutingKey: {RoutingKey}",
+                eventType,
+                effectiveRoutingKey);
 
-                return Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Failed to publish message to RabbitMQ - EventType: {EventType}",
-                    eventType);
-                throw;
-            }
+            return Task.CompletedTask;
         }
 
         public void Dispose()

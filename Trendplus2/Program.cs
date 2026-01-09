@@ -12,6 +12,7 @@ using Application.TipObuce.Queries;
 using Infrastructure.DbContexts;
 using Infrastructure.Middleware;
 using Infrastructure.Repository;
+using Infrastructure.Resilience;
 using Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -126,8 +127,24 @@ app.UseAuthorization();
 
 // ================= ENDPOINTS =================
 
+// Circuit Breaker Status
+app.MapCircuitBreakerEndpoints();
+
 // Health
-app.MapGet("/health", () => Results.Ok("Backend je živ"));
+app.MapGet("/health", (IMessageBroker messageBroker) =>
+{
+    var rabbitMq = messageBroker as RabbitMqMessageBroker;
+    return Results.Ok(new
+    {
+        Status = "Backend je živ",
+        RabbitMq = new
+        {
+            Enabled = messageBroker.IsEnabled,
+            CircuitOpen = rabbitMq?.IsCircuitOpen ?? false
+        },
+        Timestamp = DateTime.UtcNow
+    });
+});
 
 // Errors
 app.MapGet("/errors", async (IErrorStore store) =>

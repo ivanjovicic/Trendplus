@@ -1,59 +1,33 @@
 import { OutboxStatsResponse, OutboxMessagesResponse } from "../types/outbox";
+import { apiCircuitBreaker } from "../utils/circuitBreaker";
 
 const API = import.meta.env.VITE_API_BASE_URL || "";
 
-// Retry configuration
-const RETRY_CONFIG = {
-    maxRetries: 3,
-    initialDelay: 1000, // 1 second
-    maxDelay: 10000,    // 10 seconds
-    backoffMultiplier: 2,
-};
-
 /**
- * Retry fetch with exponential backoff
+ * Execute fetch request through Circuit Breaker
  */
-async function fetchWithRetry(
+async function fetchWithCircuitBreaker(
     url: string,
-    options?: RequestInit,
-    retries = RETRY_CONFIG.maxRetries
+    options?: RequestInit
 ): Promise<Response> {
-    let lastError: Error | null = null;
-    
-    for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-            const response = await fetch(url, options);
-            
-            // If 5xx error, retry
-            if (response.status >= 500 && attempt < retries) {
-                throw new Error(`Server error: ${response.status}`);
-            }
-            
-            return response;
-        } catch (error) {
-            lastError = error as Error;
-            
-            if (attempt < retries) {
-                const delay = Math.min(
-                    RETRY_CONFIG.initialDelay * Math.pow(RETRY_CONFIG.backoffMultiplier, attempt),
-                    RETRY_CONFIG.maxDelay
-                );
-                
-                console.warn(`Retry attempt ${attempt + 1}/${retries} after ${delay}ms for ${url}`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
+    return apiCircuitBreaker.execute(async () => {
+        const response = await fetch(url, options);
+
+        // Treat 5xx errors as circuit breaker failures
+        if (response.status >= 500) {
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
         }
-    }
-    
-    throw lastError || new Error("Failed to fetch after retries");
+
+        return response;
+    });
 }
 
 export async function getOutboxStats(): Promise<OutboxStatsResponse> {
-    const url = import.meta.env.DEV 
+    const url = import.meta.env.DEV
         ? `/api/outbox/stats`
         : `${API}/api/outbox/stats`;
 
-    const response = await fetchWithRetry(url);
+    const response = await fetchWithCircuitBreaker(url);
 
     if (!response.ok) {
         throw new Error(`Failed to fetch outbox stats: ${response.statusText}`);
@@ -80,11 +54,11 @@ export async function getOutboxMessages(
     if (fromDate) params.append("fromDate", fromDate);
     if (toDate) params.append("toDate", toDate);
 
-    const url = import.meta.env.DEV 
+    const url = import.meta.env.DEV
         ? `/api/outbox/messages?${params.toString()}`
         : `${API}/api/outbox/messages?${params.toString()}`;
 
-    const response = await fetchWithRetry(url);
+    const response = await fetchWithCircuitBreaker(url);
 
     if (!response.ok) {
         throw new Error(`Failed to fetch outbox messages: ${response.statusText}`);
@@ -94,15 +68,13 @@ export async function getOutboxMessages(
 }
 
 export async function retryOutboxMessage(id: number): Promise<void> {
-    const url = import.meta.env.DEV 
+    const url = import.meta.env.DEV
         ? `/api/outbox/retry/${id}`
         : `${API}/api/outbox/retry/${id}`;
 
-    const response = await fetchWithRetry(url, {
+    const response = await fetchWithCircuitBreaker(url, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -111,15 +83,13 @@ export async function retryOutboxMessage(id: number): Promise<void> {
 }
 
 export async function retryAllFailedMessages(): Promise<{ count: number }> {
-    const url = import.meta.env.DEV 
+    const url = import.meta.env.DEV
         ? `/api/outbox/retry-all-failed`
         : `${API}/api/outbox/retry-all-failed`;
 
-    const response = await fetchWithRetry(url, {
+    const response = await fetchWithCircuitBreaker(url, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -130,15 +100,13 @@ export async function retryAllFailedMessages(): Promise<{ count: number }> {
 }
 
 export async function purgeProcessedMessages(olderThanDays: number = 7): Promise<{ count: number }> {
-    const url = import.meta.env.DEV 
+    const url = import.meta.env.DEV
         ? `/api/outbox/purge-processed?olderThanDays=${olderThanDays}`
         : `${API}/api/outbox/purge-processed?olderThanDays=${olderThanDays}`;
 
-    const response = await fetchWithRetry(url, {
+    const response = await fetchWithCircuitBreaker(url, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -157,13 +125,13 @@ export interface EventTypeStat {
 }
 
 export async function getEventTypeStats(): Promise<EventTypeStat[]> {
-    const url = import.meta.env.DEV 
+    const url = import.meta.env.DEV
         ? `/api/outbox/stats-by-type`
         : `${API}/api/outbox/stats-by-type`;
 
-    console.log("?? Fetching event type stats from:", url, "| DEV:", import.meta.env.DEV, "| API:", API);
+    console.log("?? Fetching event type stats from:", url, "| DEV:", import.meta.env.DEV);
 
-    const response = await fetchWithRetry(url);
+    const response = await fetchWithCircuitBreaker(url);
 
     if (!response.ok) {
         throw new Error(`Failed to fetch event type stats: ${response.statusText}`);

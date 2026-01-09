@@ -17,6 +17,7 @@ import TipObucePage from "./pages/TipObucePage";
 import DobavljaciPage from "./pages/DobavljaciPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
+import { CircuitBreakerStatus } from "./components/CircuitBreakerStatus";
 
 function AppShell() {
     return (
@@ -48,6 +49,7 @@ export default function App() {
                     <AppLayout>
                         <AppShell />
                     </AppLayout>
+                    <CircuitBreakerStatus />
                 </BrowserRouter>
             </ToastProvider>
         </ErrorBoundary>
