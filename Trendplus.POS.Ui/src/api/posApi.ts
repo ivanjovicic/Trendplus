@@ -13,6 +13,30 @@ export type PosProduct = {
     kolicina?: number;
 };
 
+export type SaleListItem = {
+    id: number;
+    brojRacuna: string;
+    datumProdaje: string;
+    ukupanIznos: number;
+    brojStavki: number;
+    nacinPlacanja: string;
+};
+
+export type SalesListResponse = {
+    items: SaleListItem[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+};
+
+// Type for raw artikal from backend
+interface RawArtikal {
+    id: number;
+    naziv: string;
+    prodajnaCena: number;
+    kolicina?: number;
+}
+
 // Fetch products from Trendplus2 backend API
 export async function getProducts(): Promise<PosProduct[]> {
     const res = await fetch(`${BASE_URL}/artikli`);
@@ -20,10 +44,10 @@ export async function getProducts(): Promise<PosProduct[]> {
         const text = await res.text();
         throw new Error(`Failed to load products: ${res.status} ${text}`);
     }
-    const artikli = await res.json();
+    const artikli: RawArtikal[] = await res.json();
     
     // Map Artikal to PosProduct
-    return artikli.map((a: any) => ({
+    return artikli.map((a) => ({
         id: a.id,
         name: a.naziv,
         price: a.prodajnaCena,
@@ -53,6 +77,29 @@ export async function createSale(items: SaleItem[]) {
     if (!res.ok) {
         const text = await res.text();
         throw new Error(`Failed to create sale: ${res.status} ${text}`);
+    }
+
+    return res.json();
+}
+
+export async function getSalesHistory(
+    pageNumber: number = 1,
+    pageSize: number = 50,
+    fromDate?: string,
+    toDate?: string
+): Promise<SalesListResponse> {
+    const params = new URLSearchParams({
+        pageNumber: String(pageNumber),
+        pageSize: String(pageSize),
+    });
+
+    if (fromDate) params.append("fromDate", fromDate);
+    if (toDate) params.append("toDate", toDate);
+
+    const res = await fetch(`${BASE_URL}/api/prodaje?${params.toString()}`);
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to load sales: ${res.status} ${text}`);
     }
 
     return res.json();

@@ -1,9 +1,5 @@
 ﻿using Application.Prodaja.Commands.ProdajArtikle;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Application.Prodaja.Queries;
 
 namespace Application.Common.Interfaces
 {
@@ -12,6 +8,12 @@ namespace Application.Common.Interfaces
         Task<int> ProdajAsync(
             ProdajArtikleCommand command,
             CancellationToken ct);
-    }
 
+        Task<ProdajeListResponse> GetProdajeAsync(
+            DateTime? fromDate,
+            DateTime? toDate,
+            int pageNumber,
+            int pageSize,
+            CancellationToken ct);
+    }
 }

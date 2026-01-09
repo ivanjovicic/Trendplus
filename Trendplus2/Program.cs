@@ -8,6 +8,7 @@ using Application.Common.Interfaces;
 using Application.Dobavljaci.Queries;
 using Application.Performance.Queries;
 using Application.Prodaja.Commands.ProdajArtikle;
+using Application.Prodaja.Queries;
 using Application.TipObuce.Queries;
 using FluentValidation;
 using Infrastructure.DbContexts;
@@ -583,6 +584,23 @@ app.MapPost("/api/prodaja", async (ProdajArtikleCommand command, IMediator media
     var prodajaId = await mediator.Send(command);
     logger.ProdajaCreated(prodajaId);
     return Results.Ok(prodajaId);
+});
+
+// Prodaja - List (Sales History)
+app.MapGet("/api/prodaje", async (
+    IMediator mediator,
+    ILogger<Program> logger,
+    int pageNumber = 1,
+    int pageSize = 50,
+    DateTime? fromDate = null,
+    DateTime? toDate = null) =>
+{
+    logger.LogInformation("Fetching sales history: page={PageNumber}, size={PageSize}, from={FromDate}, to={ToDate}",
+        pageNumber, pageSize, fromDate, toDate);
+
+    var query = new GetProdajeQuery(fromDate, toDate, pageNumber, pageSize);
+    var result = await mediator.Send(query);
+    return Results.Ok(result);
 });
 
 // Nivelacija

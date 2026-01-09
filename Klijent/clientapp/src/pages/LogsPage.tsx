@@ -2,6 +2,51 @@ import React, { useState, useEffect } from "react";
 import { getLogs } from "../services/logsApi";
 import { LogEntry } from "../types/logs";
 
+type TimePeriod = "" | "30m" | "1h" | "6h" | "1d" | "2d" | "7d";
+
+const timePeriodOptions: { value: TimePeriod; label: string }[] = [
+    { value: "", label: "Prilago?eni period" },
+    { value: "30m", label: "Poslednjih 30 minuta" },
+    { value: "1h", label: "Poslednji sat" },
+    { value: "6h", label: "Poslednjih 6 sati" },
+    { value: "1d", label: "Poslednji dan" },
+    { value: "2d", label: "Poslednja 2 dana" },
+    { value: "7d", label: "Poslednjih 7 dana" },
+];
+
+function getDateRangeFromPeriod(period: TimePeriod): { from: string; to: string } {
+    if (!period) return { from: "", to: "" };
+    
+    const now = new Date();
+    const to = now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
+    
+    let from: Date;
+    switch (period) {
+        case "30m":
+            from = new Date(now.getTime() - 30 * 60 * 1000);
+            break;
+        case "1h":
+            from = new Date(now.getTime() - 60 * 60 * 1000);
+            break;
+        case "6h":
+            from = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+            break;
+        case "1d":
+            from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            break;
+        case "2d":
+            from = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+            break;
+        case "7d":
+            from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+        default:
+            return { from: "", to: "" };
+    }
+    
+    return { from: from.toISOString().slice(0, 16), to };
+}
+
 export default function LogsPage() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState(true);
@@ -9,6 +54,7 @@ export default function LogsPage() {
     
     // Filters
     const [selectedLevel, setSelectedLevel] = useState<string>("");
+    const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("");
     const [fromDate, setFromDate] = useState<string>("");
     const [toDate, setToDate] = useState<string>("");
     
@@ -16,6 +62,24 @@ export default function LogsPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [pageSize] = useState(50);
+
+    const handlePeriodChange = (period: TimePeriod) => {
+        setSelectedPeriod(period);
+        const range = getDateRangeFromPeriod(period);
+        setFromDate(range.from);
+        setToDate(range.to);
+        setCurrentPage(1);
+    };
+
+    const handleCustomDateChange = (type: "from" | "to", value: string) => {
+        setSelectedPeriod(""); // Switch to custom period
+        if (type === "from") {
+            setFromDate(value);
+        } else {
+            setToDate(value);
+        }
+        setCurrentPage(1);
+    };
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -129,15 +193,26 @@ export default function LogsPage() {
                 </div>
 
                 <div>
+                    <label className="field-label" style={{ fontSize: "0.875rem" }}>Vremenski period</label>
+                    <select
+                        className="input-big"
+                        value={selectedPeriod}
+                        onChange={(e) => handlePeriodChange(e.target.value as TimePeriod)}
+                        style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
+                    >
+                        {timePeriodOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
                     <label className="field-label" style={{ fontSize: "0.875rem" }}>Od datuma</label>
                     <input
                         type="datetime-local"
                         className="input-big"
                         value={fromDate}
-                        onChange={(e) => {
-                            setFromDate(e.target.value);
-                            setCurrentPage(1);
-                        }}
+                        onChange={(e) => handleCustomDateChange("from", e.target.value)}
                         style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     />
                 </div>
@@ -148,19 +223,31 @@ export default function LogsPage() {
                         type="datetime-local"
                         className="input-big"
                         value={toDate}
-                        onChange={(e) => {
-                            setToDate(e.target.value);
-                            setCurrentPage(1);
-                        }}
+                        onChange={(e) => handleCustomDateChange("to", e.target.value)}
                         style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     />
                 </div>
 
-                <div style={{ display: "flex", alignItems: "flex-end" }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: "0.5rem" }}>
+                    <button
+                        className="button-big"
+                        onClick={() => fetchLogs()}
+                        style={{ 
+                            background: "#2563eb", 
+                            padding: "8px 16px", 
+                            marginTop: 0,
+                            marginBottom: 0,
+                            fontSize: "0.95rem"
+                        }}
+                        title="Osveži logove"
+                    >
+                        ?? Osveži
+                    </button>
                     <button
                         className="button-big"
                         onClick={() => {
                             setSelectedLevel("");
+                            setSelectedPeriod("");
                             setFromDate("");
                             setToDate("");
                             setCurrentPage(1);
@@ -173,7 +260,7 @@ export default function LogsPage() {
                             fontSize: "0.95rem"
                         }}
                     >
-                        Resetuj filtere
+                        Resetuj
                     </button>
                 </div>
             </div>
@@ -184,9 +271,20 @@ export default function LogsPage() {
                 padding: "0.75rem", 
                 background: "#f3f4f6", 
                 borderRadius: "8px",
-                fontSize: "0.95rem"
+                fontSize: "0.95rem",
+                display: "flex",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "0.5rem"
             }}>
-                <strong>Ukupno:</strong> {totalCount} logova | <strong>Stranica:</strong> {currentPage} od {totalPages}
+                <span>
+                    <strong>Ukupno:</strong> {totalCount} logova | <strong>Stranica:</strong> {currentPage} od {totalPages}
+                </span>
+                {selectedPeriod && (
+                    <span style={{ color: "#2563eb", fontWeight: 500 }}>
+                        ?? {timePeriodOptions.find(o => o.value === selectedPeriod)?.label}
+                    </span>
+                )}
             </div>
 
             {/* Loading / Error */}
