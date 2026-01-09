@@ -17,14 +17,30 @@ export default function PosPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        let isMounted = true;
+        
         setLoading(true);
         getProducts()
-            .then(setProducts)
-            .catch((err) => {
-                console.error(err);
-                setError("Greška pri učitavanju artikala. Proverite da li backend radi.");
+            .then((products) => {
+                if (isMounted) {
+                    setProducts(products);
+                }
             })
-            .finally(() => setLoading(false));
+            .catch((err) => {
+                if (isMounted) {
+                    console.error(err);
+                    setError("Greška pri učitavanju artikala. Proverite da li backend radi.");
+                }
+            })
+            .finally(() => {
+                if (isMounted) {
+                    setLoading(false);
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     function addToCart(p: PosProduct) {

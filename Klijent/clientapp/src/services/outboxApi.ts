@@ -1,6 +1,6 @@
 import { OutboxStatsResponse, OutboxMessagesResponse } from "../types/outbox";
 
-const API = import.meta.env.VITE_API_BASE_URL;
+const API = import.meta.env.VITE_API_BASE_URL || "";
 
 export async function getOutboxStats(): Promise<OutboxStatsResponse> {
     const url = import.meta.env.DEV 
@@ -102,10 +102,20 @@ export async function purgeProcessedMessages(olderThanDays: number = 7): Promise
     return response.json();
 }
 
-export async function getEventTypeStats(): Promise<any[]> {
+export interface EventTypeStat {
+    eventType: string;
+    total: number;
+    processed: number;
+    pending: number;
+    failed: number;
+}
+
+export async function getEventTypeStats(): Promise<EventTypeStat[]> {
     const url = import.meta.env.DEV 
         ? `/api/outbox/stats-by-type`
         : `${API}/api/outbox/stats-by-type`;
+
+    console.log("?? Fetching event type stats from:", url, "| DEV:", import.meta.env.DEV, "| API:", API);
 
     const response = await fetch(url);
 

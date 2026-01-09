@@ -34,9 +34,9 @@ export default function OutboxMessagesPage() {
 
             setMessages(result.messages);
             setTotalCount(result.totalCount);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Error fetching outbox messages:", err);
-            setError(err?.message ?? "Greška pri u?itavanju poruka");
+            setError((err as Error)?.message ?? "Greška pri u?itavanju poruka");
         } finally {
             setLoading(false);
         }
@@ -55,8 +55,8 @@ export default function OutboxMessagesPage() {
             await retryOutboxMessage(id);
             alert("Poruka je ozna?ena za ponovno slanje!");
             await fetchMessages();
-        } catch (err: any) {
-            alert(`Greška: ${err.message}`);
+        } catch (err) {
+            alert(`Greška: ${(err as Error).message}`);
         }
     };
 

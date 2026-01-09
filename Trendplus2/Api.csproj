@@ -9,8 +9,8 @@
     <ClientAppDir>$(MSBuildProjectDirectory)\..\Klijent\clientapp</ClientAppDir>
   </PropertyGroup>
 
-  <!-- Auto-build React app and copy to wwwroot -->
-  <Target Name="BuildReactApp" BeforeTargets="Build" Condition="!Exists('wwwroot/index.html')">
+  <!-- Auto-build React app and copy to wwwroot (DISABLED - build manually) -->
+  <Target Name="BuildReactApp" BeforeTargets="Build" Condition="false">
     <Message Text="Building React app from $(ClientAppDir)" Importance="high" />
     <Exec Command="npm install" WorkingDirectory="$(ClientAppDir)" />
     <Exec Command="npm run build" WorkingDirectory="$(ClientAppDir)" />

@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getOutboxStats, getOutboxMessages, retryOutboxMessage, retryAllFailedMessages, purgeProcessedMessages, getEventTypeStats } from "../services/outboxApi";
+import { getOutboxStats, retryOutboxMessage, retryAllFailedMessages, purgeProcessedMessages, getEventTypeStats } from "../services/outboxApi";
 import { OutboxStats, OutboxMessage } from "../types/outbox";
+
+interface EventTypeStat {
+    eventType: string;
+    total: number;
+    processed: number;
+    pending: number;
+    failed: number;
+}
 
 export default function OutboxDashboard() {
     const [stats, setStats] = useState<OutboxStats | null>(null);
     const [recentMessages, setRecentMessages] = useState<OutboxMessage[]>([]);
-    const [eventTypeStats, setEventTypeStats] = useState<any[]>([]);
+    const [eventTypeStats, setEventTypeStats] = useState<EventTypeStat[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [autoRefresh, setAutoRefresh] = useState(true);
@@ -22,9 +30,9 @@ export default function OutboxDashboard() {
             setRecentMessages(statsResult.recentMessages);
             setEventTypeStats(eventStatsResult);
             setError(null);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Error fetching outbox stats:", err);
-            setError(err?.message ?? "Greška pri u?itavanju outbox statistike");
+            setError((err as Error)?.message ?? "Greška pri u?itavanju outbox statistike");
         } finally {
             setLoading(false);
         }
@@ -50,8 +58,8 @@ export default function OutboxDashboard() {
             await retryOutboxMessage(id);
             alert("Poruka je ozna?ena za ponovno slanje!");
             await fetchStats();
-        } catch (err: any) {
-            alert(`Greška: ${err.message}`);
+        } catch (err) {
+            alert(`Greška: ${(err as Error).message}`);
         }
     };
 
@@ -64,8 +72,8 @@ export default function OutboxDashboard() {
             const result = await retryAllFailedMessages();
             alert(`${result.count} poruka je ozna?eno za ponovno slanje!`);
             await fetchStats();
-        } catch (err: any) {
-            alert(`Greška: ${err.message}`);
+        } catch (err) {
+            alert(`Greška: ${(err as Error).message}`);
         }
     };
 
@@ -81,8 +89,8 @@ export default function OutboxDashboard() {
             const result = await purgeProcessedMessages(Number(days));
             alert(`${result.count} poruka je obrisano!`);
             await fetchStats();
-        } catch (err: any) {
-            alert(`Greška: ${err.message}`);
+        } catch (err) {
+            alert(`Greška: ${(err as Error).message}`);
         }
     };
 
