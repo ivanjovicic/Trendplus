@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiCircuitBreaker, CircuitBreakerStats, CircuitState } from "../utils/circuitBreaker";
 
 interface CircuitBreakerStatusProps {
@@ -15,7 +15,6 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
 
     useEffect(() => {
         if (stats.state !== "OPEN") {
-            setCountdown(0);
             return;
         }
 
@@ -28,6 +27,11 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
         const interval = setInterval(updateCountdown, 1000);
         return () => clearInterval(interval);
     }, [stats.state, stats.lastFailureTime]);
+
+    // Calculate display countdown - 0 when not OPEN
+    const displayCountdown = useMemo(() => {
+        return stats.state === "OPEN" ? countdown : 0;
+    }, [stats.state, countdown]);
 
     if (!showAlways && stats.state === "CLOSED") return null;
 
@@ -109,7 +113,7 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
                 {stats.state === "OPEN" && (
                     <div style={{ background: "rgba(0,0,0,0.05)", padding: "8px", borderRadius: "6px" }}>
                         <div style={{ color: "#6b7280", fontSize: "0.75rem" }}>Retry In</div>
-                        <div style={{ fontWeight: 600, color: "#dc2626" }}>{countdown}s</div>
+                        <div style={{ fontWeight: 600, color: "#dc2626" }}>{displayCountdown}s</div>
                     </div>
                 )}
             </div>
@@ -125,7 +129,7 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
                         color: "#dc2626",
                     }}
                 >
-                    ?? Backend is temporarily unavailable. Requests will be rejected until recovery.
+                    ?? Backend is temporarily unavailable.
                 </div>
             )}
 
@@ -157,10 +161,6 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
                         cursor: "pointer",
                         fontWeight: 600,
                         fontSize: "0.875rem",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px",
                     }}
                 >
                     ?? Reset Circuit Breaker

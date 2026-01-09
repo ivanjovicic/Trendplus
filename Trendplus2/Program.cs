@@ -9,6 +9,7 @@ using Application.Dobavljaci.Queries;
 using Application.Performance.Queries;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.TipObuce.Queries;
+using FluentValidation;
 using Infrastructure.DbContexts;
 using Infrastructure.Middleware;
 using Infrastructure.Repository;
@@ -42,21 +43,27 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 // DbContext
 builder.Services.AddDbContext<TrendplusDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .EnableSensitiveDataLogging());
+           .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
 builder.Services.AddScoped<ITrendplusDbContext>(sp =>
     sp.GetRequiredService<TrendplusDbContext>());
 
 builder.Services.AddDbContext<AnalyticsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("AnalyticsConnection"))
-           .EnableSensitiveDataLogging());
+           .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
 builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
     sp.GetRequiredService<AnalyticsDbContext>());
 
-// Services
+// FluentValidation - auto-register all validators
+builder.Services.AddValidatorsFromAssemblyContaining<CreateArtikalCommandValidator>();
+
+// MediatR Pipeline Behaviors (order matters!)
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceLoggingBehavior<,>));
+
+// Services
 builder.Services.AddScoped<IErrorStore, DbErrorStore>();
 builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
 builder.Services.AddScoped<IOutboxService, OutboxService>();
@@ -88,7 +95,8 @@ builder.Services.AddCors(options =>
            .WithOrigins(
                "http://localhost:5173",
                "http://localhost:5174",
-               "http://localhost:8080"
+               "http://localhost:8080",
+               "https://trendplus.vercel.app"
            )
            .AllowAnyHeader()
            .AllowAnyMethod()
@@ -98,7 +106,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Middleware
+// ================= MIDDLEWARE PIPELINE =================
+
+// 1. Global exception handler (first in pipeline)
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// 2. Serilog request logging
 app.UseSerilogRequestLogging(opts =>
 {
     opts.EnrichDiagnosticContext = (diag, http) =>
@@ -107,10 +120,11 @@ app.UseSerilogRequestLogging(opts =>
         diag.Set("RequestScheme", http.Request.Scheme);
         diag.Set("UserAgent", http.Request.Headers.UserAgent.ToString());
         diag.Set("RequestPath", http.Request.Path);
+        diag.Set("CorrelationId", http.Response.Headers["X-Correlation-ID"].ToString());
     };
 });
 
-app.UseMiddleware<ExceptionLoggingMiddleware>();
+// 3. Static files & routing
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseRouting();
