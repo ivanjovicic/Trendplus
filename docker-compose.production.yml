@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: trendplus-rabbitmq-prod
+    restart: always
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI (IMPORTANT: Restrict in firewall!)
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+      RABBITMQ_DEFAULT_VHOST: trendplus
+    volumes:
+      - rabbitmq_data_prod:/var/lib/rabbitmq
+      - rabbitmq_logs_prod:/var/log/rabbitmq
+    networks:
+      - trendplus_network
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Nginx reverse proxy (optional - for SSL termination)
+  nginx:
+    image: nginx:alpine
+    container_name: trendplus-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - trendplus_network
+    depends_on:
+      - rabbitmq
+
+volumes:
+  rabbitmq_data_prod:
+    driver: local
+  rabbitmq_logs_prod:
+    driver: local
+
+networks:
+  trendplus_network:
+    driver: bridge

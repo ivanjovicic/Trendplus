@@ -1,0 +1,30 @@
+[Unit]
+Description=Trendplus Core API (.NET 8)
+After=network.target
+
+[Service]
+Type=notify
+WorkingDirectory=/opt/trendplus/publish
+ExecStart=/usr/bin/dotnet /opt/trendplus/publish/Api.dll
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=trendplus-api
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://0.0.0.0:8080
+
+# RabbitMQ (CloudAMQP with SSL)
+Environment=RabbitMq__HostName=cow.rmq2.cloudamqp.com
+Environment=RabbitMq__Port=5671
+Environment=RabbitMq__UserName=jsvhgrbd
+Environment=RabbitMq__Password=IO1FsweLq_abLDVKNebQwjZVE6WXsVrV
+Environment=RabbitMq__VirtualHost=jsvhgrbd
+Environment=RabbitMq__UseSsl=true
+Environment=RabbitMq__Enabled=true
+
+# Database
+Environment=ConnectionStrings__DefaultConnection=Host=your-postgres;Port=5432;Database=trendplus;Username=dbuser;Password=CHANGE_ME;SSL Mode=Require;
+
+[Install]
+WantedBy=multi-user.target

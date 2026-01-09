@@ -11,9 +11,6 @@ export default function HomePage() {
         📦 Trendplus
       </h1>
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        {/*<Link to="/artikli" className="button-big">*/}
-        {/*  ➕ Kreiraj artikal*/}
-        {/*</Link>*/}
         <Link to="/unos-robe" className="button-big" style={{ background: "#7c3aed" }}>
           📦 Unos robe
         </Link>
@@ -23,21 +20,22 @@ export default function HomePage() {
         <Link to="/prodaja" className="button-big">
           🛒 Prodaja
         </Link>
-        {/*<Link to="/tipovi-obuce" className="button-big" style={{ background: "#0891b2" }}>*/}
-        {/*  👟 Kreiraj tip obuće*/}
-        {/*</Link>*/}
-        {/*<Link to="/dobavljaci" className="button-big" style={{ background: "#059669" }}>*/}
-        {/*  🏢 Kreiraj dobavljača*/}
-        {/*</Link>*/}
-        {/*<Link to="/sezone" className="button-big" style={{ background: "#7c3aed" }}>*/}
-        {/*  📅 Sezone*/}
-        {/*</Link>*/}
-        {/*<Link to="/logs" className="button-big" style={{ background: "#059669" }}>*/}
-        {/*  📋 Pregled logova*/}
-        {/*</Link>*/}
-        {/*<Link to="/performance" className="button-big" style={{ background: "#f59e0b" }}>*/}
-        {/*  ⚡ Performance Dashboard*/}
-        {/*</Link>*/}
+        
+        <div style={{ borderTop: "2px solid #e5e7eb", marginTop: "1rem", paddingTop: "1rem" }}>
+          <h3 style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.75rem", fontWeight: 600 }}>
+            🔧 Monitoring & Admin
+          </h3>
+          
+          <Link to="/outbox" className="button-big" style={{ background: "#8b5cf6" }}>
+            📨 Outbox Dashboard
+          </Link>
+          <Link to="/performance" className="button-big" style={{ background: "#f59e0b" }}>
+            ⚡ Performance Dashboard
+          </Link>
+          <Link to="/logs" className="button-big" style={{ background: "#059669" }}>
+            📋 Logs
+          </Link>
+        </div>
       </div>
     </div>
   );

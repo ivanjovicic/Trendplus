@@ -12,17 +12,32 @@ namespace Application.Prodaja.Commands.ProdajArtikle
      : IRequestHandler<ProdajArtikleCommand, int>
     {
         private readonly IProdajaRepository _repo;
+        private readonly IOutboxService _outbox;
 
-        public ProdajArtikleCommandHandler(IProdajaRepository repo)
+        public ProdajArtikleCommandHandler(IProdajaRepository repo, IOutboxService outbox)
         {
             _repo = repo;
+            _outbox = outbox;
         }
 
         public async Task<int> Handle(
             ProdajArtikleCommand request,
             CancellationToken cancellationToken)
         {
-            return await _repo.ProdajAsync(request, cancellationToken);
+            var prodajaId = await _repo.ProdajAsync(request, cancellationToken);
+
+            // Publish event to Outbox (will be processed by OutboxProcessorWorker)
+            await _outbox.PublishAsync("ProdajaKreirana", new
+            {
+                ProdajaId = prodajaId,
+                BrojRacuna = request.BrojRacuna,
+                IdObjekat = request.IdObjekat,
+                NacinPlacanja = request.NacinPlacanja,
+                Stavke = request.Stavke,
+                Timestamp = DateTime.UtcNow
+            }, correlationId: $"PRODAJA-{prodajaId}", ct: cancellationToken);
+
+            return prodajaId;
         }
     }
 

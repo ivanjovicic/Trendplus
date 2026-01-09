@@ -205,7 +205,10 @@ export default function PosPage() {
                                                 height: 30,
                                                 cursor: "pointer",
                                                 fontSize: 18,
-                                                fontWeight: 700
+                                                fontWeight: 700,
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center"
                                             }}
                                         >
                                             -
@@ -229,7 +232,10 @@ export default function PosPage() {
                                                 height: 30,
                                                 cursor: "pointer",
                                                 fontSize: 18,
-                                                fontWeight: 700
+                                                fontWeight: 700,
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center"
                                             }}
                                         >
                                             +

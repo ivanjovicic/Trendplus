@@ -12,8 +12,10 @@ namespace Application.Artikli.Common.Interfaces
         DbSet<Domain.Model.Artikli> Artikli { get; }
         DbSet<Domain.Model.TipObuce> TipoviObuce { get; }
         DbSet<Dobavljac> Dobavljaci { get; }
+        DbSet<Domain.Model.CreatedIdDto> CreatedIds { get; }
         DbSet<Domain.Model.DnevnikPromena> DnevnikPromena { get; }
         DbSet<Domain.Model.Sezona> Sezone { get; }
+        DbSet<Domain.Model.OutboxMessage> OutboxMessages { get; }
 
         DatabaseFacade Database { get; }
 

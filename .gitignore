@@ -361,6 +361,17 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
 # Serilog Logs
 Logs/
 *.log
+
+# Environment variables (secrets)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Docker volumes
+rabbitmq_data/
+rabbitmq_logs/

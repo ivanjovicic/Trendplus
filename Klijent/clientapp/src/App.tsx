@@ -8,6 +8,8 @@ import ProdajaPage from "./pages/ProdajaPage";
 import LogsPage from "./pages/LogsPage";
 import UnosRobePage from "./pages/UnosRobePage";
 import PerformanceDashboard from "./pages/PerformanceDashboard";
+import OutboxDashboard from "./pages/OutboxDashboard";
+import OutboxMessagesPage from "./pages/OutboxMessagesPage";
 import NivelacijaCenaPage from "./pages/NivelacijaCenaPage";
 import NivelacijePage from "./pages/NivelacijePage";
 import SezonaPage from "./pages/SezonaPage";
@@ -26,6 +28,8 @@ function AppShell() {
             <Route path="/nivelacija" element={<NivelacijaCenaPage />} />
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/performance" element={<PerformanceDashboard />} />
+            <Route path="/outbox" element={<OutboxDashboard />} />
+            <Route path="/outbox/messages" element={<OutboxMessagesPage />} />
             <Route path="/nivelacije" element={<NivelacijePage />} />
             <Route path="/sezone" element={<SezonaPage />} />
             <Route path="/tipovi-obuce" element={<TipObucePage />} />

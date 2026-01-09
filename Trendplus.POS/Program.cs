@@ -30,10 +30,22 @@ builder.Services.AddProblemDetails(); // bolji error response
 
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+// POS Request Logging Middleware
+app.UseMiddleware<Trendplus.POS.Middleware.PosRequestLoggingMiddleware>();
 
-app.UseHttpsRedirection();
+// Only enable Swagger UI, not automatic redirect
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Trendplus POS API v1");
+        c.RoutePrefix = "swagger"; // Swagger available at /swagger, not root
+    });
+}
+
+// Comment out HTTPS redirection for development on HTTP
+// app.UseHttpsRedirection();
 app.UseCors("PosUi");
 
 app.MapControllers();
@@ -84,6 +96,21 @@ async (
 // Health / ping (korisno za kasu)
 app.MapGet("/health", () => Results.Ok(new { ok = true }))
    .WithTags("System");
+
+// Root endpoint - show API info
+app.MapGet("/", () => Results.Ok(new
+{
+    name = "Trendplus POS API",
+    version = "1.0",
+    endpoints = new
+    {
+        swagger = "/swagger",
+        health = "/health",
+        sale = "/pos/sale"
+    }
+}))
+.WithTags("System")
+.ExcludeFromDescription();
 
 app.Run();
 

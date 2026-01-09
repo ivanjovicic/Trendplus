@@ -1,4 +1,4 @@
-﻿using Application.Artikli.Commands.CreateArtikal;
+using Application.Artikli.Commands.CreateArtikal;
 using Application.Artikli.Commands.UpdateArtikal;
 using Application.Artikli.Common.Interfaces;
 using Application.Artikli.Queries.GetArtikal;
@@ -6,6 +6,7 @@ using Application.Artikli.Queries.VratiArtikle;
 using Application.Behaviors;
 using Application.Common.Interfaces;
 using Application.Dobavljaci.Queries;
+using Application.Performance.Queries;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.TipObuce.Queries;
 using Infrastructure.DbContexts;
@@ -14,15 +15,14 @@ using Infrastructure.Repository;
 using Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Serilog;
-using Serilog.Events;
 using System.Globalization;
-using Application.Performance.Queries;
+using Trendplus2;
+using Trendplus2.Dtos;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Serilog bootstrap iz appsettings.json
+// Serilog bootstrap
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
@@ -36,10 +36,9 @@ builder.Configuration
     .AddEnvironmentVariables();
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-// DbContext‑ovi – logovanje upita preko Serilog-a
+// DbContext
 builder.Services.AddDbContext<TrendplusDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
            .EnableSensitiveDataLogging());
@@ -54,13 +53,23 @@ builder.Services.AddDbContext<AnalyticsDbContext>(options =>
 builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
     sp.GetRequiredService<AnalyticsDbContext>());
 
+// Services
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceLoggingBehavior<,>));
 builder.Services.AddScoped<IErrorStore, DbErrorStore>();
 builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
+builder.Services.AddScoped<IOutboxService, OutboxService>();
+
+// RabbitMQ
+builder.Services.Configure<Infrastructure.Configuration.RabbitMqSettings>(
+    builder.Configuration.GetSection("RabbitMq"));
+builder.Services.AddSingleton<IMessageBroker, RabbitMqMessageBroker>();
+
+// Background Workers
+builder.Services.AddHostedService<Workers.SyncWorker>();
+builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
 
 builder.Services.AddControllers();
-builder.Services.AddHostedService<Workers.SyncWorker>();
 builder.Services.ConfigureHttpJsonOptions(opts =>
 {
     opts.SerializerOptions.PropertyNameCaseInsensitive = true;
@@ -69,42 +78,28 @@ builder.Services.ConfigureHttpJsonOptions(opts =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddMediatR(typeof(CreateArtikalHandler).Assembly);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy
-           .AllowAnyOrigin()
+           .WithOrigins(
+               "http://localhost:5173",
+               "http://localhost:5174",
+               "http://localhost:8080"
+           )
            .AllowAnyHeader()
-           .AllowAnyMethod();
+           .AllowAnyMethod()
+           .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// Ensure PerformanceLogs table exists
-//using (var scope = app.Services.CreateScope())
-//{
-//    var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
-//    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    
-//    try
-//    {
-//        await Infrastructure.DbContexts.DatabaseMigrationHelper.EnsurePerformanceLogsTableExistsAsync(
-//            analyticsDb, 
-//            logger
-//        );
-//    }
-//    catch (Exception ex)
-//    {
-//        logger.LogError(ex, "Failed to initialize PerformanceLogs table. Performance tracking may not work.");
-//    }
-//}
-
-// Serilog request logging – detaljan log svakog HTTP zahteva
+// Middleware
 app.UseSerilogRequestLogging(opts =>
 {
-    // EnrichContext se poziva za svaki request
     opts.EnrichDiagnosticContext = (diag, http) =>
     {
         diag.Set("RequestHost", http.Request.Host.Value);
@@ -114,13 +109,9 @@ app.UseSerilogRequestLogging(opts =>
     };
 });
 
-// global exception logging u DB (tvoj middleware)
 app.UseMiddleware<ExceptionLoggingMiddleware>();
-
-// Serve static files BEFORE UseRouting
 app.UseDefaultFiles();
 app.UseStaticFiles();
-
 app.UseRouting();
 app.UseCors("AllowFrontend");
 
@@ -131,11 +122,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseSwagger();
 app.UseSwaggerUI();
-
 app.UseAuthorization();
 
-// ================= ENDPOINTS ==========// Health
-app.MapGet("/health", () => Results.Ok("Backend je živ"));
+// ================= ENDPOINTS =================
+
+// Health
+app.MapGet("/health", () => Results.Ok("Backend je �iv"));
 
 // Errors
 app.MapGet("/errors", async (IErrorStore store) =>
@@ -144,7 +136,7 @@ app.MapGet("/errors", async (IErrorStore store) =>
     return Results.Ok(errors);
 });
 
-// Logs endpoint – paginisano vraćanje grešaka iz ErrorRecords
+// Logs
 app.MapGet("/api/logs", async (
     IErrorStore store,
     ILogger<Program> logger,
@@ -157,18 +149,13 @@ app.MapGet("/api/logs", async (
     try
     {
         var errors = await store.GetAllAsync();
-
         var filtered = errors.AsEnumerable();
 
         if (fromDate.HasValue)
-        {
             filtered = filtered.Where(e => e.Timestamp >= fromDate.Value);
-        }
 
         if (toDate.HasValue)
-        {
             filtered = filtered.Where(e => e.Timestamp <= toDate.Value);
-        }
 
         if (!string.IsNullOrWhiteSpace(level))
         {
@@ -210,16 +197,16 @@ app.MapGet("/api/logs", async (
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Failed to fetch logs from ErrorRecords table");
+        logger.LogsFetchFailed(ex);
         return Results.Problem(
-            detail: "Unable to fetch logs. The database table may not exist. Please run migrations: dotnet ef database update",
+            detail: "Unable to fetch logs. Please run migrations: dotnet ef database update",
             statusCode: 500,
             title: "Database Error"
         );
     }
 });
 
-// Performance stats endpoint
+// Performance
 app.MapGet("/api/performance", async (
     IMediator mediator,
     ILogger<Program> logger,
@@ -228,46 +215,188 @@ app.MapGet("/api/performance", async (
     DateTime? fromDate = null,
     DateTime? toDate = null) =>
 {
-    logger.LogInformation("GET /api/performance - TopCount: {TopCount}, MinDuration: {MinDuration}ms", 
-        topCount, minDurationMs);
+    logger.PerformanceRequest(topCount, minDurationMs);
 
     var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate);
     var result = await mediator.Send(query);
-
     return Results.Ok(result);
 });
 
-// Diagnostic test-insert
-app.MapPost("/diagnostics/test-insert", async (TrendplusDbContext db, ILogger<Program> logger) =>
+// Outbox Stats
+app.MapGet("/api/outbox/stats", async (ITrendplusDbContext db) =>
 {
-    try
-    {
-        var test = new Domain.Model.Artikli
+    var total = await db.OutboxMessages.CountAsync();
+    var processed = await db.OutboxMessages.CountAsync(m => m.IsProcessed);
+    var pending = await db.OutboxMessages.CountAsync(m => !m.IsProcessed && m.RetryCount < 5);
+    var failed = await db.OutboxMessages.CountAsync(m => !m.IsProcessed && m.RetryCount >= 5);
+    
+    var recentMessages = await db.OutboxMessages
+        .OrderByDescending(m => m.CreatedAt)
+        .Take(10)
+        .Select(m => new
         {
-            Naziv = "DIAGNOSTIC_TEST",
-            ProdajnaCena = 1,
-            Kolicina = 0
-        };
+            m.Id,
+            m.EventType,
+            m.CreatedAt,
+            m.ProcessedAt,
+            m.IsProcessed,
+            m.RetryCount,
+            m.ErrorMessage,
+            m.CorrelationId
+        })
+        .ToListAsync();
 
-        db.Artikli.Add(test);
-        await db.SaveChangesAsync();
-        logger.LogInformation("Diagnostic insert created artikal with Id {Id}", test.Id);
-        return Results.Ok(new { test.Id });
-    }
-    catch (Exception ex)
+    return Results.Ok(new
     {
-        logger.LogError(ex, "Test-insert failed");
-        return Results.Problem(detail: ex.Message);
-    }
+        stats = new
+        {
+            total,
+            processed,
+            pending,
+            failed,
+            successRate = total > 0 ? (double)processed / total * 100 : 0
+        },
+        recentMessages
+    });
 });
 
-// Artikli
+// Outbox Messages
+app.MapGet("/api/outbox/messages", async (
+    ITrendplusDbContext db,
+    int pageNumber = 1,
+    int pageSize = 50,
+    bool? isProcessed = null,
+    string? eventType = null,
+    DateTime? fromDate = null,
+    DateTime? toDate = null) =>
+{
+    var query = db.OutboxMessages.AsQueryable();
+
+    if (isProcessed.HasValue)
+        query = query.Where(m => m.IsProcessed == isProcessed.Value);
+
+    if (!string.IsNullOrWhiteSpace(eventType))
+        query = query.Where(m => m.EventType.Contains(eventType));
+
+    if (fromDate.HasValue)
+        query = query.Where(m => m.CreatedAt >= fromDate.Value);
+
+    if (toDate.HasValue)
+        query = query.Where(m => m.CreatedAt <= toDate.Value);
+
+    var total = await query.CountAsync();
+
+    var messages = await query
+        .OrderByDescending(m => m.CreatedAt)
+        .Skip((pageNumber - 1) * pageSize)
+        .Take(pageSize)
+        .Select(m => new
+        {
+            m.Id,
+            m.EventType,
+            m.Payload,
+            m.CreatedAt,
+            m.ProcessedAt,
+            m.IsProcessed,
+            m.RetryCount,
+            m.ErrorMessage,
+            m.CorrelationId
+        })
+        .ToListAsync();
+
+    return Results.Ok(new
+    {
+        messages,
+        totalCount = total,
+        pageNumber,
+        pageSize
+    });
+});
+
+// Outbox Retry
+app.MapPost("/api/outbox/retry/{id:long}", async (
+    long id,
+    ITrendplusDbContext db,
+    ILogger<Program> logger) =>
+{
+    var message = await db.OutboxMessages.FindAsync(id);
+    if (message == null)
+        return Results.NotFound();
+
+    message.RetryCount = 0;
+    message.ErrorMessage = null;
+    await db.SaveChangesAsync();
+
+    logger.OutboxRetry(id);
+    return Results.Ok(new { success = true });
+});
+
+// Bulk Retry Failed
+app.MapPost("/api/outbox/retry-all-failed", async (
+    ITrendplusDbContext db,
+    ILogger<Program> logger) =>
+{
+    var failedMessages = await db.OutboxMessages
+        .Where(m => !m.IsProcessed && m.RetryCount >= 5)
+        .ToListAsync();
+
+    foreach (var message in failedMessages)
+    {
+        message.RetryCount = 0;
+        message.ErrorMessage = null;
+    }
+
+    await db.SaveChangesAsync();
+
+    logger.BulkRetry(failedMessages.Count);
+    return Results.Ok(new { success = true, count = failedMessages.Count });
+});
+
+// Purge Processed
+app.MapPost("/api/outbox/purge-processed", async (
+    ITrendplusDbContext db,
+    ILogger<Program> logger,
+    int olderThanDays = 7) =>
+{
+    var cutoffDate = DateTime.UtcNow.AddDays(-olderThanDays);
+    
+    var messagesToDelete = await db.OutboxMessages
+        .Where(m => m.IsProcessed && m.ProcessedAt < cutoffDate)
+        .ToListAsync();
+
+    db.OutboxMessages.RemoveRange(messagesToDelete);
+    await db.SaveChangesAsync();
+
+    logger.PurgeProcessed(messagesToDelete.Count, olderThanDays);
+    return Results.Ok(new { success = true, count = messagesToDelete.Count });
+});
+
+// Event Type Stats
+app.MapGet("/api/outbox/stats-by-type", async (ITrendplusDbContext db) =>
+{
+    var stats = await db.OutboxMessages
+        .GroupBy(m => m.EventType)
+        .Select(g => new
+        {
+            eventType = g.Key,
+            total = g.Count(),
+            processed = g.Count(m => m.IsProcessed),
+            pending = g.Count(m => !m.IsProcessed && m.RetryCount < 5),
+            failed = g.Count(m => !m.IsProcessed && m.RetryCount >= 5)
+        })
+        .OrderByDescending(s => s.total)
+        .ToListAsync();
+
+    return Results.Ok(stats);
+});
+
+// Artikli - Create
 app.MapPost("/artikli", async (
     Application.Artikli.Commands.CreateArtikal.ClientCreateArtikalDto dto,
     IMediator mediator,
     ILogger<Program> logger) =>
 {
-    logger.LogInformation("POST /artikli payload: {@Dto}", dto);
+    logger.CreateArtikalRequest(System.Text.Json.JsonSerializer.Serialize(dto));
 
     var cmd = new CreateArtikalCommand(
         dto.Naziv,
@@ -285,41 +414,82 @@ app.MapPost("/artikli", async (
 
     var id = await mediator.Send(cmd);
 
-    logger.LogInformation("Artikal kreiran sa Id {Id}", id);
+    logger.ArtikalCreated(id);
 
     return Results.Created(
-        string.Create(
-            CultureInfo.InvariantCulture,
-            $"/artikli/{id}"
-        ),
+        string.Create(CultureInfo.InvariantCulture, $"/artikli/{id}"),
         new { id }
     );
 });
 
+// Artikli - Get By Id
 app.MapGet("/artikli/{id:int}", async (int id, IMediator mediator, ILogger<Program> logger) =>
 {
-    logger.LogInformation("GET /artikli/{Id}", id);
+    logger.GetArtikalRequest(id);
     try
     {
         var result = await mediator.Send(new GetArtikalQuery(id));
         if (result == null)
-            return Results.NotFound(new { error = "Artikal nije pronađen." });
+            return Results.NotFound(new { error = "Artikal nije prona?en." });
         return Results.Ok(result);
     }
     catch (KeyNotFoundException)
     {
-        return Results.NotFound(new { error = "Artikal nije pronađen." });
+        return Results.NotFound(new { error = "Artikal nije prona?en." });
     }
 });
 
+// Artikli - List
 app.MapGet("/artikli", async (IMediator mediator, ILogger<Program> logger) =>
 {
-    logger.LogInformation("GET /artikli (lista)");
+    logger.GetArtikliRequest();
     var result = await mediator.Send(new GetArtikliQuery());
     return Results.Ok(result);
 });
 
-// Tipovi obuća - API endpoints
+// Artikli - Update
+app.MapPut("/artikli/{id:int}", async (
+    int id,
+    Application.Artikli.Commands.UpdateArtikal.UpdateArtikalDto dto,
+    IMediator mediator,
+    ILogger<Program> logger) =>
+{
+    logger.UpdateArtikalRequest(id, System.Text.Json.JsonSerializer.Serialize(dto));
+
+    var cmd = new UpdateArtikalCommand(
+        id,
+        dto.Naziv,
+        dto.TipObuceId,
+        dto.DobavljacId,
+        dto.NabavnaCena,
+        dto.NabavnaCenaDin,
+        dto.PrvaProdajnaCena,
+        dto.ProdajnaCena,
+        dto.Kolicina,
+        dto.Komentar,
+        dto.IDObjekat,
+        dto.IDSezona
+    );
+
+    try
+    {
+        await mediator.Send(cmd);
+        logger.ArtikalUpdated(id);
+        return Results.NoContent();
+    }
+    catch (InvalidOperationException ex)
+    {
+        logger.UpdateArtikalFailed(ex, id);
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        logger.UpdateArtikalError(ex);
+        return Results.Problem(detail: ex.Message);
+    }
+});
+
+// Tipovi Obu?e
 app.MapGet("/api/tipovi-obuce", async (IMediator mediator) =>
 {
     var result = await mediator.Send(new GetTipObuceQuery());
@@ -334,7 +504,7 @@ app.MapPost("/api/tipovi-obuce", async (
     return Results.Created($"/api/tipovi-obuce/{id}", new { id });
 });
 
-// Dobavljači - API endpoints
+// Dobavlja?i
 app.MapGet("/api/dobavljaci", async (IMediator mediator) =>
 {
     var result = await mediator.Send(new GetDobavljacQuery());
@@ -355,7 +525,7 @@ app.MapPost("/api/dobavljaci", async (CreateDobavljacDto dto, ITrendplusDbContex
     return Results.Created($"/api/dobavljaci/{entity.Id}", new { id = entity.Id });
 });
 
-// Sezone - API endpoints
+// Sezone
 app.MapGet("/api/sezone", async (ITrendplusDbContext db) =>
 {
     var result = await db.Sezone.OrderBy(s => s.DatumOd).ToListAsync();
@@ -378,54 +548,13 @@ app.MapPost("/api/sezone", async (CreateSezonaDto dto, ITrendplusDbContext db) =
 // Prodaja
 app.MapPost("/api/prodaja", async (ProdajArtikleCommand command, IMediator mediator, ILogger<Program> logger) =>
 {
-    logger.LogInformation("POST /api/prodaja payload: {@Command}", command);
+    logger.ProdajaRequest(System.Text.Json.JsonSerializer.Serialize(command));
     var prodajaId = await mediator.Send(command);
-    logger.LogInformation("Prodaja kreirana sa Id {Id}", prodajaId);
+    logger.ProdajaCreated(prodajaId);
     return Results.Ok(prodajaId);
 });
 
-app.MapPut("/artikli/{id:int}", async (
-    int id,
-    Application.Artikli.Commands.UpdateArtikal.UpdateArtikalDto dto,
-    IMediator mediator,
-    ILogger<Program> logger) =>
-{
-    logger.LogInformation("Received PUT /artikli/{Id} DTO: {@Dto}", id, dto);
-
-    var cmd = new UpdateArtikalCommand(
-        id,
-        dto.Naziv,
-        dto.TipObuceId,
-        dto.DobavljacId,
-        dto.NabavnaCena,
-        dto.NabavnaCenaDin,
-        dto.PrvaProdajnaCena,
-        dto.ProdajnaCena,
-        dto.Kolicina,
-        dto.Komentar,
-        dto.IDObjekat,
-        dto.IDSezona
-    );
-
-    try
-    {
-        await mediator.Send(cmd);
-        logger.LogInformation("Artikal {Id} uspešno izmenjen", id);
-        return Results.NoContent();
-    }
-    catch (InvalidOperationException ex)
-    {
-        logger.LogWarning(ex, "UpdateArtikal failed for Id {Id}", id);
-        return Results.NotFound(new { error = ex.Message });
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error while handling UpdateArtikalCommand");
-        return Results.Problem(detail: ex.Message);
-    }
-});
-
-// Price leveling (nivelacija) - logs old->new price in DnevnikPromena
+// Nivelacija
 app.MapPost("/api/nivelacija", async (
     ITrendplusDbContext db,
     ILogger<Program> logger,
@@ -434,23 +563,17 @@ app.MapPost("/api/nivelacija", async (
     CancellationToken ct) =>
 {
     if (req.ArtikalId <= 0)
-    {
         return Results.BadRequest(new { error = "ArtikalId je obavezan." });
-    }
 
     var artikal = await db.Artikli.FirstOrDefaultAsync(a => a.Id == req.ArtikalId, ct);
     if (artikal == null)
-    {
         return Results.NotFound(new { error = "Artikal ne postoji." });
-    }
 
     var stara = artikal.ProdajnaCena;
     var nova = req.NovaProdajnaCena;
 
     if (nova < 0)
-    {
         return Results.BadRequest(new { error = "NovaProdajnaCena mora biti >= 0." });
-    }
 
     artikal.ProdajnaCena = nova;
 
@@ -470,12 +593,12 @@ app.MapPost("/api/nivelacija", async (
 
     await db.SaveChangesAsync(ct);
 
-    logger.LogInformation("Nivelacija cene za ArtikalId {Id}: {Old} -> {New}", artikal.Id, stara, nova);
+    logger.NivelacijaCene(artikal.Id, stara, nova);
 
     return Results.Ok(new { artikalId = artikal.Id, staraCena = stara, novaCena = nova });
 });
 
-// Nivelacije pregled - filtering/sorting/paging
+// Nivelacije - Pregled
 app.MapGet("/api/nivelacije", async (
     ITrendplusDbContext db,
     int pageNumber = 1,
@@ -506,7 +629,7 @@ app.MapGet("/api/nivelacije", async (
             p => p.ArtikalId,
             a => (int?)a.Id,
             (p, arts) => new { p, a = arts.FirstOrDefault() });
-
+    
     if (!string.IsNullOrWhiteSpace(naziv))
     {
         var n = naziv.Trim();
@@ -555,20 +678,21 @@ app.MapGet("/api/nivelacije", async (
 });
 
 app.MapControllers();
-
-// SPA fallback: return index.html for all non-API routes
 app.MapFallbackToFile("index.html");
 
+// Auto-migrate on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
-    db.Database.Migrate(); // Automatski primenjuje migracije
+    db.Database.Migrate();
 }
+
 app.Run();
 
-// DTO used by /dobavljaci endpoint
-record CreateDobavljacDto(string Naziv, string? Adresa, string? Telefon, string? Napomena);
-
-record CreateSezonaDto(string Naziv, DateTime DatumOd, DateTime DatumDo);
-
-public sealed record NivelacijaCenaRequest(int ArtikalId, decimal NovaProdajnaCena, string? Komentar);
+// DTOs in namespace
+namespace Trendplus2.Dtos
+{
+    internal sealed record CreateDobavljacDto(string Naziv, string? Adresa, string? Telefon, string? Napomena);
+    internal sealed record CreateSezonaDto(string Naziv, DateTime DatumOd, DateTime DatumDo);
+    internal sealed record NivelacijaCenaRequest(int ArtikalId, decimal NovaProdajnaCena, string? Komentar);
+}

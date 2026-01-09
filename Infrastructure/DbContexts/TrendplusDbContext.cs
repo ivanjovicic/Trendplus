@@ -50,6 +50,22 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.DatumDo).IsRequired();
             });
 
+            modelBuilder.Entity<OutboxMessage>(eb =>
+            {
+                eb.ToTable("OutboxMessages");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.EventType).IsRequired().HasMaxLength(200);
+                eb.Property(e => e.Payload).IsRequired();
+                eb.Property(e => e.CreatedAt).IsRequired();
+                eb.Property(e => e.IsProcessed).IsRequired();
+                eb.Property(e => e.RetryCount).HasDefaultValue(0);
+                eb.Property(e => e.ErrorMessage).HasMaxLength(2000);
+                eb.Property(e => e.CorrelationId).HasMaxLength(100);
+
+                eb.HasIndex(e => e.IsProcessed);
+                eb.HasIndex(e => e.CreatedAt);
+            });
+
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
         }
 
@@ -60,6 +76,7 @@ namespace Infrastructure.DbContexts
         public DbSet<ErrorRecord> ErrorRecords { get; set; } = null!;
         public DbSet<DnevnikPromena> DnevnikPromena { get; set; } = null!;
         public DbSet<Sezona> Sezone { get; set; } = null!;
+        public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {
