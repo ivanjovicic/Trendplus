@@ -1,0 +1,61 @@
+services:
+  # Core API
+  - type: web
+    name: trendplus-api
+    runtime: dotnet
+    plan: free
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    buildCommand: dotnet publish Trendplus2/Api.csproj -c Release -o out
+    startCommand: dotnet out/Api.dll
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:8080
+      # RabbitMQ (CloudAMQP)
+      - key: RabbitMq__HostName
+        value: cow.rmq2.cloudamqp.com
+      - key: RabbitMq__Port
+        value: 5671
+      - key: RabbitMq__UserName
+        sync: false # Set in Render Dashboard (secret)
+      - key: RabbitMq__Password
+        sync: false # Set in Render Dashboard (secret)
+      - key: RabbitMq__VirtualHost
+        value: jsvhgrbd
+      - key: RabbitMq__UseSsl
+        value: true
+      - key: RabbitMq__Enabled
+        value: true
+      # Database (set in Dashboard)
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: ConnectionStrings__AnalyticsConnection
+        sync: false
+
+  # POS API (optional)
+  - type: web
+    name: trendplus-pos
+    runtime: dotnet
+    plan: free
+    region: frankfurt
+    branch: main
+    autoDeploy: false # Deploy manually
+    buildCommand: dotnet publish Trendplus.POS/Trendplus.POS.csproj -c Release -o out
+    startCommand: dotnet out/Trendplus.POS.dll
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: CoreApi__BaseUrl
+        value: https://trendplus-api.onrender.com
+
+databases:
+  # PostgreSQL (if using Render database)
+  # - name: trendplus-db
+  #   plan: free
+  #   databaseName: trendplus
+  #   user: trendplus
