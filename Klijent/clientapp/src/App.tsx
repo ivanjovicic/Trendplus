@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import AppLayout from "./layout/AppLayout";
 import ArtikliPage from "./pages/ArtikliPage";
@@ -15,6 +15,8 @@ import NivelacijePage from "./pages/NivelacijePage";
 import SezonaPage from "./pages/SezonaPage";
 import TipObucePage from "./pages/TipObucePage";
 import DobavljaciPage from "./pages/DobavljaciPage";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ToastProvider } from "./components/Toast";
 
 function AppShell() {
     return (
@@ -40,10 +42,14 @@ function AppShell() {
 
 export default function App() {
     return (
-        <BrowserRouter>
-            <AppLayout>
-                <AppShell />
-            </AppLayout>
-        </BrowserRouter>
+        <ErrorBoundary>
+            <ToastProvider>
+                <BrowserRouter>
+                    <AppLayout>
+                        <AppShell />
+                    </AppLayout>
+                </BrowserRouter>
+            </ToastProvider>
+        </ErrorBoundary>
     );
 }

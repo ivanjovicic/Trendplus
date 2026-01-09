@@ -16,6 +16,11 @@ export default defineConfig({
                 target: "http://localhost:8080",
                 changeOrigin: true,
             },
+            // Proxy /health for backend status check
+            "/health": {
+                target: "http://localhost:8080",
+                changeOrigin: true,
+            },
         },
     },
 });
