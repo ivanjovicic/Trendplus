@@ -45,6 +45,25 @@ namespace Infrastructure.Repository
             var result = await cmd.ExecuteScalarAsync(ct);
             var prodajaId = Convert.ToInt32(result);
 
+            // Insert into DnevnikPromena for audit trail
+            await using var logCmd = conn.CreateCommand();
+            logCmd.CommandText = @"
+                INSERT INTO ""DnevnikPromena"" 
+                    (""TipPromene"", ""Datum"", ""Iznos"", ""BrojRacuna"", ""Komentar"")
+                SELECT 
+                    'Prodaja',
+                    CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
+                    COALESCE(SUM(ps.kolicina * ps.cena), 0),
+                    pz.broj_racuna,
+                    'Prodaja - ' || COALESCE(pz.broj_racuna, 'N/A') || ' (' || pz.nacin_placanja || ')'
+                FROM prodaja_zaglavlje pz
+                LEFT JOIN prodaja_stavke ps ON pz.id = ps.id_prodaja
+                WHERE pz.id = $1
+                GROUP BY pz.id, pz.broj_racuna, pz.nacin_placanja";
+            
+            logCmd.Parameters.Add(new NpgsqlParameter { Value = prodajaId, NpgsqlDbType = NpgsqlDbType.Integer });
+            await logCmd.ExecuteNonQueryAsync(ct);
+
             return prodajaId;
         }
 

@@ -248,25 +248,81 @@ public static class TrendplusDbSeeder
             await db.SaveChangesAsync(ct);
         }
 
-        // Test prodaja (seed only once)
-        var seedRacun = $"TEST-{DateTime.UtcNow:yyyyMMdd}-001";
-        var prodajaExists = await db.ProdajaZaglavlja.AnyAsync(p => p.BrojRacuna == seedRacun, ct);
-        if (!prodajaExists)
-        {
-            var prodaja = new ProdajaZaglavlje
-            {
-                BrojRacuna = seedRacun,
-                DatumProdaje = DateTime.UtcNow,
-                NacinPlacanja = "Gotovina",
-                IDObjekat = 1,
-                Stavke = new List<ProdajaStavka>
-                {
-                    new() { IdArtikal = a1.Id, Kolicina = 1, Cena = a1.ProdajnaCena ?? 0m },
-                    new() { IdArtikal = a2.Id, Kolicina = 2, Cena = a2.ProdajnaCena ?? 0m }
-                }
-            };
+        // --- GENERISI 100 TEST PRODAJA ---
+        var allArtikli = await db.Artikli
+            .AsNoTracking()
+            .Where(a => a.Kolicina > 0)
+            .Select(a => new { a.Id, a.ProdajnaCena })
+            .ToListAsync(ct);
 
-            db.ProdajaZaglavlja.Add(prodaja);
+        if (allArtikli.Count == 0)
+        {
+            // Nema artikala za prodaju
+            return;
+        }
+
+        // Proveri koliko prodaja vec postoji sa seed prefiksom
+        var existingSeedCount = await db.ProdajaZaglavlja
+            .CountAsync(p => p.BrojRacuna.StartsWith("SEED-"), ct);
+
+        if (existingSeedCount >= 100)
+        {
+            // Vec imamo dovoljno seed prodaja
+            return;
+        }
+
+        var nacinePlacanja = new[] { "Gotovina", "Kartica", "Cek", "Virman" };
+        var prodajeToAdd = new List<ProdajaZaglavlje>(capacity: 100);
+
+        // Generiši prodaje u poslednjih 90 dana
+        var startDate = DateTime.UtcNow.AddDays(-90);
+
+        for (var i = existingSeedCount; i < 100; i++)
+        {
+            var brojRacuna = $"SEED-{i + 1:D4}";
+            
+            // Random datum u poslednjih 90 dana
+            var randomDays = rng.Next(0, 91);
+            var randomHours = rng.Next(8, 20); // radim vreme 8-20h
+            var randomMinutes = rng.Next(0, 60);
+            var datumProdaje = startDate.AddDays(randomDays).Date
+                .AddHours(randomHours)
+                .AddMinutes(randomMinutes);
+
+            // Random nacin placanja
+            var nacinPlacanja = nacinePlacanja[rng.Next(nacinePlacanja.Length)];
+
+            // Random broj stavki (1-5)
+            var brojStavki = rng.Next(1, 6);
+            var stavke = new List<ProdajaStavka>();
+
+            // Izaberi random artikle
+            var shuffled = allArtikli.OrderBy(_ => rng.Next()).Take(brojStavki).ToList();
+
+            foreach (var art in shuffled)
+            {
+                var kolicina = rng.Next(1, 4); // 1-3 komada
+                stavke.Add(new ProdajaStavka
+                {
+                    IdArtikal = art.Id,
+                    Kolicina = kolicina,
+                    Cena = art.ProdajnaCena ?? 0m
+                });
+            }
+
+            prodajeToAdd.Add(new ProdajaZaglavlje
+            {
+                BrojRacuna = brojRacuna,
+                DatumProdaje = datumProdaje,
+                NacinPlacanja = nacinPlacanja,
+                IDObjekat = 1,
+                Stavke = stavke
+            });
+        }
+
+        if (prodajeToAdd.Count > 0)
+        {
+            db.ProdajaZaglavlja.AddRange(prodajeToAdd);
             await db.SaveChangesAsync(ct);
         }
     }

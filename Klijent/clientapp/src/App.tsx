@@ -12,6 +12,7 @@ import OutboxDashboard from "./pages/OutboxDashboard";
 import OutboxMessagesPage from "./pages/OutboxMessagesPage";
 import NivelacijaCenaPage from "./pages/NivelacijaCenaPage";
 import NivelacijePage from "./pages/NivelacijePage";
+import DnevnikPromenaPage from "./pages/DnevnikPromenaPage";
 import SezonaPage from "./pages/SezonaPage";
 import TipObucePage from "./pages/TipObucePage";
 import DobavljaciPage from "./pages/DobavljaciPage";
@@ -34,6 +35,7 @@ function AppShell() {
             <Route path="/outbox" element={<OutboxDashboard />} />
             <Route path="/outbox/messages" element={<OutboxMessagesPage />} />
             <Route path="/nivelacije" element={<NivelacijePage />} />
+            <Route path="/dnevnik-promena" element={<DnevnikPromenaPage />} />
             <Route path="/sezone" element={<SezonaPage />} />
             <Route path="/tipovi-obuce" element={<TipObucePage />} />
             <Route path="/dobavljaci" element={<DobavljaciPage />} />

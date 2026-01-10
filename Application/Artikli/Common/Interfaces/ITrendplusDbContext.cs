@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Domain.Model;
+using Domain.Model.Prodaja;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -16,6 +17,8 @@ namespace Application.Artikli.Common.Interfaces
         DbSet<Domain.Model.DnevnikPromena> DnevnikPromena { get; }
         DbSet<Domain.Model.Sezona> Sezone { get; }
         DbSet<Domain.Model.OutboxMessage> OutboxMessages { get; }
+        DbSet<ProdajaZaglavlje> ProdajaZaglavlja { get; }
+        DbSet<ProdajaStavka> ProdajaStavke { get; }
 
         DatabaseFacade Database { get; }
 

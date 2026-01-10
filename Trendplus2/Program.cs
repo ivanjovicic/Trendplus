@@ -181,6 +181,13 @@ app.MapGet("/api/logs", async (
 {
     try
     {
+        // Convert dates to UTC if they have Unspecified kind
+        if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+            fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+
+        if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+            toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
         var errors = await store.GetAllAsync();
         var filtered = errors.AsEnumerable();
 
@@ -249,6 +256,13 @@ app.MapGet("/api/performance", async (
     DateTime? toDate = null) =>
 {
     logger.PerformanceRequest(topCount, minDurationMs);
+
+    // Convert dates to UTC if they have Unspecified kind
+    if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+        fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+
+    if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+        toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
     var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate);
     var result = await mediator.Send(query);
@@ -421,6 +435,18 @@ app.MapGet("/api/outbox/stats-by-type", async (ITrendplusDbContext db) =>
         .ToListAsync();
 
     return Results.Ok(stats);
+});
+
+// Dnevnik Promena - Get distinct tip promene values
+app.MapGet("/api/dnevnik-promena/tipovi", async (ITrendplusDbContext db, CancellationToken ct) =>
+{
+    var tipovi = await db.DnevnikPromena
+        .Select(x => x.TipPromene)
+        .Distinct()
+        .OrderBy(x => x)
+        .ToListAsync(ct);
+
+    return Results.Ok(tipovi);
 });
 
 // Artikli - Create
@@ -737,43 +763,49 @@ app.MapGet("/api/nivelacije", async (
     string sortDir = "desc",
     CancellationToken ct = default) =>
 {
-    var baseQuery = db.DnevnikPromena.AsNoTracking()
-        .Where(x => x.TipPromene == "Nivelacija");
+    // Convert dates to UTC if they have Unspecified kind
+    if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+        fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
 
+    if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+        toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+    // Build query with proper LEFT JOIN
+    var query = from dp in db.DnevnikPromena.AsNoTracking()
+                where dp.TipPromene == "Nivelacija"
+                join a in db.Artikli.AsNoTracking() on dp.ArtikalId equals (int?)a.Id into artJoin
+                from artikel in artJoin.DefaultIfEmpty()
+                select new { dp, artikel };
+
+    // Apply filters
     if (artikalId.HasValue)
-        baseQuery = baseQuery.Where(x => x.ArtikalId == artikalId.Value);
+        query = query.Where(x => x.dp.ArtikalId == artikalId.Value);
 
     if (fromDate.HasValue)
-        baseQuery = baseQuery.Where(x => x.Datum >= fromDate.Value);
+        query = query.Where(x => x.dp.Datum >= fromDate.Value);
 
     if (toDate.HasValue)
-        baseQuery = baseQuery.Where(x => x.Datum <= toDate.Value);
+        query = query.Where(x => x.dp.Datum <= toDate.Value);
 
-    var query = baseQuery
-        .GroupJoin(
-            db.Artikli.AsNoTracking(),
-            p => p.ArtikalId,
-            a => (int?)a.Id,
-            (p, arts) => new { p, a = arts.FirstOrDefault() });
-    
     if (!string.IsNullOrWhiteSpace(naziv))
     {
         var n = naziv.Trim();
-        query = query.Where(x => x.a != null && EF.Functions.ILike(x.a.Naziv, $"%{n}%"));
+        query = query.Where(x => x.artikel != null && EF.Functions.ILike(x.artikel.Naziv, $"%{n}%"));
     }
 
     var total = await query.CountAsync(ct);
 
+    // Apply sorting
     var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
 
     query = (sortBy?.ToLowerInvariant()) switch
     {
-        "datum" => desc ? query.OrderByDescending(x => x.p.Datum) : query.OrderBy(x => x.p.Datum),
-        "artikalid" => desc ? query.OrderByDescending(x => x.p.ArtikalId) : query.OrderBy(x => x.p.ArtikalId),
-        "stara" => desc ? query.OrderByDescending(x => x.p.StaraProdajnaCena) : query.OrderBy(x => x.p.StaraProdajnaCena),
-        "nova" => desc ? query.OrderByDescending(x => x.p.NovaProdajnaCena) : query.OrderBy(x => x.p.NovaProdajnaCena),
-        "naziv" => desc ? query.OrderByDescending(x => x.a != null ? x.a.Naziv : "") : query.OrderBy(x => x.a != null ? x.a.Naziv : ""),
-        _ => desc ? query.OrderByDescending(x => x.p.Datum) : query.OrderBy(x => x.p.Datum)
+        "datum" => desc ? query.OrderByDescending(x => x.dp.Datum) : query.OrderBy(x => x.dp.Datum),
+        "artikalid" => desc ? query.OrderByDescending(x => x.dp.ArtikalId) : query.OrderBy(x => x.dp.ArtikalId),
+        "stara" => desc ? query.OrderByDescending(x => x.dp.StaraProdajnaCena) : query.OrderBy(x => x.dp.StaraProdajnaCena),
+        "nova" => desc ? query.OrderByDescending(x => x.dp.NovaProdajnaCena) : query.OrderBy(x => x.dp.NovaProdajnaCena),
+        "naziv" => desc ? query.OrderByDescending(x => x.artikel != null ? x.artikel.Naziv : "") : query.OrderBy(x => x.artikel != null ? x.artikel.Naziv : ""),
+        _ => desc ? query.OrderByDescending(x => x.dp.Datum) : query.OrderBy(x => x.dp.Datum)
     };
 
     var items = await query
@@ -781,14 +813,14 @@ app.MapGet("/api/nivelacije", async (
         .Take(pageSize)
         .Select(x => new
         {
-            id = x.p.Id,
-            datum = x.p.Datum,
-            artikalId = x.p.ArtikalId,
-            artikalNaziv = x.a != null ? x.a.Naziv : null,
-            staraProdajnaCena = x.p.StaraProdajnaCena,
-            novaProdajnaCena = x.p.NovaProdajnaCena,
-            komentar = x.p.Komentar,
-            korisnikIme = x.p.KorisnikIme
+            id = x.dp.Id,
+            datum = x.dp.Datum,
+            artikalId = x.dp.ArtikalId,
+            artikalNaziv = x.artikel != null ? x.artikel.Naziv : null,
+            staraProdajnaCena = x.dp.StaraProdajnaCena,
+            novaProdajnaCena = x.dp.NovaProdajnaCena,
+            komentar = x.dp.Komentar,
+            korisnikIme = x.dp.KorisnikIme
         })
         .ToListAsync(ct);
 
@@ -803,6 +835,129 @@ app.MapGet("/api/nivelacije", async (
     });
 });
 
+// Dnevnik Promena - Sve promene (prodaje, nivelacije, unos robe, itd.)
+app.MapGet("/api/dnevnik-promena", async (
+    ITrendplusDbContext db,
+    ILogger<Program> logger,
+    int pageNumber = 1,
+    int pageSize = 50,
+    string? tipPromene = null,
+    int? artikalId = null,
+    string? naziv = null,
+    string? brojRacuna = null,
+    DateTime? fromDate = null,
+    DateTime? toDate = null,
+    string sortBy = "datum",
+    string sortDir = "desc",
+    CancellationToken ct = default) =>
+{
+    try
+    {
+        if (pageNumber < 1) pageNumber = 1;
+        if (pageSize < 1) pageSize = 1;
+        if (pageSize > 200) pageSize = 200;
+
+        // Convert dates to UTC if they have Unspecified kind
+        if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+            fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+
+        if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+            toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+        // Build base query with proper LEFT JOINs
+        var query = from dp in db.DnevnikPromena.AsNoTracking()
+                    join a in db.Artikli.AsNoTracking() on dp.ArtikalId equals (int?)a.Id into artJoin
+                    from artikel in artJoin.DefaultIfEmpty()
+                    join d in db.Dobavljaci.AsNoTracking() on dp.DobavljacId equals (int?)d.Id into dobJoin
+                    from dobavljac in dobJoin.DefaultIfEmpty()
+                    select new { dp, artikel, dobavljac };
+
+        // Apply filters
+        if (!string.IsNullOrWhiteSpace(tipPromene))
+        {
+            var tip = tipPromene.Trim();
+            query = query.Where(x => EF.Functions.ILike(x.dp.TipPromene, $"%{tip}%"));
+        }
+
+        if (artikalId.HasValue)
+            query = query.Where(x => x.dp.ArtikalId == artikalId.Value);
+
+        if (!string.IsNullOrWhiteSpace(brojRacuna))
+        {
+            var br = brojRacuna.Trim();
+            query = query.Where(x => x.dp.BrojRacuna != null && EF.Functions.ILike(x.dp.BrojRacuna, $"%{br}%"));
+        }
+
+        if (fromDate.HasValue)
+            query = query.Where(x => x.dp.Datum >= fromDate.Value);
+
+        if (toDate.HasValue)
+            query = query.Where(x => x.dp.Datum <= toDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(naziv))
+        {
+            var n = naziv.Trim();
+            query = query.Where(x => x.artikel != null && EF.Functions.ILike(x.artikel.Naziv, $"%{n}%"));
+        }
+
+        var total = await query.CountAsync(ct);
+
+        // Apply sorting
+        var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+
+        query = (sortBy?.ToLowerInvariant()) switch
+        {
+            "datum" => desc ? query.OrderByDescending(x => x.dp.Datum) : query.OrderBy(x => x.dp.Datum),
+            "tippromene" => desc ? query.OrderByDescending(x => x.dp.TipPromene) : query.OrderBy(x => x.dp.TipPromene),
+            "iznos" => desc ? query.OrderByDescending(x => x.dp.Iznos) : query.OrderBy(x => x.dp.Iznos),
+            "artikalid" => desc ? query.OrderByDescending(x => x.dp.ArtikalId) : query.OrderBy(x => x.dp.ArtikalId),
+            "naziv" => desc ? query.OrderByDescending(x => x.artikel != null ? x.artikel.Naziv : "") : query.OrderBy(x => x.artikel != null ? x.artikel.Naziv : ""),
+            _ => desc ? query.OrderByDescending(x => x.dp.Datum) : query.OrderBy(x => x.dp.Datum)
+        };
+
+        // Project to final result
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new
+            {
+                id = x.dp.Id,
+                tipPromene = x.dp.TipPromene,
+                datum = x.dp.Datum,
+                iznos = x.dp.Iznos,
+                brojRacuna = x.dp.BrojRacuna,
+                artikalId = x.dp.ArtikalId,
+                artikalNaziv = x.artikel != null ? x.artikel.Naziv : null,
+                dobavljacId = x.dp.DobavljacId,
+                dobavljacNaziv = x.dobavljac != null ? x.dobavljac.Naziv : null,
+                staraProdajnaCena = x.dp.StaraProdajnaCena,
+                novaProdajnaCena = x.dp.NovaProdajnaCena,
+                komentar = x.dp.Komentar,
+                korisnikIme = x.dp.KorisnikIme
+            })
+            .ToListAsync(ct);
+
+        return Results.Ok(new
+        {
+            items,
+            totalCount = total,
+            pageNumber,
+            pageSize,
+            sortBy,
+            sortDir
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error fetching dnevnik promena");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500,
+            title: "Error fetching change log"
+        );
+    }
+});
+
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 
@@ -812,10 +967,10 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
     db.Database.Migrate();
 
-    //if (app.Environment.IsDevelopment())
-    //{
-    //    await TrendplusDbSeeder.SeedAsync(db);
-    //}
+    if (app.Environment.IsDevelopment())
+    {
+        await TrendplusDbSeeder.SeedAsync(db);
+    }
 }
 
 app.Run();

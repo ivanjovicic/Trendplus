@@ -1,103 +1,88 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { getArtikliPaged } from "../services/artikliApi";
-import { getSezone } from "../services/sezoneApi";
-import type { Sezona } from "../types/Sezona";
+import { getDnevnikPromena } from "../services/dnevnikPromenaApi";
+import type { DnevnikPromenaItem } from "../types/dnevnikPromena";
 
-type ArtikalListItem = {
-  id: number;
-  naziv: string;
-  prodajnaCena: number;
-  kolicina?: number | null;
-  tipObuceId?: number | null;
-  dobavljacId?: number | null;
-  idSezona?: number | null;
-  nabavnaCena?: number | null;
-};
-
-export default function ArtikliListPage() {
-  const [artikli, setArtikli] = useState<ArtikalListItem[]>([]);
+export default function DnevnikPromenaPage() {
+  const [promene, setPromene] = useState<DnevnikPromenaItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [sezone, setSezone] = useState<Sezona[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Pagination state
+  // Tip promene dropdown options
+  const [tipoviPromena, setTipoviPromena] = useState<string[]>([]);
+
+  // Pagination
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  // Filter states
+  // Filters
+  const [filterTipPromene, setFilterTipPromene] = useState<string | "">("");
   const [searchNaziv, setSearchNaziv] = useState("");
-  const [filterSezona, setFilterSezona] = useState<number | "">("");
-  const [filterMinCena, setFilterMinCena] = useState("");
-  const [filterMaxCena, setFilterMaxCena] = useState("");
-  const [filterMinKolicina, setFilterMinKolicina] = useState("");
-  const [filterMaxKolicina, setFilterMaxKolicina] = useState("");
+  const [searchBrojRacuna, setSearchBrojRacuna] = useState("");
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  // Sorting state
-  const [sortBy, setSortBy] = useState<"naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id">("naziv");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  // Sorting
+  const [sortBy, setSortBy] = useState<"datum" | "tipPromene" | "iznos" | "naziv">("datum");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Jump-to-page state
+  // Jump to page
   const [jumpTo, setJumpTo] = useState<string>("1");
 
-  // Handle column header click for sorting
-  const handleSort = (column: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id") => {
-    if (sortBy === column) {
-      // Toggle direction if clicking the same column
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      // Set new column and default to ascending
-      setSortBy(column);
-      setSortDir("asc");
-    }
-    setPageNumber(1);
-  };
-
-  // Render sort indicator (arrow)
-  const renderSortIndicator = (column: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id") => {
-    if (sortBy !== column) return null;
-    return sortDir === "asc" ? " ▲" : " ▼";
-  };
-
+  // Load tip promene options
   useEffect(() => {
     let aborted = false;
 
-    const loadSezone = async () => {
+    const loadTipovi = async () => {
       try {
-        const sezoneData = await getSezone();
-        if (!aborted) setSezone(sezoneData ?? []);
-      } catch {
-        // best-effort
+        const API = import.meta.env.VITE_API_BASE_URL;
+        const res = await fetch(`${API}/api/dnevnik-promena/tipovi`);
+        if (!res.ok) throw new Error("Failed to load tipovi");
+        const data = await res.json();
+        if (!aborted) setTipoviPromena(data ?? []);
+      } catch (err) {
+        console.error("Failed to load tip promene options:", err);
       }
     };
 
-    loadSezone();
+    loadTipovi();
 
     return () => {
       aborted = true;
     };
   }, []);
 
+  const handleSort = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
+    if (sortBy === column) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortDir("asc");
+    }
+    setPageNumber(1);
+  };
+
+  const renderSortIndicator = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
+    if (sortBy !== column) return null;
+    return sortDir === "asc" ? " ▲" : " ▼";
+  };
+
   const filters = useMemo(() => {
-    const f: any = {};
+    const f: Record<string, string | number> = {};
 
+    if (filterTipPromene !== "" && filterTipPromene.trim()) f.tipPromene = filterTipPromene.trim();
     if (searchNaziv.trim()) f.naziv = searchNaziv.trim();
-    if (filterSezona !== "") f.sezonaId = filterSezona;
-
-    if (filterMinCena) f.minCena = Number(filterMinCena);
-    if (filterMaxCena) f.maxCena = Number(filterMaxCena);
-    if (filterMinKolicina) f.minKolicina = Number(filterMinKolicina);
-    if (filterMaxKolicina) f.maxKolicina = Number(filterMaxKolicina);
+    if (searchBrojRacuna.trim()) f.brojRacuna = searchBrojRacuna.trim();
+    if (filterFromDate) f.fromDate = filterFromDate;
+    if (filterToDate) f.toDate = filterToDate;
 
     f.sortBy = sortBy;
     f.sortDir = sortDir;
 
     return f;
-  }, [searchNaziv, filterSezona, filterMinCena, filterMaxCena, filterMinKolicina, filterMaxKolicina, sortBy, sortDir]);
+  }, [filterTipPromene, searchNaziv, searchBrojRacuna, filterFromDate, filterToDate, sortBy, sortDir]);
 
-  // keep jump input in sync
   useEffect(() => {
     setJumpTo(String(pageNumber));
   }, [pageNumber]);
@@ -110,15 +95,15 @@ export default function ArtikliListPage() {
       setError(null);
 
       try {
-        const data = await getArtikliPaged<ArtikalListItem>(pageNumber, pageSize, filters);
+        const data = await getDnevnikPromena(pageNumber, pageSize, filters);
         if (aborted) return;
 
-        setArtikli(data.items ?? []);
+        setPromene(data.items ?? []);
         setTotalCount(data.totalCount ?? 0);
-      } catch (e: any) {
+      } catch (err: unknown) {
         if (aborted) return;
-        console.error(e);
-        setError(e?.message ?? "Greška pri učitavanju podataka.");
+        console.error(err);
+        setError((err as Error)?.message ?? "Greška pri učitavanju dnevnika promena.");
       } finally {
         if (!aborted) setLoading(false);
       }
@@ -132,30 +117,48 @@ export default function ArtikliListPage() {
   }, [pageNumber, pageSize, filters]);
 
   const clearFilters = () => {
+    setFilterTipPromene("");
     setSearchNaziv("");
-    setFilterSezona("");
-    setFilterMinCena("");
-    setFilterMaxCena("");
-    setFilterMinKolicina("");
-    setFilterMaxKolicina("");
+    setSearchBrojRacuna("");
+    setFilterFromDate("");
+    setFilterToDate("");
     setPageNumber(1);
   };
 
   const activeFiltersCount = [
+    filterTipPromene !== "",
     searchNaziv,
-    filterSezona !== "",
-    filterMinCena,
-    filterMaxCena,
-    filterMinKolicina,
-    filterMaxKolicina,
+    searchBrojRacuna,
+    filterFromDate,
+    filterToDate,
   ].filter(Boolean).length;
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  if (loading) {
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleString("sr-RS", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getTipPromeneColor = (tip: string) => {
+    const tipLower = tip.toLowerCase();
+    if (tipLower.includes("prodaja")) return "#059669"; // green
+    if (tipLower.includes("nivelacija")) return "#dc2626"; // red
+    if (tipLower.includes("unos")) return "#3b82f6"; // blue
+    if (tipLower.includes("korekcija")) return "#f59e0b"; // amber
+    return "#6b7280"; // gray
+  };
+
+  if (loading && promene.length === 0) {
     return (
       <div className="card">
-        <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje artikala...</p>
+        <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje dnevnika promena...</p>
       </div>
     );
   }
@@ -169,8 +172,8 @@ export default function ArtikliListPage() {
   }
 
   return (
-    <div className="card" style={{ margin: "2rem auto", maxWidth: "1200px" }}>
-      {/* Compact header + pagination in single row */}
+    <div className="card" style={{ margin: "2rem auto", maxWidth: "1400px" }}>
+      {/* Header + Pagination */}
       <div
         style={{
           display: "flex",
@@ -180,10 +183,9 @@ export default function ArtikliListPage() {
           gap: 12,
         }}
       >
-        {/* Left: Title + Pagination controls - single line, no wrap */}
         <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0, overflow: "hidden" }}>
           <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "#1f2937", whiteSpace: "nowrap", flexShrink: 0 }}>
-            Lista artikala <span style={{ color: "#6b7280", fontWeight: 400, fontSize: "0.9375rem" }}>({artikli.length} / {totalCount})</span>
+            📋 Dnevnik Promena <span style={{ color: "#6b7280", fontWeight: 400, fontSize: "0.9375rem" }}>({promene.length} / {totalCount})</span>
           </h2>
 
           <div style={{ display: "flex", gap: 6, alignItems: "center", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -260,7 +262,6 @@ export default function ArtikliListPage() {
           </div>
         </div>
 
-        {/* Right: Compact filter button - unchanged */}
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="button-big"
@@ -302,23 +303,43 @@ export default function ArtikliListPage() {
         <div
           style={{
             background: "#f9fafb",
-            border: "2px solid #e5e7eb",
-            borderRadius: "12px",
-            padding: "1.5rem",
-            marginBottom: "1.5rem",
+            border: "1px solid #e5e7eb",
+            borderRadius: "8px",
+            padding: "1rem",
+            marginBottom: "1rem",
           }}
         >
-          <h3 style={{ fontWeight: 600, fontSize: "1.125rem", marginBottom: "1rem" }}>🔍 Filteri</h3>
+          <h3 style={{ fontWeight: 600, fontSize: "0.9375rem", marginBottom: "0.75rem", color: "#374151" }}>🔍 Filteri</h3>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-              gap: "1rem",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: "0.75rem",
             }}
           >
             <div>
-              <label className="field-label">Pretraži po nazivu</label>
+              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Tip promene</label>
+              <select
+                className="input-big"
+                value={filterTipPromene}
+                onChange={(e) => {
+                  setFilterTipPromene(e.target.value);
+                  setPageNumber(1);
+                }}
+                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
+              >
+                <option value="">Sve promene</option>
+                {tipoviPromena.map((tip) => (
+                  <option key={tip} value={tip}>
+                    {tip}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Artikal (naziv)</label>
               <input
                 type="text"
                 className="input-big"
@@ -328,94 +349,63 @@ export default function ArtikliListPage() {
                   setSearchNaziv(e.target.value);
                   setPageNumber(1);
                 }}
+                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
               />
             </div>
 
             <div>
-              <label className="field-label">Sezona</label>
-              <select
-                className="input-big"
-                value={filterSezona}
-                onChange={(e) => {
-                  setFilterSezona(e.target.value ? Number(e.target.value) : "");
-                  setPageNumber(1);
-                }}
-              >
-                <option value="">Sve sezone</option>
-                {sezone.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.naziv}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="field-label">Min. cena (RSD)</label>
+              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Broj računa</label>
               <input
-                type="number"
+                type="text"
                 className="input-big"
-                placeholder="0"
-                value={filterMinCena}
+                placeholder="SEED-0001..."
+                value={searchBrojRacuna}
                 onChange={(e) => {
-                  setFilterMinCena(e.target.value);
+                  setSearchBrojRacuna(e.target.value);
                   setPageNumber(1);
                 }}
+                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
               />
             </div>
 
             <div>
-              <label className="field-label">Max. cena (RSD)</label>
+              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Datum od</label>
               <input
-                type="number"
+                type="date"
                 className="input-big"
-                placeholder="999999"
-                value={filterMaxCena}
+                value={filterFromDate}
                 onChange={(e) => {
-                  setFilterMaxCena(e.target.value);
+                  setFilterFromDate(e.target.value);
                   setPageNumber(1);
                 }}
+                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
               />
             </div>
 
             <div>
-              <label className="field-label">Min. količina</label>
+              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Datum do</label>
               <input
-                type="number"
+                type="date"
                 className="input-big"
-                placeholder="0"
-                value={filterMinKolicina}
+                value={filterToDate}
                 onChange={(e) => {
-                  setFilterMinKolicina(e.target.value);
+                  setFilterToDate(e.target.value);
                   setPageNumber(1);
                 }}
-              />
-            </div>
-
-            <div>
-              <label className="field-label">Max. količina</label>
-              <input
-                type="number"
-                className="input-big"
-                placeholder="999"
-                value={filterMaxKolicina}
-                onChange={(e) => {
-                  setFilterMaxKolicina(e.target.value);
-                  setPageNumber(1);
-                }}
+                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
               />
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "12px", marginTop: "1rem" }}>
-            <button onClick={clearFilters} className="button-big" style={{ background: "#6b7280", maxWidth: "160px", padding: "8px 12px", fontSize: "0.875rem" }}>
+          <div style={{ display: "flex", gap: "8px", marginTop: "0.75rem" }}>
+            <button onClick={clearFilters} className="button-big" style={{ background: "#6b7280", padding: "6px 12px", fontSize: "0.8125rem", height: "32px" }}>
               Resetuj filtere
             </button>
           </div>
         </div>
       )}
 
-      {artikli.length === 0 ? (
+      {promene.length === 0 ? (
         <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
           <p style={{ fontSize: "1.125rem", fontWeight: 600, marginBottom: "0.5rem" }}>Nema rezultata</p>
           <p>Pokušajte da promenite filtere pretrage</p>
@@ -426,72 +416,90 @@ export default function ArtikliListPage() {
             <thead>
               <tr>
                 <th 
-                  onClick={() => handleSort("id")}
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po ID-ju"
+                  onClick={() => handleSort("datum")}
+                  style={{ cursor: "pointer", userSelect: "none", minWidth: "140px" }}
+                  title="Klikni za sortiranje po datumu"
                 >
-                  ID{renderSortIndicator("id")}
+                  Datum{renderSortIndicator("datum")}
+                </th>
+                <th 
+                  onClick={() => handleSort("tipPromene")}
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                  title="Klikni za sortiranje po tipu promene"
+                >
+                  Tip promene{renderSortIndicator("tipPromene")}
                 </th>
                 <th 
                   onClick={() => handleSort("naziv")}
                   style={{ cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po nazivu"
+                  title="Klikni za sortiranje po nazivu artikla"
                 >
-                  Naziv{renderSortIndicator("naziv")}
+                  Artikal{renderSortIndicator("naziv")}
                 </th>
+                <th>Dobavljač</th>
+                <th>Račun</th>
                 <th 
-                  onClick={() => handleSort("prodajnaCena")}
+                  onClick={() => handleSort("iznos")}
                   style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po prodajnoj ceni"
+                  title="Klikni za sortiranje po iznosu"
                 >
-                  Prodajna cena{renderSortIndicator("prodajnaCena")}
+                  Iznos{renderSortIndicator("iznos")}
                 </th>
-                <th 
-                  onClick={() => handleSort("nabavnaCena")}
-                  style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po nabavnoj ceni"
-                >
-                  Nabavna cena{renderSortIndicator("nabavnaCena")}
-                </th>
-                <th 
-                  onClick={() => handleSort("kolicina")}
-                  style={{ textAlign: "center", cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po količini"
-                >
-                  Količina{renderSortIndicator("kolicina")}
-                </th>
-                <th style={{ textAlign: "center" }}>Akcije</th>
+                <th style={{ textAlign: "center" }}>Stara cena</th>
+                <th style={{ textAlign: "center" }}>Nova cena</th>
+                <th>Komentar</th>
+                <th>Korisnik</th>
               </tr>
             </thead>
             <tbody>
-              {artikli.map((a) => (
-                <tr key={a.id}>
-                  <td style={{ color: "#6b7280" }}>{a.id}</td>
-                  <td style={{ fontWeight: 600 }}>{a.naziv}</td>
-                  <td style={{ textAlign: "right", color: "#059669", fontWeight: 700 }}>
-                    {(a.prodajnaCena ?? 0).toFixed(2)} RSD
+              {promene.map((item) => (
+                <tr key={item.id}>
+                  <td style={{ fontSize: "0.8125rem", color: "#6b7280" }}>
+                    {formatDate(item.datum)}
                   </td>
-                  <td style={{ textAlign: "right", color: "#6b7280" }}>
-                    {a.nabavnaCena ? `${a.nabavnaCena.toFixed(2)} RSD` : "-"}
-                  </td>
-                  <td style={{ textAlign: "center", color: "#6b7280" }}>{a.kolicina ?? 0}</td>
-                  <td style={{ textAlign: "center" }}>
-                    <Link
-                      to={`/artikli/${a.id}/edit`}
+                  <td>
+                    <span
                       style={{
-                        background: "#3b82f6",
-                        color: "white",
-                        padding: "6px 12px",
-                        borderRadius: "8px",
-                        textDecoration: "none",
-                        fontSize: "0.8125rem",
-                        fontWeight: 600,
                         display: "inline-block",
-                        boxShadow: "0 4px 10px rgba(37, 99, 235, 0.18)",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        background: getTipPromeneColor(item.tipPromene),
+                        color: "white",
                       }}
                     >
-                      Izmeni
-                    </Link>
+                      {item.tipPromene}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 500 }}>
+                    {item.artikalNaziv || "-"}
+                    {item.artikalId && (
+                      <span style={{ fontSize: "0.75rem", color: "#9ca3af", marginLeft: "6px" }}>
+                        (#{item.artikalId})
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ color: "#6b7280", fontSize: "0.875rem" }}>
+                    {item.dobavljacNaziv || "-"}
+                  </td>
+                  <td style={{ fontSize: "0.8125rem", color: "#6b7280", fontFamily: "monospace" }}>
+                    {item.brojRacuna || "-"}
+                  </td>
+                  <td style={{ textAlign: "right", fontWeight: 600, color: item.iznos >= 0 ? "#059669" : "#dc2626" }}>
+                    {item.iznos.toFixed(2)} RSD
+                  </td>
+                  <td style={{ textAlign: "center", fontSize: "0.875rem", color: "#6b7280" }}>
+                    {item.staraProdajnaCena != null ? `${item.staraProdajnaCena.toFixed(2)} RSD` : "-"}
+                  </td>
+                  <td style={{ textAlign: "center", fontSize: "0.875rem", color: "#059669", fontWeight: 600 }}>
+                    {item.novaProdajnaCena != null ? `${item.novaProdajnaCena.toFixed(2)} RSD` : "-"}
+                  </td>
+                  <td style={{ maxWidth: "200px", fontSize: "0.8125rem", color: "#6b7280" }}>
+                    {item.komentar || "-"}
+                  </td>
+                  <td style={{ fontSize: "0.8125rem", color: "#6b7280" }}>
+                    {item.korisnikIme || "-"}
                   </td>
                 </tr>
               ))}
@@ -500,7 +508,7 @@ export default function ArtikliListPage() {
         </div>
       )}
 
-      {/* Bottom pagination - ultra-minimal */}
+      {/* Bottom pagination */}
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: "0.5rem", paddingTop: "6px", borderTop: "1px solid #e5e7eb" }}>
         <button
           className="button-big"
