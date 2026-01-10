@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import PosPage from "./pages/PosPage.tsx";
 import SalesHistoryPage from "./pages/SalesHistoryPage.tsx";
 
@@ -22,7 +22,7 @@ export default function App() {
                     fontWeight: 700, 
                     fontSize: 20 
                 }}>
-                    ?? Trendplus POS
+                    🛒 Trendplus POS
                 </div>
                 
                 <div style={{ display: "flex", gap: 12 }}>
@@ -39,7 +39,7 @@ export default function App() {
                             cursor: "pointer"
                         }}
                     >
-                        ?? Prodaja
+                        💳 Prodaja
                     </button>
                     
                     <button
@@ -55,7 +55,7 @@ export default function App() {
                             cursor: "pointer"
                         }}
                     >
-                        ?? Istorija
+                        📊 Istorija
                     </button>
                 </div>
             </nav>

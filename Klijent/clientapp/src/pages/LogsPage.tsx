@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { getLogs } from "../services/logsApi";
 import { LogEntry } from "../types/logs";
 
 type TimePeriod = "" | "30m" | "1h" | "6h" | "1d" | "2d" | "7d";
 
 const timePeriodOptions: { value: TimePeriod; label: string }[] = [
-    { value: "", label: "Prilago?eni period" },
+    { value: "", label: "Prilagođeni period" },
     { value: "30m", label: "Poslednjih 30 minuta" },
     { value: "1h", label: "Poslednji sat" },
     { value: "6h", label: "Poslednjih 6 sati" },
@@ -98,7 +98,7 @@ export default function LogsPage() {
             setTotalCount(result.totalCount);
         } catch (err: any) {
             console.error("Error fetching logs:", err);
-            setError(err?.message ?? "Gre�ka pri u?itavanju logova");
+            setError(err?.message ?? "Greška pri učitavanju logova");
         } finally {
             setLoading(false);
         }
@@ -163,14 +163,12 @@ export default function LogsPage() {
             </h2>
 
             {/* Filters */}
-            <div style={{ 
-                display: "grid", 
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-                gap: "1rem", 
+            <div className="toolbar" style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "1rem",
                 marginBottom: "1.5rem",
-                padding: "1rem",
-                background: "#f9fafb",
-                borderRadius: "12px"
+                background: "#f9fafb"
             }}>
                 <div>
                     <label className="field-label" style={{ fontSize: "0.875rem" }}>Nivo</label>
@@ -232,19 +230,13 @@ export default function LogsPage() {
                     <button
                         className="button-big"
                         onClick={() => fetchLogs()}
-                        style={{ 
-                            background: "#2563eb", 
-                            padding: "8px 16px", 
-                            marginTop: 0,
-                            marginBottom: 0,
-                            fontSize: "0.95rem"
-                        }}
-                        title="Osve�i logove"
+                        style={{ padding: "8px 16px", marginTop: 0, marginBottom: 0, fontSize: "0.95rem" }}
+                        title="Osveži logove"
                     >
-                        ?? Osve�i
+                        🔄 Osveži
                     </button>
                     <button
-                        className="button-big"
+                        className="button-big button-secondary"
                         onClick={() => {
                             setSelectedLevel("");
                             setSelectedPeriod("");
@@ -252,13 +244,7 @@ export default function LogsPage() {
                             setToDate("");
                             setCurrentPage(1);
                         }}
-                        style={{ 
-                            background: "#6b7280", 
-                            padding: "8px 16px", 
-                            marginTop: 0,
-                            marginBottom: 0,
-                            fontSize: "0.95rem"
-                        }}
+                        style={{ padding: "8px 16px", marginTop: 0, marginBottom: 0, fontSize: "0.95rem" }}
                     >
                         Resetuj
                     </button>
@@ -266,11 +252,11 @@ export default function LogsPage() {
             </div>
 
             {/* Stats */}
-            <div style={{ 
-                marginBottom: "1rem", 
-                padding: "0.75rem", 
-                background: "#f3f4f6", 
-                borderRadius: "8px",
+            <div className="toolbar" style={{
+                marginBottom: "1rem",
+                padding: "0.75rem",
+                background: "#f3f4f6",
+                borderRadius: "12px",
                 fontSize: "0.95rem",
                 display: "flex",
                 justifyContent: "space-between",
@@ -278,64 +264,43 @@ export default function LogsPage() {
                 gap: "0.5rem"
             }}>
                 <span>
-                    <strong>Ukupno:</strong> {totalCount} logova | <strong>Stranica:</strong> {currentPage} od {totalPages}
+                    <strong>Ukupno:</strong> {totalCount} logova | <strong>Stranica:</strong> {currentPage} od {totalPages || 1}
                 </span>
                 {selectedPeriod && (
-                    <span style={{ color: "#2563eb", fontWeight: 500 }}>
-                        ?? {timePeriodOptions.find(o => o.value === selectedPeriod)?.label}
+                    <span style={{ color: "#2563eb", fontWeight: 700 }}>
+                        📅 {timePeriodOptions.find(o => o.value === selectedPeriod)?.label}
                     </span>
                 )}
             </div>
 
             {/* Loading / Error */}
-            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>U?itavanje...</p>}
+            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
             {error && <p className="error-msg">{error}</p>}
 
             {/* Logs Table */}
             {!loading && !error && (
                 <>
                     <div style={{ overflowX: "auto" }}>
-                        <table style={{ 
-                            width: "100%", 
-                            borderCollapse: "collapse",
-                            fontSize: "0.875rem"
-                        }}>
+                        <table className="table">
                             <thead>
-                                <tr style={{ 
-                                    background: "#f3f4f6", 
-                                    borderBottom: "2px solid #e5e7eb" 
-                                }}>
-                                    <th style={{ padding: "12px", textAlign: "left", fontWeight: 600 }}>
-                                        Vreme
-                                    </th>
-                                    <th style={{ padding: "12px", textAlign: "left", fontWeight: 600 }}>
-                                        Nivo
-                                    </th>
-                                    <th style={{ padding: "12px", textAlign: "left", fontWeight: 600 }}>
-                                        Poruka
-                                    </th>
+                                <tr>
+                                    <th>Vreme</th>
+                                    <th>Nivo</th>
+                                    <th>Poruka</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {logs.map((log, index) => (
                                     <React.Fragment key={index}>
-                                        <tr style={{ 
-                                            borderBottom: "1px solid #e5e7eb",
-                                            background: getLevelBgColor(log.level)
-                                        }}>
-                                            <td style={{ 
-                                                padding: "12px", 
-                                                whiteSpace: "nowrap",
-                                                fontFamily: "monospace",
-                                                fontSize: "0.8rem"
-                                            }}>
+                                        <tr style={{ background: getLevelBgColor(log.level) }}>
+                                            <td style={{ whiteSpace: "nowrap", fontFamily: "monospace", fontSize: "0.8rem" }}>
                                                 {formatDate(log.timestamp)}
                                             </td>
-                                            <td style={{ padding: "12px" }}>
+                                            <td>
                                                 <span style={{
                                                     padding: "4px 12px",
-                                                    borderRadius: "6px",
-                                                    fontWeight: 600,
+                                                    borderRadius: "8px",
+                                                    fontWeight: 800,
                                                     fontSize: "0.75rem",
                                                     color: getLevelColor(log.level),
                                                     background: "white",
@@ -345,33 +310,19 @@ export default function LogsPage() {
                                                     {log.level.toUpperCase()}
                                                 </span>
                                             </td>
-                                            <td style={{ 
-                                                padding: "12px",
-                                                wordBreak: "break-word",
-                                                lineHeight: 1.5
-                                            }}>
-                                                {log.message}
-                                            </td>
+                                            <td style={{ wordBreak: "break-word", lineHeight: 1.5 }}>{log.message}</td>
                                         </tr>
                                         {log.exception && (
-                                            <tr style={{ 
-                                                background: "#fef2f2",
-                                                borderBottom: "1px solid #e5e7eb"
-                                            }}>
-                                                <td colSpan={3} style={{ padding: "12px" }}>
+                                            <tr style={{ background: "#fef2f2" }}>
+                                                <td colSpan={3}>
                                                     <details>
-                                                        <summary style={{ 
-                                                            cursor: "pointer", 
-                                                            fontWeight: 600,
-                                                            color: "#dc2626",
-                                                            marginBottom: "8px"
-                                                        }}>
+                                                        <summary style={{ cursor: "pointer", fontWeight: 800, color: "#dc2626", marginBottom: "8px" }}>
                                                             {"\u{1F41E}"} Exception Details
                                                         </summary>
                                                         <pre style={{
                                                             background: "#ffffff",
                                                             padding: "12px",
-                                                            borderRadius: "8px",
+                                                            borderRadius: "12px",
                                                             border: "1px solid #fecaca",
                                                             fontSize: "0.75rem",
                                                             overflow: "auto",
@@ -391,47 +342,33 @@ export default function LogsPage() {
 
                     {/* Pagination */}
                     {totalPages > 1 && (
-                        <div style={{ 
-                            display: "flex", 
-                            justifyContent: "center", 
-                            gap: "0.5rem", 
+                        <div style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            gap: "0.5rem",
                             marginTop: "1.5rem",
                             flexWrap: "wrap"
                         }}>
                             <button
-                                className="button-big"
+                                className="button-big button-secondary"
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                style={{ 
-                                    width: "auto", 
-                                    padding: "8px 16px",
-                                    fontSize: "0.95rem",
-                                    marginTop: 0
-                                }}
+                                style={{ width: "auto", padding: "8px 16px", fontSize: "0.95rem", marginTop: 0 }}
                             >
-                                ? Prethodna
+                                ← Prethodna
                             </button>
 
-                            <span style={{ 
-                                padding: "8px 16px", 
-                                alignSelf: "center",
-                                fontWeight: 600
-                            }}>
+                            <span style={{ padding: "8px 16px", alignSelf: "center", fontWeight: 800 }}>
                                 {currentPage} / {totalPages}
                             </span>
 
                             <button
-                                className="button-big"
+                                className="button-big button-secondary"
                                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                 disabled={currentPage === totalPages}
-                                style={{ 
-                                    width: "auto", 
-                                    padding: "8px 16px",
-                                    fontSize: "0.95rem",
-                                    marginTop: 0
-                                }}
+                                style={{ width: "auto", padding: "8px 16px", fontSize: "0.95rem", marginTop: 0 }}
                             >
-                                Slede?a ?
+                                Sledeća →
                             </button>
                         </div>
                     )}

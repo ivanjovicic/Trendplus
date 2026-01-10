@@ -11,6 +11,10 @@ export interface Toast {
 
 interface ToastContextType {
     showToast: (message: string, type?: ToastType, duration?: number) => void;
+    success: (message: string, duration?: number) => void;
+    error: (message: string, duration?: number) => void;
+    warning: (message: string, duration?: number) => void;
+    info: (message: string, duration?: number) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -38,6 +42,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             }, duration);
         }
     }, []);
+
+    const success = useCallback((message: string, duration?: number) => showToast(message, "success", duration), [showToast]);
+    const error = useCallback((message: string, duration?: number) => showToast(message, "error", duration), [showToast]);
+    const warning = useCallback((message: string, duration?: number) => showToast(message, "warning", duration), [showToast]);
+    const info = useCallback((message: string, duration?: number) => showToast(message, "info", duration), [showToast]);
 
     const removeToast = (id: string) => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -86,14 +95,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         const icons = {
             success: "?",
             error: "?",
-            warning: "??",
-            info: "??",
+            warning: "!",
+            info: "i",
         };
         return icons[type];
     };
 
     return (
-        <ToastContext.Provider value={{ showToast }}>
+        <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
             {children}
             <div style={{
                 position: "fixed",
@@ -108,7 +117,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                         key={toast.id}
                         style={getToastStyles(toast.type)}
                     >
-                        <span style={{ fontSize: "1.5rem" }}>{getIcon(toast.type)}</span>
+                        <span style={{ fontSize: "1.25rem", width: 22, textAlign: "center" }}>{getIcon(toast.type)}</span>
                         <span style={{ flex: 1 }}>{toast.message}</span>
                         <button
                             onClick={() => removeToast(toast.id)}
@@ -120,8 +129,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                 padding: 0,
                                 opacity: 0.6,
                             }}
+                            aria-label="Zatvori"
                         >
-                            ?
+                            ×
                         </button>
                     </div>
                 ))}

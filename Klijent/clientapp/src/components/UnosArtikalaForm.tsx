@@ -340,7 +340,7 @@ export default function UnosArtikalaForm({
                                     <td style={{ padding: '8px', position: 'relative' }}>
                                         <input
                                             type="text"
-                                            placeholder="Pretražite postojeće ili unesite novi..."
+                                            placeholder="Unesite novi ili pretražite postojeće..."
                                             value={searchQuery[index] || stavka.naziv}
                                             onChange={(e) => handleSearchChange(index, e.target.value)}
                                             onFocus={() => setShowDropdown(prev => ({ ...prev, [index]: true }))}

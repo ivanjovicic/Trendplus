@@ -337,112 +337,42 @@ export default function ArtikliListPage() {
         </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "0.875rem",
-            }}
-          >
+          <table className="table">
             <thead>
-              <tr
-                style={{
-                  background: "#f3f4f6",
-                  borderBottom: "2px solid #e5e7eb",
-                }}
-              >
-                <th
-                  style={{
-                    padding: 12,
-                    textAlign: "left",
-                    fontWeight: 600,
-                  }}
-                >
-                  ID
-                </th>
-                <th
-                  style={{
-                    padding: 12,
-                    textAlign: "left",
-                    fontWeight: 600,
-                  }}
-                >
-                  Naziv
-                </th>
-                <th
-                  style={{
-                    padding: 12,
-                    textAlign: "right",
-                    fontWeight: 600,
-                  }}
-                >
-                  Prodajna cena
-                </th>
-                <th
-                  style={{
-                    padding: 12,
-                    textAlign: "right",
-                    fontWeight: 600,
-                  }}
-                >
-                  Nabavna cena
-                </th>
-                <th
-                  style={{
-                    padding: 12,
-                    textAlign: "center",
-                    fontWeight: 600,
-                  }}
-                >
-                  Količina
-                </th>
-                <th
-                  style={{
-                    padding: 12,
-                    textAlign: "center",
-                    fontWeight: 600,
-                  }}
-                >
-                  Akcije
-                </th>
+              <tr>
+                <th>ID</th>
+                <th>Naziv</th>
+                <th style={{ textAlign: "right" }}>Prodajna cena</th>
+                <th style={{ textAlign: "right" }}>Nabavna cena</th>
+                <th style={{ textAlign: "center" }}>Količina</th>
+                <th style={{ textAlign: "center" }}>Akcije</th>
               </tr>
             </thead>
             <tbody>
               {filteredArtikli.map((a) => (
-                <tr
-                  key={a.id}
-                  style={{ borderBottom: "1px solid #e5e7eb" }}
-                >
-                  <td style={{ padding: 12, color: "#6b7280" }}>{a.id}</td>
-                  <td style={{ padding: 12, fontWeight: 600 }}>{a.naziv}</td>
-                  <td
-                    style={{
-                      padding: 12,
-                      textAlign: "right",
-                      color: "#059669",
-                      fontWeight: 600,
-                    }}
-                  >
+                <tr key={a.id}>
+                  <td style={{ color: "#6b7280" }}>{a.id}</td>
+                  <td style={{ fontWeight: 600 }}>{a.naziv}</td>
+                  <td style={{ textAlign: "right", color: "#059669", fontWeight: 700 }}>
                     {a.prodajnaCena.toFixed(2)} RSD
                   </td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#6b7280" }}>
+                  <td style={{ textAlign: "right", color: "#6b7280" }}>
                     {a.nabavnaCena ? `${a.nabavnaCena.toFixed(2)} RSD` : "-"}
                   </td>
-                  <td style={{ padding: 12, textAlign: "center", color: "#6b7280" }}>
-                    {a.kolicina ?? 0}
-                  </td>
-                  <td style={{ padding: 12, textAlign: "center" }}>
+                  <td style={{ textAlign: "center", color: "#6b7280" }}>{a.kolicina ?? 0}</td>
+                  <td style={{ textAlign: "center" }}>
                     <Link
                       to={`/artikli/${a.id}/edit`}
                       style={{
                         background: "#3b82f6",
                         color: "white",
-                        padding: "6px 16px",
-                        borderRadius: "6px",
+                        padding: "8px 16px",
+                        borderRadius: "10px",
                         textDecoration: "none",
                         fontSize: "0.875rem",
-                        fontWeight: 600,
+                        fontWeight: 700,
                         display: "inline-block",
+                        boxShadow: "0 8px 18px rgba(37, 99, 235, 0.20)",
                       }}
                     >
                       Izmeni

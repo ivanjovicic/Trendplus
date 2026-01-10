@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using Domain.Exceptions;
@@ -150,7 +150,7 @@ public class GlobalExceptionMiddleware
                 response.StatusCode = (int)HttpStatusCode.ServiceUnavailable;
                 problemDetails.Status = 503;
                 problemDetails.Title = "Service Temporarily Unavailable";
-                problemDetails.Detail = "Servis je privremeno nedostupan. Molimo poku�ajte ponovo za nekoliko sekundi.";
+                problemDetails.Detail = "Servis je privremeno nedostupan. Molimo pokušajte ponovo za nekoliko sekundi.";
                 problemDetails.ErrorCode = "CIRCUIT_BREAKER_OPEN";
                 
                 _logger.LogWarning(
@@ -175,7 +175,7 @@ public class GlobalExceptionMiddleware
                 response.StatusCode = (int)HttpStatusCode.RequestTimeout;
                 problemDetails.Status = 408;
                 problemDetails.Title = "Request Timeout";
-                problemDetails.Detail = "Zahtev je istekao. Molimo poku�ajte ponovo.";
+                problemDetails.Detail = "Zahtev je istekao. Molimo pokušajte ponovo.";
                 problemDetails.ErrorCode = "REQUEST_TIMEOUT";
                 
                 _logger.LogWarning(
@@ -188,7 +188,7 @@ public class GlobalExceptionMiddleware
                 response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 problemDetails.Status = 500;
                 problemDetails.Title = "Internal Server Error";
-                problemDetails.Detail = "Do�lo je do neo?ekivane gre�ke. Molimo kontaktirajte podr�ku.";
+                problemDetails.Detail = "Došlo je do neočekivane greške. Molimo kontaktirajte podršku.";
                 problemDetails.ErrorCode = "INTERNAL_ERROR";
 
                 _logger.LogError(

@@ -1,4 +1,4 @@
-/**
+Ôªø/**
  * API Error types and handling utilities
  */
 
@@ -105,31 +105,31 @@ export function getErrorMessage(error: unknown): string {
 
     if (error instanceof Error) {
         if (error.message.includes("Failed to fetch")) {
-            return "Ne mogu da se poveûem sa serverom. Proverite internet konekciju.";
+            return "Ne mogu da se pove≈æem sa serverom. Proverite internet konekciju.";
         }
         if (error.message.includes("timeout")) {
-            return "Zahtev je istekao. Pokuöajte ponovo.";
+            return "Zahtev je istekao. Poku≈°ajte ponovo.";
         }
         return error.message;
     }
 
-    return "Doölo je do neo?ekivane greöke.";
+    return "Do≈°lo je do neoƒçekivane gre≈°ke.";
 }
 
 /**
  * Error code to user message mapping
  */
 const errorMessages: Record<string, string> = {
-    VALIDATION_ERROR: "Molimo ispravite greöke u formi.",
-    ENTITY_NOT_FOUND: "Traûeni resurs nije prona?en.",
+    VALIDATION_ERROR: "Molimo ispravite gre≈°ke u formi.",
+    ENTITY_NOT_FOUND: "Tra≈æeni resurs nije pronaƒëen.",
     BUSINESS_RULE_VIOLATION: "Operacija nije dozvoljena.",
-    INSUFFICIENT_STOCK: "Nedovoljna koli?ina na stanju.",
-    DUPLICATE_ENTITY: "Zapis sa ovim podacima ve? postoji.",
+    INSUFFICIENT_STOCK: "Nedovoljna koliƒçina na stanju.",
+    DUPLICATE_ENTITY: "Zapis sa ovim podacima veƒá postoji.",
     EXTERNAL_SERVICE_ERROR: "Eksterni servis je trenutno nedostupan.",
-    CIRCUIT_BREAKER_OPEN: "Servis je privremeno nedostupan. Pokuöajte za nekoliko sekundi.",
+    CIRCUIT_BREAKER_OPEN: "Servis je privremeno nedostupan. Poku≈°ajte za nekoliko sekundi.",
     UNAUTHORIZED: "Niste autorizovani za ovu akciju.",
-    REQUEST_TIMEOUT: "Zahtev je istekao. Pokuöajte ponovo.",
-    INTERNAL_ERROR: "Doölo je do greöke na serveru. Kontaktirajte podröku.",
+    REQUEST_TIMEOUT: "Zahtev je istekao. Poku≈°ajte ponovo.",
+    INTERNAL_ERROR: "Do≈°lo je do gre≈°ke na serveru. Kontaktirajte podr≈°ku.",
 };
 
 export function getErrorMessageByCode(code: string): string {

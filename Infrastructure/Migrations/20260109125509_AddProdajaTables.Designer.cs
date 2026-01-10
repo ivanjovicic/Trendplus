@@ -3,6 +3,7 @@ using System;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(TrendplusDbContext))]
-    partial class TrendplusDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260109125509_AddProdajaTables")]
+    partial class AddProdajaTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -258,26 +261,21 @@ namespace Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Cena")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("cena");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("IdArtikal")
-                        .HasColumnType("integer")
-                        .HasColumnName("id_artikal");
+                        .HasColumnType("integer");
 
                     b.Property<int>("IdProdaja")
-                        .HasColumnType("integer")
-                        .HasColumnName("id_prodaja");
+                        .HasColumnType("integer");
 
                     b.Property<int>("Kolicina")
-                        .HasColumnType("integer")
-                        .HasColumnName("kolicina");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -290,28 +288,23 @@ namespace Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("BrojRacuna")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("broj_racuna");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime>("DatumProdaje")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("datum_prodaje");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("IDObjekat")
-                        .HasColumnType("integer")
-                        .HasColumnName("id_objekat");
+                        .HasColumnType("integer");
 
                     b.Property<string>("NacinPlacanja")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("nacin_placanja");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 

@@ -1,6 +1,7 @@
 ﻿using System.Data.Common;
 using Application.Artikli.Common.Interfaces;
 using Domain.Model;
+using Domain.Model.Prodaja;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.DbContexts
@@ -66,6 +67,38 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => e.CreatedAt);
             });
 
+            // Prodaja mapping
+            modelBuilder.Entity<ProdajaZaglavlje>(eb =>
+            {
+                eb.ToTable("prodaja_zaglavlje");
+                eb.HasKey(e => e.Id);
+                
+                // Explicit column mapping for PostgreSQL snake_case
+                eb.Property(e => e.Id).HasColumnName("id");
+                eb.Property(e => e.BrojRacuna).HasColumnName("broj_racuna").HasMaxLength(100);
+                eb.Property(e => e.DatumProdaje).HasColumnName("datum_prodaje").IsRequired();
+                eb.Property(e => e.NacinPlacanja).HasColumnName("nacin_placanja").HasMaxLength(100);
+                eb.Property(e => e.IDObjekat).HasColumnName("id_objekat");
+                
+                eb.HasMany(e => e.Stavke)
+                  .WithOne(s => s.Prodaja)
+                  .HasForeignKey(s => s.IdProdaja)
+                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ProdajaStavka>(eb =>
+            {
+                eb.ToTable("prodaja_stavke");
+                eb.HasKey(e => e.Id);
+                
+                // Explicit column mapping for PostgreSQL snake_case
+                eb.Property(e => e.Id).HasColumnName("id");
+                eb.Property(e => e.IdProdaja).HasColumnName("id_prodaja").IsRequired();
+                eb.Property(e => e.IdArtikal).HasColumnName("id_artikal").IsRequired();
+                eb.Property(e => e.Kolicina).HasColumnName("kolicina").IsRequired();
+                eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
+            });
+
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
         }
 
@@ -77,6 +110,8 @@ namespace Infrastructure.DbContexts
         public DbSet<DnevnikPromena> DnevnikPromena { get; set; } = null!;
         public DbSet<Sezona> Sezone { get; set; } = null!;
         public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
+        public DbSet<ProdajaZaglavlje> ProdajaZaglavlja { get; set; } = null!;
+        public DbSet<ProdajaStavka> ProdajaStavke { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {

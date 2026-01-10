@@ -3,8 +3,10 @@ import { createTipObuce } from "../services/tipoviObuceApi";
 import { createDobavljac } from "../services/dobavljaciApi";
 import { getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import Modal from "./Modal";
+import { useToast } from "./Toast";
 
 export interface CreateArtikalFormProps {
     tipoviObuce: { id: number; naziv: string }[];
@@ -15,6 +17,8 @@ export interface CreateArtikalFormProps {
     mode?: "create" | "edit";
 }
 
+type TabType = "basic" | "advanced";
+
 export default function CreateArtikalForm({
     tipoviObuce,
     dobavljaci,
@@ -23,8 +27,24 @@ export default function CreateArtikalForm({
     initialData,
     mode = "create",
 }: CreateArtikalFormProps) {
+    const toast = useToast();
+    const [activeTab, setActiveTab] = useState<TabType>("basic");
+    const [showAdvanced, setShowAdvanced] = useState(false);
     const [sezone, setSezone] = useState<Sezona[]>([]);
-    
+    const nazivRef = useRef<HTMLInputElement>(null);
+
+    // Local copies of tipoviObuce and dobavljaci for inline additions
+    const [localTipoviObuce, setLocalTipoviObuce] = useState(tipoviObuce);
+    const [localDobavljaci, setLocalDobavljaci] = useState(dobavljaci);
+
+    useEffect(() => {
+        setLocalTipoviObuce(tipoviObuce);
+    }, [tipoviObuce]);
+
+    useEffect(() => {
+        setLocalDobavljaci(dobavljaci);
+    }, [dobavljaci]);
+
     useEffect(() => {
         const loadSezone = async () => {
             try {
@@ -37,22 +57,7 @@ export default function CreateArtikalForm({
         loadSezone();
     }, []);
 
-    React.useEffect(() => {
-        if (!initialData) return;
-        setNaziv(initialData.naziv);
-        setProdajnaCena(initialData.prodajnaCena != null ? String(initialData.prodajnaCena) : "");
-        setNabavnaCena(initialData.nabavnaCena != null ? String(initialData.nabavnaCena) : "");
-        setNabavnaCenaDin(initialData.nabavnaCenaDin != null ? String(initialData.nabavnaCenaDin) : "");
-        setPrvaProdajnaCena(
-            initialData.prvaProdajnaCena != null ? String(initialData.prvaProdajnaCena) : ""
-        );
-        setKolicina(initialData.kolicina != null ? String(initialData.kolicina) : "");
-        setKomentar(initialData.komentar ?? "");
-        setSelectedTip(initialData.tipObuceId ?? null);
-        setSelectedDobavljac(initialData.dobavljacId ?? null);
-        setSelectedSezona(initialData.idSezona ?? null);
-    }, [initialData]);
-
+    // Form state
     const [naziv, setNaziv] = useState(initialData?.naziv ?? "");
     const [prodajnaCena, setProdajnaCena] = useState(
         initialData?.prodajnaCena != null ? String(initialData.prodajnaCena) : ""
@@ -75,46 +80,118 @@ export default function CreateArtikalForm({
         initialData?.dobavljacId ?? null
     );
     const [selectedSezona, setSelectedSezona] = useState<number | null>(initialData?.idSezona ?? null);
-    const [msg, setMsg] = useState("");
-    const [error, setError] = useState("");
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Validation state
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Modal state for adding new tip/dobavljac
+    const [showNewTipModal, setShowNewTipModal] = useState(false);
+    const [showNewDobModal, setShowNewDobModal] = useState(false);
     const [newTip, setNewTip] = useState("");
     const [newDob, setNewDob] = useState("");
-    const [showNewTipConfirm, setShowNewTipConfirm] = useState(false);
-    const [showNewDobConfirm, setShowNewDobConfirm] = useState(false);
+    const [isCreatingTip, setIsCreatingTip] = useState(false);
+    const [isCreatingDob, setIsCreatingDob] = useState(false);
+
+    // Auto-focus on mount
+    useEffect(() => {
+        if (mode === "create" && nazivRef.current) {
+            nazivRef.current.focus();
+        }
+    }, [mode]);
+
+    // Real-time validation
+    const validateField = (field: string, value: string): string | null => {
+        switch (field) {
+            case "naziv":
+                if (!value.trim()) return "Naziv je obavezan";
+                if (value.length < 2) return "Naziv mora imati minimum 2 karaktera";
+                return null;
+            case "prodajnaCena":
+                if (!value) return "Prodajna cena je obavezna";
+                const cena = Number(value);
+                if (isNaN(cena) || cena <= 0) return "Cena mora biti veća od 0";
+                return null;
+            case "kolicina":
+                if (value && isNaN(Number(value))) return "Količina mora biti broj";
+                return null;
+            default:
+                return null;
+        }
+    };
+
+    const handleFieldBlur = (field: string, value: string) => {
+        const error = validateField(field, value);
+        setErrors((prev) => ({
+            ...prev,
+            [field]: error || "",
+        }));
+    };
 
     const handleCreateTip = async () => {
         if (!newTip.trim()) return;
-        setShowNewTipConfirm(false);
+        
+        setIsCreatingTip(true);
         try {
             const idTip = await createTipObuce(newTip.trim());
+            const newTipObj = { id: idTip, naziv: newTip.trim() };
+            setLocalTipoviObuce((prev) => [...prev, newTipObj]);
             setSelectedTip(idTip);
             setNewTip("");
-            window.location.reload();
+            setShowNewTipModal(false);
+            toast.success(`Tip obuće "${newTipObj.naziv}" uspešno kreiran!`);
         } catch (e) {
             console.error(e);
-            setError("Ne mogu da kreiram tip obuće.");
+            toast.error("Greška pri kreiranju tipa obuće");
+        } finally {
+            setIsCreatingTip(false);
         }
     };
 
     const handleCreateDob = async () => {
         if (!newDob.trim()) return;
-        setShowNewDobConfirm(false);
+        
+        setIsCreatingDob(true);
         try {
             const idDob = await createDobavljac(newDob.trim());
+            const newDobObj = { id: idDob, naziv: newDob.trim() };
+            setLocalDobavljaci((prev) => [...prev, newDobObj]);
             setSelectedDobavljac(idDob);
             setNewDob("");
-            window.location.reload();
+            setShowNewDobModal(false);
+            toast.success(`Dobavljač "${newDobObj.naziv}" uspešno kreiran!`);
         } catch (e) {
             console.error(e);
-            setError("Ne mogu da kreiram dobavljača.");
+            toast.error("Greška pri kreiranju dobavljača");
+        } finally {
+            setIsCreatingDob(false);
         }
     };
 
-    const handleSubmit = async () => {
-        setMsg("");
-        setError("");
+    const validateForm = (): boolean => {
+        const newErrors: Record<string, string> = {};
+
+        const nazivError = validateField("naziv", naziv);
+        if (nazivError) newErrors.naziv = nazivError;
+
+        const cenaError = validateField("prodajnaCena", prodajnaCena);
+        if (cenaError) newErrors.prodajnaCena = cenaError;
+
+        const kolicinaError = validateField("kolicina", kolicina);
+        if (kolicinaError) newErrors.kolicina = kolicinaError;
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = async (e?: React.FormEvent) => {
+        e?.preventDefault();
+
+        if (!validateForm()) {
+            toast.error("Molimo popunite sva obavezna polja ispravno");
+            return;
+        }
 
         const formData: ArtikalFormData = {
             naziv,
@@ -129,329 +206,615 @@ export default function CreateArtikalForm({
             idSezona: selectedSezona,
         };
 
-        console.debug("CreateArtikalForm submitting formData:", formData);
-
         setIsSubmitting(true);
         try {
             await onSubmit(formData);
-            setMsg("Artikal uspešno kreiran ✔️");
-           
-            setNaziv("");
-            setProdajnaCena("");
-            setNabavnaCena("");
-            setNabavnaCenaDin("");
-            setPrvaProdajnaCena("");
-            setKolicina("");
-            setKomentar("");
-            setSelectedTip(null);
-            setSelectedDobavljac(null);
-            setSelectedSezona(null);
-        } catch (e) {
-            setError("Greška pri kreiranju artikla.");
+            toast.success(
+                mode === "edit" 
+                    ? "Artikal uspešno izmenjen! ✅" 
+                    : "Artikal uspešno kreiran! ✅"
+            );
+
+            if (mode === "create") {
+                // Reset form
+                setNaziv("");
+                setProdajnaCena("");
+                setNabavnaCena("");
+                setNabavnaCenaDin("");
+                setPrvaProdajnaCena("");
+                setKolicina("");
+                setKomentar("");
+                setSelectedTip(null);
+                setSelectedDobavljac(null);
+                setSelectedSezona(null);
+                setErrors({});
+                
+                // Focus back to naziv
+                nazivRef.current?.focus();
+            }
+        } catch (e: any) {
+            toast.error(e?.message ?? "Greška pri kreiranju artikla");
             console.error(e);
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const newTipIsEmpty = !newTip.trim();
-    const newDobIsEmpty = !newDob.trim();
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ctrl/Cmd + Enter to submit
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                e.preventDefault();
+                handleSubmit();
+            }
+            // Ctrl/Cmd + Shift + A to toggle advanced
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "A") {
+                e.preventDefault();
+                setShowAdvanced((prev) => !prev);
+            }
+        };
+
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [naziv, prodajnaCena, nabavnaCena, kolicina, selectedTip, selectedDobavljac]);
 
     return (
-        <div className="card">
-            <h2 className="text-2xl font-semibold mb-6">
-                {mode === "edit" ? "✏️ Izmeni artikal" : "➕ Kreiraj artikal"}
-            </h2>
-
-            <div className="form-grid">
-                <div>                   
-                    <label className="field-label">Naziv</label>
-                    <input
-                        className="input-big"
-                        placeholder="Naziv artikla"
-                        value={naziv}
-                        onChange={(e) => setNaziv(e.target.value)}
-                    />
-
-                    <label className="field-label">Prodajna cena (RSD)</label>
-                    <input
-                        className="input-big"
-                        placeholder="Prodajna cena"
-                        type="number"
-                        value={prodajnaCena}
-                        onChange={(e) => setProdajnaCena(e.target.value)}
-                    />
-
-                    <label className="field-label">Nabavna cena</label>
-                    <input
-                        className="input-big"
-                        placeholder="Nabavna cena"
-                        type="number"
-                        value={nabavnaCena}
-                        onChange={(e) => setNabavnaCena(e.target.value)}
-                    />
-
-                    <label className="field-label">Nabavna cena (din)</label>
-                    <input
-                        className="input-big"
-                        placeholder="Nabavna cena (din)"
-                        type="number"
-                        value={nabavnaCenaDin}
-                        onChange={(e) => setNabavnaCenaDin(e.target.value)}
-                    />
-
-                    <label className="field-label">Prva prodajna cena</label>
-                    <input
-                        className="input-big"
-                        placeholder="Prva prodajna cena"
-                        type="number"
-                        value={prvaProdajnaCena}
-                        onChange={(e) => setPrvaProdajnaCena(e.target.value)}
-                    />
-
-                    <label className="field-label">Količina</label>
-                    <input
-                        className="input-big"
-                        placeholder="Količina"
-                        type="number"
-                        value={kolicina}
-                        onChange={(e) => setKolicina(e.target.value)}
-                    />
-                </div>
-
-                <div>
-                    <label className="field-label">Komentar</label>
-                    <textarea
-                        className="input-big"
-                        placeholder="Komentar"
-                        value={komentar}
-                        onChange={(e) => setKomentar(e.target.value)}
-                    />
-
-                    <label className="field-label">Tip obuće</label>
-                    {mode === "create" ? (
-                        <div className="flex-row">
-                            <select
-                                className="input-big"
-                                value={selectedTip ?? ""}
-                                onChange={(e) => {
-                                    const v = e.target.value ? Number(e.target.value) : null;
-                                    console.debug('selectedTip change ->', v);
-                                    setSelectedTip(v);
-                                }}
-                            >
-                                <option value="">-- izaberite --</option>
-                                {tipoviObuce.map((t) => (
-                                    <option key={t.id} value={t.id}>{t.naziv}</option>
-                                ))}
-                            </select>
-
-                            <input
-                                className="input-big"
-                                placeholder="Novi tip..."
-                                value={newTip}
-                                onChange={(e) => setNewTip(e.target.value)}
-                            />
-
-                            <button
-                                type="button"
-                                className="button-big"
-                                disabled={newTipIsEmpty}
-                                onClick={() => setShowNewTipConfirm(true)}
-                            >
-                                Dodaj
-                            </button>
-                        </div>
-                    ) : (
-                        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                            <select
-                                className="input-big"
-                                value={selectedTip ?? ""}
-                                onChange={(e) => {
-                                    const v = e.target.value ? Number(e.target.value) : null;
-                                    console.debug('selectedTip change ->', v);
-                                    setSelectedTip(v);
-                                }}
-                                style={{ flex: 1 }}
-                            >
-                                <option value="">-- izaberite --</option>
-                                {tipoviObuce.map((t) => (
-                                    <option key={t.id} value={t.id}>{t.naziv}</option>
-                                ))}
-                            </select>
-                            <Link
-                                to="/tipovi-obuce"
-                                style={{
-                                    background: "#0891b2",
-                                    color: "white",
-                                    padding: "10px 20px",
-                                    borderRadius: "8px",
-                                    textDecoration: "none",
-                                    fontSize: "0.875rem",
-                                    fontWeight: 600,
-                                    whiteSpace: "nowrap",
-                                    display: "inline-block"
-                                }}
-                            >
-                                ➕ Novi tip
-                            </Link>
-                        </div>
-                    )}
-
-                    <label className="field-label">Dobavljač</label>
-                    {mode === "create" ? (
-                        <div className="flex-row">
-                            <select
-                                className="input-big"
-                                value={selectedDobavljac ?? ""}
-                                onChange={(e) => {
-                                    const v = e.target.value ? Number(e.target.value) : null;
-                                    console.debug('selectedDobavljac change ->', v);
-                                    setSelectedDobavljac(v);
-                                }}
-                            >
-                                <option value="">-- izaberite --</option>
-                                {dobavljaci.map((d) => (
-                                    <option key={d.id} value={d.id}>{d.naziv}</option>
-                                ))}
-                            </select>
-
-                            <input
-                                type="text"
-                                className="input-big"
-                                placeholder="Novi dobavljač..."
-                                value={newDob}
-                                onChange={(e) => setNewDob(e.target.value)}
-                            />
-
-                            <button
-                                type="button"
-                                className="button-big"
-                                onClick={() => setShowNewDobConfirm(true)}
-                                disabled={newDobIsEmpty}
-                            >
-                                Dodaj
-                            </button>
-                        </div>
-                    ) : (
-                        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                            <select
-                                className="input-big"
-                                value={selectedDobavljac ?? ""}
-                                onChange={(e) => {
-                                    const v = e.target.value ? Number(e.target.value) : null;
-                                    console.debug('selectedDobavljac change ->', v);
-                                    setSelectedDobavljac(v);
-                                }}
-                                style={{ flex: 1 }}
-                            >
-                                <option value="">-- izaberite --</option>
-                                {dobavljaci.map((d) => (
-                                    <option key={d.id} value={d.id}>{d.naziv}</option>
-                                ))}
-                            </select>
-                            <Link
-                                to="/dobavljaci"
-                                style={{
-                                    background: "#059669",
-                                    color: "white",
-                                    padding: "10px 20px",
-                                    borderRadius: "8px",
-                                    textDecoration: "none",
-                                    fontSize: "0.875rem",
-                                    fontWeight: 600,
-                                    whiteSpace: "nowrap",
-                                    display: "inline-block"
-                                }}
-                            >
-                                ➕ Novi dobavljač
-                            </Link>
-                        </div>
-                    )}
-
-                    <label className="field-label">Sezona</label>
-                    <select
-                        className="input-big"
-                        value={selectedSezona ?? ""}
-                        onChange={(e) => {
-                            const v = e.target.value ? Number(e.target.value) : null;
-                            console.debug('selectedSezona change ->', v);
-                            setSelectedSezona(v);
-                        }}
-                    >
-                        <option value="">-- izaberite sezonu --</option>
-                        {sezone.map((s) => (
-                            <option key={s.id} value={s.id}>{s.naziv}</option>
-                        ))}
-                    </select>
-                </div> 
-
-                <div className="form-full">
-                    <button 
-                        className="button-big" 
-                        onClick={handleSubmit} 
-                        disabled={isSubmitting}
-                        style={{ maxWidth: '420px' }}
-                    >
-                        {isSubmitting ? "Kreiram..." : mode === "edit" ? "Sačuvaj izmene" : "Kreiraj artikal"}
-                    </button>
-                </div>
-
-                {msg && <p className="form-full success-msg">{msg}</p>}
-                {error && <p className="form-full error-msg">{error}</p>}
+        <div 
+            className="card" 
+            style={{
+                background: "linear-gradient(to bottom, #ffffff, #fafbfc)",
+                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                border: "1px solid #e5e7eb"
+            }}
+        >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h2 className="text-2xl font-semibold" style={{ margin: 0, color: "#1f2937" }}>
+                    {mode === "edit" ? "✏️ Izmeni artikal" : "➕ Kreiraj novi artikal"}
+                </h2>
+                <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    style={{
+                        background: showAdvanced 
+                            ? "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)" 
+                            : "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)",
+                        color: showAdvanced ? "white" : "#374151",
+                        padding: "10px 18px",
+                        borderRadius: "10px",
+                        border: showAdvanced ? "none" : "1px solid #d1d5db",
+                        fontSize: "0.875rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        boxShadow: showAdvanced 
+                            ? "0 4px 6px -1px rgba(8,145,178,0.3)" 
+                            : "0 1px 3px rgba(0,0,0,0.1)",
+                        transition: "all 0.2s ease",
+                    }}
+                    title="Ctrl+Shift+A"
+                >
+                    {showAdvanced ? "🔽 Sakrij dodatna polja" : "🔼 Prikaži dodatna polja"}
+                </button>
             </div>
 
-            {showNewTipConfirm && (
-                <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-                    <div style={{ background: 'rgba(0,0,0,0.4)', position: 'absolute', inset: 0 }} onClick={() => setShowNewTipConfirm(false)} />
-                    <div style={{ background: '#fff', padding: 24, borderRadius: 12, zIndex: 2001, minWidth: 320, maxWidth: 480 }}>
-                        <p style={{ fontWeight: 600, marginBottom: 12, fontSize: '1.125rem' }}>Potvrdi kreiranje tipa obuće</p>
-                        <p style={{ marginBottom: 16 }}>Da li želite da kreirate tip: <strong>{newTip}</strong>?</p>
-                        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                            <button 
-                                className="button-big" 
-                                style={{ background: '#e5e7eb', color: '#111', width: 'auto', padding: '10px 20px', marginTop: 0 }} 
-                                onClick={() => setShowNewTipConfirm(false)}
-                            >
-                                Otkaži
-                            </button>
-                            <button 
-                                className="button-big" 
-                                style={{ width: 'auto', padding: '10px 20px', marginTop: 0 }} 
-                                onClick={handleCreateTip}
-                            >
-                                Potvrdi
-                            </button>
+            <form onSubmit={handleSubmit}>
+                {/* OSNOVNI PODACI */}
+                <div 
+                    style={{ 
+                        marginBottom: "2rem",
+                        background: "#ffffff",
+                        padding: "1.5rem",
+                        borderRadius: "12px",
+                        border: "1px solid #e5e7eb",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
+                    }}
+                >
+                    <h3 style={{ 
+                        fontSize: "1.125rem", 
+                        fontWeight: 600, 
+                        marginBottom: "1.25rem", 
+                        color: "#374151",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px"
+                    }}>
+                        <span style={{
+                            background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                            color: "white",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "1rem"
+                        }}>📦</span>
+                        Osnovni podaci
+                    </h3>
+                    <div className="form-grid">
+                        <div>
+                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>
+                                Naziv <span style={{ color: "#ef4444" }}>*</span>
+                            </label>
+                            <input
+                                ref={nazivRef}
+                                className="input-big"
+                                placeholder="npr. Patike Nike Air Max"
+                                value={naziv}
+                                onChange={(e) => setNaziv(e.target.value)}
+                                onBlur={(e) => handleFieldBlur("naziv", e.target.value)}
+                                style={{ 
+                                    borderColor: errors.naziv ? "#ef4444" : "#d1d5db",
+                                    boxShadow: errors.naziv 
+                                        ? "0 0 0 3px rgba(239,68,68,0.1)" 
+                                        : "0 1px 2px rgba(0,0,0,0.05)",
+                                    transition: "all 0.2s ease"
+                                }}
+                                onFocus={(e) => e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"}
+                            />
+                            {errors.naziv && (
+                                <p style={{ 
+                                    color: "#ef4444", 
+                                    fontSize: "0.875rem", 
+                                    marginTop: "0.5rem",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px"
+                                }}>
+                                    ⚠️ {errors.naziv}
+                                </p>
+                            )}
                         </div>
-                    </div>
-                </div>
-            )}
 
-            {showNewDobConfirm && (
-                <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-                    <div style={{ background: 'rgba(0,0,0,0.4)', position: 'absolute', inset: 0 }} onClick={() => setShowNewDobConfirm(false)} />
-                    <div style={{ background: '#fff', padding: 24, borderRadius: 12, zIndex: 2001, minWidth: 320, maxWidth: 480 }}>
-                        <p style={{ fontWeight: 600, marginBottom: 12, fontSize: '1.125rem' }}>Potvrdi kreiranje novog dobavljača</p>
-                        <p style={{ marginBottom: 16 }}>Da li želite da kreirate dobavljača: <strong>{newDob}</strong>?</p>
-                        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                            <button 
-                                className="button-big" 
-                                style={{ background: '#e5e7eb', color: '#111', width: 'auto', padding: '10px 20px', marginTop: 0 }} 
-                                onClick={() => setShowNewDobConfirm(false)}
-                            >
-                                Otkaži
-                            </button>
-                            <button 
-                                className="button-big" 
-                                style={{ width: 'auto', padding: '10px 20px', marginTop: 0 }} 
-                                onClick={handleCreateDob}
-                            >
-                                Potvrdi
-                            </button>
+                        <div>
+                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>
+                                Prodajna cena (RSD) <span style={{ color: "#ef4444" }}>*</span>
+                            </label>
+                            <input
+                                className="input-big"
+                                placeholder="0.00"
+                                type="number"
+                                step="0.01"
+                                value={prodajnaCena}
+                                onChange={(e) => setProdajnaCena(e.target.value)}
+                                onBlur={(e) => handleFieldBlur("prodajnaCena", e.target.value)}
+                                style={{ 
+                                    borderColor: errors.prodajnaCena ? "#ef4444" : "#d1d5db",
+                                    boxShadow: errors.prodajnaCena 
+                                        ? "0 0 0 3px rgba(239,68,68,0.1)" 
+                                        : "0 1px 2px rgba(0,0,0,0.05)",
+                                    transition: "all 0.2s ease"
+                                }}
+                                onFocus={(e) => e.target.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.1)"}
+                            />
+                            {errors.prodajnaCena && (
+                                <p style={{ 
+                                    color: "#ef4444", 
+                                    fontSize: "0.875rem", 
+                                    marginTop: "0.5rem",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px"
+                                }}>
+                                    ⚠️ {errors.prodajnaCena}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>Količina</label>
+                            <input
+                                className="input-big"
+                                placeholder="0"
+                                type="number"
+                                value={kolicina}
+                                onChange={(e) => setKolicina(e.target.value)}
+                                onBlur={(e) => handleFieldBlur("kolicina", e.target.value)}
+                                style={{ 
+                                    borderColor: errors.kolicina ? "#ef4444" : "#d1d5db",
+                                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                    transition: "all 0.2s ease"
+                                }}
+                                onFocus={(e) => e.target.style.boxShadow = "0 0 0 3px rgba(139,92,246,0.1)"}
+                            />
+                            {errors.kolicina && (
+                                <p style={{ color: "#ef4444", fontSize: "0.875rem", marginTop: "0.5rem" }}>
+                                    ⚠️ {errors.kolicina}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>
+                                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                    👟 Tip obuće
+                                </span>
+                            </label>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                                <select
+                                    className="input-big"
+                                    value={selectedTip ?? ""}
+                                    onChange={(e) => setSelectedTip(e.target.value ? Number(e.target.value) : null)}
+                                    style={{ 
+                                        flex: 1, 
+                                        marginBottom: 0,
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                        borderColor: selectedTip ? "#0891b2" : "#d1d5db",
+                                        background: selectedTip ? "linear-gradient(to right, #ffffff, #ecfeff)" : "white"
+                                    }}
+                                >
+                                    <option value="">-- izaberite --</option>
+                                    {localTipoviObuce.map((t) => (
+                                        <option key={t.id} value={t.id}>{t.naziv}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewTipModal(true)}
+                                    style={{
+                                        background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+                                        color: "white",
+                                        padding: "10px 16px",
+                                        borderRadius: "10px",
+                                        border: "none",
+                                        fontSize: "1.5rem",
+                                        cursor: "pointer",
+                                        lineHeight: 1,
+                                        boxShadow: "0 4px 6px -1px rgba(8,145,178,0.3)",
+                                        transition: "all 0.2s ease",
+                                    }}
+                                    title="Dodaj novi tip obuće"
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>
+                                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                    🏢 Dobavljač
+                                </span>
+                            </label>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                                <select
+                                    className="input-big"
+                                    value={selectedDobavljac ?? ""}
+                                    onChange={(e) => setSelectedDobavljac(e.target.value ? Number(e.target.value) : null)}
+                                    style={{ 
+                                        flex: 1, 
+                                        marginBottom: 0,
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                        borderColor: selectedDobavljac ? "#059669" : "#d1d5db",
+                                        background: selectedDobavljac ? "linear-gradient(to right, #ffffff, #ecfdf5)" : "white"
+                                    }}
+                                >
+                                    <option value="">-- izaberite --</option>
+                                    {localDobavljaci.map((d) => (
+                                        <option key={d.id} value={d.id}>{d.naziv}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewDobModal(true)}
+                                    style={{
+                                        background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                                        color: "white",
+                                        padding: "10px 16px",
+                                        borderRadius: "10px",
+                                        border: "none",
+                                        fontSize: "1.5rem",
+                                        cursor: "pointer",
+                                        lineHeight: 1,
+                                        boxShadow: "0 4px 6px -1px rgba(5,150,105,0.3)",
+                                        transition: "all 0.2s ease",
+                                    }}
+                                    title="Dodaj novog dobavljača"
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                >
+                                    +
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            )}
+
+                {/* DODATNI PODACI (conditional) */}
+                {showAdvanced && (
+                    <div 
+                        style={{ 
+                            marginBottom: "2rem",
+                            background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+                            padding: "1.5rem",
+                            borderRadius: "12px",
+                            border: "1px solid #fbbf24",
+                            boxShadow: "0 4px 6px -1px rgba(251,191,36,0.2)"
+                        }}
+                    >
+                        <h3 style={{ 
+                            fontSize: "1.125rem", 
+                            fontWeight: 600, 
+                            marginBottom: "1.25rem", 
+                            color: "#78350f",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px"
+                        }}>
+                            <span style={{
+                                background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                                color: "white",
+                                width: "32px",
+                                height: "32px",
+                                borderRadius: "8px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "1rem"
+                            }}>📊</span>
+                            Dodatni podaci
+                        </h3>
+                        <div className="form-grid">
+                            <div>
+                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Nabavna cena</label>
+                                <input
+                                    className="input-big"
+                                    placeholder="0.00"
+                                    type="number"
+                                    step="0.01"
+                                    value={nabavnaCena}
+                                    onChange={(e) => setNabavnaCena(e.target.value)}
+                                    style={{ 
+                                        background: "white",
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                        borderColor: "#fbbf24"
+                                    }}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Nabavna cena (din)</label>
+                                <input
+                                    className="input-big"
+                                    placeholder="0.00"
+                                    type="number"
+                                    step="0.01"
+                                    value={nabavnaCenaDin}
+                                    onChange={(e) => setNabavnaCenaDin(e.target.value)}
+                                    style={{ 
+                                        background: "white",
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                        borderColor: "#fbbf24"
+                                    }}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Prva prodajna cena</label>
+                                <input
+                                    className="input-big"
+                                    placeholder="0.00"
+                                    type="number"
+                                    step="0.01"
+                                    value={prvaProdajnaCena}
+                                    onChange={(e) => setPrvaProdajnaCena(e.target.value)}
+                                    style={{ 
+                                        background: "white",
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                        borderColor: "#fbbf24"
+                                    }}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Sezona</label>
+                                <select
+                                    className="input-big"
+                                    value={selectedSezona ?? ""}
+                                    onChange={(e) => setSelectedSezona(e.target.value ? Number(e.target.value) : null)}
+                                    style={{ 
+                                        background: "white",
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                        borderColor: "#fbbf24"
+                                    }}
+                                >
+                                    <option value="">-- izaberite sezonu --</option>
+                                    {sezone.map((s) => (
+                                        <option key={s.id} value={s.id}>{s.naziv}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-full">
+                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Komentar</label>
+                                <textarea
+                                    className="input-big"
+                                    placeholder="Dodatne napomene..."
+                                    value={komentar}
+                                    onChange={(e) => setKomentar(e.target.value)}
+                                    rows={3}
+                                    style={{ 
+                                        background: "white",
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                        borderColor: "#fbbf24"
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* SUBMIT BUTTON */}
+                <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+                    <button
+                        type="submit"
+                        className="button-big"
+                        disabled={isSubmitting}
+                        style={{
+                            maxWidth: "420px",
+                            background: isSubmitting 
+                                ? "linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)" 
+                                : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                            cursor: isSubmitting ? "not-allowed" : "pointer",
+                            boxShadow: isSubmitting 
+                                ? "none" 
+                                : "0 4px 6px -1px rgba(16,185,129,0.4), 0 2px 4px -1px rgba(16,185,129,0.2)",
+                            border: "none",
+                            transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.transform = "translateY(-2px)")}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                    >
+                        {isSubmitting 
+                            ? "⏳ Čuvam..." 
+                            : mode === "edit" 
+                                ? "💾 Sačuvaj izmene" 
+                                : "✅ Kreiraj artikal"}
+                    </button>
+                    <span style={{ 
+                        fontSize: "0.875rem", 
+                        color: "#6b7280",
+                        background: "#f3f4f6",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #e5e7eb"
+                    }}>
+                        💡 <kbd style={{ 
+                            background: "white", 
+                            padding: "2px 6px", 
+                            borderRadius: "4px",
+                            border: "1px solid #d1d5db",
+                            fontSize: "0.75rem",
+                            fontFamily: "monospace"
+                        }}>Ctrl</kbd> + <kbd style={{ 
+                            background: "white", 
+                            padding: "2px 6px", 
+                            borderRadius: "4px",
+                            border: "1px solid #d1d5db",
+                            fontSize: "0.75rem",
+                            fontFamily: "monospace"
+                        }}>Enter</kbd> za brzo čuvanje
+                    </span>
+                </div>
+            </form>
+
+            {/* MODAL: Novi tip obuće */}
+            <Modal
+                isOpen={showNewTipModal}
+                onClose={() => setShowNewTipModal(false)}
+                title="Dodaj novi tip obuće"
+                size="sm"
+                footer={
+                    <>
+                        <button
+                            className="button-big"
+                            style={{ 
+                                background: "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)", 
+                                color: "#374151", 
+                                width: "auto", 
+                                padding: "10px 20px", 
+                                marginTop: 0,
+                                border: "1px solid #d1d5db"
+                            }}
+                            onClick={() => setShowNewTipModal(false)}
+                        >
+                            Otkaži
+                        </button>
+                        <button
+                            className="button-big"
+                            style={{ 
+                                width: "auto", 
+                                padding: "10px 20px", 
+                                marginTop: 0,
+                                background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+                                boxShadow: "0 4px 6px -1px rgba(8,145,178,0.3)"
+                            }}
+                            onClick={handleCreateTip}
+                            disabled={!newTip.trim() || isCreatingTip}
+                        >
+                            {isCreatingTip ? "Kreiram..." : "Potvrdi"}
+                        </button>
+                    </>
+                }
+            >
+                <div>
+                    <label className="field-label" style={{ fontWeight: 600 }}>Naziv tipa</label>
+                    <input
+                        className="input-big"
+                        placeholder="npr. Patike"
+                        value={newTip}
+                        onChange={(e) => setNewTip(e.target.value)}
+                        autoFocus
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && newTip.trim()) {
+                                e.preventDefault();
+                                handleCreateTip();
+                            }
+                        }}
+                        style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
+                    />
+                </div>
+            </Modal>
+
+            {/* MODAL: Novi dobavljač */}
+            <Modal
+                isOpen={showNewDobModal}
+                onClose={() => setShowNewDobModal(false)}
+                title="Dodaj novog dobavljača"
+                size="sm"
+                footer={
+                    <>
+                        <button
+                            className="button-big"
+                            style={{ 
+                                background: "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)", 
+                                color: "#374151", 
+                                width: "auto", 
+                                padding: "10px 20px", 
+                                marginTop: 0,
+                                border: "1px solid #d1d5db"
+                            }}
+                            onClick={() => setShowNewDobModal(false)}
+                        >
+                            Otkaži
+                        </button>
+                        <button
+                            className="button-big"
+                            style={{ 
+                                width: "auto", 
+                                padding: "10px 20px", 
+                                marginTop: 0,
+                                background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                                boxShadow: "0 4px 6px -1px rgba(5,150,105,0.3)"
+                            }}
+                            onClick={handleCreateDob}
+                            disabled={!newDob.trim() || isCreatingDob}
+                        >
+                            {isCreatingDob ? "Kreiram..." : "Potvrdi"}
+                        </button>
+                    </>
+                }
+            >
+                <div>
+                    <label className="field-label" style={{ fontWeight: 600 }}>Naziv dobavljača</label>
+                    <input
+                        className="input-big"
+                        placeholder="npr. Nike"
+                        value={newDob}
+                        onChange={(e) => setNewDob(e.target.value)}
+                        autoFocus
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && newDob.trim()) {
+                                e.preventDefault();
+                                handleCreateDob();
+                            }
+                        }}
+                        style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
+                    />
+                </div>
+            </Modal>
         </div>
     );
 }

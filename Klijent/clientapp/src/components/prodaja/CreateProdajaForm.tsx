@@ -1,12 +1,20 @@
 ﻿import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { KreirajProdajuDto } from "../../types/prodaja/prodaja";
+import { useToast } from "../Toast";
 
 interface CreateProdajaFormProps {
     artikli: { id: number; naziv: string; cena: number }[];
     onSubmit: (data: KreirajProdajuDto) => Promise<void>;
 }
 
+function safeNumber(value: unknown, fallback = 0) {
+    const n = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
+
 export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFormProps) {
+    const toast = useToast();
+
     const [brojRacuna, setBrojRacuna] = useState("");
     const [stavke, setStavke] = useState<{ idArtikal: number; kolicina: number; cena: number }[]>(
         [
@@ -66,10 +74,7 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
         ]);
 
     const quickAddArtikal = useCallback((artikal: { id: number; naziv: string; cena: number }) => {
-        setStavke((s) => [
-            ...s,
-            { idArtikal: artikal.id, kolicina: 1, cena: artikal.cena },
-        ]);
+        setStavke((s) => [...s, { idArtikal: artikal.id, kolicina: 1, cena: safeNumber(artikal.cena, 0) }]);
         setSearchQuery("");
         setShowSearchResults(false);
         setSelectedIndex(0);
@@ -83,7 +88,16 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
     ) =>
         setStavke((s) => {
             const copy = [...s];
-            copy[index] = { ...copy[index], ...patch };
+            const prev = copy[index];
+
+            const next = {
+                ...prev,
+                ...patch,
+                kolicina: safeNumber(patch.kolicina ?? prev.kolicina, 1),
+                cena: safeNumber(patch.cena ?? prev.cena, 0),
+            };
+
+            copy[index] = next;
             return copy;
         });
 
@@ -123,25 +137,31 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
             brojRacuna,
             idObjekat: 1,
             nacinPlacanja: "Gotovina",
-            stavke,
+            stavke: stavke.map((s) => ({
+                ...s,
+                kolicina: Math.max(1, Math.trunc(safeNumber(s.kolicina, 1))),
+                cena: safeNumber(s.cena, 0),
+            })),
         };
 
         setIsSubmitting(true);
         try {
             await onSubmit(payload);
-            // reset
             setBrojRacuna("");
             setStavke([{ idArtikal: artikli[0]?.id ?? 0, kolicina: 1, cena: artikli[0]?.cena ?? 0 }]);
-            alert("Prodaja uspešna ✔️");
+            toast.success("Prodaja uspešna");
         } catch (err: any) {
             console.error(err);
             setError(err?.message ?? "Greška pri kreiranju prodaje");
+            toast.error(err?.message ?? "Greška pri kreiranju prodaje");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const ukupno = stavke.reduce((sum, s) => sum + s.kolicina * s.cena, 0);
+    const ukupno = useMemo(() => {
+        return stavke.reduce((sum, s) => sum + safeNumber(s.kolicina, 0) * safeNumber(s.cena, 0), 0);
+    }, [stavke]);
 
     return (
         <div className="card">
@@ -359,7 +379,7 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
                 fontSize: '1.25rem',
                 fontWeight: 600
             }}>
-                Ukupno: {ukupno.toFixed(2)} RSD
+                Ukupno: {safeNumber(ukupno, 0).toFixed(2)} RSD
             </div>
 
             <button 

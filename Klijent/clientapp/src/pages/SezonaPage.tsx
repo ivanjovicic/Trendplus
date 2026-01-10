@@ -191,20 +191,20 @@ export default function SezonaPage() {
 
       {!loading && sezone.length > 0 && (
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+          <table className="table">
             <thead>
-              <tr style={{ background: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Naziv</th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Datum od</th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Datum do</th>
+              <tr>
+                <th>Naziv</th>
+                <th>Datum od</th>
+                <th>Datum do</th>
               </tr>
             </thead>
             <tbody>
               {sezone.map((s) => (
-                <tr key={s.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <td style={{ padding: 12 }}>{s.naziv}</td>
-                  <td style={{ padding: 12 }}>{new Date(s.datumOd).toLocaleDateString("sr-RS")}</td>
-                  <td style={{ padding: 12 }}>{new Date(s.datumDo).toLocaleDateString("sr-RS")}</td>
+                <tr key={s.id}>
+                  <td style={{ fontWeight: 600 }}>{s.naziv}</td>
+                  <td>{new Date(s.datumOd).toLocaleDateString("sr-RS")}</td>
+                  <td>{new Date(s.datumDo).toLocaleDateString("sr-RS")}</td>
                 </tr>
               ))}
             </tbody>

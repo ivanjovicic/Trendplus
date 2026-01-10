@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
 import { getSalesHistory, type SaleListItem } from "../api/posApi";
 
 type TimePeriod = "" | "today" | "yesterday" | "7d" | "30d" | "custom";
@@ -6,10 +6,10 @@ type TimePeriod = "" | "today" | "yesterday" | "7d" | "30d" | "custom";
 const timePeriodOptions: { value: TimePeriod; label: string }[] = [
     { value: "", label: "Sve prodaje" },
     { value: "today", label: "Danas" },
-    { value: "yesterday", label: "Ju?e" },
+    { value: "yesterday", label: "Juče" },
     { value: "7d", label: "Poslednjih 7 dana" },
     { value: "30d", label: "Poslednjih 30 dana" },
-    { value: "custom", label: "Prilago?eni period" },
+    { value: "custom", label: "Prilagođeni period" },
 ];
 
 function getDateRangeFromPeriod(period: TimePeriod): { from: string; to: string } {
@@ -106,7 +106,7 @@ export default function SalesHistoryPage() {
             setTotalCount(result.totalCount);
         } catch (err: unknown) {
             console.error("Error fetching sales:", err);
-            const message = err instanceof Error ? err.message : "Gre�ka pri u?itavanju prodaja";
+            const message = err instanceof Error ? err.message : "Greška pri učitavanju prodaja";
             setError(message);
         } finally {
             setLoading(false);
@@ -172,7 +172,7 @@ export default function SalesHistoryPage() {
                     marginBottom: 24,
                     color: "#111827"
                 }}>
-                    ?? Istorija prodaje
+                    📊 Istorija prodaje
                 </h1>
 
                 {/* Summary Cards */}
@@ -217,7 +217,7 @@ export default function SalesHistoryPage() {
                         boxShadow: "0 1px 3px rgba(0,0,0,0.1)" 
                     }}>
                         <div style={{ color: "#6b7280", fontSize: 14, marginBottom: 8 }}>
-                            Prose?na vrednost
+                            Prosečna vrednost
                         </div>
                         <div style={{ fontSize: 24, fontWeight: 700, color: "#7c3aed" }}>
                             {formatCurrency(totals.avgTransaction)}
@@ -339,7 +339,7 @@ export default function SalesHistoryPage() {
                                     cursor: "pointer"
                                 }}
                             >
-                                ?? Osve�i
+                                🔄 Osveži
                             </button>
                         </div>
                     </div>
@@ -348,7 +348,7 @@ export default function SalesHistoryPage() {
                 {/* Loading / Error */}
                 {loading && (
                     <div style={{ textAlign: "center", padding: 40 }}>
-                        <p style={{ fontSize: 18, color: "#6b7280" }}>U?itavanje...</p>
+                        <p style={{ fontSize: 18, color: "#6b7280" }}>Učitavanje...</p>
                     </div>
                 )}
 
@@ -397,7 +397,7 @@ export default function SalesHistoryPage() {
                                             color: "white"
                                         }}>
                                             <div style={{ fontWeight: 600, fontSize: 18 }}>
-                                                ?? {date}
+                                                📅 {date}
                                             </div>
                                             <div style={{ display: "flex", gap: 24 }}>
                                                 <span>
@@ -427,13 +427,13 @@ export default function SalesHistoryPage() {
                                                             Vreme
                                                         </th>
                                                         <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>
-                                                            Broj ra?una
+                                                            Broj računa
                                                         </th>
                                                         <th style={{ padding: 12, textAlign: "center", fontWeight: 600 }}>
                                                             Stavki
                                                         </th>
                                                         <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>
-                                                            Pla?anje
+                                                            Plaćanje
                                                         </th>
                                                         <th style={{ padding: 12, textAlign: "right", fontWeight: 600 }}>
                                                             Iznos
@@ -511,7 +511,7 @@ export default function SalesHistoryPage() {
                                         cursor: currentPage === 1 ? "not-allowed" : "pointer"
                                     }}
                                 >
-                                    ? Prethodna
+                                    ← Prethodna
                                 </button>
 
                                 <span style={{ 
@@ -535,7 +535,7 @@ export default function SalesHistoryPage() {
                                         cursor: currentPage === totalPages ? "not-allowed" : "pointer"
                                     }}
                                 >
-                                    Slede?a ?
+                                    Sledeća →
                                 </button>
                             </div>
                         )}

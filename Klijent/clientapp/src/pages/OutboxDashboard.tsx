@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getOutboxStats, retryOutboxMessage, retryAllFailedMessages, purgeProcessedMessages, getEventTypeStats } from "../services/outboxApi";
+import {
+    getOutboxStats,
+    retryOutboxMessage,
+    retryAllFailedMessages,
+    purgeProcessedMessages,
+    getEventTypeStats,
+} from "../services/outboxApi";
 import { OutboxStats, OutboxMessage } from "../types/outbox";
+import { useToast } from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
+import PromptNumberModal from "../components/PromptNumberModal";
 
 interface EventTypeStat {
     eventType: string;
@@ -12,6 +21,8 @@ interface EventTypeStat {
 }
 
 export default function OutboxDashboard() {
+    const toast = useToast();
+
     const [stats, setStats] = useState<OutboxStats | null>(null);
     const [recentMessages, setRecentMessages] = useState<OutboxMessage[]>([]);
     const [eventTypeStats, setEventTypeStats] = useState<EventTypeStat[]>([]);
@@ -19,13 +30,19 @@ export default function OutboxDashboard() {
     const [error, setError] = useState<string | null>(null);
     const [autoRefresh, setAutoRefresh] = useState(true);
 
+    const [confirmRetryId, setConfirmRetryId] = useState<number | null>(null);
+    const [confirmRetryAll, setConfirmRetryAll] = useState(false);
+    const [purgeModalOpen, setPurgeModalOpen] = useState(false);
+    const [purgeDays, setPurgeDays] = useState(7);
+    const [actionBusy, setActionBusy] = useState(false);
+
     const fetchStats = async () => {
         try {
             const [statsResult, eventStatsResult] = await Promise.all([
                 getOutboxStats(),
-                getEventTypeStats()
+                getEventTypeStats(),
             ]);
-            
+
             setStats(statsResult.stats);
             setRecentMessages(statsResult.recentMessages);
             setEventTypeStats(eventStatsResult);
@@ -45,52 +62,50 @@ export default function OutboxDashboard() {
     useEffect(() => {
         if (!autoRefresh) return;
 
-        const interval = setInterval(fetchStats, 10000); // Refresh every 10s
+        const interval = setInterval(fetchStats, 10000);
         return () => clearInterval(interval);
     }, [autoRefresh]);
 
-    const handleRetry = async (id: number) => {
-        if (!confirm(`Da li želite da pokušate ponovo da pošaljete poruku ${id}?`)) {
-            return;
-        }
-
+    const doRetry = async (id: number) => {
+        setActionBusy(true);
         try {
             await retryOutboxMessage(id);
-            alert("Poruka je ozna?ena za ponovno slanje!");
+            toast.success("Poruka je ozna?ena za ponovno slanje!");
             await fetchStats();
         } catch (err) {
-            alert(`Greška: ${(err as Error).message}`);
+            toast.error(`Greška: ${(err as Error).message}`);
+        } finally {
+            setActionBusy(false);
+            setConfirmRetryId(null);
         }
     };
 
-    const handleRetryAllFailed = async () => {
-        if (!confirm(`Da li želite da pokušate ponovo da pošaljete SVE neuspele poruke?`)) {
-            return;
-        }
-
+    const doRetryAllFailed = async () => {
+        setActionBusy(true);
         try {
             const result = await retryAllFailedMessages();
-            alert(`${result.count} poruka je ozna?eno za ponovno slanje!`);
+            toast.success(`${result.count} poruka je ozna?eno za ponovno slanje!`);
             await fetchStats();
         } catch (err) {
-            alert(`Greška: ${(err as Error).message}`);
+            toast.error(`Greška: ${(err as Error).message}`);
+        } finally {
+            setActionBusy(false);
+            setConfirmRetryAll(false);
         }
     };
 
-    const handlePurgeProcessed = async () => {
-        const days = prompt("Obriši obra?ene poruke starije od koliko dana?", "7");
-        if (!days) return;
-
-        if (!confirm(`Da li želite da obrišete sve obra?ene poruke starije od ${days} dana?`)) {
-            return;
-        }
-
+    const doPurgeProcessed = async (days: number) => {
+        setActionBusy(true);
         try {
             const result = await purgeProcessedMessages(Number(days));
-            alert(`${result.count} poruka je obrisano!`);
+            toast.success(`${result.count} poruka je obrisano!`);
             await fetchStats();
+            setPurgeDays(days);
         } catch (err) {
-            alert(`Greška: ${(err as Error).message}`);
+            toast.error(`Greška: ${(err as Error).message}`);
+        } finally {
+            setActionBusy(false);
+            setPurgeModalOpen(false);
         }
     };
 
@@ -117,18 +132,35 @@ export default function OutboxDashboard() {
 
     return (
         <div className="card" style={{ maxWidth: "1400px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h2 className="text-2xl font-semibold">?? Outbox Dashboard</h2>
-                
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                    <Link 
+            <div
+                className="toolbar"
+                style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "1.5rem",
+                    gap: "1rem",
+                    flexWrap: "wrap",
+                }}
+            >
+                <h2 className="text-2xl font-semibold" style={{ margin: 0 }}>
+                    ?? Outbox Dashboard
+                </h2>
+
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <Link
                         to="/outbox/messages"
                         className="button-big"
-                        style={{ background: "#8b5cf6", padding: "8px 16px", marginBottom: 0, textDecoration: "none" }}
+                        style={{
+                            background: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+                            padding: "8px 16px",
+                            marginBottom: 0,
+                            textDecoration: "none",
+                        }}
                     >
                         ?? All Messages
                     </Link>
-                    
+
                     <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
                         <input
                             type="checkbox"
@@ -137,11 +169,12 @@ export default function OutboxDashboard() {
                         />
                         Auto-refresh (10s)
                     </label>
-                    
+
                     <button
-                        className="button-big"
+                        className="button-big button-secondary"
+                        type="button"
                         onClick={fetchStats}
-                        style={{ background: "#0891b2", padding: "8px 16px", marginBottom: 0 }}
+                        style={{ padding: "8px 16px", marginBottom: 0 }}
                     >
                         ?? Refresh
                     </button>
@@ -150,113 +183,79 @@ export default function OutboxDashboard() {
 
             {/* Bulk Operations */}
             {stats && stats.failed > 0 && (
-                <div style={{ 
-                    display: "flex", 
-                    gap: "1rem", 
-                    marginBottom: "1.5rem",
-                    padding: "1rem",
-                    background: "#fef2f2",
-                    borderRadius: "12px",
-                    border: "2px solid #dc2626"
-                }}>
+                <div
+                    className="toolbar"
+                    style={{
+                        display: "flex",
+                        gap: "1rem",
+                        marginBottom: "1.5rem",
+                        background: "#fef2f2",
+                        border: "2px solid #fecaca",
+                        flexWrap: "wrap",
+                    }}
+                >
                     <button
-                        className="button-big"
-                        onClick={handleRetryAllFailed}
-                        style={{ background: "#dc2626", padding: "8px 16px", marginBottom: 0 }}
+                        className="button-big button-danger"
+                        type="button"
+                        onClick={() => setConfirmRetryAll(true)}
+                        style={{ padding: "8px 16px", marginBottom: 0 }}
                     >
                         ?? Retry All Failed ({stats.failed})
                     </button>
-                    
+
                     <button
-                        className="button-big"
-                        onClick={handlePurgeProcessed}
-                        style={{ background: "#6b7280", padding: "8px 16px", marginBottom: 0 }}
+                        className="button-big button-secondary"
+                        type="button"
+                        onClick={() => setPurgeModalOpen(true)}
+                        style={{ padding: "8px 16px", marginBottom: 0 }}
                     >
-                        ??? Purge Processed
+                        ?? Purge Processed
                     </button>
                 </div>
             )}
 
             {/* Summary Cards */}
             {stats && (
-                <div style={{ 
-                    display: "grid", 
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-                    gap: "1rem", 
-                    marginBottom: "2rem" 
-                }}>
-                    <div style={{ 
-                        background: "#eff6ff", 
-                        padding: "1.5rem", 
-                        borderRadius: "12px",
-                        border: "2px solid #2563eb"
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
-                            Total Messages
-                        </div>
-                        <div style={{ fontSize: "2rem", fontWeight: 700, color: "#2563eb" }}>
-                            {stats.total}
-                        </div>
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                        gap: "1rem",
+                        marginBottom: "2rem",
+                    }}
+                >
+                    <div style={{ background: "#eff6ff", padding: "1.5rem", borderRadius: "12px", border: "2px solid #2563eb" }}>
+                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Total Messages</div>
+                        <div style={{ fontSize: "2rem", fontWeight: 800, color: "#2563eb" }}>{stats.total}</div>
                     </div>
 
-                    <div style={{ 
-                        background: "#f0fdf4", 
-                        padding: "1.5rem", 
-                        borderRadius: "12px",
-                        border: "2px solid #059669"
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
-                            Processed
-                        </div>
-                        <div style={{ fontSize: "2rem", fontWeight: 700, color: "#059669" }}>
-                            {stats.processed}
-                        </div>
+                    <div style={{ background: "#f0fdf4", padding: "1.5rem", borderRadius: "12px", border: "2px solid #059669" }}>
+                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Processed</div>
+                        <div style={{ fontSize: "2rem", fontWeight: 800, color: "#059669" }}>{stats.processed}</div>
                     </div>
 
-                    <div style={{ 
-                        background: "#fef3c7", 
-                        padding: "1.5rem", 
-                        borderRadius: "12px",
-                        border: "2px solid #f59e0b"
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
-                            Pending
-                        </div>
-                        <div style={{ fontSize: "2rem", fontWeight: 700, color: "#f59e0b" }}>
-                            {stats.pending}
-                        </div>
+                    <div style={{ background: "#fef3c7", padding: "1.5rem", borderRadius: "12px", border: "2px solid #f59e0b" }}>
+                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Pending</div>
+                        <div style={{ fontSize: "2rem", fontWeight: 800, color: "#f59e0b" }}>{stats.pending}</div>
                     </div>
 
-                    <div style={{ 
-                        background: stats.failed > 0 ? "#fef2f2" : "#f3f4f6", 
-                        padding: "1.5rem", 
-                        borderRadius: "12px",
-                        border: `2px solid ${stats.failed > 0 ? "#dc2626" : "#6b7280"}`
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
-                            Failed (Retries ? 5)
-                        </div>
-                        <div style={{ 
-                            fontSize: "2rem", 
-                            fontWeight: 700, 
-                            color: stats.failed > 0 ? "#dc2626" : "#6b7280" 
-                        }}>
+                    <div
+                        style={{
+                            background: stats.failed > 0 ? "#fef2f2" : "#f3f4f6",
+                            padding: "1.5rem",
+                            borderRadius: "12px",
+                            border: `2px solid ${stats.failed > 0 ? "#dc2626" : "#6b7280"}`,
+                        }}
+                    >
+                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Failed (Retries ? 5)</div>
+                        <div style={{ fontSize: "2rem", fontWeight: 800, color: stats.failed > 0 ? "#dc2626" : "#6b7280" }}>
                             {stats.failed}
                         </div>
                     </div>
 
-                    <div style={{ 
-                        background: "#ecfdf5", 
-                        padding: "1.5rem", 
-                        borderRadius: "12px",
-                        border: "2px solid #10b981"
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
-                            Success Rate
-                        </div>
-                        <div style={{ fontSize: "2rem", fontWeight: 700, color: "#10b981" }}>
-                            {stats.successRate.toFixed(1)}%
-                        </div>
+                    <div style={{ background: "#ecfdf5", padding: "1.5rem", borderRadius: "12px", border: "2px solid #10b981" }}>
+                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Success Rate</div>
+                        <div style={{ fontSize: "2rem", fontWeight: 800, color: "#10b981" }}>{stats.successRate.toFixed(1)}%</div>
                     </div>
                 </div>
             )}
@@ -268,46 +267,24 @@ export default function OutboxDashboard() {
                         ?? Event Type Statistics
                     </h3>
                     <div style={{ overflowX: "auto" }}>
-                        <table style={{ 
-                            width: "100%", 
-                            borderCollapse: "collapse",
-                            fontSize: "0.875rem"
-                        }}>
+                        <table className="table">
                             <thead>
-                                <tr style={{ background: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                                    <th style={{ padding: "12px", textAlign: "left", fontWeight: 600 }}>
-                                        Event Type
-                                    </th>
-                                    <th style={{ padding: "12px", textAlign: "right", fontWeight: 600 }}>
-                                        Total
-                                    </th>
-                                    <th style={{ padding: "12px", textAlign: "right", fontWeight: 600 }}>
-                                        Processed
-                                    </th>
-                                    <th style={{ padding: "12px", textAlign: "right", fontWeight: 600 }}>
-                                        Pending
-                                    </th>
-                                    <th style={{ padding: "12px", textAlign: "right", fontWeight: 600 }}>
-                                        Failed
-                                    </th>
+                                <tr>
+                                    <th>Event Type</th>
+                                    <th style={{ textAlign: "right" }}>Total</th>
+                                    <th style={{ textAlign: "right" }}>Processed</th>
+                                    <th style={{ textAlign: "right" }}>Pending</th>
+                                    <th style={{ textAlign: "right" }}>Failed</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {eventTypeStats.map((stat) => (
-                                    <tr key={stat.eventType} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                                        <td style={{ padding: "12px", fontWeight: 500 }}>
-                                            {stat.eventType}
-                                        </td>
-                                        <td style={{ padding: "12px", textAlign: "right", fontWeight: 600 }}>
-                                            {stat.total}
-                                        </td>
-                                        <td style={{ padding: "12px", textAlign: "right", color: "#059669" }}>
-                                            {stat.processed}
-                                        </td>
-                                        <td style={{ padding: "12px", textAlign: "right", color: "#f59e0b" }}>
-                                            {stat.pending}
-                                        </td>
-                                        <td style={{ padding: "12px", textAlign: "right", color: stat.failed > 0 ? "#dc2626" : "#6b7280" }}>
+                                    <tr key={stat.eventType}>
+                                        <td style={{ fontWeight: 700 }}>{stat.eventType}</td>
+                                        <td style={{ textAlign: "right", fontWeight: 800 }}>{stat.total}</td>
+                                        <td style={{ textAlign: "right", color: "#059669", fontWeight: 800 }}>{stat.processed}</td>
+                                        <td style={{ textAlign: "right", color: "#f59e0b", fontWeight: 800 }}>{stat.pending}</td>
+                                        <td style={{ textAlign: "right", color: stat.failed > 0 ? "#dc2626" : "#6b7280", fontWeight: 800 }}>
                                             {stat.failed}
                                         </td>
                                     </tr>
@@ -332,16 +309,26 @@ export default function OutboxDashboard() {
                         {recentMessages.map((message) => (
                             <div
                                 key={message.id}
+                                className="toolbar"
                                 style={{
                                     background: message.isProcessed ? "#f0fdf4" : message.retryCount >= 5 ? "#fef2f2" : "#fef3c7",
-                                    border: `2px solid ${message.isProcessed ? "#059669" : message.retryCount >= 5 ? "#dc2626" : "#f59e0b"}`,
-                                    borderRadius: "12px",
-                                    padding: "1rem"
+                                    border: `2px solid ${
+                                        message.isProcessed ? "#059669" : message.retryCount >= 5 ? "#dc2626" : "#f59e0b"
+                                    }`,
                                 }}
                             >
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "flex-start",
+                                        marginBottom: "0.75rem",
+                                        gap: "1rem",
+                                        flexWrap: "wrap",
+                                    }}
+                                >
                                     <div>
-                                        <div style={{ fontWeight: 700, fontSize: "1.125rem", marginBottom: "0.25rem" }}>
+                                        <div style={{ fontWeight: 900, fontSize: "1.125rem", marginBottom: "0.25rem" }}>
                                             {message.eventType}
                                         </div>
                                         <div style={{ fontSize: "0.875rem", color: "#6b7280", fontFamily: "monospace" }}>
@@ -349,56 +336,64 @@ export default function OutboxDashboard() {
                                         </div>
                                     </div>
 
-                                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
                                         {message.isProcessed ? (
-                                            <span style={{
-                                                padding: "4px 12px",
-                                                borderRadius: "6px",
-                                                background: "#f0fdf4",
-                                                color: "#059669",
-                                                fontSize: "0.75rem",
-                                                fontWeight: 600
-                                            }}>
-                                                ? Processed
+                                            <span
+                                                style={{
+                                                    padding: "4px 12px",
+                                                    borderRadius: "8px",
+                                                    background: "#f0fdf4",
+                                                    color: "#059669",
+                                                    fontSize: "0.75rem",
+                                                    fontWeight: 800,
+                                                    border: "1px solid #a7f3d0",
+                                                }}
+                                            >
+                                                Processed
                                             </span>
                                         ) : message.retryCount >= 5 ? (
                                             <>
-                                                <span style={{
-                                                    padding: "4px 12px",
-                                                    borderRadius: "6px",
-                                                    background: "#fef2f2",
-                                                    color: "#dc2626",
-                                                    fontSize: "0.75rem",
-                                                    fontWeight: 600
-                                                }}>
-                                                    ? Failed
-                                                </span>
-                                                <button
-                                                    onClick={() => handleRetry(message.id)}
+                                                <span
                                                     style={{
-                                                        background: "#dc2626",
-                                                        color: "white",
-                                                        border: "none",
-                                                        borderRadius: "6px",
                                                         padding: "4px 12px",
+                                                        borderRadius: "8px",
+                                                        background: "#fef2f2",
+                                                        color: "#dc2626",
                                                         fontSize: "0.75rem",
-                                                        fontWeight: 600,
-                                                        cursor: "pointer"
+                                                        fontWeight: 800,
+                                                        border: "1px solid #fecaca",
                                                     }}
                                                 >
-                                                    ?? Retry
+                                                    Failed
+                                                </span>
+                                                <button
+                                                    className="button-big button-danger"
+                                                    type="button"
+                                                    onClick={() => setConfirmRetryId(message.id)}
+                                                    style={{
+                                                        width: "auto",
+                                                        padding: "6px 12px",
+                                                        marginBottom: 0,
+                                                        fontSize: "0.8rem",
+                                                        boxShadow: "none",
+                                                    }}
+                                                >
+                                                    Retry
                                                 </button>
                                             </>
                                         ) : (
-                                            <span style={{
-                                                padding: "4px 12px",
-                                                borderRadius: "6px",
-                                                background: "#fef3c7",
-                                                color: "#f59e0b",
-                                                fontSize: "0.75rem",
-                                                fontWeight: 600
-                                            }}>
-                                                ? Pending (Retry: {message.retryCount})
+                                            <span
+                                                style={{
+                                                    padding: "4px 12px",
+                                                    borderRadius: "8px",
+                                                    background: "#fef3c7",
+                                                    color: "#92400e",
+                                                    fontSize: "0.75rem",
+                                                    fontWeight: 800,
+                                                    border: "1px solid #fde68a",
+                                                }}
+                                            >
+                                                Pending (Retry: {message.retryCount})
                                             </span>
                                         )}
                                     </div>
@@ -406,58 +401,39 @@ export default function OutboxDashboard() {
 
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "0.75rem" }}>
                                     <div>
-                                        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>
-                                            Created At
-                                        </div>
-                                        <div style={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
-                                            {formatDate(message.createdAt)}
-                                        </div>
+                                        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>Created At</div>
+                                        <div style={{ fontFamily: "monospace", fontSize: "0.875rem" }}>{formatDate(message.createdAt)}</div>
                                     </div>
                                     {message.processedAt && (
                                         <div>
-                                            <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>
-                                                Processed At
-                                            </div>
-                                            <div style={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
-                                                {formatDate(message.processedAt)}
-                                            </div>
+                                            <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>Processed At</div>
+                                            <div style={{ fontFamily: "monospace", fontSize: "0.875rem" }}>{formatDate(message.processedAt)}</div>
                                         </div>
                                     )}
                                 </div>
 
                                 {message.errorMessage && (
-                                    <div style={{ 
-                                        background: "#fef2f2", 
-                                        padding: "0.75rem", 
-                                        borderRadius: "8px", 
-                                        marginBottom: "0.75rem" 
-                                    }}>
-                                        <div style={{ fontSize: "0.75rem", color: "#dc2626", fontWeight: 600, marginBottom: "0.25rem" }}>
-                                            Error:
-                                        </div>
-                                        <div style={{ fontSize: "0.875rem", color: "#dc2626", fontFamily: "monospace" }}>
-                                            {message.errorMessage}
-                                        </div>
+                                    <div className="error-msg" style={{ marginBottom: "0.75rem" }}>
+                                        <div style={{ fontSize: "0.75rem", fontWeight: 800, marginBottom: "0.25rem" }}>Error:</div>
+                                        <div style={{ fontSize: "0.875rem", fontFamily: "monospace" }}>{message.errorMessage}</div>
                                     </div>
                                 )}
 
                                 <details>
-                                    <summary style={{ 
-                                        cursor: "pointer", 
-                                        fontSize: "0.875rem", 
-                                        fontWeight: 600, 
-                                        marginBottom: "0.5rem" 
-                                    }}>
+                                    <summary style={{ cursor: "pointer", fontSize: "0.875rem", fontWeight: 800, marginBottom: "0.5rem" }}>
                                         ?? Payload
                                     </summary>
-                                    <pre style={{
-                                        background: "#f9fafb",
-                                        padding: "1rem",
-                                        borderRadius: "8px",
-                                        fontSize: "0.75rem",
-                                        overflow: "auto",
-                                        maxHeight: "300px"
-                                    }}>
+                                    <pre
+                                        style={{
+                                            background: "#f9fafb",
+                                            padding: "1rem",
+                                            borderRadius: "12px",
+                                            fontSize: "0.75rem",
+                                            overflow: "auto",
+                                            maxHeight: "300px",
+                                            border: "1px solid #e5e7eb",
+                                        }}
+                                    >
                                         {formatPayload(message.payload)}
                                     </pre>
                                 </details>
@@ -468,10 +444,57 @@ export default function OutboxDashboard() {
             )}
 
             {!loading && !error && recentMessages.length === 0 && (
-                <p style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
-                    Nema outbox poruka. ?
-                </p>
+                <p style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>Nema outbox poruka.</p>
             )}
+
+            <ConfirmModal
+                isOpen={confirmRetryId != null}
+                title="Ponovno slanje"
+                message={
+                    <>
+                        Da li želite da pokušate ponovo da pošaljete poruku <strong>#{confirmRetryId}</strong>?
+                    </>
+                }
+                confirmText="Retry"
+                confirmVariant="danger"
+                isBusy={actionBusy}
+                onCancel={() => setConfirmRetryId(null)}
+                onConfirm={() => confirmRetryId != null && doRetry(confirmRetryId)}
+            />
+
+            <ConfirmModal
+                isOpen={confirmRetryAll}
+                title="Retry svih neuspelih poruka"
+                message={
+                    <>
+                        Da li želite da pokušate ponovo da pošaljete <strong>SVE</strong> neuspele poruke?
+                    </>
+                }
+                confirmText="Retry All"
+                confirmVariant="danger"
+                isBusy={actionBusy}
+                onCancel={() => setConfirmRetryAll(false)}
+                onConfirm={doRetryAllFailed}
+            />
+
+            <PromptNumberModal
+                isOpen={purgeModalOpen}
+                title="Purge processed poruka"
+                label="Obriši obra?ene poruke starije od (dana)"
+                description={
+                    <>
+                        Bi?e obrisane samo poruke koje su ozna?ene kao <strong>Processed</strong> i starije od izabranog broja dana.
+                    </>
+                }
+                defaultValue={purgeDays}
+                min={1}
+                max={365}
+                confirmText="Obriši"
+                cancelText="Otkaži"
+                isBusy={actionBusy}
+                onCancel={() => setPurgeModalOpen(false)}
+                onConfirm={doPurgeProcessed}
+            />
         </div>
     );
 }
