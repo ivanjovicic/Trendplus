@@ -152,6 +152,7 @@ export default function DnevnikPromenaPage() {
     if (tipLower.includes("nivelacija")) return "#dc2626"; // red
     if (tipLower.includes("unos")) return "#3b82f6"; // blue
     if (tipLower.includes("korekcija")) return "#f59e0b"; // amber
+    if (tipLower.includes("povraćaj")) return "#9333ea"; // purple
     return "#6b7280"; // gray
   };
 

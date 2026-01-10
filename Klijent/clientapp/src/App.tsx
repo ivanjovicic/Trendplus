@@ -19,6 +19,7 @@ import DobavljaciPage from "./pages/DobavljaciPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
 import { CircuitBreakerStatus } from "./components/CircuitBreakerStatus";
+import PovracajPage from "./pages/PovracajPage";
 
 function AppShell() {
     return (
@@ -39,6 +40,7 @@ function AppShell() {
             <Route path="/sezone" element={<SezonaPage />} />
             <Route path="/tipovi-obuce" element={<TipObucePage />} />
             <Route path="/dobavljaci" element={<DobavljaciPage />} />
+            <Route path="/povracaj" element={<PovracajPage />} />
         </Routes>
     );
 }

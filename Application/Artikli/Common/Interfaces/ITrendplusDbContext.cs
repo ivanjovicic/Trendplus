@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Domain.Model;
 using Domain.Model.Prodaja;
+using Domain.Model.Povracaj;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -19,6 +20,8 @@ namespace Application.Artikli.Common.Interfaces
         DbSet<Domain.Model.OutboxMessage> OutboxMessages { get; }
         DbSet<ProdajaZaglavlje> ProdajaZaglavlja { get; }
         DbSet<ProdajaStavka> ProdajaStavke { get; }
+        DbSet<PovracajZaglavlje> PovracajZaglavlja { get; }
+        DbSet<PovracajStavka> PovracajStavke { get; }
 
         DatabaseFacade Database { get; }
 

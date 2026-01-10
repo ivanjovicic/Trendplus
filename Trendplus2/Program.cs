@@ -1,4 +1,4 @@
-using Application.Artikli.Commands.CreateArtikal;
+﻿using Application.Artikli.Commands.CreateArtikal;
 using Application.Artikli.Commands.UpdateArtikal;
 using Application.Artikli.Common.Interfaces;
 using Application.Artikli.Queries.GetArtikal;
@@ -7,180 +7,273 @@ using Application.Behaviors;
 using Application.Common.Interfaces;
 using Application.Dobavljaci.Queries;
 using Application.Performance.Queries;
+using Application.Povracaj.Commands;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
-using Application.TipObuce.Queries;
+using Domain.Model;
 using FluentValidation;
 using Infrastructure.DbContexts;
 using Infrastructure.Middleware;
 using Infrastructure.Repository;
 using Infrastructure.Resilience;
-using Infrastructure.Seed;
 using Infrastructure.Services;
 using MediatR;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Serilog.Events;
 using System.Globalization;
 using Trendplus2;
 using Trendplus2.Dtos;
+using Trendplus2.Endpoints;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Serilog bootstrap
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .CreateLogger();
-
-builder.Host.UseSerilog();
-
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-    .AddEnvironmentVariables();
-
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-
-// DbContext
-builder.Services.AddDbContext<TrendplusDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
-
-builder.Services.AddScoped<ITrendplusDbContext>(sp =>
-    sp.GetRequiredService<TrendplusDbContext>());
-
-builder.Services.AddDbContext<AnalyticsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("AnalyticsConnection"))
-           .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
-
-builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
-    sp.GetRequiredService<AnalyticsDbContext>());
-
-// FluentValidation - auto-register all validators
-builder.Services.AddValidatorsFromAssemblyContaining<CreateArtikalCommandValidator>();
-
-// MediatR Pipeline Behaviors (order matters!)
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceLoggingBehavior<,>));
-
-// Services
-builder.Services.AddScoped<IErrorStore, DbErrorStore>();
-builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
-builder.Services.AddScoped<IOutboxService, OutboxService>();
-
-// RabbitMQ
-builder.Services.Configure<Infrastructure.Configuration.RabbitMqSettings>(
-    builder.Configuration.GetSection("RabbitMq"));
-builder.Services.AddSingleton<IMessageBroker, RabbitMqMessageBroker>();
-
-// Background Workers
-builder.Services.AddHostedService<Workers.SyncWorker>();
-builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
-
-builder.Services.AddControllers();
-builder.Services.ConfigureHttpJsonOptions(opts =>
+try
 {
-    opts.SerializerOptions.PropertyNameCaseInsensitive = true;
-});
+    Console.WriteLine("Starting application...");
+    
+    var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddMediatR(typeof(CreateArtikalHandler).Assembly);
+    Console.WriteLine("Builder created successfully");
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
+    // Serilog bootstrap
+    Log.Logger = new LoggerConfiguration()
+        .ReadFrom.Configuration(builder.Configuration)
+        .Enrich.FromLogContext()
+        .CreateLogger();
+
+    Console.WriteLine("Serilog configured");
+
+    builder.Host.UseSerilog();
+
+    builder.Configuration
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+        .AddEnvironmentVariables();
+
+    Console.WriteLine("Configuration loaded");
+
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
+    Console.WriteLine($"Configured to listen on port {port}");
+
+    // DbContext
+    builder.Services.AddDbContext<TrendplusDbContext>(options =>
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+               .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
+
+    builder.Services.AddScoped<ITrendplusDbContext>(sp =>
+        sp.GetRequiredService<TrendplusDbContext>());
+
+    builder.Services.AddDbContext<AnalyticsDbContext>(options =>
+        options.UseNpgsql(builder.Configuration.GetConnectionString("AnalyticsConnection"))
+               .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
+
+    builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
+        sp.GetRequiredService<AnalyticsDbContext>());
+
+    Console.WriteLine("DbContext registered");
+
+    // FluentValidation - auto-register all validators
+    builder.Services.AddValidatorsFromAssemblyContaining<CreateArtikalCommandValidator>();
+
+    // MediatR Pipeline Behaviors (order matters!)
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceLoggingBehavior<,>));
+
+    // Services
+    builder.Services.AddScoped<IErrorStore, DbErrorStore>();
+    builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
+    builder.Services.AddScoped<IOutboxService, OutboxService>();
+
+    // RabbitMQ
+    builder.Services.Configure<Infrastructure.Configuration.RabbitMqSettings>(
+        builder.Configuration.GetSection("RabbitMq"));
+    builder.Services.AddSingleton<IMessageBroker, RabbitMqMessageBroker>();
+
+    // Background Workers
+    builder.Services.AddHostedService<Workers.SyncWorker>();
+    builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
+
+    builder.Services.AddControllers();
+    builder.Services.ConfigureHttpJsonOptions(opts =>
     {
-        policy
-           .WithOrigins(
-               "http://localhost:5173",
-               "http://localhost:5174",
-               "http://localhost:8080",
-               "https://trendplus.vercel.app"
-           )
-           .AllowAnyHeader()
-           .AllowAnyMethod()
-           .AllowCredentials();
+        opts.SerializerOptions.PropertyNameCaseInsensitive = true;
     });
-});
 
-var app = builder.Build();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+    builder.Services.AddMediatR(typeof(CreateArtikalHandler).Assembly);
 
-// ================= MIDDLEWARE PIPELINE =================
-
-// 1. Global exception handler (first in pipeline)
-app.UseMiddleware<GlobalExceptionMiddleware>();
-
-// 2. Serilog request logging
-app.UseSerilogRequestLogging(opts =>
-{
-    opts.EnrichDiagnosticContext = (diag, http) =>
+    builder.Services.AddCors(options =>
     {
-        diag.Set("RequestHost", http.Request.Host.Value);
-        diag.Set("RequestScheme", http.Request.Scheme);
-        diag.Set("UserAgent", http.Request.Headers.UserAgent.ToString());
-        diag.Set("RequestPath", http.Request.Path);
-        diag.Set("CorrelationId", http.Response.Headers["X-Correlation-ID"].ToString());
-    };
-});
-
-// 3. Static files & routing
-app.UseDefaultFiles();
-app.UseStaticFiles();
-app.UseRouting();
-app.UseCors("AllowFrontend");
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseHsts();
-}
-
-app.UseSwagger();
-app.UseSwaggerUI();
-app.UseAuthorization();
-
-// ================= ENDPOINTS =================
-
-// Circuit Breaker Status
-app.MapCircuitBreakerEndpoints();
-
-// Health
-app.MapGet("/health", (IMessageBroker messageBroker) =>
-{
-    var rabbitMq = messageBroker as RabbitMqMessageBroker;
-    return Results.Ok(new
-    {
-        Status = "Backend je �iv",
-        RabbitMq = new
+        options.AddPolicy("AllowFrontend", policy =>
         {
-            Enabled = messageBroker.IsEnabled,
-            CircuitOpen = rabbitMq?.IsCircuitOpen ?? false
-        },
-        Timestamp = DateTime.UtcNow
+            policy
+               .WithOrigins(
+                   "http://localhost:5173",
+                   "http://localhost:5174",
+                   "http://localhost:8080",
+                   "https://trendplus.vercel.app"
+               )
+               .AllowAnyHeader()
+               .AllowAnyMethod()
+               .AllowCredentials();
+        });
     });
-});
 
-// Errors
-app.MapGet("/errors", async (IErrorStore store) =>
-{
-    var errors = await store.GetAllAsync();
-    return Results.Ok(errors);
-});
+    var app = builder.Build();
 
-// Logs
-app.MapGet("/api/logs", async (
-    IErrorStore store,
-    ILogger<Program> logger,
-    int pageNumber = 1,
-    int pageSize = 50,
-    string? level = null,
-    DateTime? fromDate = null,
-    DateTime? toDate = null) =>
-{
-    try
+    // ================= MIDDLEWARE PIPELINE =================
+
+    // 1. Global exception handler (first in pipeline)
+    app.UseMiddleware<GlobalExceptionMiddleware>();
+
+    // 2. Serilog request logging
+    app.UseSerilogRequestLogging(opts =>
     {
+        opts.EnrichDiagnosticContext = (diag, http) =>
+        {
+            diag.Set("RequestHost", http.Request.Host.Value);
+            diag.Set("RequestScheme", http.Request.Scheme);
+            diag.Set("UserAgent", http.Request.Headers.UserAgent.ToString());
+            diag.Set("RequestPath", http.Request.Path);
+            diag.Set("CorrelationId", http.Response.Headers["X-Correlation-ID"].ToString());
+        };
+    });
+
+    // 3. Static files & routing
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+    app.UseRouting();
+    app.UseCors("AllowFrontend");
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseHsts();
+    }
+
+    app.UseSwagger();
+    app.UseSwaggerUI();
+    app.UseAuthorization();
+
+    // ================= ENDPOINTS =================
+
+    // Circuit Breaker Status
+    app.MapCircuitBreakerEndpoints();
+
+    // Health
+    app.MapGet("/health", (IMessageBroker messageBroker) =>
+    {
+        var rabbitMq = messageBroker as RabbitMqMessageBroker;
+        return Results.Ok(new
+        {
+            Status = "Backend je živ",
+            RabbitMq = new
+            {
+                Enabled = messageBroker.IsEnabled,
+                CircuitOpen = rabbitMq?.IsCircuitOpen ?? false
+            },
+            Timestamp = DateTime.UtcNow
+        });
+    });
+
+    // Errors
+    app.MapGet("/errors", async (IErrorStore store) =>
+    {
+        var errors = await store.GetAllAsync();
+        return Results.Ok(errors);
+    });
+
+    // Logs
+    app.MapGet("/api/logs", async (
+        IErrorStore store,
+        ILogger<Program> logger,
+        int pageNumber = 1,
+        int pageSize = 50,
+        string? level = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null) =>
+    {
+        try
+        {
+            // Convert dates to UTC if they have Unspecified kind
+            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+
+            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            var errors = await store.GetAllAsync();
+            var filtered = errors.AsEnumerable();
+
+            if (fromDate.HasValue)
+                filtered = filtered.Where(e => e.Timestamp >= fromDate.Value);
+
+            if (toDate.HasValue)
+                filtered = filtered.Where(e => e.Timestamp <= toDate.Value);
+
+            if (!string.IsNullOrWhiteSpace(level))
+            {
+                var lvl = level.Trim();
+                filtered = filtered.Where(e => string.Equals(e.Level, lvl, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var total = filtered.Count();
+
+            var paged = filtered
+                .OrderByDescending(e => e.Timestamp)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(e => new
+                {
+                    timestamp = e.Timestamp.ToString("o"),
+                    level = string.IsNullOrWhiteSpace(e.Level) ? "Error" : e.Level,
+                    message = e.Message,
+                    exception = !string.IsNullOrEmpty(e.StackTrace)
+                        ? $"{e.ExceptionType}\n{e.StackTrace}"
+                        : null,
+                    properties = new
+                    {
+                        path = e.Path,
+                        userName = e.UserName,
+                        clientApp = e.ClientApp,
+                        correlationId = e.CorrelationId
+                    }
+                })
+                .ToList();
+
+            return Results.Ok(new
+            {
+                logs = paged,
+                totalCount = total,
+                pageNumber,
+                pageSize
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogsFetchFailed(ex);
+            return Results.Problem(
+                detail: "Unable to fetch logs. Please run migrations: dotnet ef database update",
+                statusCode: 500,
+                title: "Database Error"
+            );
+        }
+    });
+
+    // Performance
+    app.MapGet("/api/performance", async (
+        IMediator mediator,
+        ILogger<Program> logger,
+        int topCount = 20,
+        int minDurationMs = 1000,
+        DateTime? fromDate = null,
+        DateTime? toDate = null) =>
+    {
+        logger.PerformanceRequest(topCount, minDurationMs);
+
         // Convert dates to UTC if they have Unspecified kind
         if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
             fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
@@ -188,797 +281,397 @@ app.MapGet("/api/logs", async (
         if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
             toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-        var errors = await store.GetAllAsync();
-        var filtered = errors.AsEnumerable();
+        var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate);
+        var result = await mediator.Send(query);
+        return Results.Ok(result);
+    });
 
-        if (fromDate.HasValue)
-            filtered = filtered.Where(e => e.Timestamp >= fromDate.Value);
-
-        if (toDate.HasValue)
-            filtered = filtered.Where(e => e.Timestamp <= toDate.Value);
-
-        if (!string.IsNullOrWhiteSpace(level))
-        {
-            var lvl = level.Trim();
-            filtered = filtered.Where(e => string.Equals(e.Level, lvl, StringComparison.OrdinalIgnoreCase));
-        }
-
-        var total = filtered.Count();
-
-        var paged = filtered
-            .OrderByDescending(e => e.Timestamp)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(e => new
+    // Outbox Stats
+    app.MapGet("/api/outbox/stats", async (ITrendplusDbContext db) =>
+    {
+        var total = await db.OutboxMessages.CountAsync();
+        var processed = await db.OutboxMessages.CountAsync(m => m.IsProcessed);
+        var pending = await db.OutboxMessages.CountAsync(m => !m.IsProcessed && m.RetryCount < 5);
+        var failed = await db.OutboxMessages.CountAsync(m => !m.IsProcessed && m.RetryCount >= 5);
+        
+        var recentMessages = await db.OutboxMessages
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(10)
+            .Select(m => new
             {
-                timestamp = e.Timestamp.ToString("o"),
-                level = string.IsNullOrWhiteSpace(e.Level) ? "Error" : e.Level,
-                message = e.Message,
-                exception = !string.IsNullOrEmpty(e.StackTrace)
-                    ? $"{e.ExceptionType}\n{e.StackTrace}"
-                    : null,
-                properties = new
-                {
-                    path = e.Path,
-                    userName = e.UserName,
-                    clientApp = e.ClientApp,
-                    correlationId = e.CorrelationId
-                }
+                m.Id,
+                m.EventType,
+                m.CreatedAt,
+                m.ProcessedAt,
+                m.IsProcessed,
+                m.RetryCount,
+                m.ErrorMessage,
+                m.CorrelationId
             })
-            .ToList();
+            .ToListAsync();
 
         return Results.Ok(new
         {
-            logs = paged,
+            stats = new
+            {
+                total,
+                processed,
+                pending,
+                failed,
+                successRate = total > 0 ? (double)processed / total * 100 : 0
+            },
+            recentMessages
+        });
+    });
+
+    // Outbox Messages
+    app.MapGet("/api/outbox/messages", async (
+        ITrendplusDbContext db,
+        int pageNumber = 1,
+        int pageSize = 50,
+        bool? isProcessed = null,
+        string? eventType = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null) =>
+    {
+        var query = db.OutboxMessages.AsQueryable();
+
+        if (isProcessed.HasValue)
+            query = query.Where(m => m.IsProcessed == isProcessed.Value);
+
+        if (!string.IsNullOrWhiteSpace(eventType))
+            query = query.Where(m => m.EventType.Contains(eventType));
+
+        if (fromDate.HasValue)
+            query = query.Where(m => m.CreatedAt >= fromDate.Value);
+
+        if (toDate.HasValue)
+            query = query.Where(m => m.CreatedAt <= toDate.Value);
+
+        var total = await query.CountAsync();
+
+        var messages = await query
+            .OrderByDescending(m => m.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(m => new
+            {
+                m.Id,
+                m.EventType,
+                m.Payload,
+                m.CreatedAt,
+                m.ProcessedAt,
+                m.IsProcessed,
+                m.RetryCount,
+                m.ErrorMessage,
+                m.CorrelationId
+            })
+            .ToListAsync();
+
+        return Results.Ok(new
+        {
+            messages,
             totalCount = total,
             pageNumber,
             pageSize
         });
-    }
-    catch (Exception ex)
-    {
-        logger.LogsFetchFailed(ex);
-        return Results.Problem(
-            detail: "Unable to fetch logs. Please run migrations: dotnet ef database update",
-            statusCode: 500,
-            title: "Database Error"
-        );
-    }
-});
-
-// Performance
-app.MapGet("/api/performance", async (
-    IMediator mediator,
-    ILogger<Program> logger,
-    int topCount = 20,
-    int minDurationMs = 1000,
-    DateTime? fromDate = null,
-    DateTime? toDate = null) =>
-{
-    logger.PerformanceRequest(topCount, minDurationMs);
-
-    // Convert dates to UTC if they have Unspecified kind
-    if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-        fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
-
-    if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-        toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
-
-    var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate);
-    var result = await mediator.Send(query);
-    return Results.Ok(result);
-});
-
-// Outbox Stats
-app.MapGet("/api/outbox/stats", async (ITrendplusDbContext db) =>
-{
-    var total = await db.OutboxMessages.CountAsync();
-    var processed = await db.OutboxMessages.CountAsync(m => m.IsProcessed);
-    var pending = await db.OutboxMessages.CountAsync(m => !m.IsProcessed && m.RetryCount < 5);
-    var failed = await db.OutboxMessages.CountAsync(m => !m.IsProcessed && m.RetryCount >= 5);
-    
-    var recentMessages = await db.OutboxMessages
-        .OrderByDescending(m => m.CreatedAt)
-        .Take(10)
-        .Select(m => new
-        {
-            m.Id,
-            m.EventType,
-            m.CreatedAt,
-            m.ProcessedAt,
-            m.IsProcessed,
-            m.RetryCount,
-            m.ErrorMessage,
-            m.CorrelationId
-        })
-        .ToListAsync();
-
-    return Results.Ok(new
-    {
-        stats = new
-        {
-            total,
-            processed,
-            pending,
-            failed,
-            successRate = total > 0 ? (double)processed / total * 100 : 0
-        },
-        recentMessages
     });
-});
 
-// Outbox Messages
-app.MapGet("/api/outbox/messages", async (
-    ITrendplusDbContext db,
-    int pageNumber = 1,
-    int pageSize = 50,
-    bool? isProcessed = null,
-    string? eventType = null,
-    DateTime? fromDate = null,
-    DateTime? toDate = null) =>
-{
-    var query = db.OutboxMessages.AsQueryable();
-
-    if (isProcessed.HasValue)
-        query = query.Where(m => m.IsProcessed == isProcessed.Value);
-
-    if (!string.IsNullOrWhiteSpace(eventType))
-        query = query.Where(m => m.EventType.Contains(eventType));
-
-    if (fromDate.HasValue)
-        query = query.Where(m => m.CreatedAt >= fromDate.Value);
-
-    if (toDate.HasValue)
-        query = query.Where(m => m.CreatedAt <= toDate.Value);
-
-    var total = await query.CountAsync();
-
-    var messages = await query
-        .OrderByDescending(m => m.CreatedAt)
-        .Skip((pageNumber - 1) * pageSize)
-        .Take(pageSize)
-        .Select(m => new
-        {
-            m.Id,
-            m.EventType,
-            m.Payload,
-            m.CreatedAt,
-            m.ProcessedAt,
-            m.IsProcessed,
-            m.RetryCount,
-            m.ErrorMessage,
-            m.CorrelationId
-        })
-        .ToListAsync();
-
-    return Results.Ok(new
+    // Outbox Retry
+    app.MapPost("/api/outbox/retry/{id:long}", async (
+        long id,
+        ITrendplusDbContext db,
+        ILogger<Program> logger) =>
     {
-        messages,
-        totalCount = total,
-        pageNumber,
-        pageSize
-    });
-});
+        var message = await db.OutboxMessages.FindAsync(id);
+        if (message == null)
+            return Results.NotFound();
 
-// Outbox Retry
-app.MapPost("/api/outbox/retry/{id:long}", async (
-    long id,
-    ITrendplusDbContext db,
-    ILogger<Program> logger) =>
-{
-    var message = await db.OutboxMessages.FindAsync(id);
-    if (message == null)
-        return Results.NotFound();
-
-    message.RetryCount = 0;
-    message.ErrorMessage = null;
-    await db.SaveChangesAsync();
-
-    logger.OutboxRetry(id);
-    return Results.Ok(new { success = true });
-});
-
-// Bulk Retry Failed
-app.MapPost("/api/outbox/retry-all-failed", async (
-    ITrendplusDbContext db,
-    ILogger<Program> logger) =>
-{
-    var failedMessages = await db.OutboxMessages
-        .Where(m => !m.IsProcessed && m.RetryCount >= 5)
-        .ToListAsync();
-
-    foreach (var message in failedMessages)
-    {
         message.RetryCount = 0;
         message.ErrorMessage = null;
-    }
+        await db.SaveChangesAsync();
 
-    await db.SaveChangesAsync();
-
-    logger.BulkRetry(failedMessages.Count);
-    return Results.Ok(new { success = true, count = failedMessages.Count });
-});
-
-// Purge Processed
-app.MapPost("/api/outbox/purge-processed", async (
-    ITrendplusDbContext db,
-    ILogger<Program> logger,
-    int olderThanDays = 7) =>
-{
-    var cutoffDate = DateTime.UtcNow.AddDays(-olderThanDays);
-    
-    var messagesToDelete = await db.OutboxMessages
-        .Where(m => m.IsProcessed && m.ProcessedAt < cutoffDate)
-        .ToListAsync();
-
-    db.OutboxMessages.RemoveRange(messagesToDelete);
-    await db.SaveChangesAsync();
-
-    logger.PurgeProcessed(messagesToDelete.Count, olderThanDays);
-    return Results.Ok(new { success = true, count = messagesToDelete.Count });
-});
-
-// Event Type Stats
-app.MapGet("/api/outbox/stats-by-type", async (ITrendplusDbContext db) =>
-{
-    var stats = await db.OutboxMessages
-        .GroupBy(m => m.EventType)
-        .Select(g => new
-        {
-            eventType = g.Key,
-            total = g.Count(),
-            processed = g.Count(m => m.IsProcessed),
-            pending = g.Count(m => !m.IsProcessed && m.RetryCount < 5),
-            failed = g.Count(m => !m.IsProcessed && m.RetryCount >= 5)
-        })
-        .OrderByDescending(s => s.total)
-        .ToListAsync();
-
-    return Results.Ok(stats);
-});
-
-// Dnevnik Promena - Get distinct tip promene values
-app.MapGet("/api/dnevnik-promena/tipovi", async (ITrendplusDbContext db, CancellationToken ct) =>
-{
-    var tipovi = await db.DnevnikPromena
-        .Select(x => x.TipPromene)
-        .Distinct()
-        .OrderBy(x => x)
-        .ToListAsync(ct);
-
-    return Results.Ok(tipovi);
-});
-
-// Artikli - Create
-app.MapPost("/artikli", async (
-    Application.Artikli.Commands.CreateArtikal.ClientCreateArtikalDto dto,
-    IMediator mediator,
-    ILogger<Program> logger) =>
-{
-    logger.CreateArtikalRequest(System.Text.Json.JsonSerializer.Serialize(dto));
-
-    var cmd = new CreateArtikalCommand(
-        dto.Naziv,
-        dto.TipObuceId,
-        dto.DobavljacId,
-        dto.NabavnaCena,
-        dto.NabavnaCenaDin,
-        dto.PrvaProdajnaCena,
-        dto.ProdajnaCena,
-        dto.Kolicina,
-        dto.Komentar,
-        dto.IDObjekat,
-        dto.IDSezona
-    );
-
-    var id = await mediator.Send(cmd);
-
-    logger.ArtikalCreated(id);
-
-    return Results.Created(
-        string.Create(CultureInfo.InvariantCulture, $"/artikli/{id}"),
-        new { id }
-    );
-});
-
-// Artikli - Get By Id
-app.MapGet("/artikli/{id:int}", async (int id, IMediator mediator, ILogger<Program> logger) =>
-{
-    logger.GetArtikalRequest(id);
-    try
-    {
-        var result = await mediator.Send(new GetArtikalQuery(id));
-        if (result == null)
-            return Results.NotFound(new { error = "Artikal nije prona?en." });
-        return Results.Ok(result);
-    }
-    catch (KeyNotFoundException)
-    {
-        return Results.NotFound(new { error = "Artikal nije prona?en." });
-    }
-});
-
-// Artikli - List
-app.MapGet("/artikli", async (IMediator mediator, ILogger<Program> logger) =>
-{
-    logger.GetArtikliRequest();
-    var result = await mediator.Send(new GetArtikliQuery());
-    return Results.Ok(result);
-});
-
-// Artikli - List (paged)
-app.MapGet("/api/artikli", async (
-    ITrendplusDbContext db,
-    int pageNumber = 1,
-    int pageSize = 50,
-    string? naziv = null,
-    int? sezonaId = null,
-    decimal? minCena = null,
-    decimal? maxCena = null,
-    int? minKolicina = null,
-    int? maxKolicina = null,
-    string sortBy = "naziv",
-    string sortDir = "asc",
-    CancellationToken ct = default) =>
-{
-    if (pageNumber < 1) pageNumber = 1;
-    if (pageSize < 1) pageSize = 1;
-    if (pageSize > 200) pageSize = 200;
-
-    var query = db.Artikli.AsNoTracking().AsQueryable();
-
-    if (!string.IsNullOrWhiteSpace(naziv))
-    {
-        var n = naziv.Trim();
-        query = query.Where(a => EF.Functions.ILike(a.Naziv, $"%{n}%"));
-    }
-
-    if (sezonaId.HasValue)
-        query = query.Where(a => a.IDSezona == sezonaId.Value);
-
-    if (minCena.HasValue)
-        query = query.Where(a => (a.ProdajnaCena ?? 0m) >= minCena.Value);
-
-    if (maxCena.HasValue)
-        query = query.Where(a => (a.ProdajnaCena ?? 0m) <= maxCena.Value);
-
-    if (minKolicina.HasValue)
-        query = query.Where(a => (a.Kolicina ?? 0) >= minKolicina.Value);
-
-    if (maxKolicina.HasValue)
-        query = query.Where(a => (a.Kolicina ?? 0) <= maxKolicina.Value);
-
-    var total = await query.CountAsync(ct);
-
-    var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
-    var key = (sortBy ?? "naziv").Trim().ToLowerInvariant();
-
-    query = key switch
-    {
-        "id" => desc ? query.OrderByDescending(a => a.Id) : query.OrderBy(a => a.Id),
-        "naziv" => desc ? query.OrderByDescending(a => a.Naziv) : query.OrderBy(a => a.Naziv),
-        "prodajnacena" => desc ? query.OrderByDescending(a => a.ProdajnaCena ?? 0m) : query.OrderBy(a => a.ProdajnaCena ?? 0m),
-        "nabavnacena" => desc ? query.OrderByDescending(a => a.NabavnaCena ?? 0m) : query.OrderBy(a => a.NabavnaCena ?? 0m),
-        "kolicina" => desc ? query.OrderByDescending(a => a.Kolicina ?? 0) : query.OrderBy(a => a.Kolicina ?? 0),
-        _ => desc ? query.OrderByDescending(a => a.Naziv) : query.OrderBy(a => a.Naziv)
-    };
-
-    var items = await query
-        .Skip((pageNumber - 1) * pageSize)
-        .Take(pageSize)
-        .Select(a => new
-        {
-            id = a.Id,
-            naziv = a.Naziv,
-            prodajnaCena = a.ProdajnaCena ?? 0m,
-            nabavnaCena = a.NabavnaCena,
-            kolicina = a.Kolicina,
-            tipObuceId = a.IDTipObuce,
-            dobavljacId = a.IDDobavljac,
-            idSezona = a.IDSezona
-        })
-        .ToListAsync(ct);
-
-    return Results.Ok(new ArtikliPagedResponse<object>(items, total, pageNumber, pageSize));
-});
-
-// Artikli - Update
-app.MapPut("/artikli/{id:int}", async (
-    int id,
-    Application.Artikli.Commands.UpdateArtikal.UpdateArtikalDto dto,
-    IMediator mediator,
-    ILogger<Program> logger) =>
-{
-    logger.UpdateArtikalRequest(id, System.Text.Json.JsonSerializer.Serialize(dto));
-
-    var cmd = new UpdateArtikalCommand(
-        id,
-        dto.Naziv,
-        dto.TipObuceId,
-        dto.DobavljacId,
-        dto.NabavnaCena,
-        dto.NabavnaCenaDin,
-        dto.PrvaProdajnaCena,
-        dto.ProdajnaCena,
-        dto.Kolicina,
-        dto.Komentar,
-        dto.IDObjekat,
-        dto.IDSezona
-    );
-
-    try
-    {
-        await mediator.Send(cmd);
-        logger.ArtikalUpdated(id);
-        return Results.NoContent();
-    }
-    catch (InvalidOperationException ex)
-    {
-        logger.UpdateArtikalFailed(ex, id);
-        return Results.NotFound(new { error = ex.Message });
-    }
-    catch (Exception ex)
-    {
-        logger.UpdateArtikalError(ex);
-        return Results.Problem(detail: ex.Message);
-    }
-});
-
-// Tipovi Obu?e
-app.MapGet("/api/tipovi-obuce", async (IMediator mediator) =>
-{
-    var result = await mediator.Send(new GetTipObuceQuery());
-    return Results.Ok(result);
-});
-
-app.MapPost("/api/tipovi-obuce", async (
-    Application.TipObuce.Commands.CreateTipObuceCommand cmd,
-    IMediator mediator) =>
-{
-    var id = await mediator.Send(cmd);
-    return Results.Created($"/api/tipovi-obuce/{id}", new { id });
-});
-
-// Dobavlja?i
-app.MapGet("/api/dobavljaci", async (IMediator mediator) =>
-{
-    var result = await mediator.Send(new GetDobavljacQuery());
-    return Results.Ok(result);
-});
-
-app.MapPost("/api/dobavljaci", async (CreateDobavljacDto dto, ITrendplusDbContext db) =>
-{
-    var entity = new Domain.Model.Dobavljac 
-    { 
-        Naziv = dto.Naziv,
-        Adresa = dto.Adresa,
-        Telefon = dto.Telefon,
-        Napomena = dto.Napomena
-    };
-    db.Dobavljaci.Add(entity);
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/dobavljaci/{entity.Id}", new { id = entity.Id });
-});
-
-// Sezone
-app.MapGet("/api/sezone", async (ITrendplusDbContext db) =>
-{
-    var result = await db.Sezone.OrderBy(s => s.DatumOd).ToListAsync();
-    return Results.Ok(result);
-});
-
-app.MapPost("/api/sezone", async (CreateSezonaDto dto, ITrendplusDbContext db) =>
-{
-    var entity = new Domain.Model.Sezona
-    {
-        Naziv = dto.Naziv,
-        DatumOd = dto.DatumOd,
-        DatumDo = dto.DatumDo
-    };
-    db.Sezone.Add(entity);
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/sezone/{entity.Id}", new { id = entity.Id });
-});
-
-// Prodaja
-app.MapPost("/api/prodaja", async (ProdajArtikleCommand command, IMediator mediator, ILogger<Program> logger) =>
-{
-    logger.ProdajaRequest(System.Text.Json.JsonSerializer.Serialize(command));
-    var prodajaId = await mediator.Send(command);
-    logger.ProdajaCreated(prodajaId);
-    return Results.Ok(prodajaId);
-});
-
-// Prodaja - List (Sales History)
-app.MapGet("/api/prodaje", async (
-    IMediator mediator,
-    ILogger<Program> logger,
-    int pageNumber = 1,
-    int pageSize = 50,
-    DateTime? fromDate = null,
-    DateTime? toDate = null) =>
-{
-    logger.LogInformation("Fetching sales history: page={PageNumber}, size={PageSize}, from={FromDate}, to={ToDate}",
-        pageNumber, pageSize, fromDate, toDate);
-
-    var query = new GetProdajeQuery(fromDate, toDate, pageNumber, pageSize);
-    var result = await mediator.Send(query);
-    return Results.Ok(result);
-});
-
-// Nivelacija
-app.MapPost("/api/nivelacija", async (
-    ITrendplusDbContext db,
-    ILogger<Program> logger,
-    HttpContext http,
-    NivelacijaCenaRequest req,
-    CancellationToken ct) =>
-{
-    if (req.ArtikalId <= 0)
-        return Results.BadRequest(new { error = "ArtikalId je obavezan." });
-
-    var artikal = await db.Artikli.FirstOrDefaultAsync(a => a.Id == req.ArtikalId, ct);
-    if (artikal == null)
-        return Results.NotFound(new { error = "Artikal ne postoji." });
-
-    var stara = artikal.ProdajnaCena;
-    var nova = req.NovaProdajnaCena;
-
-    if (nova < 0)
-        return Results.BadRequest(new { error = "NovaProdajnaCena mora biti >= 0." });
-
-    artikal.ProdajnaCena = nova;
-
-    db.DnevnikPromena.Add(new Domain.Model.DnevnikPromena
-    {
-        TipPromene = "Nivelacija",
-        Datum = DateTime.UtcNow,
-        Iznos = 0,
-        ArtikalId = artikal.Id,
-        StaraProdajnaCena = stara,
-        NovaProdajnaCena = nova,
-        KorisnikIme = http.User?.Identity?.Name,
-        Komentar = string.IsNullOrWhiteSpace(req.Komentar)
-            ? $"Nivelacija cene: {stara} -> {nova}"
-            : req.Komentar
+        logger.OutboxRetry(id);
+        return Results.Ok(new { success = true });
     });
 
-    await db.SaveChangesAsync(ct);
-
-    logger.NivelacijaCene(artikal.Id, stara, nova);
-
-    return Results.Ok(new { artikalId = artikal.Id, staraCena = stara, novaCena = nova });
-});
-
-// Nivelacije - Pregled
-app.MapGet("/api/nivelacije", async (
-    ITrendplusDbContext db,
-    int pageNumber = 1,
-    int pageSize = 50,
-    int? artikalId = null,
-    string? naziv = null,
-    DateTime? fromDate = null,
-    DateTime? toDate = null,
-    string sortBy = "datum",
-    string sortDir = "desc",
-    CancellationToken ct = default) =>
-{
-    // Convert dates to UTC if they have Unspecified kind
-    if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-        fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
-
-    if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-        toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
-
-    // Build query with proper LEFT JOIN
-    var query = from dp in db.DnevnikPromena.AsNoTracking()
-                where dp.TipPromene == "Nivelacija"
-                join a in db.Artikli.AsNoTracking() on dp.ArtikalId equals (int?)a.Id into artJoin
-                from artikel in artJoin.DefaultIfEmpty()
-                select new { dp, artikel };
-
-    // Apply filters
-    if (artikalId.HasValue)
-        query = query.Where(x => x.dp.ArtikalId == artikalId.Value);
-
-    if (fromDate.HasValue)
-        query = query.Where(x => x.dp.Datum >= fromDate.Value);
-
-    if (toDate.HasValue)
-        query = query.Where(x => x.dp.Datum <= toDate.Value);
-
-    if (!string.IsNullOrWhiteSpace(naziv))
+    // Bulk Retry Failed
+    app.MapPost("/api/outbox/retry-all-failed", async (
+        ITrendplusDbContext db,
+        ILogger<Program> logger) =>
     {
-        var n = naziv.Trim();
-        query = query.Where(x => x.artikel != null && EF.Functions.ILike(x.artikel.Naziv, $"%{n}%"));
-    }
+        var failedMessages = await db.OutboxMessages
+            .Where(m => !m.IsProcessed && m.RetryCount >= 5)
+            .ToListAsync();
 
-    var total = await query.CountAsync(ct);
-
-    // Apply sorting
-    var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
-
-    query = (sortBy?.ToLowerInvariant()) switch
-    {
-        "datum" => desc ? query.OrderByDescending(x => x.dp.Datum) : query.OrderBy(x => x.dp.Datum),
-        "artikalid" => desc ? query.OrderByDescending(x => x.dp.ArtikalId) : query.OrderBy(x => x.dp.ArtikalId),
-        "stara" => desc ? query.OrderByDescending(x => x.dp.StaraProdajnaCena) : query.OrderBy(x => x.dp.StaraProdajnaCena),
-        "nova" => desc ? query.OrderByDescending(x => x.dp.NovaProdajnaCena) : query.OrderBy(x => x.dp.NovaProdajnaCena),
-        "naziv" => desc ? query.OrderByDescending(x => x.artikel != null ? x.artikel.Naziv : "") : query.OrderBy(x => x.artikel != null ? x.artikel.Naziv : ""),
-        _ => desc ? query.OrderByDescending(x => x.dp.Datum) : query.OrderBy(x => x.dp.Datum)
-    };
-
-    var items = await query
-        .Skip((pageNumber - 1) * pageSize)
-        .Take(pageSize)
-        .Select(x => new
+        foreach (var message in failedMessages)
         {
-            id = x.dp.Id,
-            datum = x.dp.Datum,
-            artikalId = x.dp.ArtikalId,
-            artikalNaziv = x.artikel != null ? x.artikel.Naziv : null,
-            staraProdajnaCena = x.dp.StaraProdajnaCena,
-            novaProdajnaCena = x.dp.NovaProdajnaCena,
-            komentar = x.dp.Komentar,
-            korisnikIme = x.dp.KorisnikIme
-        })
-        .ToListAsync(ct);
+            message.RetryCount = 0;
+            message.ErrorMessage = null;
+        }
 
-    return Results.Ok(new
-    {
-        items,
-        totalCount = total,
-        pageNumber,
-        pageSize,
-        sortBy,
-        sortDir
+        await db.SaveChangesAsync();
+
+        logger.BulkRetry(failedMessages.Count);
+        return Results.Ok(new { success = true, count = failedMessages.Count });
     });
-});
 
-// Dnevnik Promena - Sve promene (prodaje, nivelacije, unos robe, itd.)
-app.MapGet("/api/dnevnik-promena", async (
-    ITrendplusDbContext db,
-    ILogger<Program> logger,
-    int pageNumber = 1,
-    int pageSize = 50,
-    string? tipPromene = null,
-    int? artikalId = null,
-    string? naziv = null,
-    string? brojRacuna = null,
-    DateTime? fromDate = null,
-    DateTime? toDate = null,
-    string sortBy = "datum",
-    string sortDir = "desc",
-    CancellationToken ct = default) =>
-{
-    try
+    // Purge Processed
+    app.MapPost("/api/outbox/purge-processed", async (
+        ITrendplusDbContext db,
+        ILogger<Program> logger,
+        int olderThanDays = 7) =>
     {
-        if (pageNumber < 1) pageNumber = 1;
-        if (pageSize < 1) pageSize = 1;
-        if (pageSize > 200) pageSize = 200;
+        var cutoffDate = DateTime.UtcNow.AddDays(-olderThanDays);
+        
+        var messagesToDelete = await db.OutboxMessages
+            .Where(m => m.IsProcessed && m.ProcessedAt < cutoffDate)
+            .ToListAsync();
 
-        // Convert dates to UTC if they have Unspecified kind
-        if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-            fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+        db.OutboxMessages.RemoveRange(messagesToDelete);
+        await db.SaveChangesAsync();
 
-        if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-            toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+        logger.PurgeProcessed(messagesToDelete.Count, olderThanDays);
+        return Results.Ok(new { success = true, count = messagesToDelete.Count });
+    });
 
-        // Build base query with proper LEFT JOINs
-        var query = from dp in db.DnevnikPromena.AsNoTracking()
-                    join a in db.Artikli.AsNoTracking() on dp.ArtikalId equals (int?)a.Id into artJoin
-                    from artikel in artJoin.DefaultIfEmpty()
-                    join d in db.Dobavljaci.AsNoTracking() on dp.DobavljacId equals (int?)d.Id into dobJoin
-                    from dobavljac in dobJoin.DefaultIfEmpty()
-                    select new { dp, artikel, dobavljac };
-
-        // Apply filters
-        if (!string.IsNullOrWhiteSpace(tipPromene))
-        {
-            var tip = tipPromene.Trim();
-            query = query.Where(x => EF.Functions.ILike(x.dp.TipPromene, $"%{tip}%"));
-        }
-
-        if (artikalId.HasValue)
-            query = query.Where(x => x.dp.ArtikalId == artikalId.Value);
-
-        if (!string.IsNullOrWhiteSpace(brojRacuna))
-        {
-            var br = brojRacuna.Trim();
-            query = query.Where(x => x.dp.BrojRacuna != null && EF.Functions.ILike(x.dp.BrojRacuna, $"%{br}%"));
-        }
-
-        if (fromDate.HasValue)
-            query = query.Where(x => x.dp.Datum >= fromDate.Value);
-
-        if (toDate.HasValue)
-            query = query.Where(x => x.dp.Datum <= toDate.Value);
-
-        if (!string.IsNullOrWhiteSpace(naziv))
-        {
-            var n = naziv.Trim();
-            query = query.Where(x => x.artikel != null && EF.Functions.ILike(x.artikel.Naziv, $"%{n}%"));
-        }
-
-        var total = await query.CountAsync(ct);
-
-        // Apply sorting
-        var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
-
-        query = (sortBy?.ToLowerInvariant()) switch
-        {
-            "datum" => desc ? query.OrderByDescending(x => x.dp.Datum) : query.OrderBy(x => x.dp.Datum),
-            "tippromene" => desc ? query.OrderByDescending(x => x.dp.TipPromene) : query.OrderBy(x => x.dp.TipPromene),
-            "iznos" => desc ? query.OrderByDescending(x => x.dp.Iznos) : query.OrderBy(x => x.dp.Iznos),
-            "artikalid" => desc ? query.OrderByDescending(x => x.dp.ArtikalId) : query.OrderBy(x => x.dp.ArtikalId),
-            "naziv" => desc ? query.OrderByDescending(x => x.artikel != null ? x.artikel.Naziv : "") : query.OrderBy(x => x.artikel != null ? x.artikel.Naziv : ""),
-            _ => desc ? query.OrderByDescending(x => x.dp.Datum) : query.OrderBy(x => x.dp.Datum)
-        };
-
-        // Project to final result
-        var items = await query
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(x => new
+    // Event Type Stats
+    app.MapGet("/api/outbox/stats-by-type", async (ITrendplusDbContext db) =>
+    {
+        var stats = await db.OutboxMessages
+            .GroupBy(m => m.EventType)
+            .Select(g => new
             {
-                id = x.dp.Id,
-                tipPromene = x.dp.TipPromene,
-                datum = x.dp.Datum,
-                iznos = x.dp.Iznos,
-                brojRacuna = x.dp.BrojRacuna,
-                artikalId = x.dp.ArtikalId,
-                artikalNaziv = x.artikel != null ? x.artikel.Naziv : null,
-                dobavljacId = x.dp.DobavljacId,
-                dobavljacNaziv = x.dobavljac != null ? x.dobavljac.Naziv : null,
-                staraProdajnaCena = x.dp.StaraProdajnaCena,
-                novaProdajnaCena = x.dp.NovaProdajnaCena,
-                komentar = x.dp.Komentar,
-                korisnikIme = x.dp.KorisnikIme
+                eventType = g.Key,
+                total = g.Count(),
+                processed = g.Count(m => m.IsProcessed),
+                pending = g.Count(m => !m.IsProcessed && m.RetryCount < 5),
+                failed = g.Count(m => !m.IsProcessed && m.RetryCount >= 5)
             })
+            .OrderByDescending(s => s.total)
+            .ToListAsync();
+
+        return Results.Ok(stats);
+    });
+
+    // Dnevnik Promena - Get distinct tip promene values
+    app.MapGet("/api/dnevnik-promena/tipovi", async (ITrendplusDbContext db, CancellationToken ct) =>
+    {
+        var tipovi = await db.DnevnikPromena
+            .Select(x => x.TipPromene)
+            .Distinct()
+            .OrderBy(x => x)
             .ToListAsync(ct);
 
-        return Results.Ok(new
+        return Results.Ok(tipovi);
+    });
+
+    // ============ povraćaj ROBE ============
+
+    // Kreiranje povraćaja
+    app.MapPost("/api/povracaj", async (
+        IMediator mediator,
+        ILogger<Program> logger,
+        KreirajPovracajCommand command,
+        CancellationToken ct) =>
+    {
+        try
         {
-            items,
-            totalCount = total,
-            pageNumber,
-            pageSize,
-            sortBy,
-            sortDir
-        });
-    }
-    catch (Exception ex)
+            logger.LogInformation("Creating return note for supplier {SupplierId}", command.IDDobavljac);
+            
+            var response = await mediator.Send(command, ct);
+            
+            return Results.Ok(new
+            {
+                success = true,
+                povracajId = response.PovracajId,
+                brojZapisnika = response.BrojZapisnika,
+                ukupanIznos = response.UkupanIznos,
+                message = $"Zapisnik o povraćaju {response.BrojZapisnika} uspešno kreiran"
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating return note");
+            return Results.Problem(
+                detail: ex.Message,
+                statusCode: 500,
+                title: "Greška pri kreiranju povraćaja"
+            );
+        }
+    });
+
+    // Pregled povraćaja
+    app.MapGet("/api/povracaj", async (
+        ITrendplusDbContext db,
+        int pageNumber = 1,
+        int pageSize = 50,
+        int? dobavljacId = null,
+        string? status = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default) =>
     {
-        logger.LogError(ex, "Error fetching dnevnik promena");
-        return Results.Problem(
-            detail: ex.Message,
-            statusCode: 500,
-            title: "Error fetching change log"
-        );
-    }
-});
+        try
+        {
+            // Convert dates to UTC if they have Unspecified kind
+            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
 
-app.MapControllers();
-app.MapFallbackToFile("index.html");
+            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-// Auto-migrate on startup
-using (var scope = app.Services.CreateScope())
+            var query = from p in db.PovracajZaglavlja.AsNoTracking()
+                        join d in db.Dobavljaci.AsNoTracking() on p.IDDobavljac equals d.Id
+                        select new { p, d };
+
+            // Filters
+            if (dobavljacId.HasValue)
+                query = query.Where(x => x.p.IDDobavljac == dobavljacId.Value);
+
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(x => x.p.Status == status);
+
+            if (fromDate.HasValue)
+                query = query.Where(x => x.p.DatumPovracaja >= fromDate.Value);
+
+            if (toDate.HasValue)
+                query = query.Where(x => x.p.DatumPovracaja <= toDate.Value);
+
+            var total = await query.CountAsync(ct);
+
+            var items = await query
+                .OrderByDescending(x => x.p.DatumPovracaja)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new
+                {
+                    id = x.p.Id,
+                    brojZapisnika = x.p.BrojZapisnika,
+                    datumPovracaja = x.p.DatumPovracaja,
+                    dobavljacId = x.p.IDDobavljac,
+                    dobavljacNaziv = x.d.Naziv,
+                    razlogPovracaja = x.p.RazlogPovracaja,
+                    status = x.p.Status,
+                    ukupanIznos = x.p.UkupanIznos,
+                    brojStavki = x.p.Stavke.Count,
+                    kreatorKorisnik = x.p.KreatorKorisnik
+                })
+                .ToListAsync(ct);
+
+            return Results.Ok(new
+            {
+                items,
+                totalCount = total,
+                pageNumber,
+                pageSize
+            });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(
+                detail: ex.Message,
+                statusCode: 500,
+                title: "Greška pri u?itavanju povraćaja"
+            );
+        }
+    });
+
+    // Detalji povraćaja sa stavkama
+    app.MapGet("/api/povracaj/{id:int}", async (
+        ITrendplusDbContext db,
+        int id,
+        CancellationToken ct) =>
+    {
+        try
+        {
+            var povracaj = await db.PovracajZaglavlja
+                .Include(p => p.Stavke)
+                .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+            if (povracaj == null)
+                return Results.NotFound(new { message = "povraćaj nije prona?en" });
+
+            var dobavljac = await db.Dobavljaci.FindAsync(new object[] { povracaj.IDDobavljac }, ct);
+
+            // U?itaj artikle za stavke
+            var artikalIds = povracaj.Stavke.Select(s => s.IdArtikal).ToList();
+            var artikli = await db.Artikli
+                .Where(a => artikalIds.Contains(a.Id))
+                .ToDictionaryAsync(a => a.Id, ct);
+
+            return Results.Ok(new
+            {
+                id = povracaj.Id,
+                brojZapisnika = povracaj.BrojZapisnika,
+                datumPovracaja = povracaj.DatumPovracaja,
+                dobavljac = new
+                {
+                    id = povracaj.IDDobavljac,
+                    naziv = dobavljac?.Naziv
+                },
+                razlogPovracaja = povracaj.RazlogPovracaja,
+                status = povracaj.Status,
+                ukupanIznos = povracaj.UkupanIznos,
+                komentar = povracaj.Komentar,
+                kreatorKorisnik = povracaj.KreatorKorisnik,
+                datumKreiranja = povracaj.DatumKreiranja,
+                stavke = povracaj.Stavke.Select(s => new
+                {
+                    id = s.Id,
+                    artikal = new
+                    {
+                        id = s.IdArtikal,
+                        naziv = artikli.ContainsKey(s.IdArtikal) ? artikli[s.IdArtikal].Naziv : "N/A"
+                    },
+                    kolicina = s.Kolicina,
+                    cena = s.Cena,
+                    iznos = s.Kolicina * s.Cena,
+                    razlog = s.Razlog,
+                    stanjeArtikla = s.StanjeArtikla
+                }).ToList()
+            });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(
+                detail: ex.Message,
+                statusCode: 500,
+                title: "Greška pri u?itavanju detalja povraćaja"
+            );
+        }
+    });
+    app.MapAllEndpoints();
+    Console.WriteLine("All endpoints mapped");
+    Console.WriteLine($"Starting web host on port {port}...");
+    
+    app.Run();
+    
+    Console.WriteLine("Application stopped gracefully");
+}
+catch (Exception ex)
 {
-    var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
-    db.Database.Migrate();
-
-    if (app.Environment.IsDevelopment())
+    Console.WriteLine($"=== APPLICATION STARTUP FAILED ===");
+    Console.WriteLine($"Error: {ex.Message}");
+    Console.WriteLine($"Type: {ex.GetType().Name}");
+    Console.WriteLine($"StackTrace:");
+    Console.WriteLine(ex.StackTrace);
+    
+    if (ex.InnerException != null)
     {
-        await TrendplusDbSeeder.SeedAsync(db);
+        Console.WriteLine($"\nInner Exception: {ex.InnerException.Message}");
+        Console.WriteLine(ex.InnerException.StackTrace);
     }
+    
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    
+    Console.WriteLine("\nPress any key to exit...");
+    Console.ReadKey();
+    
+    Environment.Exit(1);
+}
+finally
+{
+    Log.CloseAndFlush();
 }
 
-app.Run();
-
-// DTOs in namespace
-namespace Trendplus2.Dtos
-{
-    internal sealed record CreateDobavljacDto(string Naziv, string? Adresa, string? Telefon, string? Napomena);
-    internal sealed record CreateSezonaDto(string Naziv, DateTime DatumOd, DateTime DatumDo);
-    internal sealed record NivelacijaCenaRequest(int ArtikalId, decimal NovaProdajnaCena, string? Komentar);
-}

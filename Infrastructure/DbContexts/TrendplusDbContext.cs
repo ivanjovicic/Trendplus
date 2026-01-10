@@ -2,6 +2,7 @@
 using Application.Artikli.Common.Interfaces;
 using Domain.Model;
 using Domain.Model.Prodaja;
+using Domain.Model.Povracaj;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.DbContexts
@@ -99,6 +100,51 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
             });
 
+            // Povracaj mapping
+            modelBuilder.Entity<PovracajZaglavlje>(eb =>
+            {
+                eb.ToTable("povracaj_zaglavlje");
+                eb.HasKey(e => e.Id);
+                
+                eb.Property(e => e.Id).HasColumnName("id");
+                eb.Property(e => e.BrojZapisnika).HasColumnName("broj_zapisnika").HasMaxLength(100).IsRequired();
+                eb.Property(e => e.DatumPovracaja).HasColumnName("datum_povracaja").IsRequired();
+                eb.Property(e => e.IDDobavljac).HasColumnName("id_dobavljac").IsRequired();
+                eb.Property(e => e.RazlogPovracaja).HasColumnName("razlog_povracaja");
+                eb.Property(e => e.Status).HasColumnName("status").HasMaxLength(50).IsRequired();
+                eb.Property(e => e.UkupanIznos).HasColumnName("ukupan_iznos").HasColumnType("decimal(18,2)");
+                eb.Property(e => e.Komentar).HasColumnName("komentar");
+                eb.Property(e => e.KreatorKorisnik).HasColumnName("kreirao_korisnik").HasMaxLength(200);
+                eb.Property(e => e.OdobrioKorisnik).HasColumnName("odobrio_korisnik").HasMaxLength(200);
+                eb.Property(e => e.DatumKreiranja).HasColumnName("datum_kreiranja").IsRequired();
+                eb.Property(e => e.DatumOdobrenja).HasColumnName("datum_odobrenja");
+                
+                eb.HasIndex(e => e.BrojZapisnika).IsUnique();
+                eb.HasIndex(e => e.IDDobavljac);
+                eb.HasIndex(e => e.DatumPovracaja);
+                
+                eb.HasMany(e => e.Stavke)
+                  .WithOne(s => s.Povracaj)
+                  .HasForeignKey(s => s.IdPovracaj)
+                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PovracajStavka>(eb =>
+            {
+                eb.ToTable("povracaj_stavke");
+                eb.HasKey(e => e.Id);
+                
+                eb.Property(e => e.Id).HasColumnName("id");
+                eb.Property(e => e.IdPovracaj).HasColumnName("id_povracaj").IsRequired();
+                eb.Property(e => e.IdArtikal).HasColumnName("id_artikal").IsRequired();
+                eb.Property(e => e.Kolicina).HasColumnName("kolicina").IsRequired();
+                eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
+                eb.Property(e => e.Razlog).HasColumnName("razlog");
+                eb.Property(e => e.StanjeArtikla).HasColumnName("stanje_artikla").HasMaxLength(100);
+                
+                eb.HasIndex(e => e.IdArtikal);
+            });
+
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
         }
 
@@ -112,6 +158,8 @@ namespace Infrastructure.DbContexts
         public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
         public DbSet<ProdajaZaglavlje> ProdajaZaglavlja { get; set; } = null!;
         public DbSet<ProdajaStavka> ProdajaStavke { get; set; } = null!;
+        public DbSet<PovracajZaglavlje> PovracajZaglavlja { get; set; } = null!;
+        public DbSet<PovracajStavka> PovracajStavke { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {

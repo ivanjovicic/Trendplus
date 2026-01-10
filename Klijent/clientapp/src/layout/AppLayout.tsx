@@ -80,6 +80,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/performance" className="button-small">
                         ⚡ Performance
                     </Link>
+                    <Link to="/povracaj" className="button-small">
+                        ↩️ Povraćaj robe
+                    </Link>
                 </nav>
 
                 {children}
