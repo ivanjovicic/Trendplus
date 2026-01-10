@@ -19,6 +19,13 @@ export type CreateArtikalDto = {
 };
 const API = import.meta.env.VITE_API_BASE_URL;
 
+export type ArtikliPagedResponse<T> = {
+    items: T[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+};
+
 export async function createArtikal(payload: CreateArtikalDto): Promise<number> {
     const res = await fetch(`${API}/artikli`, {
         method: "POST",
@@ -51,11 +58,10 @@ export async function createArtikal(payload: CreateArtikalDto): Promise<number> 
 }
 
 export async function getArtikal(id: number): Promise<Artikal> {
-    const res = await fetch(`${ API }/artikli/${id}`);
+    const res = await fetch(`${API}/artikli/${id}`);
     if (!res.ok) throw new Error("Artikal ne postoji");
     return res.json();
 }
-
 
 export async function updateArtikal(id: number, data: ArtikalFormData): Promise<void> {
     const dto = {
@@ -94,6 +100,44 @@ export async function getArtikli(): Promise<Artikal[]> {
     if (!res.ok) {
         throw new Error(`Greška pri učitavanju artikala: ${res.status}`);
     }
+    return res.json();
+}
+
+export async function getArtikliPaged<T = any>(
+    pageNumber: number = 1,
+    pageSize: number = 50,
+    filters?: {
+        naziv?: string;
+        sezonaId?: number | "";
+        minCena?: number;
+        maxCena?: number;
+        minKolicina?: number;
+        maxKolicina?: number;
+        sortBy?: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id";
+        sortDir?: "asc" | "desc";
+    }
+): Promise<ArtikliPagedResponse<T>> {
+    const params = new URLSearchParams({
+        pageNumber: String(pageNumber),
+        pageSize: String(pageSize),
+    });
+
+    if (filters?.naziv) params.append("naziv", filters.naziv);
+    if (filters?.sezonaId !== undefined && filters.sezonaId !== "") params.append("sezonaId", String(filters.sezonaId));
+    if (filters?.minCena !== undefined) params.append("minCena", String(filters.minCena));
+    if (filters?.maxCena !== undefined) params.append("maxCena", String(filters.maxCena));
+    if (filters?.minKolicina !== undefined) params.append("minKolicina", String(filters.minKolicina));
+    if (filters?.maxKolicina !== undefined) params.append("maxKolicina", String(filters.maxKolicina));
+    if (filters?.sortBy) params.append("sortBy", filters.sortBy);
+    if (filters?.sortDir) params.append("sortDir", filters.sortDir);
+
+    const res = await fetch(`${API}/api/artikli?${params.toString()}`);
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${res.status}`;
+        throw new Error(message);
+    }
+
     return res.json();
 }
 

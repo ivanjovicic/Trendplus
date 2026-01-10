@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getArtikli } from "../services/artikliApi";
+import { getArtikliPaged } from "../services/artikliApi";
 import { getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
 
@@ -17,9 +17,14 @@ type ArtikalListItem = {
 
 export default function ArtikliListPage() {
   const [artikli, setArtikli] = useState<ArtikalListItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [sezone, setSezone] = useState<Sezona[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination state
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   // Filter states
   const [searchNaziv, setSearchNaziv] = useState("");
@@ -30,29 +35,92 @@ export default function ArtikliListPage() {
   const [filterMaxKolicina, setFilterMaxKolicina] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  const API = import.meta.env.VITE_API_BASE_URL;
+  // Sorting state
+  const [sortBy, setSortBy] = useState<"naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id">("naziv");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  // Jump-to-page state
+  const [jumpTo, setJumpTo] = useState<string>("1");
+
+  // Handle column header click for sorting
+  const handleSort = (column: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id") => {
+    if (sortBy === column) {
+      // Toggle direction if clicking the same column
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      // Set new column and default to ascending
+      setSortBy(column);
+      setSortDir("asc");
+    }
+    setPageNumber(1);
+  };
+
+  // Render sort indicator (arrow)
+  const renderSortIndicator = (column: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id") => {
+    if (sortBy !== column) return null;
+    return sortDir === "asc" ? " ▲" : " ▼";
+  };
+
+  useEffect(() => {
+    let aborted = false;
+
+    const loadSezone = async () => {
+      try {
+        const sezoneData = await getSezone();
+        if (!aborted) setSezone(sezoneData ?? []);
+      } catch {
+        // best-effort
+      }
+    };
+
+    loadSezone();
+
+    return () => {
+      aborted = true;
+    };
+  }, []);
+
+  const filters = useMemo(() => {
+    const f: any = {};
+
+    if (searchNaziv.trim()) f.naziv = searchNaziv.trim();
+    if (filterSezona !== "") f.sezonaId = filterSezona;
+
+    if (filterMinCena) f.minCena = Number(filterMinCena);
+    if (filterMaxCena) f.maxCena = Number(filterMaxCena);
+    if (filterMinKolicina) f.minKolicina = Number(filterMinKolicina);
+    if (filterMaxKolicina) f.maxKolicina = Number(filterMaxKolicina);
+
+    f.sortBy = sortBy;
+    f.sortDir = sortDir;
+
+    return f;
+  }, [searchNaziv, filterSezona, filterMinCena, filterMaxCena, filterMinKolicina, filterMaxKolicina, sortBy, sortDir]);
+
+  // keep jump input in sync
+  useEffect(() => {
+    setJumpTo(String(pageNumber));
+  }, [pageNumber]);
 
   useEffect(() => {
     let aborted = false;
 
     const load = async () => {
-      try {
-        const [artikliData, sezoneData] = await Promise.all([
-          getArtikli(),
-          getSezone(),
-        ]);
+      setLoading(true);
+      setError(null);
 
-        if (!aborted) {
-          setArtikli(artikliData ?? []);
-          setSezone(sezoneData ?? []);
-          setLoading(false);
-        }
+      try {
+        const data = await getArtikliPaged<ArtikalListItem>(pageNumber, pageSize, filters);
+        if (aborted) return;
+
+        setArtikli(data.items ?? []);
+        setTotalCount(data.totalCount ?? 0);
       } catch (e: any) {
-        if (!aborted) {
-          console.error(e);
-          setError(e?.message ?? "Greška pri učitavanju podataka.");
-          setLoading(false);
-        }
+        if (aborted) return;
+        console.error(e);
+        setError(e?.message ?? "Greška pri učitavanju podataka.");
+      } finally {
+        if (!aborted) setLoading(false);
       }
     };
 
@@ -61,58 +129,7 @@ export default function ArtikliListPage() {
     return () => {
       aborted = true;
     };
-  }, []);
-
-  const filteredArtikli = useMemo(() => {
-    let result = [...artikli];
-
-    // Filter by naziv
-    if (searchNaziv.trim()) {
-      const query = searchNaziv.toLowerCase();
-      result = result.filter((a) =>
-        a.naziv.toLowerCase().includes(query)
-      );
-    }
-
-    // Filter by sezona
-    if (filterSezona !== "") {
-      result = result.filter((a) => a.idSezona === filterSezona);
-    }
-
-    // Filter by min cena
-    if (filterMinCena) {
-      const min = parseFloat(filterMinCena);
-      result = result.filter((a) => a.prodajnaCena >= min);
-    }
-
-    // Filter by max cena
-    if (filterMaxCena) {
-      const max = parseFloat(filterMaxCena);
-      result = result.filter((a) => a.prodajnaCena <= max);
-    }
-
-    // Filter by min kolicina
-    if (filterMinKolicina) {
-      const min = parseInt(filterMinKolicina);
-      result = result.filter((a) => (a.kolicina ?? 0) >= min);
-    }
-
-    // Filter by max kolicina
-    if (filterMaxKolicina) {
-      const max = parseInt(filterMaxKolicina);
-      result = result.filter((a) => (a.kolicina ?? 0) <= max);
-    }
-
-    return result;
-  }, [
-    artikli,
-    searchNaziv,
-    filterSezona,
-    filterMinCena,
-    filterMaxCena,
-    filterMinKolicina,
-    filterMaxKolicina,
-  ]);
+  }, [pageNumber, pageSize, filters]);
 
   const clearFilters = () => {
     setSearchNaziv("");
@@ -120,7 +137,8 @@ export default function ArtikliListPage() {
     setFilterMinCena("");
     setFilterMaxCena("");
     setFilterMinKolicina("");
-    setFilterMaxKolicina("");
+    setFilterMaxKolidina("");
+    setPageNumber(1);
   };
 
   const activeFiltersCount = [
@@ -131,6 +149,8 @@ export default function ArtikliListPage() {
     filterMinKolicina,
     filterMaxKolicina,
   ].filter(Boolean).length;
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   if (loading) {
     return (
@@ -150,41 +170,125 @@ export default function ArtikliListPage() {
 
   return (
     <div className="card" style={{ margin: "2rem auto", maxWidth: "1200px" }}>
+      {/* Compact header + pagination in single row */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "1.5rem",
+          marginBottom: "0.75rem",
+          gap: 12,
         }}
       >
-        <h2 className="text-2xl font-semibold">
-          Lista artikala ({filteredArtikli.length}/{artikli.length})
-        </h2>
+        {/* Left: Title + Pagination controls - single line, no wrap */}
+        <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0, overflow: "hidden" }}>
+          <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "#1f2937", whiteSpace: "nowrap", flexShrink: 0 }}>
+            Lista artikala <span style={{ color: "#6b7280", fontWeight: 400, fontSize: "0.9375rem" }}>({artikli.length} / {totalCount})</span>
+          </h2>
+
+          <div style={{ display: "flex", gap: 6, alignItems: "center", whiteSpace: "nowrap", flexShrink: 0 }}>
+            <button
+              className="button-big"
+              style={{ padding: "2px 8px", background: pageNumber <= 1 ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
+              disabled={pageNumber <= 1}
+              onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+              title="Prethodna"
+            >
+              ←
+            </button>
+
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <input
+                className="input-big"
+                style={{ marginBottom: 0, width: "42px", padding: "2px 4px", fontSize: "0.75rem", textAlign: "center", height: "24px" }}
+                type="number"
+                min={1}
+                max={totalPages}
+                value={jumpTo}
+                onChange={(e) => setJumpTo(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const parsed = Number(jumpTo);
+                    if (!Number.isFinite(parsed)) return;
+                    const target = Math.min(totalPages, Math.max(1, Math.trunc(parsed)));
+                    setPageNumber(target);
+                  }
+                }}
+              />
+              <span style={{ color: "#6b7280", fontSize: "0.75rem" }}>/ {totalPages}</span>
+            </div>
+
+            <button
+              className="button-big"
+              style={{ padding: "2px 8px", background: pageNumber >= totalPages ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
+              disabled={pageNumber >= totalPages}
+              onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
+              title="Sledeća"
+            >
+              →
+            </button>
+
+            <span style={{ color: "#d1d5db", fontSize: "0.75rem", margin: "0 2px" }}>|</span>
+
+            <span style={{ color: "#6b7280", fontSize: "0.75rem" }}>Po strani:</span>
+            <select
+              className="input-big"
+              style={{ 
+                marginBottom: 0, 
+                width: "70px", 
+                padding: "2px 6px 2px 8px", 
+                fontSize: "0.75rem", 
+                height: "24px",
+                backgroundImage: "url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3e%3cpath fill=%27none%27 stroke=%27%236b7280%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27m2 5 6 6 6-6%27/%3e%3c/svg%3e')",
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 4px center",
+                backgroundSize: "12px",
+                paddingRight: "22px",
+              }}
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPageNumber(1);
+              }}
+            >
+              {[25, 50, 100, 200].map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Right: Compact filter button - unchanged */}
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="button-big"
           style={{
-            maxWidth: "200px",
             background: showFilters ? "#dc2626" : "#3b82f6",
-            display: "flex",
+            display: "inline-flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "3px",
+            padding: "3px 7px",
+            fontSize: "0.6875rem",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+            maxWidth: "80px",
           }}
         >
-          {showFilters ? "Sakrij filtere" : "Prikaži filtere"}
+          {showFilters ? "Sakrij" : "Filtere"}
           {activeFiltersCount > 0 && (
             <span
               style={{
                 background: "white",
                 color: "#3b82f6",
                 borderRadius: "50%",
-                width: "24px",
-                height: "24px",
+                width: "15px",
+                height: "15px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "0.75rem",
+                fontSize: "0.625rem",
                 fontWeight: 700,
               }}
             >
@@ -204,15 +308,7 @@ export default function ArtikliListPage() {
             marginBottom: "1.5rem",
           }}
         >
-          <h3
-            style={{
-              fontWeight: 600,
-              fontSize: "1.125rem",
-              marginBottom: "1rem",
-            }}
-          >
-            🔍 Filteri
-          </h3>
+          <h3 style={{ fontWeight: 600, fontSize: "1.125rem", marginBottom: "1rem" }}>🔍 Filteri</h3>
 
           <div
             style={{
@@ -228,7 +324,10 @@ export default function ArtikliListPage() {
                 className="input-big"
                 placeholder="Unesite naziv..."
                 value={searchNaziv}
-                onChange={(e) => setSearchNaziv(e.target.value)}
+                onChange={(e) => {
+                  setSearchNaziv(e.target.value);
+                  setPageNumber(1);
+                }}
               />
             </div>
 
@@ -237,9 +336,10 @@ export default function ArtikliListPage() {
               <select
                 className="input-big"
                 value={filterSezona}
-                onChange={(e) =>
-                  setFilterSezona(e.target.value ? Number(e.target.value) : "")
-                }
+                onChange={(e) => {
+                  setFilterSezona(e.target.value ? Number(e.target.value) : "");
+                  setPageNumber(1);
+                }}
               >
                 <option value="">Sve sezone</option>
                 {sezone.map((s) => (
@@ -257,7 +357,10 @@ export default function ArtikliListPage() {
                 className="input-big"
                 placeholder="0"
                 value={filterMinCena}
-                onChange={(e) => setFilterMinCena(e.target.value)}
+                onChange={(e) => {
+                  setFilterMinCena(e.target.value);
+                  setPageNumber(1);
+                }}
               />
             </div>
 
@@ -268,7 +371,10 @@ export default function ArtikliListPage() {
                 className="input-big"
                 placeholder="999999"
                 value={filterMaxCena}
-                onChange={(e) => setFilterMaxCena(e.target.value)}
+                onChange={(e) => {
+                  setFilterMaxCena(e.target.value);
+                  setPageNumber(1);
+                }}
               />
             </div>
 
@@ -279,7 +385,10 @@ export default function ArtikliListPage() {
                 className="input-big"
                 placeholder="0"
                 value={filterMinKolicina}
-                onChange={(e) => setFilterMinKolicina(e.target.value)}
+                onChange={(e) => {
+                  setFilterMinKolicina(e.target.value);
+                  setPageNumber(1);
+                }}
               />
             </div>
 
@@ -290,49 +399,25 @@ export default function ArtikliListPage() {
                 className="input-big"
                 placeholder="999"
                 value={filterMaxKolicina}
-                onChange={(e) => setFilterMaxKolicina(e.target.value)}
+                onChange={(e) => {
+                  setFilterMaxKolicina(e.target.value);
+                  setPageNumber(1);
+                }}
               />
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: "12px",
-              marginTop: "1rem",
-            }}
-          >
-            <button
-              onClick={clearFilters}
-              className="button-big"
-              style={{
-                background: "#6b7280",
-                maxWidth: "200px",
-              }}
-            >
+          <div style={{ display: "flex", gap: "12px", marginTop: "1rem" }}>
+            <button onClick={clearFilters} className="button-big" style={{ background: "#6b7280", maxWidth: "160px", padding: "8px 12px", fontSize: "0.875rem" }}>
               Resetuj filtere
             </button>
           </div>
         </div>
       )}
 
-      {filteredArtikli.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "3rem",
-            color: "#6b7280",
-          }}
-        >
-          <p
-            style={{
-              fontSize: "1.125rem",
-              fontWeight: 600,
-              marginBottom: "0.5rem",
-            }}
-          >
-            Nema rezultata
-          </p>
+      {artikli.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
+          <p style={{ fontSize: "1.125rem", fontWeight: 600, marginBottom: "0.5rem" }}>Nema rezultata</p>
           <p>Pokušajte da promenite filtere pretrage</p>
         </div>
       ) : (
@@ -340,21 +425,51 @@ export default function ArtikliListPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Naziv</th>
-                <th style={{ textAlign: "right" }}>Prodajna cena</th>
-                <th style={{ textAlign: "right" }}>Nabavna cena</th>
-                <th style={{ textAlign: "center" }}>Količina</th>
+                <th 
+                  onClick={() => handleSort("id")}
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                  title="Klikni za sortiranje po ID-ju"
+                >
+                  ID{renderSortIndicator("id")}
+                </th>
+                <th 
+                  onClick={() => handleSort("naziv")}
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                  title="Klikni za sortiranje po nazivu"
+                >
+                  Naziv{renderSortIndicator("naziv")}
+                </th>
+                <th 
+                  onClick={() => handleSort("prodajnaCena")}
+                  style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}
+                  title="Klikni za sortiranje po prodajnoj ceni"
+                >
+                  Prodajna cena{renderSortIndicator("prodajnaCena")}
+                </th>
+                <th 
+                  onClick={() => handleSort("nabavnaCena")}
+                  style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}
+                  title="Klikni za sortiranje po nabavnoj ceni"
+                >
+                  Nabavna cena{renderSortIndicator("nabavnaCena")}
+                </th>
+                <th 
+                  onClick={() => handleSort("kolicina")}
+                  style={{ textAlign: "center", cursor: "pointer", userSelect: "none" }}
+                  title="Klikni za sortiranje po količini"
+                >
+                  Količina{renderSortIndicator("kolicina")}
+                </th>
                 <th style={{ textAlign: "center" }}>Akcije</th>
               </tr>
             </thead>
             <tbody>
-              {filteredArtikli.map((a) => (
+              {artikli.map((a) => (
                 <tr key={a.id}>
                   <td style={{ color: "#6b7280" }}>{a.id}</td>
                   <td style={{ fontWeight: 600 }}>{a.naziv}</td>
                   <td style={{ textAlign: "right", color: "#059669", fontWeight: 700 }}>
-                    {a.prodajnaCena.toFixed(2)} RSD
+                    {(a.prodajnaCena ?? 0).toFixed(2)} RSD
                   </td>
                   <td style={{ textAlign: "right", color: "#6b7280" }}>
                     {a.nabavnaCena ? `${a.nabavnaCena.toFixed(2)} RSD` : "-"}
@@ -366,13 +481,13 @@ export default function ArtikliListPage() {
                       style={{
                         background: "#3b82f6",
                         color: "white",
-                        padding: "8px 16px",
-                        borderRadius: "10px",
+                        padding: "6px 12px",
+                        borderRadius: "8px",
                         textDecoration: "none",
-                        fontSize: "0.875rem",
-                        fontWeight: 700,
+                        fontSize: "0.8125rem",
+                        fontWeight: 600,
                         display: "inline-block",
-                        boxShadow: "0 8px 18px rgba(37, 99, 235, 0.20)",
+                        boxShadow: "0 4px 10px rgba(37, 99, 235, 0.18)",
                       }}
                     >
                       Izmeni
@@ -384,6 +499,29 @@ export default function ArtikliListPage() {
           </table>
         </div>
       )}
+
+      {/* Bottom pagination - ultra-minimal */}
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: "0.5rem", paddingTop: "6px", borderTop: "1px solid #e5e7eb" }}>
+        <button
+          className="button-big"
+          style={{ padding: "2px 8px", background: pageNumber <= 1 ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
+          disabled={pageNumber <= 1}
+          onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+        >
+          ←
+        </button>
+        <span style={{ color: "#6b7280", fontSize: "0.75rem", minWidth: "50px", textAlign: "center" }}>
+          {pageNumber} / {totalPages}
+        </span>
+        <button
+          className="button-big"
+          style={{ padding: "2px 8px", background: pageNumber >= totalPages ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
+          disabled={pageNumber >= totalPages}
+          onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
+        >
+          →
+        </button>
+      </div>
     </div>
   );
 }

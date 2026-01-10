@@ -15,6 +15,7 @@ using Infrastructure.DbContexts;
 using Infrastructure.Middleware;
 using Infrastructure.Repository;
 using Infrastructure.Resilience;
+using Infrastructure.Seed;
 using Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -479,6 +480,82 @@ app.MapGet("/artikli", async (IMediator mediator, ILogger<Program> logger) =>
     return Results.Ok(result);
 });
 
+// Artikli - List (paged)
+app.MapGet("/api/artikli", async (
+    ITrendplusDbContext db,
+    int pageNumber = 1,
+    int pageSize = 50,
+    string? naziv = null,
+    int? sezonaId = null,
+    decimal? minCena = null,
+    decimal? maxCena = null,
+    int? minKolicina = null,
+    int? maxKolicina = null,
+    string sortBy = "naziv",
+    string sortDir = "asc",
+    CancellationToken ct = default) =>
+{
+    if (pageNumber < 1) pageNumber = 1;
+    if (pageSize < 1) pageSize = 1;
+    if (pageSize > 200) pageSize = 200;
+
+    var query = db.Artikli.AsNoTracking().AsQueryable();
+
+    if (!string.IsNullOrWhiteSpace(naziv))
+    {
+        var n = naziv.Trim();
+        query = query.Where(a => EF.Functions.ILike(a.Naziv, $"%{n}%"));
+    }
+
+    if (sezonaId.HasValue)
+        query = query.Where(a => a.IDSezona == sezonaId.Value);
+
+    if (minCena.HasValue)
+        query = query.Where(a => (a.ProdajnaCena ?? 0m) >= minCena.Value);
+
+    if (maxCena.HasValue)
+        query = query.Where(a => (a.ProdajnaCena ?? 0m) <= maxCena.Value);
+
+    if (minKolicina.HasValue)
+        query = query.Where(a => (a.Kolicina ?? 0) >= minKolicina.Value);
+
+    if (maxKolicina.HasValue)
+        query = query.Where(a => (a.Kolicina ?? 0) <= maxKolicina.Value);
+
+    var total = await query.CountAsync(ct);
+
+    var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+    var key = (sortBy ?? "naziv").Trim().ToLowerInvariant();
+
+    query = key switch
+    {
+        "id" => desc ? query.OrderByDescending(a => a.Id) : query.OrderBy(a => a.Id),
+        "naziv" => desc ? query.OrderByDescending(a => a.Naziv) : query.OrderBy(a => a.Naziv),
+        "prodajnacena" => desc ? query.OrderByDescending(a => a.ProdajnaCena ?? 0m) : query.OrderBy(a => a.ProdajnaCena ?? 0m),
+        "nabavnacena" => desc ? query.OrderByDescending(a => a.NabavnaCena ?? 0m) : query.OrderBy(a => a.NabavnaCena ?? 0m),
+        "kolicina" => desc ? query.OrderByDescending(a => a.Kolicina ?? 0) : query.OrderBy(a => a.Kolicina ?? 0),
+        _ => desc ? query.OrderByDescending(a => a.Naziv) : query.OrderBy(a => a.Naziv)
+    };
+
+    var items = await query
+        .Skip((pageNumber - 1) * pageSize)
+        .Take(pageSize)
+        .Select(a => new
+        {
+            id = a.Id,
+            naziv = a.Naziv,
+            prodajnaCena = a.ProdajnaCena ?? 0m,
+            nabavnaCena = a.NabavnaCena,
+            kolicina = a.Kolicina,
+            tipObuceId = a.IDTipObuce,
+            dobavljacId = a.IDDobavljac,
+            idSezona = a.IDSezona
+        })
+        .ToListAsync(ct);
+
+    return Results.Ok(new ArtikliPagedResponse<object>(items, total, pageNumber, pageSize));
+});
+
 // Artikli - Update
 app.MapPut("/artikli/{id:int}", async (
     int id,
@@ -734,6 +811,11 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
     db.Database.Migrate();
+
+    //if (app.Environment.IsDevelopment())
+    //{
+    //    await TrendplusDbSeeder.SeedAsync(db);
+    //}
 }
 
 app.Run();

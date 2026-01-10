@@ -10,7 +10,7 @@ import { useToast } from "./Toast";
 
 export interface CreateArtikalFormProps {
     tipoviObuce: { id: number; naziv: string }[];
-    dobavljaci: { id: number; naziv: string }[];
+    dobavljaci: { id: number; Nazir: string }[];
     onSubmit: (data: ArtikalFormData) => Promise<number | void>;
     loadingOptions?: boolean;
     initialData?: ArtikalFormData;
@@ -264,7 +264,7 @@ export default function CreateArtikalForm({
             className="card" 
             style={{
                 background: "linear-gradient(to bottom, #ffffff, #fafbfc)",
-                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
                 border: "1px solid #e5e7eb"
             }}
         >
@@ -306,7 +306,7 @@ export default function CreateArtikalForm({
                         padding: "1.5rem",
                         borderRadius: "12px",
                         border: "1px solid #e5e7eb",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
                     }}
                 >
                     <h3 style={{ 
@@ -343,14 +343,14 @@ export default function CreateArtikalForm({
                                 value={naziv}
                                 onChange={(e) => setNaziv(e.target.value)}
                                 onBlur={(e) => handleFieldBlur("naziv", e.target.value)}
-                                style={{ 
+                                style={{
                                     borderColor: errors.naziv ? "#ef4444" : "#d1d5db",
                                     boxShadow: errors.naziv 
-                                        ? "0 0 0 3px rgba(239,68,68,0.1)" 
-                                        : "0 1px 2px rgba(0,0,0,0.05)",
+                                        ? "0 0 0 3px rgba(239,68,68,0.15)" 
+                                        : "0 1px 3px rgba(0,0,0,0.1)",
                                     transition: "all 0.2s ease"
                                 }}
-                                onFocus={(e) => e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"}
+                                onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.15)"}
                             />
                             {errors.naziv && (
                                 <p style={{ 
@@ -381,11 +381,11 @@ export default function CreateArtikalForm({
                                 style={{ 
                                     borderColor: errors.prodajnaCena ? "#ef4444" : "#d1d5db",
                                     boxShadow: errors.prodajnaCena 
-                                        ? "0 0 0 3px rgba(239,68,68,0.1)" 
-                                        : "0 1px 2px rgba(0,0,0,0.05)",
+                                        ? "0 0 0 3px rgba(239,68,68,0.15)" 
+                                        : "0 1px 3px rgba(0,0,0,0.1)",
                                     transition: "all 0.2s ease"
                                 }}
-                                onFocus={(e) => e.target.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.1)"}
+                                onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.15)"}
                             />
                             {errors.prodajnaCena && (
                                 <p style={{ 
@@ -412,10 +412,10 @@ export default function CreateArtikalForm({
                                 onBlur={(e) => handleFieldBlur("kolicina", e.target.value)}
                                 style={{ 
                                     borderColor: errors.kolicina ? "#ef4444" : "#d1d5db",
-                                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                                     transition: "all 0.2s ease"
                                 }}
-                                onFocus={(e) => e.target.style.boxShadow = "0 0 0 3px rgba(139,92,246,0.1)"}
+                                onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 3px rgba(139,92,246,0.15)"}
                             />
                             {errors.kolicina && (
                                 <p style={{ color: "#ef4444", fontSize: "0.875rem", marginTop: "0.5rem" }}>
@@ -438,9 +438,10 @@ export default function CreateArtikalForm({
                                     style={{ 
                                         flex: 1, 
                                         marginBottom: 0,
-                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                                         borderColor: selectedTip ? "#0891b2" : "#d1d5db",
-                                        background: selectedTip ? "linear-gradient(to right, #ffffff, #ecfeff)" : "white"
+                                        background: selectedTip ? "linear-gradient(to right, #ffffff, #ecfeff)" : "white",
+                                        transition: "all 0.2s ease"
                                     }}
                                 >
                                     <option value="">-- izaberite --</option>
@@ -460,7 +461,7 @@ export default function CreateArtikalForm({
                                         fontSize: "1.5rem",
                                         cursor: "pointer",
                                         lineHeight: 1,
-                                        boxShadow: "0 4px 6px -1px rgba(8,145,178,0.3)",
+                                        boxShadow: "0 4px 10px rgba(8,145,178,0.4)",
                                         transition: "all 0.2s ease",
                                     }}
                                     title="Dodaj novi tip obuće"
@@ -486,9 +487,10 @@ export default function CreateArtikalForm({
                                     style={{ 
                                         flex: 1, 
                                         marginBottom: 0,
-                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                                         borderColor: selectedDobavljac ? "#059669" : "#d1d5db",
-                                        background: selectedDobavljac ? "linear-gradient(to right, #ffffff, #ecfdf5)" : "white"
+                                        background: selectedDobavljac ? "linear-gradient(to right, #ffffff, #ecfdf5)" : "white",
+                                        transition: "all 0.2s ease"
                                     }}
                                 >
                                     <option value="">-- izaberite --</option>
@@ -508,7 +510,7 @@ export default function CreateArtikalForm({
                                         fontSize: "1.5rem",
                                         cursor: "pointer",
                                         lineHeight: 1,
-                                        boxShadow: "0 4px 6px -1px rgba(5,150,105,0.3)",
+                                        boxShadow: "0 4px 10px rgba(5,150,105,0.4)",
                                         transition: "all 0.2s ease",
                                     }}
                                     title="Dodaj novog dobavljača"
@@ -531,7 +533,7 @@ export default function CreateArtikalForm({
                             padding: "1.5rem",
                             borderRadius: "12px",
                             border: "1px solid #fbbf24",
-                            boxShadow: "0 4px 6px -1px rgba(251,191,36,0.2)"
+                            boxShadow: "0 4px 12px rgba(251,191,36,0.25)"
                         }}
                     >
                         <h3 style={{ 
@@ -568,8 +570,9 @@ export default function CreateArtikalForm({
                                     onChange={(e) => setNabavnaCena(e.target.value)}
                                     style={{ 
                                         background: "white",
-                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                                        borderColor: "#fbbf24"
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                                        borderColor: "#fbbf24",
+                                        transition: "all 0.2s ease"
                                     }}
                                 />
                             </div>
@@ -585,8 +588,9 @@ export default function CreateArtikalForm({
                                     onChange={(e) => setNabavnaCenaDin(e.target.value)}
                                     style={{ 
                                         background: "white",
-                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                                        borderColor: "#fbbf24"
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                                        borderColor: "#fbbf24",
+                                        transition: "all 0.2s ease"
                                     }}
                                 />
                             </div>
@@ -602,8 +606,9 @@ export default function CreateArtikalForm({
                                     onChange={(e) => setPrvaProdajnaCena(e.target.value)}
                                     style={{ 
                                         background: "white",
-                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                                        borderColor: "#fbbf24"
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                                        borderColor: "#fbbf24",
+                                        transition: "all 0.2s ease"
                                     }}
                                 />
                             </div>
@@ -616,8 +621,9 @@ export default function CreateArtikalForm({
                                     onChange={(e) => setSelectedSezona(e.target.value ? Number(e.target.value) : null)}
                                     style={{ 
                                         background: "white",
-                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                                        borderColor: "#fbbf24"
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                                        borderColor: "#fbbf24",
+                                        transition: "all 0.2s ease"
                                     }}
                                 >
                                     <option value="">-- izaberite sezonu --</option>
@@ -787,7 +793,7 @@ export default function CreateArtikalForm({
                                 padding: "10px 20px", 
                                 marginTop: 0,
                                 background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
-                                boxShadow: "0 4px 6px -1px rgba(5,150,105,0.3)"
+                                boxShadow: "0 4px 10px rgba(5,150,105,0.4)"
                             }}
                             onClick={handleCreateDob}
                             disabled={!newDob.trim() || isCreatingDob}
