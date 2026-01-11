@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+Ôªøimport React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
     getOutboxStats,
@@ -49,7 +49,7 @@ export default function OutboxDashboard() {
             setError(null);
         } catch (err) {
             console.error("Error fetching outbox stats:", err);
-            setError((err as Error)?.message ?? "Greöka pri u?itavanju outbox statistike");
+            setError((err as Error)?.message ?? "Gre≈°ka pri u?itavanju outbox statistike");
         } finally {
             setLoading(false);
         }
@@ -73,7 +73,7 @@ export default function OutboxDashboard() {
             toast.success("Poruka je ozna?ena za ponovno slanje!");
             await fetchStats();
         } catch (err) {
-            toast.error(`Greöka: ${(err as Error).message}`);
+            toast.error(`Gre≈°ka: ${(err as Error).message}`);
         } finally {
             setActionBusy(false);
             setConfirmRetryId(null);
@@ -87,7 +87,7 @@ export default function OutboxDashboard() {
             toast.success(`${result.count} poruka je ozna?eno za ponovno slanje!`);
             await fetchStats();
         } catch (err) {
-            toast.error(`Greöka: ${(err as Error).message}`);
+            toast.error(`Gre≈°ka: ${(err as Error).message}`);
         } finally {
             setActionBusy(false);
             setConfirmRetryAll(false);
@@ -102,7 +102,7 @@ export default function OutboxDashboard() {
             await fetchStats();
             setPurgeDays(days);
         } catch (err) {
-            toast.error(`Greöka: ${(err as Error).message}`);
+            toast.error(`Gre≈°ka: ${(err as Error).message}`);
         } finally {
             setActionBusy(false);
             setPurgeModalOpen(false);
@@ -295,7 +295,7 @@ export default function OutboxDashboard() {
                 </div>
             )}
 
-            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>U?itavanje...</p>}
+            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Uƒçitavanje...</p>}
             {error && <p className="error-msg">{error}</p>}
 
             {/* Recent Messages */}
@@ -452,7 +452,7 @@ export default function OutboxDashboard() {
                 title="Ponovno slanje"
                 message={
                     <>
-                        Da li ûelite da pokuöate ponovo da poöaljete poruku <strong>#{confirmRetryId}</strong>?
+                        Da li ≈æelite da poku≈°ate ponovo da po≈°aljete poruku <strong>#{confirmRetryId}</strong>?
                     </>
                 }
                 confirmText="Retry"
@@ -467,7 +467,7 @@ export default function OutboxDashboard() {
                 title="Retry svih neuspelih poruka"
                 message={
                     <>
-                        Da li ûelite da pokuöate ponovo da poöaljete <strong>SVE</strong> neuspele poruke?
+                        Da li ≈æelite da poku≈°ate ponovo da po≈°aljete <strong>SVE</strong> neuspele poruke?
                     </>
                 }
                 confirmText="Retry All"
@@ -480,7 +480,7 @@ export default function OutboxDashboard() {
             <PromptNumberModal
                 isOpen={purgeModalOpen}
                 title="Purge processed poruka"
-                label="Obriöi obra?ene poruke starije od (dana)"
+                label="Obri≈°i obra?ene poruke starije od (dana)"
                 description={
                     <>
                         Bi?e obrisane samo poruke koje su ozna?ene kao <strong>Processed</strong> i starije od izabranog broja dana.
@@ -489,8 +489,8 @@ export default function OutboxDashboard() {
                 defaultValue={purgeDays}
                 min={1}
                 max={365}
-                confirmText="Obriöi"
-                cancelText="Otkaûi"
+                confirmText="Obri≈°i"
+                cancelText="Otka≈æi"
                 isBusy={actionBusy}
                 onCancel={() => setPurgeModalOpen(false)}
                 onConfirm={doPurgeProcessed}

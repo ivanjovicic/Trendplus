@@ -26,12 +26,20 @@ using System.Globalization;
 using Trendplus2;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
+using Application.Analytics.Queries.GetInventoryStatus;
+using Application.Analytics.Queries.GetSalesSummary;
+using Application.Analytics.Queries.GetTopProducts;
 
 try
 {
     Console.WriteLine("Starting application...");
     
     var builder = WebApplication.CreateBuilder(args);
+
+    builder.Services.Configure<HostOptions>(options =>
+    {
+        options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+    });
 
     Console.WriteLine("Builder created successfully");
 
@@ -572,7 +580,7 @@ try
             return Results.Problem(
                 detail: ex.Message,
                 statusCode: 500,
-                title: "Greška pri u?itavanju povraćaja"
+                title: "Greška pri učitavanju povraćaja"
             );
         }
     });
@@ -590,11 +598,11 @@ try
                 .FirstOrDefaultAsync(p => p.Id == id, ct);
 
             if (povracaj == null)
-                return Results.NotFound(new { message = "povraćaj nije prona?en" });
+                return Results.NotFound(new { message = "Povraćaj nije pronađen" });
 
             var dobavljac = await db.Dobavljaci.FindAsync(new object[] { povracaj.IDDobavljac }, ct);
 
-            // U?itaj artikle za stavke
+            // Učitaj artikle za stavke
             var artikalIds = povracaj.Stavke.Select(s => s.IdArtikal).ToList();
             var artikli = await db.Artikli
                 .Where(a => artikalIds.Contains(a.Id))
@@ -637,10 +645,85 @@ try
             return Results.Problem(
                 detail: ex.Message,
                 statusCode: 500,
-                title: "Greška pri u?itavanju detalja povraćaja"
+                title: "Greška pri učitavanju detalja povraćaja"
             );
         }
     });
+
+    // ============ Analytics (read model) ============
+
+    app.MapGet("/api/analytics/health", async (IAnalyticsDbContext db, ILogger<Program> logger) =>
+    {
+        try
+        {
+            var salesCount = await db.SalesFacts.CountAsync();
+            var linesCount = await db.SalesLineFacts.CountAsync();
+            var productsCount = await db.ProductsDim.CountAsync();
+            
+            return Results.Ok(new
+            {
+                status = "OK",
+                tables = new
+                {
+                    salesFacts = salesCount,
+                    salesLineFacts = linesCount,
+                    productsDim = productsCount
+                },
+                message = "Analytics database connection successful"
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Analytics health check failed");
+            return Results.Problem(
+                detail: $"{ex.GetType().Name}: {ex.Message}",
+                statusCode: 500,
+                title: "Analytics database error"
+            );
+        }
+    });
+
+    app.MapGet("/api/analytics/sales/summary", async (
+        IMediator mediator,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        int? storeId = null) =>
+    {
+        if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+            fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+
+        if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+            toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+        var result = await mediator.Send(new GetSalesSummaryQuery(fromDate, toDate, storeId));
+        return Results.Ok(result);
+    });
+
+    app.MapGet("/api/analytics/sales/top-products", async (
+        IMediator mediator,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        int top = 20,
+        int? storeId = null) =>
+    {
+        if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+            fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+
+        if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+            toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+        var result = await mediator.Send(new GetTopProductsQuery(fromDate, toDate, top, storeId));
+        return Results.Ok(result);
+    });
+
+    app.MapGet("/api/analytics/inventory/status", async (
+        IMediator mediator,
+        int lowStockThreshold = 2) =>
+    {
+        var result = await mediator.Send(new GetInventoryStatusQuery(lowStockThreshold));
+        return Results.Ok(result);
+    });
+
     app.MapAllEndpoints();
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Starting web host on port {port}...");

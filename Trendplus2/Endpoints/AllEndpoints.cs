@@ -1,4 +1,4 @@
-using Application.Artikli.Commands.CreateArtikal;
+Ôªøusing Application.Artikli.Commands.CreateArtikal;
 using Application.Artikli.Commands.UpdateArtikal;
 using Application.Artikli.Common.Interfaces;
 using Application.Artikli.Queries.GetArtikal;
@@ -105,7 +105,7 @@ public static class AllEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greöka pri u?itavanju dnevnika promena");
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Gre≈°ka pri uƒçitavanju dnevnika promena");
             }
         });
 
@@ -166,7 +166,7 @@ public static class AllEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greöka pri u?itavanju artikala");
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Gre≈°ka pri uƒçitavanju artikala");
             }
         });
 
@@ -180,7 +180,7 @@ public static class AllEndpoints
             }
             catch (KeyNotFoundException)
             {
-                return Results.NotFound(new { message = "Artikal nije prona?en" });
+                return Results.NotFound(new { message = "Artikal nije pronaƒëen" });
             }
         });
 
@@ -193,7 +193,7 @@ public static class AllEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greöka pri kreiranju artikla");
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Gre≈°ka pri kreiranju artikla");
             }
         });
 
@@ -209,11 +209,11 @@ public static class AllEndpoints
             }
             catch (KeyNotFoundException)
             {
-                return Results.NotFound(new { message = "Artikal nije prona?en" });
+                return Results.NotFound(new { message = "Artikal nije pronaƒëen" });
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greöka pri aûuriranju artikla");
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Gre≈°ka pri a≈æuriranju artikla");
             }
         });
 
@@ -245,7 +245,7 @@ public static class AllEndpoints
                 
                 var artikal = await db.Artikli.FindAsync(new object[] { request.ArtikalId }, ct);
                 if (artikal == null)
-                    return Results.NotFound(new { message = "Artikal nije prona?en" });
+                    return Results.NotFound(new { message = "Artikal nije pronaƒëen" });
 
                 var staraCena = artikal.ProdajnaCena;
                 artikal.ProdajnaCena = request.NovaProdajnaCena;
@@ -264,12 +264,12 @@ public static class AllEndpoints
 
                 await db.SaveChangesAsync(ct);
                 
-                return Results.Ok(new { success = true, message = "Cena uspeöno nivelirana" });
+                return Results.Ok(new { success = true, message = "Cena uspe≈°no nivelirana" });
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Greöka pri nivelaciji cene");
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greöka pri nivelaciji cene");
+                logger.LogError(ex, "Gre≈°ka pri nivelaciji cene");
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Gre≈°ka pri nivelaciji cene");
             }
         });
 
@@ -336,7 +336,7 @@ public static class AllEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greöka pri u?itavanju nivelacija");
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Gre≈°ka pri uƒçitavanju nivelacija");
             }
         });
 
@@ -347,12 +347,12 @@ public static class AllEndpoints
             {
                 logger.LogInformation("Prodaja artikala");
                 await mediator.Send(command, ct);
-                return Results.Ok(new { success = true, message = "Prodaja uspeöno evidentirana" });
+                return Results.Ok(new { success = true, message = "Prodaja uspe≈°no evidentirana" });
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Greöka pri prodaji");
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greöka pri prodaji");
+                logger.LogError(ex, "Gre≈°ka pri prodaji");
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Gre≈°ka pri prodaji");
             }
         });
 
@@ -366,7 +366,7 @@ public static class AllEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greöka pri u?itavanju prodaja");
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Gre≈°ka pri uƒçitavanju prodaja");
             }
         });
     }

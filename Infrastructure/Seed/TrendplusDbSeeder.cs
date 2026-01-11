@@ -1,4 +1,4 @@
-using Domain.Model;
+﻿using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
@@ -172,7 +172,7 @@ public static class TrendplusDbSeeder
         });
 
         // --- DODATNI TEST ARTIKLI (100+) ---
-        // Batch insert: u?itaj postoje?e nazive, generi�i nove, ubaci samo one koji fale.
+        // Batch insert: učitaj postoje?e nazive, generiši nove, ubaci samo one koji fale.
         var existingNames = await db.Artikli.AsNoTracking().Select(a => a.Naziv).ToListAsync(ct);
         var existingSet = new HashSet<string>(existingNames, StringComparer.Ordinal);
 
@@ -274,7 +274,7 @@ public static class TrendplusDbSeeder
         var nacinePlacanja = new[] { "Gotovina", "Kartica", "Cek", "Virman" };
         var prodajeToAdd = new List<ProdajaZaglavlje>(capacity: 100);
 
-        // Generi�i prodaje u poslednjih 90 dana
+        // Generiši prodaje u poslednjih 90 dana
         var startDate = DateTime.UtcNow.AddDays(-90);
 
         for (var i = existingSeedCount; i < 100; i++)

@@ -108,8 +108,7 @@ export default function ArtikliPage() {
       tipoviObuce={tipovi}
       dobavljaci={dobavljaci}
       onSubmit={handleSubmit}
-      loadingOptions={loadingOptions}
-      initialData={navigationState.dobavljacId ? { dobavljacId: navigationState.dobavljacId } as ArtikalFormData : undefined}
+      initialData={navigationState.dobavljacId ? ({ dobavljacId: navigationState.dobavljacId } as ArtikalFormData) : undefined}
     />
   );
 }

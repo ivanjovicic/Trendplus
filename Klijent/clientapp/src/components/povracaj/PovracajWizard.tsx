@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from "react";
 import type { Dobavljac } from "../../types/Dobavljaci";
-import type { PovracajStavka, STANJA_ARTIKLA } from "../../types/povracaj";
+import type { PovracajStavka } from "../../types/povracaj";
 import { kreirajPovracaj } from "../../services/povracajApi";
 import { getDobavljaci } from "../../services/dobavljaciApi";
 import { getArtikliPaged } from "../../services/artikliApi";
@@ -68,7 +68,7 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
       setArtikli(response.items);
     } catch (err) {
       console.error("Failed to load artikli:", err);
-      setError("Greška pri u?itavanju artikala");
+      setError("Greška pri učitavanju artikala");
     } finally {
       setLoadingArtikli(false);
     }
@@ -112,7 +112,7 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
           kolicina: 1,
           cena: artikal.nabavnaCena || 0,
           razlog: "",
-          undefind
+          stanjeArtikla: ""
         }
       ]);
     }
@@ -205,7 +205,7 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
               value={razlogPovracaja}
               onChange={(e) => setRazlogPovracaja(e.target.value)}
               placeholder="Unesite razlog povraćaja (npr. oštećena roba, pogrešna veličina...)"
-ć              rows={3}
+              rows={3}
               required
             />
           </div>

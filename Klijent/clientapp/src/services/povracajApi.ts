@@ -38,7 +38,7 @@ export async function getPovracaji(
   const res = await fetch(`${API}/api/povracaj?${params}`);
 
   if (!res.ok) {
-    throw new Error("Greška pri u?itavanju povraćaja");
+    throw new Error("Greška pri učitavanju povraćaja");
   }
 
   return res.json();
@@ -48,7 +48,7 @@ export async function getPovracajDetalji(id: number): Promise<PovracajDetaljno> 
   const res = await fetch(`${API}/api/povracaj/${id}`);
 
   if (!res.ok) {
-    throw new Error("Greška pri u?itavanju detalja povraćaja");
+    throw new Error("Greška pri učitavanju detalja povraćaja");
   }
 
   return res.json();

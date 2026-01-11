@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+Ôªøimport React, { useState, useEffect } from "react";
 import { getOutboxMessages, retryOutboxMessage } from "../services/outboxApi";
 import { OutboxMessage } from "../types/outbox";
 import { useToast } from "../components/Toast";
@@ -43,7 +43,7 @@ export default function OutboxMessagesPage() {
             setTotalCount(result.totalCount);
         } catch (err) {
             console.error("Error fetching outbox messages:", err);
-            setError((err as Error)?.message ?? "Greöka pri u?itavanju poruka");
+            setError((err as Error)?.message ?? "Gre≈°ka pri uƒçitavanju poruka");
         } finally {
             setLoading(false);
         }
@@ -60,7 +60,7 @@ export default function OutboxMessagesPage() {
             toast.success("Poruka je ozna?ena za ponovno slanje!");
             await fetchMessages();
         } catch (err) {
-            toast.error(`Greöka: ${(err as Error).message}`);
+            toast.error(`Gre≈°ka: ${(err as Error).message}`);
         } finally {
             setActionBusy(false);
             setConfirmRetryId(null);
@@ -197,7 +197,7 @@ export default function OutboxMessagesPage() {
                 Prikazano <strong>{messages.length}</strong> od ukupno <strong>{totalCount}</strong> poruka
             </div>
 
-            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>U?itavanje...</p>}
+            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Uƒçitavanje...</p>}
             {error && <p className="error-msg">{error}</p>}
 
             {/* Messages */}
@@ -356,7 +356,7 @@ export default function OutboxMessagesPage() {
                 title="Ponovno slanje"
                 message={
                     <>
-                        Da li ûelite da pokuöate ponovo da poöaljete poruku <strong>#{confirmRetryId}</strong>?
+                        Da li ≈æelite da poku≈°ate ponovo da po≈°aljete poruku <strong>#{confirmRetryId}</strong>?
                     </>
                 }
                 confirmText="Retry"

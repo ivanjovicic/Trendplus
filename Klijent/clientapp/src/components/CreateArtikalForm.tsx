@@ -4,31 +4,25 @@ import { createDobavljac } from "../services/dobavljaciApi";
 import { getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
 import Modal from "./Modal";
 import { useToast } from "./Toast";
 
 export interface CreateArtikalFormProps {
     tipoviObuce: { id: number; naziv: string }[];
-    dobavljaci: { id: number; Nazir: string }[];
+    dobavljaci: { id: number; naziv: string }[];
     onSubmit: (data: ArtikalFormData) => Promise<number | void>;
-    loadingOptions?: boolean;
     initialData?: ArtikalFormData;
     mode?: "create" | "edit";
 }
-
-type TabType = "basic" | "advanced";
 
 export default function CreateArtikalForm({
     tipoviObuce,
     dobavljaci,
     onSubmit,
-    loadingOptions = false,
     initialData,
     mode = "create",
 }: CreateArtikalFormProps) {
     const toast = useToast();
-    const [activeTab, setActiveTab] = useState<TabType>("basic");
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [sezone, setSezone] = useState<Sezona[]>([]);
     const nazivRef = useRef<HTMLInputElement>(null);
@@ -108,11 +102,12 @@ export default function CreateArtikalForm({
                 if (!value.trim()) return "Naziv je obavezan";
                 if (value.length < 2) return "Naziv mora imati minimum 2 karaktera";
                 return null;
-            case "prodajnaCena":
+            case "prodajnaCena": {
                 if (!value) return "Prodajna cena je obavezna";
                 const cena = Number(value);
                 if (isNaN(cena) || cena <= 0) return "Cena mora biti veća od 0";
                 return null;
+            }
             case "kolicina":
                 if (value && isNaN(Number(value))) return "Količina mora biti broj";
                 return null;
@@ -232,8 +227,9 @@ export default function CreateArtikalForm({
                 // Focus back to naziv
                 nazivRef.current?.focus();
             }
-        } catch (e: any) {
-            toast.error(e?.message ?? "Greška pri kreiranju artikla");
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Greška pri kreiranju artikla";
+            toast.error(msg);
             console.error(e);
         } finally {
             setIsSubmitting(false);

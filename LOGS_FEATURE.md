@@ -1,4 +1,4 @@
-# Logs Feature - Pregled Serilog Logova
+Ôªø# Logs Feature - Pregled Serilog Logova
 
 ## ?? Opis
 
@@ -11,7 +11,7 @@ Dodata je stranica za pregled svih logova iz Serilog-a sa mogu?nostima filtriran
 - **Paginacija**: 50 logova po stranici
 - **Sortiranje**: Najnoviji logovi prikazuju se prvi
 - **Detalji exceptiona**: Klik na exception prikazuje ceo stack trace
-- **Color-coded nivoi**: Razli?ite boje za razli?ite nivoe vaûnosti
+- **Color-coded nivoi**: Razli?ite boje za razli?ite nivoe va≈ænosti
 
 ## ?? Pristup
 
@@ -23,7 +23,7 @@ Stranica je dostupna na:
 ## ?? Vizuelne indikacije
 
 - ?? **Error/Fatal**: Crvena boja, crvena pozadina
-- ?? **Warning**: Narandûasta boja, ûuta pozadina  
+- ?? **Warning**: Narand≈æasta boja, ≈æuta pozadina  
 - ?? **Information**: Plava boja, svetloplava pozadina
 - ? **Debug**: Siva boja, bela pozadina
 
@@ -43,11 +43,11 @@ Logovi se ?uvaju u `Logs/` folderu sa rolling interval po danu:
 - Format: `log-YYYY-MM-DD.txt`
 - Konfigurisano u `appsettings.json`
 
-## ?? Koriö?enje
+## ?? Kori≈°?enje
 
 1. Kliknite na "?? Logovi" u navigaciji
-2. Izaberite filter po nivou ako ûelite da vidite samo odre?ene tipove logova
-3. Izaberite datum range ako ûelite da filtrirate po vremenu
+2. Izaberite filter po nivou ako ≈æelite da vidite samo odre?ene tipove logova
+3. Izaberite datum range ako ≈æelite da filtrirate po vremenu
 4. Kliknite na "Exception Details" da vidite ceo stack trace
 5. Koristite "Prethodna" i "Slede?a" dugmad za paginaciju
 
@@ -65,7 +65,7 @@ cd Klijent/clientapp
 npm run dev
 ```
 
-**VAéNO:** Nakon dodavanja novih endpointa ili izmene backend koda, morate restartovati backend server!
+**VA≈ΩNO:** Nakon dodavanja novih endpointa ili izmene backend koda, morate restartovati backend server!
 
 ## ?? Troubleshooting
 
@@ -99,7 +99,7 @@ Ako dobijete 404 error:
 
 ## ?? Napomene
 
-- Logovi se u?itavaju direktno iz fajlova na serveru
+- Logovi se uƒçitavaju direktno iz fajlova na serveru
 - Paginacija je optimizovana za brze preglede
 - Exception details su collapsible za bolju preglednost
 - ?ita se maksimalno 10 najnovijih log fajlova da bi se izbegli performance problemi

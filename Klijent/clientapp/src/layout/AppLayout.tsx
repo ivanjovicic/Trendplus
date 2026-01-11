@@ -55,12 +55,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/unos-robe" className="button-small">
                         Unos robe
                     </Link>
+                    <Link to="/povracaj" className="button-small">
+                        ↩️ Povraćaj robe
+                    </Link>
                     <Link to="/nivelacija" className="button-small">
                         Nivelacija cena
                     </Link>
                     <Link to="/nivelacije" className="button-small">
                         Pregled nivelacija
                     </Link>
+
                     <Link to="/dnevnik-promena" className="button-small">
                         📋 Dnevnik promena
                     </Link>
@@ -80,8 +84,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/performance" className="button-small">
                         ⚡ Performance
                     </Link>
-                    <Link to="/povracaj" className="button-small">
-                        ↩️ Povraćaj robe
+                    <Link to="/analytics" className="button-small">
+                        📈 Analytics
                     </Link>
                 </nav>
 

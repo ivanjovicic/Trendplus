@@ -7,7 +7,7 @@ export interface PovracajZaglavlje {
   dobavljacId: number;
   dobavljacNaziv?: string;
   razlogPovracaja?: string;
-  status: string; // "Kreiran", "Poslat", "Prihva?en", "Odbijen"
+  status: string; // "Kreiran", "Poslat", "Prihvaćen", "Odbijen"
   ukupanIznos: number;
   komentar?: string;
   kreatorKorisnik?: string;
@@ -25,7 +25,7 @@ export interface PovracajStavka {
   cena: number;
   iznos?: number;
   razlog?: string;
-  stanjeArtikla?: string; // "Ošte?eno", "Pogrešna veli?ina", "Neprodat", "Dobar"
+  stanjeArtikla?: string; // "Oštećeno", "Pogrešna veličina", "Neprodat", "Dobar"
 }
 
 export interface PovracajDetaljno extends PovracajZaglavlje {
@@ -71,8 +71,8 @@ export interface PovracajListResponse {
 
 // Stanja artikla za dropdown
 export const STANJA_ARTIKLA = [
-  "Ošte?eno",
-  "Pogrešna veli?ina",
+  "Oštećeno",
+  "Pogrešna veličina",
   "Pogrešan model",
   "Neprodat",
   "Dobar",

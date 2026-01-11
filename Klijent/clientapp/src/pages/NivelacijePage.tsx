@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { getNivelacije } from "../services/artikliApi";
 import { NivelacijaItem } from "../types/nivelacije";
 
@@ -42,7 +42,7 @@ export default function NivelacijePage() {
       setItems(res.items);
       setTotalCount(res.totalCount);
     } catch (e: any) {
-      setError(e?.message ?? "Gre�ka pri u?itavanju nivelacija");
+      setError(e?.message ?? "Greška pri učitavanju nivelacija");
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,7 @@ export default function NivelacijePage() {
 
         <div>
           <label className="field-label" style={{ fontSize: "0.875rem" }}>
-            Naziv sadr�i
+            Naziv sadrži
           </label>
           <input
             className="input-big"
@@ -170,7 +170,7 @@ export default function NivelacijePage() {
         <strong>Ukupno:</strong> {totalCount} | <strong>Stranica:</strong> {pageNumber} / {totalPages}
       </div>
 
-      {loading && <p style={{ textAlign: "center", padding: "2rem" }}>U?itavanje...</p>}
+      {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
       {error && <p className="error-msg">{error}</p>}
 
       {!loading && !error && (

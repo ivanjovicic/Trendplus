@@ -43,7 +43,7 @@ export default function ProdajaPage() {
         console.debug("Outgoing prodaja DTO:", data);
 
         try {
-            const res = await fetch(`${API}/prodaja`, {
+            const res = await fetch(`${API}/api/prodaja`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
@@ -69,7 +69,7 @@ export default function ProdajaPage() {
             }
 
             console.debug("Prodaja POST succeeded:", parsedBody);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Error submitting prodaja:", err);
             throw err;
         }

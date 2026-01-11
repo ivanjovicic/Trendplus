@@ -10,7 +10,6 @@ export default function ArtikalEditPage() {
 
     const [tipovi, setTipovi] = React.useState<{ id: number; naziv: string }[]>([]);
     const [dobavljaci, setDobavljaci] = React.useState<{ id: number; naziv: string }[]>([]);
-    const [loadingOptions, setLoadingOptions] = React.useState(true);
     const [loadingArtikal, setLoadingArtikal] = React.useState(true);
     const [initialData, setInitialData] = React.useState<ArtikalFormData | null>(null);
     const [error, setError] = React.useState<string | null>(null);
@@ -43,7 +42,7 @@ export default function ArtikalEditPage() {
 
                 setTipovi(tipJson ?? []);
                 setDobavljaci(dobJson ?? []);
-                setLoadingOptions(false);
+                setLoadingArtikal(false);
 
                 // 2) artikal
                 const artikal = await getArtikal(artikalId);
@@ -64,10 +63,13 @@ export default function ArtikalEditPage() {
 
                 setInitialData(data);
                 setLoadingArtikal(false);
-            } catch (e: any) {
-                if (e?.name === "AbortError") return;
+            } catch (e: unknown) {
+                if (e instanceof DOMException && e.name === "AbortError") return;
+                if (typeof e === "object" && e !== null && "name" in e && (e as { name?: string }).name === "AbortError") return;
+
                 console.error(e);
-                setError(e?.message ?? "Greška pri učitavanju artikla.");
+                const message = e instanceof Error ? e.message : "Greška pri učitavanju artikla.";
+                setError(message);
                 setLoadingArtikal(false);
             }
         };
@@ -91,7 +93,7 @@ export default function ArtikalEditPage() {
         return <div className="card"><p className="error-msg">{error}</p></div>;
     }
 
-    if (loadingOptions || loadingArtikal || !initialData) {
+    if (loadingArtikal || !initialData) {
         return <div className="card"><p>Učitavanje artikla...</p></div>;
     }
 
@@ -101,7 +103,6 @@ export default function ArtikalEditPage() {
             dobavljaci={dobavljaci}
             initialData={initialData}
             onSubmit={handleEditSubmit}
-            loadingOptions={false}
             mode="edit"
         />
     );

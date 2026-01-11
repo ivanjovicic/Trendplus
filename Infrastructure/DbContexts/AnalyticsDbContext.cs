@@ -50,11 +50,43 @@ namespace Infrastructure.DbContexts
             modelBuilder.Entity<ProductsDim>()
                 .Property(x => x.Kolicina)
                 .HasColumnType("integer");
+
+            modelBuilder.Entity<SalesFact>(entity =>
+            {
+                entity.ToTable("SalesFacts");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SaleId).IsRequired();
+                entity.Property(e => e.BrojRacuna).HasMaxLength(100);
+                entity.Property(e => e.SaleTimestampUtc).IsRequired();
+                entity.Property(e => e.StoreId).IsRequired();
+                entity.Property(e => e.PaymentType).HasMaxLength(100);
+                entity.Property(e => e.TotalAmount).HasColumnType("numeric(18,2)");
+
+                entity.HasIndex(e => e.SaleId).IsUnique();
+                entity.HasIndex(e => e.SaleTimestampUtc);
+                entity.HasIndex(e => e.StoreId);
+            });
+
+            modelBuilder.Entity<SalesLineFact>(entity =>
+            {
+                entity.ToTable("SalesLineFacts");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SaleId).IsRequired();
+                entity.Property(e => e.ProductId).IsRequired();
+                entity.Property(e => e.Qty).IsRequired();
+                entity.Property(e => e.UnitPrice).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.LineTotal).HasColumnType("numeric(18,2)");
+
+                entity.HasIndex(e => e.SaleId);
+                entity.HasIndex(e => new { e.ProductId, e.SaleId });
+            });
         }
 
         public DbSet<ProductsDim> ProductsDim => Set<ProductsDim>();
         public DbSet<StoresDim> StoresDim => Set<StoresDim>();
         public DbSet<PerformanceLog> PerformanceLogs => Set<PerformanceLog>();
+        public DbSet<SalesFact> SalesFacts => Set<SalesFact>();
+        public DbSet<SalesLineFact> SalesLineFacts => Set<SalesLineFact>();
 
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }
