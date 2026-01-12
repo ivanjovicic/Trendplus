@@ -32,7 +32,6 @@ namespace Domain.Model
         // NEW: Kategorije za analitiku
         public string? Kategorija { get; set; } // "Patike", "Cipele", "Sandale", "Čizme", "Ostalo"
         public string? Pol { get; set; } // "Muško", "Žensko", "Dečije", "Unisex"
-        public string? Boja { get; set; } // "Crna", "Bela", "Crvena", "Plava", itd.
     }
 
 }
