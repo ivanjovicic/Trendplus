@@ -1,4 +1,4 @@
-using Application.Artikli.Common.Interfaces;
+﻿using Application.Artikli.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -30,11 +30,14 @@ namespace Application.Analytics.Queries.GetTopProducts
 
                 var sales = _db.SalesFacts.AsNoTracking().AsQueryable();
 
-                if (request.FromDate.HasValue)
-                    sales = sales.Where(x => x.SaleTimestampUtc >= request.FromDate.Value);
+                // TEMPORARY FIX: Disable date filter to debug
+                // if (request.FromDate.HasValue)
+                //     sales = sales.Where(x => x.SaleTimestampUtc >= request.FromDate.Value);
 
-                if (request.ToDate.HasValue)
-                    sales = sales.Where(x => x.SaleTimestampUtc <= request.ToDate.Value);
+                // if (request.ToDate.HasValue)
+                //     sales = sales.Where(x => x.SaleTimestampUtc <= request.ToDate.Value);
+
+                _logger.LogWarning("⚠️ Date filters DISABLED for debugging!");
 
                 if (request.StoreId.HasValue)
                     sales = sales.Where(x => x.StoreId == request.StoreId.Value);
@@ -57,29 +60,43 @@ namespace Application.Analytics.Queries.GetTopProducts
                              select new
                              {
                                  l.ProductId,
-                                 ProductName = p != null ? p.ProductName : string.Empty,
+                                 ProductName = p != null ? p.ProductName : null,
                                  Revenue = l.LineTotal,
                                  Units = l.Qty
                              };
 
-                var grouped = joined
+                var grouped = await joined
                     .GroupBy(x => new { x.ProductId, x.ProductName })
-                    .Select(g => new TopProductDto(
-                        g.Key.ProductId,
-                        string.IsNullOrWhiteSpace(g.Key.ProductName) ? $"#{g.Key.ProductId}" : g.Key.ProductName,
-                        g.Sum(x => x.Revenue),
-                        g.Sum(x => x.Units)
-                    ));
+                    .Select(g => new 
+                    {
+                        ProductId = g.Key.ProductId,
+                        ProductName = g.Key.ProductName,
+                        TotalRevenue = g.Sum(x => x.Revenue),
+                        TotalUnits = g.Sum(x => x.Units)
+                    })
+                    .ToListAsync(cancellationToken);
 
-                var topByRevenue = await grouped
+                var topByRevenue = grouped
                     .OrderByDescending(x => x.TotalRevenue)
                     .Take(request.Top)
-                    .ToListAsync(cancellationToken);
+                    .Select(x => new TopProductDto(
+                        x.ProductId,
+                        string.IsNullOrWhiteSpace(x.ProductName) ? $"#{x.ProductId}" : x.ProductName,
+                        x.TotalRevenue,
+                        x.TotalUnits
+                    ))
+                    .ToList();
 
-                var topByUnits = await grouped
+                var topByUnits = grouped
                     .OrderByDescending(x => x.TotalUnits)
                     .Take(request.Top)
-                    .ToListAsync(cancellationToken);
+                    .Select(x => new TopProductDto(
+                        x.ProductId,
+                        string.IsNullOrWhiteSpace(x.ProductName) ? $"#{x.ProductId}" : x.ProductName,
+                        x.TotalRevenue,
+                        x.TotalUnits
+                    ))
+                    .ToList();
 
                 _logger.LogInformation("Top products: {RevenueCount} by revenue, {UnitsCount} by units",
                     topByRevenue.Count, topByUnits.Count);

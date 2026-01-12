@@ -85,7 +85,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         ⚡ Performance
                     </Link>
                     <Link to="/analytics" className="button-small">
-                        📈 Analytics
+                        📈 Analitika
+                    </Link>
+                    <Link to="/analytics-details" className="button-small">
+                        📊 Detaljne analize
                     </Link>
                 </nav>
 

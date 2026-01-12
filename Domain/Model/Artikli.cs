@@ -18,10 +18,16 @@ namespace Domain.Model
         public decimal? PrvaProdajnaCena { get; set; }
         public decimal? ProdajnaCena { get; set; }
         public int? Kolicina { get; set; }
+        public int? MinimalnaKolicina { get; set; } // NEW: Za analytics i reorder suggestions
         public string? Komentar { get; set; }
         public int? IDObjekat { get; set; }
         public int? IDSezona { get; set; }
         public DateTime UpdatedAt { get; set; }
+        
+        // NEW: Kategorije za analitiku
+        public string? Kategorija { get; set; } // "Patike", "Cipele", "Sandale", "Čizme", "Ostalo"
+        public string? Pol { get; set; } // "Muško", "Žensko", "Dečije", "Unisex"
+        public string? Boja { get; set; } // "Crna", "Bela", "Crvena", "Plava", itd.
     }
 
 }

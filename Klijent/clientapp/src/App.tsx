@@ -21,6 +21,7 @@ import { ToastProvider } from "./components/Toast";
 import { CircuitBreakerStatus } from "./components/CircuitBreakerStatus";
 import PovracajPage from "./pages/PovracajPage";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import AnalyticsDetails from "./pages/AnalyticsDetails";
 
 function AppShell() {
     return (
@@ -35,6 +36,7 @@ function AppShell() {
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/performance" element={<PerformanceDashboard />} />
             <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/analytics-details" element={<AnalyticsDetails />} />
             <Route path="/outbox" element={<OutboxDashboard />} />
             <Route path="/outbox/messages" element={<OutboxMessagesPage />} />
             <Route path="/nivelacije" element={<NivelacijePage />} />
