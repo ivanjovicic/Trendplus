@@ -8,6 +8,7 @@ using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Trendplus2.Endpoints;
 
@@ -15,6 +16,201 @@ public static class AllEndpoints
 {
     public static void MapAllEndpoints(this WebApplication app)
     {
+        // ============ ADMIN - RUN ANALYTICS OPTIMIZATION ============
+        
+        app.MapPost("/api/admin/run-analytics-optimization", async (
+            ITrendplusDbContext db,
+            ILogger<Program> logger,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                logger.LogInformation("🚀 Starting analytics optimization migration...");
+                
+                var connectionString = db.Database.GetConnectionString();
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    return Results.Problem("No connection string available", statusCode: 500);
+                }
+
+                await using var connection = new NpgsqlConnection(connectionString);
+                await connection.OpenAsync(ct);
+
+                var results = new List<string>();
+
+                // PART 1: Create Indexes
+                var indexSql = @"
+                    -- Index on ProdajaZaglavlja.DatumProdaje
+                    CREATE INDEX IF NOT EXISTS idx_prodaja_datum ON ""ProdajaZaglavlja"" (""DatumProdaje"" DESC);
+                    
+                    -- Index on ProdajaStavke for JOIN operations
+                    CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_prodaja ON ""ProdajaStavke"" (""IdProdaja"");
+                    CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_artikal ON ""ProdajaStavke"" (""IdArtikal"");
+                    
+                    -- Index on Artikli for category/supplier grouping
+                    CREATE INDEX IF NOT EXISTS idx_artikli_kategorija ON ""Artikli"" (""Kategorija"");
+                    CREATE INDEX IF NOT EXISTS idx_artikli_dobavljac ON ""Artikli"" (""IDDobavljac"");
+                    CREATE INDEX IF NOT EXISTS idx_artikli_pol ON ""Artikli"" (""Pol"");
+                ";
+                
+                await using (var cmd = new NpgsqlCommand(indexSql, connection))
+                {
+                    await cmd.ExecuteNonQueryAsync(ct);
+                    results.Add("✅ Indexes created");
+                }
+
+                // PART 2: Create Pre-aggregated Tables
+                var tablesSql = @"
+                    -- Daily Sales Summary
+                    CREATE TABLE IF NOT EXISTS ""AnalyticsDailySummary"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Date"" DATE NOT NULL UNIQUE,
+                        ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""TotalTransactions"" INT NOT NULL DEFAULT 0,
+                        ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                        ""AvgBasketValue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""AvgItemPrice"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW()
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_daily_summary_date ON ""AnalyticsDailySummary"" (""Date"" DESC);
+
+                    -- Category Summary
+                    CREATE TABLE IF NOT EXISTS ""AnalyticsCategorySummary"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Date"" DATE NOT NULL,
+                        ""Kategorija"" VARCHAR(100) NOT NULL,
+                        ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                        ""TransactionCount"" INT NOT NULL DEFAULT 0,
+                        ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                        UNIQUE(""Date"", ""Kategorija"")
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_category_summary_date ON ""AnalyticsCategorySummary"" (""Date"" DESC);
+
+                    -- Supplier Summary
+                    CREATE TABLE IF NOT EXISTS ""AnalyticsSupplierSummary"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Date"" DATE NOT NULL,
+                        ""DobavljacId"" INT,
+                        ""DobavljacNaziv"" VARCHAR(200),
+                        ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                        ""TransactionCount"" INT NOT NULL DEFAULT 0,
+                        ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                        UNIQUE(""Date"", ""DobavljacId"")
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_supplier_summary_date ON ""AnalyticsSupplierSummary"" (""Date"" DESC);
+
+                    -- Gender Summary
+                    CREATE TABLE IF NOT EXISTS ""AnalyticsGenderSummary"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Date"" DATE NOT NULL,
+                        ""Pol"" VARCHAR(50) NOT NULL,
+                        ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                        ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                        UNIQUE(""Date"", ""Pol"")
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_gender_summary_date ON ""AnalyticsGenderSummary"" (""Date"" DESC);
+
+                    -- Top Products Summary
+                    CREATE TABLE IF NOT EXISTS ""AnalyticsTopProducts"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Date"" DATE NOT NULL,
+                        ""ProductId"" INT NOT NULL,
+                        ""ProductName"" VARCHAR(300),
+                        ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                        ""Rank"" INT NOT NULL DEFAULT 0,
+                        ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                        UNIQUE(""Date"", ""ProductId"")
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_top_products_date ON ""AnalyticsTopProducts"" (""Date"" DESC);
+                ";
+
+                await using (var cmd = new NpgsqlCommand(tablesSql, connection))
+                {
+                    await cmd.ExecuteNonQueryAsync(ct);
+                    results.Add("✅ Pre-aggregated tables created");
+                }
+
+                // PART 3: Initial data population for last 30 days
+                var today = DateTime.UtcNow.Date;
+                var populatedDays = 0;
+
+                for (int i = 0; i < 30; i++)
+                {
+                    var date = today.AddDays(-i);
+                    
+                    // Refresh daily summary
+                    var dailySql = @"
+                        INSERT INTO ""AnalyticsDailySummary"" (""Date"", ""TotalRevenue"", ""TotalTransactions"", ""TotalUnits"", ""AvgBasketValue"", ""AvgItemPrice"", ""UpdatedAt"")
+                        SELECT 
+                            @date::DATE,
+                            COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0),
+                            COUNT(DISTINCT p.""Id""),
+                            COALESCE(SUM(ps.""Kolicina""), 0),
+                            CASE WHEN COUNT(DISTINCT p.""Id"") > 0 
+                                THEN COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0) / COUNT(DISTINCT p.""Id"")
+                                ELSE 0 
+                            END,
+                            CASE WHEN COALESCE(SUM(ps.""Kolicina""), 0) > 0 
+                                THEN COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0) / SUM(ps.""Kolicina"")
+                                ELSE 0 
+                            END,
+                            NOW()
+                        FROM ""ProdajaZaglavlja"" p
+                        JOIN ""ProdajaStavke"" ps ON p.""Id"" = ps.""IdProdaja""
+                        WHERE DATE(p.""DatumProdaje"") = @date::DATE
+                        ON CONFLICT (""Date"") DO UPDATE SET
+                            ""TotalRevenue"" = EXCLUDED.""TotalRevenue"""""",
+                            ""TotalTransactions"" = EXCLUDED.""TotalTransactions"",
+                            ""TotalUnits"" = EXCLUDED.""TotalUnits"",
+                            ""AvgBasketValue"" = EXCLUDED.""AvgBasketValue"",
+                            ""AvgItemPrice"" = EXCLUDED.""AvgItemPrice"",
+                            ""UpdatedAt"" = NOW();
+                    ";
+
+                    await using (var cmd = new NpgsqlCommand(dailySql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("date", date);
+                        await cmd.ExecuteNonQueryAsync(ct);
+                    }
+
+                    populatedDays++;
+                }
+
+                results.Add($"✅ Populated {populatedDays} days of analytics data");
+
+                // Get stats
+                var statsResults = new Dictionary<string, int>();
+
+                await using (var cmd = new NpgsqlCommand(@"SELECT COUNT(*) FROM ""AnalyticsDailySummary""", connection))
+                {
+                    statsResults["dailySummaryCount"] = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
+                }
+
+                logger.LogInformation("✅ Analytics optimization completed successfully");
+
+                return Results.Ok(new
+                {
+                    success = true,
+                    message = "Analytics optimization completed",
+                    results,
+                    stats = statsResults
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ Failed to run analytics optimization");
+                return Results.Problem(
+                    detail: ex.Message,
+                    statusCode: 500,
+                    title: "Failed to run analytics optimization"
+                );
+            }
+        });
+
         // ============ DNEVNIK PROMENA ============
         
         app.MapGet("/api/dnevnik-promena/tipovi", async (ITrendplusDbContext db, CancellationToken ct) =>

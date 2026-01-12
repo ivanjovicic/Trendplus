@@ -93,6 +93,7 @@ try
     builder.Services.AddScoped<IErrorStore, DbErrorStore>();
     builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
     builder.Services.AddScoped<IOutboxService, OutboxService>();
+    builder.Services.AddSingleton<WorkerHealthService>(); // Worker health monitoring
 
     // RabbitMQ
     builder.Services.Configure<Infrastructure.Configuration.RabbitMqSettings>(
@@ -102,6 +103,7 @@ try
     // Background Workers
     builder.Services.AddHostedService<Workers.SyncWorker>();
     builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
+    builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>(); // NEW: Pre-aggregate analytics
 
     builder.Services.AddControllers();
     builder.Services.ConfigureHttpJsonOptions(opts =>
@@ -189,9 +191,11 @@ try
     app.MapCircuitBreakerEndpoints();
 
     // Health
-    app.MapGet("/health", (IMessageBroker messageBroker) =>
+    app.MapGet("/health", (IMessageBroker messageBroker, WorkerHealthService workerHealth) =>
     {
         var rabbitMq = messageBroker as RabbitMqMessageBroker;
+        var workersHealth = workerHealth.GetHealthSummary();
+        
         return Results.Ok(new
         {
             Status = "Backend je živ",
@@ -200,8 +204,16 @@ try
                 Enabled = messageBroker.IsEnabled,
                 CircuitOpen = rabbitMq?.IsCircuitOpen ?? false
             },
+            Workers = workersHealth,
             Timestamp = DateTime.UtcNow
         });
+    });
+
+    // Worker Health Status
+    app.MapGet("/api/workers/health", (WorkerHealthService workerHealth) =>
+    {
+        var summary = workerHealth.GetHealthSummary();
+        return Results.Ok(summary);
     });
 
     // Errors

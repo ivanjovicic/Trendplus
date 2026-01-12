@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using Infrastructure.DbContexts;
+using Infrastructure.Services;
 using Domain.Model;
 
 namespace Workers
@@ -18,25 +19,33 @@ namespace Workers
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<OutboxProcessorWorker> _logger;
+        private readonly WorkerHealthService _healthService;
         private readonly TimeSpan _interval = TimeSpan.FromSeconds(30);
+        
+        private const string WorkerName = "OutboxProcessorWorker";
 
         public OutboxProcessorWorker(
             IServiceProvider serviceProvider,
-            ILogger<OutboxProcessorWorker> logger)
+            ILogger<OutboxProcessorWorker> logger,
+            WorkerHealthService healthService)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
+            _healthService = healthService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("OutboxProcessorWorker started");
+            _healthService.ReportRunning(WorkerName, "Starting up...");
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
+                    _healthService.ReportRunning(WorkerName, "Processing messages...");
                     await ProcessOutboxMessagesAsync(stoppingToken);
+                    _healthService.ReportHealthy(WorkerName, $"Last check: {DateTime.UtcNow:HH:mm:ss}");
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -49,6 +58,7 @@ namespace Workers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing outbox messages");
+                    _healthService.ReportError(WorkerName, ex);
                 }
 
                 try
@@ -61,6 +71,7 @@ namespace Workers
                 }
             }
 
+            _healthService.ReportStopped(WorkerName, "Graceful shutdown");
             _logger.LogInformation("OutboxProcessorWorker stopped");
         }
 

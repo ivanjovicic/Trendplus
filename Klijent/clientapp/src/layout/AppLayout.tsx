@@ -1,6 +1,7 @@
 ﻿import React, { useContext } from "react";
 import { Link } from "react-router-dom";
 import AutoReloadOnBackendOnline from "../components/AutoReloadOnBackendOnline";
+import WorkerStatusAlert from "../components/WorkerStatusAlert";
 import { BackendStatusContext } from "../context/BackendStatusContext";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -9,6 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <div style={{ minHeight: "100vh", background: "#f3f4f6" }}>
             <AutoReloadOnBackendOnline />
+            <WorkerStatusAlert />
 
             <header
                 style={{

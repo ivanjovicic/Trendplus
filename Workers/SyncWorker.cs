@@ -1,5 +1,6 @@
 ﻿using Domain.Model;
 using Infrastructure.DbContexts;
+using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,16 +18,24 @@ namespace Workers
     {
         private readonly ILogger<SyncWorker> _logger;
         private readonly IServiceProvider _provider;
+        private readonly WorkerHealthService _healthService;
+        
+        private const string WorkerName = "SyncWorker";
 
-        public SyncWorker(ILogger<SyncWorker> logger, IServiceProvider provider)
+        public SyncWorker(
+            ILogger<SyncWorker> logger, 
+            IServiceProvider provider,
+            WorkerHealthService healthService)
         {
             _logger = logger;
             _provider = provider;
+            _healthService = healthService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Analytics Sync Worker started (Trendplus -> Analytics). ");
+            _healthService.ReportRunning(WorkerName, "Starting up...");
 
             var delayInterval = TimeSpan.FromSeconds(60);
             const int maxAttempts = 3;
@@ -47,6 +56,7 @@ namespace Workers
                         var sw = Stopwatch.StartNew();
                         try
                         {
+                            _healthService.ReportRunning(WorkerName, $"Syncing products (attempt {attempt})...");
                             _logger.LogInformation("SyncProducts attempt {Attempt} started.", attempt);
                             processed = await SyncProducts(trendplusDb, analyticsDb, stoppingToken);
                             sw.Stop();
@@ -58,6 +68,7 @@ namespace Workers
                                 processed
                             );
 
+                            _healthService.ReportHealthy(WorkerName, $"Synced {processed} products at {DateTime.UtcNow:HH:mm:ss}");
                             success = true;
                             break;
                         }
@@ -90,6 +101,7 @@ namespace Workers
                             else
                             {
                                 _logger.LogError(ex, "SyncProducts failed after {MaxAttempts} attempts.", maxAttempts);
+                                _healthService.ReportError(WorkerName, ex);
                             }
                         }
                     }
@@ -108,9 +120,11 @@ namespace Workers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error in sync worker");
+                    _healthService.ReportError(WorkerName, ex);
                 }
             }
 
+            _healthService.ReportStopped(WorkerName, "Graceful shutdown");
             _logger.LogInformation("Analytics Sync Worker stopped.");
         }
 
