@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+﻿import React, { useCallback, useEffect, useState } from "react";
 import { checkAnalyticsHealth, getInventoryStatus, getSalesSummary, getTopProducts } from "../services/analyticsApi";
 import type { InventoryStatus, SalesSummary, TopProductsResult } from "../types/analytics";
 
@@ -22,9 +22,9 @@ export default function AnalyticsDashboard() {
 
     try {
       const health = await checkAnalyticsHealth();
-      setHealthStatus(`? Analytics baza: ${health.tables.salesFacts} prodaja, ${health.tables.salesLineFacts} stavki, ${health.tables.productsDim} proizvoda`);
+      setHealthStatus(`✓ Analytics baza: ${health.tables.salesFacts} prodaja, ${health.tables.salesLineFacts} stavki, ${health.tables.productsDim} proizvoda`);
     } catch (e: unknown) {
-      console.error("Health check gre�ka:", e);
+      console.error("Health check greška:", e);
       newErrors.health = e instanceof Error ? e.message : "Provera zdravlja nije uspela";
       setHealthStatus("");
     }
@@ -33,8 +33,8 @@ export default function AnalyticsDashboard() {
       const s = await getSalesSummary(fromDate || undefined, toDate || undefined);
       setSummary(s);
     } catch (e: unknown) {
-      console.error("Summary gre�ka:", e);
-      newErrors.summary = e instanceof Error ? e.message : "Gre�ka pri u?itavanju sa�etka prodaje";
+      console.error("Summary greška:", e);
+      newErrors.summary = e instanceof Error ? e.message : "Greška pri učitavanju sažetka prodaje";
       setSummary(null);
     }
 
@@ -42,8 +42,8 @@ export default function AnalyticsDashboard() {
       const t = await getTopProducts(top, fromDate || undefined, toDate || undefined);
       setTopProducts(t);
     } catch (e: unknown) {
-      console.error("Top products gre�ka:", e);
-      newErrors.topProducts = e instanceof Error ? e.message : "Gre�ka pri u?itavanju top proizvoda";
+      console.error("Top products greška:", e);
+      newErrors.topProducts = e instanceof Error ? e.message : "Greška pri učitavanju top proizvoda";
       setTopProducts(null);
     }
 
@@ -51,8 +51,8 @@ export default function AnalyticsDashboard() {
       const i = await getInventoryStatus(lowStockThreshold);
       setInventory(i);
     } catch (e: unknown) {
-      console.error("Inventory gre�ka:", e);
-      newErrors.inventory = e instanceof Error ? e.message : "Gre�ka pri u?itavanju statusa zaliha";
+      console.error("Inventory greška:", e);
+      newErrors.inventory = e instanceof Error ? e.message : "Greška pri učitavanju statusa zaliha";
       setInventory(null);
     }
 
@@ -72,7 +72,7 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="card" style={{ maxWidth: 1400 }}>
-      <h2 className="text-2xl font-semibold mb-6">?? Analitika</h2>
+      <h2 className="text-2xl font-semibold mb-6">📈 Analitika</h2>
 
       {healthStatus && (
         <div style={{
@@ -97,7 +97,7 @@ export default function AnalyticsDashboard() {
           marginBottom: 20 
         }}>
           <div style={{ fontWeight: 600, color: "#dc2626", marginBottom: 8 }}>
-            ?? {errors.health ? "Problem sa povezivanjem na backend" : "Analytics tabele nisu kreirane ili nema podataka"}
+            ⚠️ {errors.health ? "Problem sa povezivanjem na backend" : "Analytics tabele nisu kreirane ili nema podataka"}
           </div>
           
           {errors.health && (
@@ -128,22 +128,22 @@ export default function AnalyticsDashboard() {
           
           {errors.summary && (
             <div style={{ fontSize: 13, color: "#7f1d1d", marginBottom: 4 }}>
-              � Sa�etak prodaje: {errors.summary}
+              • Sažetak prodaje: {errors.summary}
             </div>
           )}
           {errors.topProducts && (
             <div style={{ fontSize: 13, color: "#7f1d1d", marginBottom: 4 }}>
-              � Top proizvodi: {errors.topProducts}
+              • Top proizvodi: {errors.topProducts}
             </div>
           )}
           {errors.inventory && (
             <div style={{ fontSize: 13, color: "#7f1d1d", marginBottom: 4 }}>
-              � Zalihe: {errors.inventory}
+              • Zalihe: {errors.inventory}
             </div>
           )}
           
           <div style={{ fontSize: 13, color: "#6b7280", marginTop: 12 }}>
-            Nakon kreiranja tabela, osve�ite stranicu ili kliknite "Osve�i" dugme.
+            Nakon kreiranja tabela, osvežite stranicu ili kliknite "Osveži" dugme.
           </div>
         </div>
       )}
@@ -167,16 +167,16 @@ export default function AnalyticsDashboard() {
         </div>
         <div style={{ display: "flex", alignItems: "flex-end" }}>
           <button className="button-big" type="button" onClick={load} style={{ marginTop: 0 }}>
-            ?? Osve�i
+            🔄 Osveži
           </button>
         </div>
       </div>
 
-      {loading && <p style={{ textAlign: "center", padding: "2rem" }}>U?itavanje...</p>}
+      {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
 
       {!loading && !hasAnyData && !hasErrors && (
         <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>??</div>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
           <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Nema podataka</div>
           <div style={{ fontSize: 14 }}>Kreirajte prodaju da bi se pojavili podaci u analytics dashboard-u.</div>
         </div>
@@ -197,11 +197,11 @@ export default function AnalyticsDashboard() {
             <div style={{ fontSize: 22, fontWeight: 800 }}>{summary.totalUnits}</div>
           </div>
           <div className="card" style={{ margin: 0 }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>Prose?na korpa</div>
+            <div style={{ color: "#6b7280", fontSize: 13 }}>Prosečna korpa</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{formatCurrency(summary.avgBasketValue)}</div>
           </div>
           <div className="card" style={{ margin: 0 }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>Prose?na cena artikla</div>
+            <div style={{ color: "#6b7280", fontSize: 13 }}>Prosečna cena artikla</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{formatCurrency(summary.avgItemPrice)}</div>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function AnalyticsDashboard() {
 
       {!loading && inventory && (
         <div style={{ marginBottom: 20 }}>
-          <h3 className="text-lg font-semibold" style={{ marginBottom: 10 }}>?? Zalihe (ProductsDim)</h3>
+          <h3 className="text-lg font-semibold" style={{ marginBottom: 10 }}>📦 Zalihe</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
             <div className="card" style={{ margin: 0 }}>
               <div style={{ color: "#6b7280", fontSize: 13 }}>Broj SKU</div>
@@ -234,12 +234,14 @@ export default function AnalyticsDashboard() {
       {!loading && topProducts && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>
-            <h3 className="text-lg font-semibold" style={{ marginBottom: 10 }}>?? Top proizvodi po prometu</h3>
+            <h3 className="text-lg font-semibold" style={{ marginBottom: 10 }}>💰 Top proizvodi po prometu</h3>
             <div style={{ overflowX: "auto" }}>
               <table className="table">
                 <thead>
                   <tr>
                     <th>Artikal</th>
+                    <th>Veličina</th>
+                    <th>Boja</th>
                     <th style={{ textAlign: "right" }}>Promet</th>
                     <th style={{ textAlign: "right" }}>Kom</th>
                   </tr>
@@ -247,14 +249,16 @@ export default function AnalyticsDashboard() {
                 <tbody>
                   {topProducts.byRevenue.length === 0 ? (
                     <tr>
-                      <td colSpan={3} style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
+                      <td colSpan={5} style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
                         Nema podataka
                       </td>
                     </tr>
                   ) : (
-                    topProducts.byRevenue.map((p) => (
-                      <tr key={p.productId}>
+                    topProducts.byRevenue.map((p, idx) => (
+                      <tr key={`${p.productId}-${p.velicina}-${p.boja}-${idx}`}>
                         <td>{p.productName}</td>
+                        <td style={{ color: "#6b7280", fontSize: "0.875rem" }}>{p.velicina || "-"}</td>
+                        <td style={{ color: "#6b7280", fontSize: "0.875rem" }}>{p.boja || "-"}</td>
                         <td style={{ textAlign: "right", fontWeight: 700 }}>{formatCurrency(p.totalRevenue)}</td>
                         <td style={{ textAlign: "right" }}>{p.totalUnits}</td>
                       </tr>
@@ -266,12 +270,14 @@ export default function AnalyticsDashboard() {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold" style={{ marginBottom: 10 }}>?? Top proizvodi po koli?ini</h3>
+            <h3 className="text-lg font-semibold" style={{ marginBottom: 10 }}>📊 Top proizvodi po količini</h3>
             <div style={{ overflowX: "auto" }}>
               <table className="table">
                 <thead>
                   <tr>
                     <th>Artikal</th>
+                    <th>Veličina</th>
+                    <th>Boja</th>
                     <th style={{ textAlign: "right" }}>Kom</th>
                     <th style={{ textAlign: "right" }}>Promet</th>
                   </tr>
@@ -279,14 +285,16 @@ export default function AnalyticsDashboard() {
                 <tbody>
                   {topProducts.byUnits.length === 0 ? (
                     <tr>
-                      <td colSpan={3} style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
+                      <td colSpan={5} style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
                         Nema podataka
                       </td>
                     </tr>
                   ) : (
-                    topProducts.byUnits.map((p) => (
-                      <tr key={p.productId}>
+                    topProducts.byUnits.map((p, idx) => (
+                      <tr key={`${p.productId}-${p.velicina}-${p.boja}-${idx}`}>
                         <td>{p.productName}</td>
+                        <td style={{ color: "#6b7280", fontSize: "0.875rem" }}>{p.velicina || "-"}</td>
+                        <td style={{ color: "#6b7280", fontSize: "0.875rem" }}>{p.boja || "-"}</td>
                         <td style={{ textAlign: "right", fontWeight: 700 }}>{p.totalUnits}</td>
                         <td style={{ textAlign: "right" }}>{formatCurrency(p.totalRevenue)}</td>
                       </tr>

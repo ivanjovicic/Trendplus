@@ -52,4 +52,14 @@
     </Content>
   </ItemGroup>
 
+  <!-- Copy SQL migration files to output directory -->
+  <ItemGroup>
+    <None Include="..\Database\Migrations\*.sql" Link="Database\Migrations\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Database\Analytics\*.sql" Link="Database\Analytics\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

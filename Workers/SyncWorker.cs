@@ -125,6 +125,8 @@ namespace Workers
             dim.PurchasePriceRsd = p.NabavnaCenaDin;
             dim.FirstSalePrice = p.PrvaProdajnaCena;
             dim.SalePrice = p.ProdajnaCena;
+            dim.Velicina = p.Velicina;           // Mapiraj veličinu
+            dim.Boja = p.Boja;                   // Mapiraj boju
             dim.Kolicina = p.Kolicina;
             dim.IsActive = true;
             dim.Timestamp = p.UpdatedAt;

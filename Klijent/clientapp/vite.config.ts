@@ -8,7 +8,7 @@ export default defineConfig({
     },
     plugins: [react()],
     server: {
-        port: 5173,
+        port: 5174,  // Changed from 5173 to 5174
         strictPort: true,
         proxy: {
             // Proxy all /api requests to backend

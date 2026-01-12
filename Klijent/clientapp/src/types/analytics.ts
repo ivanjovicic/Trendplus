@@ -11,6 +11,8 @@ export interface TopProduct {
   productName: string;
   totalRevenue: number;
   totalUnits: number;
+  velicina?: string | null;  // Veli?ina cipela
+  boja?: string | null;      // Boja cipela
 }
 
 export interface TopProductsResult {

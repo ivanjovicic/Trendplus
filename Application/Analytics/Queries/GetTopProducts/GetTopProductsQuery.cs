@@ -15,7 +15,9 @@ namespace Application.Analytics.Queries.GetTopProducts
         int ProductId,
         string ProductName,
         decimal TotalRevenue,
-        int TotalUnits
+        int TotalUnits,
+        string? Velicina = null,    // Veli?ina cipela
+        string? Boja = null          // Boja cipela
     );
 
     public record TopProductsResult(

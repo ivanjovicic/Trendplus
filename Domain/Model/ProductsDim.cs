@@ -19,6 +19,10 @@ namespace Domain.Model
         public string SubCategory { get; set; } = string.Empty;
         public string Brand { get; set; } = string.Empty;
 
+        // Dodatna polja za cipele
+        public string? Velicina { get; set; }   // Veličina cipela (npr. "42", "43", "EU 42")
+        public string? Boja { get; set; }       // Boja (npr. "Crna", "Braon", "Bela")
+
         public int? FootwearTypeId { get; set; }
         public int? SupplierId { get; set; }
         public int? SeasonId { get; set; }

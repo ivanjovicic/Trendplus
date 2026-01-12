@@ -17,6 +17,11 @@ namespace Domain.Model
         public decimal? NabavnaCenaDin { get; set; }
         public decimal? PrvaProdajnaCena { get; set; }
         public decimal? ProdajnaCena { get; set; }
+        
+        // Dodatna polja za cipele
+        public string? Velicina { get; set; }   // Veličina cipela (npr. "42", "43", "EU 42")
+        public string? Boja { get; set; }       // Boja cipela (npr. "Crna", "Braon", "Bela")
+        
         public int? Kolicina { get; set; }
         public string? Komentar { get; set; }
         public int? IDObjekat { get; set; }
