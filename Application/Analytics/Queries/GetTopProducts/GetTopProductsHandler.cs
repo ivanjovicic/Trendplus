@@ -2,112 +2,108 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
-namespace Application.Analytics.Queries.GetTopProducts
+namespace Application.Analytics.Queries.GetTopProducts;
+
+public class GetTopProductsHandler : IRequestHandler<GetTopProductsQuery, TopProductsResult>
 {
-    public class GetTopProductsHandler : IRequestHandler<GetTopProductsQuery, TopProductsResult>
+    private readonly IAnalyticsDbContext _db;
+    private readonly ILogger<GetTopProductsHandler> _logger;
+
+    public GetTopProductsHandler(IAnalyticsDbContext db, ILogger<GetTopProductsHandler> logger)
     {
-        private readonly IAnalyticsDbContext _db;
-        private readonly ILogger<GetTopProductsHandler> _logger;
+        _db = db;
+        _logger = logger;
+    }
 
-        public GetTopProductsHandler(IAnalyticsDbContext db, ILogger<GetTopProductsHandler> logger)
+    public async Task<TopProductsResult> Handle(
+        GetTopProductsQuery request,
+        CancellationToken cancellationToken)
+    {
+        try
         {
-            _db = db;
-            _logger = logger;
-        }
+            _logger.LogInformation(
+                "GetTopProducts query: Top={Top}, FromDate={FromDate}, ToDate={ToDate}, StoreId={StoreId}",
+                request.Top, request.FromDate, request.ToDate, request.StoreId);
 
-        public async Task<TopProductsResult> Handle(GetTopProductsQuery request, CancellationToken cancellationToken)
-        {
-            try
+            // 1. Filter SalesFacts first (KEEP BOTH: date filters commented out for debugging)
+            var salesQuery = _db.SalesFacts.AsNoTracking();
+            
+            // TEMPORARY: Date filters disabled for debugging
+            // if (request.FromDate.HasValue)
+            // {
+            //     salesQuery = salesQuery.Where(s => s.SaleTimestampUtc >= request.FromDate.Value);
+            // }
+            // if (request.ToDate.HasValue)
+            // {
+            //     salesQuery = salesQuery.Where(s => s.SaleTimestampUtc <= request.ToDate.Value);
+            // }
+            
+            _logger.LogWarning("⚠️ Date filters DISABLED for debugging!");
+            
+            if (request.StoreId.HasValue)
             {
-                _logger.LogInformation("GetTopProducts query: Top={Top}, FromDate={FromDate}, ToDate={ToDate}, StoreId={StoreId}",
-                    request.Top, request.FromDate, request.ToDate, request.StoreId);
+                salesQuery = salesQuery.Where(s => s.StoreId == request.StoreId.Value);
+            }
 
-                var sales = _db.SalesFacts.AsNoTracking().AsQueryable();
+            var salesCount = await salesQuery.CountAsync(cancellationToken);
+            _logger.LogInformation("Sales count after filters: {SalesCount}", salesCount);
 
-                // TEMPORARY FIX: Disable date filter to debug
-                // if (request.FromDate.HasValue)
-                //     sales = sales.Where(x => x.SaleTimestampUtc >= request.FromDate.Value);
+            if (salesCount == 0)
+            {
+                _logger.LogInformation("No sales found, returning empty lists");
+                return new TopProductsResult(new List<TopProductDto>(), new List<TopProductDto>());
+            }
 
-                // if (request.ToDate.HasValue)
-                //     sales = sales.Where(x => x.SaleTimestampUtc <= request.ToDate.Value);
+            // 2. Join filtered sales with SalesLineFacts
+            var query = from sf in salesQuery
+                        join slf in _db.SalesLineFacts.AsNoTracking() on sf.SaleId equals slf.SaleId
+                        select slf;
 
-                _logger.LogWarning("⚠️ Date filters DISABLED for debugging!");
-
-                if (request.StoreId.HasValue)
-                    sales = sales.Where(x => x.StoreId == request.StoreId.Value);
-
-                var salesCount = await sales.CountAsync(cancellationToken);
-                _logger.LogInformation("Sales count after filters: {Count}", salesCount);
-
-                if (salesCount == 0)
+            // 3. Group by ProductId and aggregate
+            var aggregatedData = await query
+                .GroupBy(slf => slf.ProductId)
+                .Select(g => new
                 {
-                    _logger.LogInformation("No sales found, returning empty lists");
-                    return new TopProductsResult(new List<TopProductDto>(), new List<TopProductDto>());
-                }
+                    ProductId = g.Key,
+                    TotalRevenue = g.Sum(x => x.LineTotal),
+                    TotalSold = g.Sum(x => x.Qty)
+                })
+                .ToListAsync(cancellationToken);
 
-                var lines = _db.SalesLineFacts.AsNoTracking().AsQueryable();
+            // 4. Join with ProductsDim to get product details (including Velicina and Boja)
+            var productIds = aggregatedData.Select(a => a.ProductId).ToList();
+            var products = await _db.ProductsDim
+                .AsNoTracking()
+                .Where(p => productIds.Contains(p.ProductId))
+                .ToDictionaryAsync(p => p.ProductId, p => p, cancellationToken);
 
-                var joined = from l in lines
-                             join s in sales on l.SaleId equals s.SaleId
-                             join p in _db.ProductsDim.AsNoTracking() on l.ProductId equals p.ProductId into pjoin
-                             from p in pjoin.DefaultIfEmpty()
-                             select new
-                             {
-                                 l.ProductId,
-                                 ProductName = p != null ? p.ProductName : null,
-                                 Revenue = l.LineTotal,
-                                 Units = l.Qty
-                             };
-
-                var grouped = await joined
-                    .GroupBy(x => new { x.ProductId, x.ProductName })
-                    .Select(g => new 
-                    {
-                        ProductId = g.Key.ProductId,
-                        ProductName = g.Key.ProductName,
-                        TotalRevenue = g.Sum(x => x.Revenue),
-                        TotalUnits = g.Sum(x => x.Units)
-                    })
-                    .ToListAsync(cancellationToken);
-
-                var topByRevenue = grouped
-                    .OrderByDescending(x => x.TotalRevenue)
-                    .Take(request.Top)
-                    .Select(x => new TopProductDto(
-                        x.ProductId,
-                        string.IsNullOrWhiteSpace(x.ProductName) ? $"#{x.ProductId}" : x.ProductName,
-                        x.TotalRevenue,
-                        x.TotalUnits
-                    ))
-                    .ToList();
-
-                var topByUnits = grouped
-                    .OrderByDescending(x => x.TotalUnits)
-                    .Take(request.Top)
-                    .Select(x => new TopProductDto(
-                        x.ProductId,
-                        string.IsNullOrWhiteSpace(x.ProductName) ? $"#{x.ProductId}" : x.ProductName,
-                        x.TotalRevenue,
-                        x.TotalUnits
-                    ))
-                    .ToList();
-
-                _logger.LogInformation("Top products: {RevenueCount} by revenue, {UnitsCount} by units",
-                    topByRevenue.Count, topByUnits.Count);
-
-                return new TopProductsResult(topByRevenue, topByUnits);
-            }
-            catch (Exception ex)
+            // 5. Materialize the final result
+            var topProducts = aggregatedData.Select(a =>
             {
-                _logger.LogError(ex, "Error in GetTopProductsHandler");
-                throw;
-            }
+                var product = products.GetValueOrDefault(a.ProductId);
+                return new TopProductDto(
+                    a.ProductId,
+                    product?.ProductName ?? $"Product #{a.ProductId}",
+                    a.TotalRevenue,
+                    a.TotalSold,
+                    product?.Velicina,
+                    product?.Boja
+                );
+            }).ToList();
+
+            var topByRevenue = topProducts.OrderByDescending(p => p.TotalRevenue).Take(request.Top).ToList();
+            var topByUnits = topProducts.OrderByDescending(p => p.TotalUnits).Take(request.Top).ToList();
+
+            _logger.LogInformation("Top products: {RevenueCount} by revenue, {UnitsCount} by units",
+                topByRevenue.Count, topByUnits.Count);
+
+            return new TopProductsResult(topByRevenue, topByUnits);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetTopProductsHandler");
+            throw;
         }
     }
 }

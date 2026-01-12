@@ -263,7 +263,7 @@ public static class TrendplusDbSeeder
 
         // Proveri koliko prodaja vec postoji sa seed prefiksom
         var existingSeedCount = await db.ProdajaZaglavlja
-            .CountAsync(p => p.BrojRacuna.StartsWith("SEED-"), ct);
+            .CountAsync(p => p.BrojRacuna != null && p.BrojRacuna.StartsWith("SEED-"), ct);
 
         if (existingSeedCount >= 100)
         {

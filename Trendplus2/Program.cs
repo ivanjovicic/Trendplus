@@ -1,8 +1,6 @@
 ﻿using Application.Artikli.Commands.CreateArtikal;
 using Application.Artikli.Commands.UpdateArtikal;
 using Application.Artikli.Common.Interfaces;
-using Application.Artikli.Queries.GetArtikal;
-using Application.Artikli.Queries.VratiArtikle;
 using Application.Behaviors;
 using Application.Common.Interfaces;
 using Application.Dobavljaci.Queries;
@@ -17,6 +15,7 @@ using Infrastructure.Middleware;
 using Infrastructure.Repository;
 using Infrastructure.Resilience;
 using Infrastructure.Services;
+using Infrastructure.Seed;
 using MediatR;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -132,6 +131,24 @@ try
     });
 
     var app = builder.Build();
+
+    // ================= DATABASE INITIALIZATION =================
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        var configuration = services.GetRequiredService<IConfiguration>();
+
+        try
+        {
+            await DatabaseInitializer.InitializeDatabasesAsync(services, configuration, logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while initializing databases");
+            // Don't throw - allow app to start even if seeding fails
+        }
+    }
 
     // ================= MIDDLEWARE PIPELINE =================
 
