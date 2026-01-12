@@ -45,7 +45,20 @@ namespace Infrastructure.Services
 
             if (_settings.Enabled)
             {
-                InitializeConnection();
+                try
+                {
+                    InitializeConnection();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, 
+                        "Failed to initialize RabbitMQ connection on startup. Will retry on first publish attempt. " +
+                        "Host: {Host}:{Port}, SSL: {UseSsl}",
+                        _settings.HostName,
+                        _settings.Port,
+                        _settings.UseSsl);
+                    IsCircuitOpen = true;
+                }
             }
         }
 
@@ -61,7 +74,10 @@ namespace Infrastructure.Services
                     Password = _settings.Password,
                     VirtualHost = _settings.VirtualHost,
                     AutomaticRecoveryEnabled = true,
-                    NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
+                    NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
+                    RequestedConnectionTimeout = TimeSpan.FromSeconds(10),
+                    SocketReadTimeout = TimeSpan.FromSeconds(10),
+                    SocketWriteTimeout = TimeSpan.FromSeconds(10)
                 };
 
                 // Enable SSL/TLS if configured
@@ -137,6 +153,7 @@ namespace Infrastructure.Services
                 {
                     if (_channel == null || !_channel.IsOpen)
                     {
+                        _logger.LogInformation("Attempting to reconnect to RabbitMQ...");
                         InitializeConnection();
                     }
                 }
@@ -164,7 +181,7 @@ namespace Infrastructure.Services
                 body: body);
 
             _logger.LogInformation(
-                "Message published to RabbitMQ - EventType: {EventType}, RoutingKey: {RoutingKey}",
+                "? Message published to RabbitMQ - EventType: {EventType}, RoutingKey: {RoutingKey}",
                 eventType,
                 effectiveRoutingKey);
 
