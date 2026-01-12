@@ -13,6 +13,7 @@ interface PaymentMethodData {
   nacinPlacanja: string;
   totalRevenue: number;
   transactionCount: number;
+  [key: string]: string | number;
 }
 
 interface WeekdayData {
@@ -20,12 +21,14 @@ interface WeekdayData {
   dayName: string;
   totalRevenue: number;
   transactionCount: number;
+  [key: string]: string | number;
 }
 
 interface HourData {
   hour: number;
   totalRevenue: number;
   transactionCount: number;
+  [key: string]: number;
 }
 
 interface ReorderSuggestion {
@@ -365,20 +368,6 @@ export default function AnalyticsDetails() {
 
       {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
 
-      {!loading && topProducts && (
-        <div>
-          {console.log("✅ topProducts exists:", topProducts)}
-          {console.log("✅ byRevenue length:", topProducts.byRevenue?.length)}
-          {console.log("✅ byUnits length:", topProducts.byUnits?.length)}
-        </div>
-      )}
-
-      {!loading && topProducts && (
-        <>
-          {/* Debug info removed */}
-        </>
-      )}
-
       {!loading && !topProducts && (
         <div style={{ padding: 20, background: "#fffbeb", borderRadius: 8, marginBottom: 20 }}>
           <div style={{ fontWeight: 600, color: "#f59e0b" }}>⚠️ Nema top proizvoda</div>
@@ -413,14 +402,15 @@ export default function AnalyticsDetails() {
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie 
-                    data={paymentData as any[]} 
+                    data={paymentData} 
                     dataKey="totalRevenue" 
                     nameKey="nacinPlacanja" 
                     cx="50%" 
                     cy="50%" 
                     outerRadius={80}
-                    label={(entry: PaymentMethodData) => `${entry.nacinPlacanja}: ${((entry.totalRevenue / paymentData.reduce((sum, item) => sum + item.totalRevenue, 0)) * 100).toFixed(1)}%`}>
-                    {paymentData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
+                    label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(1)}%`}
+                  >
+                    {paymentData.map((_, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
                   </Pie>
                   <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Legend />
