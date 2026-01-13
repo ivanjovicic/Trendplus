@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import AutoReloadOnBackendOnline from "../components/AutoReloadOnBackendOnline";
 import WorkerStatusAlert from "../components/WorkerStatusAlert";
+import SeasonalImageCarousel from "../components/trendshoes/SeasonalImageCarousel";
 import { BackendStatusContext } from "../context/BackendStatusContext";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -95,6 +96,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </nav>
 
                 {children}
+
+                <SeasonalImageCarousel />
             </main>
         </div>
     );

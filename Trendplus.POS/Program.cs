@@ -1,5 +1,7 @@
+﻿using Application.TrendShoes;
 using System.Net.Http.Headers;
 using Trendplus.POS.Dtos;
+using static System.Net.Mime.MediaTypeNames;
 
 var builder = WebApplication.CreateBuilder(args);
 

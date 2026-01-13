@@ -1,4 +1,7 @@
-﻿using Application.Artikli.Commands.CreateArtikal;
+﻿using Application.Analytics.Queries.GetInventoryStatus;
+using Application.Analytics.Queries.GetSalesSummary;
+using Application.Analytics.Queries.GetTopProducts;
+using Application.Artikli.Commands.CreateArtikal;
 using Application.Artikli.Commands.UpdateArtikal;
 using Application.Artikli.Common.Interfaces;
 using Application.Behaviors;
@@ -8,26 +11,27 @@ using Application.Performance.Queries;
 using Application.Povracaj.Commands;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
+using Application.TrendShoes;
 using Domain.Model;
 using FluentValidation;
 using Infrastructure.DbContexts;
 using Infrastructure.Middleware;
 using Infrastructure.Repository;
 using Infrastructure.Resilience;
-using Infrastructure.Services;
 using Infrastructure.Seed;
+using Infrastructure.Services;
+using Infrastructure.Services.Caching;
 using MediatR;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using Serilog.Events;
 using System.Globalization;
 using Trendplus2;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
-using Application.Analytics.Queries.GetInventoryStatus;
-using Application.Analytics.Queries.GetSalesSummary;
-using Application.Analytics.Queries.GetTopProducts;
 
 try
 {
@@ -114,6 +118,11 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
     builder.Services.AddMediatR(typeof(CreateArtikalHandler).Assembly);
+    builder.Services.AddMemoryCache();
+    builder.Services.AddHttpClient();          // global factory
+    builder.Services.AddScoped<UnsplashService>();
+    builder.Services.AddScoped<PexelsService>();
+    builder.Services.AddSingleton<IAnalyticsCacheService, HybridCacheService>();
 
     builder.Services.AddCors(options =>
     {
@@ -169,7 +178,7 @@ try
             diag.Set("CorrelationId", http.Response.Headers["X-Correlation-ID"].ToString());
         };
     });
-
+    app.MapCachedAnalyticsEndpoints();
     // 3. Static files & routing
     app.UseDefaultFiles();
     app.UseStaticFiles();
@@ -1702,6 +1711,7 @@ try
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri generisanju test podataka");
         }
     });
+   
 
     app.MapAllEndpoints();
     Console.WriteLine("All endpoints mapped");

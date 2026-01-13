@@ -160,7 +160,7 @@ export default function AnalyticsDashboard() {
     }
 
     try {
-      const s = await getSalesSummary(fromDate || undefined, toDate || undefined);
+      const s = await getSalesSummary(fromDate || undefined, toDate || undefined, true); // Dodaj parametar za cached
       setSummary(s);
     } catch (e: unknown) {
       newErrors.summary = e instanceof Error ? e.message : "Greška pri učitavanju sažetka prodaje";
@@ -168,7 +168,7 @@ export default function AnalyticsDashboard() {
     }
 
     try {
-      const t = await getTopProducts(top, fromDate || undefined, toDate || undefined);
+      const t = await getTopProducts(top, fromDate || undefined, toDate || undefined, true); // Dodaj parametar za cached
       setTopProducts(t);
     } catch (e: unknown) {
       newErrors.topProducts = e instanceof Error ? e.message : "Greška pri učitavanju top proizvoda";
@@ -176,7 +176,7 @@ export default function AnalyticsDashboard() {
     }
 
     try {
-      const i = await getInventoryStatus(lowStockThreshold);
+      const i = await getInventoryStatus(lowStockThreshold, true); // Dodaj parametar za cached
       setInventory(i);
     } catch (e: unknown) {
       newErrors.inventory = e instanceof Error ? e.message : "Greška pri učitavanju statusa zaliha";
@@ -188,7 +188,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/daily?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/daily?${params.toString()}`); // cached
       if (res.ok) setDailySales(await res.json());
     } catch { /* ignore */ }
 
@@ -197,7 +197,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/comparison?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/comparison?${params.toString()}`); // cached
       if (res.ok) setComparison(await res.json());
     } catch { /* ignore */ }
 
@@ -206,7 +206,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/by-category?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/by-category?${params.toString()}`); // cached
       if (res.ok) setCategoryData(await res.json());
     } catch { /* ignore */ }
 
@@ -215,7 +215,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/by-gender?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/by-gender?${params.toString()}`); // cached
       if (res.ok) setGenderData(await res.json());
     } catch { /* ignore */ }
 
@@ -224,7 +224,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/by-supplier?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/by-supplier?${params.toString()}`); // cached
       if (res.ok) setSupplierData(await res.json());
     } catch { /* ignore */ }
 
@@ -233,13 +233,13 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/quick-insights?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/quick-insights?${params.toString()}`); // cached
       if (res.ok) setQuickInsights(await res.json());
     } catch { /* ignore */ }
 
     // Alerts
     try {
-      const res = await fetch(`${API}/api/analytics/alerts`);
+      const res = await fetch(`${API}/api/analytics/cached/alerts`); // cached
       if (res.ok) setAlerts(await res.json());
     } catch { /* ignore */ }
 

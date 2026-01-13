@@ -6,8 +6,12 @@ using Application.Artikli.Queries.VratiArtikle;
 using Application.Dobavljaci.Queries;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
+using Application.TrendShoes;
+using Domain.Model.TrendShoes;
 using MediatR;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
 
 namespace Trendplus2.Endpoints;
@@ -17,7 +21,7 @@ public static class AllEndpoints
     public static void MapAllEndpoints(this WebApplication app)
     {
         // ============ ADMIN - RUN ANALYTICS OPTIMIZATION ============
-        
+
         app.MapPost("/api/admin/run-analytics-optimization", async (
             ITrendplusDbContext db,
             ILogger<Program> logger,
@@ -26,7 +30,7 @@ public static class AllEndpoints
             try
             {
                 logger.LogInformation("🚀 Starting analytics optimization migration...");
-                
+
                 var connectionString = db.Database.GetConnectionString();
                 if (string.IsNullOrEmpty(connectionString))
                 {
@@ -52,7 +56,7 @@ public static class AllEndpoints
                     CREATE INDEX IF NOT EXISTS idx_artikli_dobavljac ON ""Artikli"" (""IDDobavljac"");
                     CREATE INDEX IF NOT EXISTS idx_artikli_pol ON ""Artikli"" (""Pol"");
                 ";
-                
+
                 await using (var cmd = new NpgsqlCommand(indexSql, connection))
                 {
                     await cmd.ExecuteNonQueryAsync(ct);
@@ -141,7 +145,7 @@ public static class AllEndpoints
                 for (int i = 0; i < 30; i++)
                 {
                     var date = today.AddDays(-i);
-                    
+
                     // Refresh daily summary
                     var dailySql = @"
                         INSERT INTO ""AnalyticsDailySummary"" (""Date"", ""TotalRevenue"", ""TotalTransactions"", ""TotalUnits"", ""AvgBasketValue"", ""AvgItemPrice"", ""UpdatedAt"")
@@ -212,7 +216,7 @@ public static class AllEndpoints
         });
 
         // ============ DNEVNIK PROMENA ============
-        
+
         app.MapGet("/api/dnevnik-promena/tipovi", async (ITrendplusDbContext db, CancellationToken ct) =>
         {
             var tipovi = await db.DnevnikPromena
@@ -438,7 +442,7 @@ public static class AllEndpoints
             try
             {
                 logger.LogInformation("Nivelacija cene za artikal {ArtikalId}", request.ArtikalId);
-                
+
                 var artikal = await db.Artikli.FindAsync(new object[] { request.ArtikalId }, ct);
                 if (artikal == null)
                     return Results.NotFound(new { message = "Artikal nije pronađen" });
@@ -459,7 +463,7 @@ public static class AllEndpoints
                 });
 
                 await db.SaveChangesAsync(ct);
-                
+
                 return Results.Ok(new { success = true, message = "Cena uspešno nivelirana" });
             }
             catch (Exception ex)
@@ -565,7 +569,58 @@ public static class AllEndpoints
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju prodaja");
             }
         });
+
+        app.MapGet("/api/trends/seasonal-images",
+ async (
+     [FromServices] UnsplashService unsplash,
+     [FromServices] PexelsService pexels,
+     ILogger<Program> logger
+ ) =>
+ {
+     try
+     {
+         var query = "women platform sandals fashion";
+
+         // paralelno pozivanje (BRŽE)
+         var unsplashTask = unsplash.SearchImages(query, 10);
+         var pexelsTask = pexels.Search(query, 10);
+
+         await Task.WhenAll(unsplashTask, pexelsTask);
+
+         var images = new List<TrendImageDto>();
+
+         images.AddRange(
+             unsplashTask.Result.Select((url, i) =>
+                 new TrendImageDto(i + 1, url, "unsplash"))
+         );
+
+         images.AddRange(
+             pexelsTask.Result.Select((url, i) =>
+                 new TrendImageDto(
+                     images.Count + i + 1,
+                     url,
+                     "pexels"))
+         );
+
+         // 🎯 opciono: shuffle (lepši feed)
+         var shuffled = images
+             .OrderBy(_ => Guid.NewGuid())
+             .Take(20);
+
+         return Results.Ok(shuffled);
+     }
+     catch (Exception ex)
+     {
+         logger.LogError(ex, "Seasonal images FAILED");
+         return Results.Problem(
+             title: "Image providers failed",
+             detail: ex.Message
+         );
+     }
+ });
+
     }
+
 }
 
 // DTO for nivelacija endpoint

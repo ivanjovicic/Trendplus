@@ -154,8 +154,7 @@ export default function AnalyticsDetails() {
     console.log("🌐 API Base URL:", API);
 
     try {
-      const t = await getTopProducts(top, fromDate || undefined, toDate || undefined);
-      console.log("✅ Top Products Response:", t);
+      const t = await getTopProducts(top, fromDate || undefined, toDate || undefined, true); // Dodaj parametar za cached
       setTopProducts(t);
     } catch (e: unknown) {
       console.error("❌ Top products greška:", e);
@@ -164,7 +163,7 @@ export default function AnalyticsDetails() {
     }
 
     try {
-      const i = await getInventoryStatus(lowStockThreshold);
+      const i = await getInventoryStatus(lowStockThreshold, true); // Dodaj parametar za cached
       setInventory(i);
     } catch (e: unknown) {
       console.error("Inventory greška:", e);
@@ -176,8 +175,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      
-      const res = await fetch(`${API}/api/analytics/sales/transaction-stats?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/transaction-stats?${params.toString()}`); // cached
       if (res.ok) {
         const data = await res.json();
         setTransactionStats(data);
@@ -190,8 +188,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      
-      const res = await fetch(`${API}/api/analytics/sales/by-payment?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/by-payment?${params.toString()}`); // cached
       if (res.ok) {
         const data = await res.json();
         setPaymentData(data);
@@ -204,8 +201,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      
-      const res = await fetch(`${API}/api/analytics/sales/by-weekday?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/by-weekday?${params.toString()}`); // cached
       if (res.ok) {
         const data = await res.json();
         setWeekdayData(data);
@@ -218,8 +214,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      
-      const res = await fetch(`${API}/api/analytics/sales/by-hour?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/by-hour?${params.toString()}`); // cached
       if (res.ok) {
         const data = await res.json();
         setHourData(data);
@@ -229,7 +224,7 @@ export default function AnalyticsDetails() {
     }
 
     try {
-      const res = await fetch(`${API}/api/analytics/reorder-suggestions`);
+      const res = await fetch(`${API}/api/analytics/cached/reorder-suggestions`); // cached
       if (res.ok) {
         const data = await res.json();
         setReorderSuggestions(data);
@@ -242,8 +237,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      
-      const res = await fetch(`${API}/api/analytics/sales/daily?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/daily?${params.toString()}`); // cached
       if (res.ok) {
         const data: Array<{date: string; totalRevenue: number; transactionCount: number}> = await res.json();
         setDailySalesComparison(data.map((item) => ({
@@ -261,8 +255,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      
-      const res = await fetch(`${API}/api/analytics/sales/category-trends?${params.toString()}`);
+      const res = await fetch(`${API}/api/analytics/cached/sales/category-trends?${params.toString()}`); // cached
       if (res.ok) {
         const data = await res.json();
         setCategoryTrends(data);
