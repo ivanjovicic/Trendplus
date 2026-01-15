@@ -12,34 +12,36 @@ namespace Application.Artikli.Queries.GetArtikal
 {
     public class GetArtikalHandler : IRequestHandler<GetArtikalQuery, ArtikliDto>
     {
-        private readonly IAnalyticsDbContext _db;
+        private readonly ITrendplusDbContext _db;
 
-        public GetArtikalHandler(IAnalyticsDbContext db)
+        public GetArtikalHandler(ITrendplusDbContext db)
         {
             _db = db;
         }
 
         public async Task<ArtikliDto> Handle(GetArtikalQuery request, CancellationToken ct)
         {
-            var entity = await _db.ProductsDim
+            var entity = await _db.Artikli
                 .AsNoTracking()
-                .Where(x => x.ProductId == request.Id)
+                .Where(x => x.Id == request.Id)
                 .Select(x => new ArtikliDto
                 {
-                    Id = x.ProductId,
-                    //PLU = x.PLU,
-                    Naziv = x.ProductName,
-                    NabavnaCena = x.PurchasePrice,
-                    NabavnaCenaDin = x.PurchasePriceRsd,
-                    PrvaProdajnaCena = x.FirstSalePrice,
-                    ProdajnaCena = x.SalePrice,
-                    //Kolicina = ?, // not available in ProductsDim
-                    //Komentar = ?
+                    Id = x.Id,
+                    PLU = x.PLU,
+                    Naziv = x.Naziv,
+                    NabavnaCena = x.NabavnaCena,
+                    NabavnaCenaDin = x.NabavnaCenaDin,
+                    PrvaProdajnaCena = x.PrvaProdajnaCena,
+                    ProdajnaCena = x.ProdajnaCena,
+                    Kolicina = x.Kolicina,
+                    Komentar = x.Komentar,
+                    TipObuceId = x.IDTipObuce,
+                    DobavljacId = x.IDDobavljac,
+                    IdSezona = x.IDSezona
                 })
                 .FirstOrDefaultAsync(ct);
 
             return entity ?? throw new KeyNotFoundException("Artikal nije pronađen.");
         }
     }
-
 }

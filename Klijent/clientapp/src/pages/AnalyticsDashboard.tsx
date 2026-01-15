@@ -1,4 +1,5 @@
-﻿import { useCallback, useEffect, useState } from "react";
+﻿/* eslint-disable react-hooks/set-state-in-effect */
+import { useCallback, useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { checkAnalyticsHealth, getInventoryStatus, getSalesSummary, getTopProducts } from "../services/analyticsApi";
 import type { InventoryStatus, SalesSummary, TopProductsResult } from "../types/analytics";
@@ -71,8 +72,18 @@ interface AlertItem {
 const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#10b981', '#6366f1', '#f97316'];
 
 export default function AnalyticsDashboard() {
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
+  const [fromDate, setFromDate] = useState<string>(() => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - 30);
+    start.setHours(0, 0, 0, 0);
+    return start.toISOString().slice(0, 16);
+  });
+  const [toDate, setToDate] = useState<string>(() => {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return end.toISOString().slice(0, 16);
+  });
   const [top] = useState(10);
   const [lowStockThreshold] = useState(2);
   const [dateRangePreset, setDateRangePreset] = useState<string>("30d");
@@ -139,10 +150,6 @@ export default function AnalyticsDashboard() {
     setToDate(end.toISOString().slice(0, 16));
   }, []);
 
-  useEffect(() => {
-    applyDateRangePreset("30d");
-  }, [applyDateRangePreset]);
-
   const load = useCallback(async () => {
     setLoading(true);
     setErrors({});
@@ -188,7 +195,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/daily?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/daily?${params.toString()}`);
       if (res.ok) setDailySales(await res.json());
     } catch { /* ignore */ }
 
@@ -197,7 +204,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/comparison?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/comparison?${params.toString()}`);
       if (res.ok) setComparison(await res.json());
     } catch { /* ignore */ }
 
@@ -206,7 +213,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/by-category?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/by-category?${params.toString()}`);
       if (res.ok) setCategoryData(await res.json());
     } catch { /* ignore */ }
 
@@ -215,7 +222,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/by-gender?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/by-gender?${params.toString()}`);
       if (res.ok) setGenderData(await res.json());
     } catch { /* ignore */ }
 
@@ -224,7 +231,7 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/by-supplier?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/by-supplier?${params.toString()}`);
       if (res.ok) setSupplierData(await res.json());
     } catch { /* ignore */ }
 
@@ -233,13 +240,13 @@ export default function AnalyticsDashboard() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/quick-insights?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/quick-insights?${params.toString()}`);
       if (res.ok) setQuickInsights(await res.json());
     } catch { /* ignore */ }
 
     // Alerts
     try {
-      const res = await fetch(`${API}/api/analytics/cached/alerts`); // cached
+      const res = await fetch(`${API}/api/analytics/alerts`);
       if (res.ok) setAlerts(await res.json());
     } catch { /* ignore */ }
 
@@ -249,7 +256,7 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => {
     if (fromDate && toDate) {
-      load();
+      void load();
     }
   }, [load, fromDate, toDate]);
 

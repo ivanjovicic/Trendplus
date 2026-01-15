@@ -55,8 +55,15 @@ interface CategoryTrend {
 const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#10b981', '#6366f1', '#f97316'];
 
 export default function AnalyticsDetails() {
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
+  const [fromDate, setFromDate] = useState<string>(() => {
+    const start = new Date("2020-01-01");
+    return start.toISOString().slice(0, 16);
+  });
+  const [toDate, setToDate] = useState<string>(() => {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return end.toISOString().slice(0, 16);
+  });
   const [top, setTop] = useState(10);
   const [lowStockThreshold, setLowStockThreshold] = useState(2);
   const [dateRangePreset, setDateRangePreset] = useState<string>("30d");
@@ -128,22 +135,6 @@ export default function AnalyticsDetails() {
     setToDate(endISO);
   };
 
-  useEffect(() => {
-    // Set a very wide date range to catch all sales
-    const now = new Date();
-    const start = new Date('2020-01-01'); // Far in the past
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
-    
-    setFromDate(start.toISOString().slice(0, 16));
-    setToDate(end.toISOString().slice(0, 16));
-    
-    console.log("🚀 Initial date range set:", {
-      from: start.toISOString(),
-      to: end.toISOString()
-    });
-  }, []);
-
   const load = useCallback(async () => {
     console.log("🔄 Starting load() - fromDate:", fromDate, "toDate:", toDate);
     setLoading(true);
@@ -175,7 +166,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/transaction-stats?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/transaction-stats?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setTransactionStats(data);
@@ -188,7 +179,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/by-payment?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/by-payment?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setPaymentData(data);
@@ -201,7 +192,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/by-weekday?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/by-weekday?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setWeekdayData(data);
@@ -214,7 +205,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/by-hour?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/by-hour?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setHourData(data);
@@ -224,7 +215,7 @@ export default function AnalyticsDetails() {
     }
 
     try {
-      const res = await fetch(`${API}/api/analytics/cached/reorder-suggestions`); // cached
+      const res = await fetch(`${API}/api/analytics/reorder-suggestions`);
       if (res.ok) {
         const data = await res.json();
         setReorderSuggestions(data);
@@ -237,7 +228,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/daily?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/daily?${params.toString()}`);
       if (res.ok) {
         const data: Array<{date: string; totalRevenue: number; transactionCount: number}> = await res.json();
         setDailySalesComparison(data.map((item) => ({
@@ -255,7 +246,7 @@ export default function AnalyticsDetails() {
       const params = new URLSearchParams();
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/cached/sales/category-trends?${params.toString()}`); // cached
+      const res = await fetch(`${API}/api/analytics/sales/category-trends?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setCategoryTrends(data);
@@ -272,11 +263,11 @@ export default function AnalyticsDetails() {
     console.log("📅 useEffect triggered - fromDate:", fromDate, "toDate:", toDate);
     if (fromDate && toDate) {
       console.log("✅ Calling load()...");
-      load();
+      void load();
     } else {
       console.log("⚠️ Skipping load() - missing dates");
     }
-  }, [load]);
+  }, [load, fromDate, toDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatCurrency = (x: number) =>
     x.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " RSD";
@@ -527,6 +518,7 @@ export default function AnalyticsDetails() {
                 .map((category, index) => (
                   <Bar key={category} dataKey={category} stackId="a" fill={COLORS[index % COLORS.length]} />
                 ))}
+
             </BarChart>
           </ResponsiveContainer>
         </div>

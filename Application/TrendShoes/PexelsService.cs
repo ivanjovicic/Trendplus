@@ -11,7 +11,6 @@ namespace Application.TrendShoes
 {
     public class PexelsService
     {
-       
         private readonly string _apiKey;
         private readonly HttpClient _http;
 
@@ -25,13 +24,11 @@ namespace Application.TrendShoes
             _http.DefaultRequestHeaders.Add("Authorization", apiKey);
         }
 
-        public async Task<List<string>> Search(string query, int count)
+        public async Task<List<PexelsPhoto>> Search(string query, int count)
         {
-           
             var url = $"https://api.pexels.com/v1/search?query={query}&per_page={count}";
             var res = await _http.GetFromJsonAsync<PexelsResponse>(url);
-            return res?.Photos?.Select(p => p.Src.Medium).ToList() ?? new();
+            return res?.Photos ?? new List<PexelsPhoto>();
         }
     }
-
 }

@@ -2,6 +2,10 @@
 import CreateProdajaForm from "../components/prodaja/CreateProdajaForm";
 import { KreirajProdajuDto } from "../types/prodaja/prodaja";
 
+const ARTICLES_CACHE_KEY = "cached_artikli_prodaja";
+const ARTICLES_CACHE_TS = "cached_artikli_ts";
+const CACHE_DURATION = 1000 * 60 * 15; // 15 minutes
+
 export default function ProdajaPage() {
     const [loadingArtikli, setLoadingArtikli] = React.useState(true);
     const [artikli, setArtikli] = React.useState<{ id: number; naziv: string; cena: number }[]>([]);
@@ -12,6 +16,25 @@ export default function ProdajaPage() {
         const controller = new AbortController();
 
         const fetchArtikli = async () => {
+            // Try cache first
+            try {
+                const cached = localStorage.getItem(ARTICLES_CACHE_KEY);
+                const ts = localStorage.getItem(ARTICLES_CACHE_TS);
+                const now = Date.now();
+
+                if (cached && ts && (now - Number(ts) < CACHE_DURATION)) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+                        setArtikli(parsed);
+                        setLoadingArtikli(false);
+                        console.log("🚀 Loaded articles from local cache");
+                        // Refresh in background if needed (silent update)
+                    }
+                }
+            } catch (err) {
+                console.warn("Failed to read articles cache", err);
+            }
+
             try {
                 const res = await fetch(`${API}/artikli`, { signal: controller.signal });
                 if (res.ok) {
@@ -19,13 +42,21 @@ export default function ProdajaPage() {
                     if (!aborted) {
                         setArtikli(data ?? []);
                         setLoadingArtikli(false);
+                        
+                        // Update cache
+                        try {
+                            localStorage.setItem(ARTICLES_CACHE_KEY, JSON.stringify(data));
+                            localStorage.setItem(ARTICLES_CACHE_TS, Date.now().toString());
+                        } catch (e) {
+                            console.warn("QuotaExceeded or other cache error", e);
+                        }
                     }
                 } else {
                     console.error("Failed to fetch artikli:", res.status, await res.text());
                     if (!aborted) setLoadingArtikli(false);
                 }
-            } catch (e) {
-                if ((e as any)?.name === "AbortError") return;
+            } catch (e: unknown) {
+                if (e instanceof DOMException && e.name === "AbortError") return;
                 console.error("Error fetching artikli:", e);
                 if (!aborted) setLoadingArtikli(false);
             }

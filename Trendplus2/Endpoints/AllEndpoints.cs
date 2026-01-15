@@ -167,7 +167,7 @@ public static class AllEndpoints
                         JOIN ""ProdajaStavke"" ps ON p.""Id"" = ps.""IdProdaja""
                         WHERE DATE(p.""DatumProdaje"") = @date::DATE
                         ON CONFLICT (""Date"") DO UPDATE SET
-                            ""TotalRevenue"" = EXCLUDED.""TotalRevenue"""""",
+                            ""TotalRevenue"" = EXCLUDED.""TotalRevenue"",
                             ""TotalTransactions"" = EXCLUDED.""TotalTransactions"",
                             ""TotalUnits"" = EXCLUDED.""TotalUnits"",
                             ""AvgBasketValue"" = EXCLUDED.""AvgBasketValue"",
@@ -320,6 +320,7 @@ public static class AllEndpoints
 
         app.MapGet("/api/artikli", async (
             ITrendplusDbContext db,
+            IMemoryCache cache,
             int pageNumber = 1,
             int pageSize = 50,
             string? naziv = null,
@@ -350,6 +351,16 @@ public static class AllEndpoints
                 if (maxKolicina.HasValue)
                     query = query.Where(a => a.Kolicina <= maxKolicina.Value);
 
+                // Cache total count to avoid heavy queries on every pagination action
+                var filterHash = $"{naziv}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}";
+                var cacheKey = $"artikli_count_{filterHash}";
+                
+                if (!cache.TryGetValue(cacheKey, out int total))
+                {
+                    total = await query.CountAsync(ct);
+                    cache.Set(cacheKey, total, TimeSpan.FromMinutes(2));
+                }
+
                 query = sortBy.ToLower() switch
                 {
                     "prodajnacena" => sortDir == "asc" ? query.OrderBy(a => a.ProdajnaCena) : query.OrderByDescending(a => a.ProdajnaCena),
@@ -359,7 +370,6 @@ public static class AllEndpoints
                     _ => sortDir == "asc" ? query.OrderBy(a => a.Naziv) : query.OrderByDescending(a => a.Naziv)
                 };
 
-                var total = await query.CountAsync(ct);
                 var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
                 return Results.Ok(new { items, totalCount = total, pageNumber, pageSize });
@@ -570,54 +580,45 @@ public static class AllEndpoints
             }
         });
 
-        app.MapGet("/api/trends/seasonal-images",
- async (
-     [FromServices] UnsplashService unsplash,
-     [FromServices] PexelsService pexels,
-     ILogger<Program> logger
- ) =>
- {
-     try
-     {
-         var query = "women platform sandals fashion";
+        app.MapGet("/api/trends/seasonal-images", async (
+            [FromServices] PexelsService pexels,
+            ILogger<Program> logger) =>
+        {
+            try
+            {
+                var query = "women platform sandals fashion";
 
-         // paralelno pozivanje (BRŽE)
-         var unsplashTask = unsplash.SearchImages(query, 10);
-         var pexelsTask = pexels.Search(query, 10);
+                // Only Pexels (Unsplash temporarily disabled)
+                var pexelsPhotos = await pexels.Search(query, 20);
 
-         await Task.WhenAll(unsplashTask, pexelsTask);
+                var images = new List<TrendImageDto>();
 
-         var images = new List<TrendImageDto>();
+                // Map Pexels with attribution
+                images.AddRange(
+                    pexelsPhotos.Select((photo, i) =>
+                        new TrendImageDto(
+                            i + 1,
+                            photo.Src.Medium,
+                            "pexels"//,
+                            //photo.Photographer,
+                            //photo.PhotographerUrl,
+                            //photo.Url
+                        ))
+                );
 
-         images.AddRange(
-             unsplashTask.Result.Select((url, i) =>
-                 new TrendImageDto(i + 1, url, "unsplash"))
-         );
-
-         images.AddRange(
-             pexelsTask.Result.Select((url, i) =>
-                 new TrendImageDto(
-                     images.Count + i + 1,
-                     url,
-                     "pexels"))
-         );
-
-         // 🎯 opciono: shuffle (lepši feed)
-         var shuffled = images
-             .OrderBy(_ => Guid.NewGuid())
-             .Take(20);
-
-         return Results.Ok(shuffled);
-     }
-     catch (Exception ex)
-     {
-         logger.LogError(ex, "Seasonal images FAILED");
-         return Results.Problem(
-             title: "Image providers failed",
-             detail: ex.Message
-         );
-     }
- });
+                // Shuffle for variety
+                var shuffled = images.OrderBy(_ => Guid.NewGuid()).Take(20);
+                return Results.Ok(shuffled);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Seasonal images FAILED");
+                return Results.Problem(
+                    title: "Image providers failed",
+                    detail: ex.Message
+                );
+            }
+        });
 
     }
 

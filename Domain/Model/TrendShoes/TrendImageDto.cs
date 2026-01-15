@@ -7,8 +7,11 @@ using System.Threading.Tasks;
 namespace Domain.Model.TrendShoes
 {
     public record TrendImageDto(
-    int Id,
-    string ImageUrl,
-    string Source // "unsplash" | "pexels"
-);
+        int Id,
+        string ImageUrl,
+        string Source, // "unsplash" | "pexels"
+        string? PhotographerName = null,
+        string? PhotographerUrl = null,
+        string? SourceUrl = null
+    );
 }

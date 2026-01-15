@@ -46,6 +46,11 @@ try
 
     Console.WriteLine("Builder created successfully");
 
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+    });
+
     // Serilog bootstrap
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)
@@ -142,6 +147,8 @@ try
     });
 
     var app = builder.Build();
+
+    app.UseResponseCompression();
 
     // ================= DATABASE INITIALIZATION =================
     using (var scope = app.Services.CreateScope())
