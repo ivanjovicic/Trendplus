@@ -18,8 +18,22 @@ export default function SeasonalImageCarousel() {
 
     useEffect(() => {
         fetch("/api/trends/seasonal-images")
-            .then(r => r.json())
-            .then(setImages);
+            .then(r => {
+                if (!r.ok) throw new Error("Failed to load images");
+                return r.json();
+            })
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setImages(data);
+                } else {
+                    console.error("Seasonal images response is not an array:", data);
+                    setImages([]);
+                }
+            })
+            .catch(err => {
+                console.error("Error loading seasonal images:", err);
+                setImages([]);
+            });
     }, []);
 
     const startAutoScroll = () => {
