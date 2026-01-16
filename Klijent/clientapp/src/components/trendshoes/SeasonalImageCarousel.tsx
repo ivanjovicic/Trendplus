@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import "../../imagecarousel.css";
+import { makeUrl } from "../../services/analyticsApi";
 
 type ImageItem = {
     id: number;
@@ -17,7 +18,7 @@ export default function SeasonalImageCarousel() {
     const autoScrollRef = useRef<number | null>(null);
 
     useEffect(() => {
-        fetch("/api/trends/seasonal-images")
+        fetch(makeUrl("/api/trends/seasonal-images"))
             .then(r => {
                 if (!r.ok) throw new Error("Failed to load images");
                 return r.json();
