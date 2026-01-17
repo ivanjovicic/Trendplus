@@ -507,18 +507,6 @@ try
         return Results.Ok(stats);
     });
 
-    // Dnevnik Promena - Get distinct tip promene values
-    app.MapGet("/api/dnevnik-promena/tipovi", async (ITrendplusDbContext db, CancellationToken ct) =>
-    {
-        var tipovi = await db.DnevnikPromena
-            .Select(x => x.TipPromene)
-            .Distinct()
-            .OrderBy(x => x)
-            .ToListAsync(ct);
-
-        return Results.Ok(tipovi);
-    });
-
     // ============ povraćaj ROBE ============
 
     // Kreiranje povraćaja

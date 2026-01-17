@@ -582,32 +582,49 @@ public static class AllEndpoints
 
         app.MapGet("/api/trends/seasonal-images", async (
             [FromServices] PexelsService pexels,
+            [FromServices] IMemoryCache cache,
             ILogger<Program> logger) =>
         {
             try
             {
-                var query = "women platform sandals fashion";
+                // Cache key for seasonal images
+                const string cacheKey = "seasonal_images_v1";
 
-                // Only Pexels (Unsplash temporarily disabled)
-                var pexelsPhotos = await pexels.Search(query, 20);
+                if (!cache.TryGetValue(cacheKey, out List<TrendImageDto>? images))
+                {
+                    logger.LogInformation("Fetching fresh images from Pexels...");
+                    var query = "women platform sandals fashion";
 
-                var images = new List<TrendImageDto>();
+                    // Only Pexels (Unsplash temporarily disabled)
+                    var pexelsPhotos = await pexels.Search(query, 20);
 
-                // Map Pexels with attribution
-                images.AddRange(
-                    pexelsPhotos.Select((photo, i) =>
-                        new TrendImageDto(
-                            i + 1,
-                            photo.Src.Medium,
-                            "pexels",
-                            photo.Photographer,
-                            photo.PhotographerUrl,
-                            photo.Url
-                        ))
-                );
+                    images = new List<TrendImageDto>();
 
-                // Shuffle for variety
-                var shuffled = images.OrderBy(_ => Guid.NewGuid()).Take(20);
+                    // Map Pexels with attribution
+                    images.AddRange(
+                        pexelsPhotos.Select((photo, i) =>
+                            new TrendImageDto(
+                                i + 1,
+                                photo.Src.Medium,
+                                "pexels",
+                                photo.Photographer,
+                                photo.PhotographerUrl,
+                                photo.Url
+                            ))
+                    );
+
+                    // Cache for 1 hour to respect API limits
+                    var cacheOptions = new MemoryCacheEntryOptions()
+                        .SetAbsoluteExpiration(TimeSpan.FromHours(1));
+
+                    cache.Set(cacheKey, images, cacheOptions);
+                }
+
+                // Shuffle for variety (shuffle the cached list copy)
+                // We create a new list from cached one to avoid modifying the cached reference by sorting
+                var resultList = images?.ToList() ?? new List<TrendImageDto>();
+                var shuffled = resultList.OrderBy(_ => Guid.NewGuid()).Take(20);
+                
                 return Results.Ok(shuffled);
             }
             catch (Exception ex)

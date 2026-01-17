@@ -15,13 +15,10 @@ namespace Domain.Model.TrendShoes
         [JsonPropertyName("src")]
         public PexelsPhotoSrc Src { get; set; }
 
-        [JsonPropertyName("photographer")]
-        public string? Photographer { get; set; }
 
-        [JsonPropertyName("photographer_url")]
-        public string? PhotographerUrl { get; set; }
 
-        [JsonPropertyName("url")]
-        public string? Url { get; set; }
+       
+
+
     }
 }

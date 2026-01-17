@@ -1,0 +1,40 @@
+# ---------- FRONTEND (React  Vite  Next) ----------
+WebClient
+frontend
+client
+Klijent
+Trendplus.POS
+Trendplus.POS.Ui
+
+node_modules
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+
+# ---------- DEV  TEST PROJECTS ----------
+.Tests
+.Test
+.Benchmark
+tools
+scripts
+
+# ---------- BACKUP  OLD ----------
+backup
+.bak
+.old
+
+# ---------- GIT  IDE ----------
+.git
+.gitignore
+.vscode
+.idea
+.user
+.suo
+
+# ---------- BUILD OUTPUT ----------
+bin
+obj
+
+# ---------- DOCS ----------
+docs
+README.md
