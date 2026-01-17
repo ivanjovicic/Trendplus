@@ -14,11 +14,5 @@ namespace Domain.Model.TrendShoes
 
         [JsonPropertyName("src")]
         public PexelsPhotoSrc Src { get; set; }
-
-
-
-       
-
-
     }
 }
