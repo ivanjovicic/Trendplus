@@ -1,4 +1,4 @@
-export type Artikal = {
+﻿export type Artikal = {
   id: number;
   naziv: string;
   prodajnaCena: number;
@@ -10,4 +10,5 @@ export type Artikal = {
   tipObuceId: number | null;
   dobavljacId: number | null;   
   idSezona: number | null;
+  imagePath: string | null; // NEW: Image path field
 };

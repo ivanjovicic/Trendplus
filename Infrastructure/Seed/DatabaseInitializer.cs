@@ -1,4 +1,4 @@
-using Infrastructure.DbContexts;
+﻿using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,9 +43,34 @@ public static class DatabaseInitializer
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
 
+        // WORKAROUND: Mark problematic migration as applied before running EF migrations
+        // This is needed because columns were already added via manual SQL scripts
+        try
+        {
+            var connection = context.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            await using var command = connection.CreateCommand();
+            command.CommandText = @"
+                INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+                VALUES ('20260112000000_AddArtikliKategorije', '8.0.0')
+                ON CONFLICT (""MigrationId"") DO NOTHING;
+            ";
+            
+            await command.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Marked migration 20260112000000_AddArtikliKategorije as applied");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to mark migration as applied (table might not exist yet)");
+        }
+
         // Run EF migrations
         await context.Database.MigrateAsync();
-        logger.LogInformation("? Trendplus DB migrations applied");
+        logger.LogInformation("✅ Trendplus DB migrations applied");
 
         // Check if we need to seed data
         if (!await context.Artikli.AnyAsync())
@@ -58,7 +83,7 @@ public static class DatabaseInitializer
         }
         else
         {
-            logger.LogInformation("? Trendplus DB already has data");
+            logger.LogInformation("✅ Trendplus DB already has data");
         }
     }
 
@@ -74,7 +99,7 @@ public static class DatabaseInitializer
 
         // Run EF migrations
         await context.Database.MigrateAsync();
-        logger.LogInformation("? Analytics DB migrations applied");
+        logger.LogInformation("✅ Analytics DB migrations applied");
 
         // Check if we need to create tables
         if (!await TableExistsAsync(
@@ -101,7 +126,7 @@ public static class DatabaseInitializer
                 logger);
         }
 
-        logger.LogInformation("? Analytics DB initialized");
+        logger.LogInformation("✅ Analytics DB initialized");
     }
 
     private static async Task<bool> TableExistsAsync(
@@ -161,7 +186,7 @@ public static class DatabaseInitializer
 
             await command.ExecuteNonQueryAsync();
 
-            logger.LogInformation("? Executed SQL file: {FilePath}", sqlFilePath);
+            logger.LogInformation("✅ Executed SQL file: {FilePath}", sqlFilePath);
         }
         catch (Exception ex)
         {

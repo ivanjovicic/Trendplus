@@ -35,7 +35,51 @@ export default function HomePage() {
           <Link to="/logs" className="button-big" style={{ background: "#059669" }}>
             📋 Logs
           </Link>
+          <Link to="/image-upload-test" className="button-big" style={{ background: "#3b82f6" }}>
+            📸 Upload slika (Test)
+          </Link>
         </div>
+
+        <Link
+          to="/global-trends"
+          style={{
+            textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: "1rem",
+            padding: "1.5rem",
+            background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+            borderRadius: "16px",
+            color: "white",
+            boxShadow: "0 10px 25px -5px rgba(139, 92, 246, 0.35), 0 8px 10px -6px rgba(139, 92, 246, 0.25)",
+            transition: "all 0.3s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.boxShadow = "0 20px 30px -10px rgba(139, 92, 246, 0.45), 0 12px 15px -8px rgba(139, 92, 246, 0.35)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 10px 25px -5px rgba(139, 92, 246, 0.35), 0 8px 10px -6px rgba(139, 92, 246, 0.25)";
+          }}
+        >
+          <div
+            style={{
+              fontSize: "3rem",
+              lineHeight: 1,
+            }}
+          >
+            🌍
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.25rem" }}>
+              Global Trends
+            </div>
+            <div style={{ fontSize: "0.875rem", opacity: 0.9 }}>
+              EU Market & Social Media Analytics
+            </div>
+          </div>
+        </Link>
       </div>
     </div>
   );

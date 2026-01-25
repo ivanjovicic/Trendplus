@@ -4,6 +4,7 @@ using Domain.Model;
 using Domain.Model.Prodaja;
 using Domain.Model.Povracaj;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 
 namespace Infrastructure.DbContexts
 {
@@ -11,9 +12,60 @@ namespace Infrastructure.DbContexts
     {
         public TrendplusDbContext(DbContextOptions<TrendplusDbContext> options) : base(options) { }
 
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            base.OnConfiguring(optionsBuilder);
+            
+            // Enable pgvector extension
+            if (!optionsBuilder.IsConfigured)
+            {
+                optionsBuilder.UseNpgsql(o => o.UseVector());
+            }
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Artikli>().ToTable("Artikli");
+            // Enable pgvector extension in PostgreSQL
+            modelBuilder.HasPostgresExtension("vector");
+
+            modelBuilder.Entity<Artikli>(eb =>
+            {
+                eb.ToTable("Artikli");
+                eb.HasKey(e => e.Id);
+                
+                // Image support
+                eb.Property(e => e.ImagePath)
+                  .HasMaxLength(500)
+                  .IsRequired(false);
+                
+                eb.HasIndex(e => e.ImagePath);
+                
+                // Navigation to multiple images
+                eb.HasMany(e => e.Images)
+                  .WithOne(i => i.Product)
+                  .HasForeignKey(i => i.ProductId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ProductImage mapping for AI embeddings
+            modelBuilder.Entity<ProductImage>(eb =>
+            {
+                eb.ToTable("ProductImages");
+                eb.HasKey(e => e.Id);
+                
+                eb.Property(e => e.ProductId).IsRequired();
+                eb.Property(e => e.FileName).IsRequired().HasMaxLength(500);
+                eb.Property(e => e.CreatedAt).IsRequired();
+                eb.Property(e => e.IsPrimary).IsRequired().HasDefaultValue(false);
+                
+                // Ignore Embedding property for now - will be enabled when Python service is ready
+                eb.Ignore(e => e.Embedding);
+                
+                eb.HasIndex(e => e.ProductId);
+                eb.HasIndex(e => e.CreatedAt);
+                eb.HasIndex(e => new { e.ProductId, e.IsPrimary })
+                  .HasFilter("\"IsPrimary\" = true");
+            });
 
             modelBuilder.Entity<ErrorRecord>(eb =>
             {
@@ -150,6 +202,7 @@ namespace Infrastructure.DbContexts
 
         public DbSet<CreatedIdDto> CreatedIds => Set<CreatedIdDto>();
         public DbSet<Artikli> Artikli { get; set; } = null!;
+        public DbSet<ProductImage> ProductImages { get; set; } = null!; // NEW
         public DbSet<TipObuce> TipoviObuce { get; set; } = null!;
         public DbSet<Dobavljac> Dobavljaci { get; set; } = null!;
         public DbSet<ErrorRecord> ErrorRecords { get; set; } = null!;
