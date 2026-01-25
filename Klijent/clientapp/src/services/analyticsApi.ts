@@ -1,8 +1,8 @@
-import type { InventoryStatus, SalesSummary, TopProductsResult } from "../types/analytics";
+﻿import type { InventoryStatus, SalesSummary, TopProductsResult } from "../types/analytics";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
-function makeUrl(path: string, params?: URLSearchParams) {
+export function makeUrl(path: string, params?: URLSearchParams) {
   if (import.meta.env.DEV) {
     return params ? `${path}?${params.toString()}` : path;
   }
@@ -22,40 +22,57 @@ export async function checkAnalyticsHealth(): Promise<{
   return res.json();
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getSalesSummary(
   fromDate?: string,
   toDate?: string,
-  storeId?: number
+  _useCached: boolean = false
 ): Promise<SalesSummary> {
   const params = new URLSearchParams();
   if (fromDate) params.append("fromDate", fromDate);
   if (toDate) params.append("toDate", toDate);
-  if (storeId != null) params.append("storeId", String(storeId));
 
-  const res = await fetch(makeUrl("/api/analytics/sales/summary", params));
-  if (!res.ok) throw new Error("Gre�ka pri u?itavanju sa�etka prodaje");
+  const endpoint = _useCached
+    ? "/api/analytics/cached/sales/summary"
+    : "/api/analytics/sales/summary";
+
+  const res = await fetch(makeUrl(endpoint, params));
+  if (!res.ok) throw new Error("Greška pri učitavanju sažetka prodaje");
   return res.json();
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getTopProducts(
   top: number = 20,
   fromDate?: string,
   toDate?: string,
-  storeId?: number
+  _useCached: boolean = false
 ): Promise<TopProductsResult> {
   const params = new URLSearchParams({ top: String(top) });
   if (fromDate) params.append("fromDate", fromDate);
   if (toDate) params.append("toDate", toDate);
-  if (storeId != null) params.append("storeId", String(storeId));
 
-  const res = await fetch(makeUrl("/api/analytics/sales/top-products", params));
-  if (!res.ok) throw new Error("Gre�ka pri u?itavanju top proizvoda");
+  const endpoint = _useCached
+    ? "/api/analytics/cached/sales/top-products"
+    : "/api/analytics/sales/top-products";
+
+  const res = await fetch(makeUrl(endpoint, params));
+  if (!res.ok) throw new Error("Greška pri učitavanju top proizvoda");
   return res.json();
 }
 
-export async function getInventoryStatus(lowStockThreshold: number = 2): Promise<InventoryStatus> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function getInventoryStatus(
+  lowStockThreshold: number = 2,
+  _useCached: boolean = false
+): Promise<InventoryStatus> {
   const params = new URLSearchParams({ lowStockThreshold: String(lowStockThreshold) });
-  const res = await fetch(makeUrl("/api/analytics/inventory/status", params));
-  if (!res.ok) throw new Error("Gre�ka pri u?itavanju statusa zaliha");
+
+  const endpoint = _useCached
+    ? "/api/analytics/cached/inventory/status"
+    : "/api/analytics/inventory/status";
+
+  const res = await fetch(makeUrl(endpoint, params));
+  if (!res.ok) throw new Error("Greška pri učitavanju statusa zaliha");
   return res.json();
 }

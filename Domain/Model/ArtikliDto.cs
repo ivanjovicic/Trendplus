@@ -18,5 +18,9 @@ namespace Domain.Model
         public decimal? ProdajnaCena { get; set; }
         public int? Kolicina { get; set; }
         public string? Komentar { get; set; }
+
+        public int? TipObuceId { get; set; }
+        public int? DobavljacId { get; set; }
+        public int? IdSezona { get; set; }
     }
 }

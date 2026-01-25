@@ -1,0 +1,155 @@
+﻿/* ===============================
+   CAROUSEL CONTAINER
+================================ */
+.carousel-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    margin: 16px 0;
+}
+
+/* ===============================
+   IMAGE STRIP
+================================ */
+.carousel-strip {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    padding: 8px 48px;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+/* Hide scrollbar for Chrome/Safari */
+.carousel-strip::-webkit-scrollbar {
+    display: none;
+}
+
+/* ===============================
+   IMAGE
+================================ */
+.carousel-img {
+    height: 240px;
+    min-width: 200px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #f5f5f5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+}
+
+.carousel-img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    filter: brightness(1.05);
+}
+
+/* ===============================
+   NEW NAVIGATION BUTTONS
+================================ */
+.carousel-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #ffffff 0%, #f3f4f6 100%);
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+    box-shadow: 
+        0 4px 6px rgba(0, 0, 0, 0.05),
+        0 10px 15px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.carousel-nav-btn:focus,
+.carousel-nav-btn:focus-visible {
+    outline: none;
+}
+
+.carousel-nav-btn:hover {
+    opacity: 1 !important;
+    background: linear-gradient(145deg, #ffffff 0%, #e5e7eb 100%);
+    transform: translateY(-50%) scale(1.05);
+    border-color: #d1d5db;
+    box-shadow: 
+        0 6px 12px rgba(0, 0, 0, 0.08),
+        0 15px 25px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.carousel-nav-btn:active {
+    transform: translateY(-50%) scale(0.95);
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.1),
+        inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Arrow icons inside buttons */
+.carousel-nav-btn svg {
+    width: 20px;
+    height: 20px;
+    stroke: #6b7280;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 0.2s ease;
+}
+
+.carousel-nav-btn:hover svg {
+    stroke: #374151;
+}
+
+/* ===============================
+   BUTTON POSITIONS
+================================ */
+.carousel-nav-btn.left {
+    left: 8px;
+}
+
+.carousel-nav-btn.right {
+    right: 8px;
+}
+
+/* ===============================
+   SHOW BUTTONS ON HOVER
+================================ */
+.carousel-container:hover .carousel-nav-btn,
+div[style*="relative"]:hover .carousel-nav-btn {
+    opacity: 0.85;
+}
+
+/* ===============================
+   MOBILE (OPTIONAL)
+================================ */
+@media (max-width: 768px) {
+    .carousel-img {
+        height: 180px;
+        min-width: 150px;
+    }
+
+    .carousel-nav-btn {
+        width: 36px;
+        height: 36px;
+        opacity: 0.6;
+    }
+
+    .carousel-nav-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .carousel-strip {
+        padding: 8px 40px;
+    }
+}

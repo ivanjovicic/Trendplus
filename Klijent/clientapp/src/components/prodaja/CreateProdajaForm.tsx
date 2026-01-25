@@ -24,6 +24,16 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Memoize options to prevent heavy re-renders
+    const artikalOptions = useMemo(() => {
+        console.log("🛠️ Rendering artikal options...");
+        return artikli.map((a) => (
+            <option key={a.id} value={a.id}>
+                {a.naziv} — {a.cena} RSD
+            </option>
+        ));
+    }, [artikli]);
+
     // Search state
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -150,10 +160,11 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
             setBrojRacuna("");
             setStavke([{ idArtikal: artikli[0]?.id ?? 0, kolicina: 1, cena: artikli[0]?.cena ?? 0 }]);
             toast.success("Prodaja uspešna");
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err?.message ?? "Greška pri kreiranju prodaje");
-            toast.error(err?.message ?? "Greška pri kreiranju prodaje");
+            const msg = err instanceof Error ? err.message : "Greška pri kreiranju prodaje";
+            setError(msg);
+            toast.error(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -306,11 +317,7 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
                                 style={{ marginTop: '0.25rem', marginBottom: 0 }}
                                 aria-label={`Artikal ${i + 1}`}
                             >
-                                {artikli.map((a) => (
-                                    <option key={a.id} value={a.id}>
-                                        {a.naziv} — {a.cena} RSD
-                                    </option>
-                                ))}
+                                {artikalOptions}
                             </select>
                         </div>
 

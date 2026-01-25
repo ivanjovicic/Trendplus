@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+﻿import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
@@ -14,8 +14,14 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
-        secure: false
-      }
+          secure: false,
+          ws: false
+        },
+        "/health": {
+            target: "http://localhost:8080",
+            changeOrigin: true,
+            secure: false
+        }
     }
   }
 })

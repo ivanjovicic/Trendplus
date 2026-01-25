@@ -1,4 +1,5 @@
-﻿import { useCallback, useEffect, useState } from "react";
+﻿/* eslint-disable react-hooks/set-state-in-effect */
+import { useCallback, useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { checkAnalyticsHealth, getInventoryStatus, getSalesSummary, getTopProducts } from "../services/analyticsApi";
 import type { InventoryStatus, SalesSummary, TopProductsResult } from "../types/analytics";
@@ -71,8 +72,18 @@ interface AlertItem {
 const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#10b981', '#6366f1', '#f97316'];
 
 export default function AnalyticsDashboard() {
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
+  const [fromDate, setFromDate] = useState<string>(() => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - 30);
+    start.setHours(0, 0, 0, 0);
+    return start.toISOString().slice(0, 16);
+  });
+  const [toDate, setToDate] = useState<string>(() => {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return end.toISOString().slice(0, 16);
+  });
   const [top] = useState(10);
   const [lowStockThreshold] = useState(2);
   const [dateRangePreset, setDateRangePreset] = useState<string>("30d");
@@ -139,10 +150,6 @@ export default function AnalyticsDashboard() {
     setToDate(end.toISOString().slice(0, 16));
   }, []);
 
-  useEffect(() => {
-    applyDateRangePreset("30d");
-  }, [applyDateRangePreset]);
-
   const load = useCallback(async () => {
     setLoading(true);
     setErrors({});
@@ -160,7 +167,7 @@ export default function AnalyticsDashboard() {
     }
 
     try {
-      const s = await getSalesSummary(fromDate || undefined, toDate || undefined);
+      const s = await getSalesSummary(fromDate || undefined, toDate || undefined, true); // Dodaj parametar za cached
       setSummary(s);
     } catch (e: unknown) {
       newErrors.summary = e instanceof Error ? e.message : "Greška pri učitavanju sažetka prodaje";
@@ -168,7 +175,7 @@ export default function AnalyticsDashboard() {
     }
 
     try {
-      const t = await getTopProducts(top, fromDate || undefined, toDate || undefined);
+      const t = await getTopProducts(top, fromDate || undefined, toDate || undefined, true); // Dodaj parametar za cached
       setTopProducts(t);
     } catch (e: unknown) {
       newErrors.topProducts = e instanceof Error ? e.message : "Greška pri učitavanju top proizvoda";
@@ -176,7 +183,7 @@ export default function AnalyticsDashboard() {
     }
 
     try {
-      const i = await getInventoryStatus(lowStockThreshold);
+      const i = await getInventoryStatus(lowStockThreshold, true); // Dodaj parametar za cached
       setInventory(i);
     } catch (e: unknown) {
       newErrors.inventory = e instanceof Error ? e.message : "Greška pri učitavanju statusa zaliha";
@@ -249,7 +256,7 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => {
     if (fromDate && toDate) {
-      load();
+      void load();
     }
   }, [load, fromDate, toDate]);
 

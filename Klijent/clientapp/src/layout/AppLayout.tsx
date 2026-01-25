@@ -2,13 +2,15 @@
 import { Link } from "react-router-dom";
 import AutoReloadOnBackendOnline from "../components/AutoReloadOnBackendOnline";
 import WorkerStatusAlert from "../components/WorkerStatusAlert";
+import SeasonalImageCarousel from "../components/trendshoes/SeasonalImageCarousel";
+import Footer from "../components/Footer";
 import { BackendStatusContext } from "../context/BackendStatusContext";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { online } = useContext(BackendStatusContext);
 
     return (
-        <div style={{ minHeight: "100vh", background: "#f3f4f6" }}>
+        <div style={{ minHeight: "100vh", background: "#f3f4f6", display: "flex", flexDirection: "column" }}>
             <AutoReloadOnBackendOnline />
             <WorkerStatusAlert />
 
@@ -34,7 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
             </header>
 
-            <main style={{ maxWidth: 1200, margin: "1.5rem auto", padding: "0 1rem" }}>
+            <main style={{ maxWidth: 1200, margin: "1.5rem auto", padding: "0 1rem", flex: 1, width: "100%" }}>
                 <nav
                     style={{
                         marginBottom: "1rem",
@@ -45,9 +47,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/" className="button-small">
                         Početna
                     </Link>
-                    {/*<Link to="/artikli" className="button-small">*/}
-                    {/*    Kreiraj artikal*/}
-                    {/*</Link>*/}
                     <Link to="/artikli/lista" className="button-small">
                         Pregled/izmene artikala
                     </Link>
@@ -95,7 +94,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </nav>
 
                 {children}
+
+                <SeasonalImageCarousel />
             </main>
+
+            <Footer />
         </div>
     );
 }

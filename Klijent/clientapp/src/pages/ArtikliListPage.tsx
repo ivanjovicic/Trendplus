@@ -15,6 +15,10 @@ type ArtikalListItem = {
   nabavnaCena?: number | null;
 };
 
+const CACHE_KEY_ARTIKLI_PAGED = "cached_artikli_paged_";
+const CACHE_KEY_TOTAL_COUNT = "cached_artikli_total_count_";
+const CACHE_KEY_SEZONE = "cached_sezone";
+
 export default function ArtikliListPage() {
   const [artikli, setArtikli] = useState<ArtikalListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -66,8 +70,16 @@ export default function ArtikliListPage() {
 
     const loadSezone = async () => {
       try {
+        const cached = localStorage.getItem(CACHE_KEY_SEZONE);
+        if (cached) {
+          setSezone(JSON.parse(cached));
+        }
+
         const sezoneData = await getSezone();
-        if (!aborted) setSezone(sezoneData ?? []);
+        if (!aborted) {
+          setSezone(sezoneData ?? []);
+          localStorage.setItem(CACHE_KEY_SEZONE, JSON.stringify(sezoneData));
+        }
       } catch {
         // best-effort
       }
@@ -81,7 +93,7 @@ export default function ArtikliListPage() {
   }, []);
 
   const filters = useMemo(() => {
-    const f: any = {};
+    const f: Record<string, string | number | boolean> = {};
 
     if (searchNaziv.trim()) f.naziv = searchNaziv.trim();
     if (filterSezona !== "") f.sezonaId = filterSezona;
@@ -92,7 +104,7 @@ export default function ArtikliListPage() {
     if (filterMaxKolicina) f.maxKolicina = Number(filterMaxKolicina);
 
     f.sortBy = sortBy;
-    f.sortDir = sortDir;
+    f.sortDir = sortDir === "asc"; // explicitly bool or string as needed by API
 
     return f;
   }, [searchNaziv, filterSezona, filterMinCena, filterMaxCena, filterMinKolicina, filterMaxKolicina, sortBy, sortDir]);
@@ -106,7 +118,20 @@ export default function ArtikliListPage() {
     let aborted = false;
 
     const load = async () => {
-      setLoading(true);
+      const filterKey = JSON.stringify({ pageNumber, pageSize, ...filters });
+      
+      const sessionCached = sessionStorage.getItem(CACHE_KEY_ARTIKLI_PAGED + filterKey);
+      const sessionTotal = sessionStorage.getItem(CACHE_KEY_TOTAL_COUNT + filterKey);
+
+      if (sessionCached && sessionTotal) {
+        setArtikli(JSON.parse(sessionCached));
+        setTotalCount(Number(sessionTotal));
+        setLoading(false);
+      }
+
+      if (!sessionCached) {
+        setLoading(true);
+      }
       setError(null);
 
       try {
@@ -115,10 +140,17 @@ export default function ArtikliListPage() {
 
         setArtikli(data.items ?? []);
         setTotalCount(data.totalCount ?? 0);
-      } catch (e: any) {
+
+        try {
+          sessionStorage.setItem(CACHE_KEY_ARTIKLI_PAGED + filterKey, JSON.stringify(data.items));
+          sessionStorage.setItem(CACHE_KEY_TOTAL_COUNT + filterKey, String(data.totalCount));
+        } catch {
+          sessionStorage.clear();
+        }
+      } catch (e: unknown) {
         if (aborted) return;
         console.error(e);
-        setError(e?.message ?? "Greška pri učitavanju podataka.");
+        setError(e instanceof Error ? e.message : "Greška pri učitavanju podataka.");
       } finally {
         if (!aborted) setLoading(false);
       }

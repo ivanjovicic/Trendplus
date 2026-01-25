@@ -30,43 +30,64 @@ export default function ArtikalEditPage() {
 
         const load = async () => {
             try {
-                // 1) šifre (tipovi, dobavljači)
-                const [tipRes, dobRes] = await Promise.all([
-                    fetch(`${API}/api/tipovi-obuce`, { signal: controller.signal }),
-                    fetch(`${API}/api/dobavljaci`, { signal: controller.signal }),
-                ]);
+                // 1) šifre (tipovi, dobavljači) - Try cache first
+                const cachedTipovi = localStorage.getItem("cached_tipovi_obuce");
+                const cachedDobavljaci = localStorage.getItem("cached_dobavljaci");
 
-                if (!tipRes.ok || !dobRes.ok) {
-                    throw new Error("Ne mogu da učitam šifre.");
-                }
+                if (cachedTipovi) setTipovi(JSON.parse(cachedTipovi));
+                if (cachedDobavljaci) setDobavljaci(JSON.parse(cachedDobavljaci));
 
-                const [tipJson, dobJson] = await Promise.all([tipRes.json(), dobRes.json()]);
-                if (aborted) return;
+                const fetchLookups = async () => {
+                    try {
+                        const [tipRes, dobRes] = await Promise.all([
+                            fetch(`${API}/api/tipovi-obuce`, { signal: controller.signal }),
+                            fetch(`${API}/api/dobavljaci`, { signal: controller.signal }),
+                        ]);
 
-                setTipovi(tipJson ?? []);
-                setDobavljaci(dobJson ?? []);
-                setLoadingArtikal(false);
+                        if (tipRes.ok && dobRes.ok) {
+                            const [tipJson, dobJson] = await Promise.all([tipRes.json(), dobRes.json()]);
+                            if (aborted) return;
 
-                // 2) artikal
-                const artikal = await getArtikal(artikalId);
-                if (aborted) return;
-
-                const data: ArtikalFormData = {
-                    naziv: artikal.naziv,
-                    prodajnaCena: artikal.prodajnaCena,
-                    nabavnaCena: artikal.nabavnaCena ?? null,
-                    nabavnaCenaDin: artikal.nabavnaCenaDin ?? null,
-                    prvaProdajnaCena: artikal.prvaProdajnaCena ?? null,
-                    kolicina: artikal.kolicina ?? null,
-                    komentar: artikal.komentar ?? null,
-                    tipObuceId: artikal.tipObuceId ?? null,
-                    dobavljacId: artikal.dobavljacId ?? null,
-                    idSezona: artikal.idSezona ?? null,
+                            setTipovi(tipJson ?? []);
+                            setDobavljaci(dobJson ?? []);
+                            localStorage.setItem("cached_tipovi_obuce", JSON.stringify(tipJson));
+                            localStorage.setItem("cached_dobavljaci", JSON.stringify(dobJson));
+                        }
+                    } catch (e) {
+                        console.warn("Lookup fetch failed", e);
+                    }
                 };
 
+<<<<<<< HEAD
                 setInitialData(data);
                 setCurrentImagePath(artikal.imagePath ?? null);
                 setLoadingArtikal(false);
+=======
+                // 2) artikal
+                const fetchArtikalData = async () => {
+                    const artikal = await getArtikal(artikalId);
+                    if (aborted) return;
+
+                    const data: ArtikalFormData = {
+                        naziv: artikal.naziv,
+                        prodajnaCena: artikal.prodajnaCena,
+                        nabavnaCena: artikal.nabavnaCena ?? null,
+                        nabavnaCenaDin: artikal.nabavnaCenaDin ?? null,
+                        prvaProdajnaCena: artikal.prvaProdajnaCena ?? null,
+                        kolicina: artikal.kolicina ?? null,
+                        komentar: artikal.komentar ?? null,
+                        tipObuceId: artikal.tipObuceId ?? null,
+                        dobavljacId: artikal.dobavljacId ?? null,
+                        idSezona: artikal.idSezona ?? null,
+                    };
+
+                    setInitialData(data);
+                    setLoadingArtikal(false);
+                };
+
+                await Promise.all([fetchLookups(), fetchArtikalData()]);
+
+>>>>>>> 2751d0c254398484687980abcfa8e98cc986ca99
             } catch (e: unknown) {
                 if (e instanceof DOMException && e.name === "AbortError") return;
                 if (typeof e === "object" && e !== null && "name" in e && (e as { name?: string }).name === "AbortError") return;

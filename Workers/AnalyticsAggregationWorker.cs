@@ -1,5 +1,6 @@
 ﻿using Application.Artikli.Common.Interfaces;
 using Infrastructure.Services;
+using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -81,6 +82,7 @@ public class AnalyticsAggregationWorker : BackgroundService
         
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ITrendplusDbContext>();
+        var cache = scope.ServiceProvider.GetService<IAnalyticsCacheService>();
 
         try
         {
@@ -112,6 +114,13 @@ public class AnalyticsAggregationWorker : BackgroundService
 
             // Refresh top products (only for today)
             await RefreshTopProductsAsync(connection, today, ct);
+
+            // === CACHE INVALIDATION ===
+            if (cache != null)
+            {
+                await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
+                _logger.LogInformation("Analytics cache invalidated after refresh.");
+            }
 
             stopwatch.Stop();
             _logger.LogInformation("✅ Analytics refresh completed in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
