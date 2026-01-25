@@ -1,5 +1,6 @@
 ﻿using Application.Artikli.Common.Interfaces;
 using Domain.Model;
+using Domain.Model.Analytics;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -80,6 +81,56 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => e.SaleId);
                 entity.HasIndex(e => new { e.ProductId, e.SaleId });
             });
+
+            // Global Trends Tables
+            modelBuilder.Entity<EuTrend>(entity =>
+            {
+                entity.ToTable("EuTrends");
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.Embedding)
+                      .HasColumnType("vector(512)");
+                
+                entity.HasIndex(e => e.Category);
+                entity.HasIndex(e => e.Brand);
+                entity.HasIndex(e => e.Rank);
+                entity.HasIndex(e => e.Season);
+                entity.HasIndex(e => e.UpdatedAt);
+            });
+
+            modelBuilder.Entity<SocialTrend>(entity =>
+            {
+                entity.ToTable("SocialTrends");
+                entity.HasKey(e => e.Id);
+                
+                entity.HasIndex(e => new { e.Category, e.Hashtag }).IsUnique();
+                entity.HasIndex(e => e.Category);
+                entity.HasIndex(e => e.Hashtag);
+                entity.HasIndex(e => e.TiktokGrowth);
+                entity.HasIndex(e => e.UpdatedAt);
+            });
+
+            modelBuilder.Entity<GlobalTrendScore>(entity =>
+            {
+                entity.ToTable("GlobalTrendScores");
+                entity.HasKey(e => e.Id);
+                
+                entity.HasIndex(e => e.LocalProductId).IsUnique();
+                entity.HasIndex(e => e.FinalGlobalScore);
+                entity.HasIndex(e => e.EuTrendScore);
+                entity.HasIndex(e => e.SocialTrendScore);
+                entity.HasIndex(e => e.UpdatedAt);
+            });
+
+            modelBuilder.Entity<TrendHistory>(entity =>
+            {
+                entity.ToTable("TrendHistory");
+                entity.HasKey(e => e.Id);
+                
+                entity.HasIndex(e => new { e.LocalProductId, e.Date }).IsUnique();
+                entity.HasIndex(e => e.LocalProductId);
+                entity.HasIndex(e => e.Date);
+            });
         }
 
         public DbSet<ProductsDim> ProductsDim => Set<ProductsDim>();
@@ -87,6 +138,12 @@ namespace Infrastructure.DbContexts
         public DbSet<PerformanceLog> PerformanceLogs => Set<PerformanceLog>();
         public DbSet<SalesFact> SalesFacts => Set<SalesFact>();
         public DbSet<SalesLineFact> SalesLineFacts => Set<SalesLineFact>();
+        
+        // Global Trends
+        public DbSet<EuTrend> EuTrends => Set<EuTrend>();
+        public DbSet<SocialTrend> SocialTrends => Set<SocialTrend>();
+        public DbSet<GlobalTrendScore> GlobalTrendScores => Set<GlobalTrendScore>();
+        public DbSet<TrendHistory> TrendHistories => Set<TrendHistory>();
 
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }

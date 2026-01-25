@@ -12,6 +12,7 @@ namespace Application.Artikli.Common.Interfaces
     public interface ITrendplusDbContext
     {
         DbSet<Domain.Model.Artikli> Artikli { get; }
+        DbSet<Domain.Model.ProductImage> ProductImages { get; } // NEW: Image embeddings
         DbSet<Domain.Model.TipObuce> TipoviObuce { get; }
         DbSet<Dobavljac> Dobavljaci { get; }
         DbSet<Domain.Model.CreatedIdDto> CreatedIds { get; }

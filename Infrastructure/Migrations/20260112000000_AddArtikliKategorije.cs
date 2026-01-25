@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,48 +10,76 @@ namespace Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Kategorija",
-                table: "Artikli",
-                type: "text",
-                nullable: true);
+            // Add Kategorija column if it doesn't exist
+            migrationBuilder.Sql(@"
+                DO $$ 
+                BEGIN 
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'Artikli' AND column_name = 'Kategorija'
+                    ) THEN
+                        ALTER TABLE ""Artikli"" ADD COLUMN ""Kategorija"" text;
+                    END IF;
+                END $$;
+            ");
 
-            migrationBuilder.AddColumn<string>(
-                name: "Pol",
-                table: "Artikli",
-                type: "text",
-                nullable: true);
+            // Add Pol column if it doesn't exist
+            migrationBuilder.Sql(@"
+                DO $$ 
+                BEGIN 
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'Artikli' AND column_name = 'Pol'
+                    ) THEN
+                        ALTER TABLE ""Artikli"" ADD COLUMN ""Pol"" text;
+                    END IF;
+                END $$;
+            ");
 
-            migrationBuilder.AddColumn<string>(
-                name: "Boja",
-                table: "Artikli",
-                type: "text",
-                nullable: true);
+            // Add Velicina column if it doesn't exist
+            migrationBuilder.Sql(@"
+                DO $$ 
+                BEGIN 
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'Artikli' AND column_name = 'Velicina'
+                    ) THEN
+                        ALTER TABLE ""Artikli"" ADD COLUMN ""Velicina"" text;
+                    END IF;
+                END $$;
+            ");
 
-            migrationBuilder.AddColumn<int>(
-                name: "MinimalnaKolicina",
-                table: "Artikli",
-                type: "integer",
-                nullable: true);
+            // Add Boja column if it doesn't exist
+            migrationBuilder.Sql(@"
+                DO $$ 
+                BEGIN 
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'Artikli' AND column_name = 'Boja'
+                    ) THEN
+                        ALTER TABLE ""Artikli"" ADD COLUMN ""Boja"" text;
+                    END IF;
+                END $$;
+            ");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
+                name: "Boja",
+                table: "Artikli");
+
+            migrationBuilder.DropColumn(
+                name: "Velicina",
+                table: "Artikli");
+
+            migrationBuilder.DropColumn(
                 name: "Kategorija",
                 table: "Artikli");
 
             migrationBuilder.DropColumn(
                 name: "Pol",
-                table: "Artikli");
-
-            migrationBuilder.DropColumn(
-                name: "Boja",
-                table: "Artikli");
-
-            migrationBuilder.DropColumn(
-                name: "MinimalnaKolicina",
                 table: "Artikli");
         }
     }

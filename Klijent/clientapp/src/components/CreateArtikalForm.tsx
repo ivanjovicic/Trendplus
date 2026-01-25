@@ -2,9 +2,11 @@
 import { createTipObuce } from "../services/tipoviObuceApi";
 import { createDobavljac } from "../services/dobavljaciApi";
 import { getSezone } from "../services/sezoneApi";
+import { uploadImage, deleteProductImage, getImageUrl } from "../services/uploadApi";
 import type { Sezona } from "../types/Sezona";
 import React, { useState, useEffect, useRef } from "react";
 import Modal from "./Modal";
+import ImageUpload from "./ImageUpload";
 import { useToast } from "./Toast";
 
 export interface CreateArtikalFormProps {
@@ -13,6 +15,9 @@ export interface CreateArtikalFormProps {
     onSubmit: (data: ArtikalFormData) => Promise<number | void>;
     initialData?: ArtikalFormData;
     mode?: "create" | "edit";
+    artikalId?: number; // NEW: For image upload
+    currentImagePath?: string | null; // NEW: Current image
+    onImageChange?: (imagePath: string | null) => void; // NEW: Callback when image changes
 }
 
 export default function CreateArtikalForm({
@@ -21,11 +26,23 @@ export default function CreateArtikalForm({
     onSubmit,
     initialData,
     mode = "create",
+    artikalId,
+    currentImagePath: initialImagePath,
+    onImageChange,
 }: CreateArtikalFormProps) {
     const toast = useToast();
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [sezone, setSezone] = useState<Sezona[]>([]);
     const nazivRef = useRef<HTMLInputElement>(null);
+
+    // Image state
+    const [currentImagePath, setCurrentImagePath] = useState<string | null>(initialImagePath ?? null);
+    const [uploading, setUploading] = useState(false);
+
+    // Sync image path from props
+    useEffect(() => {
+        setCurrentImagePath(initialImagePath ?? null);
+    }, [initialImagePath]);
 
     // Local copies of tipoviObuce and dobavljaci for inline additions
     const [localTipoviObuce, setLocalTipoviObuce] = useState(tipoviObuce);
@@ -80,20 +97,13 @@ export default function CreateArtikalForm({
     // Validation state
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Modal state for adding new tip/dobavljac
+    // Modal state for adding new tip/dobavljač
     const [showNewTipModal, setShowNewTipModal] = useState(false);
     const [showNewDobModal, setShowNewDobModal] = useState(false);
     const [newTip, setNewTip] = useState("");
     const [newDob, setNewDob] = useState("");
     const [isCreatingTip, setIsCreatingTip] = useState(false);
     const [isCreatingDob, setIsCreatingDob] = useState(false);
-
-    // Auto-focus on mount
-    useEffect(() => {
-        if (mode === "create" && nazivRef.current) {
-            nazivRef.current.focus();
-        }
-    }, [mode]);
 
     // Real-time validation
     const validateField = (field: string, value: string): string | null => {
@@ -233,6 +243,7 @@ export default function CreateArtikalForm({
             console.error(e);
         } finally {
             setIsSubmitting(false);
+            setUploading(false);
         }
     };
 
@@ -254,6 +265,48 @@ export default function CreateArtikalForm({
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, [naziv, prodajnaCena, nabavnaCena, kolicina, selectedTip, selectedDobavljac]);
+
+    // Image upload handlers
+    const handleImageUpload = async (formData: FormData) => {
+        if (!artikalId || mode === "create") {
+            toast.error("Morate prvo sačuvati artikal pre dodavanja slike");
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const result = await uploadImage(formData, artikalId);
+            setCurrentImagePath(result.fileName);
+            onImageChange?.(result.fileName);
+            toast.success("Slika uspešno otpremljena! 📸");
+        } catch (error) {
+            console.error("Upload error:", error);
+            toast.error("Greška pri otpremanju slike");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleDeleteImage = async () => {
+        if (!artikalId || mode === "create") {
+            toast.error("Nema slike za brisanje");
+            return;
+        }
+
+        if (!window.confirm("Da li ste sigurni da želite da obrišete sliku?")) {
+            return;
+        }
+
+        try {
+            await deleteProductImage(artikalId);
+            setCurrentImagePath(null);
+            onImageChange?.(null);
+            toast.success("Slika obrisana! 🗑️");
+        } catch (error) {
+            console.error("Delete error:", error);
+            toast.error("Greška pri brisanju slike");
+        }
+    };
 
     return (
         <div 
@@ -644,6 +697,100 @@ export default function CreateArtikalForm({
                                     }}
                                 />
                             </div>
+
+                            {/* IMAGE UPLOAD SECTION - Only in edit mode */}
+                            {mode === "edit" && artikalId && (
+                                <div className="form-full" style={{ marginTop: "1rem" }}>
+                                    <div style={{
+                                        background: "white",
+                                        padding: "1.5rem",
+                                        borderRadius: "12px",
+                                        border: "2px solid #fbbf24",
+                                    }}>
+                                        <h4 style={{ 
+                                            fontSize: "1rem", 
+                                            fontWeight: 600, 
+                                            marginBottom: "1rem", 
+                                            color: "#78350f",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px"
+                                        }}>
+                                            <span>📸</span>
+                                            Slika artikla
+                                        </h4>
+
+                                        {/* Current Image Display */}
+                                        {currentImagePath && (
+                                            <div style={{ marginBottom: "1.5rem" }}>
+                                                <div style={{
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    alignItems: "center",
+                                                    marginBottom: "0.75rem",
+                                                }}>
+                                                    <span style={{ fontSize: "0.875rem", color: "#78350f", fontWeight: 600 }}>
+                                                        Trenutna slika
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDeleteImage}
+                                                        style={{
+                                                            background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                                                            color: "white",
+                                                            padding: "6px 12px",
+                                                            borderRadius: "6px",
+                                                            border: "none",
+                                                            cursor: "pointer",
+                                                            fontSize: "0.75rem",
+                                                            fontWeight: 600,
+                                                        }}
+                                                    >
+                                                        🗑️ Obriši
+                                                    </button>
+                                                </div>
+                                                <img
+                                                    src={getImageUrl(currentImagePath) || ""}
+                                                    alt="Product"
+                                                    style={{
+                                                        maxWidth: "100%",
+                                                        maxHeight: "300px",
+                                                        borderRadius: "8px",
+                                                        border: "1px solid #d1d5db",
+                                                        objectFit: "contain",
+                                                        display: "block",
+                                                        margin: "0 auto",
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Upload Component */}
+                                        <ImageUpload
+                                            onUpload={handleImageUpload}
+                                            label={currentImagePath ? "Promeni sliku" : "Dodaj sliku"}
+                                            buttonText={currentImagePath ? "📷 Promeni" : "📷 Dodaj sliku"}
+                                            showPreview={true}
+                                        />
+
+                                        {uploading && (
+                                            <div style={{
+                                                marginTop: "1rem",
+                                                padding: "0.75rem",
+                                                background: "#eff6ff",
+                                                border: "1px solid #3b82f6",
+                                                borderRadius: "8px",
+                                                textAlign: "center",
+                                                color: "#1e40af",
+                                                fontWeight: 600,
+                                                fontSize: "0.875rem"
+                                            }}>
+                                                ⏳ Otpremam sliku...
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

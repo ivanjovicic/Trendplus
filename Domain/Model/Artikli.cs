@@ -23,15 +23,44 @@ namespace Domain.Model
         public string? Boja { get; set; }       // Boja cipela (npr. "Crna", "Braon", "Bela")
         
         public int? Kolicina { get; set; }
-        public int? MinimalnaKolicina { get; set; } // NEW: Za analytics i reorder suggestions
+        public int? MinimalnaKolicina { get; set; } // Za analytics i reorder suggestions
         public string? Komentar { get; set; }
         public int? IDObjekat { get; set; }
         public int? IDSezona { get; set; }
         public DateTime UpdatedAt { get; set; }
         
-        // NEW: Kategorije za analitiku
+        // Kategorije za analitiku
         public string? Kategorija { get; set; } // "Patike", "Cipele", "Sandale", "Čizme", "Ostalo"
         public string? Pol { get; set; } // "Muško", "Žensko", "Dečije", "Unisex"
+        
+        // Image support
+        public string? ImagePath { get; set; } // Path to main product image
+        
+        // Navigation property for multiple images
+        public ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();
     }
 
+    /// <summary>
+    /// Stores product images with AI embeddings for similarity search
+    /// </summary>
+    public class ProductImage
+    {
+        [Key]
+        public Guid Id { get; set; }
+        
+        public int ProductId { get; set; }
+        public Artikli Product { get; set; } = null!;
+        
+        public string FileName { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Vector embedding for image similarity search (512 dimensions)
+        /// Stored as float array, mapped to pgvector in PostgreSQL via Pgvector.EntityFrameworkCore
+        /// </summary>
+        public float[]? Embedding { get; set; }
+        
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        public bool IsPrimary { get; set; } = false;
+    }
 }

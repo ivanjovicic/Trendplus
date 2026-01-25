@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+﻿import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import AppLayout from "./layout/AppLayout";
 import ArtikliPage from "./pages/ArtikliPage";
@@ -22,6 +22,8 @@ import { CircuitBreakerStatus } from "./components/CircuitBreakerStatus";
 import PovracajPage from "./pages/PovracajPage";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import AnalyticsDetails from "./pages/AnalyticsDetails";
+import ImageUploadTestPage from "./pages/ImageUploadTestPage";
+import GlobalTrendsPage from "./pages/GlobalTrendsPage";
 
 function AppShell() {
     return (
@@ -45,6 +47,8 @@ function AppShell() {
             <Route path="/tipovi-obuce" element={<TipObucePage />} />
             <Route path="/dobavljaci" element={<DobavljaciPage />} />
             <Route path="/povracaj" element={<PovracajPage />} />
+            <Route path="/image-upload-test" element={<ImageUploadTestPage />} />
+            <Route path="/global-trends" element={<GlobalTrendsPage />} />
         </Routes>
     );
 }

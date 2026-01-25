@@ -13,6 +13,9 @@ export default function ArtikalEditPage() {
     const [loadingArtikal, setLoadingArtikal] = React.useState(true);
     const [initialData, setInitialData] = React.useState<ArtikalFormData | null>(null);
     const [error, setError] = React.useState<string | null>(null);
+    
+    // Image state
+    const [currentImagePath, setCurrentImagePath] = React.useState<string | null>(null);
 
     const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -62,6 +65,7 @@ export default function ArtikalEditPage() {
                 };
 
                 setInitialData(data);
+                setCurrentImagePath(artikal.imagePath ?? null);
                 setLoadingArtikal(false);
             } catch (e: unknown) {
                 if (e instanceof DOMException && e.name === "AbortError") return;
@@ -104,6 +108,9 @@ export default function ArtikalEditPage() {
             initialData={initialData}
             onSubmit={handleEditSubmit}
             mode="edit"
+            artikalId={artikalId}
+            currentImagePath={currentImagePath}
+            onImageChange={setCurrentImagePath}
         />
     );
 }
