@@ -574,6 +574,122 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
       )}
+
+      {/* Top Products Tables - RESPONSIVE */}
+      {!loading && topProducts && (topProducts.byRevenue?.length > 0 || topProducts.byUnits?.length > 0) && (
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 400px), 1fr))", 
+          gap: 20, 
+          marginBottom: 20 
+        }}>
+          {/* Top by Revenue */}
+          {topProducts.byRevenue && topProducts.byRevenue.length > 0 && (
+            <div className="card" style={{ margin: 0, overflow: "hidden" }}>
+              <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>💰 Top proizvodi po prometu</h3>
+              <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <table style={{ 
+                  width: "100%", 
+                  borderCollapse: "collapse", 
+                  fontSize: "0.8125rem",
+                  minWidth: "350px"
+                }}>
+                  <thead>
+                    <tr style={{ background: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                      <th style={{ padding: "10px 8px", textAlign: "left", fontWeight: 600, whiteSpace: "nowrap" }}>Artikal</th>
+                      <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>Vel.</th>
+                      <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>Boja</th>
+                      <th style={{ padding: "10px 8px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>Promet</th>
+                      <th style={{ padding: "10px 8px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>Kom</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topProducts.byRevenue.map((p, idx) => (
+                      <tr key={`rev-${idx}`} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                        <td style={{ 
+                          padding: "10px 8px", 
+                          fontWeight: 600,
+                          maxWidth: "180px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap"
+                        }} title={p.productName}>
+                          {p.productName}
+                        </td>
+                        <td style={{ padding: "10px 8px", textAlign: "center", color: "#6b7280" }}>
+                          {p.velicina || "-"}
+                        </td>
+                        <td style={{ padding: "10px 8px", textAlign: "center", color: "#6b7280" }}>
+                          {p.boja || "-"}
+                        </td>
+                        <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: 700, color: "#059669", whiteSpace: "nowrap" }}>
+                          {formatCurrency(p.totalRevenue)}
+                        </td>
+                        <td style={{ padding: "10px 8px", textAlign: "right", color: "#6b7280" }}>
+                          {p.totalUnits}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Top by Units */}
+          {topProducts.byUnits && topProducts.byUnits.length > 0 && (
+            <div className="card" style={{ margin: 0, overflow: "hidden" }}>
+              <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>📦 Top proizvodi po količini</h3>
+              <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <table style={{ 
+                  width: "100%", 
+                  borderCollapse: "collapse", 
+                  fontSize: "0.8125rem",
+                  minWidth: "350px"
+                }}>
+                  <thead>
+                    <tr style={{ background: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                      <th style={{ padding: "10px 8px", textAlign: "left", fontWeight: 600, whiteSpace: "nowrap" }}>Artikal</th>
+                      <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>Vel.</th>
+                      <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>Boja</th>
+                      <th style={{ padding: "10px 8px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>Kom</th>
+                      <th style={{ padding: "10px 8px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>Promet</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topProducts.byUnits.map((p, idx) => (
+                      <tr key={`units-${idx}`} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                        <td style={{ 
+                          padding: "10px 8px", 
+                          fontWeight: 600,
+                          maxWidth: "180px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap"
+                        }} title={p.productName}>
+                          {p.productName}
+                        </td>
+                        <td style={{ padding: "10px 8px", textAlign: "center", color: "#6b7280" }}>
+                          {p.velicina || "-"}
+                        </td>
+                        <td style={{ padding: "10px 8px", textAlign: "center", color: "#6b7280" }}>
+                          {p.boja || "-"}
+                        </td>
+                        <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: 700, color: "#3b82f6" }}>
+                          {p.totalUnits}
+                        </td>
+                        <td style={{ padding: "10px 8px", textAlign: "right", color: "#6b7280", whiteSpace: "nowrap" }}>
+                          {formatCurrency(p.totalRevenue)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

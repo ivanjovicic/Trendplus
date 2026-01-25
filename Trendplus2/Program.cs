@@ -23,12 +23,14 @@ using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using MediatR;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using Serilog.Events;
 using System.Globalization;
+using System.Threading.RateLimiting;
 using Trendplus2;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
@@ -129,6 +131,92 @@ try
     builder.Services.AddScoped<PexelsService>();
     builder.Services.AddSingleton<IAnalyticsCacheService, HybridCacheService>();
 
+    // ================= RATE LIMITING =================
+    builder.Services.AddRateLimiter(options =>
+    {
+        // Global rejection handler
+        options.OnRejected = async (context, cancellationToken) =>
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            context.HttpContext.Response.ContentType = "application/json";
+            
+            var retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfterValue)
+                ? retryAfterValue.TotalSeconds
+                : 60;
+            
+            context.HttpContext.Response.Headers.RetryAfter = retryAfter.ToString();
+            
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                error = "Too Many Requests",
+                message = "Previše zahteva. Molimo pokušajte ponovo kasnije.",
+                retryAfterSeconds = retryAfter
+            }, cancellationToken);
+            
+            Log.Warning("Rate limit exceeded for {Path} from {IP}", 
+                context.HttpContext.Request.Path,
+                context.HttpContext.Connection.RemoteIpAddress);
+        };
+
+        // 1. FIXED WINDOW - General API endpoints (100 requests per minute)
+        options.AddFixedWindowLimiter("fixed", opt =>
+        {
+            opt.PermitLimit = 100;
+            opt.Window = TimeSpan.FromMinutes(1);
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 10;
+        });
+
+        // 2. SLIDING WINDOW - Analytics endpoints (more relaxed, 200 requests per minute)
+        options.AddSlidingWindowLimiter("analytics", opt =>
+        {
+            opt.PermitLimit = 200;
+            opt.Window = TimeSpan.FromMinutes(1);
+            opt.SegmentsPerWindow = 4; // 4 segments of 15 seconds
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 20;
+        });
+
+        // 3. CONCURRENCY LIMITER - DB heavy endpoints (max 5 concurrent requests)
+        options.AddConcurrencyLimiter("db-heavy", opt =>
+        {
+            opt.PermitLimit = 5;
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 10;
+        });
+
+        // 4. TOKEN BUCKET - Write operations (steady rate with burst)
+        options.AddTokenBucketLimiter("writes", opt =>
+        {
+            opt.TokenLimit = 20;           // Max tokens in bucket
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 5;
+            opt.ReplenishmentPeriod = TimeSpan.FromSeconds(10);
+            opt.TokensPerPeriod = 5;       // 5 tokens every 10 seconds
+            opt.AutoReplenishment = true;
+        });
+
+        // 5. STRICT - Seed/Admin operations (very limited)
+        options.AddFixedWindowLimiter("strict", opt =>
+        {
+            opt.PermitLimit = 5;
+            opt.Window = TimeSpan.FromMinutes(5);
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 2;
+        });
+
+        // 6. EXTERNAL API - For Pexels/Unsplash (respect their limits)
+        options.AddTokenBucketLimiter("external-api", opt =>
+        {
+            opt.TokenLimit = 50;           // Pexels allows 200/hour
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 5;
+            opt.ReplenishmentPeriod = TimeSpan.FromMinutes(1);
+            opt.TokensPerPeriod = 3;       // ~180/hour
+            opt.AutoReplenishment = true;
+        });
+    });
+
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
@@ -173,7 +261,10 @@ try
     // 1. Global exception handler (first in pipeline)
     app.UseMiddleware<GlobalExceptionMiddleware>();
 
-    // 2. Serilog request logging
+    // 2. Rate Limiting (before other middleware)
+    app.UseRateLimiter();
+
+    // 3. Serilog request logging
     app.UseSerilogRequestLogging(opts =>
     {
         opts.EnrichDiagnosticContext = (diag, http) =>
@@ -186,7 +277,7 @@ try
         };
     });
     app.MapCachedAnalyticsEndpoints();
-    // 3. Static files & routing
+    // 4. Static files & routing
     app.UseDefaultFiles();
     app.UseStaticFiles();
     app.UseRouting();
@@ -206,7 +297,30 @@ try
     // Circuit Breaker Status
     app.MapCircuitBreakerEndpoints();
 
-    // Health
+    // Rate Limiting Info endpoint
+    app.MapGet("/api/rate-limits", () =>
+    {
+        return Results.Ok(new
+        {
+            policies = new[]
+            {
+                new { name = "fixed", description = "General API (100 req/min)", strategy = "Fixed Window" },
+                new { name = "analytics", description = "Analytics endpoints (200 req/min)", strategy = "Sliding Window" },
+                new { name = "db-heavy", description = "DB intensive (5 concurrent)", strategy = "Concurrency" },
+                new { name = "writes", description = "Write operations (20 tokens, 5 per 10s)", strategy = "Token Bucket" },
+                new { name = "strict", description = "Admin operations (5 per 5 min)", strategy = "Fixed Window" },
+                new { name = "external-api", description = "External APIs (50 tokens, 3 per min)", strategy = "Token Bucket" }
+            },
+            info = new
+            {
+                retryHeader = "Retry-After",
+                statusCode = 429,
+                message = "Rate limit responses include retry-after header in seconds"
+            }
+        });
+    });
+
+    // Health - No rate limiting (should always be accessible)
     app.MapGet("/health", (IMessageBroker messageBroker, WorkerHealthService workerHealth) =>
     {
         var rabbitMq = messageBroker as RabbitMqMessageBroker;
@@ -237,9 +351,10 @@ try
     {
         var errors = await store.GetAllAsync();
         return Results.Ok(errors);
-    });
+    })
+    .RequireRateLimiting("fixed");
 
-    // Logs
+    // Logs - DB heavy
     app.MapGet("/api/logs", async (
         IErrorStore store,
         ILogger<Program> logger,
@@ -314,7 +429,8 @@ try
                 title: "Database Error"
             );
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
     // Performance
     app.MapGet("/api/performance", async (
@@ -337,7 +453,8 @@ try
         var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate);
         var result = await mediator.Send(query);
         return Results.Ok(result);
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
     // Outbox Stats
     app.MapGet("/api/outbox/stats", async (ITrendplusDbContext db) =>
@@ -375,9 +492,10 @@ try
             },
             recentMessages
         });
-    });
+    })
+    .RequireRateLimiting("analytics");
 
-    // Outbox Messages
+    // Outbox Messages - DB heavy
     app.MapGet("/api/outbox/messages", async (
         ITrendplusDbContext db,
         int pageNumber = 1,
@@ -428,9 +546,10 @@ try
             pageNumber,
             pageSize
         });
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // Outbox Retry
+    // Outbox Retry - Write operation
     app.MapPost("/api/outbox/retry/{id:long}", async (
         long id,
         ITrendplusDbContext db,
@@ -446,9 +565,10 @@ try
 
         logger.OutboxRetry(id);
         return Results.Ok(new { success = true });
-    });
+    })
+    .RequireRateLimiting("writes");
 
-    // Bulk Retry Failed
+    // Bulk Retry Failed - Admin
     app.MapPost("/api/outbox/retry-all-failed", async (
         ITrendplusDbContext db,
         ILogger<Program> logger) =>
@@ -467,9 +587,10 @@ try
 
         logger.BulkRetry(failedMessages.Count);
         return Results.Ok(new { success = true, count = failedMessages.Count });
-    });
+    })
+    .RequireRateLimiting("strict");
 
-    // Purge Processed
+    // Purge Processed - Admin
     app.MapPost("/api/outbox/purge-processed", async (
         ITrendplusDbContext db,
         ILogger<Program> logger,
@@ -486,7 +607,8 @@ try
 
         logger.PurgeProcessed(messagesToDelete.Count, olderThanDays);
         return Results.Ok(new { success = true, count = messagesToDelete.Count });
-    });
+    })
+    .RequireRateLimiting("strict");
 
     // Event Type Stats
     app.MapGet("/api/outbox/stats-by-type", async (ITrendplusDbContext db) =>
@@ -505,11 +627,12 @@ try
             .ToListAsync();
 
         return Results.Ok(stats);
-    });
+    })
+    .RequireRateLimiting("analytics");
 
     // ============ povraćaj ROBE ============
 
-    // Kreiranje povraćaja
+    // Kreiranje povraćaja - Write
     app.MapPost("/api/povracaj", async (
         IMediator mediator,
         ILogger<Program> logger,
@@ -540,9 +663,10 @@ try
                 title: "Greška pri kreiranju povraćaja"
             );
         }
-    });
+    })
+    .RequireRateLimiting("writes");
 
-    // Pregled povraćaja
+    // Pregled povraćaja - DB heavy
     app.MapGet("/api/povracaj", async (
         ITrendplusDbContext db,
         int pageNumber = 1,
@@ -616,9 +740,10 @@ try
                 title: "Greška pri učitavanju povraćaja"
             );
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // Detalji povraćaja sa stavkama
+    // Detalji povraćaja
     app.MapGet("/api/povracaj/{id:int}", async (
         ITrendplusDbContext db,
         int id,
@@ -681,7 +806,8 @@ try
                 title: "Greška pri učitavanju detalja povraćaja"
             );
         }
-    });
+    })
+    .RequireRateLimiting("fixed");
 
     // ============ Analytics (read model) ============
 
@@ -714,7 +840,7 @@ try
                 title: "Analytics database error"
             );
         }
-    });
+    });  // No rate limit for health checks
 
     app.MapGet("/api/analytics/sales/summary", async (
         IMediator mediator,
@@ -730,9 +856,10 @@ try
 
         var result = await mediator.Send(new GetSalesSummaryQuery(fromDate, toDate, storeId));
         return Results.Ok(result);
-    });
+    })
+    .RequireRateLimiting("analytics");
 
-    // NEW: Daily sales for chart
+    // Daily sales for chart - Analytics
     app.MapGet("/api/analytics/sales/daily", async (
         IAnalyticsDbContext db,
         DateTime? fromDate = null,
@@ -781,9 +908,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju dnevne prodaje");
         }
-    });
+    })
+    .RequireRateLimiting("analytics");
 
-    // NEW: Comparison with previous period
+    // Comparison with previous period - Analytics
     app.MapGet("/api/analytics/sales/comparison", async (
         IAnalyticsDbContext db,
         DateTime? fromDate = null,
@@ -857,7 +985,8 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri poređenju perioda");
         }
-    });
+    })
+    .RequireRateLimiting("analytics");
 
     app.MapGet("/api/analytics/sales/top-products", async (
         IMediator mediator,
@@ -874,7 +1003,8 @@ try
 
         var result = await mediator.Send(new GetTopProductsQuery(fromDate, toDate, top, storeId));
         return Results.Ok(result);
-    });
+    })
+    .RequireRateLimiting("analytics");
 
     app.MapGet("/api/analytics/inventory/status", async (
         IMediator mediator,
@@ -882,9 +1012,10 @@ try
     {
         var result = await mediator.Send(new GetInventoryStatusQuery(lowStockThreshold));
         return Results.Ok(result);
-    });
+    })
+    .RequireRateLimiting("analytics");
 
-    // NEW: Sales by Category (Pie Chart Data)
+    // Sales by Category - DB Heavy
     app.MapGet("/api/analytics/sales/by-category", async (
         ITrendplusDbContext db,
         DateTime? fromDate = null,
@@ -922,9 +1053,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju prodaje po kategorijama");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // NEW: Sales by Gender (Pol)
+    // Sales by Gender - DB Heavy
     app.MapGet("/api/analytics/sales/by-gender", async (
         ITrendplusDbContext db,
         DateTime? fromDate = null,
@@ -960,9 +1092,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju prodaje po polu");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // NEW: Sales by Supplier
+    // Sales by Supplier - DB Heavy
     app.MapGet("/api/analytics/sales/by-supplier", async (
         ITrendplusDbContext db,
         DateTime? fromDate = null,
@@ -1003,9 +1136,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju prodaje po dobavljačima");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // NEW: Transaction stats
+    // Transaction stats - DB Heavy
     app.MapGet("/api/analytics/sales/transaction-stats", async (
         ITrendplusDbContext db,
         DateTime? fromDate = null,
@@ -1065,9 +1199,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju statistike transakcija");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // NEW: Sales by payment method
+    // Sales by payment method - DB Heavy
     app.MapGet("/api/analytics/sales/by-payment", async (
         ITrendplusDbContext db,
         DateTime? fromDate = null,
@@ -1122,9 +1257,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju prodaje po načinu plaćanja");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // NEW: Sales by weekday
+    // Sales by weekday - DB Heavy
     app.MapGet("/api/analytics/sales/by-weekday", async (
         ITrendplusDbContext db,
         DateTime? fromDate = null,
@@ -1184,9 +1320,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju prodaje po danima");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // NEW: Sales by hour
+    // Sales by hour - DB Heavy
     app.MapGet("/api/analytics/sales/by-hour", async (
         ITrendplusDbContext db,
         DateTime? fromDate = null,
@@ -1242,9 +1379,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju prodaje po satima");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // NEW: Reorder suggestions
+    // Reorder suggestions - Analytics
     app.MapGet("/api/analytics/reorder-suggestions", async (
         ITrendplusDbContext db,
         CancellationToken ct = default) =>
@@ -1271,9 +1409,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju preporuka za naručivanje");
         }
-    });
+    })
+    .RequireRateLimiting("analytics");
 
-    // NEW: Quick Insights
+    // Quick Insights - DB Heavy
     app.MapGet("/api/analytics/quick-insights", async (
         ITrendplusDbContext db,
         IAnalyticsDbContext analyticsDb,
@@ -1364,9 +1503,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju brzih uvida");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // NEW: Alerts
+    // Alerts - Analytics
     app.MapGet("/api/analytics/alerts", async (
         ITrendplusDbContext db,
         CancellationToken ct = default) =>
@@ -1417,9 +1557,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju obaveštenja");
         }
-    });
+    })
+    .RequireRateLimiting("analytics");
 
-    // NEW: Export Analytics (CSV format for simplicity)
+    // Export Analytics - DB Heavy + Admin
     app.MapGet("/api/analytics/export", async (
         ITrendplusDbContext db,
         DateTime? fromDate = null,
@@ -1482,9 +1623,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri izvozu podataka");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // NEW: Category trends over time
+    // Category trends - DB Heavy
     app.MapGet("/api/analytics/sales/category-trends", async (
         ITrendplusDbContext db,
         DateTime? fromDate = null,
@@ -1562,9 +1704,10 @@ try
         {
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju trendova kategorija");
         }
-    });
+    })
+    .RequireRateLimiting("db-heavy");
 
-    // SEED DATA ENDPOINT - Only for development!
+    // SEED DATA ENDPOINT - Strict (Admin only)
     app.MapPost("/api/seed-data", async (
         ITrendplusDbContext db,
         ILogger<Program> logger) =>
@@ -1705,9 +1848,9 @@ try
             logger.LogError(ex, "Error generating seed data");
             return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri generisanju test podataka");
         }
-    });
+    })
+    .RequireRateLimiting("strict");
    
-
     app.MapAllEndpoints();
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Starting web host on port {port}...");

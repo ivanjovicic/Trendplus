@@ -7,12 +7,15 @@ using Application.Dobavljaci.Queries;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
 using Application.TrendShoes;
+using Domain.Model;
 using Domain.Model.TrendShoes;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
+using Trendplus2.Extensions;
 
 namespace Trendplus2.Endpoints;
 
@@ -21,6 +24,112 @@ public static class AllEndpoints
     public static void MapAllEndpoints(this WebApplication app)
     {
         // ============ ADMIN - RUN ANALYTICS OPTIMIZATION ============
+
+        app.MapPost("/api/admin/sync-analytics-db", async (
+            ITrendplusDbContext trendDb,
+            IAnalyticsDbContext analyticsDb,
+            ILogger<Program> logger,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                logger.LogInformation("🚀 Starting Analytics DB synchronization...");
+
+                // 1. Get all sales from source (Trendplus DB)
+                var sales = await trendDb.ProdajaZaglavlja
+                    .Include(p => p.Stavke)
+                    .AsNoTracking()
+                    .ToListAsync(ct);
+
+                if (!sales.Any())
+                {
+                    return Results.Ok(new { message = "No sales to sync" });
+                }
+
+                logger.LogInformation($"Found {sales.Count} sales to sync.");
+
+                // 2. Get existing SaleIds in Analytics DB to avoid duplicates
+                var existingSaleIds = await analyticsDb.SalesFacts
+                    .Select(s => s.SaleId)
+                    .ToListAsync(ct);
+                
+                var existingSaleIdsSet = new HashSet<int>(existingSaleIds);
+
+                var newSalesFacts = new List<SalesFact>();
+                var newSalesLineFacts = new List<SalesLineFact>();
+
+                int syncedCount = 0;
+
+                foreach (var sale in sales)
+                {
+                    if (existingSaleIdsSet.Contains(sale.Id))
+                    {
+                        continue; // Skip already synced
+                    }
+
+                    // Calculate totals
+                    decimal totalAmount = sale.Stavke.Sum(s => s.Kolicina * s.Cena);
+                    int totalUnits = sale.Stavke.Sum(s => s.Kolicina);
+                    int totalLines = sale.Stavke.Count;
+
+                    // Create Fact
+                    var fact = new SalesFact
+                    {
+                        SaleId = sale.Id,
+                        BrojRacuna = sale.BrojRacuna ?? "N/A",
+                        SaleTimestampUtc = DateTime.SpecifyKind(sale.DatumProdaje, DateTimeKind.Utc),
+                        StoreId = sale.IDObjekat ?? 1,
+                        PaymentType = sale.NacinPlacanja ?? "Unknown",
+                        TotalAmount = totalAmount,
+                        TotalUnits = totalUnits,
+                        TotalLines = totalLines
+                    };
+
+                    newSalesFacts.Add(fact);
+
+                    // Create Line Facts
+                    foreach (var line in sale.Stavke)
+                    {
+                        newSalesLineFacts.Add(new SalesLineFact
+                        {
+                            SaleId = sale.Id,
+                            ProductId = line.IdArtikal,
+                            Qty = line.Kolicina,
+                            UnitPrice = line.Cena,
+                            LineTotal = line.Kolicina * line.Cena
+                        });
+                    }
+
+                    syncedCount++;
+                }
+
+                // 3. Batch Insert
+                if (newSalesFacts.Any())
+                {
+                    await analyticsDb.SalesFacts.AddRangeAsync(newSalesFacts, ct);
+                    await analyticsDb.SalesLineFacts.AddRangeAsync(newSalesLineFacts, ct);
+                    await analyticsDb.SaveChangesAsync(ct);
+                }
+
+                logger.LogInformation($"✅ Synced {syncedCount} new sales to Analytics DB.");
+
+                return Results.Ok(new
+                {
+                    success = true,
+                    message = $"Synced {syncedCount} new sales (Total sales in source: {sales.Count})"
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ Failed to sync Analytics DB");
+                return Results.Problem(
+                    detail: ex.Message,
+                    statusCode: 500,
+                    title: "Failed to sync Analytics DB"
+                );
+            }
+        })
+        .RequireRateLimiting("strict");  // Admin: 5 per 5 minutes
 
         app.MapPost("/api/admin/run-analytics-optimization", async (
             ITrendplusDbContext db,
@@ -213,7 +322,8 @@ public static class AllEndpoints
                     title: "Failed to run analytics optimization"
                 );
             }
-        });
+        })
+        .RequireRateLimiting("strict");  // Admin: 5 per 5 minutes
 
         // ============ DNEVNIK PROMENA ============
 
@@ -226,7 +336,8 @@ public static class AllEndpoints
                 .ToListAsync(ct);
 
             return Results.Ok(tipovi);
-        });
+        })
+        .RequireRateLimiting("fixed");  // General: 100 per minute
 
         app.MapGet("/api/dnevnik-promena", async (
             ITrendplusDbContext db,
@@ -307,7 +418,8 @@ public static class AllEndpoints
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju dnevnika promena");
             }
-        });
+        })
+        .RequireRateLimiting("db-heavy");  // DB Heavy: max 5 concurrent
 
         // ============ ARTIKLI ============
 
@@ -316,7 +428,8 @@ public static class AllEndpoints
             var query = new GetArtikliQuery();
             var result = await mediator.Send(query, ct);
             return Results.Ok(result);
-        });
+        })
+        .RequireRateLimiting("fixed");
 
         app.MapGet("/api/artikli", async (
             ITrendplusDbContext db,
@@ -378,7 +491,8 @@ public static class AllEndpoints
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju artikala");
             }
-        });
+        })
+        .RequireRateLimiting("db-heavy");  // DB Heavy: complex query with filters
 
         app.MapGet("/artikli/{id:int}", async (int id, IMediator mediator, CancellationToken ct) =>
         {
@@ -392,7 +506,8 @@ public static class AllEndpoints
             {
                 return Results.NotFound(new { message = "Artikal nije pronađen" });
             }
-        });
+        })
+        .RequireRateLimiting("fixed");
 
         app.MapPost("/artikli", async (CreateArtikalCommand command, IMediator mediator, CancellationToken ct) =>
         {
@@ -405,7 +520,8 @@ public static class AllEndpoints
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri kreiranju artikla");
             }
-        });
+        })
+        .RequireRateLimiting("writes");  // Writes: token bucket
 
         app.MapPut("/artikli/{id:int}", async (int id, UpdateArtikalCommand command, IMediator mediator, CancellationToken ct) =>
         {
@@ -425,14 +541,16 @@ public static class AllEndpoints
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri ažuriranju artikla");
             }
-        });
+        })
+        .RequireRateLimiting("writes");  // Writes: token bucket
 
         // ============ SEZONE ============
         app.MapGet("/api/sezone", async (ITrendplusDbContext db, CancellationToken ct) =>
         {
             var sezone = await db.Sezone.AsNoTracking().OrderBy(s => s.Naziv).ToListAsync(ct);
             return Results.Ok(sezone);
-        });
+        })
+        .RequireRateLimiting("fixed");
 
         // ============ DOBAVLJACI ============
         app.MapGet("/api/dobavljaci", async (IMediator mediator, CancellationToken ct) =>
@@ -440,7 +558,8 @@ public static class AllEndpoints
             var query = new GetDobavljacQuery();
             var result = await mediator.Send(query, ct);
             return Results.Ok(result);
-        });
+        })
+        .RequireRateLimiting("fixed");
 
         // ============ NIVELACIJE ============
         app.MapPost("/api/nivelacija", async (
@@ -481,7 +600,8 @@ public static class AllEndpoints
                 logger.LogError(ex, "Greška pri nivelaciji cene");
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri nivelaciji cene");
             }
-        });
+        })
+        .RequireRateLimiting("writes");  // Writes: token bucket
 
         app.MapGet("/api/nivelacije", async (
             ITrendplusDbContext db,
@@ -548,7 +668,8 @@ public static class AllEndpoints
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju nivelacija");
             }
-        });
+        })
+        .RequireRateLimiting("db-heavy");  // DB Heavy: complex query with joins
 
         // ============ PRODAJA ============
         app.MapPost("/api/prodaja", async (IMediator mediator, ILogger<Program> logger, ProdajArtikleCommand command, CancellationToken ct) =>
@@ -564,7 +685,8 @@ public static class AllEndpoints
                 logger.LogError(ex, "Greška pri prodaji");
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri prodaji");
             }
-        });
+        })
+        .RequireRateLimiting("writes");  // Writes: token bucket
 
         app.MapGet("/api/prodaja", async (IMediator mediator, DateTime? fromDate = null, DateTime? toDate = null, int pageNumber = 1, int pageSize = 50, CancellationToken ct = default) =>
         {
@@ -578,7 +700,8 @@ public static class AllEndpoints
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju prodaja");
             }
-        });
+        })
+        .RequireRateLimiting("db-heavy");  // DB Heavy: prodaje with date filters
 
         app.MapGet("/api/trends/seasonal-images", async (
             [FromServices] PexelsService pexels,
@@ -632,7 +755,8 @@ public static class AllEndpoints
                     detail: ex.Message
                 );
             }
-        });
+        })
+        .RequireRateLimiting("external-api");  // External API: respects Pexels limits
 
     }
 
