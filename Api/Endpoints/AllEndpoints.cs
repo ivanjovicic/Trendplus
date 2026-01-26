@@ -333,9 +333,9 @@ public static class AllEndpoints
                         JOIN ""ProdajaStavke"" ps ON p.""Id"" = ps.""IdProdaja""
                         WHERE DATE(p.""DatumProdaje"") = @date::DATE
                         ON CONFLICT (""Date"") DO UPDATE SET
-                            ""TotalRevenue"" = EXCLUDED.""TotalRevenue"""""",
+                            ""TotalRevenue"" = EXCLUDED.""TotalRevenue"",
                             ""TotalTransactions"" = EXCLUDED.""TotalTransactions"",
-                            ""TotalUnits"" = EXCLUDED.""TotalUnits""",
+                            ""TotalUnits"" = EXCLUDED.""TotalUnits"",
                             ""AvgBasketValue"" = EXCLUDED.""AvgBasketValue"",
                             ""AvgItemPrice"" = EXCLUDED.""AvgItemPrice"",
                             ""UpdatedAt"" = NOW();
@@ -406,87 +406,75 @@ public static class AllEndpoints
         
         // Get social media trends for category
         app.MapGet("/api/global-trends/social", async (
-            string category = "Patike",
-            HttpClient httpClient = null!,
-            ILogger<Program> logger = null!) =>
+            IHttpClientFactory httpClientFactory,
+            ILogger<Program> logger,
+            string category = "Patike") =>
         {
             try {
-                logger.LogInformation("Fetching social trends for category: {Category}", category);
+                logger.LogInformation("📊 Fetching social trends for category: '{Category}'", category);
                 
                 var pythonServiceUrl = "http://localhost:8000";
+                var httpClient = httpClientFactory.CreateClient("default");
                 
+                // Call Python trends API - NO FALLBACK
                 try
                 {
-                    // Call Python trends API
                     var response = await httpClient.GetAsync($"{pythonServiceUrl}/trends/social?category={category}");
                     
-                    if (response.IsSuccessStatusCode)
+                    if (!response.IsSuccessStatusCode)
                     {
-                        var data = await response.Content.ReadFromJsonAsync<object>();
-                        return Results.Ok(data);
+                        logger.LogError("Python service returned {StatusCode}", response.StatusCode);
+                        return Results.Problem(
+                            detail: $"Python trends service returned HTTP {response.StatusCode}. Make sure Python service is running at {pythonServiceUrl}",
+                            statusCode: 503,
+                            title: "Trends Service Unavailable"
+                        );
                     }
                     
-                    logger.LogWarning("Python service returned {StatusCode}", response.StatusCode);
+                    var data = await response.Content.ReadFromJsonAsync<object>();
+                    logger.LogInformation("✅ Received real data from Python service");
+                    
+                    return Results.Ok(data);
                 }
-                catch (Exception ex)
+                catch (TaskCanceledException ex)
                 {
-                    logger.LogWarning(ex, "Python service unavailable");
+                    logger.LogError(ex, "❌ Python service timeout (2s)");
+                    return Results.Problem(
+                        detail: $"Python service at {pythonServiceUrl} did not respond within 2 seconds.\n\n" +
+                                "To start Python service:\n" +
+                                "1. Open new terminal\n" +
+                                "2. cd Python\n" +
+                                "3. start_api.bat\n\n" +
+                                "Or run: start-app.bat to start all services",
+                        statusCode: 503,
+                        title: "Python Trends Service Timeout"
+                    );
                 }
-                
-                // Fallback to mock data
-                logger.LogInformation("Using mock data");
-                return Results.Ok(new
+                catch (HttpRequestException ex)
                 {
-                    category,
-                    trends = new[]
-                    {
-                        new
-                        {
-                            hashtag = "#sneakers",
-                            category,
-                            tiktokScore = 85.5,
-                            instagramScore = 82.3,
-                            finalTrendScore = 84.2,
-                            trendLevel = "🔥 Viral",
-                            tiktokViews = 1234567890,
-                            tiktokPosts = 150000,
-                            instagramPosts = 2500000,
-                            tiktokEngagement = 8.5
-                        },
-                        new
-                        {
-                            hashtag = "#airmax",
-                            category,
-                            tiktokScore = 72.2,
-                            instagramScore = 75.5,
-                            finalTrendScore = 73.5,
-                            trendLevel = "📈 Trending",
-                            tiktokViews = 890000000,
-                            tiktokPosts = 95000,
-                            instagramPosts = 1800000,
-                            tiktokEngagement = 7.2
-                        },
-                        new
-                        {
-                            hashtag = "#nike",
-                            category,
-                            tiktokScore = 88.0,
-                            instagramScore = 90.0,
-                            finalTrendScore = 88.8,
-                            trendLevel = "🔥 Viral",
-                            tiktokViews = 2000000000,
-                            tiktokPosts = 250000,
-                            instagramPosts = 5000000,
-                            tiktokEngagement = 9.1
-                        }
-                    },
-                    note = "Mock data - Python service unavailable"
-                });
+                    logger.LogError(ex, "❌ Cannot connect to Python service at {Url}", pythonServiceUrl);
+                    return Results.Problem(
+                        detail: $"Cannot connect to Python service at {pythonServiceUrl}.\n\n" +
+                                "Python service is NOT running!\n\n" +
+                                "To start it:\n" +
+                                "1. Open new terminal\n" +
+                                "2. cd Python\n" +
+                                "3. start_api.bat\n\n" +
+                                "Or run: start-app.bat to start all services\n\n" +
+                                $"Error: {ex.Message}",
+                        statusCode: 503,
+                        title: "Python Service Not Running"
+                    );
+                }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to fetch social trends");
-                return Results.Problem("Failed to fetch trends");
+                logger.LogError(ex, "❌ Unexpected error fetching trends for category '{Category}'", category);
+                return Results.Problem(
+                    detail: $"Unexpected error: {ex.Message}",
+                    statusCode: 500,
+                    title: "Internal Server Error"
+                );
             }
         })
         .WithName("GetSocialTrends")
@@ -499,42 +487,40 @@ public static class AllEndpoints
         {
             try
             {
-                logger.LogInformation("Running EU market scrapers");
+                logger.LogInformation("🔍 Running EU market scrapers");
                 
                 var pythonServiceUrl = "http://localhost:8000";
                 
-                try
+                // Call Python scraper API - NO FALLBACK
+                var response = await httpClient.PostAsync($"{pythonServiceUrl}/scrapers/run", null);
+                
+                if (!response.IsSuccessStatusCode)
                 {
-                    // Call Python scraper API
-                    var response = await httpClient.PostAsync($"{pythonServiceUrl}/scrapers/run", null);
-                    
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var data = await response.Content.ReadFromJsonAsync<object>();
-                        return Results.Ok(data);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Python service unavailable");
+                    logger.LogError("Python scraper service returned {StatusCode}", response.StatusCode);
+                    return Results.Problem(
+                        detail: $"Python scraper service returned HTTP {response.StatusCode}. Make sure Python service is running at {pythonServiceUrl}",
+                        statusCode: 503,
+                        title: "Scraper Service Unavailable"
+                    );
                 }
                 
-                // Fallback to mock data
-                return Results.Ok(new
-                {
-                    status = "completed",
-                    results = new[]
-                    {
-                        new { source = "Zalando", productsCount = 45, status = "mock_data" },
-                        new { source = "Deichmann", productsCount = 38, status = "mock_data" }
-                    },
-                    totalProducts = 83,
-                    note = "Mock data - Python service unavailable"
-                });
+                var data = await response.Content.ReadFromJsonAsync<object>();
+                logger.LogInformation("✅ Scrapers completed successfully");
+                
+                return Results.Ok(data);
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogError(ex, "❌ Cannot connect to Python scraper service");
+                return Results.Problem(
+                    detail: $"Cannot connect to Python scraper service. Please start it with: cd Python && start_api.bat\nError: {ex.Message}",
+                    statusCode: 503,
+                    title: "Scraper Service Not Running"
+                );
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to run scrapers");
+                logger.LogError(ex, "❌ Failed to run scrapers");
                 return Results.Problem("Failed to run scrapers");
             }
         })
@@ -851,4 +837,4 @@ public static class AllEndpoints
 }
 
 // DTO for nivelacija endpoint
-public record NivelacijaRequest(int ArtikalId, decimal NovaProdajnaCena, string? Komentar);
+public record NivelacijaRequest(int ArtikalId, decimal NovaProdajnaCena, string? Kamerar);

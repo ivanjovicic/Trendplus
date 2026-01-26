@@ -1,0 +1,40 @@
+﻿{
+  "Patike": [
+    {
+      "productName": "Nike Air Max 270",
+      "brand": "Nike",
+      "category": "Patike",
+      "imageUrl": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400",
+      "priceEur": 150.00,
+      "tiktokScore": 92.0,
+      "instagramScore": 88.0,
+      "finalTrendScore": 90.2,
+      "trendLevel": "🔥 Viral",
+      "tiktokViews": 2500000000,
+      "tiktokPosts": 280000,
+      "instagramPosts": 4200000,
+      "tiktokEngagement": 9.2,
+      "keyFeatures": ["Air cushioning", "Sleek design", "Comfortable"],
+      "popularColors": ["White/Black", "Triple Black", "Pink Foam"]
+    }
+  ],
+  "Cizme": [
+    {
+      "productName": "Dr. Martens 1460",
+      "brand": "Dr. Martens",
+      "category": "Cizme",
+      "imageUrl": "https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=400",
+      "priceEur": 170.00,
+      "tiktokScore": 80.0,
+      "instagramScore": 85.0,
+      "finalTrendScore": 82.2,
+      "trendLevel": "🔥 Viral",
+      "tiktokViews": 1100000000,
+      "tiktokPosts": 185000,
+      "instagramPosts": 3200000,
+      "tiktokEngagement": 8.0,
+      "keyFeatures": ["Iconic 8-eye boot", "AirWair sole", "Durable leather"],
+      "popularColors": ["Black Smooth", "Cherry Red", "White Smooth"]
+    }
+  ]
+}

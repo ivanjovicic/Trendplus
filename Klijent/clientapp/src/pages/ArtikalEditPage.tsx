@@ -58,11 +58,6 @@ export default function ArtikalEditPage() {
                     }
                 };
 
-<<<<<<< HEAD
-                setInitialData(data);
-                setCurrentImagePath(artikal.imagePath ?? null);
-                setLoadingArtikal(false);
-=======
                 // 2) artikal
                 const fetchArtikalData = async () => {
                     const artikal = await getArtikal(artikalId);
@@ -82,12 +77,12 @@ export default function ArtikalEditPage() {
                     };
 
                     setInitialData(data);
+                    setCurrentImagePath(artikal.imagePath ?? null);
                     setLoadingArtikal(false);
                 };
 
                 await Promise.all([fetchLookups(), fetchArtikalData()]);
 
->>>>>>> 2751d0c254398484687980abcfa8e98cc986ca99
             } catch (e: unknown) {
                 if (e instanceof DOMException && e.name === "AbortError") return;
                 if (typeof e === "object" && e !== null && "name" in e && (e as { name?: string }).name === "AbortError") return;

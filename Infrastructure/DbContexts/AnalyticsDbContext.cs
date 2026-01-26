@@ -88,8 +88,9 @@ namespace Infrastructure.DbContexts
                 entity.ToTable("EuTrends");
                 entity.HasKey(e => e.Id);
                 
-                entity.Property(e => e.Embedding)
-                      .HasColumnType("vector(512)");
+                // Temporarily ignore Embedding property until Python service is ready
+                // TODO: Re-enable when embedding generation is implemented
+                entity.Ignore(e => e.Embedding);
                 
                 entity.HasIndex(e => e.Category);
                 entity.HasIndex(e => e.Brand);

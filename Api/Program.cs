@@ -86,6 +86,9 @@ try
     // FluentValidation - auto-register all validators
     builder.Services.AddValidatorsFromAssemblyContaining<CreateArtikalCommandValidator>();
 
+    // Memory Cache - required by GetArtikliQueryHandler and other caching services
+    builder.Services.AddMemoryCache();
+
     // MediatR Pipeline Behaviors (order matters!)
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
@@ -121,8 +124,11 @@ try
         builder.Configuration.GetSection("RabbitMq"));
     builder.Services.AddSingleton<IMessageBroker, RabbitMqMessageBroker>();
 
-    // HttpClient for external APIs
-    builder.Services.AddHttpClient();
+    // HttpClient for external APIs with reduced timeout for faster fallback
+    builder.Services.AddHttpClient("default", client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(2); // Fast fallback to mock data
+    });
 
     // Background Workers
     builder.Services.AddHostedService<Workers.SyncWorker>();
