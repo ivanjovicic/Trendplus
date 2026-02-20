@@ -237,7 +237,6 @@ export default function SeasonalImageCarousel() {
                             justifyContent: "center",
                             gap: "1rem"
                         }}
-                        onClick={(e) => e.stopPropagation()}
                     >
                         {/* Close Button */}
                         <button

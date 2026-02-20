@@ -10,7 +10,7 @@ CATEGORY_MAP = {
 """
 Trendplus Global Trends API
 - FastAPI server koji povezuje .NET backend sa Python scraperima
-- Scrapers: Zalando (Playwright), Deichmann
+- Scrapers: Zalando (Playwright), Deichmann, About You
 - /scrapers/common: fuzzy matching između Zalando & Deichmann modela
 - Redis caching za /scrapers/common (opciono)
 - Elasticsearch indeksiranje common match-eva (opciono)
@@ -505,6 +505,22 @@ class DeichmannFilters(BaseModel):
     pages: int = 1
 
 
+class AboutYouFilters(BaseModel):
+    # Optional full category URL (e.g. https://www.aboutyou.de/c/frauen/schuhe/stiefeletten-20276)
+    url: Optional[str] = None
+    gender: Optional[str] = "women"
+    # Can be full path (frauen/schuhe/stiefeletten-20276) or slug (stiefeletten-20276)
+    category: Optional[str] = "frauen/schuhe/stiefeletten-20276"
+    sort: Optional[str] = "popularity"
+    priceMin: Optional[float] = None
+    priceMax: Optional[float] = None
+    # Comma-separated brand filters (e.g. "dr martens,tamaris")
+    brand: Optional[str] = None
+    # Free-text keyword filter over brand+name
+    keyword: Optional[str] = None
+    pages: int = 1
+
+
 # ============================================================
 # ROOT
 # ============================================================
@@ -571,6 +587,28 @@ async def api_deichmann(filters: DeichmannFilters):
 
     except Exception as e:
         logging.exception("Deichmann scraper failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
+# ============================================================
+# ABOUT YOU SCRAPER ENDPOINT
+# ============================================================
+
+@app.post("/scrapers/aboutyou")
+async def api_aboutyou(filters: AboutYouFilters):
+    logging.info(f"/scrapers/aboutyou filters={filters.model_dump()}")
+
+    try:
+        from scraper.aboutyou_scraper import scrape_aboutyou_filtered
+    except Exception as e:
+        logging.error("AboutYou scraper unavailable: %s", e)
+        raise HTTPException(status_code=500, detail="AboutYou scraper is unavailable")
+
+    try:
+        items = await scrape_aboutyou_filtered(**filters.model_dump())
+        return {"status": "ok", "count": len(items), "items": items}
+    except Exception as e:
+        logging.exception("AboutYou scraper failed: %s", e)
         return {"status": "error", "error": str(e)}
 
 

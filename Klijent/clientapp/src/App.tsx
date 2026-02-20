@@ -28,6 +28,7 @@ import ZalandoProducts from "./pages/ZalandoProducts";
 import ReleaseCalendar from "./pages/ReleaseCalendar";
 import DeichmannPage from "./pages/DeichmannPage";
 import CommonProductsPage from "./pages/CommonProductsPage";
+import AboutYouPage from "./pages/AboutYouPage";
 
 function AppShell() {
     return (
@@ -56,6 +57,7 @@ function AppShell() {
             <Route path="/global-trends" element={<GlobalTrendsPage />} />
             <Route path="/release-calendar" element={<ReleaseCalendar />} />
             <Route path="/deichmann" element={<DeichmannPage />} />
+            <Route path="/aboutyou" element={<AboutYouPage />} />
             <Route path="/admin/common-products" element={<CommonProductsPage />} />
         </Routes>
     );

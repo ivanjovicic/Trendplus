@@ -824,6 +824,61 @@ public static class AllEndpoints
         .WithName("ProxyDeichmannScraper")
         .WithTags("External");
 
+        // ===== AboutYou ad-hoc scraper proxy =====
+        app.MapPost("/api/scrapers/aboutyou", async (
+            IHttpClientFactory httpClientFactory,
+            ILogger<Program> logger,
+            System.Text.Json.JsonElement filters,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var client = httpClientFactory.CreateClient("scraper");
+
+                var json = filters.GetRawText();
+                var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+                // Use extended timeout for scraping operations
+                client.Timeout = TimeSpan.FromMinutes(5);
+
+                var resp = await client.PostAsync("/scrapers/aboutyou", content, ct);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    logger.LogWarning("AboutYou scraper returned {Status}: {Body}", resp.StatusCode, body);
+                    return Results.Problem(detail: $"Scraper service returned {resp.StatusCode}: {body}", statusCode: 502);
+                }
+
+                try
+                {
+                    var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(body);
+                    return Results.Ok(parsed);
+                }
+                catch (Exception)
+                {
+                    return Results.Ok(new { raw = body });
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogError(ex, "Failed to call AboutYou scraper service");
+                return Results.Problem(detail: ex.Message, statusCode: 503);
+            }
+            catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+            {
+                logger.LogError(ex, "AboutYou scraper timed out");
+                return Results.Problem(detail: "Scraper service timed out", statusCode: 504);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error proxying AboutYou scraper");
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("ProxyAboutYouScraper")
+        .WithTags("External");
+
         // ============ UPLOAD IMAGE ============
         
         app.MapPost("/api/upload-image", async (
