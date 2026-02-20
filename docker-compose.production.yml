@@ -1,6 +1,24 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: trendplus-redis-prod
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data_prod:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - trendplus_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: trendplus-rabbitmq-prod
@@ -41,6 +59,8 @@ services:
       - rabbitmq
 
 volumes:
+  redis_data_prod:
+    driver: local
   rabbitmq_data_prod:
     driver: local
   rabbitmq_logs_prod:

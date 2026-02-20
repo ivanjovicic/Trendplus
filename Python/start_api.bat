@@ -1,23 +1,54 @@
-﻿@echo off
-REM Start Python FastAPI server for Global Trends
+@echo off
+REM ============================================
+REM Start Python FastAPI Server for Global Trends
+REM ============================================
 
 echo ========================================
-echo Starting Global Trends API Server
+echo Starting Python API Server
 echo ========================================
 echo.
 
-REM Activate virtual environment
-call venv\Scripts\activate.bat
+REM Detect Python executable
+set "PYTHON_CMD="
 
-REM Start FastAPI server
-echo Starting server on http://localhost:8000
+REM --- 1) Use venv if available ---
+if exist "venv\Scripts\python.exe" (
+    echo [Using venv Python]
+    set "PYTHON_CMD=venv\Scripts\python.exe"
+) else (
+    REM --- 2) Try system python ---
+    python --version >nul 2>&1
+    if %ERRORLEVEL% EQU 0 (
+        set "PYTHON_CMD=python"
+    ) else (
+        REM --- 3) Try py launcher ---
+        py --version >nul 2>&1
+        if %ERRORLEVEL% EQU 0 (
+            set "PYTHON_CMD=py"
+        )
+    )
+)
+
+REM --- If still empty → python not found ---
+if "%PYTHON_CMD%"=="" (
+    echo [ERROR] Python not found!
+    echo Make sure Python 3 is installed or venv exists.
+    pause
+    exit /b 1
+)
+
+echo [OK] Using Python: %PYTHON_CMD%
 echo.
-echo Endpoints:
-echo   GET  /trends/social?category=Patike
-echo   POST /scrapers/run
-echo   GET  /cache/stats
+echo Server will be available at: http://localhost:8000
 echo.
-echo Press Ctrl+C to stop
+echo Press CTRL+C to stop the server
 echo.
 
-python api_server.py
+REM --- Start the FastAPI server ---
+"%PYTHON_CMD%" api_server.py
+
+echo.
+echo ========================================
+echo Python API stopped.
+echo ========================================
+pause

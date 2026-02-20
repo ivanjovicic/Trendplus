@@ -24,11 +24,16 @@ import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import AnalyticsDetails from "./pages/AnalyticsDetails";
 import ImageUploadTestPage from "./pages/ImageUploadTestPage";
 import GlobalTrendsPage from "./pages/GlobalTrendsPage";
+import ZalandoProducts from "./pages/ZalandoProducts";
+import ReleaseCalendar from "./pages/ReleaseCalendar";
+import DeichmannPage from "./pages/DeichmannPage";
+import CommonProductsPage from "./pages/CommonProductsPage";
 
 function AppShell() {
     return (
         <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/zalando" element={<ZalandoProducts />} />
             <Route path="/artikli" element={<ArtikliPage />} />
             <Route path="/artikli/lista" element={<ArtikliListPage />} />
             <Route path="/artikli/:id/edit" element={<ArtikalEditPage />} />
@@ -49,6 +54,9 @@ function AppShell() {
             <Route path="/povracaj" element={<PovracajPage />} />
             <Route path="/image-upload-test" element={<ImageUploadTestPage />} />
             <Route path="/global-trends" element={<GlobalTrendsPage />} />
+            <Route path="/release-calendar" element={<ReleaseCalendar />} />
+            <Route path="/deichmann" element={<DeichmannPage />} />
+            <Route path="/admin/common-products" element={<CommonProductsPage />} />
         </Routes>
     );
 }

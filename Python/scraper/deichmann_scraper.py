@@ -1,195 +1,252 @@
-﻿"""
-Deichmann.com scraper using Playwright
-Real browser automation for JavaScript-rendered pages
-"""
+﻿import asyncio
+from typing import Any, Dict, List
 
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
-from typing import List, Dict, Optional
-import time
+import scraper.browser_manager as browser_manager
 
-def scrape_deichmann(max_pages: int = 10, headless: bool = True) -> List[Dict]:
+
+DEICHMANN_BRAND_MAP: Dict[str, str] = {
+    # Human brand -> Deichmann brand filter value
+    # Example discovered from Deichmann UI:
+    # https://www.deichmann.com/de-de/c/damen/schuhe-82?...&brand=rieker_1-94255
+    "rieker": "rieker_1-94255",
+}
+
+
+def normalize_deichmann_brand(brand: str | None) -> str | None:
     """
-    Scrape trending products from Deichmann.com using Playwright
-    
-    Args:
-        max_pages: Maximum number of pages to scrape
-        headless: Run browser in headless mode (no GUI)
-    
-    Returns:
-        List of product dictionaries
+    Deichmann expects a specific brand filter value (e.g. "rieker_1-94255"),
+    but our API/UI often sends plain brand names ("rieker").
+    This helper maps known brands and falls back to the original value.
     """
-    products = []
-    
-    print(f"🔍 Scraping Deichmann.com with Playwright")
-    print(f"  Headless: {headless}")
-
-    with sync_playwright() as p:
-        # Launch browser
-        browser = p.chromium.launch(headless=headless)
-        
-        # Create context with realistic headers
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            locale="de-DE",
-            viewport={"width": 1920, "height": 1080}
-        )
-        
-        page = context.new_page()
-
-        for page_num in range(1, max_pages + 1):
-            url = f"https://www.deichmann.com/de-de/damen/schuhe/sneaker?page={page_num}"
-            print(f"  Page {page_num}/{max_pages}...", end=" ")
-
-            try:
-                # Navigate to page
-                page.goto(url, timeout=15000, wait_until="networkidle")
-                
-                # Wait for products to load
-                page.wait_for_selector("article.product-tile", timeout=10000)
-                
-                # Optional: Scroll to trigger lazy loading
-                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                time.sleep(1)
-                
-            except PlaywrightTimeout:
-                print("❌ Timeout")
-                break
-            except Exception as e:
-                print(f"❌ Error: {e}")
-                break
-
-            # Get all product tiles
-            items = page.query_selector_all("article.product-tile")
-            
-            if not items:
-                print("❌ No products")
-                break
-
-            # Extract data from each product
-            for i, item in enumerate(items):
-                try:
-                    # Query selectors
-                    name_elem = item.query_selector("h3, .product-tile__name, .product-name")
-                    price_elem = item.query_selector("span.price, .product-tile__price, .product-price")
-                    img_elem = item.query_selector("img")
-                    brand_elem = item.query_selector(".product-tile__brand, .brand")
-                    
-                    # Extract image URL (handle lazy loading)
-                    image_url = ""
-                    if img_elem:
-                        image_url = (
-                            img_elem.get_attribute("data-src") or 
-                            img_elem.get_attribute("src") or 
-                            img_elem.get_attribute("data-lazy-src") or
-                            ""
-                        )
-                    
-                    product = {
-                        "rank": (page_num - 1) * len(items) + (i + 1),
-                        "product_id": item.get_attribute("data-id") or item.get_attribute("data-product-id") or f"deich_{page_num}_{i}",
-                        "name": name_elem.inner_text().strip() if name_elem else "",
-                        "brand": brand_elem.inner_text().strip() if brand_elem else "Deichmann",
-                        "price": parse_price(price_elem.inner_text() if price_elem else ""),
-                        "image_url": image_url,
-                        "category": "Sneaker",
-                        "color": extract_color_from_name(name_elem.inner_text() if name_elem else ""),
-                        "season": detect_season(name_elem.inner_text() if name_elem else ""),
-                        "source": "deichmann"
-                    }
-                    
-                    if product["name"]:
-                        products.append(product)
-                        
-                except Exception as e:
-                    print(f"⚠️ Error parsing product {i}: {e}")
-                    continue
-
-            print(f"✅ {len(items)} products")
-            
-            # Rate limiting
-            time.sleep(2)
-
-        # Cleanup
-        context.close()
-        browser.close()
-
-    print(f"\n📊 Total products scraped: {len(products)}")
-    return products
-
-
-def parse_price(price_str: str) -> Optional[float]:
-    """
-    Parse German price format (e.g., '49,99 €' or '€49,99')
-    """
-    try:
-        # Remove currency symbols and whitespace
-        clean = price_str.replace("€", "").replace("EUR", "").replace(" ", "").strip()
-        
-        # Replace comma with dot for float conversion
-        clean = clean.replace(",", ".")
-        
-        return float(clean)
-    except (ValueError, AttributeError):
+    if not brand:
         return None
+    b = brand.strip()
+    if not b:
+        return None
+    return DEICHMANN_BRAND_MAP.get(b.lower(), b)
 
 
-def extract_color_from_name(name: str) -> str:
+def build_deichmann_url(
+    gender: str | None = None,
+    category: str = "schuhe-82",
+    sort: str | None = None,
+    priceMin: int | None = None,
+    priceMax: int | None = None,
+    sale: bool | None = None,
+    isNew: bool | None = None,
+    size: str | None = None,
+    brand: str | None = None,
+    isLeather: str | None = None,
+    waterResistance: str | None = None,
+    page: int = 1,
+) -> str:
     """
-    Extract color from product name
-    """
-    name_lower = name.lower()
-    
-    colors = {
-        "schwarz": "Black",
-        "weiß": "White",
-        "weiss": "White",
-        "rot": "Red",
-        "blau": "Blue",
-        "grün": "Green",
-        "gelb": "Yellow",
-        "grau": "Grey",
-        "braun": "Brown",
-        "rosa": "Pink",
-        "beige": "Beige"
-    }
-    
-    for german, english in colors.items():
-        if german in name_lower:
-            return english
-    
-    return ""
+    Gradi Deichmann listing URL na osnovu filtera.
 
+    - gender: "women" / "men" (fallback: women → damen, ostalo → herren)
+    - category: npr. "schuhe-82" ili već puna putanja "damen/schuhe-82"
+    """
 
-def detect_season(name: str) -> str:
-    """
-    Detect season from product name
-    """
-    name_lower = name.lower()
-    
-    winter_keywords = ["winter", "boot", "stiefel", "warm", "gefüttert"]
-    summer_keywords = ["sommer", "sandal", "sandale", "flip", "open"]
-    
-    if any(word in name_lower for word in winter_keywords):
-        return "Jesen-Zima"
-    elif any(word in name_lower for word in summer_keywords):
-        return "Prolece-Leto"
+    # Mapiranje kategorija ako dođe "sneakers"/"sneaker"
+    if category in ("sneakers", "sneaker"):
+        category = "sneaker-143"
+
+    # Ako nema '/', tretiramo kao čist category slug pa dodamo gender segment
+    if "/" not in category:
+        gender_segment = "damen" if (gender or "").lower() in ("women", "damen", "") else "herren"
+        category_path = f"{gender_segment}/{category}"
     else:
-        return "Cela godina"
+        category_path = category
+
+    base = f"https://www.deichmann.com/de-de/c/{category_path}"
+    params: List[str] = []
+
+    if sort:
+        params.append(f"sort={sort}")
+
+    # Prices (range)
+    if priceMin is not None or priceMax is not None:
+        low = priceMin or 0
+        high = priceMax if priceMax is not None else ""
+        params.append(f"prices={low}~{high}")
+
+    if sale:
+        params.append("sale=true")
+
+    if isNew:
+        params.append("isNew=true")
+
+    if size:
+        params.append(f"sizeEu={size}")
+
+    brand_param = normalize_deichmann_brand(brand)
+    if brand_param:
+        params.append(f"brand={brand_param}")
+
+    if isLeather:
+        params.append(f"isLeather={isLeather}")
+
+    if waterResistance:
+        params.append(f"waterResistanceLevel={waterResistance}")
+
+    params.append(f"page={page}")
+
+    if params:
+        return base + "?" + "&".join(params)
+    return base
 
 
-# Test scraper
-if __name__ == "__main__":
-    print("Testing Deichmann Playwright scraper...\n")
+async def _scrape_deichmann_page(page_index: int, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Scrape jedne Deichmann stranice, koristi thread-local context.
+    """
+    await browser_manager.init_browser()
+    context = await browser_manager.get_context()
+
+    url = build_deichmann_url(
+        gender=filters.get("gender"),
+        category=filters.get("category", "schuhe-82"),
+        sort=filters.get("sort"),
+        priceMin=filters.get("priceMin"),
+        priceMax=filters.get("priceMax"),
+        sale=filters.get("sale"),
+        isNew=filters.get("isNew"),
+        size=filters.get("size"),
+        brand=filters.get("brand"),
+        isLeather=filters.get("isLeather"),
+        waterResistance=filters.get("waterResistance"),
+        page=page_index,
+    )
+
+    print(f"\n▶ [Deichmann] Loading page {page_index}: {url}")
+    page = await context.new_page()
+    try:
+        await page.goto(url, timeout=0)
+
+        # Pričekaj bar neki load, ali nemoj da blokiraš zauvek
+        try:
+            await page.wait_for_load_state("networkidle", timeout=12_000)
+        except Exception as e:
+            print(f"[DEBUG] Deichmann page {page_index} did not reach networkidle: {e}")
+
+        # Proveri da li je Deichmann izvršio redirect (npr. na zalando.de kad nema rezultata)
+        current_url = page.url
+        if "deichmann.com" not in current_url:
+            print(f"⚠️ [Deichmann] Page {page_index} redirected to {current_url} - skipping")
+            return []
+
+        # Accept cookies
+        for txt in ["Alle akzeptieren", "Akzeptieren", "Einverstanden"]:
+            try:
+                await page.click(f"button:has-text('{txt}')", timeout=1500)
+                print(f"[DEBUG] Deichmann accepted cookies with button: {txt}")
+                break
+            except Exception:
+                pass
+
+        # Scroll da se učitaju svi proizvodi
+        print("[Deichmann] Scrolling…")
+        for _ in range(10):
+            await page.mouse.wheel(0, 2500)
+            await page.wait_for_timeout(400)
+
+        cards = await page.query_selector_all("div.card")
+        print(f"✔ [Deichmann] Found {len(cards)} products on page {page_index}")
+
+        page_results: List[Dict[str, Any]] = []
+
+        for card in cards:
+            try:
+                link_el = await card.query_selector("a")
+                product_url = await link_el.get_attribute("href") if link_el else None
+                if product_url and product_url.startswith("/"):
+                    product_url = "https://www.deichmann.com" + product_url
+
+                img_el = await card.query_selector("img.desktop") or await card.query_selector("img")
+                image = await img_el.get_attribute("src") if img_el else None
+                alt = await img_el.get_attribute("alt") if img_el else None
+
+                brand_el = await card.query_selector("div.brand-details h2.brandname")
+                brand_text = await brand_el.inner_text() if brand_el else None
+                brand_text = brand_text.strip() if brand_text else None
+
+                name_el = await card.query_selector("div.brand-details h3.taglist")
+                name = await name_el.inner_text() if name_el else alt
+                name = name.strip() if name else None
+
+                price_el = await card.query_selector("span[data-id='selling-price']")
+                price = await price_el.inner_text() if price_el else None
+                price = price.strip() if price else None
+
+                old_price_el = await card.query_selector("span[data-id='cross-price']")
+                old_price = await old_price_el.inner_text() if old_price_el else None
+                old_price = old_price.strip() if old_price else None
+
+                page_results.append(
+                    {
+                        "brand": brand_text,
+                        "name": name,
+                        "price": price,
+                        "old_price": old_price,
+                        "image": image,
+                        "url": product_url,
+                        "source": "deichmann",
+                    }
+                )
+            except Exception as e:
+                print(f"[DEBUG] Deichmann product parse error on page {page_index}: {e}")
+                continue
+
+        print(f"[DEBUG] Deichmann page {page_index} done, found {len(page_results)} products.")
+        return page_results
+    finally:
+        try:
+            await page.close()
+        except Exception as e:
+            print(f"[DEBUG] Deichmann page {page_index} close error: {e}")
+
+
+async def scrape_deichmann_filtered(**filters: Any) -> List[Dict[str, Any]]:
+    """
+    Playwright scraper koji prihvata fleksibilne Deichmann filtere i vraća listu dictova.
+
+    Podržani ključevi: gender, category, sort, priceMin, priceMax, sale, isNew,
+    size, brand, isLeather, waterResistance, pages
+    """
+
+    max_pages = int(filters.get("pages", 1) or 1)
+    if max_pages < 1:
+        max_pages = 1
+
+    print(
+        "🔍 Deichmann Playwright → "
+        f"category={filters.get('category')} / "
+        f"brand={filters.get('brand')} / "
+        f"gender={filters.get('gender')} / "
+        f"sort={filters.get('sort')} / "
+        f"priceMin={filters.get('priceMin')} / "
+        f"priceMax={filters.get('priceMax')} / "
+        f"sale={filters.get('sale')} / "
+        f"isNew={filters.get('isNew')} / "
+        f"pages={max_pages}"
+    )
+    print(f"[Deichmann] Filters: {filters}")
+
+    results: List[Dict[str, Any]] = []
+
+    # Async version using asyncio.gather instead of ThreadPoolExecutor
+    tasks = [
+        _scrape_deichmann_page(page_idx, filters)
+        for page_idx in range(1, max_pages + 1)
+    ]
+
+    page_results_list = await asyncio.gather(*tasks, return_exceptions=True)
     
-    # Run with GUI for debugging (headless=False)
-    # Run headless for production (headless=True)
-    products = scrape_deichmann(max_pages=2, headless=True)
-    
-    if products:
-        print("\n🎯 Sample results:")
-        for p in products[:5]:
-            print(f"  {p['rank']}. {p['brand']} - {p['name']}")
-            print(f"      €{p['price']} | {p['color']} | {p['season']}")
-            print(f"      {p['image_url'][:60]}...")
-    else:
-        print("❌ No products scraped!")
+    for page_idx, page_results in enumerate(page_results_list, start=1):
+        if isinstance(page_results, Exception):
+            print(f"Deichmann page scrape failed (page={page_idx}): {page_results}")
+        else:
+            results.extend(page_results)
+
+    print(f"\n📊 [Deichmann] Total scraped: {len(results)}")
+    return results

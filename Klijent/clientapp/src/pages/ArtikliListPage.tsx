@@ -93,7 +93,16 @@ export default function ArtikliListPage() {
   }, []);
 
   const filters = useMemo(() => {
-    const f: Record<string, string | number | boolean> = {};
+    const f: {
+      naziv?: string;
+      sezonaId?: number | "";
+      minCena?: number;
+      maxCena?: number;
+      minKolicina?: number;
+      maxKolicina?: number;
+      sortBy?: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id";
+      sortDir?: "asc" | "desc";
+    } = {};
 
     if (searchNaziv.trim()) f.naziv = searchNaziv.trim();
     if (filterSezona !== "") f.sezonaId = filterSezona;
@@ -104,7 +113,7 @@ export default function ArtikliListPage() {
     if (filterMaxKolicina) f.maxKolicina = Number(filterMaxKolicina);
 
     f.sortBy = sortBy;
-    f.sortDir = sortDir === "asc"; // explicitly bool or string as needed by API
+    f.sortDir = sortDir;
 
     return f;
   }, [searchNaziv, filterSezona, filterMinCena, filterMaxCena, filterMinKolicina, filterMaxKolicina, sortBy, sortDir]);

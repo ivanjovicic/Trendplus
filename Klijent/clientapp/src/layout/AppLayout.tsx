@@ -91,11 +91,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/analytics-details" className="button-small">
                         📊 Detaljne analize
                     </Link>
-                </nav>
+                    <Link to="/global-trends" className="button-small">
+                        🌍 Global Trends
+                    </Link>
+                    <Link to="/admin/common-products" className="button-small">
+                        🔗 Zajednički proizvodi
+                    </Link>
+                    <Link to="/release-calendar" className="button-small">
+                        🗓️ Release Calendar
+                    </Link>
+                    <Link to="/deichmann" className="button-small">
+                        🥿 Deichmann Scraper
+                    </Link>
+                 </nav>
 
-                {children}
+                 {children}
 
-                <SeasonalImageCarousel />
+                 <SeasonalImageCarousel />
             </main>
 
             <Footer />

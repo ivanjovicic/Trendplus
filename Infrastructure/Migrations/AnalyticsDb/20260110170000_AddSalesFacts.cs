@@ -1,12 +1,16 @@
 using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using Infrastructure.DbContexts;
 
 #nullable disable
 
 namespace Infrastructure.Migrations.AnalyticsDb
 {
     /// <inheritdoc />
+    [DbContext(typeof(AnalyticsDbContext))]
+    [Migration("20260110170000_AddSalesFacts")]
     public partial class AddSalesFacts : Migration
     {
         /// <inheritdoc />

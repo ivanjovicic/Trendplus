@@ -3,9 +3,6 @@
 const API = import.meta.env.VITE_API_BASE_URL;
 
 export function makeUrl(path: string, params?: URLSearchParams) {
-  if (import.meta.env.DEV) {
-    return params ? `${path}?${params.toString()}` : path;
-  }
   return params ? `${API}${path}?${params.toString()}` : `${API}${path}`;
 }
 

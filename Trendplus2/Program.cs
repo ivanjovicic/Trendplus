@@ -34,6 +34,7 @@ using System.Threading.RateLimiting;
 using Trendplus2;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
+using Trendplus2.Services;
 
 try
 {
@@ -126,6 +127,17 @@ try
     builder.Services.AddSwaggerGen();
     builder.Services.AddMediatR(typeof(CreateArtikalHandler).Assembly);
     builder.Services.AddMemoryCache();
+    
+    // Redis distributed cache (used by CommonScraperClient)
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+        options.InstanceName = "trendplus:";
+    });
+    
+    // register CommonScraperClient with typed HttpClient
+    builder.Services.AddHttpClient<ICommonScraperClient, CommonScraperClient>();
+
     builder.Services.AddHttpClient();          // global factory
     builder.Services.AddScoped<UnsplashService>();
     builder.Services.AddScoped<PexelsService>();
@@ -713,7 +725,7 @@ try
                 {
                     id = x.p.Id,
                     brojZapisnika = x.p.BrojZapisnika,
-                    datumPovracaja = x.p.DatumPovracaja,
+                    datumPovracaja = x.p.DatumPovracanja,
                     dobavljacId = x.p.IDDobavljac,
                     dobavljacNaziv = x.d.Naziv,
                     razlogPovracaja = x.p.RazlogPovracaja,

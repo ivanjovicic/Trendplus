@@ -1,0 +1,12 @@
+2026/01/29-13:50:55.781 52f4 Reusing MANIFEST C:\Users\Ivan\source\repos\Trendplus2\Python\chrome_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/01/29-13:50:55.821 52f4 Recovering log #4
+2026/01/29-13:50:55.835 52f4 Reusing old log C:\Users\Ivan\source\repos\Trendplus2\Python\chrome_profile\Default\Local Storage\leveldb/000004.log 
+2026/01/29-13:51:55.847 43c Level-0 table #8: started
+2026/01/29-13:51:55.852 43c Level-0 table #8: 16037 bytes OK
+2026/01/29-13:51:55.855 43c Delete type=0 #4
+2026/01/29-13:59:12.881 43c Level-0 table #10: started
+2026/01/29-13:59:12.887 43c Level-0 table #10: 16524 bytes OK
+2026/01/29-13:59:12.890 43c Delete type=0 #7
+2026/01/29-14:03:51.669 43c Level-0 table #12: started
+2026/01/29-14:03:51.676 43c Level-0 table #12: 23798 bytes OK
+2026/01/29-14:03:51.679 43c Delete type=0 #9

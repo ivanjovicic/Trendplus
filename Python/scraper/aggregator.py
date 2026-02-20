@@ -1,4 +1,118 @@
-﻿"""
+﻿import unicodedata
+import re
+
+
+def normalize_text(s: str):
+    if not s:
+        return ""
+    s = s.lower().strip()
+
+    # remove accents
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+
+    # auto-translation map (DE/RS/EN) for brands/types/keywords
+    translation_map = {
+        # Brands (example)
+        "adidas": "adidas", "адидас": "adidas",
+        "nike": "nike", "најк": "nike",
+        "reebok": "reebok", "рибок": "reebok",
+        "buffalo": "buffalo", "буффало": "buffalo",
+        # Types
+        "boot": "boot", "boots": "boot", "stiefel": "boot", "чизме": "boot", "ботинки": "boot",
+        "sneaker": "sneaker", "sneakers": "sneaker", "patike": "sneaker", "кроссовки": "sneaker", "кеды": "sneaker",
+        "sandale": "sandal", "sandals": "sandal", "сандале": "sandal", "сандалии": "sandal",
+        "loafer": "loafer", "loafers": "loafer", "мокасине": "loafer",
+        "heel": "heel", "heels": "heel", "pumps": "heel", "штикле": "heel",
+        "flat": "flat", "ballerinas": "flat", "ballet": "flat", "балетанке": "flat",
+        # Colors (optional, for future)
+        "schwarz": "black", "crna": "black", "black": "black",
+        "weiss": "white", "bela": "white", "white": "white",
+        "braun": "brown", "braon": "brown", "brown": "brown",
+        # Add more as needed
+    }
+
+    # Tokenize and translate
+    tokens = s.split()
+    tokens = [translation_map.get(tok, tok) for tok in tokens]
+    s = " ".join(tokens)
+
+    # keep only letters and numbers
+    s = re.sub(r"[^a-z0-9\s]", " ", s)
+
+    # reduce multiple spaces
+    s = re.sub(r"\s+", " ", s)
+
+    return s.strip()
+
+
+# --- Shoe type extraction ---
+def get_shoe_type(name: str) -> str:
+    n = (name or "").lower()
+    if any(x in n for x in ["sneak", "trainer", "sport"]):
+        return "sneaker"
+    if any(x in n for x in ["boot", "stiefel"]):
+        return "boot"
+    if any(x in n for x in ["sand", "sandal"]):
+        return "sandal"
+    if any(x in n for x in ["heel", "pum"]):
+        return "heel"
+    if any(x in n for x in ["loafer", "flat", "ballet"]):
+        return "flat"
+    return "other"
+
+# --- Price parser ---
+def parse_price(val):
+    import re
+    if val is None:
+        return 0.0
+    try:
+        return float(val)
+    except:
+        pass
+    s = str(val).replace('\u00a0', '').replace("€", "").strip()
+    m = re.search(r"[0-9\.,]+", s)
+    if not m:
+        return 0.0
+    s = m.group(0)
+    if "." in s and "," in s:
+        s = s.replace(".", "").replace(",", ".")
+    elif "," in s:
+        s = s.replace(",", ".")
+    try:
+        return float(s)
+    except:
+        return 0.0
+
+# --- Fuzzy string similarity ---
+from difflib import SequenceMatcher
+def similarity(a, b):
+    return SequenceMatcher(None, a or "", b or "").ratio()
+
+# --- Weighted scoring model ---
+def score_match(z, d):
+    score = 0
+    # brand
+    if normalize_text(z.get("brand")) == normalize_text(d.get("brand")):
+        score += 40
+    # type
+    if get_shoe_type(z.get("name")) == get_shoe_type(d.get("name")):
+        score += 20
+    # price
+    pa = parse_price(z.get("price"))
+    pb = parse_price(d.get("price"))
+    if pa > 0 and abs(pa - pb) < 0.2 * pa:
+        score += 20
+    # name fuzzy
+    zn = normalize_text(z.get("name"))
+    dn = normalize_text(d.get("name"))
+    if similarity(zn, dn) > 0.6:
+        score += 10
+    return score
+
+# --- Main similarity function ---
+def is_similar(z_item, d_item, min_score=60):
+    return score_match(z_item, d_item) >= min_score
+"""
 Social media trends aggregator
 Combines data from TikTok, Instagram, Pinterest, Google Trends
 """

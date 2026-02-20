@@ -15,6 +15,7 @@ using Infrastructure.Middleware;
 using Infrastructure.Repository;
 using Infrastructure.Resilience;
 using Infrastructure.Services;
+using Infrastructure.Services.Caching;
 using Infrastructure.Seed;
 using MediatR;
 using Microsoft.AspNetCore.Diagnostics;
@@ -29,6 +30,10 @@ using Application.Analytics.Queries.GetInventoryStatus;
 using Application.Analytics.Queries.GetSalesSummary;
 using Application.Analytics.Queries.GetTopProducts;
 using Microsoft.OpenApi.Models;
+using System.Net.Http.Json;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
+using Api.Services;
 
 try
 {
@@ -124,11 +129,21 @@ try
         builder.Configuration.GetSection("RabbitMq"));
     builder.Services.AddSingleton<IMessageBroker, RabbitMqMessageBroker>();
 
-    // HttpClient for external APIs with reduced timeout for faster fallback
+    // HttpClient for external APIs with reasonable timeout
     builder.Services.AddHttpClient("default", client =>
     {
-        client.Timeout = TimeSpan.FromSeconds(2); // Fast fallback to mock data
+        client.Timeout = TimeSpan.FromSeconds(30); // Enough time for Python service
     });
+    
+    // Named HttpClient for scraper service (Python), configured from appsettings or env
+    var scraperBase = builder.Configuration["ScraperService:BaseUrl"] ?? "http://localhost:8000";
+    builder.Services.AddHttpClient("scraper", client =>
+    {
+        client.BaseAddress = new Uri(scraperBase);
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
+
+    // Image providers for trends carousel are optional and resolved dynamically in endpoints
 
     // Background Workers
     builder.Services.AddHostedService<Workers.SyncWorker>();
@@ -192,6 +207,18 @@ try
         });
     });
 
+    // add Redis cache
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+        options.Configuration = $"{redisConnection},abortConnect=false,connectTimeout=500,syncTimeout=500,asyncTimeout=500,connectRetry=1";
+        options.InstanceName = "trendplus:";
+    });
+    builder.Services.AddSingleton<IAnalyticsCacheService, HybridCacheService>();
+
+    // Register Api.Services.CommonMatchesClient (implementation in Api project)
+    builder.Services.AddScoped<ICommonMatchesClient, CommonMatchesClient>();
+
     var app = builder.Build();
 
     // ================= DATABASE INITIALIZATION =================
@@ -250,17 +277,23 @@ try
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Trendplus API v1");
-        c.RoutePrefix = "swagger";
+        c.RoutePrefix = "swagger"; // Serve Swagger UI at /swagger
         c.DocumentTitle = "Trendplus API Documentation";
         c.DisplayRequestDuration();
     });
 
     app.UseAuthorization();
 
+    // Removed duplicate minimal API proxy for /api/release/{gender} because Api.Controllers.ReleaseController already defines this endpoint.
+    // Use the existing ReleaseController implementation instead.
+
     // ================= ENDPOINTS =================
 
-    // Map all endpoints from AllEndpoints.cs
+    // Map controllers and other minimal endpoints
+    app.MapControllers();
+    // Map all other endpoints from AllEndpoints.cs
     app.MapAllEndpoints();
+    app.MapCachedAnalyticsEndpoints();
     
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");

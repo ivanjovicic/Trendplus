@@ -5,9 +5,21 @@ echo ========================================
 echo.
 
 REM ============================================
+REM STEP 0: Start Redis (Docker)
+REM ============================================
+echo [0/4] Starting Redis...
+docker compose up -d redis >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ⚠ Redis nije pokrenut automatski (proveri Docker Desktop).
+) else (
+    echo ✅ Redis running on localhost:6379
+)
+echo.
+
+REM ============================================
 REM STEP 1: Start Python Trends Service
 REM ============================================
-echo [1/3] Starting Python Trends Service...
+echo [1/4] Starting Python Trends Service...
 cd Python
 
 REM Check if venv exists
@@ -27,7 +39,7 @@ REM ============================================
 REM STEP 2: Start .NET Backend API
 REM ============================================
 echo.
-echo [2/3] Starting .NET Backend API...
+echo [2/4] Starting .NET Backend API...
 
 REM Check if backend is already running
 netstat -ano | findstr :8080 >nul
@@ -43,7 +55,7 @@ REM ============================================
 REM STEP 3: Start React Frontend
 REM ============================================
 echo.
-echo [3/3] Starting React Frontend...
+echo [3/4] Starting React Frontend...
 
 REM Check if frontend is already running
 netstat -ano | findstr :5173 >nul

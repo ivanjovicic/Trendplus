@@ -203,6 +203,7 @@ namespace Infrastructure.DbContexts
         public DbSet<CreatedIdDto> CreatedIds => Set<CreatedIdDto>();
         public DbSet<Artikli> Artikli { get; set; } = null!;
         public DbSet<ProductImage> ProductImages { get; set; } = null!; // NEW
+        public DbSet<CrossPlatformProductAvailability> CrossPlatformProducts { get; set; } = null!;
         public DbSet<TipObuce> TipoviObuce { get; set; } = null!;
         public DbSet<Dobavljac> Dobavljaci { get; set; } = null!;
         public DbSet<ErrorRecord> ErrorRecords { get; set; } = null!;

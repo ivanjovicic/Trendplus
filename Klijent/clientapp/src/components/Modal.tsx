@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+﻿import React, { useEffect, useRef } from "react";
 
 export interface ModalProps {
     isOpen: boolean;
@@ -104,7 +104,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                         }}
                         aria-label="Zatvori"
                     >
-                        ?
+                        x
                     </button>
                 </div>
 
