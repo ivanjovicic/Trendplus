@@ -147,24 +147,28 @@ export default function AboutYouPage() {
                             <option value="auto">Auto (Recommended)</option>
                             <option value="manual">Manual</option>
                         </select>
+                        {pageMode === "auto" && (
+                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                                Auto mode stops when no new products are found.
+                            </div>
+                        )}
                     </div>
 
-                    <div style={{ minWidth: 160 }}>
-                        <label className="field-label">Pages</label>
-                        <input
-                            type="number"
-                            className="input-big"
-                            value={filterPages}
-                            min={1}
-                            disabled={pageMode === "auto"}
-                            onChange={(e) => setFilterPages(Number(e.target.value) || 1)}
-                        />
-                        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                            {pageMode === "auto"
-                                ? "Auto mode stops when no new products are found."
-                                : "Use 1-3 pages to keep scraper fast."}
+                    {pageMode === "manual" && (
+                        <div style={{ minWidth: 160 }}>
+                            <label className="field-label">Pages</label>
+                            <input
+                                type="number"
+                                className="input-big"
+                                value={filterPages}
+                                min={1}
+                                onChange={(e) => setFilterPages(Number(e.target.value) || 1)}
+                            />
+                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                                Use 1-3 pages to keep scraper fast.
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div style={{ minWidth: 220 }}>
                         <label className="field-label">Brand</label>
@@ -235,15 +239,27 @@ export default function AboutYouPage() {
             {results.length > 0 && (
                 <div>
                     <h3 style={{ marginBottom: 12 }}>Results ({results.length})</h3>
-                    <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+                    <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
                         {results.map((p, idx) => (
                             <div key={idx} className="card" style={{ padding: 12 }}>
-                                <div style={{ width: "100%", height: 220, overflow: "hidden", borderRadius: 8, background: "#f3f4f6" }}>
+                                <div
+                                    style={{
+                                        width: "100%",
+                                        height: 170,
+                                        overflow: "hidden",
+                                        borderRadius: 8,
+                                        background: "#ffffff",
+                                        border: "1px solid #e5e7eb",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}
+                                >
                                     {p.image ? (
                                         <img
                                             src={p.image}
                                             alt={p.name}
-                                            style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }}
+                                            style={{ width: "100%", height: "100%", objectFit: "contain", cursor: "pointer", padding: 6 }}
                                             onClick={() => openImage(p.image, p.name)}
                                             onError={(e) => {
                                                 (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=No+Image";
