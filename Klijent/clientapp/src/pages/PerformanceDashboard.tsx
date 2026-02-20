@@ -1,13 +1,18 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getPerformanceStats } from "../services/performanceApi";
 import { PerformanceStat, PerformanceSummary } from "../types/performance";
+
+type SortKey = "timestamp" | "requestName" | "durationMs" | "isSuccess";
+type SortDirection = "asc" | "desc";
 
 export default function PerformanceDashboard() {
     const [stats, setStats] = useState<PerformanceStat[]>([]);
     const [summary, setSummary] = useState<PerformanceSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
+    const [sortKey, setSortKey] = useState<SortKey>("durationMs");
+    const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
     // Filters
     const [topCount, setTopCount] = useState(20);
     const [minDuration, setMinDuration] = useState(1000);
@@ -64,21 +69,62 @@ export default function PerformanceDashboard() {
         return "#dc2626"; // red
     };
 
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+            return;
+        }
+
+        setSortKey(key);
+        setSortDirection("asc");
+    };
+
+    const sortedStats = useMemo(() => {
+        const factor = sortDirection === "asc" ? 1 : -1;
+
+        return [...stats].sort((a, b) => {
+            let comparison = 0;
+
+            switch (sortKey) {
+                case "timestamp":
+                    comparison = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                    break;
+                case "requestName":
+                    comparison = a.requestName.localeCompare(b.requestName, "sr");
+                    break;
+                case "durationMs":
+                    comparison = a.durationMs - b.durationMs;
+                    break;
+                case "isSuccess":
+                    comparison = Number(a.isSuccess) - Number(b.isSuccess);
+                    break;
+            }
+
+            if (comparison === 0) return a.id - b.id;
+            return comparison * factor;
+        });
+    }, [stats, sortDirection, sortKey]);
+
+    const getSortIcon = (key: SortKey) => {
+        if (sortKey !== key) return "⇅";
+        return sortDirection === "asc" ? "↑" : "↓";
+    };
+
     return (
         <div className="card" style={{ maxWidth: "1400px" }}>
             <h2 className="text-2xl font-semibold mb-6">⚡ Performance Dashboard</h2>
 
             {/* Summary Cards */}
             {summary && (
-                <div style={{ 
-                    display: "grid", 
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-                    gap: "1rem", 
-                    marginBottom: "2rem" 
+                <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: "1rem",
+                    marginBottom: "2rem"
                 }}>
-                    <div style={{ 
-                        background: "#eff6ff", 
-                        padding: "1.5rem", 
+                    <div style={{
+                        background: "#eff6ff",
+                        padding: "1.5rem",
                         borderRadius: "12px",
                         border: "2px solid #2563eb"
                     }}>
@@ -90,9 +136,9 @@ export default function PerformanceDashboard() {
                         </div>
                     </div>
 
-                    <div style={{ 
-                        background: "#fef3c7", 
-                        padding: "1.5rem", 
+                    <div style={{
+                        background: "#fef3c7",
+                        padding: "1.5rem",
                         borderRadius: "12px",
                         border: "2px solid #f59e0b"
                     }}>
@@ -104,27 +150,27 @@ export default function PerformanceDashboard() {
                         </div>
                     </div>
 
-                    <div style={{ 
-                        background: summary.failedRequests > 0 ? "#fef2f2" : "#f0fdf4", 
-                        padding: "1.5rem", 
+                    <div style={{
+                        background: summary.failedRequests > 0 ? "#fef2f2" : "#f0fdf4",
+                        padding: "1.5rem",
                         borderRadius: "12px",
                         border: `2px solid ${summary.failedRequests > 0 ? "#dc2626" : "#059669"}`
                     }}>
                         <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
                             Failed Requests
                         </div>
-                        <div style={{ 
-                            fontSize: "2rem", 
-                            fontWeight: 700, 
-                            color: summary.failedRequests > 0 ? "#dc2626" : "#059669" 
+                        <div style={{
+                            fontSize: "2rem",
+                            fontWeight: 700,
+                            color: summary.failedRequests > 0 ? "#dc2626" : "#059669"
                         }}>
                             {summary.failedRequests}
                         </div>
                     </div>
 
-                    <div style={{ 
-                        background: "#f3f4f6", 
-                        padding: "1.5rem", 
+                    <div style={{
+                        background: "#f3f4f6",
+                        padding: "1.5rem",
                         borderRadius: "12px",
                         border: "2px solid #6b7280"
                     }}>
@@ -136,9 +182,9 @@ export default function PerformanceDashboard() {
                         </div>
                     </div>
 
-                    <div style={{ 
-                        background: "#fef2f2", 
-                        padding: "1.5rem", 
+                    <div style={{
+                        background: "#fef2f2",
+                        padding: "1.5rem",
                         borderRadius: "12px",
                         border: "2px solid #dc2626"
                     }}>
@@ -153,10 +199,10 @@ export default function PerformanceDashboard() {
             )}
 
             {/* Filters */}
-            <div className="toolbar" style={{ 
-                display: "grid", 
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-                gap: "1rem", 
+            <div className="toolbar" style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "1rem",
                 marginBottom: "1.5rem",
                 background: "#f9fafb"
             }}>
@@ -240,14 +286,22 @@ export default function PerformanceDashboard() {
                         <table className="table">
                             <thead>
                                 <tr>
-                                    <th>Vreme</th>
-                                    <th>Request</th>
-                                    <th style={{ textAlign: "right" }}>Trajanje</th>
-                                    <th style={{ textAlign: "center" }}>Status</th>
+                                    <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("timestamp")}>
+                                        Vreme {getSortIcon("timestamp")}
+                                    </th>
+                                    <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("requestName")}>
+                                        Request {getSortIcon("requestName")}
+                                    </th>
+                                    <th style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("durationMs")}>
+                                        Trajanje {getSortIcon("durationMs")}
+                                    </th>
+                                    <th style={{ textAlign: "center", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("isSuccess")}>
+                                        Status {getSortIcon("isSuccess")}
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {stats.map((stat) => (
+                                {sortedStats.map((stat) => (
                                     <React.Fragment key={stat.id}>
                                         <tr style={{ background: stat.isSuccess ? "#ffffff" : "#fef2f2" }}>
                                             <td style={{ whiteSpace: "nowrap", fontFamily: "monospace", fontSize: "0.8rem" }}>

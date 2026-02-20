@@ -35,6 +35,21 @@ backup
 bin
 obj
 
+# ---------- LOCAL RUNTIME DATA ----------
+pgdata
+Python/chrome_profile
+Python/venv
+Python/.venv
+Python/__pycache__
+Python/.pytest_cache
+Python/*.log
+Python/**/*debug*.html
+Python/**/zalando_debug_*.html
+
+# ---------- FRONTEND BUILD CACHE ----------
+**/*.tsbuildinfo
+Klijent/clientapp/dist
+
 # ---------- DOCS ----------
 docs
 README.md

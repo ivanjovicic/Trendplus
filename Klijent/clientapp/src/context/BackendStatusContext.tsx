@@ -8,6 +8,7 @@ export const BackendStatusContext = createContext<BackendStatus>({ online: true 
 
 export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [online, setOnline] = useState(true);
+    const HEALTH_POLL_INTERVAL_MS = import.meta.env.DEV ? 30000 : 120000;
     
     useEffect(() => {
         const pingBackend = async () => {
@@ -25,9 +26,9 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
         };
 
         pingBackend();
-        const interval = setInterval(pingBackend, 30000);
+        const interval = setInterval(pingBackend, HEALTH_POLL_INTERVAL_MS);
         return () => clearInterval(interval);
-    }, []);
+    }, [HEALTH_POLL_INTERVAL_MS]);
 
     return (
         <BackendStatusContext.Provider value={{ online }}>

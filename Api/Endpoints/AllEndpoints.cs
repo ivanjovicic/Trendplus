@@ -469,6 +469,7 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/sales/comparison", async (
             IAnalyticsDbContext db,
+            IMemoryCache cache,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -479,6 +480,15 @@ public static class AllEndpoints
                     fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
                 if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                     toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+                var fromKey = fromDate?.ToUniversalTime().ToString("O") ?? "null";
+                var toKey = toDate?.ToUniversalTime().ToString("O") ?? "null";
+                var cacheKey = $"analytics_comparison_{fromKey}_{toKey}";
+
+                if (cache.TryGetValue(cacheKey, out object? cachedComparison) && cachedComparison is not null)
+                {
+                    return Results.Ok(cachedComparison);
+                }
 
                 var currentQuery = db.SalesFacts.AsNoTracking();
                 if (fromDate.HasValue)
@@ -518,7 +528,7 @@ public static class AllEndpoints
                         static decimal Pct(decimal oldValue, decimal newValue) =>
                             oldValue == 0 ? (newValue > 0 ? 100 : 0) : ((newValue - oldValue) / oldValue) * 100;
 
-                        return Results.Ok(new
+                        var response = new
                         {
                             current,
                             previous,
@@ -528,11 +538,16 @@ public static class AllEndpoints
                                 transactions = Pct(previous.totalTransactions, current.totalTransactions),
                                 units = Pct(previous.totalUnits, current.totalUnits)
                             }
-                        });
+                        };
+
+                        cache.Set(cacheKey, response, TimeSpan.FromMinutes(1));
+                        return Results.Ok(response);
                     }
                 }
 
-                return Results.Ok(new { current, previous = (object?)null, change = (object?)null });
+                var defaultResponse = new { current, previous = (object?)null, change = (object?)null };
+                cache.Set(cacheKey, defaultResponse, TimeSpan.FromMinutes(1));
+                return Results.Ok(defaultResponse);
             }
             catch (Exception ex)
             {
@@ -541,10 +556,16 @@ public static class AllEndpoints
         })
         .RequireRateLimiting("analytics");
 
-        app.MapGet("/api/analytics/alerts", async (ITrendplusDbContext db, CancellationToken ct = default) =>
+        app.MapGet("/api/analytics/alerts", async (ITrendplusDbContext db, IMemoryCache cache, CancellationToken ct = default) =>
         {
             try
             {
+                const string cacheKey = "analytics_alerts";
+                if (cache.TryGetValue(cacheKey, out object? cachedAlerts) && cachedAlerts is not null)
+                {
+                    return Results.Ok(cachedAlerts);
+                }
+
                 var alerts = new List<object>();
 
                 var outOfStock = await db.Artikli
@@ -579,6 +600,7 @@ public static class AllEndpoints
                     });
                 }
 
+                cache.Set(cacheKey, alerts, TimeSpan.FromMinutes(2));
                 return Results.Ok(alerts);
             }
             catch (Exception ex)
@@ -1313,6 +1335,7 @@ public static class AllEndpoints
             int pageNumber = 1,
             int pageSize = 50,
             string? naziv = null,
+            int? sezonaId = null,
             decimal? minCena = null,
             decimal? maxCena = null,
             decimal? minKolicina = null,
@@ -1323,10 +1346,26 @@ public static class AllEndpoints
         {
             try
             {
+                var normalizedSortBy = (sortBy ?? "naziv").ToLowerInvariant();
+                var normalizedSortDir = (sortDir ?? "asc").ToLowerInvariant() == "desc" ? "desc" : "asc";
+                pageNumber = pageNumber < 1 ? 1 : pageNumber;
+                pageSize = pageSize < 1 ? 50 : Math.Min(pageSize, 200);
+
+                var responseCacheKey =
+                    $"artikli_page_{pageNumber}_{pageSize}_{naziv}_{sezonaId}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}_{normalizedSortBy}_{normalizedSortDir}";
+
+                if (cache.TryGetValue(responseCacheKey, out object? cachedResponse) && cachedResponse is not null)
+                {
+                    return Results.Ok(cachedResponse);
+                }
+
                 var query = db.Artikli.AsNoTracking().AsQueryable();
 
                 if (!string.IsNullOrWhiteSpace(naziv))
                     query = query.Where(a => a.Naziv.Contains(naziv));
+
+                if (sezonaId.HasValue)
+                    query = query.Where(a => a.IDSezona == sezonaId.Value);
 
                 if (minCena.HasValue)
                     query = query.Where(a => a.ProdajnaCena >= minCena.Value);
@@ -1340,7 +1379,7 @@ public static class AllEndpoints
                 if (maxKolicina.HasValue)
                     query = query.Where(a => a.Kolicina <= maxKolicina.Value);
 
-                var filterHash = $"{naziv}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}";
+                var filterHash = $"{naziv}_{sezonaId}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}";
                 var cacheKey = $"artikli_count_{filterHash}";
                 
                 if (!cache.TryGetValue(cacheKey, out int total))
@@ -1349,18 +1388,20 @@ public static class AllEndpoints
                     cache.Set(cacheKey, total, TimeSpan.FromMinutes(2));
                 }
 
-                query = sortBy.ToLower() switch
+                query = normalizedSortBy switch
                 {
-                    "prodajnacena" => sortDir == "asc" ? query.OrderBy(a => a.ProdajnaCena) : query.OrderByDescending(a => a.ProdajnaCena),
-                    "nabavnacena" => sortDir == "asc" ? query.OrderBy(a => a.NabavnaCena) : query.OrderByDescending(a => a.NabavnaCena),
-                    "kolicina" => sortDir == "asc" ? query.OrderBy(a => a.Kolicina) : query.OrderByDescending(a => a.Kolicina),
-                    "id" => sortDir == "asc" ? query.OrderBy(a => a.Id) : query.OrderByDescending(a => a.Id),
-                    _ => sortDir == "asc" ? query.OrderBy(a => a.Naziv) : query.OrderByDescending(a => a.Naziv)
+                    "prodajnacena" => normalizedSortDir == "asc" ? query.OrderBy(a => a.ProdajnaCena) : query.OrderByDescending(a => a.ProdajnaCena),
+                    "nabavnacena" => normalizedSortDir == "asc" ? query.OrderBy(a => a.NabavnaCena) : query.OrderByDescending(a => a.NabavnaCena),
+                    "kolicina" => normalizedSortDir == "asc" ? query.OrderBy(a => a.Kolicina) : query.OrderByDescending(a => a.Kolicina),
+                    "id" => normalizedSortDir == "asc" ? query.OrderBy(a => a.Id) : query.OrderByDescending(a => a.Id),
+                    _ => normalizedSortDir == "asc" ? query.OrderBy(a => a.Naziv) : query.OrderByDescending(a => a.Naziv)
                 };
 
                 var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+                var response = new { items, totalCount = total, pageNumber, pageSize };
+                cache.Set(responseCacheKey, response, TimeSpan.FromSeconds(30));
 
-                return Results.Ok(new { items, totalCount = total, pageNumber, pageSize });
+                return Results.Ok(response);
             }
             catch (Exception ex)
             {
@@ -1422,11 +1463,18 @@ public static class AllEndpoints
         .RequireRateLimiting("writes");
 
         // ============ SEZONE ============
-        app.MapGet("/api/sezone", async (ITrendplusDbContext db, ILogger<Program> logger, CancellationToken ct) =>
+        app.MapGet("/api/sezone", async (ITrendplusDbContext db, IMemoryCache cache, ILogger<Program> logger, CancellationToken ct) =>
         {
             try
             {
+                const string cacheKey = "sezone_all";
+                if (cache.TryGetValue(cacheKey, out List<Sezona>? cachedSezone) && cachedSezone is not null)
+                {
+                    return Results.Ok(cachedSezone);
+                }
+
                 var sezone = await db.Sezone.AsNoTracking().OrderBy(s => s.Naziv).ToListAsync(ct);
+                cache.Set(cacheKey, sezone, TimeSpan.FromMinutes(10));
                 return Results.Ok(sezone);
             }
             catch (Exception ex)

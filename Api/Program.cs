@@ -145,10 +145,19 @@ try
 
     // Image providers for trends carousel are optional and resolved dynamically in endpoints
 
-    // Background Workers
-    builder.Services.AddHostedService<Workers.SyncWorker>();
-    builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
-    builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>(); // NEW: Pre-aggregate analytics
+    // Background Workers (can be disabled in production via Workers:Enabled=false)
+    var workersEnabled = builder.Configuration.GetValue<bool>("Workers:Enabled", true);
+    if (workersEnabled)
+    {
+        builder.Services.AddHostedService<Workers.SyncWorker>();
+        builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
+        builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>(); // NEW: Pre-aggregate analytics
+        Console.WriteLine("Background workers: ENABLED");
+    }
+    else
+    {
+        Console.WriteLine("Background workers: DISABLED");
+    }
 
     builder.Services.AddControllers();
     builder.Services.ConfigureHttpJsonOptions(opts =>

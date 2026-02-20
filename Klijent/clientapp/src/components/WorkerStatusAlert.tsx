@@ -23,6 +23,7 @@ interface WorkerHealthSummary {
 }
 
 const API = import.meta.env.VITE_API_BASE_URL || '';
+const WORKER_HEALTH_POLL_INTERVAL_MS = import.meta.env.DEV ? 30000 : 120000;
 
 export default function WorkerStatusAlert() {
   const [health, setHealth] = useState<WorkerHealthSummary | null>(null);
@@ -53,8 +54,8 @@ export default function WorkerStatusAlert() {
   useEffect(() => {
     fetchHealth();
     
-    // Poll every 30 seconds
-    const interval = setInterval(fetchHealth, 30000);
+    // Poll less frequently in production to reduce backend/db load.
+    const interval = setInterval(fetchHealth, WORKER_HEALTH_POLL_INTERVAL_MS);
     
     return () => clearInterval(interval);
   }, [fetchHealth]);

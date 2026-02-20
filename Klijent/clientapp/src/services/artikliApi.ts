@@ -18,6 +18,9 @@ export type CreateArtikalDto = {
     idSezona?: number | null;
 };
 const API = import.meta.env.VITE_API_BASE_URL;
+const ARTIKLI_PAGED_CACHE_TTL_MS = 30 * 1000;
+const artikliPagedCache = new Map<string, { expiresAt: number; data: ArtikliPagedResponse<any> }>();
+const artikliPagedInFlight = new Map<string, Promise<ArtikliPagedResponse<any>>>();
 
 export type ArtikliPagedResponse<T> = {
     items: T[];
@@ -131,14 +134,41 @@ export async function getArtikliPaged<T = any>(
     if (filters?.sortBy) params.append("sortBy", filters.sortBy);
     if (filters?.sortDir) params.append("sortDir", filters.sortDir);
 
-    const res = await fetch(`${API}/api/artikli?${params.toString()}`);
-    if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${res.status}`;
-        throw new Error(message);
+    const cacheKey = params.toString();
+    const now = Date.now();
+    const cached = artikliPagedCache.get(cacheKey);
+    if (cached && now < cached.expiresAt) {
+        return cached.data as ArtikliPagedResponse<T>;
     }
 
-    return res.json();
+    const existingInFlight = artikliPagedInFlight.get(cacheKey);
+    if (existingInFlight) {
+        return existingInFlight as Promise<ArtikliPagedResponse<T>>;
+    }
+
+    const request = (async () => {
+        const res = await fetch(`${API}/api/artikli?${params.toString()}`);
+        if (!res.ok) {
+            const body = await res.json().catch(() => null);
+            const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${res.status}`;
+            throw new Error(message);
+        }
+
+        const data = await res.json() as ArtikliPagedResponse<T>;
+        artikliPagedCache.set(cacheKey, {
+            expiresAt: Date.now() + ARTIKLI_PAGED_CACHE_TTL_MS,
+            data: data as ArtikliPagedResponse<any>,
+        });
+        return data;
+    })();
+
+    artikliPagedInFlight.set(cacheKey, request as Promise<ArtikliPagedResponse<any>>);
+
+    try {
+        return await request;
+    } finally {
+        artikliPagedInFlight.delete(cacheKey);
+    }
 }
 
 export async function nivelacijaCena(artikalId: number, novaProdajnaCena: number, komentar?: string): Promise<void> {

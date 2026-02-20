@@ -2,11 +2,17 @@
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace Infrastructure.Seed;
 
 public static class TrendplusDbSeeder
 {
+    private static readonly Regex SpringSummerRegex =
+        new(@"^Prole[ćc]e/Leto\s+(?<year>\d{4})$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex AutumnWinterRegex =
+        new(@"^Jesen/Zima\s+(?<from>\d{4})/(?<to>\d{4})$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     public static async Task SeedAsync(TrendplusDbContext db, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
@@ -88,6 +94,8 @@ public static class TrendplusDbSeeder
             DatumOd = new DateTime(year, 9, 1, 0, 0, 0, DateTimeKind.Utc),
             DatumDo = new DateTime(year + 1, 2, 28, 23, 59, 59, DateTimeKind.Utc)
         });
+
+        await NormalizeSeasonDatesAsync(db, ct);
 
         // Artikli (dodaj samo ako ne postoji po Naziv)
         async Task<Artikli> GetOrCreateArtikalAsync(Artikli seed)
@@ -326,4 +334,51 @@ public static class TrendplusDbSeeder
             await db.SaveChangesAsync(ct);
         }
     }
+
+    private static async Task NormalizeSeasonDatesAsync(TrendplusDbContext db, CancellationToken ct)
+    {
+        var sezone = await db.Sezone.ToListAsync(ct);
+        var changed = false;
+
+        foreach (var sezona in sezone)
+        {
+            var springSummerMatch = SpringSummerRegex.Match(sezona.Naziv);
+            if (springSummerMatch.Success && int.TryParse(springSummerMatch.Groups["year"].Value, out var summerYear))
+            {
+                var expectedFrom = new DateTime(summerYear, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+                var expectedTo = new DateTime(summerYear, 8, 31, 23, 59, 59, DateTimeKind.Utc);
+
+                if (sezona.DatumOd != expectedFrom || sezona.DatumDo != expectedTo)
+                {
+                    sezona.DatumOd = expectedFrom;
+                    sezona.DatumDo = expectedTo;
+                    changed = true;
+                }
+
+                continue;
+            }
+
+            var autumnWinterMatch = AutumnWinterRegex.Match(sezona.Naziv);
+            if (autumnWinterMatch.Success &&
+                int.TryParse(autumnWinterMatch.Groups["from"].Value, out var fromYear) &&
+                int.TryParse(autumnWinterMatch.Groups["to"].Value, out var toYear))
+            {
+                var expectedFrom = new DateTime(fromYear, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+                var expectedTo = new DateTime(toYear, 2, 28, 23, 59, 59, DateTimeKind.Utc);
+
+                if (sezona.DatumOd != expectedFrom || sezona.DatumDo != expectedTo)
+                {
+                    sezona.DatumOd = expectedFrom;
+                    sezona.DatumDo = expectedTo;
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            await db.SaveChangesAsync(ct);
+        }
+    }
 }
+

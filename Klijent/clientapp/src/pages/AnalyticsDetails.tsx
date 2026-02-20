@@ -56,7 +56,10 @@ const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#10b981'
 
 export default function AnalyticsDetails() {
   const [fromDate, setFromDate] = useState<string>(() => {
-    const start = new Date("2020-01-01");
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - 30);
+    start.setHours(0, 0, 0, 0);
     return start.toISOString().slice(0, 16);
   });
   const [toDate, setToDate] = useState<string>(() => {

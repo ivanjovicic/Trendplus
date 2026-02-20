@@ -375,3 +375,23 @@ Logs/
 # Docker volumes
 rabbitmq_data/
 rabbitmq_logs/
+
+# Local runtime data (do not version)
+pgdata/
+Python/chrome_profile/
+Python/venv/
+Python/.venv/
+
+# Frontend incremental build cache
+*.tsbuildinfo
+
+# Local scraper/debug artifacts
+Python/**/*debug*.html
+Python/**/debug_*.html
+Python/**/zalando_debug_*.html
+Python/**/release_calendar_debug.html
+
+# Local DB/runtime files
+postmaster.pid
+postmaster.opts
+*.pid
