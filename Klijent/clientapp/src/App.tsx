@@ -29,6 +29,7 @@ import ReleaseCalendar from "./pages/ReleaseCalendar";
 import DeichmannPage from "./pages/DeichmannPage";
 import CommonProductsPage from "./pages/CommonProductsPage";
 import AboutYouPage from "./pages/AboutYouPage";
+import HumanicPage from "./pages/HumanicPage";
 
 function AppShell() {
     return (
@@ -58,6 +59,7 @@ function AppShell() {
             <Route path="/release-calendar" element={<ReleaseCalendar />} />
             <Route path="/deichmann" element={<DeichmannPage />} />
             <Route path="/aboutyou" element={<AboutYouPage />} />
+            <Route path="/humanic" element={<HumanicPage />} />
             <Route path="/admin/common-products" element={<CommonProductsPage />} />
         </Routes>
     );

@@ -10,7 +10,7 @@ CATEGORY_MAP = {
 """
 Trendplus Global Trends API
 - FastAPI server koji povezuje .NET backend sa Python scraperima
-- Scrapers: Zalando (Playwright), Deichmann, About You
+- Scrapers: Zalando (Playwright), Deichmann, About You, Humanic
 - /scrapers/common: fuzzy matching između Zalando & Deichmann modela
 - Redis caching za /scrapers/common (opciono)
 - Elasticsearch indeksiranje common match-eva (opciono)
@@ -521,6 +521,25 @@ class AboutYouFilters(BaseModel):
     pages: int = 1
 
 
+class HumanicFilters(BaseModel):
+    # Optional full category URL, e.g. https://www.humanic.net/at/c/Damenschuhe/womenShoes
+    url: Optional[str] = None
+    # Can be full path (at/c/Damenschuhe/womenShoes) or category shortcut
+    category: Optional[str] = "Damenschuhe/womenShoes"
+    # Accepted aliases map to Humanic sortBy values, default = bestseller
+    sort: Optional[str] = "bestseller"
+    priceMin: Optional[float] = None
+    priceMax: Optional[float] = None
+    # Comma-separated brands (added as refinementList[brand][i] URL filters)
+    brand: Optional[str] = None
+    # Free-text keyword filter over brand + product name
+    keyword: Optional[str] = None
+    # Comma-separated material values, e.g. "Leder,Glattleder,Leder-Textil,Lederimitat"
+    upperMaterials: Optional[str] = None
+    # pages <= 0 means auto mode
+    pages: int = 0
+
+
 # ============================================================
 # ROOT
 # ============================================================
@@ -609,6 +628,34 @@ async def api_aboutyou(filters: AboutYouFilters):
         return {"status": "ok", "count": len(items), "items": items}
     except Exception as e:
         logging.exception("AboutYou scraper failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
+# ============================================================
+# HUMANIC SCRAPER ENDPOINT
+# ============================================================
+
+@app.post("/scrapers/humanic")
+async def api_humanic(filters: HumanicFilters):
+    logging.info(f"/scrapers/humanic filters={filters.model_dump()}")
+
+    try:
+        from scraper.humanic_scraper import scrape_humanic_filtered
+    except Exception as e:
+        logging.error("Humanic scraper unavailable: %s", e)
+        raise HTTPException(status_code=500, detail="Humanic scraper is unavailable")
+
+    try:
+        payload = filters.model_dump()
+        # Accept list from clients too, then normalize to CSV expected by scraper.
+        upper_materials_value = payload.get("upperMaterials")
+        if isinstance(upper_materials_value, list):
+            payload["upperMaterials"] = ",".join(str(v).strip() for v in upper_materials_value if str(v).strip())
+
+        items = await scrape_humanic_filtered(**payload)
+        return {"status": "ok", "count": len(items), "items": items}
+    except Exception as e:
+        logging.exception("Humanic scraper failed: %s", e)
         return {"status": "error", "error": str(e)}
 
 

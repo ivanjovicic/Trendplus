@@ -106,6 +106,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/aboutyou" className="button-small">
                         👢 About You Scraper
                     </Link>
+                    <Link to="/humanic" className="button-small">
+                        👠 Humanic Scraper
+                    </Link>
                  </nav>
 
                  {children}
