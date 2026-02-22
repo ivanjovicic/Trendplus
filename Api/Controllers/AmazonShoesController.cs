@@ -46,10 +46,11 @@ namespace Api.Controllers
         [HttpGet("sync")]
         [ProducesResponseType(typeof(SyncResult), 200)]
         public async Task<IActionResult> Sync(
-            [FromQuery] string type      = "sneakers",
-            [FromQuery] int?   minPrice  = null,
-            [FromQuery] int?   maxPrice  = null,
-            CancellationToken  ct        = default)
+            [FromQuery] string  type      = "sneakers",
+            [FromQuery] string? gender    = null,
+            [FromQuery] int?    minPrice  = null,
+            [FromQuery] int?    maxPrice  = null,
+            CancellationToken   ct        = default)
         {
             if (string.IsNullOrWhiteSpace(type))
                 return BadRequest("type is required");
@@ -57,7 +58,7 @@ namespace Api.Controllers
             List<AmazonShoeProduct> fetched;
             try
             {
-                fetched = await _amazon.FetchAsync(type, minPrice, maxPrice, ct);
+                fetched = await _amazon.FetchAsync(type, gender, minPrice, maxPrice, ct);
             }
             catch (Exception ex)
             {
@@ -91,6 +92,7 @@ namespace Api.Controllers
                     existing.ImageUrl      = s.ImageUrl;
                     existing.ProductUrl    = s.ProductUrl;
                     existing.Category      = s.Category;
+                    existing.Gender        = s.Gender;
                     existing.Domain        = s.Domain;
                     existing.LastSynced    = DateTime.UtcNow;
                     updated++;
@@ -114,18 +116,22 @@ namespace Api.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<AmazonShoeProduct>), 200)]
         public async Task<IActionResult> GetByType(
-            [FromQuery] string type     = "sneakers",
-            [FromQuery] int    page     = 1,
-            [FromQuery] int    pageSize = 20,
-            CancellationToken  ct       = default)
+            [FromQuery] string  type     = "sneakers",
+            [FromQuery] string? gender   = null,
+            [FromQuery] int     page     = 1,
+            [FromQuery] int     pageSize = 20,
+            CancellationToken   ct       = default)
         {
             page     = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
-            var query = _db.AmazonShoeProducts
-                .Where(x => x.Category == type)
-                .OrderByDescending(x => x.Rating)
-                .ThenByDescending(x => x.ReviewCount);
+            var q = _db.AmazonShoeProducts.Where(x => x.Category == type);
+
+            if (!string.IsNullOrEmpty(gender) && gender != "all")
+                q = q.Where(x => x.Gender == gender);
+
+            var query = q.OrderByDescending(x => x.Rating)
+                         .ThenByDescending(x => x.ReviewCount);
 
             var total = await query.CountAsync(ct);
             var items = await query

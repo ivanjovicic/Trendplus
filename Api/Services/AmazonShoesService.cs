@@ -27,13 +27,14 @@ namespace Api.Services
         }
 
         /// <summary>
-        /// Searches Amazon for shoes of the given type, optionally filtering by price.
+        /// Searches Amazon for shoes of the given type, optionally targeting a gender segment and filtering by price.
         /// Returns at most <see cref="SerpApiOptions.MaxResults"/> items per call.
         /// </summary>
         public async Task<List<AmazonShoeProduct>> FetchAsync(
-            string type,
-            int?   minPrice,
-            int?   maxPrice,
+            string  type,
+            string? gender,
+            int?    minPrice,
+            int?    maxPrice,
             CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(_opts.ApiKey) || _opts.ApiKey == "YOUR_KEY")
@@ -42,7 +43,10 @@ namespace Api.Services
                 return [];
             }
 
-            var query = Uri.EscapeDataString(type.Trim() + " shoes");
+            // Build keyword: prepend gender if specified ("women sneakers shoes")
+            var normalizedGender = string.IsNullOrEmpty(gender) || gender == "all" ? null : gender.Trim().ToLowerInvariant();
+            var genderPrefix     = normalizedGender is not null ? normalizedGender + " " : "";
+            var query = Uri.EscapeDataString(genderPrefix + type.Trim() + " shoes");
 
             var url = $"https://serpapi.com/search"
                     + $"?engine=amazon"
@@ -134,6 +138,7 @@ namespace Api.Services
                     OriginalPrice = origPrice,
                     Currency      = currency,
                     Category      = type.Trim(),
+                    Gender        = normalizedGender,
                     Domain        = _opts.AmazonDomain,
                     LastSynced    = DateTime.UtcNow,
                     CreatedAt     = DateTime.UtcNow,

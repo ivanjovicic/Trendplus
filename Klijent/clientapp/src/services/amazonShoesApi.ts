@@ -13,6 +13,7 @@ export type AmazonShoeProduct = {
     imageUrl: string | null;
     productUrl: string | null;
     category: string | null;
+    gender: string | null;
     domain: string | null;
     lastSynced: string;
     createdAt: string;
@@ -58,10 +59,12 @@ async function get<T>(path: string): Promise<T> {
 
 export async function syncAmazonShoes(
     type: string,
+    gender?: string | null,
     minPrice?: number | null,
     maxPrice?: number | null,
 ): Promise<SyncResult> {
     let url = `/api/shoes/sync?type=${encodeURIComponent(type)}`;
+    if (gender && gender !== "all") url += `&gender=${encodeURIComponent(gender)}`;
     if (minPrice != null) url += `&minPrice=${minPrice}`;
     if (maxPrice != null) url += `&maxPrice=${maxPrice}`;
     return get<SyncResult>(url);
@@ -69,10 +72,13 @@ export async function syncAmazonShoes(
 
 export async function getAmazonShoesByType(
     type: string,
+    gender?: string | null,
     page = 1,
     pageSize = 20,
 ): Promise<PagedResult<AmazonShoeProduct>> {
-    return get(`/api/shoes?type=${encodeURIComponent(type)}&page=${page}&pageSize=${pageSize}`);
+    let url = `/api/shoes?type=${encodeURIComponent(type)}&page=${page}&pageSize=${pageSize}`;
+    if (gender && gender !== "all") url += `&gender=${encodeURIComponent(gender)}`;
+    return get(url);
 }
 
 export async function getAllAmazonShoes(

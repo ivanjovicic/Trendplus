@@ -139,6 +139,7 @@ namespace Infrastructure.DbContexts
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.Asin).IsUnique();
                 entity.HasIndex(e => e.Category);
+                entity.HasIndex(e => e.Gender);
                 entity.HasIndex(e => e.Rating);
                 entity.HasIndex(e => e.LastSynced);
                 entity.Property(e => e.Price).HasColumnType("numeric(18,4)");

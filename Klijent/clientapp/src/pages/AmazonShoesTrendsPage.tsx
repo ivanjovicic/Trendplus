@@ -12,9 +12,25 @@ import {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const SHOE_TYPES = [
-    "sneakers", "boots", "ankle boots", "sandals", "heels",
-    "loafers", "oxfords", "mules", "flats", "running shoes",
-    "chelsea boots", "stilettos", "wedges", "espadrilles", "slippers",
+    // Sportske
+    "sneakers", "running shoes", "training shoes", "basketball shoes", "tennis shoes",
+    // Casual
+    "loafers", "moccasins", "flats", "espadrilles", "slippers", "boat shoes",
+    // Elegantne
+    "oxfords", "derbies", "heels", "pumps", "stilettos", "wedges", "platforms",
+    // Čizme i gležnjače
+    "boots", "ankle boots", "chelsea boots", "knee high boots", "combat boots", "rain boots", "cowboy boots",
+    // Sandale i ljeto
+    "sandals", "mules", "flip flops", "slides",
+    // Specifični tipovi
+    "ballet flats", "mary janes", "brogues", "monk straps", "clogs",
+];
+
+const GENDER_OPTIONS = [
+    { value: "all",    label: "Sve" },
+    { value: "women",  label: "Žene" },
+    { value: "men",    label: "Muškarci" },
+    { value: "unisex", label: "Unisex" },
 ];
 
 const STAR_COLOR = "#f59e0b";
@@ -187,11 +203,13 @@ export default function AmazonShoesTrendsPage() {
     const [pageSize]                          = useState(20);
 
     const [syncType, setSyncType]             = useState("sneakers");
+    const [syncGender, setSyncGender]         = useState("women");
     const [syncMinPrice, setSyncMinPrice]     = useState("");
     const [syncMaxPrice, setSyncMaxPrice]     = useState("");
     const [syncing, setSyncing]               = useState(false);
     const [syncMsg, setSyncMsg]               = useState<{ ok: boolean; text: string } | null>(null);
 
+    const [browseGender, setBrowseGender]     = useState<string>("all");
     const [loadingItems, setLoadingItems]     = useState(false);
 
     // ── Load categories ───────────────────────────────────────────────────
@@ -209,11 +227,11 @@ export default function AmazonShoesTrendsPage() {
     useEffect(() => {
         if (!selectedType) return;
         setLoadingItems(true);
-        getAmazonShoesByType(selectedType, page, pageSize)
+        getAmazonShoesByType(selectedType, browseGender === "all" ? null : browseGender, page, pageSize)
             .then(setResult)
             .catch(() => setResult(null))
             .finally(() => setLoadingItems(false));
-    }, [selectedType, page, pageSize]);
+    }, [selectedType, browseGender, page, pageSize]);
 
     // ── Sync ─────────────────────────────────────────────────────────────
 
@@ -224,12 +242,12 @@ export default function AmazonShoesTrendsPage() {
         try {
             const r = await syncAmazonShoes(
                 syncType.trim(),
+                syncGender === "all" ? null : syncGender,
                 syncMinPrice ? Number(syncMinPrice) : null,
                 syncMaxPrice ? Number(syncMaxPrice) : null,
             );
             setSyncMsg({ ok: true, text: `✅ ${r.total} results — ${r.inserted} inserted, ${r.updated} updated` });
             reloadCategories();
-            // Auto-select the synced type
             setSelectedType(syncType.trim());
             setPage(1);
         } catch (e) {
@@ -272,7 +290,7 @@ export default function AmazonShoesTrendsPage() {
 
                     {/* Type */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Shoe type</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Tip cipele</label>
                         <div style={{ position: "relative" }}>
                             <input
                                 value={syncType}
@@ -285,6 +303,20 @@ export default function AmazonShoesTrendsPage() {
                                 {SHOE_TYPES.map((t) => <option key={t} value={t} />)}
                             </datalist>
                         </div>
+                    </div>
+
+                    {/* Gender */}
+                    <div>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Pol</label>
+                        <select
+                            value={syncGender}
+                            onChange={(e) => setSyncGender(e.target.value)}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, minWidth: 120, background: "white" }}
+                        >
+                            {GENDER_OPTIONS.map((g) => (
+                                <option key={g.value} value={g.value}>{g.label}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Min price */}
@@ -351,7 +383,7 @@ export default function AmazonShoesTrendsPage() {
                     <CategoryPanel
                         categories={categories}
                         selected={selectedType}
-                        onSelect={(c) => { setSelectedType(c); setPage(1); }}
+                        onSelect={(c) => { setSelectedType(c); setPage(1); setBrowseGender("all"); }}
                         onDelete={handleDelete}
                     />
                 </div>
@@ -361,16 +393,36 @@ export default function AmazonShoesTrendsPage() {
 
                     {/* Header row */}
                     {selectedType && (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                            <div>
-                                <span style={{ fontWeight: 700, fontSize: 16, color: "#111827", textTransform: "capitalize" }}>{selectedType}</span>
-                                {result && (
-                                    <span style={{ marginLeft: 8, fontSize: 13, color: "#6b7280" }}>
-                                        {result.total} items · page {result.page}/{result.pages}
-                                    </span>
-                                )}
+                        <div style={{ marginBottom: 14 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                                <div>
+                                    <span style={{ fontWeight: 700, fontSize: 16, color: "#111827", textTransform: "capitalize" }}>{selectedType}</span>
+                                    {result && (
+                                        <span style={{ marginLeft: 8, fontSize: 13, color: "#6b7280" }}>
+                                            {result.total} items · page {result.page}/{result.pages}
+                                        </span>
+                                    )}
+                                </div>
+                                {loadingItems && <span style={{ fontSize: 12, color: "#9ca3af" }}>⏳ Loading…</span>}
                             </div>
-                            {loadingItems && <span style={{ fontSize: 12, color: "#9ca3af" }}>⏳ Loading…</span>}
+                            {/* Gender filter tabs */}
+                            <div style={{ display: "flex", gap: 6 }}>
+                                {GENDER_OPTIONS.map((g) => (
+                                    <button
+                                        key={g.value}
+                                        onClick={() => { setBrowseGender(g.value); setPage(1); }}
+                                        style={{
+                                            padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                                            border: `1.5px solid ${browseGender === g.value ? "#4f46e5" : "#e5e7eb"}`,
+                                            background: browseGender === g.value ? "#4f46e5" : "white",
+                                            color: browseGender === g.value ? "white" : "#374151",
+                                            cursor: "pointer", transition: "all .12s",
+                                        }}
+                                    >
+                                        {g.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     )}
 

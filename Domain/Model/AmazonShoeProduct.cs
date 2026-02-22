@@ -48,6 +48,10 @@ namespace Domain.Model
         [MaxLength(100)]
         public string? Category { get; set; }
 
+        /// <summary>Gender segment: "men", "women", "unisex", or null (unknown).</summary>
+        [MaxLength(20)]
+        public string? Gender { get; set; }
+
         /// <summary>Amazon marketplace domain queried (e.g. "amazon.de", "amazon.it").</summary>
         [MaxLength(50)]
         public string? Domain { get; set; }
