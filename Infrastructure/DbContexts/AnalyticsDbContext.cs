@@ -132,6 +132,18 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => e.LocalProductId);
                 entity.HasIndex(e => e.Date);
             });
+
+            modelBuilder.Entity<AmazonShoeProduct>(entity =>
+            {
+                entity.ToTable("amazon_shoe_products");
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.Asin).IsUnique();
+                entity.HasIndex(e => e.Category);
+                entity.HasIndex(e => e.Rating);
+                entity.HasIndex(e => e.LastSynced);
+                entity.Property(e => e.Price).HasColumnType("numeric(18,4)");
+                entity.Property(e => e.OriginalPrice).HasColumnType("numeric(18,4)");
+            });
         }
 
         public DbSet<ProductsDim> ProductsDim => Set<ProductsDim>();
@@ -145,6 +157,9 @@ namespace Infrastructure.DbContexts
         public DbSet<SocialTrend> SocialTrends => Set<SocialTrend>();
         public DbSet<GlobalTrendScore> GlobalTrendScores => Set<GlobalTrendScore>();
         public DbSet<TrendHistory> TrendHistories => Set<TrendHistory>();
+
+        // Amazon Shoes (SerpAPI)
+        public DbSet<AmazonShoeProduct> AmazonShoeProducts => Set<AmazonShoeProduct>();
 
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }

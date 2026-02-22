@@ -34,6 +34,8 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.Threading.RateLimiting;
 
 try
 {
@@ -93,6 +95,14 @@ try
 
     // Memory Cache - required by GetArtikliQueryHandler and other caching services
     builder.Services.AddMemoryCache();
+
+    // Response compression
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+        options.Providers.Add<BrotliCompressionProvider>();
+        options.Providers.Add<GzipCompressionProvider>();
+    });
 
     // MediatR Pipeline Behaviors (order matters!)
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
@@ -227,6 +237,34 @@ try
 
     // Register Api.Services.CommonMatchesClient (implementation in Api project)
     builder.Services.AddScoped<ICommonMatchesClient, CommonMatchesClient>();
+    builder.Services.AddScoped<IScraperScoringQueryService, ScraperScoringQueryService>();
+
+    // Amazon Shoes via SerpAPI
+    builder.Services.Configure<Api.Config.SerpApiOptions>(
+        builder.Configuration.GetSection(Api.Config.SerpApiOptions.Section));
+    builder.Services.AddHttpClient<Api.Services.AmazonShoesService>(client =>
+    {
+        client.BaseAddress = new Uri("https://serpapi.com/");
+        client.Timeout = TimeSpan.FromSeconds(
+            builder.Configuration.GetValue<int>("SerpApi:TimeoutSeconds", 20));
+    });
+
+    // API v1 rate limiter
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.AddPolicy("api-v1", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "global",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 120,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }));
+    });
 
     var app = builder.Build();
 
@@ -266,11 +304,15 @@ try
         };
     });
 
+    // 2.1 Response compression
+    app.UseResponseCompression();
+
     // 3. Static files & routing
     app.UseDefaultFiles();
     app.UseStaticFiles();
     app.UseRouting();
     app.UseCors("AllowFrontend");
+    app.UseRateLimiter();
 
     if (app.Environment.IsDevelopment())
     {
@@ -303,6 +345,7 @@ try
     // Map all other endpoints from AllEndpoints.cs
     app.MapAllEndpoints();
     app.MapCachedAnalyticsEndpoints();
+    app.MapScoringEndpoints();
     
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");
@@ -344,4 +387,3 @@ static decimal CalculatePercentChange(decimal oldValue, decimal newValue)
     if (oldValue == 0) return newValue > 0 ? 100 : 0;
     return ((newValue - oldValue) / oldValue) * 100;
 }
-
