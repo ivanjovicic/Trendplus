@@ -34,7 +34,6 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
-using Microsoft.AspNetCore.ResponseCompression;
 using System.Threading.RateLimiting;
 
 try
@@ -88,6 +87,14 @@ try
     builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
         sp.GetRequiredService<AnalyticsDbContext>());
 
+    var openProductTrainingConnection =
+        builder.Configuration.GetConnectionString("OpenProductTrainingConnection")
+        ?? builder.Configuration.GetConnectionString("AnalyticsConnection");
+
+    builder.Services.AddDbContext<OpenProductTrainingDbContext>(options =>
+        options.UseNpgsql(openProductTrainingConnection)
+               .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
+
     Console.WriteLine("DbContext registered");
 
     // FluentValidation - auto-register all validators
@@ -95,14 +102,6 @@ try
 
     // Memory Cache - required by GetArtikliQueryHandler and other caching services
     builder.Services.AddMemoryCache();
-
-    // Response compression
-    builder.Services.AddResponseCompression(options =>
-    {
-        options.EnableForHttps = true;
-        options.Providers.Add<BrotliCompressionProvider>();
-        options.Providers.Add<GzipCompressionProvider>();
-    });
 
     // MediatR Pipeline Behaviors (order matters!)
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
@@ -238,38 +237,11 @@ try
     // Register Api.Services.CommonMatchesClient (implementation in Api project)
     builder.Services.AddScoped<ICommonMatchesClient, CommonMatchesClient>();
     builder.Services.AddScoped<IScraperScoringQueryService, ScraperScoringQueryService>();
+    builder.Services.AddScoped<IPopularityAndDealScoringService, PopularityAndDealScoringService>();
+    builder.Services.AddScoped<IOpenProductTrainingSignalProvider, OpenProductTrainingSignalProvider>();
+    builder.Services.AddScoped<IOpenProductTrainingSyncService, OpenProductTrainingSyncService>();
 
-    // Amazon Shoes via SerpAPI
-    builder.Services.Configure<Api.Config.SerpApiOptions>(
-        builder.Configuration.GetSection(Api.Config.SerpApiOptions.Section));
-    builder.Services.AddHttpClient<Api.Services.AmazonShoesService>(client =>
-    {
-        client.BaseAddress = new Uri("https://serpapi.com/");
-        client.Timeout = TimeSpan.FromSeconds(
-            builder.Configuration.GetValue<int>("SerpApi:TimeoutSeconds", 20));
-    });
-
-    // eBay Shoes via Browse API
-    builder.Services.Configure<Api.Config.EbayOptions>(
-        builder.Configuration.GetSection(Api.Config.EbayOptions.Section));
-    builder.Services.AddHttpClient<Api.Services.EbayBrowseService>(client =>
-    {
-        client.BaseAddress = new Uri("https://api.ebay.com/");
-        client.Timeout = TimeSpan.FromSeconds(
-            builder.Configuration.GetValue<int>("Ebay:TimeoutSeconds", 20));
-    });
-
-    // Google Shopping via SerpAPI
-    builder.Services.Configure<Api.Config.GoogleShoppingOptions>(
-        builder.Configuration.GetSection(Api.Config.GoogleShoppingOptions.Section));
-    builder.Services.AddHttpClient<Api.Services.GoogleShoppingService>(client =>
-    {
-        client.BaseAddress = new Uri("https://serpapi.com/");
-        client.Timeout = TimeSpan.FromSeconds(
-            builder.Configuration.GetValue<int>("GoogleShopping:TimeoutSeconds", 25));
-    });
-
-    // API rate limiters used by endpoint metadata (RequireRateLimiting)
+    // API rate limiter policies used by RequireRateLimiting(...) in endpoints
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -289,73 +261,12 @@ try
                     AutoReplenishment = true
                 }));
 
-        options.AddPolicy("fixed", httpContext =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: GetClientPartitionKey(httpContext),
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 100,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                }));
-
-        options.AddPolicy("strict", httpContext =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: GetClientPartitionKey(httpContext),
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 20,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                }));
-
         options.AddPolicy("writes", httpContext =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: GetClientPartitionKey(httpContext),
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = 40,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                }));
-
-        options.AddPolicy("db-heavy", httpContext =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: GetClientPartitionKey(httpContext),
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 60,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                }));
-
-        options.AddPolicy("analytics", httpContext =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: GetClientPartitionKey(httpContext),
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 80,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                }));
-
-        options.AddPolicy("external-api", httpContext =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: GetClientPartitionKey(httpContext),
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    // Tighter policy for endpoints that proxy external providers.
-                    PermitLimit = 20,
                     Window = TimeSpan.FromMinutes(1),
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 0,
@@ -401,9 +312,6 @@ try
         };
     });
 
-    // 2.1 Response compression
-    app.UseResponseCompression();
-
     // 3. Static files & routing
     app.UseDefaultFiles();
     app.UseStaticFiles();
@@ -443,6 +351,7 @@ try
     app.MapAllEndpoints();
     app.MapCachedAnalyticsEndpoints();
     app.MapScoringEndpoints();
+    app.MapOpenProductTrainingEndpoints();
     
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");
@@ -478,9 +387,3 @@ finally
     Log.CloseAndFlush();
 }
 
-// Helper function
-static decimal CalculatePercentChange(decimal oldValue, decimal newValue)
-{
-    if (oldValue == 0) return newValue > 0 ? 100 : 0;
-    return ((newValue - oldValue) / oldValue) * 100;
-}
