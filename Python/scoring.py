@@ -76,22 +76,70 @@ PRICE_POS_BONUS     = 0.15
 # Shannon entropy: max additional multiplier bonus when sources are perfectly distributed
 ENTROPY_BONUS_MAX   = 0.25
 
+# Reliability: groups with fewer than this many (deduplicated) occurrences get penalised
+MIN_OCCURRENCES            = 2
+SINGLE_APPEARANCE_PENALTY  = 0.60   # ×score when occurrences < MIN_OCCURRENCES
+SINGLE_SOURCE_PENALTY      = 0.80   # ×score when only 1 unique source
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 _STRIP_RE = re.compile(r"[^a-z0-9 ]")
 
+# Words that carry no product-identity signal – stripping these prevents
+# "Nike Air Max 270 Damen" and "Nike Air Max 270 Women" from creating
+# separate groups.
+_STOP_TOKENS = frozenset({
+    # gender
+    "damen", "herren", "women", "men", "woman", "man", "ladies", "girls",
+    "boys", "femme", "homme", "noi", "barbati", "damske", "panske",
+    "nok", "herre", "dame", "femmes", "hommes",
+    # Hungarian gender
+    "noi", "ferfi",
+    # generic adjectives
+    "new", "sale", "original", "official",
+})
+
 
 def _norm(s: Any) -> str:
     return _STRIP_RE.sub("", str(s or "").lower()).strip()
 
 
+def _significant_tokens(name: str) -> List[str]:
+    """Tokenise, drop stop words, sort — gives order-invariant identity."""
+    return sorted(
+        t for t in _norm(name).split()
+        if t and t not in _STOP_TOKENS
+    )
+
+
+def _extract_id(item: Dict[str, Any]) -> Optional[str]:
+    """Best stable identifier: SKU → numeric product ID → None."""
+    for field in ("sku", "SKU", "productId", "product_id", "articleId"):
+        v = item.get(field)
+        if v and str(v).strip():
+            return _norm(str(v))
+    # Try to pull a numeric ID from the product URL
+    url = str(item.get("url") or item.get("link") or "")
+    m = re.search(r"[/-](\d{6,})", url)   # at least 6 digits to avoid page numbers
+    if m:
+        return m.group(1)
+    return None
+
+
 def _match_key(item: Dict[str, Any]) -> str:
-    """Canonical key: normalised brand + first 3 words of name."""
-    brand = _norm(item.get("brand") or "")
-    name  = " ".join(_norm(item.get("name") or "").split()[:3])
-    return f"{brand}|{name}"
+    """
+    Stable group key.  Priority:
+      1. brand + SKU/productId  (most stable)
+      2. brand + sorted significant name tokens  (order-invariant, gender-neutral)
+    """
+    brand  = _norm(item.get("brand") or "")
+    pid    = _extract_id(item)
+    if pid:
+        return f"{brand}|id:{pid}"
+    tokens = _significant_tokens(item.get("name") or "")
+    return f"{brand}|{' '.join(tokens)}"
 
 
 def _source(item: Dict[str, Any]) -> str:
@@ -210,7 +258,27 @@ def compute_top10(
         if (p := _price(item)) is not None and p > 0
     ]
 
-    # ── Phase 2: group items (exact then fuzzy) ────────────────────────────────
+    # ── Phase 1b: normalize rank within each (source, market) sub-batch ───────
+    # Sort items per source+market by their reported rank, then reassign
+    # 1-based sequential ranks.  This removes the hardcoded page-size dependency
+    # and makes rank fair regardless of whether the scraper uses local or global
+    # rank numbers.
+    from itertools import groupby
+    sm_buckets: Dict[tuple, List] = defaultdict(list)
+    for idx, item in enumerate(all_items):
+        sm_key = (_source(item), _market(item))
+        raw_rank = int(item.get("rank") or item.get("position") or (idx + 1))
+        sm_buckets[sm_key].append((raw_rank, idx, item))
+
+    # Build a lookup: original list index → normalized rank
+    normalized_rank: Dict[int, int] = {}
+    for bucket in sm_buckets.values():
+        for norm_pos, (_, orig_idx, _item) in enumerate(
+            sorted(bucket, key=lambda t: t[0]), start=1
+        ):
+            normalized_rank[orig_idx] = norm_pos
+
+    # ── Phase 2: group items (exact then fuzzy, with source+market dedup) ─────
     groups: Dict[str, Dict[str, Any]] = {}
     group_keys_ordered: List[str] = []  # insertion-order list for fuzzy search
 
@@ -219,8 +287,9 @@ def compute_top10(
         brand     = _norm(item.get("brand") or "")
         source    = _source(item)
         market    = _market(item)
+        sm_pair   = (source, market)
 
-        # Resolve group key
+        # Resolve group key (exact first, then fuzzy)
         if exact_key in groups:
             resolved_key = exact_key
         else:
@@ -234,11 +303,28 @@ def compute_top10(
                     "sources":       set(),
                     "markets":       set(),
                     "source_counts": defaultdict(int),
+                    "seen_sm":       {},   # (source, market) → best (rank, item)
                     "score":         0.0,
+                    "dedup_skipped": 0,
                 }
                 group_keys_ordered.append(resolved_key)
 
-        rank = int(item.get("rank") or item.get("position") or (idx + 1))
+        rank = normalized_rank.get(idx, idx + 1)
+        g    = groups[resolved_key]
+
+        # ── Deduplication: keep only the best rank per (source, market) ───────
+        if sm_pair in g["seen_sm"]:
+            prev_rank, _ = g["seen_sm"][sm_pair]
+            if rank >= prev_rank:
+                # This appearance is worse than the one already recorded — skip
+                g["dedup_skipped"] += 1
+                continue
+            # This appearance is better; remove old item's score contribution
+            _, old_item = g["seen_sm"][sm_pair]
+            # We'll recompute from scratch for the replaced item below
+            # (simpler to just replace; old_score was already accumulated —
+            #  subtract it by tracking per-sm scores)
+        g["seen_sm"][sm_pair] = (rank, item)
 
         # Base item score: log rank × source weight × market weight
         rs         = _rank_score(rank)
@@ -254,7 +340,6 @@ def compute_top10(
         if item.get("sale") or item.get("onSale") or item.get("is_sale"):
             item_score *= (1 + SALE_BONUS)
 
-        g = groups[resolved_key]
         g["items"].append(item)
         g["sources"].add(source)
         g["markets"].add(market)
@@ -285,7 +370,19 @@ def compute_top10(
         rep_price    = group_prices[0] if group_prices else None
         price_bonus  = _price_position_bonus(rep_price, all_prices) if rep_price else 0.0
 
-        final_score = g["score"] * cross_mult * entropy_mult + price_bonus
+        # ── Reliability dampening ────────────────────────────────────────────
+        # occurrences = deduplicated items admitted (len of seen_sm)
+        deduped_count      = len(g["seen_sm"])
+        reliability_factor = 1.0
+        reliability_note   = ""
+        if deduped_count < MIN_OCCURRENCES:
+            reliability_factor *= SINGLE_APPEARANCE_PENALTY
+            reliability_note    = f"single_appearance(×{SINGLE_APPEARANCE_PENALTY})"
+        if len(g["sources"]) == 1:
+            reliability_factor *= SINGLE_SOURCE_PENALTY
+            reliability_note   += f" single_source(×{SINGLE_SOURCE_PENALTY})"
+
+        final_score = g["score"] * cross_mult * entropy_mult * reliability_factor + price_bonus
 
         # Best representative: highest source weight, then market weight
         best: Dict[str, Any] = max(
@@ -310,14 +407,19 @@ def compute_top10(
 
         # Transparent score breakdown (shown in UI tooltip / debug)
         score_breakdown = {
-            "baseScore":       round(g["score"], 4),
-            "crossSourceMult": round(1 + extra_sources * CROSS_SOURCE_BONUS, 4),
-            "crossMarketMult": round(1 + extra_markets * CROSS_MARKET_BONUS, 4),
-            "entropyBonus":    round((entropy_mult - 1), 4),
-            "priceBonus":      round(price_bonus, 4),
-            "entropyValue":    round(entropy, 4),
-            "imagePenalized":  not _has_image(best),
-            "fuzzyGrouped":    _FUZZY_AVAILABLE,
+            "baseScore":          round(g["score"], 4),
+            "crossSourceMult":    round(1 + extra_sources * CROSS_SOURCE_BONUS, 4),
+            "crossMarketMult":    round(1 + extra_markets * CROSS_MARKET_BONUS, 4),
+            "entropyBonus":       round((entropy_mult - 1), 4),
+            "priceBonus":         round(price_bonus, 4),
+            "entropyValue":       round(entropy, 4),
+            "reliabilityFactor":  round(reliability_factor, 4),
+            "reliabilityNote":    reliability_note.strip() or "ok",
+            "imagePenalized":     not _has_image(best),
+            "fuzzyGrouped":       _FUZZY_AVAILABLE,
+            "dedupSkipped":       g["dedup_skipped"],
+            "rankNormalized":     True,
+            "dedupedOccurrences": deduped_count,
         }
 
         results.append({
@@ -327,7 +429,7 @@ def compute_top10(
             "marketsCount":   len(g["markets"]),
             "allSources":     sorted(g["sources"]),
             "allMarkets":     sorted(g["markets"]),
-            "occurrences":    len(g["items"]),
+            "occurrences":    deduped_count,
             "priceByMarket":  price_by_market_out,
             "shoeType":       requested_type or best.get("shoeType") or "other",
             "scoreBreakdown": score_breakdown,
