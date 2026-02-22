@@ -6,6 +6,7 @@ import { runDeichmannScraper } from "../services/deichmannApi";
 import { runAboutYouScraper } from "../services/aboutYouApi";
 import { runHumanicScraper } from "../services/humanicApi";
 import { fetchGlobalTop10 } from "../services/scoringApi";
+import { TrendDashboard } from "../components/TrendDashboard";
 
 /* ─── SOURCE COLOR PALETTE ───────────────────────────────── */
 const SOURCE_COLOR: Record<string, { bg: string; text: string; border: string }> = {
@@ -936,6 +937,9 @@ export default function ScraperHubPage() {
                     </div>
                 </div>
             </div>
+
+            {/* ── TREND DASHBOARD (DB-backed history + momentum) ── */}
+            <TrendDashboard />
 
             {/* ── GLOBAL TOP 10 ── */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>

@@ -23,6 +23,7 @@ import time
 import json
 import threading
 import asyncio
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 
 from fastapi import FastAPI, HTTPException, Body
@@ -54,8 +55,18 @@ from scraper.aggregator import get_category_trends  # već postoji kod tebe
 # Weighted Top-10 scorer
 try:
     from scoring import compute_top10 as _compute_top10
+    try:
+        from scoring import build_canonical_key as _build_canonical_key
+    except ImportError:
+        _build_canonical_key = None  # type: ignore
 except ImportError:
     _compute_top10 = None  # type: ignore
+    _build_canonical_key = None  # type: ignore
+
+try:
+    import psycopg2  # type: ignore
+except ImportError:
+    psycopg2 = None  # type: ignore
 
 # Release calendar scraper (opciono)
 scrape_zalando_release_calendar = None
@@ -876,6 +887,346 @@ def get_release_calendar(gender: str = "mens"):
 # GLOBAL TOP 10  (weighted multi-source scorer)
 # ============================================================
 
+def _dotnet_conn_to_psycopg2_dsn(conn: str) -> str:
+    """
+    Convert .NET style connection string
+    (Host=...;Port=...;Database=...;Username=...;Password=...)
+    to psycopg2 DSN format.
+    """
+    if not conn:
+        return conn
+
+    conn = conn.strip()
+    if "://" in conn:
+        return conn
+
+    mapping = {
+        "host": "host",
+        "server": "host",
+        "port": "port",
+        "database": "dbname",
+        "dbname": "dbname",
+        "username": "user",
+        "user id": "user",
+        "userid": "user",
+        "user": "user",
+        "password": "password",
+        "sslmode": "sslmode",
+    }
+    dsn_parts: List[str] = []
+    for raw_part in conn.split(";"):
+        part = raw_part.strip()
+        if not part or "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        norm_key = mapping.get(key.strip().lower())
+        if not norm_key:
+            continue
+        dsn_parts.append(f"{norm_key}={value.strip()}")
+    return " ".join(dsn_parts) if dsn_parts else conn
+
+
+def _resolve_analytics_dsn() -> str:
+    """
+    Resolve analytics DB connection for Python persistence.
+    Priority:
+      1) ANALYTICS_DATABASE_URL
+      2) ANALYTICS_CONNECTION_STRING
+      3) ConnectionStrings__AnalyticsConnection
+      4) local default (docker-compose)
+    """
+    candidates = [
+        os.environ.get("ANALYTICS_DATABASE_URL"),
+        os.environ.get("ANALYTICS_CONNECTION_STRING"),
+        os.environ.get("ConnectionStrings__AnalyticsConnection"),
+    ]
+    for c in candidates:
+        if c and c.strip():
+            return _dotnet_conn_to_psycopg2_dsn(c.strip())
+    return "host=localhost port=5432 dbname=analytics user=postgres password=postgres"
+
+
+def _safe_float(v: Any) -> Optional[float]:
+    if v is None or isinstance(v, bool):
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_int(v: Any, default: int = 0) -> int:
+    if v is None or v == "":
+        return default
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _extract_currency(item: Dict[str, Any]) -> str:
+    currency = str(item.get("currency") or "").upper().strip()
+    if currency:
+        return currency[:8]
+    price_text = str(item.get("price") or "")
+    if "€" in price_text or "eur" in price_text.lower():
+        return "EUR"
+    return "EUR"
+
+
+def _extract_image_url(item: Dict[str, Any]) -> Optional[str]:
+    for key in ("image", "imageUrl", "image_url", "ImageUrl"):
+        value = item.get(key)
+        if value and str(value).strip():
+            return str(value).strip()
+    return None
+
+
+def _canonical_key_for_item(item: Dict[str, Any]) -> str:
+    if callable(_build_canonical_key):
+        try:
+            key = _build_canonical_key(item)
+            if key and str(key).strip():
+                return str(key).strip()
+        except Exception:
+            pass
+
+    brand = normalize_text(item.get("brand"))
+    name = normalize_text(item.get("name"))
+    return f"{brand}|{name}".strip("|")
+
+
+def _persist_global_top10_run(
+    raw_items: List[Dict[str, Any]],
+    ranked_items: List[Dict[str, Any]],
+    requested_type: Optional[str],
+    requested_top_n: int,
+) -> Optional[int]:
+    if not ranked_items or psycopg2 is None:
+        return None
+
+    dsn = _resolve_analytics_dsn()
+    run_id: Optional[int] = None
+
+    try:
+        with psycopg2.connect(dsn) as conn:
+            with conn.cursor() as cur:
+                notes = json.dumps({
+                    "endpoint": "/api/global-top10",
+                    "requestedType": requested_type,
+                    "requestedTopN": requested_top_n,
+                    "inputCount": len(raw_items),
+                })
+                cur.execute(
+                    """
+                    INSERT INTO runs (started_at, status, total_items, notes)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING run_id;
+                    """,
+                    (datetime.now(timezone.utc), "in_progress", len(ranked_items), notes),
+                )
+                run_id = int(cur.fetchone()[0])
+
+                for rank_index, item in enumerate(ranked_items, start=1):
+                    canonical_key = _canonical_key_for_item(item)
+                    brand = (item.get("brand") or "").strip() or None
+                    name = (item.get("name") or "").strip() or None
+                    color = (item.get("color") or "").strip() or None
+                    category = (item.get("shoeType") or requested_type or item.get("category") or "").strip() or None
+
+                    cur.execute(
+                        """
+                        INSERT INTO items (canonical_key, brand, name, color, category, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, NOW())
+                        ON CONFLICT (canonical_key) DO UPDATE
+                        SET brand = EXCLUDED.brand,
+                            name = EXCLUDED.name,
+                            color = COALESCE(EXCLUDED.color, items.color),
+                            category = COALESCE(EXCLUDED.category, items.category),
+                            updated_at = NOW()
+                        RETURNING item_id;
+                        """,
+                        (canonical_key, brand, name, color, category),
+                    )
+                    item_id = int(cur.fetchone()[0])
+
+                    source_name = str(item.get("source") or item.get("sourceName") or "unknown").lower().strip() or "unknown"
+                    market = str(item.get("market") or item.get("country") or "DE").upper().strip() or "DE"
+                    product_url = str(item.get("url") or item.get("link") or f"canonical://{canonical_key}").strip()
+                    price = _safe_float(item.get("priceValue"))
+                    if price is None:
+                        price = _safe_float(item.get("price"))
+                    currency = _extract_currency(item)
+                    availability = bool(item.get("available", True))
+
+                    cur.execute(
+                        """
+                        INSERT INTO item_sources (
+                            item_id, source_name, market, product_url, external_product_id, price, currency, availability, last_seen
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                        ON CONFLICT (item_id, source_name, market, product_url) DO UPDATE
+                        SET external_product_id = COALESCE(EXCLUDED.external_product_id, item_sources.external_product_id),
+                            price = EXCLUDED.price,
+                            currency = EXCLUDED.currency,
+                            availability = EXCLUDED.availability,
+                            last_seen = NOW();
+                        """,
+                        (
+                            item_id,
+                            source_name,
+                            market,
+                            product_url,
+                            str(item.get("sku") or item.get("productId") or item.get("articleId") or "").strip() or None,
+                            price,
+                            currency,
+                            availability,
+                        ),
+                    )
+
+                    cur.execute(
+                        """
+                        SELECT final_score
+                        FROM item_run_stats
+                        WHERE item_id = %s
+                        ORDER BY created_at DESC
+                        LIMIT 1;
+                        """,
+                        (item_id,),
+                    )
+                    prev_row = cur.fetchone()
+                    prev_final = _safe_float(prev_row[0]) if prev_row else None
+
+                    score_breakdown = item.get("scoreBreakdown") or {}
+                    base_score = _safe_float(score_breakdown.get("baseScore"))
+                    final_score = _safe_float(item.get("globalScore")) or 0.0
+                    if base_score is None:
+                        base_score = final_score
+
+                    momentum_raw = 0.0 if prev_final is None else (final_score - prev_final)
+                    momentum_normalized = 0.0
+                    if prev_final is not None and prev_final != 0:
+                        momentum_normalized = momentum_raw / abs(prev_final)
+
+                    appearance_count = _safe_int(item.get("occurrences"), 0)
+                    source_count = _safe_int(item.get("sourcesCount"), 0)
+                    market_count = _safe_int(item.get("marketsCount"), 0)
+
+                    cur.execute(
+                        """
+                        INSERT INTO item_run_stats (
+                            run_id, item_id, base_score, final_score, rank,
+                            appearance_count, source_count, market_count,
+                            momentum_raw, momentum_normalized
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (run_id, item_id) DO UPDATE
+                        SET base_score = EXCLUDED.base_score,
+                            final_score = EXCLUDED.final_score,
+                            rank = EXCLUDED.rank,
+                            appearance_count = EXCLUDED.appearance_count,
+                            source_count = EXCLUDED.source_count,
+                            market_count = EXCLUDED.market_count,
+                            momentum_raw = EXCLUDED.momentum_raw,
+                            momentum_normalized = EXCLUDED.momentum_normalized
+                        RETURNING stat_id;
+                        """,
+                        (
+                            run_id,
+                            item_id,
+                            base_score,
+                            final_score,
+                            rank_index,
+                            appearance_count,
+                            source_count,
+                            market_count,
+                            momentum_raw,
+                            momentum_normalized,
+                        ),
+                    )
+                    stat_id = int(cur.fetchone()[0])
+
+                    component_values = {
+                        "base_score": base_score,
+                        "final_score": final_score,
+                        "cross_source_mult": _safe_float(score_breakdown.get("crossSourceMult")),
+                        "cross_market_mult": _safe_float(score_breakdown.get("crossMarketMult")),
+                        "entropy_bonus": _safe_float(score_breakdown.get("entropyBonus")),
+                        "price_bonus": _safe_float(score_breakdown.get("priceBonus")),
+                        "reliability_factor": _safe_float(score_breakdown.get("reliabilityFactor")),
+                    }
+                    for component_name, component_value in component_values.items():
+                        if component_value is None:
+                            continue
+                        cur.execute(
+                            """
+                            INSERT INTO score_components (stat_id, component_name, component_value, weight)
+                            VALUES (%s, %s, %s, %s)
+                            ON CONFLICT (stat_id, component_name) DO UPDATE
+                            SET component_value = EXCLUDED.component_value,
+                                weight = EXCLUDED.weight;
+                            """,
+                            (stat_id, component_name, component_value, 1.0),
+                        )
+
+                    if price is not None and price > 0:
+                        cur.execute(
+                            """
+                            INSERT INTO item_price_history (item_id, run_id, source_name, market, price, currency)
+                            VALUES (%s, %s, %s, %s, %s, %s);
+                            """,
+                            (item_id, run_id, source_name, market, price, currency),
+                        )
+
+                    image_url = _extract_image_url(item)
+                    if image_url:
+                        cur.execute(
+                            """
+                            INSERT INTO item_images (item_id, image_url, dominant_color)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (item_id, image_url) DO NOTHING;
+                            """,
+                            (item_id, image_url, color),
+                        )
+
+                    all_markets_raw = item.get("allMarkets")
+                    all_markets = (
+                        [m for m in all_markets_raw if str(m).strip()]
+                        if isinstance(all_markets_raw, list) and all_markets_raw
+                        else [market]
+                    )
+                    per_market_appearance = 0
+                    if appearance_count > 0 and len(all_markets) > 0:
+                        per_market_appearance = max(1, appearance_count // len(all_markets))
+
+                    for mk in all_markets:
+                        cur.execute(
+                            """
+                            INSERT INTO item_market_stats (item_id, run_id, market, rank, score, appearance_count)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (item_id, run_id, market) DO UPDATE
+                            SET rank = EXCLUDED.rank,
+                                score = EXCLUDED.score,
+                                appearance_count = EXCLUDED.appearance_count;
+                            """,
+                            (item_id, run_id, str(mk).upper(), rank_index, final_score, per_market_appearance),
+                        )
+
+                cur.execute(
+                    """
+                    UPDATE runs
+                    SET finished_at = %s, status = %s, total_items = %s
+                    WHERE run_id = %s;
+                    """,
+                    (datetime.now(timezone.utc), "completed", len(ranked_items), run_id),
+                )
+        logging.info("Persisted global-top10 run_id=%s, items=%s", run_id, len(ranked_items))
+        return run_id
+    except Exception as ex:
+        logging.warning("Failed to persist global-top10 run: %s", ex)
+        return None
+
+
 class GlobalTop10Request(BaseModel):
     items: List[Dict[str, Any]]
     shoeType: Optional[str] = None
@@ -890,12 +1241,181 @@ async def global_top10_endpoint(req: GlobalTop10Request):
     """
     if _compute_top10 is None:
         raise HTTPException(status_code=503, detail="Scoring module not available")
+    top_n = max(1, int(req.topN or 10))
     ranked = _compute_top10(
         req.items,
         requested_type=req.shoeType,
-        top_n=req.topN,
+        top_n=top_n,
     )
-    return {"top10": ranked, "total": len(req.items)}
+    run_id = _persist_global_top10_run(
+        raw_items=req.items,
+        ranked_items=ranked,
+        requested_type=req.shoeType,
+        requested_top_n=top_n,
+    )
+    return {"top10": ranked, "total": len(req.items), "runId": run_id}
+
+
+# ============================================================
+# DASHBOARD  –  read scored history from DB
+# ============================================================
+
+def _row_to_dict(cursor, row: tuple) -> dict:
+    """Convert a psycopg2 cursor row to a plain dict, coercing Decimal/datetime."""
+    import decimal
+    colnames = [d.name for d in cursor.description]
+    out: dict = {}
+    for col, val in zip(colnames, row):
+        if isinstance(val, decimal.Decimal):
+            val = float(val)
+        elif hasattr(val, "isoformat"):          # datetime / date
+            val = val.isoformat()
+        out[col] = val
+    return out
+
+
+@app.get("/api/dashboard/latest")
+async def dashboard_latest(limit: int = 20):
+    """
+    Returns the latest completed scoring run and its items, enriched with
+    momentum, score breakdown, sources, markets, and price range.
+
+    Executes the pattern:
+        SELECT * FROM v_item_run_stats
+        WHERE run_id = (SELECT MAX(run_id) FROM runs WHERE status = 'completed')
+        ORDER BY final_score DESC
+        LIMIT :limit
+
+    Falls back to inline JOINs if the view hasn't been created yet.
+    """
+    if psycopg2 is None:
+        raise HTTPException(status_code=503, detail="psycopg2 not installed – database unavailable")
+
+    dsn = _resolve_analytics_dsn()
+    if not dsn:
+        raise HTTPException(status_code=503, detail="No analytics DB connection string configured")
+
+    try:
+        with psycopg2.connect(dsn) as conn:
+            # Enable JSON auto-deserialisation (psycopg2 extras)
+            try:
+                import psycopg2.extras as _extras
+                _extras.register_default_json(conn)
+                _extras.register_default_jsonb(conn)
+            except Exception:
+                pass
+
+            with conn.cursor() as cur:
+                # ── latest completed run ─────────────────────────────
+                cur.execute("""
+                    SELECT run_id, started_at, finished_at, status, total_items, notes
+                    FROM   runs
+                    WHERE  status = 'completed'
+                    ORDER  BY run_id DESC
+                    LIMIT  1;
+                """)
+                run_row = cur.fetchone()
+                if not run_row:
+                    # No completed run yet
+                    return {"run": None, "items": [], "message": "No completed runs found"}
+
+                run_id, started_at, finished_at, status, total_items, notes = run_row
+
+                # ── try the enriched view first ──────────────────────
+                items: list = []
+                try:
+                    cur.execute("""
+                        SELECT
+                            v.rank,
+                            v.item_id,
+                            v.brand,
+                            v.name,
+                            v.category,
+                            v.image_url,
+                            v.final_score,
+                            v.base_score,
+                            v.momentum_raw,
+                            v.momentum_normalized,
+                            v.appearance_count,
+                            v.source_count,
+                            v.market_count,
+                            v.score_components,
+                            v.markets,
+                            v.sources,
+                            v.min_price,
+                            v.max_price,
+                            v.prev_final_score,
+                            v.total_run_appearances,
+                            v.canonical_key
+                        FROM   v_item_run_stats v
+                        WHERE  v.run_id = %s
+                        ORDER  BY v.final_score DESC
+                        LIMIT  %s;
+                    """, (run_id, limit))
+                    rows = cur.fetchall()
+                    items = [_row_to_dict(cur, r) for r in rows]
+                except Exception as view_err:
+                    logging.warning("v_item_run_stats not found, using inline query: %s", view_err)
+                    conn.rollback()
+                    # ── fallback: inline JOIN ────────────────────────
+                    cur.execute("""
+                        SELECT
+                            irs.rank,
+                            irs.item_id,
+                            i.brand,
+                            i.name,
+                            i.category,
+                            NULL::text                          AS image_url,
+                            irs.final_score,
+                            irs.base_score,
+                            irs.momentum_raw,
+                            irs.momentum_normalized,
+                            irs.appearance_count,
+                            irs.source_count,
+                            irs.market_count,
+                            NULL::json                          AS score_components,
+                            NULL::json                          AS markets,
+                            NULL::json                          AS sources,
+                            NULL::numeric                       AS min_price,
+                            NULL::numeric                       AS max_price,
+                            NULL::numeric                       AS prev_final_score,
+                            1                                   AS total_run_appearances,
+                            i.canonical_key
+                        FROM   item_run_stats irs
+                        JOIN   items i ON i.item_id = irs.item_id
+                        WHERE  irs.run_id = %s
+                        ORDER  BY irs.final_score DESC
+                        LIMIT  %s;
+                    """, (run_id, limit))
+                    rows = cur.fetchall()
+                    items = [_row_to_dict(cur, r) for r in rows]
+
+        # ── decode JSON fields that came back as strings ──────────────
+        for item in items:
+            for fld in ("score_components", "markets", "sources"):
+                v = item.get(fld)
+                if isinstance(v, str):
+                    try:
+                        item[fld] = json.loads(v)
+                    except Exception:
+                        item[fld] = None
+
+        return {
+            "run": {
+                "runId":      run_id,
+                "startedAt":  started_at.isoformat() if hasattr(started_at, "isoformat") else str(started_at),
+                "finishedAt": finished_at.isoformat() if finished_at and hasattr(finished_at, "isoformat") else None,
+                "status":     status,
+                "totalItems": total_items,
+            },
+            "items": items,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as ex:
+        logging.warning("dashboard_latest error: %s", ex)
+        raise HTTPException(status_code=500, detail=str(ex))
 
 
 # ============================================================
