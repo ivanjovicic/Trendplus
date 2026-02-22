@@ -28,6 +28,7 @@ pytrends==4.9.2  # Google Trends API
 # Utilities
 python-dotenv==1.0.0
 schedule==1.2.0
+rapidfuzz==3.6.1          # Fuzzy product name matching in scorer
 
 # Testing
 pytest==7.4.4
