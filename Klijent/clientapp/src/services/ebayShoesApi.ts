@@ -14,6 +14,8 @@ export interface EbayShoeProduct {
     reviewCount: number;
     imageUrl:    string | null;
     productUrl:  string | null;
+    gender:      string | null;
+    trendScore:  number;
     category:    string | null;
     marketplace: string | null;
     lastSynced:  string;
@@ -47,10 +49,12 @@ export interface EbayCategorySummary {
 
 export async function syncEbayShoes(
     type:      string,
+    gender?:   string | null,
     minPrice?: number | null,
     maxPrice?: number | null,
 ): Promise<EbaySyncResult> {
     const params = new URLSearchParams({ type });
+    if (gender && gender !== "all") params.append("gender", gender);
     if (minPrice != null) params.append("minPrice", String(minPrice));
     if (maxPrice != null) params.append("maxPrice", String(maxPrice));
     const res = await fetch(`${BASE}/api/ebay/shoes/sync?${params}`);
@@ -60,10 +64,13 @@ export async function syncEbayShoes(
 
 export async function getEbayShoesByType(
     type:     string,
+    gender?:  string | null,
+    sortBy  = "rating",
     page     = 1,
     pageSize = 20,
 ): Promise<EbayPagedResult<EbayShoeProduct>> {
-    const params = new URLSearchParams({ type, page: String(page), pageSize: String(pageSize) });
+    const params = new URLSearchParams({ type, page: String(page), pageSize: String(pageSize), sortBy });
+    if (gender && gender !== "all") params.append("gender", gender);
     const res = await fetch(`${BASE}/api/ebay/shoes?${params}`);
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();

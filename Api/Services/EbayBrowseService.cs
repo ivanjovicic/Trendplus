@@ -29,11 +29,12 @@ namespace Api.Services
         }
 
         /// <summary>
-        /// Searches eBay for shoes of the given type, optionally filtering by price.
+        /// Searches eBay for shoes of the given type, optionally targeting a gender segment and filtering by price.
         /// Returns at most <see cref="EbayOptions.MaxResults"/> items.
         /// </summary>
         public async Task<List<EbayShoeProduct>> SearchAsync(
-            string  type,
+            string   type,
+            string?  gender,
             decimal? minPrice,
             decimal? maxPrice,
             CancellationToken ct = default)
@@ -46,7 +47,9 @@ namespace Api.Services
             }
 
             // ── Build URL ────────────────────────────────────────────────────
-            var q = Uri.EscapeDataString(type.Trim() + " shoes");
+            var normalizedGender = string.IsNullOrEmpty(gender) || gender == "all" ? null : gender.Trim().ToLowerInvariant();
+            var genderPrefix     = normalizedGender is not null ? normalizedGender + " " : "";
+            var q = Uri.EscapeDataString(genderPrefix + type.Trim() + " shoes");
 
             // eBay Browse API price filter: combine range into one filter param
             // e.g. filter=price:[20..150],priceCurrency:EUR
@@ -156,11 +159,13 @@ namespace Api.Services
                     Currency    = currency,
                     Rating      = feedbackScore / 20f,        // 0-100 % → 0-5 stars
                     ReviewCount = feedbackCount,
+                    TrendScore  = ShoeScoring.Compute(feedbackScore / 20f, feedbackCount, price),
                     ImageUrl    = item.TryGetProperty("image", out var img)
                                     ? GetStr(img, "imageUrl")
                                     : GetStr(item, "thumbnailImages"),
                     ProductUrl  = GetStr(item, "itemWebUrl"),
                     Category    = type.Trim(),
+                    Gender      = normalizedGender,
                     Marketplace = _opts.Marketplace,
                     LastSynced  = DateTime.UtcNow,
                     CreatedAt   = DateTime.UtcNow,

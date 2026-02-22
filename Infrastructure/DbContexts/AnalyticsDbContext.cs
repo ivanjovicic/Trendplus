@@ -141,6 +141,7 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => e.Category);
                 entity.HasIndex(e => e.Gender);
                 entity.HasIndex(e => e.Rating);
+                entity.HasIndex(e => e.TrendScore);
                 entity.HasIndex(e => e.LastSynced);
                 entity.Property(e => e.Price).HasColumnType("numeric(18,4)");
                 entity.Property(e => e.OriginalPrice).HasColumnType("numeric(18,4)");
@@ -152,7 +153,9 @@ namespace Infrastructure.DbContexts
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.EbayItemId).IsUnique();
                 entity.HasIndex(e => e.Category);
+                entity.HasIndex(e => e.Gender);
                 entity.HasIndex(e => e.Rating);
+                entity.HasIndex(e => e.TrendScore);
                 entity.HasIndex(e => e.LastSynced);
                 entity.Property(e => e.Price).HasColumnType("numeric(18,4)");
             });

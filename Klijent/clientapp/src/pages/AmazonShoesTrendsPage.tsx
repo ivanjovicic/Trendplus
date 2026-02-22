@@ -6,7 +6,6 @@ import {
     deleteAmazonShoeCategory,
     type AmazonShoeProduct,
     type CategorySummary,
-    type PagedResult,
 } from "../services/amazonShoesApi";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -24,6 +23,15 @@ const SHOE_TYPES = [
     "sandals", "mules", "flip flops", "slides",
     // Specifični tipovi
     "ballet flats", "mary janes", "brogues", "monk straps", "clogs",
+];
+
+const SORT_OPTIONS = [
+    { value: "score",      label: "🔥 Trend Score" },
+    { value: "rating",     label: "⭐ Rating" },
+    { value: "popular",   label: "💬 Reviews" },
+    { value: "price_asc",  label: "💰 Cijena ↑" },
+    { value: "price_desc", label: "💰 Cijena ↓" },
+    { value: "newest",     label: "🕐 Najnovije" },
 ];
 
 const GENDER_OPTIONS = [
@@ -184,9 +192,16 @@ function ShoeCard({ shoe }: { shoe: AmazonShoeProduct }) {
 
                 <div style={{ marginTop: "auto", paddingTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <PriceLabel price={shoe.price} original={shoe.originalPrice} currency={shoe.currency} />
-                    <span style={{ fontSize: 10, background: "#f3f4f6", color: "#6b7280", borderRadius: 5, padding: "1px 6px" }}>
-                        {shoe.asin}
-                    </span>
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        {shoe.trendScore > 0 && (
+                            <span style={{ fontSize: 9, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 5px", border: "1px solid #fde68a", fontWeight: 700 }}>
+                                ◆ {shoe.trendScore.toFixed(1)}
+                            </span>
+                        )}
+                        <span style={{ fontSize: 10, background: "#f3f4f6", color: "#6b7280", borderRadius: 5, padding: "1px 6px" }}>
+                            {shoe.asin}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -198,8 +213,11 @@ function ShoeCard({ shoe }: { shoe: AmazonShoeProduct }) {
 export default function AmazonShoesTrendsPage() {
     const [categories, setCategories]         = useState<CategorySummary[]>([]);
     const [selectedType, setSelectedType]     = useState("sneakers");
-    const [result, setResult]                 = useState<PagedResult<AmazonShoeProduct> | null>(null);
-    const [page, setPage]                     = useState(1);
+    const [items, setItems]                   = useState<AmazonShoeProduct[]>([]);
+    const [total, setTotal]                   = useState(0);
+    const [hasMore, setHasMore]               = useState(false);
+    const [nextPage, setNextPage]             = useState(2);
+    const [syncCounter, setSyncCounter]       = useState(0);
     const [pageSize]                          = useState(20);
 
     const [syncType, setSyncType]             = useState("sneakers");
@@ -210,7 +228,9 @@ export default function AmazonShoesTrendsPage() {
     const [syncMsg, setSyncMsg]               = useState<{ ok: boolean; text: string } | null>(null);
 
     const [browseGender, setBrowseGender]     = useState<string>("all");
+    const [sortBy, setSortBy]                 = useState("score");
     const [loadingItems, setLoadingItems]     = useState(false);
+    const [loadingMore, setLoadingMore]       = useState(false);
 
     // ── Load categories ───────────────────────────────────────────────────
 
@@ -222,16 +242,34 @@ export default function AmazonShoesTrendsPage() {
 
     useEffect(() => { reloadCategories(); }, [reloadCategories]);
 
-    // ── Load items when type or page changes ─────────────────────────────
+    // ── Load first page when filter changes ────────────────────────────────
 
     useEffect(() => {
         if (!selectedType) return;
         setLoadingItems(true);
-        getAmazonShoesByType(selectedType, browseGender === "all" ? null : browseGender, page, pageSize)
-            .then(setResult)
-            .catch(() => setResult(null))
+        setItems([]);
+        setHasMore(false);
+        setNextPage(2);
+        getAmazonShoesByType(selectedType, browseGender === "all" ? null : browseGender, sortBy, 1, pageSize)
+            .then(r => { setItems(r.items); setTotal(r.total); setHasMore(1 < r.pages); })
+            .catch(() => { setItems([]); setTotal(0); setHasMore(false); })
             .finally(() => setLoadingItems(false));
-    }, [selectedType, browseGender, page, pageSize]);
+    }, [selectedType, browseGender, sortBy, pageSize, syncCounter]);
+
+    // ── Load More ────────────────────────────────────────────────────
+
+    const handleLoadMore = () => {
+        if (loadingMore || !hasMore) return;
+        setLoadingMore(true);
+        getAmazonShoesByType(selectedType, browseGender === "all" ? null : browseGender, sortBy, nextPage, pageSize)
+            .then(r => {
+                setItems(prev => [...prev, ...r.items]);
+                setHasMore(nextPage < r.pages);
+                setNextPage(p => p + 1);
+            })
+            .catch(() => {})
+            .finally(() => setLoadingMore(false));
+    };
 
     // ── Sync ─────────────────────────────────────────────────────────────
 
@@ -249,7 +287,8 @@ export default function AmazonShoesTrendsPage() {
             setSyncMsg({ ok: true, text: `✅ ${r.total} results — ${r.inserted} inserted, ${r.updated} updated` });
             reloadCategories();
             setSelectedType(syncType.trim());
-            setPage(1);
+            setBrowseGender("all");
+            setSyncCounter(c => c + 1);
         } catch (e) {
             setSyncMsg({ ok: false, text: `❌ ${e instanceof Error ? e.message : String(e)}` });
         } finally {
@@ -264,11 +303,9 @@ export default function AmazonShoesTrendsPage() {
         try {
             await deleteAmazonShoeCategory(cat);
             reloadCategories();
-            if (selectedType === cat) { setResult(null); setSelectedType(""); }
+            if (selectedType === cat) { setItems([]); setTotal(0); setHasMore(false); setSelectedType(""); }
         } catch {/* ignore */}
     };
-
-    const items = result?.items ?? [];
 
     return (
         <div style={{ maxWidth: 1380, margin: "2rem auto", padding: "0 1rem", fontFamily: "system-ui, -apple-system, sans-serif" }}>
@@ -383,7 +420,7 @@ export default function AmazonShoesTrendsPage() {
                     <CategoryPanel
                         categories={categories}
                         selected={selectedType}
-                        onSelect={(c) => { setSelectedType(c); setPage(1); setBrowseGender("all"); }}
+                        onSelect={(c) => { setSelectedType(c); setBrowseGender("all"); setSortBy("score"); }}
                         onDelete={handleDelete}
                     />
                 </div>
@@ -397,20 +434,29 @@ export default function AmazonShoesTrendsPage() {
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                                 <div>
                                     <span style={{ fontWeight: 700, fontSize: 16, color: "#111827", textTransform: "capitalize" }}>{selectedType}</span>
-                                    {result && (
+                                    {total > 0 && (
                                         <span style={{ marginLeft: 8, fontSize: 13, color: "#6b7280" }}>
-                                            {result.total} items · page {result.page}/{result.pages}
+                                            {items.length}/{total} items
                                         </span>
                                     )}
                                 </div>
-                                {loadingItems && <span style={{ fontSize: 12, color: "#9ca3af" }}>⏳ Loading…</span>}
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value)}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid #e5e7eb", fontSize: 12, fontWeight: 600, background: "white", cursor: "pointer" }}
+                                    >
+                                        {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                    </select>
+                                    {loadingItems && <span style={{ fontSize: 12, color: "#9ca3af" }}>⏳ Loading…</span>}
+                                </div>
                             </div>
                             {/* Gender filter tabs */}
                             <div style={{ display: "flex", gap: 6 }}>
                                 {GENDER_OPTIONS.map((g) => (
                                     <button
                                         key={g.value}
-                                        onClick={() => { setBrowseGender(g.value); setPage(1); }}
+                                        onClick={() => setBrowseGender(g.value)}
                                         style={{
                                             padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
                                             border: `1.5px solid ${browseGender === g.value ? "#4f46e5" : "#e5e7eb"}`,
@@ -449,40 +495,22 @@ export default function AmazonShoesTrendsPage() {
                         </div>
                     )}
 
-                    {/* Pagination */}
-                    {result && result.pages > 1 && (
-                        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 24 }}>
+                    {/* Load More */}
+                    {hasMore && (
+                        <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
                             <button
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                disabled={page <= 1}
-                                style={{ padding: "6px 14px", borderRadius: 8, border: "1.5px solid #e5e7eb", background: page <= 1 ? "#f9fafb" : "white", cursor: page <= 1 ? "not-allowed" : "pointer", fontWeight: 600 }}
+                                onClick={handleLoadMore}
+                                disabled={loadingMore}
+                                style={{
+                                    padding: "10px 32px", borderRadius: 10,
+                                    background: loadingMore ? "#e5e7eb" : "#4f46e5",
+                                    color: loadingMore ? "#9ca3af" : "white",
+                                    border: "none", fontWeight: 700, fontSize: 14,
+                                    cursor: loadingMore ? "not-allowed" : "pointer",
+                                    transition: "all .15s",
+                                }}
                             >
-                                ← Prev
-                            </button>
-                            {Array.from({ length: Math.min(result.pages, 7) }, (_, i) => {
-                                const p = i + 1;
-                                return (
-                                    <button
-                                        key={p}
-                                        onClick={() => setPage(p)}
-                                        style={{
-                                            padding: "6px 12px", borderRadius: 8,
-                                            border: `1.5px solid ${page === p ? "#4f46e5" : "#e5e7eb"}`,
-                                            background: page === p ? "#4f46e5" : "white",
-                                            color: page === p ? "white" : "#374151",
-                                            fontWeight: 700, cursor: "pointer",
-                                        }}
-                                    >
-                                        {p}
-                                    </button>
-                                );
-                            })}
-                            <button
-                                onClick={() => setPage((p) => Math.min(result.pages, p + 1))}
-                                disabled={page >= result.pages}
-                                style={{ padding: "6px 14px", borderRadius: 8, border: "1.5px solid #e5e7eb", background: page >= result.pages ? "#f9fafb" : "white", cursor: page >= result.pages ? "not-allowed" : "pointer", fontWeight: 600 }}
-                            >
-                                Next →
+                                {loadingMore ? "⏳ Učitavam…" : `▼ Još rezultata (${total - items.length} preostalo)`}
                             </button>
                         </div>
                     )}

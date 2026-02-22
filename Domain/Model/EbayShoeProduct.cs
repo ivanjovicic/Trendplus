@@ -29,7 +29,14 @@ namespace Domain.Model
         public string? ProductUrl  { get; set; }
 
         public string? Category    { get; set; }  // the search query type used
+
+        /// <summary>Gender segment: "men", "women", "unisex", or null.</summary>
+        public string? Gender      { get; set; }
+
         public string? Marketplace { get; set; }  // "EBAY_DE", "EBAY_US" …
+
+        /// <summary>Computed trend score = rating × log10(reviews+2) × priceFactor. Updated on each sync.</summary>
+        public float TrendScore { get; set; }
 
         public DateTime LastSynced { get; set; } = DateTime.UtcNow;
         public DateTime CreatedAt  { get; set; } = DateTime.UtcNow;

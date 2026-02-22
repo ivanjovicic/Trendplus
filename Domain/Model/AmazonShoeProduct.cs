@@ -38,6 +38,9 @@ namespace Domain.Model
 
         public int ReviewCount { get; set; }
 
+        /// <summary>Computed trend score = rating × log10(reviews+2) × priceFactor. Updated on each sync.</summary>
+        public float TrendScore { get; set; }
+
         [MaxLength(2000)]
         public string? ImageUrl { get; set; }
 

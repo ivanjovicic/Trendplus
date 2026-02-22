@@ -10,6 +10,7 @@ export type AmazonShoeProduct = {
     currency: string | null;
     rating: number;
     reviewCount: number;
+    trendScore: number;
     imageUrl: string | null;
     productUrl: string | null;
     category: string | null;
@@ -73,10 +74,11 @@ export async function syncAmazonShoes(
 export async function getAmazonShoesByType(
     type: string,
     gender?: string | null,
+    sortBy = "rating",
     page = 1,
     pageSize = 20,
 ): Promise<PagedResult<AmazonShoeProduct>> {
-    let url = `/api/shoes?type=${encodeURIComponent(type)}&page=${page}&pageSize=${pageSize}`;
+    let url = `/api/shoes?type=${encodeURIComponent(type)}&page=${page}&pageSize=${pageSize}&sortBy=${sortBy}`;
     if (gender && gender !== "all") url += `&gender=${encodeURIComponent(gender)}`;
     return get(url);
 }

@@ -3,6 +3,7 @@ using Domain.Model;
 using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Api.Controllers
 {
@@ -13,16 +14,21 @@ namespace Api.Controllers
     {
         private readonly EbayBrowseService  _ebay;
         private readonly AnalyticsDbContext _db;
+        private readonly IMemoryCache       _cache;
         private readonly ILogger<EbayShoesController> _log;
+
+        private const string CacheCats = "ebay:cats";
 
         public EbayShoesController(
             EbayBrowseService ebay,
             AnalyticsDbContext db,
+            IMemoryCache cache,
             ILogger<EbayShoesController> log)
         {
-            _ebay = ebay;
-            _db   = db;
-            _log  = log;
+            _ebay  = ebay;
+            _db    = db;
+            _cache = cache;
+            _log   = log;
         }
 
         // ── SYNC ──────────────────────────────────────────────────────────────
@@ -32,6 +38,7 @@ namespace Api.Controllers
         [ProducesResponseType(typeof(EbaySyncResult), 200)]
         public async Task<IActionResult> Sync(
             [FromQuery] string   type     = "sneakers",
+            [FromQuery] string?  gender   = null,
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
             CancellationToken ct = default)
@@ -42,7 +49,7 @@ namespace Api.Controllers
             List<EbayShoeProduct> fetched;
             try
             {
-                fetched = await _ebay.SearchAsync(type, minPrice, maxPrice, ct);
+                fetched = await _ebay.SearchAsync(type, gender, minPrice, maxPrice, ct);
             }
             catch (Exception ex)
             {
@@ -66,21 +73,24 @@ namespace Api.Controllers
                 }
                 else
                 {
-                    existing.Name       = s.Name;
-                    existing.Brand      = s.Brand;
-                    existing.Condition  = s.Condition;
-                    existing.Price      = s.Price;
-                    existing.Currency   = s.Currency;
-                    existing.Rating     = s.Rating;
+                    existing.Name        = s.Name;
+                    existing.Brand       = s.Brand;
+                    existing.Condition   = s.Condition;
+                    existing.Price       = s.Price;
+                    existing.Currency    = s.Currency;
+                    existing.Rating      = s.Rating;
                     existing.ReviewCount = s.ReviewCount;
-                    existing.ImageUrl   = s.ImageUrl;
-                    existing.ProductUrl = s.ProductUrl;
-                    existing.LastSynced = DateTime.UtcNow;
+                    existing.TrendScore  = s.TrendScore;
+                    existing.ImageUrl    = s.ImageUrl;
+                    existing.ProductUrl  = s.ProductUrl;
+                    existing.Gender      = s.Gender;
+                    existing.LastSynced  = DateTime.UtcNow;
                     updated++;
                 }
             }
 
             await _db.SaveChangesAsync(ct);
+            _cache.Remove(CacheCats);
 
             return Ok(new EbaySyncResult(fetched.Count, inserted, updated, type));
         }
@@ -91,21 +101,46 @@ namespace Api.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(EbayPagedResult<EbayShoeProduct>), 200)]
         public async Task<IActionResult> GetByType(
-            [FromQuery] string type     = "sneakers",
-            [FromQuery] int    page     = 1,
-            [FromQuery] int    pageSize = 20,
+            [FromQuery] string  type     = "sneakers",
+            [FromQuery] string? gender   = null,
+            [FromQuery] string  sortBy   = "rating",
+            [FromQuery] int     page     = 1,
+            [FromQuery] int     pageSize = 20,
             CancellationToken ct = default)
         {
-            var q     = _db.EbayShoeProducts.Where(x => x.Category == type);
-            var total = await q.CountAsync(ct);
-            var items = await q
-                .OrderByDescending(x => x.Rating)
-                .ThenByDescending(x => x.Price)
+            page     = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 100);
+
+            var genderKey = gender ?? "all";
+            var cacheKey  = $"ebay:list:{type}:{genderKey}:{sortBy}:{page}:{pageSize}";
+
+            if (_cache.TryGetValue(cacheKey, out EbayPagedResult<EbayShoeProduct>? cached) && cached is not null)
+                return Ok(cached);
+
+            var q = _db.EbayShoeProducts.Where(x => x.Category == type);
+
+            if (!string.IsNullOrEmpty(gender) && gender != "all")
+                q = q.Where(x => x.Gender == gender);
+
+            IOrderedQueryable<EbayShoeProduct> ordered = sortBy switch
+            {
+                "score"      => q.OrderByDescending(x => x.TrendScore),
+                "popular"    => q.OrderByDescending(x => x.ReviewCount).ThenByDescending(x => x.Rating),
+                "price_asc"  => q.OrderBy(x => x.Price).ThenByDescending(x => x.Rating),
+                "price_desc" => q.OrderByDescending(x => x.Price).ThenByDescending(x => x.Rating),
+                "newest"     => q.OrderByDescending(x => x.LastSynced).ThenByDescending(x => x.Rating),
+                _            => q.OrderByDescending(x => x.Rating).ThenByDescending(x => x.Price),
+            };
+
+            var total = await ordered.CountAsync(ct);
+            var items = await ordered
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync(ct);
 
-            return Ok(new EbayPagedResult<EbayShoeProduct>(items, total, page, pageSize));
+            var result = new EbayPagedResult<EbayShoeProduct>(items, total, page, pageSize);
+            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(2));
+            return Ok(result);
         }
 
         // ── GET ALL ───────────────────────────────────────────────────────────
@@ -136,6 +171,9 @@ namespace Api.Controllers
         [ProducesResponseType(typeof(IEnumerable<EbayCategorySummary>), 200)]
         public async Task<IActionResult> GetCategories(CancellationToken ct = default)
         {
+            if (_cache.TryGetValue(CacheCats, out object? cachedCats) && cachedCats is not null)
+                return Ok(cachedCats);
+
             var result = await _db.EbayShoeProducts
                 .GroupBy(x => x.Category)
                 .Select(g => new EbayCategorySummary(
@@ -149,6 +187,7 @@ namespace Api.Controllers
                 .OrderByDescending(x => x.Count)
                 .ToListAsync(ct);
 
+            _cache.Set(CacheCats, result, TimeSpan.FromMinutes(5));
             return Ok(result);
         }
 

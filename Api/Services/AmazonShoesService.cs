@@ -124,6 +124,9 @@ namespace Api.Services
                     if (maxPrice.HasValue && price > maxPrice) continue;
                 }
 
+                var ratingVal     = TryFloat(item["rating"])    ?? 0f;
+                var reviewCountVal = TryInt(item["reviews"])     ?? 0;
+
                 list.Add(new AmazonShoeProduct
                 {
                     Asin          = item["asin"]?.ToString()        ?? string.Empty,
@@ -132,13 +135,14 @@ namespace Api.Services
                     ImageUrl      = item["thumbnail"]?.ToString(),
                     ProductUrl    = item["link_clean"]?.ToString()  // use canonical link (no tracking)
                                  ?? item["link"]?.ToString(),
-                    Rating        = TryFloat(item["rating"])        ?? 0f,
-                    ReviewCount   = TryInt(item["reviews"])         ?? 0,
+                    Rating        = ratingVal,
+                    ReviewCount   = reviewCountVal,
                     Price         = price,
                     OriginalPrice = origPrice,
                     Currency      = currency,
                     Category      = type.Trim(),
                     Gender        = normalizedGender,
+                    TrendScore    = ShoeScoring.Compute(ratingVal, reviewCountVal, price),
                     Domain        = _opts.AmazonDomain,
                     LastSynced    = DateTime.UtcNow,
                     CreatedAt     = DateTime.UtcNow,

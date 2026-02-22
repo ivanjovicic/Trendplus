@@ -6,15 +6,39 @@ import {
     deleteEbayShoeCategory,
     type EbayShoeProduct,
     type EbayCategorySummary,
-    type EbayPagedResult,
 } from "../services/ebayShoesApi";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SHOE_TYPES = [
-    "sneakers", "boots", "ankle boots", "sandals", "heels",
-    "loafers", "oxfords", "chelsea boots", "running shoes", "mules",
-    "stilettos", "wedges", "espadrilles", "flats", "slippers",
+    // Sportske
+    "sneakers", "running shoes", "training shoes", "basketball shoes", "tennis shoes",
+    // Casual
+    "loafers", "moccasins", "flats", "espadrilles", "slippers", "boat shoes",
+    // Elegantne
+    "oxfords", "derbies", "heels", "pumps", "stilettos", "wedges", "platforms",
+    // Čizme i gležnjače
+    "boots", "ankle boots", "chelsea boots", "knee high boots", "combat boots", "rain boots", "cowboy boots",
+    // Sandale i ljeto
+    "sandals", "mules", "flip flops", "slides",
+    // Specifični tipovi
+    "ballet flats", "mary janes", "brogues", "monk straps", "clogs",
+];
+
+const GENDER_OPTIONS = [
+    { value: "all",    label: "Sve" },
+    { value: "women",  label: "Žene" },
+    { value: "men",    label: "Muškarci" },
+    { value: "unisex", label: "Unisex" },
+];
+
+const SORT_OPTIONS = [
+    { value: "score",      label: "🔥 Trend Score" },
+    { value: "rating",     label: "⭐ Rating" },
+    { value: "popular",   label: "💬 Reviews" },
+    { value: "price_asc",  label: "💰 Cijena ↑" },
+    { value: "price_desc", label: "💰 Cijena ↓" },
+    { value: "newest",     label: "🕐 Najnovije" },
 ];
 
 const EBAY_BRAND_COLOR = "#e53238"; // eBay red
@@ -172,9 +196,16 @@ function EbayShoeCard({ shoe }: { shoe: EbayShoeProduct }) {
 
                 <div style={{ marginTop: "auto", paddingTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <PriceLabel price={shoe.price} currency={shoe.currency} />
-                    <span style={{ fontSize: 10, background: "#fff7ed", color: "#ea580c", borderRadius: 5, padding: "1px 6px", border: "1px solid #fed7aa", fontWeight: 600 }}>
-                        eBay
-                    </span>
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        {shoe.trendScore > 0 && (
+                            <span style={{ fontSize: 9, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 5px", border: "1px solid #fde68a", fontWeight: 700 }}>
+                                ◆ {shoe.trendScore.toFixed(1)}
+                            </span>
+                        )}
+                        <span style={{ fontSize: 10, background: "#fff7ed", color: "#ea580c", borderRadius: 5, padding: "1px 6px", border: "1px solid #fed7aa", fontWeight: 600 }}>
+                            eBay
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -186,16 +217,24 @@ function EbayShoeCard({ shoe }: { shoe: EbayShoeProduct }) {
 export default function EbayShoesTrendsPage() {
     const [categories, setCategories]     = useState<EbayCategorySummary[]>([]);
     const [selectedType, setSelectedType] = useState("sneakers");
-    const [result, setResult]             = useState<EbayPagedResult<EbayShoeProduct> | null>(null);
-    const [page, setPage]                 = useState(1);
+    const [items, setItems]               = useState<EbayShoeProduct[]>([]);
+    const [total, setTotal]               = useState(0);
+    const [hasMore, setHasMore]           = useState(false);
+    const [nextPage, setNextPage]         = useState(2);
+    const [syncCounter, setSyncCounter]   = useState(0);
     const [pageSize]                      = useState(20);
     const [loadingItems, setLoadingItems] = useState(false);
+    const [loadingMore, setLoadingMore]   = useState(false);
 
     const [syncType, setSyncType]         = useState("sneakers");
+    const [syncGender, setSyncGender]     = useState("women");
     const [syncMinPrice, setSyncMinPrice] = useState("");
     const [syncMaxPrice, setSyncMaxPrice] = useState("");
     const [syncing, setSyncing]           = useState(false);
     const [syncMsg, setSyncMsg]           = useState<{ ok: boolean; text: string } | null>(null);
+
+    const [browseGender, setBrowseGender] = useState("all");
+    const [sortBy, setSortBy]             = useState("score");
 
     const reloadCategories = useCallback(() => {
         getEbayShoeCategories()
@@ -208,11 +247,27 @@ export default function EbayShoesTrendsPage() {
     useEffect(() => {
         if (!selectedType) return;
         setLoadingItems(true);
-        getEbayShoesByType(selectedType, page, pageSize)
-            .then(setResult)
-            .catch(() => setResult(null))
+        setItems([]);
+        setHasMore(false);
+        setNextPage(2);
+        getEbayShoesByType(selectedType, browseGender === "all" ? null : browseGender, sortBy, 1, pageSize)
+            .then(r => { setItems(r.items); setTotal(r.total); setHasMore(1 < r.pages); })
+            .catch(() => { setItems([]); setTotal(0); setHasMore(false); })
             .finally(() => setLoadingItems(false));
-    }, [selectedType, page, pageSize]);
+    }, [selectedType, browseGender, sortBy, pageSize, syncCounter]);
+
+    const handleLoadMore = () => {
+        if (loadingMore || !hasMore) return;
+        setLoadingMore(true);
+        getEbayShoesByType(selectedType, browseGender === "all" ? null : browseGender, sortBy, nextPage, pageSize)
+            .then(r => {
+                setItems(prev => [...prev, ...r.items]);
+                setHasMore(nextPage < r.pages);
+                setNextPage(p => p + 1);
+            })
+            .catch(() => {})
+            .finally(() => setLoadingMore(false));
+    };
 
     const handleSync = async () => {
         if (!syncType.trim()) return;
@@ -221,13 +276,15 @@ export default function EbayShoesTrendsPage() {
         try {
             const r = await syncEbayShoes(
                 syncType.trim(),
+                syncGender === "all" ? null : syncGender,
                 syncMinPrice ? Number(syncMinPrice) : null,
                 syncMaxPrice ? Number(syncMaxPrice) : null,
             );
             setSyncMsg({ ok: true, text: `✅ ${r.total} results — ${r.inserted} inserted, ${r.updated} updated` });
             reloadCategories();
             setSelectedType(syncType.trim());
-            setPage(1);
+            setBrowseGender("all");
+            setSyncCounter(c => c + 1);
         } catch (e) {
             setSyncMsg({ ok: false, text: `❌ ${e instanceof Error ? e.message : String(e)}` });
         } finally {
@@ -240,11 +297,9 @@ export default function EbayShoesTrendsPage() {
         try {
             await deleteEbayShoeCategory(cat);
             reloadCategories();
-            if (selectedType === cat) { setResult(null); setSelectedType(""); }
+            if (selectedType === cat) { setItems([]); setTotal(0); setHasMore(false); setSelectedType(""); }
         } catch {/* ignore */ }
     };
-
-    const items = result?.items ?? [];
 
     return (
         <div style={{ maxWidth: 1380, margin: "2rem auto", padding: "0 1rem", fontFamily: "system-ui, -apple-system, sans-serif" }}>
@@ -274,7 +329,7 @@ export default function EbayShoesTrendsPage() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
 
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Shoe type</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Tip cipele</label>
                         <div>
                             <input
                                 value={syncType}
@@ -287,6 +342,20 @@ export default function EbayShoesTrendsPage() {
                                 {SHOE_TYPES.map((t) => <option key={t} value={t} />)}
                             </datalist>
                         </div>
+                    </div>
+
+                    {/* Gender */}
+                    <div>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Pol</label>
+                        <select
+                            value={syncGender}
+                            onChange={(e) => setSyncGender(e.target.value)}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, minWidth: 120, background: "white" }}
+                        >
+                            {GENDER_OPTIONS.map((g) => (
+                                <option key={g.value} value={g.value}>{g.label}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div>
@@ -346,7 +415,7 @@ export default function EbayShoesTrendsPage() {
                     <CategoryPanel
                         categories={categories}
                         selected={selectedType}
-                        onSelect={(c) => { setSelectedType(c); setPage(1); }}
+                        onSelect={(c) => { setSelectedType(c); setBrowseGender("all"); setSortBy("score"); }}
                         onDelete={handleDelete}
                     />
                 </div>
@@ -355,16 +424,45 @@ export default function EbayShoesTrendsPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
 
                     {selectedType && (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                            <div>
-                                <span style={{ fontWeight: 700, fontSize: 16, color: "#111827", textTransform: "capitalize" }}>{selectedType}</span>
-                                {result && (
-                                    <span style={{ marginLeft: 8, fontSize: 13, color: "#6b7280" }}>
-                                        {result.total} items · page {result.page}/{result.pages}
-                                    </span>
-                                )}
+                        <div style={{ marginBottom: 14 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                                <div>
+                                    <span style={{ fontWeight: 700, fontSize: 16, color: "#111827", textTransform: "capitalize" }}>{selectedType}</span>
+                                    {total > 0 && (
+                                        <span style={{ marginLeft: 8, fontSize: 13, color: "#6b7280" }}>
+                                            {items.length}/{total} items
+                                        </span>
+                                    )}
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value)}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid #e5e7eb", fontSize: 12, fontWeight: 600, background: "white", cursor: "pointer" }}
+                                    >
+                                        {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                    </select>
+                                    {loadingItems && <span style={{ fontSize: 12, color: "#9ca3af" }}>⏳ Loading…</span>}
+                                </div>
                             </div>
-                            {loadingItems && <span style={{ fontSize: 12, color: "#9ca3af" }}>⏳ Loading…</span>}
+                            {/* Gender filter tabs */}
+                            <div style={{ display: "flex", gap: 6 }}>
+                                {GENDER_OPTIONS.map((g) => (
+                                    <button
+                                        key={g.value}
+                                        onClick={() => setBrowseGender(g.value)}
+                                        style={{
+                                            padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                                            border: `1.5px solid ${browseGender === g.value ? EBAY_BRAND_COLOR : "#e5e7eb"}`,
+                                            background: browseGender === g.value ? EBAY_BRAND_COLOR : "white",
+                                            color: browseGender === g.value ? "white" : "#374151",
+                                            cursor: "pointer", transition: "all .12s",
+                                        }}
+                                    >
+                                        {g.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     )}
 
@@ -391,40 +489,22 @@ export default function EbayShoesTrendsPage() {
                         </div>
                     )}
 
-                    {/* Pagination */}
-                    {result && result.pages > 1 && (
-                        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 24 }}>
+                    {/* Load More */}
+                    {hasMore && (
+                        <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
                             <button
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                disabled={page <= 1}
-                                style={{ padding: "6px 14px", borderRadius: 8, border: "1.5px solid #e5e7eb", background: page <= 1 ? "#f9fafb" : "white", cursor: page <= 1 ? "not-allowed" : "pointer", fontWeight: 600 }}
+                                onClick={handleLoadMore}
+                                disabled={loadingMore}
+                                style={{
+                                    padding: "10px 32px", borderRadius: 10,
+                                    background: loadingMore ? "#e5e7eb" : EBAY_BRAND_COLOR,
+                                    color: loadingMore ? "#9ca3af" : "white",
+                                    border: "none", fontWeight: 700, fontSize: 14,
+                                    cursor: loadingMore ? "not-allowed" : "pointer",
+                                    transition: "all .15s",
+                                }}
                             >
-                                ← Prev
-                            </button>
-                            {Array.from({ length: Math.min(result.pages, 7) }, (_, i) => {
-                                const p = i + 1;
-                                return (
-                                    <button
-                                        key={p}
-                                        onClick={() => setPage(p)}
-                                        style={{
-                                            padding: "6px 12px", borderRadius: 8,
-                                            border: `1.5px solid ${page === p ? EBAY_BRAND_COLOR : "#e5e7eb"}`,
-                                            background: page === p ? EBAY_BRAND_COLOR : "white",
-                                            color: page === p ? "white" : "#374151",
-                                            fontWeight: 700, cursor: "pointer",
-                                        }}
-                                    >
-                                        {p}
-                                    </button>
-                                );
-                            })}
-                            <button
-                                onClick={() => setPage((p) => Math.min(result.pages, p + 1))}
-                                disabled={page >= result.pages}
-                                style={{ padding: "6px 14px", borderRadius: 8, border: "1.5px solid #e5e7eb", background: page >= result.pages ? "#f9fafb" : "white", cursor: page >= result.pages ? "not-allowed" : "pointer", fontWeight: 600 }}
-                            >
-                                Next →
+                                {loadingMore ? "⏳ Učitavam…" : `▼ Još rezultata (${total - items.length} preostalo)`}
                             </button>
                         </div>
                     )}

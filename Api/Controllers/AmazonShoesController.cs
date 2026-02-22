@@ -3,6 +3,7 @@ using Domain.Model;
 using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Api.Controllers
 {
@@ -28,15 +29,20 @@ namespace Api.Controllers
     {
         private readonly AmazonShoesService  _amazon;
         private readonly AnalyticsDbContext  _db;
+        private readonly IMemoryCache        _cache;
         private readonly ILogger<AmazonShoesController> _log;
+
+        private const string CacheCats = "amz:cats";
 
         public AmazonShoesController(
             AmazonShoesService amazon,
             AnalyticsDbContext db,
+            IMemoryCache cache,
             ILogger<AmazonShoesController> log)
         {
             _amazon = amazon;
             _db     = db;
+            _cache  = cache;
             _log    = log;
         }
 
@@ -89,6 +95,7 @@ namespace Api.Controllers
                     existing.Currency      = s.Currency;
                     existing.Rating        = s.Rating;
                     existing.ReviewCount   = s.ReviewCount;
+                    existing.TrendScore    = s.TrendScore;
                     existing.ImageUrl      = s.ImageUrl;
                     existing.ProductUrl    = s.ProductUrl;
                     existing.Category      = s.Category;
@@ -100,6 +107,7 @@ namespace Api.Controllers
             }
 
             await _db.SaveChangesAsync(ct);
+            _cache.Remove(CacheCats);
 
             return Ok(new SyncResult
             {
@@ -112,12 +120,13 @@ namespace Api.Controllers
 
         // ── GET by type ─────────────────────────────────────────────────────
 
-        /// <summary>Returns shoes for a specific category, ordered by rating desc.</summary>
+        /// <summary>Returns shoes for a specific category, sorted by the chosen strategy.</summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<AmazonShoeProduct>), 200)]
         public async Task<IActionResult> GetByType(
             [FromQuery] string  type     = "sneakers",
             [FromQuery] string? gender   = null,
+            [FromQuery] string  sortBy   = "rating",
             [FromQuery] int     page     = 1,
             [FromQuery] int     pageSize = 20,
             CancellationToken   ct       = default)
@@ -125,13 +134,26 @@ namespace Api.Controllers
             page     = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
+            var genderKey = gender ?? "all";
+            var cacheKey  = $"amz:list:{type}:{genderKey}:{sortBy}:{page}:{pageSize}";
+
+            if (_cache.TryGetValue(cacheKey, out PagedResult<AmazonShoeProduct>? cached) && cached is not null)
+                return Ok(cached);
+
             var q = _db.AmazonShoeProducts.Where(x => x.Category == type);
 
             if (!string.IsNullOrEmpty(gender) && gender != "all")
                 q = q.Where(x => x.Gender == gender);
 
-            var query = q.OrderByDescending(x => x.Rating)
-                         .ThenByDescending(x => x.ReviewCount);
+            IOrderedQueryable<AmazonShoeProduct> query = sortBy switch
+            {
+                "score"      => q.OrderByDescending(x => x.TrendScore),
+                "popular"    => q.OrderByDescending(x => x.ReviewCount).ThenByDescending(x => x.Rating),
+                "price_asc"  => q.OrderBy(x => x.Price).ThenByDescending(x => x.Rating),
+                "price_desc" => q.OrderByDescending(x => x.Price).ThenByDescending(x => x.Rating),
+                "newest"     => q.OrderByDescending(x => x.LastSynced).ThenByDescending(x => x.Rating),
+                _            => q.OrderByDescending(x => x.Rating).ThenByDescending(x => x.ReviewCount),
+            };
 
             var total = await query.CountAsync(ct);
             var items = await query
@@ -139,13 +161,16 @@ namespace Api.Controllers
                 .Take(pageSize)
                 .ToListAsync(ct);
 
-            return Ok(new PagedResult<AmazonShoeProduct>
+            var result = new PagedResult<AmazonShoeProduct>
             {
                 Items    = items,
                 Total    = total,
                 Page     = page,
                 PageSize = pageSize,
-            });
+            };
+
+            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(2));
+            return Ok(result);
         }
 
         // ── GET all ─────────────────────────────────────────────────────────
@@ -186,6 +211,9 @@ namespace Api.Controllers
         [HttpGet("categories")]
         public async Task<IActionResult> GetCategories(CancellationToken ct = default)
         {
+            if (_cache.TryGetValue(CacheCats, out object? cachedCats) && cachedCats is not null)
+                return Ok(cachedCats);
+
             var cats = await _db.AmazonShoeProducts
                 .GroupBy(x => x.Category)
                 .Select(g => new
@@ -199,6 +227,7 @@ namespace Api.Controllers
                 .OrderByDescending(x => x.Count)
                 .ToListAsync(ct);
 
+            _cache.Set(CacheCats, cats, TimeSpan.FromMinutes(5));
             return Ok(cats);
         }
 
