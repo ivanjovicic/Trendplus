@@ -109,6 +109,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/humanic" className="button-small">
                         👠 Humanic Scraper
                     </Link>
+                    <Link to="/scraper-hub" className="button-small">
+                        🧩 Scraper Hub Top 10
+                    </Link>
+                    <Link to="/trend-dashboard" className="button-small">
+                        📊 Trend Dashboard
+                    </Link>
                  </nav>
 
                  {children}

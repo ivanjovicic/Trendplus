@@ -30,6 +30,8 @@ import DeichmannPage from "./pages/DeichmannPage";
 import CommonProductsPage from "./pages/CommonProductsPage";
 import AboutYouPage from "./pages/AboutYouPage";
 import HumanicPage from "./pages/HumanicPage";
+import ScraperHubPage from "./pages/ScraperHubPage";
+import TrendDashboardPage from "./pages/TrendDashboardPage";
 
 function AppShell() {
     return (
@@ -60,6 +62,8 @@ function AppShell() {
             <Route path="/deichmann" element={<DeichmannPage />} />
             <Route path="/aboutyou" element={<AboutYouPage />} />
             <Route path="/humanic" element={<HumanicPage />} />
+            <Route path="/scraper-hub" element={<ScraperHubPage />} />
+            <Route path="/trend-dashboard" element={<TrendDashboardPage />} />
             <Route path="/admin/common-products" element={<CommonProductsPage />} />
         </Routes>
     );
