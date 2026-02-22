@@ -159,6 +159,19 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => e.LastSynced);
                 entity.Property(e => e.Price).HasColumnType("numeric(18,4)");
             });
+
+            modelBuilder.Entity<GoogleShoppingProduct>(entity =>
+            {
+                entity.ToTable("google_shopping_products");
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ProductId).IsUnique().HasFilter("\"ProductId\" IS NOT NULL");
+                entity.HasIndex(e => e.Category);
+                entity.HasIndex(e => e.Gender);
+                entity.HasIndex(e => e.TrendScore);
+                entity.HasIndex(e => e.Position);
+                entity.HasIndex(e => e.LastSynced);
+                entity.Property(e => e.Price).HasColumnType("numeric(18,4)");
+            });
         }
 
         public DbSet<ProductsDim> ProductsDim => Set<ProductsDim>();
@@ -178,6 +191,9 @@ namespace Infrastructure.DbContexts
 
         // eBay Shoes (Browse API)
         public DbSet<EbayShoeProduct> EbayShoeProducts => Set<EbayShoeProduct>();
+
+        // Google Shopping (SerpAPI)
+        public DbSet<GoogleShoppingProduct> GoogleShoppingProducts => Set<GoogleShoppingProduct>();
 
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }
