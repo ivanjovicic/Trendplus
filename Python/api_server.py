@@ -29,14 +29,33 @@ from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+
+def _force_utf8_console() -> None:
+    # Prevent UnicodeEncodeError on Windows terminals (cp1252/cp850).
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+_force_utf8_console()
+
 # ============================================================
 # PATH & IMPORTS
 # ============================================================
 
-# Omogući "scraper.*" module
+# Omogući "scraper.*" module i lokalne module (scoring.py itd.)
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.dirname(__file__))  # Python/ dir – za scoring, itd.
 
 from scraper.aggregator import get_category_trends  # već postoji kod tebe
+
+# Weighted Top-10 scorer
+try:
+    from scoring import compute_top10 as _compute_top10
+except ImportError:
+    _compute_top10 = None  # type: ignore
 
 # Release calendar scraper (opciono)
 scrape_zalando_release_calendar = None
@@ -482,6 +501,7 @@ class ZalandoFilterDTO(BaseModel):
     gender: Optional[str] = None
     brand: Optional[str] = None
     category: Optional[str] = "sneaker"
+    country: Optional[str] = "DE"
     sort: Optional[str] = "popularity"
     priceMin: Optional[int] = None
     priceMax: Optional[int] = None
@@ -492,7 +512,8 @@ class ZalandoFilterDTO(BaseModel):
 
 class DeichmannFilters(BaseModel):
     gender: Optional[str] = None
-    category: str = "schuhe-82"
+    category: Optional[str] = None          # None → scraper picks country-appropriate default
+    country: Optional[str] = "DE"           # DE / AT / CH / HU / RO
     sort: Optional[str] = None
     priceMin: Optional[int] = None
     priceMax: Optional[int] = None
@@ -508,6 +529,8 @@ class DeichmannFilters(BaseModel):
 class AboutYouFilters(BaseModel):
     # Optional full category URL (e.g. https://www.aboutyou.de/c/frauen/schuhe/stiefeletten-20276)
     url: Optional[str] = None
+    # Market code (DE, AT, ...), used when URL is missing or relative
+    country: Optional[str] = "DE"
     gender: Optional[str] = "women"
     # Can be full path (frauen/schuhe/stiefeletten-20276) or slug (stiefeletten-20276)
     category: Optional[str] = "frauen/schuhe/stiefeletten-20276"
@@ -573,6 +596,7 @@ async def api_zalando(filters: ZalandoFilterDTO):
             category=filters.category,
             brand=filters.brand,
             gender=filters.gender,
+            country=filters.country,
             sort=filters.sort,
             priceMin=filters.priceMin,
             priceMax=filters.priceMax,
@@ -849,10 +873,36 @@ def get_release_calendar(gender: str = "mens"):
 
 
 # ============================================================
+# GLOBAL TOP 10  (weighted multi-source scorer)
+# ============================================================
+
+class GlobalTop10Request(BaseModel):
+    items: List[Dict[str, Any]]
+    shoeType: Optional[str] = None
+    topN: int = 10
+
+
+@app.post("/api/global-top10")
+async def global_top10_endpoint(req: GlobalTop10Request):
+    """
+    Accepts the raw scraped-items array (all sources × markets combined)
+    and returns the Python-scored top-N list.
+    """
+    if _compute_top10 is None:
+        raise HTTPException(status_code=503, detail="Scoring module not available")
+    ranked = _compute_top10(
+        req.items,
+        requested_type=req.shoeType,
+        top_n=req.topN,
+    )
+    return {"top10": ranked, "total": len(req.items)}
+
+
+# ============================================================
 # UVICORN BOOT
 # ============================================================
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Trendplus API starting on http://0.0.0.0:8000")
+    print("Trendplus API starting on http://0.0.0.0:8000")
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
