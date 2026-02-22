@@ -249,6 +249,16 @@ try
             builder.Configuration.GetValue<int>("SerpApi:TimeoutSeconds", 20));
     });
 
+    // eBay Shoes via Browse API
+    builder.Services.Configure<Api.Config.EbayOptions>(
+        builder.Configuration.GetSection(Api.Config.EbayOptions.Section));
+    builder.Services.AddHttpClient<Api.Services.EbayBrowseService>(client =>
+    {
+        client.BaseAddress = new Uri("https://api.ebay.com/");
+        client.Timeout = TimeSpan.FromSeconds(
+            builder.Configuration.GetValue<int>("Ebay:TimeoutSeconds", 20));
+    });
+
     // API v1 rate limiter
     builder.Services.AddRateLimiter(options =>
     {

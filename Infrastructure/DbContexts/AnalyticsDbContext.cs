@@ -144,6 +144,17 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.Price).HasColumnType("numeric(18,4)");
                 entity.Property(e => e.OriginalPrice).HasColumnType("numeric(18,4)");
             });
+
+            modelBuilder.Entity<EbayShoeProduct>(entity =>
+            {
+                entity.ToTable("ebay_shoe_products");
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.EbayItemId).IsUnique();
+                entity.HasIndex(e => e.Category);
+                entity.HasIndex(e => e.Rating);
+                entity.HasIndex(e => e.LastSynced);
+                entity.Property(e => e.Price).HasColumnType("numeric(18,4)");
+            });
         }
 
         public DbSet<ProductsDim> ProductsDim => Set<ProductsDim>();
@@ -160,6 +171,9 @@ namespace Infrastructure.DbContexts
 
         // Amazon Shoes (SerpAPI)
         public DbSet<AmazonShoeProduct> AmazonShoeProducts => Set<AmazonShoeProduct>();
+
+        // eBay Shoes (Browse API)
+        public DbSet<EbayShoeProduct> EbayShoeProducts => Set<EbayShoeProduct>();
 
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }

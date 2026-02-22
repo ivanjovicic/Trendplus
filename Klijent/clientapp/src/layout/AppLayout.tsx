@@ -118,6 +118,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/amazon-shoes" className="button-small">
                         🛍 Amazon Shoes
                     </Link>
+                    <Link to="/ebay-shoes" className="button-small">
+                        🛍️ eBay Shoes
+                    </Link>
                  </nav>
 
                  {children}

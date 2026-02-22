@@ -33,6 +33,7 @@ import HumanicPage from "./pages/HumanicPage";
 import ScraperHubPage from "./pages/ScraperHubPage";
 import TrendDashboardPage from "./pages/TrendDashboardPage";
 import AmazonShoesTrendsPage from "./pages/AmazonShoesTrendsPage";
+import EbayShoesTrendsPage from "./pages/EbayShoesTrendsPage";
 
 function AppShell() {
     return (
@@ -66,6 +67,7 @@ function AppShell() {
             <Route path="/scraper-hub" element={<ScraperHubPage />} />
             <Route path="/trend-dashboard" element={<TrendDashboardPage />} />
             <Route path="/amazon-shoes" element={<AmazonShoesTrendsPage />} />
+            <Route path="/ebay-shoes" element={<EbayShoesTrendsPage />} />
             <Route path="/admin/common-products" element={<CommonProductsPage />} />
         </Routes>
     );
