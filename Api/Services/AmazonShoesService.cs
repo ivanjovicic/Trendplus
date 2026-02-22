@@ -51,12 +51,30 @@ namespace Api.Services
                     + $"&k={query}"
                     + $"&s=review-rank";     // sort by review rank
 
-            _log.LogInformation("SerpApi Amazon query: {Query} domain={Domain}", query, _opts.AmazonDomain);
+            _log.LogInformation("SerpApi Amazon query: {Query} domain={Domain}",
+                query, _opts.AmazonDomain);
 
             JsonNode? root;
             try
             {
-                root = await _http.GetFromJsonAsync<JsonNode>(url, ct);
+                using var request  = new HttpRequestMessage(HttpMethod.Get, url);
+                using var response = await _http.SendAsync(request, ct);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync(ct);
+                    _log.LogError("SerpApi returned {Status} for query={Query}. Body: {Body}",
+                        (int)response.StatusCode, query, body[..Math.Min(body.Length, 400)]);
+                    throw new HttpRequestException(
+                        $"Response status code does not indicate success: {(int)response.StatusCode} ({response.ReasonPhrase}). Body: {body[..Math.Min(body.Length, 200)]}");
+                }
+
+                var jsonStr = await response.Content.ReadAsStringAsync(ct);
+                root = System.Text.Json.Nodes.JsonNode.Parse(jsonStr);
+            }
+            catch (HttpRequestException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -64,7 +82,8 @@ namespace Api.Services
                 throw;
             }
 
-            var organic = root?["organic_results"]?.AsArray();
+            var rootObj = root as System.Text.Json.Nodes.JsonObject;
+            var organic = rootObj?["organic_results"]?.AsArray();
             if (organic is null || organic.Count == 0)
             {
                 _log.LogWarning("SerpApi returned no organic_results for query={Query}", query);
@@ -73,23 +92,26 @@ namespace Api.Services
 
             var list = new List<AmazonShoeProduct>();
 
-            foreach (var item in organic.Take(_opts.MaxResults))
+            foreach (var rawItem in organic.Take(_opts.MaxResults))
             {
+                var item = rawItem as System.Text.Json.Nodes.JsonObject;
                 if (item is null) continue;
 
-                // ── Price ────────────────────────────────────────────────────
-                // SerpAPI Amazon engine returns price as { "value": 29.99, "symbol": "€", "currency": "EUR" }
-                var priceNode    = item["price"];
-                decimal? price   = TryDecimal(priceNode?["value"]);
-                decimal? origPrice = null;
+                // ── Price ─────────────────────────────────────────────────────────
+                // SerpAPI Amazon (amazon.de) returns:
+                //   "extracted_price": 69.99            (float, the best source)
+                //   "price": "69,99 €"                  (display string, skip)
+                //   "original_price"/"was_price": ...   (if on sale)
+                decimal? price     = TryDecimal(item["extracted_price"]);
+                decimal? origPrice = TryDecimal(item["original_price"])
+                                   ?? TryDecimal(item["was_price"]?["value"]);
 
-                // "was_price" node if the item is on sale
-                var wasNode = item["was_price"];
-                if (wasNode != null)
-                    origPrice = TryDecimal(wasNode["value"]);
-
-                var currency = priceNode?["currency"]?.ToString()
-                            ?? priceNode?["symbol"]?.ToString();
+                // Currency: infer from price string "69,99 €" → "€"
+                var priceStr = item["price"]?.ToString() ?? "";
+                var currency = priceStr.Contains('€') ? "EUR"
+                             : priceStr.Contains('$') ? "USD"
+                             : priceStr.Contains('£') ? "GBP"
+                             : "EUR"; // default for amazon.de
 
                 // ── Price filter ─────────────────────────────────────────────
                 if (price.HasValue)
@@ -100,13 +122,14 @@ namespace Api.Services
 
                 list.Add(new AmazonShoeProduct
                 {
-                    Asin          = item["asin"]?.ToString()    ?? string.Empty,
+                    Asin          = item["asin"]?.ToString()        ?? string.Empty,
                     Name          = item["title"]?.ToString(),
                     Brand         = item["brand"]?.ToString(),
                     ImageUrl      = item["thumbnail"]?.ToString(),
-                    ProductUrl    = item["link"]?.ToString(),
-                    Rating        = TryFloat(item["rating"])    ?? 0f,
-                    ReviewCount   = TryInt(item["reviews"])     ?? 0,
+                    ProductUrl    = item["link_clean"]?.ToString()  // use canonical link (no tracking)
+                                 ?? item["link"]?.ToString(),
+                    Rating        = TryFloat(item["rating"])        ?? 0f,
+                    ReviewCount   = TryInt(item["reviews"])         ?? 0,
                     Price         = price,
                     OriginalPrice = origPrice,
                     Currency      = currency,
