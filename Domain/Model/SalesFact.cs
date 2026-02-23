@@ -13,5 +13,6 @@ namespace Domain.Model
         public decimal TotalAmount { get; set; }
         public int TotalUnits { get; set; }
         public int TotalLines { get; set; }
+        public string DataOrigin { get; set; } = "existing";
     }
 }

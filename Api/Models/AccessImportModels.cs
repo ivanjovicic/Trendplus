@@ -1,0 +1,97 @@
+namespace Api.Models
+{
+    public sealed class AccessImportFieldMappingPreview
+    {
+        public string TargetField { get; set; } = string.Empty;
+        public string? SourceColumn { get; set; }
+        public string Status { get; set; } = "missing";
+    }
+
+    public sealed class AccessImportTablePreview
+    {
+        public string Key { get; set; } = string.Empty;
+        public string? TableName { get; set; }
+        public int RowCount { get; set; }
+        public List<string> AccessColumns { get; set; } = new();
+        public List<AccessImportFieldMappingPreview> FieldMappings { get; set; } = new();
+        public bool Found => !string.IsNullOrWhiteSpace(TableName);
+    }
+
+    public sealed class AccessImportPreviewResponse
+    {
+        public bool CanImport { get; set; }
+        public string SourceFileName { get; set; } = string.Empty;
+        public List<AccessImportTablePreview> Tables { get; set; } = new();
+        public List<string> AvailableTables { get; set; } = new();
+        public List<string> Warnings { get; set; } = new();
+    }
+
+    public sealed class AccessImportRunResponse
+    {
+        public long BatchId { get; set; }
+        public string Status { get; set; } = "completed";
+        public string SourceFileName { get; set; } = string.Empty;
+        public bool IncludeAnalytics { get; set; }
+        public DateTime StartedAtUtc { get; set; }
+        public DateTime CompletedAtUtc { get; set; }
+
+        public int TipoviInserted { get; set; }
+        public int TipoviUpdated { get; set; }
+        public int DobavljaciInserted { get; set; }
+        public int DobavljaciUpdated { get; set; }
+        public int SezoneInserted { get; set; }
+        public int SezoneUpdated { get; set; }
+        public int ArtikliInserted { get; set; }
+        public int ArtikliUpdated { get; set; }
+        public int ProdajaInserted { get; set; }
+        public int ProdajaUpdated { get; set; }
+        public int ProdajaStavkeInserted { get; set; }
+        public int ProdajaStavkeUpdated { get; set; }
+        public int DnevnikInserted { get; set; }
+        public int DnevnikUpdated { get; set; }
+        public int PovracajInserted { get; set; }
+        public int PovracajUpdated { get; set; }
+        public int PovracajStavkeInserted { get; set; }
+        public int PovracajStavkeUpdated { get; set; }
+
+        public int ProductsDimInserted { get; set; }
+        public int ProductsDimUpdated { get; set; }
+        public int SalesFactsInserted { get; set; }
+        public int SalesFactsUpdated { get; set; }
+        public int SalesLineFactsInserted { get; set; }
+        public int StoresInserted { get; set; }
+        public int StoresUpdated { get; set; }
+
+        public List<string> Warnings { get; set; } = new();
+    }
+
+    public sealed class AccessImportBatchDto
+    {
+        public long Id { get; set; }
+        public string SourceSystem { get; set; } = string.Empty;
+        public string SourceFileName { get; set; } = string.Empty;
+        public DateTime StartedAtUtc { get; set; }
+        public DateTime? CompletedAtUtc { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string? SummaryJson { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+
+    public sealed class DeleteBatchResult
+    {
+        public bool Found { get; set; }
+        public long BatchId { get; set; }
+        public int ArtikliDeleted { get; set; }
+        public int SezoneDeleted { get; set; }
+        public int TipoviDeleted { get; set; }
+        public int DobavljaciDeleted { get; set; }
+        public int ProdajaDeleted { get; set; }
+        public int StavkeDeleted { get; set; }
+        public int ProductsDimDeleted { get; set; }
+        public int SalesFactsDeleted { get; set; }
+        public int SalesLineFactsDeleted { get; set; }
+        public int DnevnikDeleted { get; set; }
+        public int PovracajDeleted { get; set; }
+        public int PovracajStavkeDeleted { get; set; }
+    }
+}

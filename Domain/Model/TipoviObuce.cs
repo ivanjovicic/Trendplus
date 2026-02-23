@@ -9,6 +9,7 @@ namespace Domain.Model
     public class TipObuce
     {
         public int Id { get; set; }
-        public string Naziv { get; set; }
+        public string Naziv { get; set; } = string.Empty;
+        public string DataOrigin { get; set; } = "existing";
     }
 }

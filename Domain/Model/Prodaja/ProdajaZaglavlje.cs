@@ -10,6 +10,7 @@ public sealed class ProdajaZaglavlje
     public DateTime DatumProdaje { get; set; }
     public string? NacinPlacanja { get; set; }
     public int? IDObjekat { get; set; }
+    public string DataOrigin { get; set; } = "existing";
     
     // Navigation property
     public ICollection<ProdajaStavka> Stavke { get; set; } = new List<ProdajaStavka>();

@@ -35,6 +35,9 @@ import TrendDashboardPage from "./pages/TrendDashboardPage";
 import AmazonShoesTrendsPage from "./pages/AmazonShoesTrendsPage";
 import EbayShoesTrendsPage from "./pages/EbayShoesTrendsPage";
 import GoogleShoppingTrendsPage from "./pages/GoogleShoppingTrendsPage";
+import OpenTrainingPage from "./pages/OpenTrainingPage";
+import RuntimeScoringPage from "./pages/RuntimeScoringPage";
+import AccessImportPage from "./pages/AccessImportPage";
 
 function AppShell() {
     return (
@@ -70,6 +73,9 @@ function AppShell() {
             <Route path="/amazon-shoes" element={<AmazonShoesTrendsPage />} />
             <Route path="/ebay-shoes" element={<EbayShoesTrendsPage />} />
             <Route path="/google-shopping" element={<GoogleShoppingTrendsPage />} />
+            <Route path="/open-training" element={<OpenTrainingPage />} />
+            <Route path="/runtime-scoring" element={<RuntimeScoringPage />} />
+            <Route path="/access-import" element={<AccessImportPage />} />
             <Route path="/admin/common-products" element={<CommonProductsPage />} />
         </Routes>
     );

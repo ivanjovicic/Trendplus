@@ -1,35 +1,43 @@
 import type { Sezona } from "../types/Sezona";
+import { getDataScope } from "../utils/dataScope";
 
 const API = import.meta.env.VITE_API_BASE_URL as string;
 const SEZONE_CACHE_TTL_MS = 5 * 60 * 1000;
 
-let sezoneCache: Sezona[] | null = null;
-let sezoneCacheExpiresAt = 0;
-let sezoneInFlight: Promise<Sezona[]> | null = null;
+const sezoneCache = new Map<string, { data: Sezona[]; expiresAt: number }>();
+const sezoneInFlight = new Map<string, Promise<Sezona[]>>();
 
 export async function getSezone(): Promise<Sezona[]> {
+    const scope = getDataScope();
+    const cacheKey = `sezone:${scope}`;
     const now = Date.now();
-    if (sezoneCache && now < sezoneCacheExpiresAt) {
-        return sezoneCache;
+    const cached = sezoneCache.get(cacheKey);
+    if (cached && now < cached.expiresAt) {
+        return cached.data;
     }
 
-    if (sezoneInFlight) {
-        return sezoneInFlight;
+    const inflight = sezoneInFlight.get(cacheKey);
+    if (inflight) {
+        return inflight;
     }
 
-    sezoneInFlight = (async () => {
-        const res = await fetch(`${API}/api/sezone`);
+    const request = (async () => {
+        const res = await fetch(`${API}/api/sezone?dataScope=${encodeURIComponent(scope)}`);
         if (!res.ok) throw new Error("Ne mogu da dohvatim sezone");
         const data = await res.json() as Sezona[];
-        sezoneCache = data;
-        sezoneCacheExpiresAt = Date.now() + SEZONE_CACHE_TTL_MS;
+        sezoneCache.set(cacheKey, {
+            data,
+            expiresAt: Date.now() + SEZONE_CACHE_TTL_MS,
+        });
         return data;
     })();
 
+    sezoneInFlight.set(cacheKey, request);
+
     try {
-        return await sezoneInFlight;
+        return await request;
     } finally {
-        sezoneInFlight = null;
+        sezoneInFlight.delete(cacheKey);
     }
 }
 

@@ -1,4 +1,5 @@
 import type { DnevnikPromenaResponse } from "../types/dnevnikPromena";
+import { appendDataScopeToParams } from "../utils/dataScope";
 
 const API = import.meta.env.VITE_API_BASE_URL as string;
 
@@ -29,6 +30,7 @@ export async function getDnevnikPromena(
   if (filters?.toDate) params.append("toDate", filters.toDate);
   if (filters?.sortBy) params.append("sortBy", filters.sortBy);
   if (filters?.sortDir) params.append("sortDir", filters.sortDir);
+  appendDataScopeToParams(params);
 
   const resp = await fetch(`${API}/api/dnevnik-promena?${params.toString()}`);
   if (!resp.ok) {

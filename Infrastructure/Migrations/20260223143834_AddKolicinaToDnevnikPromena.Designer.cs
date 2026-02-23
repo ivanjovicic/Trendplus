@@ -3,6 +3,7 @@ using System;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(TrendplusDbContext))]
-    partial class TrendplusDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260223143834_AddKolicinaToDnevnikPromena")]
+    partial class AddKolicinaToDnevnikPromena
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -64,10 +67,6 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Komentar")
                         .HasColumnType("text");
-
-                    b.Property<string>("Materijal")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<int?>("MinimalnaKolicina")
                         .HasColumnType("integer");

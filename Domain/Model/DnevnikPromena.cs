@@ -15,7 +15,9 @@ namespace Domain.Model
         public decimal? StaraProdajnaCena { get; set; }
         public decimal? NovaProdajnaCena { get; set; }
 
+        public int? Kolicina { get; set; }      // quantity involved in this change (e.g. pieces sold)
         public string? Komentar { get; set; }
         public string? KorisnikIme { get; set; }
+        public string DataOrigin { get; set; } = "existing";
     }
 }

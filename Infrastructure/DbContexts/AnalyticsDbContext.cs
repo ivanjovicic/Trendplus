@@ -22,6 +22,11 @@ namespace Infrastructure.DbContexts
                 .IsRequired();
 
             modelBuilder.Entity<ProductsDim>()
+                .Property(x => x.DataOrigin)
+                .HasMaxLength(32)
+                .HasDefaultValue("existing");
+
+            modelBuilder.Entity<ProductsDim>()
                 .HasIndex(x => x.ProductId);
 
             modelBuilder.Entity<ProductsDim>()
@@ -62,6 +67,7 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.StoreId).IsRequired();
                 entity.Property(e => e.PaymentType).HasMaxLength(100);
                 entity.Property(e => e.TotalAmount).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
 
                 entity.HasIndex(e => e.SaleId).IsUnique();
                 entity.HasIndex(e => e.SaleTimestampUtc);
@@ -77,6 +83,7 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.Qty).IsRequired();
                 entity.Property(e => e.UnitPrice).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.LineTotal).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
 
                 entity.HasIndex(e => e.SaleId);
                 entity.HasIndex(e => new { e.ProductId, e.SaleId });
@@ -198,7 +205,7 @@ namespace Infrastructure.DbContexts
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }
 
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
             => base.SaveChangesAsync(cancellationToken);
     }
 }

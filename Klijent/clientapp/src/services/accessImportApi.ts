@@ -1,0 +1,138 @@
+const API = import.meta.env.VITE_API_BASE_URL ?? "";
+
+export interface AccessImportTablePreview {
+    key: string;
+    tableName: string | null;
+    rowCount: number;
+    accessColumns: string[];
+    fieldMappings: AccessImportFieldMappingPreview[];
+    found: boolean;
+}
+
+export interface AccessImportFieldMappingPreview {
+    targetField: string;
+    sourceColumn: string | null;
+    status: string;
+}
+
+export interface AccessImportPreviewResponse {
+    canImport: boolean;
+    sourceFileName: string;
+    tables: AccessImportTablePreview[];
+    availableTables: string[];
+    warnings: string[];
+}
+
+export interface AccessImportRunResponse {
+    batchId: number;
+    status: string;
+    sourceFileName: string;
+    includeAnalytics: boolean;
+    startedAtUtc: string;
+    completedAtUtc: string;
+    tipoviInserted: number;
+    tipoviUpdated: number;
+    dobavljaciInserted: number;
+    dobavljaciUpdated: number;
+    sezoneInserted: number;
+    sezoneUpdated: number;
+    artikliInserted: number;
+    artikliUpdated: number;
+    prodajaInserted: number;
+    prodajaUpdated: number;
+    prodajaStavkeInserted: number;
+    prodajaStavkeUpdated: number;
+    dnevnikInserted: number;
+    dnevnikUpdated: number;
+    povracajInserted: number;
+    povracajUpdated: number;
+    povracajStavkeInserted: number;
+    povracajStavkeUpdated: number;
+    productsDimInserted: number;
+    productsDimUpdated: number;
+    salesFactsInserted: number;
+    salesFactsUpdated: number;
+    salesLineFactsInserted: number;
+    storesInserted: number;
+    storesUpdated: number;
+    warnings: string[];
+}
+
+export interface AccessImportBatchDto {
+    id: number;
+    sourceSystem: string;
+    sourceFileName: string;
+    startedAtUtc: string;
+    completedAtUtc: string | null;
+    status: string;
+    summaryJson: string | null;
+    errorMessage: string | null;
+}
+
+async function parseError(res: Response): Promise<string> {
+    try {
+        const body = await res.json();
+        return body?.error ?? body?.detail ?? body?.title ?? `HTTP ${res.status}`;
+    } catch {
+        return `HTTP ${res.status}`;
+    }
+}
+
+function buildFormData(file: File | null, options?: { useRootFile?: boolean; includeAnalytics?: boolean; overwriteExisting?: boolean }): FormData {
+    const fd = new FormData();
+    if (file) fd.append("file", file);
+    if (options?.useRootFile !== undefined) fd.append("useRootFile", String(options.useRootFile));
+    if (options?.includeAnalytics !== undefined) fd.append("includeAnalytics", String(options.includeAnalytics));
+    if (options?.overwriteExisting !== undefined) fd.append("overwriteExisting", String(options.overwriteExisting));
+    return fd;
+}
+
+export async function previewAccessImport(file: File | null, useRootFile = false): Promise<AccessImportPreviewResponse> {
+    const res = await fetch(`${API}/api/access-import/preview`, {
+        method: "POST",
+        body: buildFormData(file, { useRootFile }),
+    });
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+}
+
+export async function runAccessImport(
+    file: File | null,
+    options?: { useRootFile?: boolean; includeAnalytics?: boolean; overwriteExisting?: boolean }
+): Promise<AccessImportRunResponse> {
+    const res = await fetch(`${API}/api/access-import/run`, {
+        method: "POST",
+        body: buildFormData(file, options),
+    });
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+}
+
+export async function getAccessImportBatches(take = 20): Promise<AccessImportBatchDto[]> {
+    const res = await fetch(`${API}/api/access-import/batches?take=${take}`);
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+}
+
+export interface DeleteBatchResult {
+    found: boolean;
+    batchId: number;
+    artikliDeleted: number;
+    sezoneDeleted: number;
+    tipoviDeleted: number;
+    dobavljaciDeleted: number;
+    prodajaDeleted: number;
+    stavkeDeleted: number;
+    productsDimDeleted: number;
+    salesFactsDeleted: number;
+    salesLineFactsDeleted: number;
+    dnevnikDeleted: number;
+    povracajDeleted: number;
+    povracajStavkeDeleted: number;
+}
+
+export async function deleteAccessImportBatch(batchId: number): Promise<DeleteBatchResult> {
+    const res = await fetch(`${API}/api/access-import/batches/${batchId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+}

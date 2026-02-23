@@ -22,11 +22,23 @@ using Microsoft.Extensions.Caching.Memory;
 using Domain.Model;
 using Domain.Model.TrendShoes;
 using Application.TrendShoes;
+using System.Globalization;
 
 namespace Trendplus2.Endpoints;
 
 public static class AllEndpoints
 {
+    private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+
+    private static readonly string[] SeasonalFallbackImageUrls =
+    {
+        "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1579338559194-a162d19bf842?w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=1200&auto=format&fit=crop"
+    };
+
     public static void MapAllEndpoints(this WebApplication app)
     {
         // ============ HEALTH & MONITORING ============
@@ -365,7 +377,7 @@ public static class AllEndpoints
 
                 await using (var cmd = new NpgsqlCommand(@"SELECT COUNT(*) FROM ""AnalyticsDailySummary""", connection))
                 {
-                    statsResults["dailySummaryCount"] = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
+                    statsResults["dailySummaryCount"] = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
                 }
 
                 logger.LogInformation("✅ Analytics optimization completed successfully");
@@ -766,6 +778,61 @@ public static class AllEndpoints
         .WithName("RunEUScraper")
         .WithTags("GlobalTrends");
 
+        // ===== Zalando ad-hoc scraper proxy =====
+        app.MapPost("/api/scrapers/zalando", async (
+            IHttpClientFactory httpClientFactory,
+            ILogger<Program> logger,
+            System.Text.Json.JsonElement filters,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var client = httpClientFactory.CreateClient("scraper");
+
+                var json = filters.GetRawText();
+                var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+                // Use extended timeout for scraping operations
+                client.Timeout = TimeSpan.FromMinutes(5);
+
+                var resp = await client.PostAsync("/scrapers/zalando", content, ct);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    logger.LogWarning("Zalando scraper returned {Status}: {Body}", resp.StatusCode, body);
+                    return Results.Problem(detail: $"Scraper service returned {resp.StatusCode}: {body}", statusCode: 502);
+                }
+
+                try
+                {
+                    var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(body);
+                    return Results.Ok(parsed);
+                }
+                catch (Exception)
+                {
+                    return Results.Ok(new { raw = body });
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogError(ex, "Failed to call Zalando scraper service");
+                return Results.Problem(detail: ex.Message, statusCode: 503);
+            }
+            catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+            {
+                logger.LogError(ex, "Zalando scraper timed out");
+                return Results.Problem(detail: "Scraper service timed out", statusCode: 504);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error proxying Zalando scraper");
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("ProxyZalandoScraper")
+        .WithTags("External");
+
         // ===== Deichmann ad-hoc scraper proxy =====
         app.MapPost("/api/scrapers/deichmann", async (
             IHttpClientFactory httpClientFactory,
@@ -968,9 +1035,8 @@ public static class AllEndpoints
                 }
 
                 // Validate file type
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
                 var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
-                if (!allowedExtensions.Contains(extension))
+                if (!AllowedImageExtensions.Contains(extension))
                 {
                     return Results.BadRequest(new { message = "Invalid file type. Allowed: jpg, jpeg, png, gif, webp" });
                 }
@@ -1259,12 +1325,12 @@ public static class AllEndpoints
                     .AsNoTracking()
                     .ToListAsync(ct);
 
-                if (!sales.Any())
+                if (sales.Count == 0)
                 {
                     return Results.Ok(new { message = "No sales to sync" });
                 }
 
-                logger.LogInformation($"Found {sales.Count} sales to sync.");
+                logger.LogInformation("Found {SalesCount} sales to sync.", sales.Count);
 
                 var existingSaleIds = await analyticsDb.SalesFacts
                     .Select(s => s.SaleId)
@@ -1315,14 +1381,14 @@ public static class AllEndpoints
                     syncedCount++;
                 }
 
-                if (newSalesFacts.Any())
+                if (newSalesFacts.Count > 0)
                 {
                     await analyticsDb.SalesFacts.AddRangeAsync(newSalesFacts, ct);
                     await analyticsDb.SalesLineFacts.AddRangeAsync(newSalesLineFacts, ct);
                     await analyticsDb.SaveChangesAsync(ct);
                 }
 
-                logger.LogInformation($"✅ Synced {syncedCount} new sales to Analytics DB.");
+                logger.LogInformation("✅ Synced {SyncedCount} new sales to Analytics DB.", syncedCount);
 
                 return Results.Ok(new { success = true, message = $"Synced {syncedCount} new sales (Total sales in source: {sales.Count})" });
             }
@@ -1359,6 +1425,7 @@ public static class AllEndpoints
             DateTime? toDate = null,
             string sortBy = "datum",
             string sortDir = "desc",
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
             try
@@ -1369,7 +1436,17 @@ public static class AllEndpoints
                 if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                     toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-                var query = from dp in db.DnevnikPromena.AsNoTracking()
+                var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
+
+                var dnevnikBaseQuery = db.DnevnikPromena.AsNoTracking().AsQueryable();
+                dnevnikBaseQuery = normalizedDataScope switch
+                {
+                    "imported" => dnevnikBaseQuery.Where(dp => dp.DataOrigin == "access"),
+                    "existing" => dnevnikBaseQuery.Where(dp => dp.DataOrigin == "existing" || dp.DataOrigin == null || dp.DataOrigin == ""),
+                    _ => dnevnikBaseQuery
+                };
+
+                var query = from dp in dnevnikBaseQuery
                             join a in db.Artikli.AsNoTracking() on dp.ArtikalId equals a.Id into artikli
                             from artikal in artikli.DefaultIfEmpty()
                             join d in db.Dobavljaci.AsNoTracking() on dp.DobavljacId equals d.Id into dobavljaci
@@ -1388,7 +1465,8 @@ public static class AllEndpoints
                                 dp.StaraProdajnaCena,
                                 dp.NovaProdajnaCena,
                                 dp.Komentar,
-                                dp.KorisnikIme
+                                dp.KorisnikIme,
+                                dp.DataOrigin
                             };
 
                 if (!string.IsNullOrWhiteSpace(tipPromene))
@@ -1409,7 +1487,7 @@ public static class AllEndpoints
                 if (toDate.HasValue)
                     query = query.Where(x => x.Datum <= toDate.Value);
 
-                query = sortBy.ToLower() switch
+                query = sortBy.ToLower(CultureInfo.InvariantCulture) switch
                 {
                     "tippromene" => sortDir == "asc" ? query.OrderBy(x => x.TipPromene) : query.OrderByDescending(x => x.TipPromene),
                     "iznos" => sortDir == "asc" ? query.OrderBy(x => x.Iznos) : query.OrderByDescending(x => x.Iznos),
@@ -1446,68 +1524,100 @@ public static class AllEndpoints
             int pageSize = 50,
             string? naziv = null,
             int? sezonaId = null,
+            int? dobavljacId = null,
             decimal? minCena = null,
             decimal? maxCena = null,
             decimal? minKolicina = null,
             decimal? maxKolicina = null,
             string sortBy = "naziv",
             string sortDir = "asc",
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
             try
             {
                 var normalizedSortBy = (sortBy ?? "naziv").ToLowerInvariant();
-                var normalizedSortDir = (sortDir ?? "asc").ToLowerInvariant() == "desc" ? "desc" : "asc";
+                var normalizedSortDir = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+                var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
                 pageNumber = pageNumber < 1 ? 1 : pageNumber;
                 pageSize = pageSize < 1 ? 50 : Math.Min(pageSize, 200);
 
                 var responseCacheKey =
-                    $"artikli_page_{pageNumber}_{pageSize}_{naziv}_{sezonaId}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}_{normalizedSortBy}_{normalizedSortDir}";
+                    $"artikli_page_{pageNumber}_{pageSize}_{naziv}_{sezonaId}_{dobavljacId}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}_{normalizedSortBy}_{normalizedSortDir}_{normalizedDataScope}";
 
                 if (cache.TryGetValue(responseCacheKey, out object? cachedResponse) && cachedResponse is not null)
-                {
                     return Results.Ok(cachedResponse);
-                }
 
-                var query = db.Artikli.AsNoTracking().AsQueryable();
+                var baseQuery = from a in db.Artikli.AsNoTracking()
+                                join d in db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dob
+                                from dobavljac in dob.DefaultIfEmpty()
+                                select new
+                                {
+                                    a.Id,
+                                    a.PLU,
+                                    a.Naziv,
+                                    a.NabavnaCena,
+                                    a.ProdajnaCena,
+                                    a.Kolicina,
+                                    a.Velicina,
+                                    a.Boja,
+                                    TipObuceId = a.IDTipObuce,
+                                    DobavljacId = a.IDDobavljac,
+                                    DobavljacNaziv = dobavljac != null ? dobavljac.Naziv : null,
+                                    IdSezona = a.IDSezona,
+                                    a.Kategorija,
+                                    a.Pol,
+                                    a.DataOrigin
+                                };
 
                 if (!string.IsNullOrWhiteSpace(naziv))
-                    query = query.Where(a => a.Naziv.Contains(naziv));
+                    baseQuery = baseQuery.Where(a => a.Naziv.Contains(naziv));
 
                 if (sezonaId.HasValue)
-                    query = query.Where(a => a.IDSezona == sezonaId.Value);
+                    baseQuery = baseQuery.Where(a => a.IdSezona == sezonaId.Value);
+
+                if (dobavljacId.HasValue)
+                    baseQuery = baseQuery.Where(a => a.DobavljacId == dobavljacId.Value);
 
                 if (minCena.HasValue)
-                    query = query.Where(a => a.ProdajnaCena >= minCena.Value);
+                    baseQuery = baseQuery.Where(a => a.ProdajnaCena >= minCena.Value);
 
                 if (maxCena.HasValue)
-                    query = query.Where(a => a.ProdajnaCena <= maxCena.Value);
+                    baseQuery = baseQuery.Where(a => a.ProdajnaCena <= maxCena.Value);
 
                 if (minKolicina.HasValue)
-                    query = query.Where(a => a.Kolicina >= minKolicina.Value);
+                    baseQuery = baseQuery.Where(a => a.Kolicina >= minKolicina.Value);
 
                 if (maxKolicina.HasValue)
-                    query = query.Where(a => a.Kolicina <= maxKolicina.Value);
+                    baseQuery = baseQuery.Where(a => a.Kolicina <= maxKolicina.Value);
 
-                var filterHash = $"{naziv}_{sezonaId}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}";
+                baseQuery = normalizedDataScope switch
+                {
+                    "imported" => baseQuery.Where(a => a.DataOrigin == "access"),
+                    "existing" => baseQuery.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == ""),
+                    _ => baseQuery
+                };
+
+                var filterHash = $"{naziv}_{sezonaId}_{dobavljacId}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}_{normalizedDataScope}";
                 var cacheKey = $"artikli_count_{filterHash}";
-                
+
                 if (!cache.TryGetValue(cacheKey, out int total))
                 {
-                    total = await query.CountAsync(ct);
+                    total = await baseQuery.CountAsync(ct);
                     cache.Set(cacheKey, total, TimeSpan.FromMinutes(2));
                 }
 
-                query = normalizedSortBy switch
+                baseQuery = normalizedSortBy switch
                 {
-                    "prodajnacena" => normalizedSortDir == "asc" ? query.OrderBy(a => a.ProdajnaCena) : query.OrderByDescending(a => a.ProdajnaCena),
-                    "nabavnacena" => normalizedSortDir == "asc" ? query.OrderBy(a => a.NabavnaCena) : query.OrderByDescending(a => a.NabavnaCena),
-                    "kolicina" => normalizedSortDir == "asc" ? query.OrderBy(a => a.Kolicina) : query.OrderByDescending(a => a.Kolicina),
-                    "id" => normalizedSortDir == "asc" ? query.OrderBy(a => a.Id) : query.OrderByDescending(a => a.Id),
-                    _ => normalizedSortDir == "asc" ? query.OrderBy(a => a.Naziv) : query.OrderByDescending(a => a.Naziv)
+                    "prodajnacena" => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.ProdajnaCena) : baseQuery.OrderByDescending(a => a.ProdajnaCena),
+                    "nabavnacena"  => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.NabavnaCena)  : baseQuery.OrderByDescending(a => a.NabavnaCena),
+                    "kolicina"     => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.Kolicina)     : baseQuery.OrderByDescending(a => a.Kolicina),
+                    "id"           => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.Id)           : baseQuery.OrderByDescending(a => a.Id),
+                    "dobavljac"    => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.DobavljacNaziv) : baseQuery.OrderByDescending(a => a.DobavljacNaziv),
+                    _              => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.Naziv)        : baseQuery.OrderByDescending(a => a.Naziv)
                 };
 
-                var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+                var items = await baseQuery.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
                 var response = new { items, totalCount = total, pageNumber, pageSize };
                 cache.Set(responseCacheKey, response, TimeSpan.FromSeconds(30));
 
@@ -1519,6 +1629,48 @@ public static class AllEndpoints
                 var rootMessage = ex.GetBaseException().Message;
                 return Results.Problem(detail: rootMessage, statusCode: 500, title: "Greška pri učitavanju artikala");
             }
+        })
+        .RequireRateLimiting("db-heavy");
+
+        app.MapGet("/api/artikli/lookup", async (
+            ITrendplusDbContext db,
+            string? q = null,
+            int take = 50,
+            bool includeZeroStock = false,
+            string dataScope = "all",
+            CancellationToken ct = default) =>
+        {
+            take = Math.Clamp(take, 1, 200);
+            var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
+
+            var query = db.Artikli.AsNoTracking().AsQueryable();
+
+            if (!includeZeroStock)
+                query = query.Where(a => (a.Kolicina ?? 0) > 0);
+
+            if (!string.IsNullOrWhiteSpace(q))
+                query = query.Where(a => a.Naziv.Contains(q));
+
+            query = normalizedDataScope switch
+            {
+                "imported" => query.Where(a => a.DataOrigin == "access"),
+                "existing" => query.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == ""),
+                _ => query
+            };
+
+            var items = await query
+                .OrderBy(a => a.Naziv)
+                .Select(a => new
+                {
+                    id = a.Id,
+                    naziv = a.Naziv,
+                    cena = a.ProdajnaCena ?? 0m,
+                    kolicina = a.Kolicina ?? 0
+                })
+                .Take(take)
+                .ToListAsync(ct);
+
+            return Results.Ok(items);
         })
         .RequireRateLimiting("db-heavy");
 
@@ -1573,17 +1725,26 @@ public static class AllEndpoints
         .RequireRateLimiting("writes");
 
         // ============ SEZONE ============
-        app.MapGet("/api/sezone", async (ITrendplusDbContext db, IMemoryCache cache, ILogger<Program> logger, CancellationToken ct) =>
+        app.MapGet("/api/sezone", async (ITrendplusDbContext db, IMemoryCache cache, ILogger<Program> logger, string dataScope = "all", CancellationToken ct = default) =>
         {
             try
             {
-                const string cacheKey = "sezone_all";
+                var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
+                var cacheKey = $"sezone_all_{normalizedDataScope}";
                 if (cache.TryGetValue(cacheKey, out List<Sezona>? cachedSezone) && cachedSezone is not null)
                 {
                     return Results.Ok(cachedSezone);
                 }
 
-                var sezone = await db.Sezone.AsNoTracking().OrderBy(s => s.Naziv).ToListAsync(ct);
+                var query = db.Sezone.AsNoTracking().AsQueryable();
+                query = normalizedDataScope switch
+                {
+                    "imported" => query.Where(s => s.DataOrigin == "access"),
+                    "existing" => query.Where(s => s.DataOrigin == "existing" || s.DataOrigin == null || s.DataOrigin == ""),
+                    _ => query
+                };
+
+                var sezone = await query.OrderBy(s => s.Naziv).ToListAsync(ct);
                 cache.Set(cacheKey, sezone, TimeSpan.FromMinutes(10));
                 return Results.Ok(sezone);
             }
@@ -1597,10 +1758,18 @@ public static class AllEndpoints
         .RequireRateLimiting("fixed");
 
         // ============ DOBAVLJACI ============
-        app.MapGet("/api/dobavljaci", async (IMediator mediator, CancellationToken ct) =>
+        app.MapGet("/api/dobavljaci", async (ITrendplusDbContext db, string dataScope = "all", CancellationToken ct = default) =>
         {
-            var query = new GetDobavljacQuery();
-            var result = await mediator.Send(query, ct);
+            var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
+            var query = db.Dobavljaci.AsNoTracking().AsQueryable();
+            query = normalizedDataScope switch
+            {
+                "imported" => query.Where(d => d.DataOrigin == "access"),
+                "existing" => query.Where(d => d.DataOrigin == "existing" || d.DataOrigin == null || d.DataOrigin == ""),
+                _ => query
+            };
+
+            var result = await query.OrderBy(d => d.Naziv).ToListAsync(ct);
             return Results.Ok(result);
         })
         .RequireRateLimiting("fixed");
@@ -1695,7 +1864,7 @@ public static class AllEndpoints
                 if (toDate.HasValue)
                     query = query.Where(x => x.Datum <= toDate.Value);
 
-                query = sortBy.ToLower() switch
+                query = sortBy.ToLower(CultureInfo.InvariantCulture) switch
                 {
                     "naziv" => sortDir == "asc" ? query.OrderBy(x => x.ArtikalNaziv) : query.OrderByDescending(x => x.ArtikalNaziv),
                     "stara_cena" => sortDir == "asc" ? query.OrderBy(x => x.StaraProdajnaCena) : query.OrderByDescending(x => x.StaraProdajnaCena),
@@ -1852,7 +2021,7 @@ public static class AllEndpoints
                         artikal = new
                         {
                             id = s.IdArtikal,
-                            naziv = artikli.ContainsKey(s.IdArtikal) ? artikli[s.IdArtikal].Naziv : "N/A"
+                            naziv = artikli.TryGetValue(s.IdArtikal, out var artikal) ? artikal.Naziv : "N/A"
                         },
                         kolicina = s.Kolicina,
                         cena = s.Cena,
@@ -1979,16 +2148,7 @@ public static class AllEndpoints
                     if (images.Count == 0)
                     {
                         // Stable fallback if Pexels is unavailable.
-                        var fallback = new[]
-                        {
-                            "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=1200&auto=format&fit=crop",
-                            "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=1200&auto=format&fit=crop",
-                            "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=1200&auto=format&fit=crop",
-                            "https://images.unsplash.com/photo-1579338559194-a162d19bf842?w=1200&auto=format&fit=crop",
-                            "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=1200&auto=format&fit=crop"
-                        };
-
-                        images.AddRange(fallback.Select((url, i) => new TrendImageDto(i + 1, url, "unsplash")));
+                        images.AddRange(SeasonalFallbackImageUrls.Select((url, i) => new TrendImageDto(i + 1, url, "unsplash")));
                     }
 
                     var cacheOptions = new MemoryCacheEntryOptions()
@@ -2103,9 +2263,9 @@ public static class AllEndpoints
                 }
 
                 logger.LogInformation("ImportZalando: parsed {Valid} valid items, {Skipped} skipped", toAdd.Count, skipped);
-                if (skippedReasons.Any()) logger.LogInformation("ImportZalando skipped reasons sample: {Reasons}", string.Join(";", skippedReasons.Take(5)));
+                if (skippedReasons.Count > 0) logger.LogInformation("ImportZalando skipped reasons sample: {Reasons}", string.Join(";", skippedReasons.Take(5)));
 
-                if (!toAdd.Any())
+                if (toAdd.Count == 0)
                 {
                     logger.LogInformation("ImportZalando: no valid items to import");
                     return Results.Ok(new { count = 0 });

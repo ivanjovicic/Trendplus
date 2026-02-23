@@ -70,5 +70,7 @@ namespace Domain.Model.Povracaj
         /// Stavke povraćaja (artikli koji se vra?aju)
         /// </summary>
         public List<PovracajStavka> Stavke { get; set; } = new();
+
+        public string DataOrigin { get; set; } = "existing";
     }
 }

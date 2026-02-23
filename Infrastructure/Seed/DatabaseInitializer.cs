@@ -73,6 +73,17 @@ public static class DatabaseInitializer
         await context.Database.MigrateAsync();
         logger.LogInformation("? Trendplus DB migrations applied");
 
+        // Ensure analytics aggregation support tables/indexes in Trendplus DB (idempotent).
+        await EnsureTrendplusAggregationTablesAsync(
+            configuration.GetConnectionString("DefaultConnection")!,
+            logger);
+
+        // Access-import support patch (idempotent)
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("DefaultConnection")!,
+            "Database/Migrations/012_AddAccessImportSupport.sql",
+            logger);
+
         // Check if we need to seed data
         if (!await context.Artikli.AnyAsync())
         {
@@ -86,6 +97,95 @@ public static class DatabaseInitializer
         {
             logger.LogInformation("? Trendplus DB already has data");
         }
+    }
+
+    private static async Task EnsureTrendplusAggregationTablesAsync(
+        string connectionString,
+        ILogger logger)
+    {
+        const string sql = @"
+            -- Source table indexes used by analytics aggregation worker
+            CREATE INDEX IF NOT EXISTS idx_prodaja_zaglavlje_datum_prodaje
+                ON prodaja_zaglavlje (datum_prodaje DESC);
+
+            CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_id_prodaja
+                ON prodaja_stavke (id_prodaja);
+
+            CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_id_artikal
+                ON prodaja_stavke (id_artikal);
+
+            -- Pre-aggregated analytics cache tables
+            CREATE TABLE IF NOT EXISTS ""AnalyticsDailySummary"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Date"" DATE NOT NULL UNIQUE,
+                ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""TotalTransactions"" INT NOT NULL DEFAULT 0,
+                ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                ""AvgBasketValue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""AvgItemPrice"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_daily_summary_date ON ""AnalyticsDailySummary"" (""Date"" DESC);
+
+            CREATE TABLE IF NOT EXISTS ""AnalyticsCategorySummary"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Date"" DATE NOT NULL,
+                ""Kategorija"" VARCHAR(100) NOT NULL,
+                ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                ""TransactionCount"" INT NOT NULL DEFAULT 0,
+                ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE(""Date"", ""Kategorija"")
+            );
+            CREATE INDEX IF NOT EXISTS idx_category_summary_date ON ""AnalyticsCategorySummary"" (""Date"" DESC);
+
+            CREATE TABLE IF NOT EXISTS ""AnalyticsSupplierSummary"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Date"" DATE NOT NULL,
+                ""DobavljacId"" INT,
+                ""DobavljacNaziv"" VARCHAR(200),
+                ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                ""TransactionCount"" INT NOT NULL DEFAULT 0,
+                ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE(""Date"", ""DobavljacId"")
+            );
+            CREATE INDEX IF NOT EXISTS idx_supplier_summary_date ON ""AnalyticsSupplierSummary"" (""Date"" DESC);
+
+            CREATE TABLE IF NOT EXISTS ""AnalyticsGenderSummary"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Date"" DATE NOT NULL,
+                ""Pol"" VARCHAR(50) NOT NULL,
+                ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE(""Date"", ""Pol"")
+            );
+            CREATE INDEX IF NOT EXISTS idx_gender_summary_date ON ""AnalyticsGenderSummary"" (""Date"" DESC);
+
+            CREATE TABLE IF NOT EXISTS ""AnalyticsTopProducts"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Date"" DATE NOT NULL,
+                ""ProductId"" INT NOT NULL,
+                ""ProductName"" VARCHAR(300),
+                ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""TotalUnits"" INT NOT NULL DEFAULT 0,
+                ""Rank"" INT NOT NULL DEFAULT 0,
+                ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE(""Date"", ""ProductId"")
+            );
+            CREATE INDEX IF NOT EXISTS idx_top_products_date ON ""AnalyticsTopProducts"" (""Date"" DESC);
+            CREATE INDEX IF NOT EXISTS idx_top_products_rank ON ""AnalyticsTopProducts"" (""Date"", ""Rank"");
+        ";
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = 120;
+        await command.ExecuteNonQueryAsync();
+
+        logger.LogInformation("? Ensured Trendplus analytics aggregation tables/indexes");
     }
 
     private static async Task InitializeAnalyticsDbAsync(
@@ -130,6 +230,18 @@ public static class DatabaseInitializer
 
         if (!await TableExistsAsync(
             configuration.GetConnectionString("AnalyticsConnection")!,
+            "items",
+            logger))
+        {
+            logger.LogInformation("Scraper scoring tables not found, creating...");
+            await ExecuteSqlFileAsync(
+                configuration.GetConnectionString("AnalyticsConnection")!,
+                "Database/Analytics/004_AddScraperScoringTables.sql",
+                logger);
+        }
+
+        if (!await TableExistsAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
             "PerformanceLogs",
             logger))
         {
@@ -152,6 +264,94 @@ public static class DatabaseInitializer
                 CREATE INDEX IF NOT EXISTS ""IX_PerformanceLogs_RequestName"" ON ""PerformanceLogs"" (""RequestName"");
             ");
         }
+
+        // External shopping/trends tables (idempotent SQL scripts)
+        if (!await TableExistsAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "amazon_shoe_products",
+            logger))
+        {
+            logger.LogInformation("amazon_shoe_products table not found, creating...");
+            await ExecuteSqlFileAsync(
+                configuration.GetConnectionString("AnalyticsConnection")!,
+                "Database/Analytics/006_AddAmazonShoesTable.sql",
+                logger);
+        }
+
+        if (!await TableExistsAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "ebay_shoe_products",
+            logger))
+        {
+            logger.LogInformation("ebay_shoe_products table not found, creating...");
+            await ExecuteSqlFileAsync(
+                configuration.GetConnectionString("AnalyticsConnection")!,
+                "Database/Analytics/007_AddEbayShoesTable.sql",
+                logger);
+        }
+
+        if (!await TableExistsAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "google_shopping_products",
+            logger))
+        {
+            logger.LogInformation("google_shopping_products table not found, creating...");
+            await ExecuteSqlFileAsync(
+                configuration.GetConnectionString("AnalyticsConnection")!,
+                "Database/Analytics/010_AddGoogleShoppingTable.sql",
+                logger);
+        }
+
+        // Access-import origin support patch (idempotent)
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "Database/Analytics/011_AddDataOriginColumns.sql",
+            logger);
+
+        // Open product training schema (stored in analytics DB by default)
+        if (!await TableExistsAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "dataset",
+            logger))
+        {
+            logger.LogInformation("open_product_training schema not found, creating base tables...");
+            await ExecuteSqlFileAsync(
+                configuration.GetConnectionString("AnalyticsConnection")!,
+                "Database/OpenProductTraining/001_create_schema.sql",
+                logger);
+        }
+
+        if (!await TableExistsAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "product_split",
+            logger))
+        {
+            logger.LogInformation("open_product_training split table not found, applying split enum/table patch...");
+            await ExecuteSqlFileAsync(
+                configuration.GetConnectionString("AnalyticsConnection")!,
+                "Database/OpenProductTraining/002_fix_enum.sql",
+                logger);
+        }
+
+        // Views are idempotent (CREATE OR REPLACE) and can be safely re-applied on startup.
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "Database/OpenProductTraining/003_add_ml_export_views.sql",
+            logger);
+
+        await EnsureOpenProductTrainingDatasetsAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            configuration,
+            logger);
+
+        // Backward-compatible schema patch for older eBay table script versions.
+        await context.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE IF EXISTS ebay_shoe_products
+                ADD COLUMN IF NOT EXISTS ""Gender"" TEXT;
+
+            ALTER TABLE IF EXISTS ebay_shoe_products
+                ADD COLUMN IF NOT EXISTS ""TrendScore"" REAL NOT NULL DEFAULT 0;
+        ");
 
         logger.LogInformation("? Analytics DB initialized");
 
@@ -256,6 +456,111 @@ public static class DatabaseInitializer
         }
     }
 
+    private static async Task EnsureOpenProductTrainingDatasetsAsync(
+        string connectionString,
+        IConfiguration configuration,
+        ILogger logger)
+    {
+        try
+        {
+            if (!await TableExistsAsync(connectionString, "dataset", logger))
+            {
+                logger.LogInformation("Skipping open_product_training dataset seed because table dataset does not exist.");
+                return;
+            }
+
+            var configuredDatasets = configuration
+                .GetSection("OpenProductTraining:DefaultDatasets")
+                .Get<string[]>()?
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var datasetNames = (configuredDatasets is { Length: > 0 }
+                ? configuredDatasets
+                : new[] { "kaggle_shoe_dataset", "amazon_clothing_shoes", "ebay_shoes", "google_shopping_shoes" });
+
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            var existingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            await using (var selectCmd = new NpgsqlCommand("SELECT name FROM dataset;", connection))
+            await using (var reader = await selectCmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    var name = reader.GetString(0);
+                    existingNames.Add(name);
+                }
+            }
+
+            var inserted = 0;
+            foreach (var name in datasetNames)
+            {
+                if (existingNames.Contains(name))
+                    continue;
+
+                await using var insertCmd = new NpgsqlCommand(@"
+                    INSERT INTO dataset (name, source_type, description, license)
+                    VALUES (@name, @source_type, @description, @license);", connection);
+
+                insertCmd.Parameters.AddWithValue("name", name);
+                insertCmd.Parameters.AddWithValue("source_type", InferSourceType(name));
+                insertCmd.Parameters.AddWithValue("description", GetDefaultDescription(name));
+                insertCmd.Parameters.AddWithValue("license", "Unknown");
+
+                inserted += await insertCmd.ExecuteNonQueryAsync();
+                existingNames.Add(name);
+            }
+
+            if (inserted > 0)
+            {
+                logger.LogInformation(
+                    "Seeded {InsertedCount} dataset rows in open_product_training.dataset.",
+                    inserted);
+            }
+            else
+            {
+                logger.LogInformation(
+                    "open_product_training.dataset already contains configured dataset names.");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to seed open_product_training.dataset.");
+        }
+    }
+
+    private static string InferSourceType(string datasetName)
+    {
+        if (datasetName.Contains("amazon", StringComparison.OrdinalIgnoreCase))
+            return "amazon";
+        if (datasetName.Contains("ebay", StringComparison.OrdinalIgnoreCase))
+            return "ebay";
+        if (datasetName.Contains("google", StringComparison.OrdinalIgnoreCase) ||
+            datasetName.Contains("shopping", StringComparison.OrdinalIgnoreCase))
+            return "google";
+        if (datasetName.Contains("kaggle", StringComparison.OrdinalIgnoreCase))
+            return "kaggle";
+        if (datasetName.Contains("zappos", StringComparison.OrdinalIgnoreCase))
+            return "zappos";
+        return "custom";
+    }
+
+    private static string GetDefaultDescription(string datasetName)
+    {
+        if (datasetName.Equals("kaggle_shoe_dataset", StringComparison.OrdinalIgnoreCase))
+            return "Kaggle shoe dataset used for open product training.";
+        if (datasetName.Equals("amazon_clothing_shoes", StringComparison.OrdinalIgnoreCase))
+            return "Amazon clothing/shoes metadata dataset used for training.";
+        if (datasetName.Equals("ebay_shoes", StringComparison.OrdinalIgnoreCase))
+            return "eBay shoes dataset used for open product training.";
+        if (datasetName.Equals("google_shopping_shoes", StringComparison.OrdinalIgnoreCase))
+            return "Google Shopping shoes dataset used for open product training.";
+        return $"Open product training dataset: {datasetName}";
+    }
+
     private static async Task<bool> TableExistsAsync(
         string connectionString,
         string tableName,
@@ -294,15 +599,28 @@ public static class DatabaseInitializer
     {
         try
         {
+            var resolvedPath = sqlFilePath;
+            if (!File.Exists(resolvedPath))
+            {
+                var relative = sqlFilePath
+                    .Replace('\\', Path.DirectorySeparatorChar)
+                    .Replace('/', Path.DirectorySeparatorChar);
+                var candidate = Path.Combine(AppContext.BaseDirectory, relative);
+                if (File.Exists(candidate))
+                {
+                    resolvedPath = candidate;
+                }
+            }
+
             // Check if file exists
-            if (!File.Exists(sqlFilePath))
+            if (!File.Exists(resolvedPath))
             {
                 logger.LogWarning("SQL file not found: {FilePath}", sqlFilePath);
                 return;
             }
 
             // Read SQL file
-            var sql = await File.ReadAllTextAsync(sqlFilePath);
+            var sql = await File.ReadAllTextAsync(resolvedPath);
 
             // Execute SQL
             await using var connection = new NpgsqlConnection(connectionString);
@@ -313,7 +631,7 @@ public static class DatabaseInitializer
 
             await command.ExecuteNonQueryAsync();
 
-            logger.LogInformation("? Executed SQL file: {FilePath}", sqlFilePath);
+            logger.LogInformation("? Executed SQL file: {FilePath}", resolvedPath);
         }
         catch (Exception ex)
         {

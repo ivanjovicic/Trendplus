@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { getArtikliPaged } from "../services/artikliApi";
 import { getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
+import type { Dobavljac } from "../types/Dobavljaci";
+import { getDataScope } from "../utils/dataScope";
 
 type ArtikalListItem = {
   id: number;
@@ -11,6 +13,7 @@ type ArtikalListItem = {
   kolicina?: number | null;
   tipObuceId?: number | null;
   dobavljacId?: number | null;
+  dobavljacNaziv?: string | null;
   idSezona?: number | null;
   nabavnaCena?: number | null;
 };
@@ -23,8 +26,10 @@ export default function ArtikliListPage() {
   const [artikli, setArtikli] = useState<ArtikalListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [sezone, setSezone] = useState<Sezona[]>([]);
+  const [dobavljaci, setDobavljaci] = useState<Dobavljac[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataScope, setDataScope] = useState(getDataScope());
 
   // Pagination state
   const [pageNumber, setPageNumber] = useState(1);
@@ -33,6 +38,7 @@ export default function ArtikliListPage() {
   // Filter states
   const [searchNaziv, setSearchNaziv] = useState("");
   const [filterSezona, setFilterSezona] = useState<number | "">("");
+  const [filterDobavljac, setFilterDobavljac] = useState<number | "">("");
   const [filterMinCena, setFilterMinCena] = useState("");
   const [filterMaxCena, setFilterMaxCena] = useState("");
   const [filterMinKolicina, setFilterMinKolicina] = useState("");
@@ -40,30 +46,41 @@ export default function ArtikliListPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   // Sorting state
-  const [sortBy, setSortBy] = useState<"naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id">("naziv");
+  const [sortBy, setSortBy] = useState<"naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id" | "dobavljac">("naziv");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   // Jump-to-page state
   const [jumpTo, setJumpTo] = useState<string>("1");
 
   // Handle column header click for sorting
-  const handleSort = (column: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id") => {
+  type SortCol = "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id" | "dobavljac";
+
+  const handleSort = (column: SortCol) => {
     if (sortBy === column) {
-      // Toggle direction if clicking the same column
       setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
-      // Set new column and default to ascending
       setSortBy(column);
       setSortDir("asc");
     }
     setPageNumber(1);
   };
 
-  // Render sort indicator (arrow)
-  const renderSortIndicator = (column: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id") => {
+  const renderSortIndicator = (column: SortCol) => {
     if (sortBy !== column) return null;
     return sortDir === "asc" ? " ▲" : " ▼";
   };
+
+  useEffect(() => {
+    const handleScopeChange = () => {
+      setDataScope(getDataScope());
+      setPageNumber(1);
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => {
+      window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+    };
+  }, []);
 
   useEffect(() => {
     let aborted = false;
@@ -92,20 +109,37 @@ export default function ArtikliListPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let aborted = false;
+    const API = import.meta.env.VITE_API_BASE_URL as string;
+    const loadDobavljaci = async () => {
+      try {
+        const res = await fetch(`${API}/api/dobavljaci`);
+        if (res.ok && !aborted) setDobavljaci(await res.json());
+      } catch {
+        // best-effort
+      }
+    };
+    loadDobavljaci();
+    return () => { aborted = true; };
+  }, []);
+
   const filters = useMemo(() => {
     const f: {
       naziv?: string;
       sezonaId?: number | "";
+      dobavljacId?: number;
       minCena?: number;
       maxCena?: number;
       minKolicina?: number;
       maxKolicina?: number;
-      sortBy?: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id";
+      sortBy?: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id" | "dobavljac";
       sortDir?: "asc" | "desc";
     } = {};
 
     if (searchNaziv.trim()) f.naziv = searchNaziv.trim();
     if (filterSezona !== "") f.sezonaId = filterSezona;
+    if (filterDobavljac !== "") f.dobavljacId = Number(filterDobavljac);
 
     if (filterMinCena) f.minCena = Number(filterMinCena);
     if (filterMaxCena) f.maxCena = Number(filterMaxCena);
@@ -116,7 +150,7 @@ export default function ArtikliListPage() {
     f.sortDir = sortDir;
 
     return f;
-  }, [searchNaziv, filterSezona, filterMinCena, filterMaxCena, filterMinKolicina, filterMaxKolicina, sortBy, sortDir]);
+  }, [searchNaziv, filterSezona, filterDobavljac, filterMinCena, filterMaxCena, filterMinKolicina, filterMaxKolicina, sortBy, sortDir]);
 
   // keep jump input in sync
   useEffect(() => {
@@ -127,7 +161,7 @@ export default function ArtikliListPage() {
     let aborted = false;
 
     const load = async () => {
-      const filterKey = JSON.stringify({ pageNumber, pageSize, ...filters });
+      const filterKey = JSON.stringify({ pageNumber, pageSize, dataScope, ...filters });
       
       const sessionCached = sessionStorage.getItem(CACHE_KEY_ARTIKLI_PAGED + filterKey);
       const sessionTotal = sessionStorage.getItem(CACHE_KEY_TOTAL_COUNT + filterKey);
@@ -170,11 +204,12 @@ export default function ArtikliListPage() {
     return () => {
       aborted = true;
     };
-  }, [pageNumber, pageSize, filters]);
+  }, [pageNumber, pageSize, filters, dataScope]);
 
   const clearFilters = () => {
     setSearchNaziv("");
     setFilterSezona("");
+    setFilterDobavljac("");
     setFilterMinCena("");
     setFilterMaxCena("");
     setFilterMinKolicina("");
@@ -185,6 +220,7 @@ export default function ArtikliListPage() {
   const activeFiltersCount = [
     searchNaziv,
     filterSezona !== "",
+    filterDobavljac !== "",
     filterMinCena,
     filterMaxCena,
     filterMinKolicina,
@@ -392,6 +428,25 @@ export default function ArtikliListPage() {
             </div>
 
             <div>
+              <label className="field-label">Dobavljač</label>
+              <select
+                className="input-big"
+                value={filterDobavljac}
+                onChange={(e) => {
+                  setFilterDobavljac(e.target.value ? Number(e.target.value) : "");
+                  setPageNumber(1);
+                }}
+              >
+                <option value="">Svi dobavljači</option>
+                {dobavljaci.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.naziv}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
               <label className="field-label">Min. cena (RSD)</label>
               <input
                 type="number"
@@ -501,6 +556,13 @@ export default function ArtikliListPage() {
                 >
                   Količina{renderSortIndicator("kolicina")}
                 </th>
+                <th
+                  onClick={() => handleSort("dobavljac")}
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                  title="Klikni za sortiranje po dobavljaču"
+                >
+                  Dobavljač{renderSortIndicator("dobavljac")}
+                </th>
                 <th style={{ textAlign: "center" }}>Akcije</th>
               </tr>
             </thead>
@@ -516,6 +578,9 @@ export default function ArtikliListPage() {
                     {a.nabavnaCena ? `${a.nabavnaCena.toFixed(2)} RSD` : "-"}
                   </td>
                   <td style={{ textAlign: "center", color: "#6b7280" }}>{a.kolicina ?? 0}</td>
+                  <td style={{ color: "#6b7280", fontSize: "0.875rem" }}>
+                    {a.dobavljacNaziv ?? "-"}
+                  </td>
                   <td style={{ textAlign: "center" }}>
                     <Link
                       to={`/artikli/${a.id}/edit`}

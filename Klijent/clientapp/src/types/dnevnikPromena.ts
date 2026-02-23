@@ -12,6 +12,7 @@ export interface DnevnikPromenaItem {
   novaProdajnaCena?: number | null;
   komentar?: string | null;
   korisnikIme?: string | null;
+  dataOrigin?: string | null;
 }
 
 export interface DnevnikPromenaResponse {

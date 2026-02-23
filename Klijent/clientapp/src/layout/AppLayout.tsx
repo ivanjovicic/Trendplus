@@ -1,13 +1,20 @@
-﻿import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AutoReloadOnBackendOnline from "../components/AutoReloadOnBackendOnline";
 import WorkerStatusAlert from "../components/WorkerStatusAlert";
 import SeasonalImageCarousel from "../components/trendshoes/SeasonalImageCarousel";
 import Footer from "../components/Footer";
 import { BackendStatusContext } from "../context/BackendStatusContext";
+import { getDataScope, setDataScope, type DataScope } from "../utils/dataScope";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { online } = useContext(BackendStatusContext);
+    const [dataScope, setLocalDataScope] = useState<DataScope>(getDataScope());
+
+    useEffect(() => {
+        setDataScope(dataScope);
+        window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    }, [dataScope]);
 
     return (
         <div style={{ minHeight: "100vh", background: "#f3f4f6", display: "flex", flexDirection: "column" }}>
@@ -26,13 +33,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
                 <div>
                     <span style={{ fontWeight: 600 }}>Trendplus</span>{" "}
-                    <span style={{ opacity: 0.7, fontSize: 14 }}>– backoffice</span>
+                    <span style={{ opacity: 0.7, fontSize: 14 }}>- backoffice</span>
                 </div>
 
-                <div style={{ fontSize: 14 }}>
+                <div style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ color: online ? "#6ee7b7" : "#fecaca" }}>
                         Backend: {online ? "ONLINE" : "OFFLINE"}
                     </span>
+                    <span style={{ color: "#d1d5db" }}>Prikaz:</span>
+                    <select
+                        value={dataScope}
+                        onChange={(e) => setLocalDataScope(e.target.value as DataScope)}
+                        style={{
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            border: "1px solid #4b5563",
+                            background: "#1f2937",
+                            color: "white",
+                            fontSize: 12,
+                        }}
+                        title="Globalni filter izvora podataka"
+                    >
+                        <option value="all">Sve</option>
+                        <option value="existing">Postojeći</option>
+                        <option value="imported">Importovani</option>
+                    </select>
                 </div>
             </header>
 
@@ -69,7 +94,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link to="/dnevnik-promena" className="button-small">
                         📋 Dnevnik promena
                     </Link>
-                 
+
                     <Link to="/sezone" className="button-small">
                         Sezone
                     </Link>
@@ -123,6 +148,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </Link>
                     <Link to="/google-shopping" className="button-small">
                         🛒 Google Shopping
+                    </Link>
+                    <Link to="/open-training" className="button-small">
+                        🧠 Open Training
+                    </Link>
+                    <Link to="/runtime-scoring" className="button-small">
+                        🎯 Runtime Scoring
+                    </Link>
+                    <Link to="/access-import" className="button-small">
+                        🗄 Access Import
                     </Link>
                  </nav>
 

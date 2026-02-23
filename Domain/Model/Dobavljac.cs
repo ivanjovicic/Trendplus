@@ -10,5 +10,6 @@ namespace Domain.Model
         public string? Adresa { get; set; }
         public string? Telefon { get; set; }
         public string? Napomena { get; set; }
+        public string DataOrigin { get; set; } = "existing";
     }
 }

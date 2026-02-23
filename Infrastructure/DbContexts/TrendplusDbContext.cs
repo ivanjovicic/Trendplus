@@ -4,7 +4,6 @@ using Domain.Model;
 using Domain.Model.Prodaja;
 using Domain.Model.Povracaj;
 using Microsoft.EntityFrameworkCore;
-using Pgvector.EntityFrameworkCore;
 
 namespace Infrastructure.DbContexts
 {
@@ -12,27 +11,21 @@ namespace Infrastructure.DbContexts
     {
         public TrendplusDbContext(DbContextOptions<TrendplusDbContext> options) : base(options) { }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            base.OnConfiguring(optionsBuilder);
-            
-            // Enable pgvector extension
-            if (!optionsBuilder.IsConfigured)
-            {
-                optionsBuilder.UseNpgsql(o => o.UseVector());
-            }
-        }
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Enable pgvector extension in PostgreSQL
-            modelBuilder.HasPostgresExtension("vector");
-
             modelBuilder.Entity<Artikli>(eb =>
             {
                 eb.ToTable("Artikli");
                 eb.HasKey(e => e.Id);
+
+                eb.Property(e => e.DataOrigin)
+                  .HasMaxLength(32)
+                  .HasDefaultValue("existing");
                 
+                eb.Property(e => e.Materijal)
+                  .HasMaxLength(100)
+                  .IsRequired(false);
+
                 // Image support
                 eb.Property(e => e.ImagePath)
                   .HasMaxLength(500)
@@ -90,9 +83,11 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.BrojRacuna).HasMaxLength(100);
                 eb.Property(e => e.Komentar).HasMaxLength(500);
                 eb.Property(e => e.KorisnikIme).HasMaxLength(200);
-
+                eb.Property(e => e.Kolicina);
                 eb.Property(e => e.StaraProdajnaCena).HasColumnType("decimal(18,2)");
                 eb.Property(e => e.NovaProdajnaCena).HasColumnType("decimal(18,2)");
+                eb.Property(e => e.DataOrigin).IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+                eb.HasIndex(e => e.DataOrigin);
             });
 
             modelBuilder.Entity<Sezona>(eb =>
@@ -102,6 +97,21 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Naziv).IsRequired().HasMaxLength(100);
                 eb.Property(e => e.DatumOd).IsRequired();
                 eb.Property(e => e.DatumDo).IsRequired();
+                eb.Property(e => e.DataOrigin).IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+            });
+
+            modelBuilder.Entity<Dobavljac>(eb =>
+            {
+                eb.ToTable("Dobavljaci");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.DataOrigin).IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+            });
+
+            modelBuilder.Entity<TipObuce>(eb =>
+            {
+                eb.ToTable("TipoviObuce");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.DataOrigin).IsRequired().HasMaxLength(32).HasDefaultValue("existing");
             });
 
             modelBuilder.Entity<OutboxMessage>(eb =>
@@ -132,6 +142,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.DatumProdaje).HasColumnName("datum_prodaje").IsRequired();
                 eb.Property(e => e.NacinPlacanja).HasColumnName("nacin_placanja").HasMaxLength(100);
                 eb.Property(e => e.IDObjekat).HasColumnName("id_objekat");
+                eb.Property(e => e.DataOrigin).HasColumnName("data_origin").IsRequired().HasMaxLength(32).HasDefaultValue("existing");
                 
                 eb.HasMany(e => e.Stavke)
                   .WithOne(s => s.Prodaja)
@@ -170,6 +181,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.OdobrioKorisnik).HasColumnName("odobrio_korisnik").HasMaxLength(200);
                 eb.Property(e => e.DatumKreiranja).HasColumnName("datum_kreiranja").IsRequired();
                 eb.Property(e => e.DatumOdobrenja).HasColumnName("datum_odobrenja");
+                eb.Property(e => e.DataOrigin).HasColumnName("data_origin").IsRequired().HasMaxLength(32).HasDefaultValue("existing");
                 
                 eb.HasIndex(e => e.BrojZapisnika).IsUnique();
                 eb.HasIndex(e => e.IDDobavljac);
@@ -197,6 +209,22 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => e.IdArtikal);
             });
 
+            modelBuilder.Entity<DataImportBatch>(eb =>
+            {
+                eb.ToTable("DataImportBatches");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.SourceSystem).IsRequired().HasMaxLength(64);
+                eb.Property(e => e.SourceFileName).IsRequired().HasMaxLength(300);
+                eb.Property(e => e.StartedAtUtc).IsRequired();
+                eb.Property(e => e.CompletedAtUtc);
+                eb.Property(e => e.Status).IsRequired().HasMaxLength(32);
+                eb.Property(e => e.SummaryJson);
+                eb.Property(e => e.ErrorMessage).HasMaxLength(4000);
+
+                eb.HasIndex(e => e.StartedAtUtc);
+                eb.HasIndex(e => e.Status);
+            });
+
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
         }
 
@@ -214,6 +242,7 @@ namespace Infrastructure.DbContexts
         public DbSet<ProdajaStavka> ProdajaStavke { get; set; } = null!;
         public DbSet<PovracajZaglavlje> PovracajZaglavlja { get; set; } = null!;
         public DbSet<PovracajStavka> PovracajStavke { get; set; } = null!;
+        public DbSet<DataImportBatch> DataImportBatches { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {

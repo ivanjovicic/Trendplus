@@ -32,6 +32,10 @@ namespace Domain.Model
         // Kategorije za analitiku
         public string? Kategorija { get; set; } // "Patike", "Cipele", "Sandale", "Čizme", "Ostalo"
         public string? Pol { get; set; } // "Muško", "Žensko", "Dečije", "Unisex"
+        public string? Materijal { get; set; } // "Koža", "Tekstil", "Sintetika", "Guma", "Nabuk", "Platno"
+
+        // Origin of the row: "existing" or "access"
+        public string DataOrigin { get; set; } = "existing";
         
         // Image support
         public string? ImagePath { get; set; } // Path to main product image

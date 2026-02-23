@@ -6,5 +6,6 @@ namespace Domain.Model
         public string Naziv { get; set; } = string.Empty; // npr. "Jesen/Zima 2024"
         public DateTime DatumOd { get; set; }
         public DateTime DatumDo { get; set; }
+        public string DataOrigin { get; set; } = "existing";
     }
 }

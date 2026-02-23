@@ -34,6 +34,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
+using Api.Config;
 using System.Threading.RateLimiting;
 
 try
@@ -71,10 +72,15 @@ try
 
     Console.WriteLine($"Configured to listen on port {port}");
 
+    // Options binding
+    builder.Services.Configure<SerpApiOptions>(builder.Configuration.GetSection(SerpApiOptions.Section));
+    builder.Services.Configure<EbayOptions>(builder.Configuration.GetSection(EbayOptions.Section));
+    builder.Services.Configure<GoogleShoppingOptions>(builder.Configuration.GetSection(GoogleShoppingOptions.Section));
+    builder.Services.Configure<RuntimeScoringOptions>(builder.Configuration.GetSection(RuntimeScoringOptions.Section));
+
     // DbContext
     builder.Services.AddDbContext<TrendplusDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), 
-            o => o.UseVector()) // ← Enable pgvector support
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
     builder.Services.AddScoped<ITrendplusDbContext>(sp =>
@@ -150,6 +156,15 @@ try
     {
         client.BaseAddress = new Uri(scraperBase);
         client.Timeout = TimeSpan.FromSeconds(30);
+    });
+
+    // Optional Python model endpoint for runtime scoring evaluate (/api/v1/scoring/evaluate)
+    var pythonModelBase = builder.Configuration["RuntimeScoring:PythonModelBaseUrl"] ?? "http://localhost:8000";
+    var pythonModelTimeout = builder.Configuration.GetValue<int?>("RuntimeScoring:PythonTimeoutSeconds") ?? 20;
+    builder.Services.AddHttpClient("PythonModel", client =>
+    {
+        client.BaseAddress = new Uri(pythonModelBase);
+        client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pythonModelTimeout));
     });
 
     // Image providers for trends carousel are optional and resolved dynamically in endpoints
@@ -240,6 +255,24 @@ try
     builder.Services.AddScoped<IPopularityAndDealScoringService, PopularityAndDealScoringService>();
     builder.Services.AddScoped<IOpenProductTrainingSignalProvider, OpenProductTrainingSignalProvider>();
     builder.Services.AddScoped<IOpenProductTrainingSyncService, OpenProductTrainingSyncService>();
+    builder.Services.AddScoped<IRuntimeScoringEngine, RuntimeScoringEngine>();
+    builder.Services.AddScoped<IAccessImportService, AccessImportService>();
+
+    // Typed HttpClient services for external product APIs
+    var serpTimeout = builder.Configuration.GetValue<int>("SerpApi:TimeoutSeconds", 20);
+    builder.Services.AddHttpClient<AmazonShoesService>(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(serpTimeout);
+    });
+    builder.Services.AddHttpClient<GoogleShoppingService>(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(serpTimeout);
+    });
+    var ebayTimeout = builder.Configuration.GetValue<int>("Ebay:TimeoutSeconds", 20);
+    builder.Services.AddHttpClient<EbayBrowseService>(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(ebayTimeout);
+    });
 
     // API rate limiter policies used by RequireRateLimiting(...) in endpoints
     builder.Services.AddRateLimiter(options =>
@@ -249,29 +282,50 @@ try
         static string GetClientPartitionKey(HttpContext httpContext) =>
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "global";
 
+        static FixedWindowRateLimiterOptions CreateWindowPolicy(int permitLimit, int windowSeconds) =>
+            new()
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            };
+
         options.AddPolicy("api-v1", httpContext =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: GetClientPartitionKey(httpContext),
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 120,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                }));
+                factory: _ => CreateWindowPolicy(120, 60)));
 
         options.AddPolicy("writes", httpContext =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: GetClientPartitionKey(httpContext),
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 40,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                }));
+                factory: _ => CreateWindowPolicy(40, 60)));
+
+        options.AddPolicy("fixed", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: GetClientPartitionKey(httpContext),
+                factory: _ => CreateWindowPolicy(120, 60)));
+
+        options.AddPolicy("strict", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: GetClientPartitionKey(httpContext),
+                factory: _ => CreateWindowPolicy(20, 60)));
+
+        options.AddPolicy("db-heavy", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: GetClientPartitionKey(httpContext),
+                factory: _ => CreateWindowPolicy(60, 60)));
+
+        options.AddPolicy("analytics", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: GetClientPartitionKey(httpContext),
+                factory: _ => CreateWindowPolicy(90, 60)));
+
+        options.AddPolicy("external-api", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: GetClientPartitionKey(httpContext),
+                factory: _ => CreateWindowPolicy(30, 60)));
     });
 
     var app = builder.Build();
@@ -352,6 +406,7 @@ try
     app.MapCachedAnalyticsEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();
+    app.MapAccessImportEndpoints();
     
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");

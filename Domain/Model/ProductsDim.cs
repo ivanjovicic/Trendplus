@@ -37,6 +37,8 @@ namespace Domain.Model
         public DateTime Timestamp { get; set; }
 
         public int? Kolicina { get; set; }
+
+        public string DataOrigin { get; set; } = "existing";
     }
 
 }

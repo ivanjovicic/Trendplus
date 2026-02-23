@@ -1,6 +1,7 @@
 ﻿import { type Artikal } from "../types/Artikal";
 import { ArtikalFormData } from "../types/artikalformdata";
 import { NivelacijeResponse } from "../types/nivelacije";
+import { appendDataScopeToParams } from "../utils/dataScope";
 
 export type CreateArtikalDto = {
     PLU?: string | null;
@@ -112,11 +113,12 @@ export async function getArtikliPaged<T = any>(
     filters?: {
         naziv?: string;
         sezonaId?: number | "";
+        dobavljacId?: number;
         minCena?: number;
         maxCena?: number;
         minKolicina?: number;
         maxKolicina?: number;
-        sortBy?: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id";
+        sortBy?: "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id" | "dobavljac";
         sortDir?: "asc" | "desc";
     }
 ): Promise<ArtikliPagedResponse<T>> {
@@ -127,12 +129,14 @@ export async function getArtikliPaged<T = any>(
 
     if (filters?.naziv) params.append("naziv", filters.naziv);
     if (filters?.sezonaId !== undefined && filters.sezonaId !== "") params.append("sezonaId", String(filters.sezonaId));
+    if (filters?.dobavljacId !== undefined) params.append("dobavljacId", String(filters.dobavljacId));
     if (filters?.minCena !== undefined) params.append("minCena", String(filters.minCena));
     if (filters?.maxCena !== undefined) params.append("maxCena", String(filters.maxCena));
     if (filters?.minKolicina !== undefined) params.append("minKolicina", String(filters.minKolicina));
     if (filters?.maxKolicina !== undefined) params.append("maxKolicina", String(filters.maxKolicina));
     if (filters?.sortBy) params.append("sortBy", filters.sortBy);
     if (filters?.sortDir) params.append("sortDir", filters.sortDir);
+    appendDataScopeToParams(params);
 
     const cacheKey = params.toString();
     const now = Date.now();
