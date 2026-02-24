@@ -57,6 +57,10 @@ namespace Infrastructure.DbContexts
                 .Property(x => x.Kolicina)
                 .HasColumnType("integer");
 
+            modelBuilder.Entity<ProductsDim>()
+                .Property(x => x.Materijal)
+                .HasMaxLength(100);
+
             modelBuilder.Entity<SalesFact>(entity =>
             {
                 entity.ToTable("SalesFacts");

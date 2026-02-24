@@ -132,6 +132,8 @@ namespace Workers
         {
             dim.ProductId = p.Id;
             dim.ProductName = p.Naziv;
+            dim.Category = p.Kategorija ?? string.Empty;
+            dim.SubCategory = p.Pol ?? string.Empty;
             dim.FootwearTypeId = p.IDTipObuce;
             dim.SupplierId = p.IDDobavljac;
             dim.SeasonId = p.IDSezona;
@@ -139,11 +141,13 @@ namespace Workers
             dim.PurchasePriceRsd = p.NabavnaCenaDin;
             dim.FirstSalePrice = p.PrvaProdajnaCena;
             dim.SalePrice = p.ProdajnaCena;
-            dim.Velicina = p.Velicina;           // Mapiraj veličinu
-            dim.Boja = p.Boja;                   // Mapiraj boju
+            dim.Velicina = p.Velicina;
+            dim.Boja = p.Boja;
+            dim.Materijal = p.Materijal;
             dim.Kolicina = p.Kolicina;
             dim.IsActive = true;
             dim.Timestamp = p.UpdatedAt;
+            dim.DataOrigin = p.DataOrigin;  // propagate "access"/"existing" so cleanup works
         }
 
         private async Task<int> SyncProducts(TrendplusDbContext trendplusDb, AnalyticsDbContext analyticsDb, CancellationToken ct)
