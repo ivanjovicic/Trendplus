@@ -22,11 +22,21 @@ if not exist "%ROOT%Klijent\clientapp\package.json" (
 )
 
 echo [0/4] Starting Redis on port 6379...
-docker compose up -d redis >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARN] Redis nije pokrenut automatski - proveri Docker Desktop.
-) else (
+set "REDIS_STARTED=0"
+call :start_redis
+if "%REDIS_STARTED%"=="1" (
     echo [OK] Redis running on localhost:6379
+) else (
+    echo [WARN] Redis was not started automatically.
+    echo [WARN] Start Docker Desktop and run: docker compose up -d redis
+)
+set "POSTGRES_STARTED=0"
+call :start_postgres
+if "%POSTGRES_STARTED%"=="1" (
+    echo [OK] Postgres running on localhost:5434
+) else (
+    echo [WARN] Postgres was not started automatically.
+    echo [WARN] Start Docker Desktop and run: docker compose up -d postgres
 )
 echo.
 
@@ -42,7 +52,23 @@ netstat -ano | findstr /R /C:":8000 .*LISTENING" >nul
 if %errorlevel% equ 0 (
     echo [OK] Python API already running on localhost:8000
 ) else (
-    start "Python API" /D "%ROOT%Python" cmd /k "call venv\Scripts\activate.bat && python api_server.py"
+    set "PYTHON_CMD="
+    if exist "%ROOT%Python\venv\Scripts\python.exe" (
+        set "PYTHON_CMD=venv\Scripts\python.exe"
+    ) else (
+        where py >nul 2>&1
+        if %errorlevel% equ 0 (
+            set "PYTHON_CMD=py"
+        ) else (
+            where python >nul 2>&1
+            if %errorlevel% equ 0 set "PYTHON_CMD=python"
+        )
+    )
+    if defined PYTHON_CMD (
+        start "Python API" /D "%ROOT%Python" cmd /k "%PYTHON_CMD% api_server.py"
+    ) else (
+        echo [ERROR] Python executable not found. Run Python\setup.bat manually.
+    )
     timeout /t 3 /nobreak >nul
 )
 echo.
@@ -72,6 +98,7 @@ echo ========================================
 echo.
 echo Services:
 echo   - Redis:       localhost:6379
+echo   - Postgres:    localhost:5434
 echo   - Python API:  http://localhost:8000
 echo   - .NET API:    http://localhost:8080
 echo   - Frontend:    http://localhost:5174
@@ -83,3 +110,49 @@ echo To stop services, close their terminal windows (or use Ctrl+C in each).
 
 :end
 endlocal
+exit /b 0
+
+:start_redis
+docker info >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARN] Docker daemon is not available.
+    where redis-server >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo [INFO] Starting local redis-server fallback...
+        start "Redis" cmd /k "redis-server"
+        timeout /t 2 /nobreak >nul
+        set "REDIS_STARTED=1"
+    )
+    exit /b 0
+)
+
+docker compose up -d redis >nul 2>&1
+if %errorlevel% equ 0 (
+    set "REDIS_STARTED=1"
+    exit /b 0
+)
+
+docker-compose up -d redis >nul 2>&1
+if %errorlevel% equ 0 (
+    set "REDIS_STARTED=1"
+)
+exit /b 0
+
+:start_postgres
+docker info >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARN] Docker daemon is not available.
+    exit /b 0
+)
+
+docker compose up -d postgres >nul 2>&1
+if %errorlevel% equ 0 (
+    set "POSTGRES_STARTED=1"
+    exit /b 0
+)
+
+docker-compose up -d postgres >nul 2>&1
+if %errorlevel% equ 0 (
+    set "POSTGRES_STARTED=1"
+)
+exit /b 0
