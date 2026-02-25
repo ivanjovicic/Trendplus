@@ -13,6 +13,6 @@ namespace Domain.Model
         public string? Path { get; set; }
         public string? UserName { get; set; }
         public string? ClientApp { get; set; }
-        public string CorrelationId { get; set; }
+        public string CorrelationId { get; set; } = string.Empty;
     }
 }

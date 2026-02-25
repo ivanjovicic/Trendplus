@@ -6,78 +6,78 @@ using Microsoft.Extensions.Options;
 namespace Api.Services
 {
     /// <summary>
-    /// Calls SerpAPI's Google Shopping engine to retrieve shoe listings.
-    /// Injected via typed HttpClient.
+    /// Calls SerpAPI Google Shopping engine and maps results to analytics model.
     /// </summary>
     public class GoogleShoppingService
     {
-        private readonly SerpApiOptions          _serpOpts;
-        private readonly GoogleShoppingOptions   _gOpts;
-        private readonly HttpClient              _http;
+        private readonly SerpApiOptions _serpOptions;
+        private readonly GoogleShoppingOptions _googleOptions;
+        private readonly HttpClient _http;
+        private readonly IOpenProductTrainingSignalProvider _trainingSignals;
         private readonly ILogger<GoogleShoppingService> _log;
 
         public GoogleShoppingService(
-            IOptions<SerpApiOptions>        serpOptions,
-            IOptions<GoogleShoppingOptions> gOptions,
-            HttpClient                      http,
-            ILogger<GoogleShoppingService>  log)
+            IOptions<SerpApiOptions> serpOptions,
+            IOptions<GoogleShoppingOptions> googleOptions,
+            HttpClient http,
+            IOpenProductTrainingSignalProvider trainingSignals,
+            ILogger<GoogleShoppingService> log)
         {
-            _serpOpts = serpOptions.Value;
-            _gOpts    = gOptions.Value;
-            _http     = http;
-            _http.Timeout = TimeSpan.FromSeconds(_gOpts.TimeoutSeconds);
-            _log      = log;
+            _serpOptions = serpOptions.Value;
+            _googleOptions = googleOptions.Value;
+            _http = http;
+            _trainingSignals = trainingSignals;
+            _log = log;
+            _http.Timeout = TimeSpan.FromSeconds(_googleOptions.TimeoutSeconds);
         }
 
-        /// <summary>
-        /// Searches Google Shopping for shoes of the given type, optionally
-        /// targeting a gender segment and filtering by price.
-        /// </summary>
         public async Task<List<GoogleShoppingProduct>> FetchAsync(
-            string  type,
+            string type,
             string? gender,
-            int?    minPrice,
-            int?    maxPrice,
+            int? minPrice,
+            int? maxPrice,
             CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(_serpOpts.ApiKey) || _serpOpts.ApiKey == "YOUR_KEY")
+            if (string.IsNullOrWhiteSpace(_serpOptions.ApiKey) ||
+                _serpOptions.ApiKey == "YOUR_KEY")
             {
-                _log.LogWarning("SerpApi ApiKey not configured – returning empty list");
+                _log.LogWarning("SerpAPI API key is not configured; returning empty list.");
                 return [];
             }
 
-            var normalizedGender = string.IsNullOrEmpty(gender) || gender == "all"
+            var normalizedGender = string.IsNullOrWhiteSpace(gender) || gender == "all"
                 ? null
                 : gender.Trim().ToLowerInvariant();
-            var genderPrefix = normalizedGender is not null ? normalizedGender + " " : "";
-            var query        = Uri.EscapeDataString(genderPrefix + type.Trim() + " shoes");
+            var genderPrefix = normalizedGender is null ? string.Empty : $"{normalizedGender} ";
+            var query = Uri.EscapeDataString($"{genderPrefix}{type.Trim()} shoes");
 
-            var url = $"https://serpapi.com/search.json"
-                    + $"?engine=google_shopping"
-                    + $"&q={query}"
-                    + $"&api_key={_serpOpts.ApiKey}"
-                    + $"&gl={_gOpts.CountryCode}"
-                    + $"&hl={_gOpts.Language}"
-                    + $"&num={_gOpts.MaxResults}";
+            var url = "https://serpapi.com/search.json"
+                + "?engine=google_shopping"
+                + $"&q={query}"
+                + $"&api_key={_serpOptions.ApiKey}"
+                + $"&gl={_googleOptions.CountryCode}"
+                + $"&hl={_googleOptions.Language}"
+                + $"&num={_googleOptions.MaxResults}";
 
-            _log.LogInformation("Google Shopping query: {Query} gl={Gl} hl={Hl}", query, _gOpts.CountryCode, _gOpts.Language);
-
-            string jsonStr;
+            string json;
             try
             {
-                using var request  = new HttpRequestMessage(HttpMethod.Get, url);
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 using var response = await _http.SendAsync(request, ct);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var body = await response.Content.ReadAsStringAsync(ct);
-                    _log.LogError("SerpApi returned {Status} for Google Shopping query={Query}. Body: {Body}",
-                        (int)response.StatusCode, query, body[..Math.Min(body.Length, 400)]);
+                    _log.LogError(
+                        "Google Shopping request failed status={StatusCode} query={Query} body={Body}",
+                        (int)response.StatusCode,
+                        query,
+                        body[..Math.Min(body.Length, 400)]);
                     throw new HttpRequestException(
-                        $"Google Shopping: response {(int)response.StatusCode} ({response.ReasonPhrase}): {body[..Math.Min(body.Length, 200)]}");
+                        $"Google Shopping API {(int)response.StatusCode} {response.ReasonPhrase}: {body[..Math.Min(body.Length, 200)]}");
                 }
 
-                jsonStr = await response.Content.ReadAsStringAsync(ct);
+                json = await response.Content.ReadAsStringAsync(ct);
             }
             catch (HttpRequestException)
             {
@@ -85,106 +85,158 @@ namespace Api.Services
             }
             catch (Exception ex)
             {
-                _log.LogError(ex, "Google Shopping HTTP request failed for query={Query}", query);
+                _log.LogError(ex, "Google Shopping request failed for query={Query}", query);
                 throw;
             }
 
-            using var doc = JsonDocument.Parse(jsonStr);
+            using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-
-            if (!root.TryGetProperty("shopping_results", out var results))
+            if (!root.TryGetProperty("shopping_results", out var shoppingResults))
             {
                 _log.LogWarning("Google Shopping returned no shopping_results for query={Query}", query);
                 return [];
             }
 
-            var list     = new List<GoogleShoppingProduct>();
-            int position = 1;
+            var list = new List<GoogleShoppingProduct>();
+            var position = 1;
 
-            foreach (var item in results.EnumerateArray().Take(_gOpts.MaxResults))
+            foreach (var item in shoppingResults.EnumerateArray().Take(_googleOptions.MaxResults))
             {
-                // ── Price ────────────────────────────────────────────────────
-                // SerpAPI returns "price": "$69.99" or "65,00 €" (locale-dependent)
-                decimal? price    = null;
-                string?  currency = _gOpts.Currency;
+                decimal? price = null;
+                string? currency = _googleOptions.Currency;
 
-                if (item.TryGetProperty("price", out var priceEl))
+                if (item.TryGetProperty("price", out var priceElement))
                 {
-                    var priceStr = priceEl.ValueKind == JsonValueKind.String
-                        ? priceEl.GetString() ?? ""
-                        : priceEl.GetRawText();
+                    var rawPrice = priceElement.ValueKind == JsonValueKind.String
+                        ? priceElement.GetString() ?? string.Empty
+                        : priceElement.GetRawText();
 
-                    // Detect currency from symbol
-                    if (priceStr.Contains('€'))      currency = "EUR";
-                    else if (priceStr.Contains('$'))  currency = "USD";
-                    else if (priceStr.Contains('£'))  currency = "GBP";
+                    if (rawPrice.Contains('€'))
+                    {
+                        currency = "EUR";
+                    }
+                    else if (rawPrice.Contains('$'))
+                    {
+                        currency = "USD";
+                    }
+                    else if (rawPrice.Contains('£'))
+                    {
+                        currency = "GBP";
+                    }
 
-                    // Strip all non-numeric except decimal
-                    var clean = new string(priceStr
+                    var cleaned = new string(rawPrice
                         .Replace(',', '.')
                         .Where(c => char.IsDigit(c) || c == '.')
                         .ToArray());
 
-                    // If multiple dots, keep only last (e.g. "1.299.99" → "1299.99")
-                    var parts = clean.Split('.');
+                    var parts = cleaned.Split('.');
                     if (parts.Length > 2)
-                        clean = string.Join("", parts[..^1]) + "." + parts[^1];
+                    {
+                        cleaned = string.Join(string.Empty, parts[..^1]) + "." + parts[^1];
+                    }
 
-                    if (decimal.TryParse(clean, System.Globalization.NumberStyles.Any,
-                            System.Globalization.CultureInfo.InvariantCulture, out var pVal) && pVal > 0)
-                        price = pVal;
+                    if (decimal.TryParse(
+                            cleaned,
+                            System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var parsedPrice) &&
+                        parsedPrice > 0)
+                    {
+                        price = parsedPrice;
+                    }
                 }
 
-                // ── Extracted price (numeric field, more reliable when present) ──
-                if (!price.HasValue && item.TryGetProperty("extracted_price", out var ep))
+                if (!price.HasValue && item.TryGetProperty("extracted_price", out var extractedPrice))
                 {
-                    try { price = ep.GetDecimal(); } catch { }
+                    try
+                    {
+                        price = extractedPrice.GetDecimal();
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
 
-                // ── Price filter ─────────────────────────────────────────────
                 if (price.HasValue)
                 {
-                    if (minPrice.HasValue && price < minPrice) continue;
-                    if (maxPrice.HasValue && price > maxPrice) continue;
+                    if (minPrice.HasValue && price.Value < minPrice.Value)
+                    {
+                        continue;
+                    }
+
+                    if (maxPrice.HasValue && price.Value > maxPrice.Value)
+                    {
+                        continue;
+                    }
                 }
 
-                // ── Rating ───────────────────────────────────────────────────
-                float rating      = 0f;
-                int   reviewCount = 0;
+                float rating = 0f;
+                int reviewCount = 0;
 
-                if (item.TryGetProperty("rating", out var rEl))
-                    try { rating = rEl.GetSingle(); } catch { float.TryParse(rEl.GetRawText(), out rating); }
+                if (item.TryGetProperty("rating", out var ratingElement))
+                {
+                    try
+                    {
+                        rating = ratingElement.GetSingle();
+                    }
+                    catch
+                    {
+                        if (!float.TryParse(ratingElement.GetRawText(), out rating))
+                        {
+                            rating = 0f;
+                        }
+                    }
+                }
 
-                if (item.TryGetProperty("reviews", out var revEl))
-                    try { reviewCount = revEl.GetInt32(); } catch { int.TryParse(revEl.GetRawText(), out reviewCount); }
+                if (item.TryGetProperty("reviews", out var reviewsElement))
+                {
+                    try
+                    {
+                        reviewCount = reviewsElement.GetInt32();
+                    }
+                    catch
+                    {
+                        if (!int.TryParse(reviewsElement.GetRawText(), out reviewCount))
+                        {
+                            reviewCount = 0;
+                        }
+                    }
+                }
 
-                // ── Product ID ───────────────────────────────────────────────
                 string? productId = null;
-                if (item.TryGetProperty("product_id", out var pidEl))
-                    productId = pidEl.ValueKind == JsonValueKind.String ? pidEl.GetString() : null;
+                if (item.TryGetProperty("product_id", out var productIdElement) &&
+                    productIdElement.ValueKind == JsonValueKind.String)
+                {
+                    productId = productIdElement.GetString();
+                }
 
-                // Fallback: use position-based synthetic ID
-                if (string.IsNullOrWhiteSpace(productId))
-                    productId = null; // allow null, handled by partial unique index in DB
+                var brand = GetString(item, "brand");
+                var runtimeSignals = await _trainingSignals.ResolveAsync(brand, type.Trim(), price, ct);
 
                 list.Add(new GoogleShoppingProduct
                 {
-                    ProductId   = productId,
-                    Title       = GetStr(item, "title"),
-                    Brand       = GetStr(item, "brand"),
-                    Price       = price,
-                    Currency    = currency,
-                    Rating      = rating,
+                    ProductId = productId,
+                    Title = GetString(item, "title"),
+                    Brand = brand,
+                    Price = price,
+                    Currency = currency,
+                    Rating = rating,
                     ReviewCount = reviewCount,
-                    Position    = position++,
-                    ImageUrl    = GetStr(item, "thumbnail"),
-                    ProductUrl  = GetStr(item, "link"),
-                    Category    = type.Trim(),
-                    Gender      = normalizedGender,
-                    Domain      = $"google.{_gOpts.CountryCode}",
-                    TrendScore  = ShoeScoring.Compute(rating, reviewCount, price),
-                    LastSynced  = DateTime.UtcNow,
-                    CreatedAt   = DateTime.UtcNow,
+                    Position = position++,
+                    ImageUrl = GetString(item, "thumbnail"),
+                    ProductUrl = GetString(item, "link"),
+                    Category = type.Trim(),
+                    Gender = normalizedGender,
+                    Domain = $"google.{_googleOptions.CountryCode}",
+                    TrendScore = ShoeScoring.Compute(
+                        rating,
+                        reviewCount,
+                        price,
+                        runtimeSignals.PopularityPriorScore,
+                        runtimeSignals.DealScore),
+                    LastSynced = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
                 });
             }
 
@@ -192,9 +244,9 @@ namespace Api.Services
             return list;
         }
 
-        private static string? GetStr(JsonElement el, string prop)
-            => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String
-               ? v.GetString()
-               : null;
+        private static string? GetString(JsonElement element, string propertyName)
+            => element.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
     }
 }

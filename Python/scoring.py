@@ -142,6 +142,14 @@ def _match_key(item: Dict[str, Any]) -> str:
     return f"{brand}|{' '.join(tokens)}"
 
 
+def build_canonical_key(item: Dict[str, Any]) -> str:
+    """
+    Public helper for persistence layer.
+    Keeps canonical key generation consistent with scorer grouping.
+    """
+    return _match_key(item)
+
+
 def _source(item: Dict[str, Any]) -> str:
     return (item.get("source") or item.get("sourceName") or "").lower().strip()
 

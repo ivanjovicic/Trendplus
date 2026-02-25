@@ -13,12 +13,21 @@ type AboutYouItem = {
     source?: string;
 };
 
+const ABOUTYOU_DEFAULT_URLS: Record<"DE" | "AT" | "CH" | "HU" | "RO", string> = {
+    DE: "https://www.aboutyou.de/c/frauen/schuhe/stiefeletten-20276",
+    AT: "https://www.aboutyou.at/c/frauen/schuhe/pumps-high-heels-101349?shoeMaterialStyle=35022%2C56630%2C56632%2C56640&color=38932%2C38921%2C38919%2C38931%2C38920%2C38933%2C38935",
+    CH: "https://www.aboutyou.ch/c/frauen/schuhe/stiefeletten-20276",
+    HU: "https://www.aboutyou.hu/c/frauen/schuhe/stiefeletten-20276",
+    RO: "https://www.aboutyou.ro/c/frauen/schuhe/stiefeletten-20276",
+};
+
 export default function AboutYouPage() {
     const toast = useToast();
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState<AboutYouItem[]>([]);
 
-    const [aboutYouUrl, setAboutYouUrl] = useState("https://www.aboutyou.de/c/frauen/schuhe/stiefeletten-20276");
+    const [country, setCountry] = useState<"DE" | "AT" | "CH" | "HU" | "RO">("DE");
+    const [aboutYouUrl, setAboutYouUrl] = useState(ABOUTYOU_DEFAULT_URLS.DE);
     const [pageMode, setPageMode] = useState<"auto" | "manual">("auto");
     const [filterPages, setFilterPages] = useState<number>(2);
     const [filterBrand, setFilterBrand] = useState<string | string[]>("");
@@ -94,11 +103,25 @@ export default function AboutYouPage() {
         setImageModalOpen(true);
     };
 
+    const handleCountryChange = (value: string) => {
+        const next = (value || "DE") as "DE" | "AT" | "CH" | "HU" | "RO";
+        setCountry(next);
+        setAboutYouUrl((prev) => {
+            const trimmed = prev.trim();
+            const defaults = Object.values(ABOUTYOU_DEFAULT_URLS);
+            if (!trimmed || defaults.includes(trimmed)) {
+                return ABOUTYOU_DEFAULT_URLS[next];
+            }
+            return prev;
+        });
+    };
+
     const runAboutYouFiltered = async () => {
         setLoading(true);
         try {
             const payload = {
                 url: aboutYouUrl || undefined,
+                country,
                 // pages=0 means "auto" mode in Python scraper
                 pages: pageMode === "auto" ? 0 : filterPages,
                 sort: filterSort || undefined,
@@ -133,8 +156,23 @@ export default function AboutYouPage() {
                             className="input-big"
                             value={aboutYouUrl}
                             onChange={(e) => setAboutYouUrl(e.target.value)}
-                            placeholder="https://www.aboutyou.de/c/frauen/schuhe/stiefeletten-20276"
+                            placeholder={ABOUTYOU_DEFAULT_URLS[country]}
                         />
+                    </div>
+
+                    <div style={{ minWidth: 180 }}>
+                        <label className="field-label">Country</label>
+                        <select
+                            className="input-big"
+                            value={country}
+                            onChange={(e) => handleCountryChange(e.target.value)}
+                        >
+                            <option value="DE">Germany (aboutyou.de)</option>
+                            <option value="AT">Austria (aboutyou.at)</option>
+                            <option value="CH">Switzerland (aboutyou.ch)</option>
+                            <option value="HU">Hungary (aboutyou.hu)</option>
+                            <option value="RO">Romania (aboutyou.ro)</option>
+                        </select>
                     </div>
 
                     <div style={{ minWidth: 200 }}>

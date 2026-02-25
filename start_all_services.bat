@@ -2,6 +2,9 @@
 setlocal EnableExtensions
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
+chcp 65001 >nul
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
 
 echo ========================================
 echo Starting Global Trends System
@@ -106,7 +109,7 @@ echo.
 echo Open: http://localhost:5174/global-trends
 echo.
 echo This window can now be closed.
-echo To stop services, close their terminal windows (or use Ctrl+C in each).
+echo To stop services, run: stop_all_services.bat
 
 :end
 endlocal

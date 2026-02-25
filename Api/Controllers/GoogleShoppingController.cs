@@ -4,6 +4,7 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Npgsql;
 
 namespace Api.Controllers
 {
@@ -229,19 +230,27 @@ namespace Api.Controllers
             if (_cache.TryGetValue(CacheCats, out object? cached) && cached is not null)
                 return Ok(cached);
 
-            var cats = await _db.GoogleShoppingProducts
-                .GroupBy(x => x.Category)
-                .Select(g => new GoogleCategorySummary(
-                    g.Key ?? "unknown",
-                    g.Count(),
-                    Math.Round(g.Average(x => (double)x.Rating), 2),
-                    g.Average(x => (double?)x.Price),
-                    g.Max(x => x.LastSynced)))
-                .OrderByDescending(x => x.Count)
-                .ToListAsync(ct);
+            try
+            {
+                var cats = await _db.GoogleShoppingProducts
+                    .GroupBy(x => x.Category)
+                    .Select(g => new GoogleCategorySummary(
+                        g.Key ?? "unknown",
+                        g.Count(),
+                        Math.Round(g.Average(x => (double)x.Rating), 2),
+                        g.Average(x => (double?)x.Price),
+                        g.Max(x => x.LastSynced)))
+                    .OrderByDescending(x => x.Count)
+                    .ToListAsync(ct);
 
-            _cache.Set(CacheCats, cats, TimeSpan.FromMinutes(5));
-            return Ok(cats);
+                _cache.Set(CacheCats, cats, TimeSpan.FromMinutes(5));
+                return Ok(cats);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                _log.LogWarning(ex, "google_shopping_products table is missing; returning empty categories.");
+                return Ok(Array.Empty<GoogleCategorySummary>());
+            }
         }
 
         // ── DELETE by category ───────────────────────────────────────────────

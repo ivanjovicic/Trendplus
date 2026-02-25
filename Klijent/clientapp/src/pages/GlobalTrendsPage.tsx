@@ -44,6 +44,7 @@ export default function GlobalTrendsPage() {
     const [adhocProducts, setAdhocProducts] = useState<any[]>([]);
     const [filterBrand, setFilterBrand] = useState<string | string[]>("");
     const [filterGender, setFilterGender] = useState<string>("women");
+    const [filterZalandoCountry, setFilterZalandoCountry] = useState<"DE" | "AT" | "CH" | "HU" | "RO">("DE");
     const [filterPriceMin, setFilterPriceMin] = useState<number | undefined>(undefined);
     const [filterPriceMax, setFilterPriceMax] = useState<number | undefined>(undefined);
     const [filterSort, setFilterSort] = useState<string>("popularity");
@@ -196,6 +197,7 @@ export default function GlobalTrendsPage() {
                 else payload.brand = filterBrand;
             }
             if (filterGender) payload.gender = filterGender;
+            if (filterZalandoCountry) payload.country = filterZalandoCountry;
             if (filterPriceMin != null) payload.priceMin = filterPriceMin;
             if (filterPriceMax != null) payload.priceMax = filterPriceMax;
             if (filterSort) payload.sort = filterSort;
@@ -641,6 +643,21 @@ export default function GlobalTrendsPage() {
                                 <option value="women">👠 Women</option>
                                 <option value="men">👞 Men</option>
                                 <option value="kids">🧒 Kids</option>
+                            </select>
+                        </div>
+
+                        <div style={{ minWidth: 200 }}>
+                            <label className="field-label">Zalando Country</label>
+                            <select
+                                className="input-big"
+                                value={filterZalandoCountry}
+                                onChange={(e) => setFilterZalandoCountry(e.target.value as "DE" | "AT" | "CH" | "HU" | "RO")}
+                            >
+                                <option value="DE">Germany (zalando.de)</option>
+                                <option value="AT">Austria (zalando.at)</option>
+                                <option value="CH">Switzerland (zalando.ch)</option>
+                                <option value="HU">Hungary (zalando.hu)</option>
+                                <option value="RO">Romania (zalando.ro)</option>
                             </select>
                         </div>
 

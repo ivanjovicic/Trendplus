@@ -4,6 +4,7 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Npgsql;
 
 namespace Api.Controllers
 {
@@ -72,50 +73,67 @@ namespace Api.Controllers
                 return StatusCode(502, new { error = "SerpAPI request failed", detail = ex.Message });
             }
 
-            int inserted = 0, updated = 0;
-
-            foreach (var s in fetched)
+            try
             {
-                if (string.IsNullOrWhiteSpace(s.Asin)) continue;
+                int inserted = 0, updated = 0;
 
-                var existing = await _db.AmazonShoeProducts
-                    .FirstOrDefaultAsync(x => x.Asin == s.Asin, ct);
+                foreach (var s in fetched)
+                {
+                    if (string.IsNullOrWhiteSpace(s.Asin)) continue;
 
-                if (existing is null)
-                {
-                    _db.AmazonShoeProducts.Add(s);
-                    inserted++;
+                    var existing = await _db.AmazonShoeProducts
+                        .FirstOrDefaultAsync(x => x.Asin == s.Asin, ct);
+
+                    if (existing is null)
+                    {
+                        _db.AmazonShoeProducts.Add(s);
+                        inserted++;
+                    }
+                    else
+                    {
+                        existing.Name          = s.Name;
+                        existing.Brand         = s.Brand;
+                        existing.Price         = s.Price;
+                        existing.OriginalPrice = s.OriginalPrice;
+                        existing.Currency      = s.Currency;
+                        existing.Rating        = s.Rating;
+                        existing.ReviewCount   = s.ReviewCount;
+                        existing.TrendScore    = s.TrendScore;
+                        existing.ImageUrl      = s.ImageUrl;
+                        existing.ProductUrl    = s.ProductUrl;
+                        existing.Category      = s.Category;
+                        existing.Gender        = s.Gender;
+                        existing.Domain        = s.Domain;
+                        existing.LastSynced    = DateTime.UtcNow;
+                        updated++;
+                    }
                 }
-                else
+
+                await _db.SaveChangesAsync(ct);
+                _cache.Remove(CacheCats);
+
+                return Ok(new SyncResult
                 {
-                    existing.Name          = s.Name;
-                    existing.Brand         = s.Brand;
-                    existing.Price         = s.Price;
-                    existing.OriginalPrice = s.OriginalPrice;
-                    existing.Currency      = s.Currency;
-                    existing.Rating        = s.Rating;
-                    existing.ReviewCount   = s.ReviewCount;
-                    existing.TrendScore    = s.TrendScore;
-                    existing.ImageUrl      = s.ImageUrl;
-                    existing.ProductUrl    = s.ProductUrl;
-                    existing.Category      = s.Category;
-                    existing.Gender        = s.Gender;
-                    existing.Domain        = s.Domain;
-                    existing.LastSynced    = DateTime.UtcNow;
-                    updated++;
-                }
+                    Total    = fetched.Count,
+                    Inserted = inserted,
+                    Updated  = updated,
+                    Type     = type,
+                });
             }
-
-            await _db.SaveChangesAsync(ct);
-            _cache.Remove(CacheCats);
-
-            return Ok(new SyncResult
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
-                Total    = fetched.Count,
-                Inserted = inserted,
-                Updated  = updated,
-                Type     = type,
-            });
+                _log.LogWarning(ex, "amazon_shoe_products table is missing; sync cannot persist data.");
+                return StatusCode(503, new
+                {
+                    error = "amazon_shoe_products table is missing",
+                    detail = "Pokreni analytics migracije (Database/Analytics/006_AddAmazonShoesTable.sql) i restartuj backend."
+                });
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "Amazon shoes sync persistence failed for type={Type}", type);
+                return StatusCode(500, new { error = "Failed to persist Amazon shoes", detail = ex.Message });
+            }
         }
 
         // ── GET by type ─────────────────────────────────────────────────────
@@ -140,37 +158,51 @@ namespace Api.Controllers
             if (_cache.TryGetValue(cacheKey, out PagedResult<AmazonShoeProduct>? cached) && cached is not null)
                 return Ok(cached);
 
-            var q = _db.AmazonShoeProducts.Where(x => x.Category == type);
-
-            if (!string.IsNullOrEmpty(gender) && gender != "all")
-                q = q.Where(x => x.Gender == gender);
-
-            IOrderedQueryable<AmazonShoeProduct> query = sortBy switch
+            try
             {
-                "score"      => q.OrderByDescending(x => x.TrendScore),
-                "popular"    => q.OrderByDescending(x => x.ReviewCount).ThenByDescending(x => x.Rating),
-                "price_asc"  => q.OrderBy(x => x.Price).ThenByDescending(x => x.Rating),
-                "price_desc" => q.OrderByDescending(x => x.Price).ThenByDescending(x => x.Rating),
-                "newest"     => q.OrderByDescending(x => x.LastSynced).ThenByDescending(x => x.Rating),
-                _            => q.OrderByDescending(x => x.Rating).ThenByDescending(x => x.ReviewCount),
-            };
+                var q = _db.AmazonShoeProducts.Where(x => x.Category == type);
 
-            var total = await query.CountAsync(ct);
-            var items = await query
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync(ct);
+                if (!string.IsNullOrEmpty(gender) && gender != "all")
+                    q = q.Where(x => x.Gender == gender);
 
-            var result = new PagedResult<AmazonShoeProduct>
+                IOrderedQueryable<AmazonShoeProduct> query = sortBy switch
+                {
+                    "score"      => q.OrderByDescending(x => x.TrendScore),
+                    "popular"    => q.OrderByDescending(x => x.ReviewCount).ThenByDescending(x => x.Rating),
+                    "price_asc"  => q.OrderBy(x => x.Price).ThenByDescending(x => x.Rating),
+                    "price_desc" => q.OrderByDescending(x => x.Price).ThenByDescending(x => x.Rating),
+                    "newest"     => q.OrderByDescending(x => x.LastSynced).ThenByDescending(x => x.Rating),
+                    _            => q.OrderByDescending(x => x.Rating).ThenByDescending(x => x.ReviewCount),
+                };
+
+                var total = await query.CountAsync(ct);
+                var items = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(ct);
+
+                var result = new PagedResult<AmazonShoeProduct>
+                {
+                    Items    = items,
+                    Total    = total,
+                    Page     = page,
+                    PageSize = pageSize,
+                };
+
+                _cache.Set(cacheKey, result, TimeSpan.FromMinutes(2));
+                return Ok(result);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
-                Items    = items,
-                Total    = total,
-                Page     = page,
-                PageSize = pageSize,
-            };
-
-            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(2));
-            return Ok(result);
+                _log.LogWarning(ex, "amazon_shoe_products table is missing; returning empty page.");
+                return Ok(new PagedResult<AmazonShoeProduct>
+                {
+                    Items = [],
+                    Total = 0,
+                    Page = page,
+                    PageSize = pageSize
+                });
+            }
         }
 
         // ── GET all ─────────────────────────────────────────────────────────
@@ -186,23 +218,37 @@ namespace Api.Controllers
             page     = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 200);
 
-            var query = _db.AmazonShoeProducts
-                .OrderByDescending(x => x.LastSynced)
-                .ThenByDescending(x => x.Rating);
-
-            var total = await query.CountAsync(ct);
-            var items = await query
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync(ct);
-
-            return Ok(new PagedResult<AmazonShoeProduct>
+            try
             {
-                Items    = items,
-                Total    = total,
-                Page     = page,
-                PageSize = pageSize,
-            });
+                var query = _db.AmazonShoeProducts
+                    .OrderByDescending(x => x.LastSynced)
+                    .ThenByDescending(x => x.Rating);
+
+                var total = await query.CountAsync(ct);
+                var items = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(ct);
+
+                return Ok(new PagedResult<AmazonShoeProduct>
+                {
+                    Items    = items,
+                    Total    = total,
+                    Page     = page,
+                    PageSize = pageSize,
+                });
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                _log.LogWarning(ex, "amazon_shoe_products table is missing; returning empty page.");
+                return Ok(new PagedResult<AmazonShoeProduct>
+                {
+                    Items = [],
+                    Total = 0,
+                    Page = page,
+                    PageSize = pageSize
+                });
+            }
         }
 
         // ── GET categories summary ───────────────────────────────────────────
@@ -214,21 +260,29 @@ namespace Api.Controllers
             if (_cache.TryGetValue(CacheCats, out object? cachedCats) && cachedCats is not null)
                 return Ok(cachedCats);
 
-            var cats = await _db.AmazonShoeProducts
-                .GroupBy(x => x.Category)
-                .Select(g => new
-                {
-                    Category    = g.Key,
-                    Count       = g.Count(),
-                    AvgRating   = g.Average(x => (double)x.Rating),
-                    AvgPrice    = g.Average(x => (double?)x.Price),
-                    LastSynced  = g.Max(x => x.LastSynced),
-                })
-                .OrderByDescending(x => x.Count)
-                .ToListAsync(ct);
+            try
+            {
+                var cats = await _db.AmazonShoeProducts
+                    .GroupBy(x => x.Category)
+                    .Select(g => new
+                    {
+                        Category    = g.Key,
+                        Count       = g.Count(),
+                        AvgRating   = g.Average(x => (double)x.Rating),
+                        AvgPrice    = g.Average(x => (double?)x.Price),
+                        LastSynced  = g.Max(x => x.LastSynced),
+                    })
+                    .OrderByDescending(x => x.Count)
+                    .ToListAsync(ct);
 
-            _cache.Set(CacheCats, cats, TimeSpan.FromMinutes(5));
-            return Ok(cats);
+                _cache.Set(CacheCats, cats, TimeSpan.FromMinutes(5));
+                return Ok(cats);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                _log.LogWarning(ex, "amazon_shoe_products table is missing; returning empty categories.");
+                return Ok(Array.Empty<object>());
+            }
         }
 
         // ── DELETE by category ───────────────────────────────────────────────

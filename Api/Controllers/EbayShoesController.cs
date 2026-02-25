@@ -4,6 +4,7 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Npgsql;
 
 namespace Api.Controllers
 {
@@ -174,21 +175,29 @@ namespace Api.Controllers
             if (_cache.TryGetValue(CacheCats, out object? cachedCats) && cachedCats is not null)
                 return Ok(cachedCats);
 
-            var result = await _db.EbayShoeProducts
-                .GroupBy(x => x.Category)
-                .Select(g => new EbayCategorySummary(
-                    g.Key,
-                    g.Count(),
-                    (float)g.Average(x => x.Rating),
-                    g.Any(x => x.Price != null)
-                        ? (double?)g.Where(x => x.Price != null).Average(x => (double)x.Price!)
-                        : null,
-                    g.Max(x => x.LastSynced)))
-                .OrderByDescending(x => x.Count)
-                .ToListAsync(ct);
+            try
+            {
+                var result = await _db.EbayShoeProducts
+                    .GroupBy(x => x.Category)
+                    .Select(g => new EbayCategorySummary(
+                        g.Key,
+                        g.Count(),
+                        (float)g.Average(x => x.Rating),
+                        g.Any(x => x.Price != null)
+                            ? (double?)g.Where(x => x.Price != null).Average(x => (double)x.Price!)
+                            : null,
+                        g.Max(x => x.LastSynced)))
+                    .OrderByDescending(x => x.Count)
+                    .ToListAsync(ct);
 
-            _cache.Set(CacheCats, result, TimeSpan.FromMinutes(5));
-            return Ok(result);
+                _cache.Set(CacheCats, result, TimeSpan.FromMinutes(5));
+                return Ok(result);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                _log.LogWarning(ex, "ebay_shoe_products table is missing; returning empty categories.");
+                return Ok(Array.Empty<EbayCategorySummary>());
+            }
         }
 
         // ── DELETE CATEGORY ───────────────────────────────────────────────────

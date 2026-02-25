@@ -13,6 +13,6 @@ namespace Domain.Model.TrendShoes
         public int Id { get; set; }
 
         [JsonPropertyName("src")]
-        public PexelsPhotoSrc Src { get; set; }
+        public PexelsPhotoSrc Src { get; set; } = new();
     }
 }

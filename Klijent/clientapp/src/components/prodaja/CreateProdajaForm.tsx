@@ -1,9 +1,12 @@
-﻿import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { KreirajProdajuDto } from "../../types/prodaja/prodaja";
 import { useToast } from "../Toast";
 
+type ArtikalOption = { id: number; naziv: string; cena: number };
+
 interface CreateProdajaFormProps {
-    artikli: { id: number; naziv: string; cena: number }[];
+    artikli: ArtikalOption[];
+    onSearchArtikli?: (query: string) => Promise<ArtikalOption[]>;
     onSubmit: (data: KreirajProdajuDto) => Promise<void>;
 }
 
@@ -12,60 +15,124 @@ function safeNumber(value: unknown, fallback = 0) {
     return Number.isFinite(n) ? n : fallback;
 }
 
-export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFormProps) {
+function mergeArtikli(base: ArtikalOption[], incoming: ArtikalOption[]) {
+    const map = new Map<number, ArtikalOption>();
+    for (const x of base) map.set(x.id, x);
+    for (const x of incoming) map.set(x.id, x);
+    return Array.from(map.values()).sort((a, b) => a.naziv.localeCompare(b.naziv, "sr-Latn", { sensitivity: "base" }));
+}
+
+export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }: CreateProdajaFormProps) {
     const toast = useToast();
 
+    const [knownArtikli, setKnownArtikli] = useState<ArtikalOption[]>(artikli);
     const [brojRacuna, setBrojRacuna] = useState("");
-    const [stavke, setStavke] = useState<{ idArtikal: number; kolicina: number; cena: number }[]>(
-        [
-            { idArtikal: artikli[0]?.id ?? 0, kolicina: 1, cena: artikli[0]?.cena ?? 0 },
-        ]
-    );
+    const [stavke, setStavke] = useState<{ idArtikal: number; kolicina: number; cena: number }[]>([
+        { idArtikal: artikli[0]?.id ?? 0, kolicina: 1, cena: artikli[0]?.cena ?? 0 },
+    ]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Memoize options to prevent heavy re-renders
     const artikalOptions = useMemo(() => {
-        console.log("🛠️ Rendering artikal options...");
-        return artikli.map((a) => (
+        return knownArtikli.map((a) => (
             <option key={a.id} value={a.id}>
-                {a.naziv} — {a.cena} RSD
+                {a.naziv} - {a.cena} RSD
             </option>
         ));
-    }, [artikli]);
+    }, [knownArtikli]);
 
-    // Search state
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedQuery, setDebouncedQuery] = useState("");
     const [showSearchResults, setShowSearchResults] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [filteredArtikli, setFilteredArtikli] = useState<ArtikalOption[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
+    const remoteSearchSeq = useRef(0);
 
-    // Debounce search query
+    useEffect(() => {
+        setKnownArtikli((prev) => mergeArtikli(prev, artikli));
+    }, [artikli]);
+
+    useEffect(() => {
+        if (!knownArtikli.length) return;
+        setStavke((prev) => {
+            if (!prev.length) {
+                return [{ idArtikal: knownArtikli[0].id, kolicina: 1, cena: knownArtikli[0].cena }];
+            }
+            return prev.map((s, idx) => {
+                if (idx === 0 && s.idArtikal === 0) {
+                    return { ...s, idArtikal: knownArtikli[0].id, cena: knownArtikli[0].cena };
+                }
+                return s;
+            });
+        });
+    }, [knownArtikli]);
+
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedQuery(searchQuery);
-        }, 300);
-
+        }, 250);
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Filter articles based on search
-    const filteredArtikli = useMemo(() => {
-        if (!debouncedQuery.trim()) return [];
-        
-        const query = debouncedQuery.toLowerCase();
-        return artikli
-            .filter(a => a.naziv.toLowerCase().includes(query))
-            .slice(0, 10); // Limit to 10 results
-    }, [artikli, debouncedQuery]);
+    useEffect(() => {
+        if (onSearchArtikli) return;
+        const q = debouncedQuery.trim().toLowerCase();
+        if (!q) {
+            setFilteredArtikli([]);
+            setIsSearching(false);
+            return;
+        }
+        const local = knownArtikli
+            .filter((a) => a.naziv.toLowerCase().includes(q))
+            .slice(0, 10);
+        setFilteredArtikli(local);
+        setIsSearching(false);
+    }, [debouncedQuery, knownArtikli, onSearchArtikli]);
 
-    // Reset selected index when results change
+    useEffect(() => {
+        if (!onSearchArtikli) return;
+        const q = debouncedQuery.trim();
+        if (!q) {
+            setFilteredArtikli([]);
+            setIsSearching(false);
+            return;
+        }
+
+        const seq = ++remoteSearchSeq.current;
+        let cancelled = false;
+        setIsSearching(true);
+
+        onSearchArtikli(q)
+            .then((rows) => {
+                if (cancelled || seq !== remoteSearchSeq.current) return;
+                const data = (rows ?? []).slice(0, 20);
+                setFilteredArtikli(data);
+                if (data.length > 0) {
+                    setKnownArtikli((prev) => mergeArtikli(prev, data));
+                }
+            })
+            .catch((err) => {
+                if (cancelled || seq !== remoteSearchSeq.current) return;
+                console.error("Search artikli failed:", err);
+                setFilteredArtikli([]);
+            })
+            .finally(() => {
+                if (!cancelled && seq === remoteSearchSeq.current) {
+                    setIsSearching(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [debouncedQuery, onSearchArtikli]);
+
     useEffect(() => {
         setSelectedIndex(0);
     }, [filteredArtikli.length]);
 
-    // Close search results when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -80,10 +147,11 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
     const addStavka = () =>
         setStavke((s) => [
             ...s,
-            { idArtikal: artikli[0]?.id ?? 0, kolicina: 1, cena: artikli[0]?.cena ?? 0 },
+            { idArtikal: knownArtikli[0]?.id ?? 0, kolicina: 1, cena: knownArtikli[0]?.cena ?? 0 },
         ]);
 
-    const quickAddArtikal = useCallback((artikal: { id: number; naziv: string; cena: number }) => {
+    const quickAddArtikal = useCallback((artikal: ArtikalOption) => {
+        setKnownArtikli((prev) => mergeArtikli(prev, [artikal]));
         setStavke((s) => [...s, { idArtikal: artikal.id, kolicina: 1, cena: safeNumber(artikal.cena, 0) }]);
         setSearchQuery("");
         setShowSearchResults(false);
@@ -158,11 +226,11 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
         try {
             await onSubmit(payload);
             setBrojRacuna("");
-            setStavke([{ idArtikal: artikli[0]?.id ?? 0, kolicina: 1, cena: artikli[0]?.cena ?? 0 }]);
-            toast.success("Prodaja uspešna");
+            setStavke([{ idArtikal: knownArtikli[0]?.id ?? 0, kolicina: 1, cena: knownArtikli[0]?.cena ?? 0 }]);
+            toast.success("Prodaja uspesna");
         } catch (err: unknown) {
             console.error(err);
-            const msg = err instanceof Error ? err.message : "Greška pri kreiranju prodaje";
+            const msg = err instanceof Error ? err.message : "Greska pri kreiranju prodaje";
             setError(msg);
             toast.error(msg);
         } finally {
@@ -176,29 +244,28 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
 
     return (
         <div className="card">
-            <h2 className="text-2xl font-semibold mb-6">🛒 Nova prodaja</h2>
+            <h2 className="text-2xl font-semibold mb-6">Nova prodaja</h2>
 
-            <div style={{ marginBottom: '1.5rem' }}>
-                <label className="field-label">Broj računa</label>
+            <div style={{ marginBottom: "1.5rem" }}>
+                <label className="field-label">Broj racuna</label>
                 <input
-                    placeholder="Broj računa"
+                    placeholder="Broj racuna"
                     value={brojRacuna}
                     onChange={(e) => setBrojRacuna(e.target.value)}
                     className="input-big"
                 />
             </div>
 
-            {/* SEARCH SECTION */}
-            <div style={{ marginBottom: '1.5rem', position: 'relative' }} ref={searchRef}>
+            <div style={{ marginBottom: "1.5rem", position: "relative" }} ref={searchRef}>
                 <label className="field-label">
-                    🔍 Pretraži i dodaj artikal
-                    <span style={{ fontSize: '0.875rem', fontWeight: 400, marginLeft: '8px', color: '#6b7280' }}>
-                        (↑↓ za navigaciju, Enter za dodavanje)
+                    Pretrazi i dodaj artikal
+                    <span style={{ fontSize: "0.875rem", fontWeight: 400, marginLeft: "8px", color: "#6b7280" }}>
+                        (strelice za navigaciju, Enter za dodavanje)
                     </span>
                 </label>
                 <input
                     type="text"
-                    placeholder="Pretraži artikle po nazivu..."
+                    placeholder="Pretrazi artikle po nazivu..."
                     value={searchQuery}
                     onChange={(e) => {
                         setSearchQuery(e.target.value);
@@ -208,61 +275,54 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
                     onKeyDown={handleKeyDown}
                     className="input-big"
                     style={{
-                        borderColor: showSearchResults && filteredArtikli.length > 0 ? '#2563eb' : undefined,
+                        borderColor: showSearchResults && filteredArtikli.length > 0 ? "#2563eb" : undefined,
                     }}
                 />
 
-                {/* Search Results Dropdown */}
                 {showSearchResults && searchQuery.trim() && (
-                    <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'white',
-                        border: '2px solid #e5e7eb',
-                        borderRadius: '8px',
-                        marginTop: '4px',
-                        maxHeight: '300px',
-                        overflowY: 'auto',
-                        zIndex: 1000,
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    }}>
-                        {filteredArtikli.length > 0 ? (
+                    <div
+                        style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            right: 0,
+                            background: "white",
+                            border: "2px solid #e5e7eb",
+                            borderRadius: "8px",
+                            marginTop: "4px",
+                            maxHeight: "300px",
+                            overflowY: "auto",
+                            zIndex: 1000,
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                    >
+                        {isSearching ? (
+                            <div style={{ padding: "16px", textAlign: "center", color: "#6b7280" }}>
+                                Pretrazujem...
+                            </div>
+                        ) : filteredArtikli.length > 0 ? (
                             filteredArtikli.map((art, idx) => (
                                 <div
                                     key={art.id}
                                     onClick={() => quickAddArtikal(art)}
                                     style={{
-                                        padding: '12px',
-                                        borderBottom: '1px solid #f3f4f6',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        transition: 'background 0.15s',
-                                        background: idx === selectedIndex ? '#eff6ff' : 'white',
+                                        padding: "12px",
+                                        borderBottom: "1px solid #f3f4f6",
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        transition: "background 0.15s",
+                                        background: idx === selectedIndex ? "#eff6ff" : "white",
                                     }}
                                     onMouseEnter={() => setSelectedIndex(idx)}
                                 >
                                     <div>
-                                        <div style={{ fontWeight: 600, color: '#111827' }}>
-                                            {art.naziv}
-                                        </div>
-                                        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                                            ID: {art.id}
-                                        </div>
+                                        <div style={{ fontWeight: 600, color: "#111827" }}>{art.naziv}</div>
+                                        <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>ID: {art.id}</div>
                                     </div>
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                    }}>
-                                        <span style={{
-                                            fontWeight: 600,
-                                            color: '#059669',
-                                            fontSize: '1.125rem',
-                                        }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <span style={{ fontWeight: 600, color: "#059669", fontSize: "1.125rem" }}>
                                             {art.cena} RSD
                                         </span>
                                         <button
@@ -271,13 +331,13 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
                                                 quickAddArtikal(art);
                                             }}
                                             style={{
-                                                background: idx === selectedIndex ? '#2563eb' : '#3b82f6',
-                                                color: 'white',
-                                                padding: '6px 12px',
-                                                borderRadius: '6px',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                fontSize: '0.875rem',
+                                                background: idx === selectedIndex ? "#2563eb" : "#3b82f6",
+                                                color: "white",
+                                                padding: "6px 12px",
+                                                borderRadius: "6px",
+                                                border: "none",
+                                                cursor: "pointer",
+                                                fontSize: "0.875rem",
                                                 fontWeight: 600,
                                             }}
                                         >
@@ -287,11 +347,7 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
                                 </div>
                             ))
                         ) : (
-                            <div style={{
-                                padding: '16px',
-                                textAlign: 'center',
-                                color: '#6b7280',
-                            }}>
+                            <div style={{ padding: "16px", textAlign: "center", color: "#6b7280" }}>
                                 Nema rezultata za "{searchQuery}"
                             </div>
                         )}
@@ -299,64 +355,64 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
                 )}
             </div>
 
-            <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ marginBottom: "1.5rem" }}>
                 <h3 className="text-lg font-semibold mb-4">Stavke ({stavke.length})</h3>
-                
+
                 {stavke.map((s, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '1 1 200px', minWidth: '200px' }}>
-                            <label className="field-label" style={{ fontSize: '0.875rem' }}>Artikal</label>
+                    <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+                        <div style={{ flex: "1 1 200px", minWidth: "200px" }}>
+                            <label className="field-label" style={{ fontSize: "0.875rem" }}>Artikal</label>
                             <select
                                 value={s.idArtikal}
                                 onChange={(e) => {
                                     const id = Number(e.target.value);
-                                    const art = artikli.find((a) => a.id === id);
+                                    const art = knownArtikli.find((a) => a.id === id);
                                     updateStavka(i, { idArtikal: id, cena: art?.cena ?? s.cena });
                                 }}
                                 className="input-big"
-                                style={{ marginTop: '0.25rem', marginBottom: 0 }}
+                                style={{ marginTop: "0.25rem", marginBottom: 0 }}
                                 aria-label={`Artikal ${i + 1}`}
                             >
                                 {artikalOptions}
                             </select>
                         </div>
 
-                        <div style={{ flex: '0 1 100px' }}>
-                            <label className="field-label" style={{ fontSize: '0.875rem' }}>Količina</label>
+                        <div style={{ flex: "0 1 100px" }}>
+                            <label className="field-label" style={{ fontSize: "0.875rem" }}>Kolicina</label>
                             <input
                                 type="number"
                                 min={1}
                                 value={s.kolicina}
                                 onChange={(e) => updateStavka(i, { kolicina: Number(e.target.value) })}
                                 className="input-big"
-                                style={{ marginTop: '0.25rem', marginBottom: 0 }}
-                                aria-label={`Količina ${i + 1}`}
+                                style={{ marginTop: "0.25rem", marginBottom: 0 }}
+                                aria-label={`Kolicina ${i + 1}`}
                             />
                         </div>
 
-                        <div style={{ flex: '0 1 120px' }}>
-                            <label className="field-label" style={{ fontSize: '0.875rem' }}>Cena (RSD)</label>
+                        <div style={{ flex: "0 1 120px" }}>
+                            <label className="field-label" style={{ fontSize: "0.875rem" }}>Cena (RSD)</label>
                             <input
                                 type="number"
                                 min={0}
                                 value={s.cena}
                                 onChange={(e) => updateStavka(i, { cena: Number(e.target.value) })}
                                 className="input-big"
-                                style={{ marginTop: '0.25rem', marginBottom: 0 }}
+                                style={{ marginTop: "0.25rem", marginBottom: 0 }}
                                 aria-label={`Cena ${i + 1}`}
                             />
                         </div>
 
-                        <div style={{ flex: '0 0 auto', paddingTop: '1.75rem' }}>
+                        <div style={{ flex: "0 0 auto", paddingTop: "1.75rem" }}>
                             <button
                                 type="button"
                                 className="button-big"
                                 onClick={() => removeStavka(i)}
-                                style={{ 
-                                    background: '#dc2626', 
-                                    width: 'auto', 
-                                    padding: '10px 16px',
-                                    marginTop: 0
+                                style={{
+                                    background: "#dc2626",
+                                    width: "auto",
+                                    padding: "10px 16px",
+                                    marginTop: 0,
                                 }}
                             >
                                 Ukloni
@@ -365,41 +421,43 @@ export default function CreateProdajaForm({ artikli, onSubmit }: CreateProdajaFo
                     </div>
                 ))}
 
-                <button 
-                    type="button" 
-                    className="button-big" 
+                <button
+                    type="button"
+                    className="button-big"
                     onClick={addStavka}
-                    style={{ 
-                        background: '#059669', 
-                        maxWidth: '200px',
-                        marginTop: '1rem'
+                    style={{
+                        background: "#059669",
+                        maxWidth: "200px",
+                        marginTop: "1rem",
                     }}
                 >
                     + Dodaj stavku
                 </button>
             </div>
 
-            <div style={{ 
-                borderTop: '2px solid #e5e7eb', 
-                paddingTop: '1rem', 
-                marginBottom: '1rem',
-                fontSize: '1.25rem',
-                fontWeight: 600
-            }}>
+            <div
+                style={{
+                    borderTop: "2px solid #e5e7eb",
+                    paddingTop: "1rem",
+                    marginBottom: "1rem",
+                    fontSize: "1.25rem",
+                    fontWeight: 600,
+                }}
+            >
                 Ukupno: {safeNumber(ukupno, 0).toFixed(2)} RSD
             </div>
 
-            <button 
-                type="button" 
-                className="button-big" 
-                onClick={handleSubmit} 
+            <button
+                type="button"
+                className="button-big"
+                onClick={handleSubmit}
                 disabled={isSubmitting}
-                style={{ maxWidth: '300px' }}
+                style={{ maxWidth: "300px" }}
             >
-                {isSubmitting ? "Kreiram..." : "💰 Sačuvaj prodaju"}
+                {isSubmitting ? "Kreiram..." : "Sacuvaj prodaju"}
             </button>
 
-            {error && <p className="error-msg" style={{ marginTop: '1rem' }}>{error}</p>}
+            {error && <p className="error-msg" style={{ marginTop: "1rem" }}>{error}</p>}
         </div>
     );
 }

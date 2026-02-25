@@ -8,8 +8,8 @@ namespace Domain.Model.TrendShoes
 {
     public class UnsplashUrls
     {
-        public string small { get; set; }
-        public string regular { get; set; }
-        public string full { get; set; }
+        public string small { get; set; } = string.Empty;
+        public string regular { get; set; } = string.Empty;
+        public string full { get; set; } = string.Empty;
     }
 }

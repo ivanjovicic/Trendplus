@@ -64,6 +64,38 @@ namespace Api.Services
                 .Where(d => normalizedNames.Contains(d.Name))
                 .ToListAsync(ct);
 
+            var existingNames = datasets
+                .Select(d => d.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var missingNames = normalizedNames
+                .Where(name => !existingNames.Contains(name))
+                .ToArray();
+
+            if (missingNames.Length > 0)
+            {
+                var now = DateTime.UtcNow;
+                var createdDatasets = missingNames
+                    .Select(name => new TrainingDataset
+                    {
+                        Name = name,
+                        SourceType = InferDatasetSourceType(name),
+                        Description = GetDatasetDescription(name),
+                        License = "Unknown",
+                        CreatedAt = now
+                    })
+                    .ToList();
+
+                _trainingDb.Datasets.AddRange(createdDatasets);
+                await _trainingDb.SaveChangesAsync(ct);
+
+                datasets.AddRange(createdDatasets);
+
+                _logger.LogInformation(
+                    "Open training sync auto-created missing datasets: {Datasets}",
+                    string.Join(", ", missingNames));
+            }
+
             if (datasets.Count == 0)
             {
                 _logger.LogWarning(
@@ -222,6 +254,49 @@ namespace Api.Services
             };
         }
 
+        private static string InferDatasetSourceType(string datasetName)
+        {
+            if (datasetName.Contains("amazon", StringComparison.OrdinalIgnoreCase))
+                return "amazon";
+
+            if (datasetName.Contains("ebay", StringComparison.OrdinalIgnoreCase))
+                return "ebay";
+
+            if (datasetName.Contains("google", StringComparison.OrdinalIgnoreCase) ||
+                datasetName.Contains("shopping", StringComparison.OrdinalIgnoreCase))
+                return "google";
+
+            if (datasetName.Contains("eutrend", StringComparison.OrdinalIgnoreCase) ||
+                datasetName.Contains("eu_trend", StringComparison.OrdinalIgnoreCase) ||
+                datasetName.Contains("zalando", StringComparison.OrdinalIgnoreCase))
+                return "eutrend";
+
+            if (datasetName.Contains("kaggle", StringComparison.OrdinalIgnoreCase))
+                return "kaggle";
+
+            if (datasetName.Contains("zappos", StringComparison.OrdinalIgnoreCase))
+                return "zappos";
+
+            return "custom";
+        }
+
+        private static string GetDatasetDescription(string datasetName)
+        {
+            if (datasetName.Equals("kaggle_shoe_dataset", StringComparison.OrdinalIgnoreCase))
+                return "Kaggle shoe dataset used for open product training.";
+            if (datasetName.Equals("amazon_clothing_shoes", StringComparison.OrdinalIgnoreCase))
+                return "Amazon clothing/shoes metadata dataset used for training.";
+            if (datasetName.Equals("ebay_shoes", StringComparison.OrdinalIgnoreCase))
+                return "eBay shoes dataset used for open product training.";
+            if (datasetName.Equals("google_shopping_shoes", StringComparison.OrdinalIgnoreCase))
+                return "Google Shopping shoes dataset used for open product training.";
+            if (datasetName.Contains("eutrend", StringComparison.OrdinalIgnoreCase) ||
+                datasetName.Contains("eu_trend", StringComparison.OrdinalIgnoreCase) ||
+                datasetName.Contains("zalando", StringComparison.OrdinalIgnoreCase))
+                return "EU trending products (Zalando scraper) — rank-based popularity signals.";
+            return $"Open product training dataset: {datasetName}";
+        }
+
         private async Task<List<SourceProductRow>?> LoadSourceRowsAsync(string sourceType, CancellationToken ct)
         {
             if (sourceType == "amazon")
@@ -268,26 +343,93 @@ namespace Api.Services
 
             if (sourceType == "google")
             {
-                return await _analyticsDb.GoogleShoppingProducts
+                // Google Shopping: use Position as synthetic review volume signal
+                // (position 1 = most visible = most popular; treat as high review count)
+                var raw = await _analyticsDb.GoogleShoppingProducts
                     .AsNoTracking()
-                    .Select(x => new SourceProductRow
-                    {
-                        ExternalId = !string.IsNullOrWhiteSpace(x.ProductId) ? x.ProductId : "google-" + x.Id,
-                        Title = x.Title,
-                        Brand = x.Brand,
-                        ShoeType = x.Category,
-                        Gender = x.Gender,
-                        Price = x.Price,
-                        Currency = x.Currency,
-                        AvgRating = x.Rating,
-                        ReviewCount = x.ReviewCount,
-                        ImageUrl = x.ImageUrl,
-                        UpdatedAtUtc = ToUtc(x.LastSynced, x.CreatedAt)
-                    })
+                    .Where(x => x.Position > 0)
+                    .OrderBy(x => x.Position)
                     .ToListAsync(ct);
+
+                if (raw.Count == 0)
+                    return new List<SourceProductRow>();
+
+                var maxPos = raw.Max(x => x.Position);
+                return raw.Select(x =>
+                {
+                    // Invert rank: position 1 = most popular
+                    var popNorm = 1.0 - ((double)(x.Position - 1) / Math.Max(maxPos - 1, 1));
+                    // If product has real review data, use it; otherwise synthesize from position
+                    var syntheticRating  = x.Rating > 0    ? x.Rating    : (float)(3.5 + popNorm * 1.4);
+                    var syntheticReviews = x.ReviewCount > 0 ? x.ReviewCount : (int)(50 + popNorm * 4950);
+                    return new SourceProductRow
+                    {
+                        ExternalId   = !string.IsNullOrWhiteSpace(x.ProductId) ? x.ProductId : $"google-{x.Id}",
+                        Title        = x.Title,
+                        Brand        = x.Brand,
+                        ShoeType     = x.Category,
+                        Gender       = x.Gender,
+                        Price        = x.Price,
+                        Currency     = x.Currency,
+                        AvgRating    = syntheticRating,
+                        ReviewCount  = syntheticReviews,
+                        ImageUrl     = x.ImageUrl,
+                        UpdatedAtUtc = ToUtc(x.LastSynced, x.CreatedAt)
+                    };
+                }).ToList();
+            }
+
+            if (sourceType == "eutrend")
+            {
+                // EU Trends (Zalando scraper): rank-based popularity signal.
+                // Rank 1 = most trending; convert to synthetic rating + review count.
+                var raw = await _analyticsDb.EuTrends
+                    .AsNoTracking()
+                    .Where(x => x.Brand != null && x.Category != null)
+                    .OrderBy(x => x.Rank ?? 999)
+                    .ToListAsync(ct);
+
+                if (raw.Count == 0)
+                    return new List<SourceProductRow>();
+
+                var maxRank = raw.Select(x => x.Rank ?? 100).DefaultIfEmpty(100).Max();
+                return raw.Select(x =>
+                {
+                    var rank    = x.Rank ?? maxRank;
+                    var popNorm = 1.0 - ((double)(rank - 1) / Math.Max(maxRank - 1, 1)); // 0-1, 1=best
+                    return new SourceProductRow
+                    {
+                        ExternalId   = x.Id.ToString(),
+                        Title        = x.ProductName,
+                        Brand        = x.Brand,
+                        ShoeType     = MapEuCategory(x.Category),
+                        Price        = x.Price,
+                        Currency     = "EUR",
+                        // Synthesize review signals from rank
+                        AvgRating    = (float)(3.5 + popNorm * 1.5),   // 3.5 – 5.0
+                        ReviewCount  = (int)(100 + popNorm * 4900),     // 100 – 5000
+                        ImageUrl     = x.ImageUrl,
+                        UpdatedAtUtc = x.UpdatedAt
+                    };
+                }).ToList();
             }
 
             return null;
+        }
+
+        private static string MapEuCategory(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return "general";
+            var v = raw.Trim().ToLowerInvariant();
+            if (v.Contains("sneaker") || v.Contains("trainer") || v.Contains("patik")) return "sneakers";
+            if (v.Contains("boot") || v.Contains("cizma"))                             return "boots";
+            if (v.Contains("sandal"))                                                  return "sandals";
+            if (v.Contains("heel") || v.Contains("pump") || v.Contains("stilt"))       return "heels";
+            if (v.Contains("loafer") || v.Contains("mokasin"))                         return "loafers";
+            if (v.Contains("slipper") || v.Contains("papuca"))                         return "slippers";
+            if (v.Contains("oxford") || v.Contains("derby"))                           return "oxfords";
+            if (v.Contains("court") || v.Contains("tenis"))                            return "sneakers";
+            return NormalizeLookupKey(raw);
         }
 
         private static TrainingBrand EnsureBrand(
@@ -339,27 +481,27 @@ namespace Api.Services
         private static string ResolveSourceType(string? sourceType, string datasetName)
         {
             var normalizedSource = NormalizeLookupKey(sourceType);
-            if (normalizedSource is "amazon" or "ebay" or "google")
-            {
+            if (normalizedSource is "amazon" or "ebay" or "google" or "eutrend")
                 return normalizedSource;
-            }
+
+            // kaggle shoe datasets are amazon-format metadata — use the amazon table
+            if (normalizedSource == "kaggle")
+                return "amazon";
 
             var name = NormalizeLookupKey(datasetName);
             if (name.Contains("amazon", StringComparison.Ordinal))
-            {
                 return "amazon";
-            }
-
             if (name.Contains("ebay", StringComparison.Ordinal))
-            {
                 return "ebay";
-            }
-
+            if (name.Contains("eutrend", StringComparison.Ordinal) ||
+                name.Contains("eu_trend", StringComparison.Ordinal) ||
+                name.Contains("zalando", StringComparison.Ordinal))
+                return "eutrend";
             if (name.Contains("google", StringComparison.Ordinal) ||
                 name.Contains("shopping", StringComparison.Ordinal))
-            {
                 return "google";
-            }
+            if (name.Contains("kaggle", StringComparison.Ordinal))
+                return "amazon";
 
             return normalizedSource;
         }

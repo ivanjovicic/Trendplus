@@ -10,9 +10,9 @@ namespace Domain.Model.TrendShoes
     public class PexelsPhotoSrc
     {
         [JsonPropertyName("medium")]
-        public string Medium { get; set; }
+        public string Medium { get; set; } = string.Empty;
 
         [JsonPropertyName("large")]
-        public string Large { get; set; }
+        public string Large { get; set; } = string.Empty;
     }
 }

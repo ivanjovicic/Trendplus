@@ -151,9 +151,9 @@ public class AnalyticsAggregationWorker : BackgroundService
                         ELSE 0 
                     END,
                     NOW()
-                FROM ""ProdajaZaglavlja"" p
-                JOIN ""ProdajaStavke"" ps ON p.""Id"" = ps.""IdProdaja""
-                WHERE DATE(p.""DatumProdaje"") = @date::DATE
+                FROM prodaja_zaglavlje p
+                JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
+                WHERE DATE(p.datum_prodaje) = @date::DATE
                 ON CONFLICT (""Date"") DO UPDATE SET
                     ""TotalRevenue"" = EXCLUDED.""TotalRevenue"",
                     ""TotalTransactions"" = EXCLUDED.""TotalTransactions"",
@@ -194,10 +194,10 @@ public class AnalyticsAggregationWorker : BackgroundService
                     COALESCE(SUM(ps.""Kolicina""), 0),
                     COUNT(DISTINCT p.""Id""),
                     NOW()
-                FROM ""ProdajaZaglavlja"" p
-                JOIN ""ProdajaStavke"" ps ON p.""Id"" = ps.""IdProdaja""
-                JOIN ""Artikli"" a ON ps.""IdArtikal"" = a.""Id""
-                WHERE DATE(p.""DatumProdaje"") = @date::DATE
+                FROM prodaja_zaglavlje p
+                JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
+                JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
+                WHERE DATE(p.datum_prodaje) = @date::DATE
                 GROUP BY a.""Kategorija"";";
 
             await using var cmd = new NpgsqlCommand(insertSql, connection);
@@ -233,11 +233,11 @@ public class AnalyticsAggregationWorker : BackgroundService
                     COALESCE(SUM(ps.""Kolicina""), 0),
                     COUNT(DISTINCT p.""Id""),
                     NOW()
-                FROM ""ProdajaZaglavlja"" p
-                JOIN ""ProdajaStavke"" ps ON p.""Id"" = ps.""IdProdaja""
-                JOIN ""Artikli"" a ON ps.""IdArtikal"" = a.""Id""
+                FROM prodaja_zaglavlje p
+                JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
+                JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
                 LEFT JOIN ""Dobavljaci"" d ON a.""IDDobavljac"" = d.""Id""
-                WHERE DATE(p.""DatumProdaje"") = @date::DATE
+                WHERE DATE(p.datum_prodaje) = @date::DATE
                 GROUP BY d.""Id"", d.""Naziv"";";
 
             await using var cmd = new NpgsqlCommand(insertSql, connection);
@@ -271,10 +271,10 @@ public class AnalyticsAggregationWorker : BackgroundService
                     COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0),
                     COALESCE(SUM(ps.""Kolicina""), 0),
                     NOW()
-                FROM ""ProdajaZaglavlja"" p
-                JOIN ""ProdajaStavke"" ps ON p.""Id"" = ps.""IdProdaja""
-                JOIN ""Artikli"" a ON ps.""IdArtikal"" = a.""Id""
-                WHERE DATE(p.""DatumProdaje"") = @date::DATE
+                FROM prodaja_zaglavlje p
+                JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
+                JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
+                WHERE DATE(p.datum_prodaje) = @date::DATE
                 GROUP BY a.""Pol"";";
 
             await using var cmd = new NpgsqlCommand(insertSql, connection);
@@ -310,10 +310,10 @@ public class AnalyticsAggregationWorker : BackgroundService
                     COALESCE(SUM(ps.""Kolicina""), 0) as total_units,
                     ROW_NUMBER() OVER (ORDER BY SUM(ps.""Kolicina"" * ps.""Cena"") DESC) as rank,
                     NOW()
-                FROM ""ProdajaZaglavlja"" p
-                JOIN ""ProdajaStavke"" ps ON p.""Id"" = ps.""IdProdaja""
-                JOIN ""Artikli"" a ON ps.""IdArtikal"" = a.""Id""
-                WHERE DATE(p.""DatumProdaje"") = @date::DATE
+                FROM prodaja_zaglavlje p
+                JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
+                JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
+                WHERE DATE(p.datum_prodaje) = @date::DATE
                 GROUP BY a.""Id"", a.""Naziv""
                 ORDER BY total_revenue DESC
                 LIMIT 50;";

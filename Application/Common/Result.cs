@@ -62,7 +62,7 @@ public class Result<T> : Result
         Value = default;
     }
 
-    public static new Result<T> Success(T value) => new(value);
+    public static Result<T> Success(T value) => new(value);
     
     public static new Result<T> Failure(string errorMessage, string? errorCode = null) 
         => new(errorMessage, errorCode);

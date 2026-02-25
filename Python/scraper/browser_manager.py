@@ -43,7 +43,7 @@ async def init_browser():
             _browser_pid = getattr(proc, "pid", None) if proc else None
         except Exception:
             _browser_pid = None
-        print("✓ Async Browser initialized - all tabs will open in one window")
+        print("Async Browser initialized - all tabs will open in one window")
 
 async def get_context():
     """Get the global shared async Playwright context."""

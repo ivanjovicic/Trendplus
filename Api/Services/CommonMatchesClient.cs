@@ -33,7 +33,7 @@ namespace Api.Services
             _logger = logger;
         }
 
-        private string BuildCacheKey(CommonMatchesFilters f)
+        private static string BuildCacheKey(CommonMatchesFilters f)
         {
             var raw = $"{f.Gender}|{f.Category}|{f.Brand}|{f.PriceMin}|{f.PriceMax}|{f.Sort}|{f.Sale}|{f.IsNew}|{f.Pages}|{f.MinScore}";
             var base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(raw));

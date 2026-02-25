@@ -11,18 +11,27 @@ import {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const SHOE_TYPES = [
-    // Sportske
+    // Sportske / Athletic
     "sneakers", "running shoes", "training shoes", "basketball shoes", "tennis shoes",
+    "hiking shoes", "trail running shoes", "football boots", "cycling shoes", "walking shoes",
+    "gym shoes", "volleyball shoes", "dance shoes",
     // Casual
     "loafers", "moccasins", "flats", "espadrilles", "slippers", "boat shoes",
-    // Elegantne
+    "canvas shoes", "slip-on sneakers", "high top sneakers", "driving shoes", "deck shoes",
+    // Trendy / Fashion
+    "chunky sneakers", "platform sneakers", "dad shoes", "luxury sneakers", "retro sneakers",
+    // Elegantne / Formal
     "oxfords", "derbies", "heels", "pumps", "stilettos", "wedges", "platforms",
-    // Čizme i gležnjače
+    "kitten heels", "block heels", "slingbacks", "peep toe heels", "court shoes",
+    // Čizme i gležnjače / Boots
     "boots", "ankle boots", "chelsea boots", "knee high boots", "combat boots", "rain boots", "cowboy boots",
-    // Sandale i ljeto
+    "riding boots", "winter boots", "hiking boots", "work boots", "snow boots", "thigh high boots",
+    // Sandale i ljeto / Sandals
     "sandals", "mules", "flip flops", "slides",
-    // Specifični tipovi
+    "gladiator sandals", "platform sandals", "wedge sandals", "sport sandals",
+    // Specifični tipovi / Other
     "ballet flats", "mary janes", "brogues", "monk straps", "clogs",
+    "birkenstock", "crocs", "ugg boots", "espadrille wedges",
 ];
 
 const SORT_OPTIONS = [
@@ -39,6 +48,25 @@ const GENDER_OPTIONS = [
     { value: "women",  label: "Žene" },
     { value: "men",    label: "Muškarci" },
     { value: "unisex", label: "Unisex" },
+];
+
+const POPULAR_BRANDS: { group: string; brands: string[] }[] = [
+    {
+        group: "Sport & Street",
+        brands: ["Nike", "Adidas", "Puma", "Reebok", "New Balance", "Vans", "Converse", "Skechers", "Fila", "Asics", "Under Armour", "Lacoste", "Hummel"],
+    },
+    {
+        group: "Fashion / Trendy",
+        brands: ["Tommy Hilfiger", "Steve Madden", "Calvin Klein", "Guess", "Buffalo", "Karl Lagerfeld", "Esprit", "Desigual", "Vagabond", "Ted Baker"],
+    },
+    {
+        group: "European / Classic",
+        brands: ["Geox", "Clarks", "Ecco", "Birkenstock", "Superga", "Tamaris", "Gabor", "Ara", "Rieker", "Caprice", "Marco Tozzi", "Mustang", "s.Oliver", "Jana", "Gioseppo"],
+    },
+    {
+        group: "Premium (\u2264 200\u00a0\u20ac)",
+        brands: ["Timberland", "UGG", "Hunter", "Boss", "Michael Kors", "Liu Jo", "Kurt Geiger", "Mango", "Zara"],
+    },
 ];
 
 const STAR_COLOR = "#f59e0b";
@@ -229,6 +257,7 @@ export default function AmazonShoesTrendsPage() {
 
     const [browseGender, setBrowseGender]     = useState<string>("all");
     const [sortBy, setSortBy]                 = useState("score");
+    const [brandFilter, setBrandFilter]       = useState("all");
     const [loadingItems, setLoadingItems]     = useState(false);
     const [loadingMore, setLoadingMore]       = useState(false);
 
@@ -420,7 +449,7 @@ export default function AmazonShoesTrendsPage() {
                     <CategoryPanel
                         categories={categories}
                         selected={selectedType}
-                        onSelect={(c) => { setSelectedType(c); setBrowseGender("all"); setSortBy("score"); }}
+                        onSelect={(c) => { setSelectedType(c); setBrowseGender("all"); setSortBy("score"); setBrandFilter("all"); }}
                         onDelete={handleDelete}
                     />
                 </div>
@@ -441,6 +470,18 @@ export default function AmazonShoesTrendsPage() {
                                     )}
                                 </div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <select
+                                        value={brandFilter}
+                                        onChange={(e) => setBrandFilter(e.target.value)}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${brandFilter !== "all" ? "#6366f1" : "#e5e7eb"}`, fontSize: 12, fontWeight: brandFilter !== "all" ? 700 : 400, color: brandFilter !== "all" ? "#4f46e5" : "#374151", background: brandFilter !== "all" ? "#eef2ff" : "white", cursor: "pointer" }}
+                                    >
+                                        <option value="all">🏷 Svi brendovi</option>
+                                        {POPULAR_BRANDS.map(({ group, brands }) => (
+                                            <optgroup key={group} label={group}>
+                                                {brands.map(b => <option key={b} value={b}>{b}</option>)}
+                                            </optgroup>
+                                        ))}
+                                    </select>
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value)}
@@ -481,19 +522,29 @@ export default function AmazonShoesTrendsPage() {
                     )}
 
                     {/* Cards grid */}
-                    {items.length > 0 && (
-                        <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))" }}>
-                            {items.map((shoe) => <ShoeCard key={shoe.id} shoe={shoe} />)}
-                        </div>
-                    )}
-
-                    {items.length === 0 && selectedType && !loadingItems && (
-                        <div style={{ textAlign: "center", padding: 40, background: "#f9fafb", borderRadius: 14, color: "#6b7280" }}>
-                            <div style={{ fontSize: 32 }}>📭</div>
-                            <div style={{ marginTop: 8, fontWeight: 600 }}>No results for "{selectedType}"</div>
-                            <div style={{ fontSize: 13, marginTop: 4 }}>Click "Run Sync" to fetch from Amazon.</div>
-                        </div>
-                    )}
+                    {(() => {
+                        const displayedItems = brandFilter === "all"
+                            ? items
+                            : items.filter(s => (s.brand ?? "").toLowerCase() === brandFilter.toLowerCase());
+                        return (
+                            <>
+                                {displayedItems.length > 0 && (
+                                    <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))" }}>
+                                        {displayedItems.map((shoe) => <ShoeCard key={shoe.id} shoe={shoe} />)}
+                                    </div>
+                                )}
+                                {displayedItems.length === 0 && selectedType && !loadingItems && (
+                                    <div style={{ textAlign: "center", padding: 40, background: "#f9fafb", borderRadius: 14, color: "#6b7280" }}>
+                                        <div style={{ fontSize: 32 }}>💭</div>
+                                        {brandFilter !== "all"
+                                            ? <><div style={{ marginTop: 8, fontWeight: 600 }}>Nema rezultata za brend "{brandFilter}"</div><div style={{ fontSize: 13, marginTop: 4 }}>Probaj drugi brend ili učitaj više stranica.</div></>
+                                            : <><div style={{ marginTop: 8, fontWeight: 600 }}>No results for "{selectedType}"</div><div style={{ fontSize: 13, marginTop: 4 }}>Click "Run Sync" to fetch from Amazon.</div></>
+                                        }
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
 
                     {/* Load More */}
                     {hasMore && (

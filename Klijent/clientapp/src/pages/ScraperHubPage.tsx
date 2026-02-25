@@ -471,6 +471,7 @@ export default function ScraperHubPage() {
     const [visibleSources, setVisibleSources] = useState<SourceId[]>(["zalando", "deichmann", "aboutyou", "humanic"]);
     const [visibleMarkets, setVisibleMarkets] = useState<MarketCode[]>(["DE", "AT", "CH", "HU", "RO"]);
     const [typeFilter, setTypeFilter] = useState<"all" | ShoeType>("all");
+    const [brandFilter, setBrandFilter] = useState<string>("all");
 
     const [allItems, setAllItems] = useState<UnifiedItem[]>([]);
     const [lastRuns, setLastRuns] = useState<BucketRun[]>([]);
@@ -483,16 +484,26 @@ export default function ScraperHubPage() {
 
     const grouped = useMemo(() => groupItems(allItems), [allItems]);
 
+    // ── Derive sorted list of unique brands for the filter dropdown ──────────
+    const availableBrands = useMemo(() => {
+        const set = new Set<string>();
+        for (const g of grouped) {
+            if (g.brand && g.brand.trim()) set.add(g.brand.trim());
+        }
+        return Array.from(set).sort((a, b) => a.localeCompare(b));
+    }, [grouped]);
+
     const filteredGlobal = useMemo(() => {
         return grouped.filter((g) => {
             if (typeFilter !== "all" && g.shoeType !== typeFilter) return false;
+            if (brandFilter !== "all" && g.brand.toLowerCase() !== brandFilter.toLowerCase()) return false;
             return g.items.some((item) => {
                 if (!visibleSources.includes(item.source)) return false;
                 if (!SOURCE_SUPPORTS_MARKET[item.source]) return true;
                 return item.market ? visibleMarkets.includes(item.market) : true;
             });
         });
-    }, [grouped, typeFilter, visibleSources, visibleMarkets]);
+    }, [grouped, typeFilter, brandFilter, visibleSources, visibleMarkets]);
 
     // Use Python-scored top10 when available, otherwise fall back to client-side rank
     const globalTop10 = scoredTop10.length > 0 ? scoredTop10 : filteredGlobal.slice(0, 10);
@@ -500,17 +511,20 @@ export default function ScraperHubPage() {
     const top10ByRun = useMemo(() => {
         const out: Record<string, GroupedProduct[]> = {};
         for (const run of lastRuns) {
-            const groups = groupItems(allItems.filter((x) => x.bucketId === run.id));
-            out[run.id] = (typeFilter === "all" ? groups : groups.filter((g) => g.shoeType === typeFilter)).slice(0, 10);
+            let groups = groupItems(allItems.filter((x) => x.bucketId === run.id));
+            if (typeFilter !== "all") groups = groups.filter((g) => g.shoeType === typeFilter);
+            if (brandFilter !== "all") groups = groups.filter((g) => g.brand.toLowerCase() === brandFilter.toLowerCase());
+            out[run.id] = groups.slice(0, 10);
         }
         return out;
-    }, [allItems, lastRuns, typeFilter]);
+    }, [allItems, lastRuns, typeFilter, brandFilter]);
 
     // ── Python-scored Global Top 10 ──────────────────────────────────────────
     useEffect(() => {
         if (allItems.length === 0) { setScoredTop10([]); return; }
         const itemsForScorer = allItems.filter((item) => {
             if (typeFilter !== "all" && item.shoeType !== typeFilter) return false;
+            if (brandFilter !== "all" && item.brand.toLowerCase() !== brandFilter.toLowerCase()) return false;
             if (!visibleSources.includes(item.source)) return false;
             if (!SOURCE_SUPPORTS_MARKET[item.source]) return true;
             return item.market ? visibleMarkets.includes(item.market as MarketCode) : true;
@@ -521,7 +535,7 @@ export default function ScraperHubPage() {
             .then((scored) => setScoredTop10(scored.map(scoredToGrouped)))
             .catch(() => setScoredTop10([]))
             .finally(() => setTop10Loading(false));
-    }, [allItems, typeFilter, visibleSources, visibleMarkets]);
+    }, [allItems, typeFilter, brandFilter, visibleSources, visibleMarkets]);
 
     const visibleRuns = useMemo(
         () =>
@@ -938,14 +952,50 @@ export default function ScraperHubPage() {
             </div>
 
             {/* ── GLOBAL TOP 10 ── */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
                 <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: 0 }}>🌍 Global Top 10</h2>
-                <span style={{ fontSize: 13, color: "#6b7280" }}>
-                    {top10Loading
-                        ? "⏳ Computing scores…"
-                        : `${filteredGlobal.length} groups · top ${globalTop10.length} shown${scoredTop10.length > 0 ? " · ★ Python scored" : ""}`
-                    }
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    {/* ── Brand filter ── */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", whiteSpace: "nowrap" }}>Brand</label>
+                        <select
+                            value={brandFilter}
+                            onChange={(e) => setBrandFilter(e.target.value)}
+                            style={{
+                                padding: "5px 10px",
+                                borderRadius: 8,
+                                border: `1.5px solid ${brandFilter !== "all" ? "#6366f1" : "#e5e7eb"}`,
+                                fontSize: 13,
+                                fontWeight: brandFilter !== "all" ? 700 : 400,
+                                color: brandFilter !== "all" ? "#4f46e5" : "#374151",
+                                background: brandFilter !== "all" ? "#eef2ff" : "white",
+                                cursor: "pointer",
+                                minWidth: 140,
+                                maxWidth: 220,
+                            }}
+                        >
+                            <option value="all">All brands ({availableBrands.length})</option>
+                            {availableBrands.map((b) => (
+                                <option key={b} value={b}>{b}</option>
+                            ))}
+                        </select>
+                        {brandFilter !== "all" && (
+                            <button
+                                onClick={() => setBrandFilter("all")}
+                                title="Clear brand filter"
+                                style={{ background: "#eef2ff", border: "1.5px solid #6366f1", borderRadius: 7, cursor: "pointer", fontSize: 12, color: "#4f46e5", padding: "4px 8px", fontWeight: 700 }}
+                            >
+                                ✕
+                            </button>
+                        )}
+                    </div>
+                    <span style={{ fontSize: 13, color: "#6b7280" }}>
+                        {top10Loading
+                            ? "⏳ Computing scores…"
+                            : `${filteredGlobal.length} groups · top ${globalTop10.length} shown${scoredTop10.length > 0 ? " · ★ Python scored" : ""}`
+                        }
+                    </span>
+                </div>
             </div>
 
             {globalTop10.length === 0 && !loading && (

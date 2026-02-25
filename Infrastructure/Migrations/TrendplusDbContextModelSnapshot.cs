@@ -235,6 +235,12 @@ namespace Infrastructure.Migrations
                     b.Property<int?>("Kolicina")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("IDObjekat")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RedniBroj")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Komentar")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -257,6 +263,9 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DataOrigin");
+
+                    b.HasIndex("IDObjekat", "Datum")
+                        .HasDatabaseName("IX_DnevnikPromena_IDObjekat_Datum");
 
                     b.ToTable("DnevnikPromena", (string)null);
                 });

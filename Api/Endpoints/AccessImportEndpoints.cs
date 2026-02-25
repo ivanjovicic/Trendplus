@@ -55,7 +55,7 @@ public static class AccessImportEndpoints
 
             try
             {
-                var preview = await service.PreviewAsync(resolved.Path!, ct);
+                var preview = await service.PreviewAsync(resolved.Path!, ct: ct);
                 return Results.Ok(preview);
             }
             finally
@@ -79,17 +79,19 @@ public static class AccessImportEndpoints
 
             var includeAnalytics = true;
             var overwriteExisting = true;
+            var includeTemporaryTables = false;
 
             if (request.HasFormContentType)
             {
                 var form = await request.ReadFormAsync(ct);
                 includeAnalytics = ParseBoolOrDefault(form["includeAnalytics"], true);
                 overwriteExisting = ParseBoolOrDefault(form["overwriteExisting"], true);
+                includeTemporaryTables = ParseBoolOrDefault(form["includeTemporaryTables"], false);
             }
 
             try
             {
-                var run = await service.ImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, ct);
+                var run = await service.ImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);
                 return Results.Ok(run);
             }
             finally

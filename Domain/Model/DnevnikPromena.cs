@@ -5,7 +5,7 @@ namespace Domain.Model
     public class DnevnikPromena
     {
         public int Id { get; set; }
-        public string TipPromene { get; set; } = string.Empty; // "Unos robe", "Prodaja", "Korekcija", etc.
+        public string TipPromene { get; set; } = string.Empty; // "Unos robe", "Prodaja", "Nivelacija", "Ulaz robe", "Povrat kupca", "Prenos izlaz", "Prenos ulaz", etc.
         public DateTime Datum { get; set; }
         public decimal Iznos { get; set; }
         public string? BrojRacuna { get; set; }
@@ -15,7 +15,9 @@ namespace Domain.Model
         public decimal? StaraProdajnaCena { get; set; }
         public decimal? NovaProdajnaCena { get; set; }
 
-        public int? Kolicina { get; set; }      // quantity involved in this change (e.g. pieces sold)
+        public int? Kolicina { get; set; }      // quantity involved in this change (e.g. pieces sold/received)
+        public int? IDObjekat { get; set; }     // store/objekat for movement tracking and per-store analytics
+        public int? RedniBroj { get; set; }     // original sequence/line number from source system (audit trail)
         public string? Komentar { get; set; }
         public string? KorisnikIme { get; set; }
         public string DataOrigin { get; set; } = "existing";

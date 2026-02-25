@@ -54,6 +54,14 @@ namespace Api.Models
         public int PovracajStavkeInserted { get; set; }
         public int PovracajStavkeUpdated { get; set; }
 
+        // New movement types (all go into DnevnikPromena)
+        public int NivelacijeInserted { get; set; }
+        public int UnosRobeInserted { get; set; }
+        public int PovratnicaInserted { get; set; }   // customer / kupac returns
+        public int PrenosRobeInserted { get; set; }   // inter-store transfers (each transfer = 2 entries)
+        public int ObjekatInserted { get; set; }
+        public int ObjekatUpdated { get; set; }
+
         public int ProductsDimInserted { get; set; }
         public int ProductsDimUpdated { get; set; }
         public int SalesFactsInserted { get; set; }

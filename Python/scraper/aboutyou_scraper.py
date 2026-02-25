@@ -10,6 +10,13 @@ from bs4 import BeautifulSoup
 
 
 DEFAULT_ABOUTYOU_URL = "https://www.aboutyou.de/c/frauen/schuhe/stiefeletten-20276"
+DEFAULT_ABOUTYOU_BASE_BY_COUNTRY = {
+    "DE": "https://www.aboutyou.de",
+    "AT": "https://www.aboutyou.at",
+    "CH": "https://www.aboutyou.ch",
+    "HU": "https://www.aboutyou.hu",
+    "RO": "https://www.aboutyou.ro",
+}
 DEFAULT_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -51,8 +58,26 @@ def _to_aboutyou_price_value(value: float | int) -> int:
     return int(round(fv * 100))
 
 
+def _extract_base_domain(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    parsed = urlparse(url)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return None
+
+
+def _resolve_aboutyou_base_domain(url: Optional[str], country: Optional[str]) -> str:
+    base_from_url = _extract_base_domain(url)
+    if base_from_url:
+        return base_from_url
+    code = (country or "DE").strip().upper()
+    return DEFAULT_ABOUTYOU_BASE_BY_COUNTRY.get(code, DEFAULT_ABOUTYOU_BASE_BY_COUNTRY["DE"])
+
+
 def _normalize_aboutyou_url(
     url: Optional[str],
+    country: Optional[str],
     gender: Optional[str],
     category: Optional[str],
     sort: Optional[str],
@@ -60,10 +85,11 @@ def _normalize_aboutyou_url(
     price_min: Optional[float],
     price_max: Optional[float],
 ) -> str:
+    base_domain = _resolve_aboutyou_base_domain(url, country)
     if url and url.strip():
         normalized = url.strip()
         if normalized.startswith("/"):
-            normalized = f"https://www.aboutyou.de{normalized}"
+            normalized = f"{base_domain}{normalized}"
         elif not normalized.startswith("http://") and not normalized.startswith("https://"):
             normalized = f"https://{normalized}"
     elif category and category.strip():
@@ -71,17 +97,17 @@ def _normalize_aboutyou_url(
         if c.startswith("http://") or c.startswith("https://"):
             normalized = c
         elif c.startswith("c/"):
-            normalized = f"https://www.aboutyou.de/{c}"
+            normalized = f"{base_domain}/{c}"
         elif c.startswith("/c/"):
-            normalized = f"https://www.aboutyou.de{c}"
+            normalized = f"{base_domain}{c}"
         elif "/" in c:
-            normalized = f"https://www.aboutyou.de/c/{c}"
+            normalized = f"{base_domain}/c/{c}"
         else:
             g = (gender or "women").strip().lower()
             gender_segment = "herren" if g in {"men", "herren"} else "frauen"
-            normalized = f"https://www.aboutyou.de/c/{gender_segment}/schuhe/{c}"
+            normalized = f"{base_domain}/c/{gender_segment}/schuhe/{c}"
     else:
-        normalized = DEFAULT_ABOUTYOU_URL
+        normalized = f"{base_domain}/c/frauen/schuhe/stiefeletten-20276"
 
     # About You often normalizes unsupported params, but sort is accepted.
     parsed = urlparse(normalized)
@@ -175,7 +201,7 @@ def _pick_image_src(tile: Any) -> Optional[str]:
     return first.split(" ")[0].strip()
 
 
-def _tile_to_item(tile: Any) -> Optional[Dict[str, Any]]:
+def _tile_to_item(tile: Any, base_domain: str) -> Optional[Dict[str, Any]]:
     brand_el = tile.select_one('[data-testid="brandName"]')
     name_el = tile.select_one('[data-testid="productName"]')
     price_el = tile.select_one('[data-testid="finalPrice"]')
@@ -189,7 +215,7 @@ def _tile_to_item(tile: Any) -> Optional[Dict[str, Any]]:
 
     product_link = tile.select_one('a[data-testid^="productTile-"][href]') or tile.select_one("a[href]")
     href = product_link.get("href").strip() if product_link and product_link.get("href") else ""
-    product_url = urljoin("https://www.aboutyou.de", href) if href else None
+    product_url = urljoin(base_domain, href) if href else None
 
     item = {
         "brand": brand or None,
@@ -274,6 +300,7 @@ async def _accept_aboutyou_cookies(page: Any) -> None:
 async def _scrape_aboutyou_infinite_scroll(
     *,
     base_url: str,
+    base_domain: str,
     max_pages: int,
     auto_pages: bool,
 ) -> List[Dict[str, Any]]:
@@ -313,7 +340,7 @@ async def _scrape_aboutyou_infinite_scroll(
 
                 before_count = len(all_items)
                 for tile in tiles:
-                    item = _tile_to_item(tile)
+                    item = _tile_to_item(tile, base_domain)
                     if not item:
                         continue
                     key = item.get("url") or f"{item.get('brand')}|{item.get('name')}"
@@ -359,6 +386,7 @@ async def _scrape_aboutyou_infinite_scroll(
 
 def scrape_aboutyou_filtered_sync(
     url: Optional[str] = None,
+    country: Optional[str] = "DE",
     gender: Optional[str] = "women",
     category: Optional[str] = "frauen/schuhe/stiefeletten-20276",
     sort: Optional[str] = "popularity",
@@ -374,6 +402,7 @@ def scrape_aboutyou_filtered_sync(
 
     base_url = _normalize_aboutyou_url(
         url=url,
+        country=country,
         gender=gender,
         category=category,
         sort=sort,
@@ -381,6 +410,7 @@ def scrape_aboutyou_filtered_sync(
         price_min=priceMin,
         price_max=priceMax,
     )
+    base_domain = _extract_base_domain(base_url) or _resolve_aboutyou_base_domain(base_url, country)
     logging.info(
         "AboutYou scraper -> url=%s brand=%s keyword=%s priceMin=%s priceMax=%s pages=%s mode=%s sort=%s",
         base_url,
@@ -421,7 +451,7 @@ def scrape_aboutyou_filtered_sync(
 
             new_items = 0
             for tile in tiles:
-                item = _tile_to_item(tile)
+                item = _tile_to_item(tile, base_domain)
                 if not item:
                     continue
                 key = item.get("url") or f"{item.get('brand')}|{item.get('name')}"
@@ -450,6 +480,7 @@ def scrape_aboutyou_filtered_sync(
 
 async def scrape_aboutyou_filtered(**filters: Any) -> List[Dict[str, Any]]:
     url = filters.get("url")
+    country = filters.get("country", "DE")
     gender = filters.get("gender", "women")
     category = filters.get("category", "frauen/schuhe/stiefeletten-20276")
     sort = filters.get("sort", "popularity")
@@ -465,6 +496,7 @@ async def scrape_aboutyou_filtered(**filters: Any) -> List[Dict[str, Any]]:
 
     base_url = _normalize_aboutyou_url(
         url=url,
+        country=country,
         gender=gender,
         category=category,
         sort=sort,
@@ -472,6 +504,7 @@ async def scrape_aboutyou_filtered(**filters: Any) -> List[Dict[str, Any]]:
         price_min=price_min,
         price_max=price_max,
     )
+    base_domain = _extract_base_domain(base_url) or _resolve_aboutyou_base_domain(base_url, country)
     logging.info(
         "AboutYou scraper -> url=%s brand=%s keyword=%s priceMin=%s priceMax=%s pages=%s mode=%s sort=%s",
         base_url,
@@ -484,24 +517,12 @@ async def scrape_aboutyou_filtered(**filters: Any) -> List[Dict[str, Any]]:
         sort,
     )
 
-    # For one page request, requests+BeautifulSoup is faster.
-    if not auto_pages and max_pages <= 1:
-        return await asyncio.to_thread(
-            scrape_aboutyou_filtered_sync,
-            url=url,
-            gender=gender,
-            category=category,
-            sort=sort,
-            priceMin=price_min,
-            priceMax=price_max,
-            brand=brand,
-            keyword=keyword,
-            pages=max_pages,
-        )
-
+    # Always use Playwright — About You is a React SPA; plain HTTP requests return
+    # server-rendered shell HTML without product tiles regardless of page count.
     try:
         all_items = await _scrape_aboutyou_infinite_scroll(
             base_url=base_url,
+            base_domain=base_domain,
             max_pages=max_pages,
             auto_pages=auto_pages,
         )
@@ -510,6 +531,7 @@ async def scrape_aboutyou_filtered(**filters: Any) -> List[Dict[str, Any]]:
         return await asyncio.to_thread(
             scrape_aboutyou_filtered_sync,
             url=url,
+            country=country,
             gender=gender,
             category=category,
             sort=sort,

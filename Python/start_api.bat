@@ -2,6 +2,9 @@
 REM ============================================
 REM Start Python FastAPI Server for Global Trends
 REM ============================================
+chcp 65001 >nul
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
 
 echo ========================================
 echo Starting Python API Server
@@ -45,7 +48,7 @@ echo Press CTRL+C to stop the server
 echo.
 
 REM --- Start the FastAPI server ---
-"%PYTHON_CMD%" api_server.py
+"%PYTHON_CMD%" -X utf8 api_server.py
 
 echo.
 echo ========================================

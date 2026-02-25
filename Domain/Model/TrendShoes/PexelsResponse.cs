@@ -10,6 +10,6 @@ namespace Domain.Model.TrendShoes
     public class PexelsResponse
     {
         [JsonPropertyName("photos")]
-        public List<PexelsPhoto> Photos { get; set; }
+        public List<PexelsPhoto> Photos { get; set; } = new();
     }
 }

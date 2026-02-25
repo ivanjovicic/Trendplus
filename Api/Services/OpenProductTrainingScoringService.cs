@@ -198,6 +198,12 @@ namespace Api.Services
                 x => new BrandCategoryKey(x.BrandId, x.ShoeType),
                 x => x);
 
+            // Compute cross-group rating bounds for relative normalization
+            // (avoids hardcoded [3.0, 5.0] range that crushes low-rated groups to near-zero)
+            var globalMinRating = groupStats.Count > 0 ? groupStats.Min(g => g.AvgRating) : 3.0m;
+            var globalMaxRating = groupStats.Count > 0 ? groupStats.Max(g => g.AvgRating) : 5.0m;
+            var globalRatingDenom = Math.Max((double)(globalMaxRating - globalMinRating), 0.05);
+
             var now = DateTime.UtcNow;
             var labelsToAdd = new List<TrainingLabel>(candidates.Count * 2);
 
@@ -207,11 +213,16 @@ namespace Api.Services
                 if (!statsByKey.TryGetValue(key, out var stats))
                     continue;
 
-                var ratingNorm = Clamp01((double)((stats.AvgRating - 3.0m) / 2.0m));
+                // Normalize rating relative to the actual range across ALL groups
+                // (previously hardcoded to [3.0, 5.0] which crushed low-rated groups to near-zero)
+                var ratingNorm = Clamp01((double)((stats.AvgRating - globalMinRating) / (decimal)globalRatingDenom));
                 var reviewNorm = Clamp01((stats.MedianLogReviews - globalMinLog) / globalDenomLog);
 
-                var popularityPrior = 0.6 * ratingNorm + 0.4 * reviewNorm;
-                var popularityPriorScore = Math.Round((decimal)(popularityPrior * 100.0), 2);
+                // Weighted: rating matters more for brand reputation,
+                // reviews give volume signal. Add a 5-point floor so no qualifying
+                // group scores absolute zero (distinguishes "signal exists" from "no data").
+                var rawPopularity = 0.65 * ratingNorm + 0.35 * reviewNorm;
+                var popularityPriorScore = Math.Round(5.0m + (decimal)(rawPopularity * 95.0), 2);
 
                 decimal dealScore = 0m;
                 if (stats.MedianPrice > 0)
@@ -219,9 +230,9 @@ namespace Api.Services
                     var relative = (double)((stats.MedianPrice - product.Price) / stats.MedianPrice);
                     var dealNorm = relative <= 0
                         ? 0
-                        : relative >= 0.4
+                        : relative >= 0.30   // was 0.40 — 30% below median is already a solid deal
                             ? 1
-                            : relative / 0.4;
+                            : relative / 0.30;
 
                     dealScore = Math.Round((decimal)(Clamp01(dealNorm) * 100.0), 2);
                 }
@@ -497,13 +508,13 @@ namespace Api.Services
             {
                 normalized = 0;
             }
-            else if (relative >= 0.4)
+            else if (relative >= 0.30)   // 30% below typical = full deal (was 40%)
             {
                 normalized = 1;
             }
             else
             {
-                normalized = relative / 0.4;
+                normalized = relative / 0.30;
             }
 
             return Math.Round((decimal)(Clamp01(normalized) * 100.0), 2);

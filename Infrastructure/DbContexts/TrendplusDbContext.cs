@@ -84,10 +84,13 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Komentar).HasMaxLength(500);
                 eb.Property(e => e.KorisnikIme).HasMaxLength(200);
                 eb.Property(e => e.Kolicina);
+                eb.Property(e => e.IDObjekat);
+                eb.Property(e => e.RedniBroj);
                 eb.Property(e => e.StaraProdajnaCena).HasColumnType("decimal(18,2)");
                 eb.Property(e => e.NovaProdajnaCena).HasColumnType("decimal(18,2)");
                 eb.Property(e => e.DataOrigin).IsRequired().HasMaxLength(32).HasDefaultValue("existing");
                 eb.HasIndex(e => e.DataOrigin);
+                eb.HasIndex(e => new { e.IDObjekat, e.Datum });
             });
 
             modelBuilder.Entity<Sezona>(eb =>

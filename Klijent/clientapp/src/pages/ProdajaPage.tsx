@@ -1,74 +1,53 @@
-﻿import React from "react";
+import React from "react";
 import CreateProdajaForm from "../components/prodaja/CreateProdajaForm";
 import { KreirajProdajuDto } from "../types/prodaja/prodaja";
+import { fetchProdajaArtikliLookup, type ProdajaArtikalLookupDto } from "../services/prodajaApi";
 
-const ARTICLES_CACHE_KEY = "cached_artikli_prodaja";
-const ARTICLES_CACHE_TS = "cached_artikli_ts";
-const CACHE_DURATION = 1000 * 60 * 15; // 15 minutes
+type ProdajaArtikalOption = {
+    id: number;
+    naziv: string;
+    cena: number;
+};
+
+function toOption(x: ProdajaArtikalLookupDto): ProdajaArtikalOption {
+    return {
+        id: x.id,
+        naziv: x.naziv,
+        cena: Number(x.cena ?? 0),
+    };
+}
 
 export default function ProdajaPage() {
     const [loadingArtikli, setLoadingArtikli] = React.useState(true);
-    const [artikli, setArtikli] = React.useState<{ id: number; naziv: string; cena: number }[]>([]);
+    const [artikli, setArtikli] = React.useState<ProdajaArtikalOption[]>([]);
     const API = import.meta.env.VITE_API_BASE_URL;
 
     React.useEffect(() => {
         let aborted = false;
-        const controller = new AbortController();
 
-        const fetchArtikli = async () => {
-            // Try cache first
+        const loadInitial = async () => {
             try {
-                const cached = localStorage.getItem(ARTICLES_CACHE_KEY);
-                const ts = localStorage.getItem(ARTICLES_CACHE_TS);
-                const now = Date.now();
-
-                if (cached && ts && (now - Number(ts) < CACHE_DURATION)) {
-                    const parsed = JSON.parse(cached);
-                    if (parsed && Array.isArray(parsed) && parsed.length > 0) {
-                        setArtikli(parsed);
-                        setLoadingArtikli(false);
-                        console.log("🚀 Loaded articles from local cache");
-                        // Refresh in background if needed (silent update)
-                    }
-                }
-            } catch (err) {
-                console.warn("Failed to read articles cache", err);
-            }
-
-            try {
-                const res = await fetch(`${API}/artikli`, { signal: controller.signal });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (!aborted) {
-                        setArtikli(data ?? []);
-                        setLoadingArtikli(false);
-                        
-                        // Update cache
-                        try {
-                            localStorage.setItem(ARTICLES_CACHE_KEY, JSON.stringify(data));
-                            localStorage.setItem(ARTICLES_CACHE_TS, Date.now().toString());
-                        } catch (e) {
-                            console.warn("QuotaExceeded or other cache error", e);
-                        }
-                    }
-                } else {
-                    console.error("Failed to fetch artikli:", res.status, await res.text());
-                    if (!aborted) setLoadingArtikli(false);
+                const data = await fetchProdajaArtikliLookup("", 150, false);
+                if (!aborted) {
+                    setArtikli((data ?? []).map(toOption));
+                    setLoadingArtikli(false);
                 }
             } catch (e: unknown) {
-                if (e instanceof DOMException && e.name === "AbortError") return;
-                console.error("Error fetching artikli:", e);
+                console.error("Error fetching artikli lookup:", e);
                 if (!aborted) setLoadingArtikli(false);
             }
         };
 
-        fetchArtikli();
-
+        loadInitial();
         return () => {
             aborted = true;
-            controller.abort();
         };
-    }, [API]);
+    }, []);
+
+    const handleSearchArtikli = React.useCallback(async (query: string) => {
+        const data = await fetchProdajaArtikliLookup(query, 25, false);
+        return (data ?? []).map(toOption);
+    }, []);
 
     const handleSubmit = async (data: KreirajProdajuDto): Promise<void> => {
         console.debug("Outgoing prodaja DTO:", data);
@@ -109,7 +88,7 @@ export default function ProdajaPage() {
     if (loadingArtikli) {
         return (
             <div className="card">
-                <p style={{ textAlign: 'center', padding: '2rem' }}>Učitavanje artikala...</p>
+                <p style={{ textAlign: "center", padding: "2rem" }}>Ucitavanje artikala...</p>
             </div>
         );
     }
@@ -117,12 +96,18 @@ export default function ProdajaPage() {
     if (artikli.length === 0) {
         return (
             <div className="card">
-                <p style={{ textAlign: 'center', padding: '2rem', color: '#dc2626' }}>
+                <p style={{ textAlign: "center", padding: "2rem", color: "#dc2626" }}>
                     Nema dostupnih artikala. Molimo kreirajte artikle pre prodaje.
                 </p>
             </div>
         );
     }
 
-    return <CreateProdajaForm artikli={artikli} onSubmit={handleSubmit} />;
+    return (
+        <CreateProdajaForm
+            artikli={artikli}
+            onSearchArtikli={handleSearchArtikli}
+            onSubmit={handleSubmit}
+        />
+    );
 }

@@ -1,233 +1,532 @@
-﻿import os
 import asyncio
-from typing import Any, Dict, List
-from urllib.parse import quote_plus
+import os
+import re
+from typing import Any, Dict, List, Optional
+from urllib.parse import quote_plus, urljoin
 
 import scraper.browser_manager as browser_manager
 
-# jednostavna mapa brend → slug (po potrebi proširi)
-BRAND_MAP: Dict[str, str] = {
-    "rieker": "ri10",
-    "adidas": "ad1",
-    "nike": "ni1",
-    "puma": "pu1",
-    "tamaris": "ta1",
-    "converse": "co1",
-    "guess": "gu1",
-    "skechers": "sk1",
-    "asics": "as1",
+ZALANDO_BASE_BY_COUNTRY: Dict[str, str] = {
+    "DE": "https://www.zalando.de",
+    "AT": "https://www.zalando.at",
+    "CH": "https://www.zalando.ch",
+    "HU": "https://www.zalando.hu",
+    "RO": "https://www.zalando.ro",
 }
 
-BRAND_SLUG_MAP = BRAND_MAP
+ZALANDO_LISTING_PATH_BY_COUNTRY: Dict[str, str] = {
+    "DE": "/katalog/",
+    "AT": "/katalog/",
+    "CH": "/katalog/",
+    "HU": "/katalogus/",
+    "RO": "/catalog/",
+}
+
+_PRICE_PATTERNS = [
+    re.compile(
+        r"(?:€|eur|ft|huf|ron|lei|chf)\s*\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{2})?",
+        flags=re.IGNORECASE,
+    ),
+    re.compile(
+        r"\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{2})?\s*(?:€|eur|ft|huf|ron|lei|chf)",
+        flags=re.IGNORECASE,
+    ),
+]
+
+
+def _resolve_zalando_base_domain(country: Optional[str]) -> str:
+    code = (country or "DE").strip().upper()
+    return ZALANDO_BASE_BY_COUNTRY.get(code, ZALANDO_BASE_BY_COUNTRY["DE"])
+
+
+def _resolve_listing_path(country: Optional[str]) -> str:
+    code = (country or "DE").strip().upper()
+    return ZALANDO_LISTING_PATH_BY_COUNTRY.get(code, "/catalog/")
+
+
+def _localize_category_query(category: Optional[str], country: Optional[str]) -> str:
+    code = (country or "DE").strip().upper()
+    raw = (category or "").strip().lower()
+    if not raw:
+        raw = "schuhe"
+
+    normalized = raw.replace("_", " ").replace("-", " ")
+
+    if normalized in {"all", "catalog", "schuhe", "shoe", "shoes"}:
+        if code == "HU":
+            return "cipo"
+        if code == "RO":
+            return "pantofi"
+        return "schuhe"
+
+    if normalized in {"sneaker", "sneakers"}:
+        if code == "HU":
+            return "sportcipo"
+        return "sneaker"
+
+    if normalized in {"boots", "boot", "stiefel"}:
+        if code == "HU":
+            return "csizma"
+        if code == "RO":
+            return "cizme"
+        return "stiefel"
+
+    if normalized in {"sandals", "sandal", "sandale"}:
+        if code == "HU":
+            return "szandal"
+        if code == "RO":
+            return "sandale"
+        return "sandale"
+
+    if normalized in {"heels", "heel", "pumps"}:
+        if code == "HU":
+            return "magassarku"
+        if code == "RO":
+            return "tocuri"
+        return "pumps"
+
+    if normalized in {"loafers", "loafer", "mokassin", "mokassins"}:
+        if code == "HU":
+            return "mokaszin"
+        if code == "RO":
+            return "loafer"
+        return "loafer"  # DE / AT / CH
+
+    if normalized in {"flats", "flat", "ballerina", "ballerinas"}:
+        if code == "HU":
+            return "balerina"
+        if code == "RO":
+            return "balerina"
+        return "ballerina"
+
+    if normalized in {"ankle boots", "ankle boot", "ankle_boots", "stiefelette", "stiefeletten"}:
+        if code == "HU":
+            return "bokacipo"
+        if code == "RO":
+            return "botine"
+        return "stiefelette"
+
+    if normalized in {"chelsea", "chelsea boot", "chelsea boots"}:
+        if code == "HU":
+            return "chelsea"
+        if code == "RO":
+            return "chelsea"
+        return "chelsea"
+
+    if normalized in {"knee boots", "knee_boots", "high boots", "kniehoh"}:
+        if code == "HU":
+            return "terdcizma"
+        if code == "RO":
+            return "cizme inalte"
+        return "kniehohe stiefel"
+
+    if normalized in {"stilettos", "stiletto"}:
+        if code == "HU":
+            return "stiletto"
+        if code == "RO":
+            return "stiletto"
+        return "stiletto"
+
+    if normalized in {"wedges", "wedge", "keilabsatz"}:
+        if code == "HU":
+            return "telitalpas"
+        if code == "RO":
+            return "platforma"
+        return "keilabsatz"
+
+    if normalized in {"mules", "mule", "pantolette", "pantoletten"}:
+        if code == "HU":
+            return "papucs"
+        if code == "RO":
+            return "papuci"
+        return "pantolette"
+
+    if normalized in {"slippers", "slipper", "hausschuh"}:
+        if code == "HU":
+            return "papucs"
+        if code == "RO":
+            return "papuci"
+        return "hausschuh"
+
+    if normalized in {"espadrilles", "espadrille"}:
+        if code == "HU":
+            return "espadrille"
+        if code == "RO":
+            return "espadrile"
+        return "espadrille"
+
+    if normalized in {"oxfords", "oxford", "derby", "derbies"}:
+        if code == "HU":
+            return "oxford"
+        if code == "RO":
+            return "oxford"
+        return "oxford"
+
+    if normalized in {"running", "run", "laufschuh"}:
+        if code == "HU":
+            return "futocipo"
+        if code == "RO":
+            return "alergare"
+        return "laufschuh"
+
+    return normalized
+
+
+def _normalize_search_query(category: Optional[str], brand: Optional[str], country: Optional[str]) -> str:
+    tokens: List[str] = []
+
+    cat = _localize_category_query(category, country)
+    if cat:
+        tokens.append(cat)
+
+    if brand:
+        # If brand comes as "rieker_1-94255", keep only human part.
+        b = brand.split("_", 1)[0].strip().replace("-", " ")
+        if b:
+            tokens.insert(0, b)
+
+    if not tokens:
+        tokens = ["schuhe"]
+
+    return " ".join(tokens)
 
 
 def build_zalando_url(
     category: str = "sneaker",
-    brand: str | None = None,
-    gender: str | None = None,
-    sort: str | None = "popularity",
-    priceMin: int | None = None,
-    priceMax: int | None = None,
-    activationDate: str | None = None,
+    brand: Optional[str] = None,
+    gender: Optional[str] = None,
+    country: Optional[str] = "DE",
+    sort: Optional[str] = "popularity",
+    priceMin: Optional[int] = None,
+    priceMax: Optional[int] = None,
+    activationDate: Optional[str] = None,
 ) -> str:
     """
-    Gradi Zalando listing bazni URL (bez page broja na kraju).
+    Build Zalando listing URL.
+    We intentionally use /catalog/ + q=... because it is locale-safe across markets
+    (DE/AT/CH/HU/RO) unlike category path slugs that can be localized.
     """
-
-    # Normalize category
-    if category == "sneakers":
-        category = "sneaker"
-
-    base_path = f"https://www.zalando.de/{category}/"
+    base_domain = _resolve_zalando_base_domain(country)
+    listing_path = _resolve_listing_path(country)
     params: List[str] = []
 
-    # Brand: use `q=` search query (works even when we don't know Zalando's internal brand codes).
-    if brand:
-        # If user passed a Deichmann brand id like "rieker_1-94255", keep only the human prefix.
-        brand_q = brand.split("_", 1)[0]
-        params.append(f"q={quote_plus(brand_q)}")
+    query_text = _normalize_search_query(category, brand, country)
+    params.append(f"q={quote_plus(query_text)}")
 
     if priceMin is not None:
-        params.append(f"priceMin={priceMin}")
+        params.append(f"priceMin={int(priceMin)}")
     if priceMax is not None:
-        params.append(f"priceMax={priceMax}")
+        params.append(f"priceMax={int(priceMax)}")
     if activationDate:
-        params.append(f"activation_date={activationDate}")
-
-    # sort trenutno često default, ali ostavljamo hook
+        params.append(f"activation_date={quote_plus(str(activationDate))}")
     if sort:
-        params.append(f"order={sort}")
+        params.append(f"order={quote_plus(str(sort))}")
 
-    query = "&".join(params)
-    if query:
-        return f"{base_path}?{query}&page="
-    return f"{base_path}?page="
+    # Zalando uses "p" as page parameter on catalog pages.
+    return f"{base_domain}{listing_path}?{'&'.join(params)}&p="
+
+
+def _extract_price_from_text(text: Optional[str]) -> Optional[str]:
+    if not text:
+        return None
+    compact = text.replace("\u00a0", " ")
+    for pattern in _PRICE_PATTERNS:
+        match = pattern.search(compact)
+        if match:
+            return re.sub(r"\s+", " ", match.group(0)).strip()
+    return None
+
+
+async def _get_first_text(card: Any, selectors: List[str]) -> Optional[str]:
+    for selector in selectors:
+        try:
+            el = await card.query_selector(selector)
+            if not el:
+                continue
+            value = (await el.inner_text() or "").strip()
+            if value:
+                return value
+        except Exception:
+            continue
+    return None
+
+
+async def _extract_image(card: Any) -> Optional[str]:
+    try:
+        img_el = await card.query_selector("img")
+        if not img_el:
+            return None
+
+        src = await img_el.get_attribute("src")
+        if src:
+            return src
+
+        data_src = await img_el.get_attribute("data-src")
+        if data_src:
+            return data_src
+
+        srcset = await img_el.get_attribute("srcset")
+        if srcset:
+            first = srcset.split(",")[0].strip()
+            if first:
+                return first.split(" ")[0].strip()
+    except Exception:
+        return None
+    return None
+
+
+async def _parse_product_card(card: Any, base_domain: str) -> Optional[Dict[str, Any]]:
+    try:
+        link_el = (
+            await card.query_selector("a[href*='.html']")
+            or await card.query_selector("a._LM")
+            or await card.query_selector("a[href]")
+        )
+        product_url = await link_el.get_attribute("href") if link_el else None
+        if product_url:
+            product_url = urljoin(base_domain, product_url)
+
+        brand = await _get_first_text(
+            card,
+            [
+                "span[data-testid='product-brand']",
+                "[data-testid='product-card-brand']",
+                "h3 span:first-child",
+            ],
+        )
+
+        title = await _get_first_text(
+            card,
+            [
+                "[data-testid='product-name']",
+                "[data-testid='product-card-name']",
+                "h3 span:nth-child(2)",
+                "h3",
+            ],
+        )
+
+        if not title:
+            # Fallback to image alt if card header is missing.
+            try:
+                img_el = await card.query_selector("img")
+                title = (await img_el.get_attribute("alt")).strip() if img_el else None
+            except Exception:
+                title = None
+
+        if not title:
+            return None
+
+        price = await _get_first_text(
+            card,
+            [
+                "p[data-testid='price']",
+                "span[data-testid='price']",
+                "p[class*='price']",
+                "span[class*='price']",
+                "div[class*='price'] p",
+                "div[class*='price'] span",
+            ],
+        )
+
+        if not price:
+            try:
+                card_text = await card.inner_text()
+                price = _extract_price_from_text(card_text)
+            except Exception:
+                price = None
+
+        image_url = await _extract_image(card)
+
+        return {
+            "name": title,
+            "brand": brand,
+            "price": price,
+            "image_url": image_url,
+            "url": product_url,
+            "source": "zalando",
+        }
+    except Exception:
+        return None
+
+
+async def _collect_product_cards(page: Any) -> List[Any]:
+    selectors = [
+        "article[data-testid='product-card']",
+        "article[data-testid^='product-card']",
+        "article:has(a[href*='.html'])",
+        "li:has(article a[href*='.html']) article",
+    ]
+
+    best: List[Any] = []
+    for selector in selectors:
+        try:
+            found = await page.query_selector_all(selector)
+        except Exception:
+            found = []
+
+        if len(found) > len(best):
+            best = found
+        if len(best) >= 20:
+            break
+
+    return best
+
+
+async def _extract_from_links_fallback(page: Any, base_domain: str) -> List[Dict[str, Any]]:
+    """
+    Fallback parser for cases where Zalando changes product-card markup.
+    """
+    results: List[Dict[str, Any]] = []
+    seen_urls: set[str] = set()
+
+    try:
+        links = await page.query_selector_all("a[href*='.html']")
+    except Exception:
+        links = []
+
+    for link in links:
+        try:
+            href = await link.get_attribute("href")
+            if not href:
+                continue
+            product_url = urljoin(base_domain, href)
+            if product_url in seen_urls:
+                continue
+
+            container_handle = await link.evaluate_handle("el => el.closest('article, li, div')")
+            container = container_handle.as_element()
+
+            if container:
+                text_blob = await container.inner_text()
+                image_url = await _extract_image(container)
+                brand = await _get_first_text(
+                    container,
+                    [
+                        "span[data-testid='product-brand']",
+                        "[data-testid='product-card-brand']",
+                        "h3 span:first-child",
+                    ],
+                )
+                name = await _get_first_text(
+                    container,
+                    [
+                        "[data-testid='product-name']",
+                        "[data-testid='product-card-name']",
+                        "h3 span:nth-child(2)",
+                        "h3",
+                    ],
+                )
+            else:
+                text_blob = await link.inner_text()
+                image_url = None
+                brand = None
+                name = (await link.inner_text() or "").strip()
+
+            if not name:
+                continue
+
+            price = _extract_price_from_text(text_blob)
+
+            results.append(
+                {
+                    "name": name.strip(),
+                    "brand": (brand or "").strip() or None,
+                    "price": price,
+                    "image_url": image_url,
+                    "url": product_url,
+                    "source": "zalando",
+                }
+            )
+            seen_urls.add(product_url)
+        except Exception:
+            continue
+
+    return results
 
 
 async def _scrape_zalando_page(
     page_num: int,
     category: str,
-    brand: str | None,
-    gender: str | None,
-    sort: str | None,
-    priceMin: int | None,
-    priceMax: int | None,
-    activationDate: str | None,
+    brand: Optional[str],
+    gender: Optional[str],
+    country: Optional[str],
+    sort: Optional[str],
+    priceMin: Optional[int],
+    priceMax: Optional[int],
+    activationDate: Optional[str],
 ) -> List[Dict[str, Any]]:
-    """
-    Scrape jedne Zalando stranice (async). Koristi shared context.
-    """
     context = await browser_manager.get_context()
 
     base_url = build_zalando_url(
         category=category,
         brand=brand,
         gender=gender,
+        country=country,
         sort=sort,
         priceMin=priceMin,
         priceMax=priceMax,
         activationDate=activationDate,
     )
+    base_domain = _resolve_zalando_base_domain(country)
 
     page = await context.new_page()
     try:
         url = base_url + str(page_num)
-        print(f"\n▶ [Zalando] Loading page {page_num}: {url}")
+        print(f"[Zalando] Loading page {page_num}: {url}")
         await page.goto(url, timeout=0)
-        await page.wait_for_timeout(3000)  # Increased wait for dynamic content
+        await page.wait_for_timeout(2500)
 
-        # Cookie banner
-        for txt in ["Only essential", "Accept all", "Accept", "Allow all", "Alle akzeptieren"]:
+        # Cookie banner — covers DE/AT/CH (German), HU (Hungarian), RO (Romanian), EN fallback
+        for txt in ["Only essential", "Accept all", "Accept", "Allow all", "Alle akzeptieren",
+                    "Elfogadom az összeset", "Elfogad", "Mindent elfogad",
+                    "Acceptați toate", "Accepta toate", "Acceptați", "Accepta"]:
             try:
-                await page.click(f"button:has-text('{txt}')", timeout=1000)
-                print(f"✔ [Zalando] Accepted cookies: {txt}")
+                await page.click(f"button:has-text('{txt}')", timeout=800)
+                print(f"[Zalando] Accepted cookies: {txt}")
                 break
             except Exception:
-                pass
-
-        print("[Zalando] Scrolling…")
-        for _ in range(10):
-            await page.mouse.wheel(0, 2000)
-            await page.wait_for_timeout(700)
-
-        # product cards – class pattern iz debug-a
-        cards = await page.query_selector_all('article[class*="z5x6ht"]')
-        print(f"✔ [Zalando] Found {len(cards)} articles on page {page_num}")
-
-        page_results: List[Dict[str, Any]] = []
-
-        for idx, card in enumerate(cards):
-            try:
-                link_el = await card.query_selector("a._LM") or await card.query_selector("a")
-                product_url = await link_el.get_attribute("href") if link_el else None
-                if product_url and product_url.startswith("/"):
-                    product_url = "https://www.zalando.de" + product_url
-
-                img_el = await card.query_selector("img")
-                img = await img_el.get_attribute("src") if img_el else None
-                alt_name = await img_el.get_attribute("alt") if img_el else None
-
-                brand_el = await card.query_selector("span[data-testid='product-brand']")
-                if not brand_el:
-                    brand_el = await card.query_selector("h3 span:first-child")
-                brand_val = await brand_el.inner_text() if brand_el else None
-                brand_val = brand_val.strip() if brand_val else None
-
-                # Prefer the visible product title from the card header (usually the 2nd span in <h3>),
-                # because img alt is often generic or a descriptive sentence and matches poorly.
-                title_val = None
-                try:
-                    h3_spans = await card.query_selector_all("h3 span")
-                    if h3_spans and len(h3_spans) >= 2:
-                        title_val = await h3_spans[1].inner_text()
-                        title_val = title_val.strip() if title_val else None
-                except Exception:
-                    title_val = None
-
-                name = title_val or alt_name
-
-                # ===== IMPROVED PRICE EXTRACTION =====
-                price = None
-                price_el = None
-
-                # Try multiple price selectors in order of specificity
-                price_selectors = [
-                    # Modern Zalando price selectors (2024-2025)
-                    "p[class*='_0Qm8W1']",  # Current main price class
-                    "p[class*='DgCKYF']",   # Alternative price class
-                    "span[class*='sDq_FX']", # Sale price class
-                    "p[data-testid='price']",
-                    # Generic fallbacks
-                    "p[class*='price']",
-                    "span[class*='price']",
-                    "div[class*='price'] p",
-                    "div[class*='price'] span",
-                    # Very broad fallback - find any element with € symbol
-                    "p:has-text('€')",
-                    "span:has-text('€')",
-                ]
-
-                for selector in price_selectors:
-                    try:
-                        price_el = await card.query_selector(selector)
-                        if price_el:
-                            price_text = await price_el.inner_text()
-                            if price_text and price_text.strip() and "€" in price_text:
-                                price = price_text.strip()
-                                break
-                    except Exception:
-                        continue
-
-                # Last resort: Extract price from entire card text using regex
-                if not price:
-                    try:
-                        import re
-                        card_text = await card.inner_text()
-                        # Match patterns like "65,99 €" or "€65,99" or "65.99 €"
-                        price_pattern = r"(?:€\s*)?(\d+[.,]\d{2})\s*€?"
-                        match = re.search(price_pattern, card_text)
-                        if match:
-                            price = match.group(0).strip()
-                            if "€" not in price:
-                                price = price + " €"
-                    except Exception:
-                        pass
-
-                # Debug logging for missing prices
-                if not price and idx < 3:  # Log first 3 items
-                    print(f"⚠️ [Zalando] No price found for product #{idx+1}: {name}")
-                    # Try to get all text content for debugging
-                    try:
-                        all_text = await card.inner_text()
-                        if "€" in all_text:
-                            print(f"   → Found € symbol in card text: {all_text[:200]}")
-                    except Exception:
-                        pass
-
-                page_results.append(
-                    {
-                        "name": name,
-                        "brand": brand_val,
-                        "price": price,
-                        "image_url": img,
-                        "url": product_url,
-                        "source": "zalando",
-                    }
-                )
-            except Exception as e:
-                print(f"[DEBUG] Zalando product parse error on page {page_num}, card #{idx}: {e}")
                 continue
 
-        # Count items with prices for debugging
-        items_with_price = sum(1 for item in page_results if item.get("price"))
-        print(f"📊 [Zalando] Page {page_num}: {items_with_price}/{len(page_results)} items have prices")
+        # Scroll enough for lazy content.
+        for _ in range(8):
+            await page.mouse.wheel(0, 2200)
+            await page.wait_for_timeout(550)
 
-        # Sačuvaj HTML za debug (po potrebi)
+        cards = await _collect_product_cards(page)
+        print(f"[Zalando] Page {page_num} cards: {len(cards)}")
+
+        page_results: List[Dict[str, Any]] = []
+        seen_urls: set[str] = set()
+
+        for card in cards:
+            item = await _parse_product_card(card, base_domain)
+            if not item:
+                continue
+            url_key = item.get("url")
+            if url_key and url_key in seen_urls:
+                continue
+            if url_key:
+                seen_urls.add(url_key)
+            page_results.append(item)
+
+        if not page_results:
+            fallback_items = await _extract_from_links_fallback(page, base_domain)
+            for item in fallback_items:
+                url_key = item.get("url")
+                if url_key and url_key in seen_urls:
+                    continue
+                if url_key:
+                    seen_urls.add(url_key)
+                page_results.append(item)
+            print(f"[Zalando] Page {page_num} fallback items: {len(fallback_items)}")
+
+        items_with_price = sum(1 for item in page_results if item.get("price"))
+        print(f"[Zalando] Page {page_num}: {items_with_price}/{len(page_results)} items have prices")
+
         debug_path = os.path.join(os.path.dirname(__file__), f"zalando_debug_{page_num}.html")
         try:
             with open(debug_path, "w", encoding="utf-8") as f:
                 f.write(await page.content())
-            print(f"[DEBUG] Saved HTML → {debug_path}")
         except Exception:
             pass
 
@@ -235,41 +534,37 @@ async def _scrape_zalando_page(
     finally:
         try:
             await page.close()
-        except Exception as e:
-            print(f"[DEBUG] Zalando page {page_num} close error: {e}")
+        except Exception:
+            pass
 
 
 async def scrape_zalando_playwright(
     max_pages: int = 1,
     category: str = "sneaker",
-    brand: str | None = None,
-    gender: str | None = None,
-    sort: str | None = "popularity",
-    priceMin: int | None = None,
-    priceMax: int | None = None,
-    activationDate: str | None = None,
+    brand: Optional[str] = None,
+    gender: Optional[str] = None,
+    country: Optional[str] = "DE",
+    sort: Optional[str] = "popularity",
+    priceMin: Optional[int] = None,
+    priceMax: Optional[int] = None,
+    activationDate: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """
-    Glavni Zalando scraper – paralelno skida više stranica u jednoj Chromium instanci.
-    """
     max_pages = int(max_pages or 1)
     if max_pages < 1:
         max_pages = 1
 
     print(
-        f"🔍 Zalando Playwright → {category} / "
-        f"brand={brand} / gender={gender} activationDate={activationDate} / pages={max_pages}"
+        "[Zalando] Start "
+        f"category={category} brand={brand} gender={gender} country={country} pages={max_pages}"
     )
 
-    results: List[Dict[str, Any]] = []
-
-    # Async version using asyncio.gather instead of ThreadPoolExecutor
     tasks = [
         _scrape_zalando_page(
             page_num,
             category,
             brand,
             gender,
+            country,
             sort,
             priceMin,
             priceMax,
@@ -278,13 +573,14 @@ async def scrape_zalando_playwright(
         for page_num in range(1, max_pages + 1)
     ]
 
+    results: List[Dict[str, Any]] = []
     page_results_list = await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     for page_num, page_results in enumerate(page_results_list, start=1):
         if isinstance(page_results, Exception):
-            print(f"Zalando page scrape failed (page={page_num}): {page_results}")
-        else:
-            results.extend(page_results)
+            print(f"[Zalando] Page {page_num} failed: {page_results}")
+            continue
+        results.extend(page_results)
 
-    print(f"\n📊 [Zalando] Total scraped: {len(results)}")
+    print(f"[Zalando] Total scraped: {len(results)}")
     return results

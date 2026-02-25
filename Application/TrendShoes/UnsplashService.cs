@@ -58,6 +58,6 @@ namespace Application.TrendShoes
 
     public class UnsplashResponse
     {
-        public List<UnsplashPhoto> results { get; set; }
+        public List<UnsplashPhoto> results { get; set; } = new();
     }
 }

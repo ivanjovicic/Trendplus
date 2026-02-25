@@ -13,15 +13,18 @@ namespace Api.Services
     {
         private readonly SerpApiOptions _opts;
         private readonly HttpClient     _http;
+        private readonly IOpenProductTrainingSignalProvider _trainingSignals;
         private readonly ILogger<AmazonShoesService> _log;
 
         public AmazonShoesService(
             IOptions<SerpApiOptions> options,
             HttpClient http,
+            IOpenProductTrainingSignalProvider trainingSignals,
             ILogger<AmazonShoesService> log)
         {
             _opts = options.Value;
             _http = http;
+            _trainingSignals = trainingSignals;
             _http.Timeout = TimeSpan.FromSeconds(_opts.TimeoutSeconds);
             _log  = log;
         }
@@ -126,6 +129,11 @@ namespace Api.Services
 
                 var ratingVal     = TryFloat(item["rating"])    ?? 0f;
                 var reviewCountVal = TryInt(item["reviews"])     ?? 0;
+                var runtimeSignals = await _trainingSignals.ResolveAsync(
+                    item["brand"]?.ToString(),
+                    type.Trim(),
+                    price,
+                    ct);
 
                 list.Add(new AmazonShoeProduct
                 {
@@ -142,7 +150,12 @@ namespace Api.Services
                     Currency      = currency,
                     Category      = type.Trim(),
                     Gender        = normalizedGender,
-                    TrendScore    = ShoeScoring.Compute(ratingVal, reviewCountVal, price),
+                    TrendScore    = ShoeScoring.Compute(
+                        ratingVal,
+                        reviewCountVal,
+                        price,
+                        runtimeSignals.PopularityPriorScore,
+                        runtimeSignals.DealScore),
                     Domain        = _opts.AmazonDomain,
                     LastSynced    = DateTime.UtcNow,
                     CreatedAt     = DateTime.UtcNow,

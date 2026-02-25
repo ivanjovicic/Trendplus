@@ -6,6 +6,7 @@ using Infrastructure.Services.Caching;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Globalization;
 
 namespace Trendplus2.Endpoints;
 
@@ -15,6 +16,17 @@ namespace Trendplus2.Endpoints;
 /// </summary>
 public static class CachedAnalyticsEndpoints
 {
+    private static readonly string[] SerbianDayNames =
+    {
+        "Nedelja",
+        "Ponedeljak",
+        "Utorak",
+        "Sreda",
+        "Četvrtak",
+        "Petak",
+        "Subota"
+    };
+
     public static void MapCachedAnalyticsEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/analytics/cached")
@@ -207,7 +219,7 @@ public static class CachedAnalyticsEndpoints
 
                         return dailySalesRaw.Select(x => new DailySaleDto
                         {
-                            Date = x.Date.ToString("yyyy-MM-dd"),
+                            Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                             TotalRevenue = x.TotalRevenue,
                             TransactionCount = x.TransactionCount,
                             TotalUnits = x.TotalUnits
@@ -233,7 +245,7 @@ public static class CachedAnalyticsEndpoints
 
                         return fallbackRaw.Select(x => new DailySaleDto
                         {
-                            Date = x.Date.ToString("yyyy-MM-dd"),
+                            Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                             TotalRevenue = x.TotalRevenue,
                             TransactionCount = x.TransactionCount,
                             TotalUnits = x.TotalUnits
@@ -406,12 +418,11 @@ public static class CachedAnalyticsEndpoints
                     var prodaje = await prodajeQuery.ToListAsync(ct);
 
                     // Best day calculation
-                    var dayNames = new[] { "Nedelja", "Ponedeljak", "Utorak", "Sreda", "Četvrtak", "Petak", "Subota" };
                     var bestDay = prodaje
                         .GroupBy(p => p.DatumProdaje.DayOfWeek)
                         .Select(g => new
                         {
-                            dayName = dayNames[(int)g.Key],
+                            dayName = SerbianDayNames[(int)g.Key],
                             prodajeIds = g.Select(p => p.Id).ToList()
                         })
                         .ToList();
@@ -509,8 +520,9 @@ public static class CachedAnalyticsEndpoints
                             TotalValue = g.Sum(x => x.Kolicina * x.Cena)
                         })
                         .ToListAsync(ct);
-                    var avgItems = stavke.Any() ? stavke.Average(x => x.ItemCount) : 0.0;
-                    var avgValue = stavke.Any() ? stavke.Average(x => x.TotalValue) : 0.0m;
+                    var hasStavke = stavke.Count > 0;
+                    var avgItems = hasStavke ? stavke.Average(x => x.ItemCount) : 0.0;
+                    var avgValue = hasStavke ? stavke.Average(x => x.TotalValue) : 0.0m;
                     return new
                     {
                         avgItemsPerTransaction = avgItems,
@@ -599,13 +611,12 @@ public static class CachedAnalyticsEndpoints
                     if (toDate.HasValue)
                         query = query.Where(p => p.DatumProdaje <= toDate.Value);
                     var prodaje = await query.ToListAsync(ct);
-                    var dayNames = new[] { "Nedelja", "Ponedeljak", "Utorak", "Sreda", "Četvrtak", "Petak", "Subota" };
                     var grouped = prodaje
                         .GroupBy(p => p.DatumProdaje.DayOfWeek)
                         .Select(g => new
                         {
-                            dayOfWeek = ((int)g.Key).ToString(),
-                            dayName = dayNames[(int)g.Key],
+                            dayOfWeek = ((int)g.Key).ToString(CultureInfo.InvariantCulture),
+                            dayName = SerbianDayNames[(int)g.Key],
                             transactionCount = g.Count(),
                             prodajeIds = g.Select(p => p.Id).ToList()
                         })
@@ -759,14 +770,14 @@ public static class CachedAnalyticsEndpoints
                     {
                         var dateStavke = stavke.Where(s => dateEntry.prodajeIds.Contains(s.IdProdaja)).ToList();
                         var categoryRevenues = dateStavke
-                            .GroupBy(s => artikli.ContainsKey(s.IdArtikal) ? artikli[s.IdArtikal] : "Ostalo")
+                            .GroupBy(s => artikli.TryGetValue(s.IdArtikal, out var kategorija) ? kategorija : "Ostalo")
                             .ToDictionary(
                                 g => g.Key,
                                 g => g.Sum(x => x.Kolicina * x.Cena)
                             );
                         var row = new Dictionary<string, object>
                         {
-                            ["date"] = dateEntry.date.ToString("yyyy-MM-dd")
+                            ["date"] = dateEntry.date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
                         };
                         foreach (var cat in categoryRevenues)
                         {

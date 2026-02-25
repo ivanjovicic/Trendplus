@@ -8,9 +8,30 @@ namespace Api.Config
     {
         public const string Section = "Ebay";
 
-        /// <summary>eBay OAuth 2.0 App token (Client Credentials flow).</summary>
+        // ── OAuth Client Credentials (recommended) ──────────────────────────
+        /// <summary>eBay App ID / Client ID from the developer portal.</summary>
+        public string ClientId     { get; set; } = string.Empty;
+
+        /// <summary>eBay Cert ID / Client Secret from the developer portal.</summary>
+        public string ClientSecret { get; set; } = string.Empty;
+
+        /// <summary>eBay Dev ID from the developer portal (informational).</summary>
+        public string DevId        { get; set; } = string.Empty;
+
+        /// <summary>
+        /// When true uses sandbox endpoints (api.sandbox.ebay.com).
+        /// Set false for production.
+        /// </summary>
+        public bool   IsSandbox    { get; set; } = false;
+
+        // ── Static token override (optional) ────────────────────────────────
+        /// <summary>
+        /// Pre-obtained Bearer token.  When empty the service fetches one
+        /// automatically via Client Credentials flow using ClientId + ClientSecret.
+        /// </summary>
         public string OAuthToken   { get; set; } = string.Empty;
 
+        // ── Common settings ─────────────────────────────────────────────────
         /// <summary>eBay Marketplace ID. Default: EBAY_DE (Germany).</summary>
         public string Marketplace  { get; set; } = "EBAY_DE";
 

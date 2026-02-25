@@ -9,27 +9,27 @@ namespace Domain.Model.TrendShoes
 {
     public class UnsplashPhoto
     {
-        public string id { get; set; }
-        public UnsplashUrls urls { get; set; }
-        public string alt_description { get; set; }
-        public UnsplashUser user { get; set; }
-        public UnsplashLinks links { get; set; }
+        public string id { get; set; } = string.Empty;
+        public UnsplashUrls urls { get; set; } = new();
+        public string alt_description { get; set; } = string.Empty;
+        public UnsplashUser user { get; set; } = new();
+        public UnsplashLinks links { get; set; } = new();
     }
 
     public class UnsplashUser
     {
-        public string name { get; set; }
-        public string username { get; set; }
-        public UnsplashUserLinks links { get; set; }
+        public string name { get; set; } = string.Empty;
+        public string username { get; set; } = string.Empty;
+        public UnsplashUserLinks links { get; set; } = new();
     }
 
     public class UnsplashUserLinks
     {
-        public string html { get; set; }
+        public string html { get; set; } = string.Empty;
     }
 
     public class UnsplashLinks
     {
-        public string download_location { get; set; }
+        public string download_location { get; set; } = string.Empty;
     }
 }

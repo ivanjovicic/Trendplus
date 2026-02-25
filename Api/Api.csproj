@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <NoWarn>$(NoWarn);CA1848</NoWarn>
     <UseAppHost>false</UseAppHost>
     <ClientAppDir>$(MSBuildProjectDirectory)\..\Klijent\clientapp</ClientAppDir>
   </PropertyGroup>
@@ -35,6 +36,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <!-- Redis cache support -->
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.0" />
+    <PackageReference Include="System.Data.Odbc" Version="10.0.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -56,6 +58,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="..\Database\Analytics\*.sql" Link="Database\Analytics\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Database\OpenProductTraining\*.sql" Link="Database\OpenProductTraining\%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
