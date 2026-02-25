@@ -10,6 +10,7 @@ namespace Domain.Model
         public int Qty { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal LineTotal { get; set; }
+        public decimal? NabavnaCena { get; set; }   // purchase price at time of sale (gross margin)
         public string DataOrigin { get; set; } = "existing";
     }
 }

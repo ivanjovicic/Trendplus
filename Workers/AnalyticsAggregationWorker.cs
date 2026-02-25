@@ -139,15 +139,15 @@ public class AnalyticsAggregationWorker : BackgroundService
                 INSERT INTO ""AnalyticsDailySummary"" (""Date"", ""TotalRevenue"", ""TotalTransactions"", ""TotalUnits"", ""AvgBasketValue"", ""AvgItemPrice"", ""UpdatedAt"")
                 SELECT 
                     @date::DATE,
-                    COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0),
-                    COUNT(DISTINCT p.""Id""),
-                    COALESCE(SUM(ps.""Kolicina""), 0),
-                    CASE WHEN COUNT(DISTINCT p.""Id"") > 0 
-                        THEN COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0) / COUNT(DISTINCT p.""Id"")
+                    COALESCE(SUM(ps.kolicina * ps.cena), 0),
+                    COUNT(DISTINCT p.id),
+                    COALESCE(SUM(ps.kolicina), 0),
+                    CASE WHEN COUNT(DISTINCT p.id) > 0 
+                        THEN COALESCE(SUM(ps.kolicina * ps.cena), 0) / COUNT(DISTINCT p.id)
                         ELSE 0 
                     END,
-                    CASE WHEN SUM(ps.""Kolicina"") > 0 
-                        THEN COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0) / SUM(ps.""Kolicina"")
+                    CASE WHEN SUM(ps.kolicina) > 0 
+                        THEN COALESCE(SUM(ps.kolicina * ps.cena), 0) / SUM(ps.kolicina)
                         ELSE 0 
                     END,
                     NOW()
@@ -190,9 +190,9 @@ public class AnalyticsAggregationWorker : BackgroundService
                 SELECT 
                     @date::DATE,
                     COALESCE(a.""Kategorija"", 'Nepoznato'),
-                    COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0),
-                    COALESCE(SUM(ps.""Kolicina""), 0),
-                    COUNT(DISTINCT p.""Id""),
+                    COALESCE(SUM(ps.kolicina * ps.cena), 0),
+                    COALESCE(SUM(ps.kolicina), 0),
+                    COUNT(DISTINCT p.id),
                     NOW()
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
@@ -229,9 +229,9 @@ public class AnalyticsAggregationWorker : BackgroundService
                     @date::DATE,
                     d.""Id"",
                     COALESCE(d.""Naziv"", 'Nepoznato'),
-                    COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0),
-                    COALESCE(SUM(ps.""Kolicina""), 0),
-                    COUNT(DISTINCT p.""Id""),
+                    COALESCE(SUM(ps.kolicina * ps.cena), 0),
+                    COALESCE(SUM(ps.kolicina), 0),
+                    COUNT(DISTINCT p.id),
                     NOW()
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
@@ -268,8 +268,8 @@ public class AnalyticsAggregationWorker : BackgroundService
                 SELECT 
                     @date::DATE,
                     COALESCE(a.""Pol"", 'Neodređeno'),
-                    COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0),
-                    COALESCE(SUM(ps.""Kolicina""), 0),
+                    COALESCE(SUM(ps.kolicina * ps.cena), 0),
+                    COALESCE(SUM(ps.kolicina), 0),
                     NOW()
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
@@ -306,9 +306,9 @@ public class AnalyticsAggregationWorker : BackgroundService
                     @date::DATE,
                     a.""Id"",
                     a.""Naziv"",
-                    COALESCE(SUM(ps.""Kolicina"" * ps.""Cena""), 0) as total_revenue,
-                    COALESCE(SUM(ps.""Kolicina""), 0) as total_units,
-                    ROW_NUMBER() OVER (ORDER BY SUM(ps.""Kolicina"" * ps.""Cena"") DESC) as rank,
+                    COALESCE(SUM(ps.kolicina * ps.cena), 0) as total_revenue,
+                    COALESCE(SUM(ps.kolicina), 0) as total_units,
+                    ROW_NUMBER() OVER (ORDER BY SUM(ps.kolicina * ps.cena) DESC) as rank,
                     NOW()
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja

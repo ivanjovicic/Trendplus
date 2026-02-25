@@ -10,6 +10,7 @@ public sealed class ProdajaZaglavlje
     public DateTime DatumProdaje { get; set; }
     public string? NacinPlacanja { get; set; }
     public int? IDObjekat { get; set; }
+    public string? KorisnikIme { get; set; }    // cashier / operator who processed the sale
     public string DataOrigin { get; set; } = "existing";
     
     // Navigation property

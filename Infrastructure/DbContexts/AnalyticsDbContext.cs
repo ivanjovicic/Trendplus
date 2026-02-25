@@ -32,8 +32,18 @@ namespace Infrastructure.DbContexts
             modelBuilder.Entity<ProductsDim>()
                 .HasIndex(x => x.Timestamp);
             
-            modelBuilder.Entity<StoresDim>()
-                .HasKey(x => x.StoreKey);
+            modelBuilder.Entity<StoresDim>(entity =>
+            {
+                entity.HasKey(x => x.StoreKey);
+                entity.Property(x => x.StoreName).HasMaxLength(300);
+                entity.Property(x => x.City).HasMaxLength(200);
+                entity.Property(x => x.Region).HasMaxLength(100);
+                entity.Property(x => x.Telefon).HasMaxLength(50);
+                entity.Property(x => x.Menedzer).HasMaxLength(200);
+                entity.Property(x => x.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
+                entity.HasIndex(x => x.StoreId).IsUnique();
+                entity.HasIndex(x => x.DataOrigin);
+            });
 
             modelBuilder.Entity<PerformanceLog>(entity =>
             {
@@ -61,6 +71,14 @@ namespace Infrastructure.DbContexts
                 .Property(x => x.Materijal)
                 .HasMaxLength(100);
 
+            modelBuilder.Entity<ProductsDim>()
+                .Property(x => x.PLU)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<ProductsDim>()
+                .Property(x => x.MinimalnaKolicina)
+                .HasColumnType("integer");
+
             modelBuilder.Entity<SalesFact>(entity =>
             {
                 entity.ToTable("SalesFacts");
@@ -87,10 +105,60 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.Qty).IsRequired();
                 entity.Property(e => e.UnitPrice).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.LineTotal).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.NabavnaCena).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
 
                 entity.HasIndex(e => e.SaleId);
                 entity.HasIndex(e => new { e.ProductId, e.SaleId });
+            });
+
+            modelBuilder.Entity<SuppliersDim>(entity =>
+            {
+                entity.HasKey(x => x.SupplierKey);
+                entity.Property(x => x.Naziv).HasMaxLength(300);
+                entity.Property(x => x.Adresa).HasMaxLength(500);
+                entity.Property(x => x.Telefon).HasMaxLength(50);
+                entity.Property(x => x.Napomena).HasMaxLength(500);
+                entity.Property(x => x.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
+                entity.HasIndex(x => x.SupplierId).IsUnique();
+            });
+
+            modelBuilder.Entity<SeasonsDim>(entity =>
+            {
+                entity.HasKey(x => x.SeasonKey);
+                entity.Property(x => x.Naziv).HasMaxLength(200);
+                entity.Property(x => x.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
+                entity.HasIndex(x => x.SeasonId).IsUnique();
+                entity.HasIndex(x => x.DatumOd);
+                entity.HasIndex(x => x.DatumDo);
+            });
+
+            modelBuilder.Entity<FootwearTypesDim>(entity =>
+            {
+                entity.HasKey(x => x.TypeKey);
+                entity.Property(x => x.Naziv).HasMaxLength(200);
+                entity.Property(x => x.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
+                entity.HasIndex(x => x.TypeId).IsUnique();
+            });
+
+            modelBuilder.Entity<InventoryMovementFact>(entity =>
+            {
+                entity.ToTable("InventoryMovementFacts");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.TipPromene).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Datum).IsRequired();
+                entity.Property(e => e.Iznos).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.StaraProdajnaCena).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.NovaProdajnaCena).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.BrojDokumenta).HasMaxLength(100);
+                entity.Property(e => e.KorisnikIme).HasMaxLength(200);
+                entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
+
+                entity.HasIndex(e => e.SourceId).IsUnique();
+                entity.HasIndex(e => e.Datum);
+                entity.HasIndex(e => new { e.ArtikalId, e.Datum });
+                entity.HasIndex(e => new { e.StoreId, e.Datum });
+                entity.HasIndex(e => e.TipPromene);
             });
 
             // Global Trends Tables
@@ -190,6 +258,10 @@ namespace Infrastructure.DbContexts
         public DbSet<PerformanceLog> PerformanceLogs => Set<PerformanceLog>();
         public DbSet<SalesFact> SalesFacts => Set<SalesFact>();
         public DbSet<SalesLineFact> SalesLineFacts => Set<SalesLineFact>();
+        public DbSet<SuppliersDim> SuppliersDim => Set<SuppliersDim>();
+        public DbSet<SeasonsDim> SeasonsDim => Set<SeasonsDim>();
+        public DbSet<FootwearTypesDim> FootwearTypesDim => Set<FootwearTypesDim>();
+        public DbSet<InventoryMovementFact> InventoryMovementFacts => Set<InventoryMovementFact>();
         
         // Global Trends
         public DbSet<EuTrend> EuTrends => Set<EuTrend>();

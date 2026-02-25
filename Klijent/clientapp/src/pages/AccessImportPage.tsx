@@ -37,6 +37,7 @@ export default function AccessImportPage() {
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [loadingImport, setLoadingImport] = useState(false);
     const [deletingBatchId, setDeletingBatchId] = useState<number | null>(null);
+    const [deleteIncludeAnalytics, setDeleteIncludeAnalytics] = useState(true);
     const [deleteResult, setDeleteResult] = useState<DeleteBatchResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +74,7 @@ export default function AccessImportPage() {
         setDeleteResult(null);
         setDeletingBatchId(batchId);
         try {
-            const result = await deleteAccessImportBatch(batchId);
+            const result = await deleteAccessImportBatch(batchId, deleteIncludeAnalytics);
             setDeleteResult(result);
             await refreshBatches();
         } catch (e: unknown) {
@@ -380,6 +381,14 @@ export default function AccessImportPage() {
 
             <section style={{ marginTop: 14, background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
                 <h3 style={{ marginTop: 0 }}>4) Istorija batch-eva</h3>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 13 }}>
+                    <input
+                        type="checkbox"
+                        checked={deleteIncludeAnalytics}
+                        onChange={(e) => setDeleteIncludeAnalytics(e.target.checked)}
+                    />
+                    Pri brisanju batch-a obriši i Analytics podatke (DataOrigin=access)
+                </label>
 
                 {deleteResult && (
                     <div style={{ marginBottom: 12, background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
@@ -389,7 +398,10 @@ export default function AccessImportPage() {
                         Dobavljaci: {deleteResult.dobavljaciDeleted}, Tipovi: {deleteResult.tipoviDeleted},
                         Dnevnik: {deleteResult.dnevnikDeleted}, Povracaji: {deleteResult.povracajDeleted} ({deleteResult.povracajStavkeDeleted} stavki),
                         ProductsDim: {deleteResult.productsDimDeleted}, SalesFacts: {deleteResult.salesFactsDeleted},
-                        SalesLineFacts: {deleteResult.salesLineFactsDeleted}.
+                        SalesLineFacts: {deleteResult.salesLineFactsDeleted}, InventoryMoves: {deleteResult.inventoryMovementsDeleted},
+                        SuppliersDim: {deleteResult.suppliersDimDeleted}, SeasonsDim: {deleteResult.seasonsDimDeleted},
+                        TypesDim: {deleteResult.footwearTypesDimDeleted}, StoresDim: {deleteResult.storesDimDeleted},
+                        Cache invalidiran: {deleteResult.cacheInvalidated ? "da" : "ne"}.
                         <button
                             onClick={() => setDeleteResult(null)}
                             style={{ marginLeft: 10, border: "none", background: "transparent", color: "#15803d", cursor: "pointer", fontWeight: 700 }}

@@ -13,5 +13,8 @@ namespace Domain.Model
         public string StoreName { get; set; } = null!;
         public string? City { get; set; }
         public string? Region { get; set; }
+        public string? Telefon { get; set; }
+        public string? Menedzer { get; set; }
+        public string DataOrigin { get; set; } = "existing";
     }
 }

@@ -13,7 +13,7 @@ namespace Domain.Model
         public int ProductKey { get; set; }     // identity
         public int ProductId { get; set; }      // Id iz write baze
 
-        //public string? PLU { get; set; }
+        public string? PLU { get; set; }        // barcode / scan code
         public string ProductName { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public string SubCategory { get; set; } = string.Empty;
@@ -38,6 +38,7 @@ namespace Domain.Model
         public DateTime Timestamp { get; set; }
 
         public int? Kolicina { get; set; }
+        public int? MinimalnaKolicina { get; set; } // reorder threshold
 
         public string DataOrigin { get; set; } = "existing";
     }

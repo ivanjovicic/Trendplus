@@ -117,6 +117,7 @@ export async function getAccessImportBatches(take = 20): Promise<AccessImportBat
 export interface DeleteBatchResult {
     found: boolean;
     batchId: number;
+    includeAnalytics: boolean;
     artikliDeleted: number;
     sezoneDeleted: number;
     tipoviDeleted: number;
@@ -126,13 +127,19 @@ export interface DeleteBatchResult {
     productsDimDeleted: number;
     salesFactsDeleted: number;
     salesLineFactsDeleted: number;
+    inventoryMovementsDeleted: number;
+    suppliersDimDeleted: number;
+    seasonsDimDeleted: number;
+    footwearTypesDimDeleted: number;
+    storesDimDeleted: number;
+    cacheInvalidated: boolean;
     dnevnikDeleted: number;
     povracajDeleted: number;
     povracajStavkeDeleted: number;
 }
 
-export async function deleteAccessImportBatch(batchId: number): Promise<DeleteBatchResult> {
-    const res = await fetch(`${API}/api/access-import/batches/${batchId}`, { method: "DELETE" });
+export async function deleteAccessImportBatch(batchId: number, includeAnalytics = true): Promise<DeleteBatchResult> {
+    const res = await fetch(`${API}/api/access-import/batches/${batchId}?includeAnalytics=${includeAnalytics}`, { method: "DELETE" });
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }

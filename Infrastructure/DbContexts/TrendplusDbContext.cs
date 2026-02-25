@@ -145,6 +145,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.DatumProdaje).HasColumnName("datum_prodaje").IsRequired();
                 eb.Property(e => e.NacinPlacanja).HasColumnName("nacin_placanja").HasMaxLength(100);
                 eb.Property(e => e.IDObjekat).HasColumnName("id_objekat");
+                eb.Property(e => e.KorisnikIme).HasColumnName("korisnik_ime").HasMaxLength(200);
                 eb.Property(e => e.DataOrigin).HasColumnName("data_origin").IsRequired().HasMaxLength(32).HasDefaultValue("existing");
                 
                 eb.HasMany(e => e.Stavke)
@@ -164,6 +165,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.IdArtikal).HasColumnName("id_artikal").IsRequired();
                 eb.Property(e => e.Kolicina).HasColumnName("kolicina").IsRequired();
                 eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
+                eb.Property(e => e.NabavnaCena).HasColumnName("nabavna_cena").HasColumnType("decimal(18,2)");
             });
 
             // Povracaj mapping

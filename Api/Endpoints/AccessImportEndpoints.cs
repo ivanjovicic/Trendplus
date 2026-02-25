@@ -23,9 +23,10 @@ public static class AccessImportEndpoints
         group.MapDelete("/batches/{batchId:long}", async (
             long batchId,
             IAccessImportService service,
+            bool includeAnalytics = true,
             CancellationToken ct = default) =>
         {
-            var result = await service.DeleteBatchAsync(batchId, ct);
+            var result = await service.DeleteBatchAsync(batchId, includeAnalytics, ct);
             return result.Found
                 ? Results.Ok(result)
                 : Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });

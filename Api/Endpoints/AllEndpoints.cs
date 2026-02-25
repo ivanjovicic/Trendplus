@@ -9,6 +9,8 @@ using Application.Performance.Queries;
 using Application.Povracaj.Commands;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
+using Api.Models;
+using Domain.Model;
 using Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +21,6 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
-using Domain.Model;
 using Domain.Model.TrendShoes;
 using Application.TrendShoes;
 using System.Globalization;
@@ -448,6 +449,638 @@ public static class AllEndpoints
                 return Results.Problem(detail: $"{ex.GetType().Name}: {ex.Message}", statusCode: 500, title: "Analytics database error");
             }
         });
+
+        app.MapGet("/api/analytics/vendor-sales-nivelacija/options", async (
+            TrendplusDbContext trendplusDb,
+            int? vendorId = null,
+            string? category = null,
+            int take = 200,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                var connectionString = trendplusDb.Database.GetConnectionString();
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    return Results.Problem(
+                        title: "Missing database connection",
+                        detail: "Trendplus connection string is missing.",
+                        statusCode: 500);
+                }
+
+                take = Math.Clamp(take, 10, 1000);
+
+                // Deduplicate logical events before counting options so repeated
+                // imported rows do not inflate event/article counts.
+                const string sql = """
+                    WITH ranked AS (
+                        SELECT
+                            event_date::date AS event_date,
+                            vendor_id,
+                            sku,
+                            article_name,
+                            category,
+                            pre_qty,
+                            pre_revenue,
+                            post_qty,
+                            post_revenue,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY
+                                    event_date::date,
+                                    COALESCE(vendor_id, -1),
+                                    sku,
+                                    article_name,
+                                    category,
+                                    pre_qty,
+                                    pre_revenue,
+                                    post_qty,
+                                    post_revenue
+                                ORDER BY price_event_id DESC
+                            ) AS rn
+                        FROM "vw_vendor_sales_nivelacija"
+                        WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                          AND (@category IS NULL OR category ILIKE @categoryPattern)
+                    )
+                    SELECT
+                        event_date,
+                        COUNT(*)::INT AS events_count,
+                        COUNT(DISTINCT vendor_id)::INT AS vendors_count,
+                        COUNT(DISTINCT sku)::INT AS articles_count,
+                        COUNT(*) FILTER (
+                            WHERE pre_qty <> 0
+                               OR post_qty <> 0
+                               OR pre_revenue <> 0
+                               OR post_revenue <> 0
+                        )::INT AS active_articles_count
+                    FROM ranked
+                    WHERE rn = 1
+                    GROUP BY event_date
+                    ORDER BY event_date DESC
+                    LIMIT @take;
+                    """;
+
+                var options = new List<VendorSalesNivelacijaOptionDto>();
+
+                await using var connection = new NpgsqlConnection(connectionString);
+                await connection.OpenAsync(ct);
+
+                await using var command = new NpgsqlCommand(sql, connection);
+                var vendorIdParam = command.Parameters.Add("vendorId", NpgsqlTypes.NpgsqlDbType.Integer);
+                vendorIdParam.Value = (object?)vendorId ?? DBNull.Value;
+
+                var categoryParam = command.Parameters.Add("category", NpgsqlTypes.NpgsqlDbType.Text);
+                categoryParam.Value = (object?)category ?? DBNull.Value;
+
+                var categoryPatternParam = command.Parameters.Add("categoryPattern", NpgsqlTypes.NpgsqlDbType.Text);
+                categoryPatternParam.Value = string.IsNullOrWhiteSpace(category)
+                    ? DBNull.Value
+                    : $"%{category.Trim()}%";
+
+                var takeParam = command.Parameters.Add("take", NpgsqlTypes.NpgsqlDbType.Integer);
+                takeParam.Value = take;
+
+                await using var reader = await command.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
+                {
+                    var eventDate = reader.GetDateTime(0);
+                    var eventsCount = reader.GetInt32(1);
+                    var vendorsCount = reader.GetInt32(2);
+                    var articlesCount = reader.GetInt32(3);
+                    var activeArticlesCount = reader.GetInt32(4);
+
+                    options.Add(new VendorSalesNivelacijaOptionDto
+                    {
+                        EventDate = DateTime.SpecifyKind(eventDate, DateTimeKind.Utc),
+                        EventsCount = eventsCount,
+                        VendorsCount = vendorsCount,
+                        ArticlesCount = articlesCount,
+                        ActiveArticlesCount = activeArticlesCount,
+                        HasSalesWindow = activeArticlesCount > 0,
+                        Label = $"{eventDate:dd.MM.yyyy} - aktivni {activeArticlesCount}/{articlesCount} artikala / {vendorsCount} dobavljaca"
+                    });
+                }
+
+                return Results.Ok(options);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            {
+                return Results.Problem(
+                    title: "Nivelacija view schema mismatch",
+                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql and 014_FixNivelacijaViewsFromDnevnik.sql, then restart the backend.",
+                    statusCode: 500);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to load nivelacija options",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("GetVendorSalesNivelacijaOptions")
+        .WithTags("Analytics")
+        .RequireRateLimiting("analytics");
+
+        app.MapGet("/api/analytics/vendor-sales-nivelacija", async (
+            TrendplusDbContext trendplusDb,
+            int? vendorId = null,
+            DateTime? eventDate = null,
+            DateTime? from = null,
+            DateTime? to = null,
+            string? category = null,
+            bool includeInactive = false,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                if (eventDate.HasValue && eventDate.Value.Kind == DateTimeKind.Unspecified)
+                    eventDate = DateTime.SpecifyKind(eventDate.Value, DateTimeKind.Utc);
+
+                if (from.HasValue && from.Value.Kind == DateTimeKind.Unspecified)
+                    from = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+
+                if (to.HasValue && to.Value.Kind == DateTimeKind.Unspecified)
+                    to = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc);
+
+                var eventDateOnly = eventDate?.Date;
+
+                // Ako je izabrana konkretna nivelacija (datum), periodski filter nema smisla.
+                if (eventDateOnly.HasValue)
+                {
+                    from = null;
+                    to = null;
+                }
+
+                var connectionString = trendplusDb.Database.GetConnectionString();
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    return Results.Problem(
+                        title: "Missing database connection",
+                        detail: "Trendplus connection string is missing.",
+                        statusCode: 500);
+                }
+
+                static decimal ComputePercent(decimal pre, decimal post)
+                {
+                    if (pre == 0)
+                        return post > 0 ? 100m : 0m;
+                    return Math.Round(((post - pre) / pre) * 100m, 2);
+                }
+
+                static bool HasSalesWindow(VendorSalesNivelacijaArticleStatDto row) =>
+                    row.PreQty != 0 || row.PostQty != 0 || row.PreRevenue != 0m || row.PostRevenue != 0m;
+
+                static bool IsUnchangedPrice(VendorSalesNivelacijaArticleStatDto row) =>
+                    row.OldPrice.HasValue && row.NewPrice.HasValue && row.OldPrice.Value == row.NewPrice.Value;
+
+                static decimal? ComputePriceChangePercent(decimal? oldPrice, decimal? newPrice)
+                {
+                    if (!oldPrice.HasValue || !newPrice.HasValue)
+                        return null;
+                    if (oldPrice.Value == 0m)
+                        return newPrice.Value > 0m ? 100m : 0m;
+                    return Math.Round(((newPrice.Value - oldPrice.Value) / oldPrice.Value) * 100m, 2);
+                }
+
+                static string NormalizeText(string? value) =>
+                    string.IsNullOrWhiteSpace(value)
+                        ? string.Empty
+                        : value.Trim().ToUpperInvariant();
+
+                static string BuildArticleKey(VendorSalesNivelacijaArticleStatDto row) =>
+                    $"{row.VendorId?.ToString(CultureInfo.InvariantCulture) ?? "N/A"}|{NormalizeText(row.Sku)}|{NormalizeText(row.ArticleName)}";
+
+                static string ResolvePriceDirection(decimal? priceChangePercent)
+                {
+                    if (!priceChangePercent.HasValue)
+                        return "Nepoznata promena cene";
+                    if (priceChangePercent.Value > 0.01m)
+                        return "Povecanje cene";
+                    if (priceChangePercent.Value < -0.01m)
+                        return "Smanjenje cene";
+                    return "Bez znacajne promene cene";
+                }
+
+                var rawRows = new List<VendorSalesNivelacijaArticleStatDto>();
+
+                await using var connection = new NpgsqlConnection(connectionString);
+                await connection.OpenAsync(ct);
+
+                var hasPriceColumns = false;
+                const string schemaCheckSql = """
+                    SELECT COUNT(*)::INT
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'vw_vendor_sales_nivelacija'
+                      AND column_name IN ('old_price', 'new_price');
+                    """;
+                await using (var schemaCommand = new NpgsqlCommand(schemaCheckSql, connection))
+                {
+                    var columnCount = (int)(await schemaCommand.ExecuteScalarAsync(ct) ?? 0);
+                    hasPriceColumns = columnCount >= 2;
+                }
+
+                var sql = hasPriceColumns
+                    ? """
+                        SELECT
+                            event_date,
+                            vendor_id,
+                            vendor_name,
+                            sku,
+                            article_name,
+                            category,
+                            old_price,
+                            new_price,
+                            pre_qty,
+                            pre_revenue,
+                            post_qty,
+                            post_revenue,
+                            change_qty,
+                            change_revenue,
+                            change_percent
+                        FROM "vw_vendor_sales_nivelacija"
+                        WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                          AND (@eventDate IS NULL OR event_date::date = @eventDate)
+                          AND (@fromDate IS NULL OR event_date >= @fromDate)
+                          AND (@toDate IS NULL OR event_date <= @toDate)
+                          AND (@category IS NULL OR category ILIKE @categoryPattern)
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
+                        """
+                    : """
+                        SELECT
+                            event_date,
+                            vendor_id,
+                            vendor_name,
+                            sku,
+                            article_name,
+                            category,
+                            NULL::numeric AS old_price,
+                            NULL::numeric AS new_price,
+                            pre_qty,
+                            pre_revenue,
+                            post_qty,
+                            post_revenue,
+                            change_qty,
+                            change_revenue,
+                            change_percent
+                        FROM "vw_vendor_sales_nivelacija"
+                        WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                          AND (@eventDate IS NULL OR event_date::date = @eventDate)
+                          AND (@fromDate IS NULL OR event_date >= @fromDate)
+                          AND (@toDate IS NULL OR event_date <= @toDate)
+                          AND (@category IS NULL OR category ILIKE @categoryPattern)
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
+                        """;
+
+                await using (var command = new NpgsqlCommand(sql, connection))
+                {
+                    var vendorIdParam = command.Parameters.Add("vendorId", NpgsqlTypes.NpgsqlDbType.Integer);
+                    vendorIdParam.Value = (object?)vendorId ?? DBNull.Value;
+
+                    var eventDateParam = command.Parameters.Add("eventDate", NpgsqlTypes.NpgsqlDbType.Date);
+                    eventDateParam.Value = (object?)eventDateOnly ?? DBNull.Value;
+
+                    var fromDateParam = command.Parameters.Add("fromDate", NpgsqlTypes.NpgsqlDbType.TimestampTz);
+                    fromDateParam.Value = (object?)from ?? DBNull.Value;
+
+                    var toDateParam = command.Parameters.Add("toDate", NpgsqlTypes.NpgsqlDbType.TimestampTz);
+                    toDateParam.Value = (object?)to ?? DBNull.Value;
+
+                    var categoryParam = command.Parameters.Add("category", NpgsqlTypes.NpgsqlDbType.Text);
+                    categoryParam.Value = (object?)category ?? DBNull.Value;
+
+                    var categoryPatternParam = command.Parameters.Add("categoryPattern", NpgsqlTypes.NpgsqlDbType.Text);
+                    categoryPatternParam.Value = string.IsNullOrWhiteSpace(category)
+                        ? DBNull.Value
+                        : $"%{category.Trim()}%";
+
+                    await using var reader = await command.ExecuteReaderAsync(ct);
+                    while (await reader.ReadAsync(ct))
+                    {
+                        rawRows.Add(new VendorSalesNivelacijaArticleStatDto
+                        {
+                            EventDate = reader.GetFieldValue<DateTime>(0),
+                            VendorId = reader.IsDBNull(1) ? null : reader.GetInt32(1),
+                            VendorName = reader.IsDBNull(2) ? "N/A" : reader.GetString(2),
+                            Sku = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                            ArticleName = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                            Category = reader.IsDBNull(5) ? "N/A" : reader.GetString(5),
+                            OldPrice = reader.IsDBNull(6) ? null : reader.GetDecimal(6),
+                            NewPrice = reader.IsDBNull(7) ? null : reader.GetDecimal(7),
+                            PreQty = reader.IsDBNull(8) ? 0 : reader.GetInt32(8),
+                            PreRevenue = reader.IsDBNull(9) ? 0m : reader.GetDecimal(9),
+                            PostQty = reader.IsDBNull(10) ? 0 : reader.GetInt32(10),
+                            PostRevenue = reader.IsDBNull(11) ? 0m : reader.GetDecimal(11),
+                            ChangeQty = reader.IsDBNull(12) ? 0 : reader.GetInt32(12),
+                            ChangeRevenue = reader.IsDBNull(13) ? 0m : reader.GetDecimal(13),
+                            ChangePercent = reader.IsDBNull(14) ? 0m : reader.GetDecimal(14)
+                        });
+                    }
+                }
+
+                var deduplicatedRows = rawRows
+                    .GroupBy(x => new
+                    {
+                        EventDate = x.EventDate.Date,
+                        VendorId = x.VendorId ?? -1,
+                        Sku = NormalizeText(x.Sku),
+                        ArticleName = NormalizeText(x.ArticleName),
+                        Category = NormalizeText(x.Category),
+                        OldPrice = x.OldPrice ?? decimal.MinValue,
+                        NewPrice = x.NewPrice ?? decimal.MinValue,
+                        PreQty = x.PreQty,
+                        PreRevenue = x.PreRevenue,
+                        PostQty = x.PostQty,
+                        PostRevenue = x.PostRevenue
+                    })
+                    .Select(g => g.OrderByDescending(x => x.EventDate).First())
+                    .ToList();
+
+                foreach (var row in deduplicatedRows)
+                {
+                    row.HasSalesWindow = HasSalesWindow(row);
+                    row.PriceChanged = !IsUnchangedPrice(row);
+                    row.PriceChangePercent = ComputePriceChangePercent(row.OldPrice, row.NewPrice);
+                }
+
+                var filteredRows = deduplicatedRows
+                    .Where(x => x.PriceChanged)
+                    .Where(x => includeInactive || x.HasSalesWindow)
+                    .ToList();
+
+                var dataQuality = new VendorSalesNivelacijaDataQualityDto
+                {
+                    RawRows = rawRows.Count,
+                    DeduplicatedRows = deduplicatedRows.Count,
+                    DuplicateRowsRemoved = Math.Max(0, rawRows.Count - deduplicatedRows.Count),
+                    InactiveRows = deduplicatedRows.Count(x => !x.HasSalesWindow),
+                    UnchangedPriceRows = deduplicatedRows.Count(x => !x.PriceChanged),
+                    AnalyzedRows = filteredRows.Count,
+                    AnalyzedSharePercent = deduplicatedRows.Count == 0
+                        ? 0m
+                        : Math.Round((filteredRows.Count * 100m) / deduplicatedRows.Count, 2)
+                };
+
+                var vendorStats = filteredRows
+                    .GroupBy(x => new
+                    {
+                        x.VendorId,
+                        VendorName = string.IsNullOrWhiteSpace(x.VendorName) ? "N/A" : x.VendorName.Trim()
+                    })
+                    .Select(g =>
+                    {
+                        var preQty = g.Sum(x => x.PreQty);
+                        var postQty = g.Sum(x => x.PostQty);
+                        var preRevenue = g.Sum(x => x.PreRevenue);
+                        var postRevenue = g.Sum(x => x.PostRevenue);
+                        var articleKeys = g.Select(BuildArticleKey).Distinct(StringComparer.Ordinal).ToList();
+                        return new VendorSalesNivelacijaVendorStatDto
+                        {
+                            VendorId = g.Key.VendorId,
+                            VendorName = g.Key.VendorName,
+                            PreQty = preQty,
+                            PostQty = postQty,
+                            PreRevenue = preRevenue,
+                            PostRevenue = postRevenue,
+                            ChangeQty = postQty - preQty,
+                            ChangeRevenue = postRevenue - preRevenue,
+                            ChangePercent = ComputePercent(preRevenue, postRevenue),
+                            ArticleCount = articleKeys.Count,
+                            ActiveArticlesCount = g.Where(x => x.HasSalesWindow)
+                                .Select(BuildArticleKey)
+                                .Distinct(StringComparer.Ordinal)
+                                .Count(),
+                            IncreasedPriceArticlesCount = g.Where(x => (x.PriceChangePercent ?? 0m) > 0m)
+                                .Select(BuildArticleKey)
+                                .Distinct(StringComparer.Ordinal)
+                                .Count(),
+                            DecreasedPriceArticlesCount = g.Where(x => (x.PriceChangePercent ?? 0m) < 0m)
+                                .Select(BuildArticleKey)
+                                .Distinct(StringComparer.Ordinal)
+                                .Count()
+                        };
+                    })
+                    .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
+                    .ThenBy(x => x.VendorName)
+                    .ToList();
+
+                var categoryStats = filteredRows
+                    .GroupBy(x => string.IsNullOrWhiteSpace(x.Category) ? "N/A" : x.Category.Trim())
+                    .Select(g =>
+                    {
+                        var preQty = g.Sum(x => x.PreQty);
+                        var postQty = g.Sum(x => x.PostQty);
+                        var preRevenue = g.Sum(x => x.PreRevenue);
+                        var postRevenue = g.Sum(x => x.PostRevenue);
+                        return new VendorSalesNivelacijaCategoryStatDto
+                        {
+                            Category = g.Key,
+                            ArticlesCount = g.Select(BuildArticleKey).Distinct(StringComparer.Ordinal).Count(),
+                            VendorsCount = g.Select(x => x.VendorId ?? -1).Distinct().Count(),
+                            PreQty = preQty,
+                            PostQty = postQty,
+                            PreRevenue = preRevenue,
+                            PostRevenue = postRevenue,
+                            ChangeQty = postQty - preQty,
+                            ChangeRevenue = postRevenue - preRevenue,
+                            ChangePercent = ComputePercent(preRevenue, postRevenue)
+                        };
+                    })
+                    .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
+                    .ThenBy(x => x.Category)
+                    .ToList();
+
+                var priceDirectionStats = filteredRows
+                    .GroupBy(x => ResolvePriceDirection(x.PriceChangePercent))
+                    .Select(g =>
+                    {
+                        var preRevenue = g.Sum(x => x.PreRevenue);
+                        var postRevenue = g.Sum(x => x.PostRevenue);
+                        var avgPriceChangePercent = g.Where(x => x.PriceChangePercent.HasValue)
+                            .Select(x => x.PriceChangePercent!.Value)
+                            .DefaultIfEmpty(0m)
+                            .Average();
+                        return new VendorSalesNivelacijaPriceDirectionStatDto
+                        {
+                            Segment = g.Key,
+                            ArticlesCount = g.Select(BuildArticleKey).Distinct(StringComparer.Ordinal).Count(),
+                            VendorsCount = g.Select(x => x.VendorId ?? -1).Distinct().Count(),
+                            AvgPriceChangePercent = Math.Round(avgPriceChangePercent, 2),
+                            ChangeRevenue = postRevenue - preRevenue,
+                            ChangePercent = ComputePercent(preRevenue, postRevenue)
+                        };
+                    })
+                    .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
+                    .ThenBy(x => x.Segment)
+                    .ToList();
+
+                var totalPreQty = filteredRows.Sum(x => x.PreQty);
+                var totalPostQty = filteredRows.Sum(x => x.PostQty);
+                var totalPreRevenue = filteredRows.Sum(x => x.PreRevenue);
+                var totalPostRevenue = filteredRows.Sum(x => x.PostRevenue);
+                var distinctArticleKeys = filteredRows
+                    .Select(BuildArticleKey)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+                var activeArticleCount = filteredRows
+                    .Where(x => x.HasSalesWindow)
+                    .Select(BuildArticleKey)
+                    .Distinct(StringComparer.Ordinal)
+                    .Count();
+                var avgPriceChangePercent = filteredRows.Where(x => x.PriceChangePercent.HasValue)
+                    .Select(x => x.PriceChangePercent!.Value)
+                    .DefaultIfEmpty(0m)
+                    .Average();
+
+                var insights = new List<VendorSalesNivelacijaInsightDto>();
+                var toneFromRevenue = totalPostRevenue - totalPreRevenue >= 0m ? "positive" : "negative";
+
+                insights.Add(new VendorSalesNivelacijaInsightDto
+                {
+                    Title = "Pouzdan uzorak",
+                    Value = $"{dataQuality.AnalyzedRows}/{dataQuality.DeduplicatedRows} redova",
+                    Details = $"Duplikati uklonjeni: {dataQuality.DuplicateRowsRemoved}, bez prodaje +-30 dana: {dataQuality.InactiveRows}, bez promene cene: {dataQuality.UnchangedPriceRows}.",
+                    Tone = dataQuality.AnalyzedSharePercent >= 70m ? "positive" : "warning"
+                });
+
+                if (filteredRows.Count > 0)
+                {
+                    insights.Add(new VendorSalesNivelacijaInsightDto
+                    {
+                        Title = "Neto efekat nivelacije",
+                        Value = $"{(totalPostRevenue - totalPreRevenue).ToString("0.00", CultureInfo.InvariantCulture)} RSD",
+                        Details = $"Pre: {totalPreRevenue.ToString("0.00", CultureInfo.InvariantCulture)} RSD, posle: {totalPostRevenue.ToString("0.00", CultureInfo.InvariantCulture)} RSD ({ComputePercent(totalPreRevenue, totalPostRevenue).ToString("0.00", CultureInfo.InvariantCulture)}%).",
+                        Tone = toneFromRevenue
+                    });
+
+                    var positiveVendors = vendorStats.Count(x => x.ChangeRevenue > 0m);
+                    var negativeVendors = vendorStats.Count(x => x.ChangeRevenue < 0m);
+                    insights.Add(new VendorSalesNivelacijaInsightDto
+                    {
+                        Title = "Balans dobavljaca",
+                        Value = $"{positiveVendors} rast / {negativeVendors} pad",
+                        Details = $"Ukupno analiziranih dobavljaca: {vendorStats.Count}.",
+                        Tone = positiveVendors >= negativeVendors ? "positive" : "negative"
+                    });
+
+                    var topVendor = vendorStats.OrderByDescending(x => Math.Abs(x.ChangeRevenue)).FirstOrDefault();
+                    if (topVendor is not null)
+                    {
+                        var absTotalImpact = vendorStats.Sum(x => Math.Abs(x.ChangeRevenue));
+                        var topShare = absTotalImpact == 0m ? 0m : Math.Round((Math.Abs(topVendor.ChangeRevenue) * 100m) / absTotalImpact, 2);
+                        insights.Add(new VendorSalesNivelacijaInsightDto
+                        {
+                            Title = "Najveci uticaj dobavljaca",
+                            Value = $"{topVendor.VendorName}: {topVendor.ChangeRevenue.ToString("0.00", CultureInfo.InvariantCulture)} RSD",
+                            Details = $"Udeo u ukupnom apsolutnom pomeranju: {topShare.ToString("0.00", CultureInfo.InvariantCulture)}%.",
+                            Tone = topVendor.ChangeRevenue >= 0m ? "positive" : "negative"
+                        });
+                    }
+
+                    var topGrowthCategory = categoryStats
+                        .Where(x => x.ChangeRevenue > 0m)
+                        .OrderByDescending(x => x.ChangeRevenue)
+                        .FirstOrDefault();
+                    if (topGrowthCategory is not null)
+                    {
+                        insights.Add(new VendorSalesNivelacijaInsightDto
+                        {
+                            Title = "Najjaci rast kategorije",
+                            Value = $"{topGrowthCategory.Category}: {topGrowthCategory.ChangeRevenue.ToString("0.00", CultureInfo.InvariantCulture)} RSD",
+                            Details = $"{topGrowthCategory.ChangePercent.ToString("0.00", CultureInfo.InvariantCulture)}% promena prihoda.",
+                            Tone = "positive"
+                        });
+                    }
+
+                    var topDropCategory = categoryStats
+                        .Where(x => x.ChangeRevenue < 0m)
+                        .OrderBy(x => x.ChangeRevenue)
+                        .FirstOrDefault();
+                    if (topDropCategory is not null)
+                    {
+                        insights.Add(new VendorSalesNivelacijaInsightDto
+                        {
+                            Title = "Najveci pad kategorije",
+                            Value = $"{topDropCategory.Category}: {topDropCategory.ChangeRevenue.ToString("0.00", CultureInfo.InvariantCulture)} RSD",
+                            Details = $"{topDropCategory.ChangePercent.ToString("0.00", CultureInfo.InvariantCulture)}% promena prihoda.",
+                            Tone = "negative"
+                        });
+                    }
+                }
+                else
+                {
+                    insights.Add(new VendorSalesNivelacijaInsightDto
+                    {
+                        Title = "Nema validnih redova za analizu",
+                        Value = "Promeni filtere ili ukljuci neaktivne artikle",
+                        Details = "Nakon deduplikacije i ciscenja, nije ostao nijedan red sa validnom cenom i trazenim uslovima.",
+                        Tone = "warning"
+                    });
+                }
+
+                var response = new VendorSalesNivelacijaResponseDto
+                {
+                    GeneratedAt = DateTime.UtcNow,
+                    WindowDays = 30,
+                    VendorId = vendorId,
+                    EventDate = eventDateOnly,
+                    From = from,
+                    To = to,
+                    Category = category,
+                    IncludeInactive = includeInactive,
+                    Categories = deduplicatedRows.Select(x => x.Category)
+                        .Where(x => !string.IsNullOrWhiteSpace(x))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(x => x)
+                        .ToList(),
+                    VendorStats = vendorStats,
+                    ArticleStats = filteredRows
+                        .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
+                        .ThenBy(x => x.VendorName)
+                        .ThenBy(x => x.ArticleName)
+                        .ToList(),
+                    Totals = new VendorSalesNivelacijaTotalsDto
+                    {
+                        PreQty = totalPreQty,
+                        PostQty = totalPostQty,
+                        PreRevenue = totalPreRevenue,
+                        PostRevenue = totalPostRevenue,
+                        ChangeQty = totalPostQty - totalPreQty,
+                        ChangeRevenue = totalPostRevenue - totalPreRevenue,
+                        ChangePercent = ComputePercent(totalPreRevenue, totalPostRevenue),
+                        VendorsCount = vendorStats.Count,
+                        ArticlesCount = distinctArticleKeys.Count,
+                        ActiveArticlesCount = activeArticleCount,
+                        AvgRevenuePerArticlePre = distinctArticleKeys.Count == 0 ? 0m : Math.Round(totalPreRevenue / distinctArticleKeys.Count, 2),
+                        AvgRevenuePerArticlePost = distinctArticleKeys.Count == 0 ? 0m : Math.Round(totalPostRevenue / distinctArticleKeys.Count, 2),
+                        AvgPriceChangePercent = Math.Round(avgPriceChangePercent, 2)
+                    },
+                    DataQuality = dataQuality,
+                    CategoryStats = categoryStats,
+                    PriceDirectionStats = priceDirectionStats,
+                    Insights = insights
+                };
+
+                return Results.Ok(response);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            {
+                return Results.Problem(
+                    title: "Nivelacija view schema mismatch",
+                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql and 014_FixNivelacijaViewsFromDnevnik.sql, then restart the backend.",
+                    statusCode: 500);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to load pre/post nivelacija analytics",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("GetVendorSalesNivelacija")
+        .WithTags("Analytics")
+        .RequireRateLimiting("analytics");
 
         // Non-cached aliases -> cached routes (keeps existing frontend paths working).
         app.MapGet("/api/analytics/sales/summary", (HttpContext ctx) =>
@@ -1792,9 +2425,9 @@ public static class AllEndpoints
                 var staraCena = artikal.ProdajnaCena;
                 artikal.ProdajnaCena = request.NovaProdajnaCena;
 
-                db.DnevnikPromena.Add(new Domain.Model.DnevnikPromena
+                db.DnevnikPromena.Add(new DnevnikPromena
                 {
-                    TipPromene = "Nivelacija cena",
+                    TipPromene = TipPromeneConstants.NivelacijaCena,
                     Datum = DateTime.UtcNow,
                     Iznos = 0,
                     ArtikalId = artikal.Id,
@@ -1839,7 +2472,7 @@ public static class AllEndpoints
                 var query = from dp in db.DnevnikPromena.AsNoTracking()
                             join a in db.Artikli.AsNoTracking() on dp.ArtikalId equals a.Id into artikli
                             from artikal in artikli.DefaultIfEmpty()
-                            where dp.TipPromene == "Nivelacija cena"
+                            where dp.TipPromene == TipPromeneConstants.NivelacijaCena
                             select new
                             {
                                 dp.Id,

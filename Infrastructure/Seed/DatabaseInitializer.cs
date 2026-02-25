@@ -17,20 +17,41 @@ public static class DatabaseInitializer
     {
         logger.LogInformation("=== DATABASE INITIALIZATION START ===");
 
+        var trendplusInitialized = false;
+        var analyticsInitialized = false;
+
         try
         {
             // 1. Initialize Trendplus DB
             await InitializeTrendplusDbAsync(services, configuration, logger);
-
-            // 2. Initialize Analytics DB
-            await InitializeAnalyticsDbAsync(services, configuration, logger);
-
-            logger.LogInformation("=== DATABASE INITIALIZATION COMPLETE ===");
+            trendplusInitialized = true;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Database initialization failed");
-            throw;
+            logger.LogError(ex, "Trendplus DB initialization failed");
+        }
+
+        try
+        {
+            // 2. Initialize Analytics DB
+            await InitializeAnalyticsDbAsync(services, configuration, logger);
+            analyticsInitialized = true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Analytics DB initialization failed");
+        }
+
+        if (trendplusInitialized || analyticsInitialized)
+        {
+            logger.LogInformation(
+                "=== DATABASE INITIALIZATION COMPLETE (trendplus={TrendplusOk}, analytics={AnalyticsOk}) ===",
+                trendplusInitialized,
+                analyticsInitialized);
+        }
+        else
+        {
+            logger.LogError("=== DATABASE INITIALIZATION FAILED (no database initialized) ===");
         }
     }
 
@@ -69,9 +90,20 @@ public static class DatabaseInitializer
             logger.LogWarning(ex, "Failed to mark migration as applied (table might not exist yet)");
         }
 
-        // Run EF migrations
-        await context.Database.MigrateAsync();
-        logger.LogInformation("? Trendplus DB migrations applied");
+        // Run EF migrations. If this fails, continue with minimal schema self-heal.
+        try
+        {
+            await context.Database.MigrateAsync();
+            logger.LogInformation("? Trendplus DB migrations applied");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Trendplus DB migrations failed; continuing with core schema self-heal.");
+        }
+
+        await EnsureTrendplusCoreSchemaAsync(
+            configuration.GetConnectionString("DefaultConnection")!,
+            logger);
 
         // Ensure analytics aggregation support tables/indexes in Trendplus DB (idempotent).
         await EnsureTrendplusAggregationTablesAsync(
@@ -82,6 +114,19 @@ public static class DatabaseInitializer
         await ExecuteSqlFileAsync(
             configuration.GetConnectionString("DefaultConnection")!,
             "Database/Migrations/012_AddAccessImportSupport.sql",
+            logger);
+
+        // Pre/Post nivelacija reporting views (idempotent)
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("DefaultConnection")!,
+            "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql",
+            logger);
+
+        // Fix nivelacija views to read from DnevnikPromena directly
+        // and switch from ILIKE to exact IN-list for index use (idempotent)
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("DefaultConnection")!,
+            "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql",
             logger);
 
         // Check if we need to seed data
@@ -188,6 +233,47 @@ public static class DatabaseInitializer
         logger.LogInformation("? Ensured Trendplus analytics aggregation tables/indexes");
     }
 
+    private static async Task EnsureTrendplusCoreSchemaAsync(
+        string connectionString,
+        ILogger logger)
+    {
+        const string sql = @"
+            -- Core Artikli columns used by workers/services (idempotent).
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Kolicina"" integer;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""MinimalnaKolicina"" integer;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""IDObjekat"" integer;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""IDSezona"" integer;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Kategorija"" text;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Pol"" text;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Velicina"" text;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Boja"" text;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Materijal"" character varying(100);
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""ImagePath"" character varying(500);
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
+
+            CREATE INDEX IF NOT EXISTS ""IX_Artikli_ImagePath"" ON ""Artikli"" (""ImagePath"");
+
+            -- DnevnikPromena operational columns used by SyncWorker and import pipeline
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""IDObjekat"" integer;
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""RedniBroj"" integer;
+            CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
+
+            -- Prodaja operational columns
+            ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS ""korisnik_ime"" character varying(200);
+            ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS ""nabavna_cena"" decimal(18,2);
+        ";
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = 120;
+        await command.ExecuteNonQueryAsync();
+
+        logger.LogInformation("? Ensured core Trendplus schema for Artikli/DnevnikPromena/Prodaja columns");
+    }
+
     private static async Task InitializeAnalyticsDbAsync(
         IServiceProvider services,
         IConfiguration configuration,
@@ -199,9 +285,23 @@ public static class DatabaseInitializer
         var context = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
         var trendDb = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
 
-        // Run EF migrations
-        await context.Database.MigrateAsync();
-        logger.LogInformation("? Analytics DB migrations applied");
+        // Run EF migrations. If this fails (e.g. optional extension not available),
+        // continue with core table self-heal so workers can still function.
+        try
+        {
+            await context.Database.MigrateAsync();
+            logger.LogInformation("? Analytics DB migrations applied");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Analytics DB migrations failed; continuing with core analytics table self-heal.");
+        }
+
+        // Self-heal core analytics dimensions used by workers. This covers scenarios where
+        // migration history is out of sync and quoted mixed-case tables are missing.
+        await EnsureCoreAnalyticsDimensionTablesAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            logger);
 
         // Check if we need to create tables
         if (!await TableExistsAsync(
@@ -213,18 +313,6 @@ public static class DatabaseInitializer
             await ExecuteSqlFileAsync(
                 configuration.GetConnectionString("AnalyticsConnection")!,
                 "Database/Analytics/001_CreateSalesFactTables.sql",
-                logger);
-        }
-
-        if (!await TableExistsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "ProductsDim",
-            logger))
-        {
-            logger.LogInformation("ProductsDim table not found, creating...");
-            await ExecuteSqlFileAsync(
-                configuration.GetConnectionString("AnalyticsConnection")!,
-                "Database/Analytics/002_AddVelicinaBojaToProductsDim.sql",
                 logger);
         }
 
@@ -357,6 +445,127 @@ public static class DatabaseInitializer
 
         // Backfill historical sales into analytics facts (idempotent).
         await BackfillSalesFactsAsync(trendDb, context, logger);
+    }
+
+    private static async Task EnsureCoreAnalyticsDimensionTablesAsync(
+        string connectionString,
+        ILogger logger)
+    {
+        const string sql = @"
+            CREATE TABLE IF NOT EXISTS ""ProductsDim"" (
+                ""ProductKey"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""ProductId"" integer NOT NULL,
+                ""ProductName"" text NOT NULL DEFAULT '',
+                ""Category"" text NOT NULL DEFAULT '',
+                ""SubCategory"" text NOT NULL DEFAULT '',
+                ""Brand"" text NOT NULL DEFAULT '',
+                ""Velicina"" character varying(50),
+                ""Boja"" character varying(100),
+                ""Materijal"" character varying(100),
+                ""FootwearTypeId"" integer,
+                ""SupplierId"" integer,
+                ""SeasonId"" integer,
+                ""PurchasePrice"" numeric,
+                ""PurchasePriceRsd"" numeric,
+                ""FirstSalePrice"" numeric,
+                ""SalePrice"" numeric,
+                ""IsActive"" boolean NOT NULL DEFAULT true,
+                ""Timestamp"" timestamp with time zone NOT NULL DEFAULT NOW(),
+                ""Kolicina"" integer,
+                ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing'
+            );
+
+            CREATE INDEX IF NOT EXISTS ""IX_ProductsDim_ProductId"" ON ""ProductsDim"" (""ProductId"");
+            CREATE INDEX IF NOT EXISTS ""IX_ProductsDim_Timestamp"" ON ""ProductsDim"" (""Timestamp"");
+            CREATE INDEX IF NOT EXISTS ""IX_ProductsDim_Velicina"" ON ""ProductsDim"" (""Velicina"");
+            CREATE INDEX IF NOT EXISTS ""IX_ProductsDim_Boja"" ON ""ProductsDim"" (""Boja"");
+
+            CREATE TABLE IF NOT EXISTS ""StoresDim"" (
+                ""StoreKey"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""StoreId"" integer NOT NULL,
+                ""StoreName"" text NOT NULL DEFAULT '',
+                ""City"" text,
+                ""Region"" text
+            );
+
+            -- Extend existing tables with new analytics columns
+            ALTER TABLE IF EXISTS ""ProductsDim"" ADD COLUMN IF NOT EXISTS ""PLU"" character varying(100);
+            ALTER TABLE IF EXISTS ""ProductsDim"" ADD COLUMN IF NOT EXISTS ""MinimalnaKolicina"" integer;
+            ALTER TABLE IF EXISTS ""StoresDim"" ADD COLUMN IF NOT EXISTS ""Telefon"" character varying(50);
+            ALTER TABLE IF EXISTS ""StoresDim"" ADD COLUMN IF NOT EXISTS ""Menedzer"" character varying(200);
+            ALTER TABLE IF EXISTS ""StoresDim"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
+
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_StoresDim_StoreId"" ON ""StoresDim"" (""StoreId"");
+            CREATE INDEX IF NOT EXISTS ""IX_StoresDim_DataOrigin"" ON ""StoresDim"" (""DataOrigin"");
+
+            ALTER TABLE IF EXISTS ""SalesLineFacts"" ADD COLUMN IF NOT EXISTS ""NabavnaCena"" numeric(18,2);
+
+            -- Supplier dimension
+            CREATE TABLE IF NOT EXISTS ""SuppliersDim"" (
+                ""SupplierKey"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""SupplierId"" integer NOT NULL,
+                ""Naziv"" character varying(300) NOT NULL DEFAULT '',
+                ""Adresa"" character varying(500),
+                ""Telefon"" character varying(50),
+                ""Napomena"" character varying(1000),
+                ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing',
+                ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT NOW()
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SuppliersDim_SupplierId"" ON ""SuppliersDim"" (""SupplierId"");
+
+            -- Season dimension
+            CREATE TABLE IF NOT EXISTS ""SeasonsDim"" (
+                ""SeasonKey"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""SeasonId"" integer NOT NULL,
+                ""Naziv"" character varying(200) NOT NULL DEFAULT '',
+                ""DatumOd"" timestamp with time zone NOT NULL DEFAULT NOW(),
+                ""DatumDo"" timestamp with time zone NOT NULL DEFAULT NOW(),
+                ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing',
+                ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT NOW()
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SeasonsDim_SeasonId"" ON ""SeasonsDim"" (""SeasonId"");
+
+            -- Footwear type dimension
+            CREATE TABLE IF NOT EXISTS ""FootwearTypesDim"" (
+                ""TypeKey"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""TypeId"" integer NOT NULL,
+                ""Naziv"" character varying(200) NOT NULL DEFAULT '',
+                ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing',
+                ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT NOW()
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_FootwearTypesDim_TypeId"" ON ""FootwearTypesDim"" (""TypeId"");
+
+            -- Inventory movement fact table
+            CREATE TABLE IF NOT EXISTS ""InventoryMovementFacts"" (
+                ""Id"" bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""SourceId"" integer NOT NULL,
+                ""TipPromene"" character varying(100) NOT NULL DEFAULT '',
+                ""Datum"" timestamp with time zone NOT NULL,
+                ""ArtikalId"" integer,
+                ""Kolicina"" integer,
+                ""StaraProdajnaCena"" numeric(18,2),
+                ""NovaProdajnaCena"" numeric(18,2),
+                ""Iznos"" numeric(18,2) NOT NULL DEFAULT 0,
+                ""StoreId"" integer,
+                ""DobavljacId"" integer,
+                ""BrojDokumenta"" character varying(100),
+                ""KorisnikIme"" character varying(200),
+                ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing'
+            );
+            CREATE INDEX IF NOT EXISTS ""IX_InventoryMovementFacts_Datum"" ON ""InventoryMovementFacts"" (""Datum"" DESC);
+            CREATE INDEX IF NOT EXISTS ""IX_InventoryMovementFacts_ArtikalId"" ON ""InventoryMovementFacts"" (""ArtikalId"");
+            CREATE INDEX IF NOT EXISTS ""IX_InventoryMovementFacts_TipPromene"" ON ""InventoryMovementFacts"" (""TipPromene"");
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_InventoryMovementFacts_SourceId"" ON ""InventoryMovementFacts"" (""SourceId"", ""DataOrigin"");
+        ";
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = 120;
+        await command.ExecuteNonQueryAsync();
+
+        logger.LogInformation("? Ensured core analytics dimension tables (ProductsDim, StoresDim)");
     }
 
     private static async Task BackfillSalesFactsAsync(

@@ -547,6 +547,10 @@ namespace Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("kolicina");
 
+                    b.Property<decimal?>("NabavnaCena")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("nabavna_cena");
+
                     b.HasKey("Id");
 
                     b.HasIndex("IdProdaja");
@@ -588,6 +592,11 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("nacin_placanja");
+
+                    b.Property<string>("KorisnikIme")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("korisnik_ime");
 
                     b.HasKey("Id");
 

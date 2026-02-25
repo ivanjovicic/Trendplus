@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+﻿import React, { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AutoReloadOnBackendOnline from "../components/AutoReloadOnBackendOnline";
 import WorkerStatusAlert from "../components/WorkerStatusAlert";
@@ -55,7 +55,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         title="Globalni filter izvora podataka"
                     >
                         <option value="all">Sve</option>
-                        <option value="existing">Postojeći</option>
+                        <option value="existing">Postojeci</option>
                         <option value="imported">Importovani</option>
                     </select>
                 </div>
@@ -70,7 +70,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         flexWrap: "wrap",
                     }}>
                     <Link to="/" className="button-small">
-                        Početna
+                        Pocetna
                     </Link>
                     <Link to="/artikli/lista" className="button-small">
                         Pregled/izmene artikala
@@ -82,7 +82,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         Unos robe
                     </Link>
                     <Link to="/povracaj" className="button-small">
-                        ↩️ Povraćaj robe
+                        Povracaj robe
                     </Link>
                     <Link to="/nivelacija" className="button-small">
                         Nivelacija cena
@@ -92,71 +92,74 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </Link>
 
                     <Link to="/dnevnik-promena" className="button-small">
-                        📋 Dnevnik promena
+                        Dnevnik promena
                     </Link>
 
                     <Link to="/sezone" className="button-small">
                         Sezone
                     </Link>
                     <Link to="/tipovi-obuce" className="button-small">
-                        👟 Tipovi obuće
+                        Tipovi obuce
                     </Link>
                     <Link to="/dobavljaci" className="button-small">
-                        🏢 Dobavljači
+                        Dobavljaci
                     </Link>
                     <Link to="/logs" className="button-small">
-                        📋 Logovi
+                        Logovi
                     </Link>
                     <Link to="/performance" className="button-small">
-                        ⚡ Performance
+                        Performance
                     </Link>
                     <Link to="/analytics" className="button-small">
-                        📈 Analitika
+                        Analitika
+                    </Link>
+                    <Link to="/analytics/nivelacije-pre-post" className="button-small">
+                        Pre/Posle Nivelacije
                     </Link>
                     <Link to="/analytics-details" className="button-small">
-                        📊 Detaljne analize
+                        Detaljne analize
                     </Link>
                     <Link to="/global-trends" className="button-small">
-                        🌍 Global Trends
+                        Global Trends
                     </Link>
                     <Link to="/admin/common-products" className="button-small">
-                        🔗 Zajednički proizvodi
+                        Zajednicki proizvodi
                     </Link>
                     <Link to="/release-calendar" className="button-small">
-                        🗓️ Release Calendar
+                        Release Calendar
                     </Link>
                     <Link to="/deichmann" className="button-small">
-                        🥿 Deichmann Scraper
+                        Deichmann Scraper
                     </Link>
                     <Link to="/aboutyou" className="button-small">
-                        👢 About You Scraper
+                        About You Scraper
                     </Link>
                     <Link to="/humanic" className="button-small">
-                        👠 Humanic Scraper
+                        Humanic Scraper
                     </Link>
                     <Link to="/scraper-hub" className="button-small">
-                        🧩 Scraper Hub Top 10
+                        Scraper Hub Top 10
                     </Link>
                     <Link to="/trend-dashboard" className="button-small">
-                        📊 Trend Dashboard
+                        Trend Dashboard
                     </Link>
                     <Link to="/amazon-shoes" className="button-small">
-                        🛍 Amazon Shoes
+                        Amazon Shoes
                     </Link>
                     <Link to="/ebay-shoes" className="button-small">
-                        🛍️ eBay Shoes
+                        eBay Shoes
                     </Link>
                     <Link to="/google-shopping" className="button-small">
-                        🛒 Google Shopping
+                        Google Shopping
                     </Link>
                     <Link to="/open-training" className="button-small">
-                        🧠 Open Training
+                        Open Training
                     </Link>
                     <Link to="/runtime-scoring" className="button-small">
-                        🎯 Runtime Scoring
+                        Runtime Scoring
                     </Link>
                     <Link to="/access-import" className="button-small">
-                        🗄 Access Import
+                        Access Import
                     </Link>
                  </nav>
 

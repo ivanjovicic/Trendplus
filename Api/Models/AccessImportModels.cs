@@ -89,6 +89,7 @@ namespace Api.Models
     {
         public bool Found { get; set; }
         public long BatchId { get; set; }
+        public bool IncludeAnalytics { get; set; } = true;
         public int ArtikliDeleted { get; set; }
         public int SezoneDeleted { get; set; }
         public int TipoviDeleted { get; set; }
@@ -98,6 +99,12 @@ namespace Api.Models
         public int ProductsDimDeleted { get; set; }
         public int SalesFactsDeleted { get; set; }
         public int SalesLineFactsDeleted { get; set; }
+        public int InventoryMovementsDeleted { get; set; }
+        public int SuppliersDimDeleted { get; set; }
+        public int SeasonsDimDeleted { get; set; }
+        public int FootwearTypesDimDeleted { get; set; }
+        public int StoresDimDeleted { get; set; }
+        public bool CacheInvalidated { get; set; }
         public int DnevnikDeleted { get; set; }
         public int PovracajDeleted { get; set; }
         public int PovracajStavkeDeleted { get; set; }

@@ -38,6 +38,7 @@ import GoogleShoppingTrendsPage from "./pages/GoogleShoppingTrendsPage";
 import OpenTrainingPage from "./pages/OpenTrainingPage";
 import RuntimeScoringPage from "./pages/RuntimeScoringPage";
 import AccessImportPage from "./pages/AccessImportPage";
+import ProdajaPrePostNivelacijePage from "./pages/ProdajaPrePostNivelacijePage";
 
 function AppShell() {
     return (
@@ -53,6 +54,7 @@ function AppShell() {
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/performance" element={<PerformanceDashboard />} />
             <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/analytics/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
             <Route path="/analytics-details" element={<AnalyticsDetails />} />
             <Route path="/outbox" element={<OutboxDashboard />} />
             <Route path="/outbox/messages" element={<OutboxMessagesPage />} />

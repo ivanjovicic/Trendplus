@@ -7,6 +7,7 @@ using Api.Models;
 using Domain.Model;
 using Domain.Model.Povracaj;
 using Infrastructure.DbContexts;
+using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services;
@@ -16,7 +17,7 @@ public interface IAccessImportService
     Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default);
     Task<AccessImportRunResponse> ImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
     Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default);
-    Task<DeleteBatchResult> DeleteBatchAsync(long batchId, CancellationToken ct = default);
+    Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default);
 }
 
 public sealed class AccessImportService : IAccessImportService
@@ -167,15 +168,21 @@ public sealed class AccessImportService : IAccessImportService
 
     private readonly TrendplusDbContext _trendDb;
     private readonly AnalyticsDbContext _analyticsDb;
+    private readonly IAnalyticsCacheService? _analyticsCache;
     private readonly ILogger<AccessImportService> _logger;
     // Populated by ImportTrendplus, consumed by SyncAnalyticsAsync for StoresDim upsert
     private Dictionary<int, (string Name, string? Address, string? Phone, string? Manager)> _importedStores = [];
 
-    public AccessImportService(TrendplusDbContext trendDb, AnalyticsDbContext analyticsDb, ILogger<AccessImportService> logger)
+    public AccessImportService(
+        TrendplusDbContext trendDb,
+        AnalyticsDbContext analyticsDb,
+        ILogger<AccessImportService> logger,
+        IAnalyticsCacheService? analyticsCache = null)
     {
         _trendDb = trendDb;
         _analyticsDb = analyticsDb;
         _logger = logger;
+        _analyticsCache = analyticsCache;
     }
 
     public async Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default)
@@ -440,18 +447,20 @@ public sealed class AccessImportService : IAccessImportService
             .ToListAsync(ct);
     }
 
-    public async Task<DeleteBatchResult> DeleteBatchAsync(long batchId, CancellationToken ct = default)
+    public async Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default)
     {
         var batch = await _trendDb.DataImportBatches.FindAsync([batchId], ct);
         if (batch is null)
             return new DeleteBatchResult { Found = false };
 
-        // Delete analytics data imported by this batch (DataOrigin="access").
-        // Because individual records don't carry a per-batch FK we clean all
-        // access-origin rows in one go — safe when Access is the sole external source.
-        var sfDeleted  = await _analyticsDb.SalesFacts  .Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-        var slfDeleted = await _analyticsDb.SalesLineFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-        var pdDeleted  = await _analyticsDb.ProductsDim .Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
+        var sfDeleted = 0;
+        var slfDeleted = 0;
+        var pdDeleted = 0;
+        var imDeleted = 0;
+        var suppDeleted = 0;
+        var seasDeleted = 0;
+        var typeDeleted = 0;
+        var storeDeleted = 0;
 
         // Delete transactional / master data
         // Stavke must be deleted before zaglavlja (FK constraint), filtered via parent
@@ -475,17 +484,48 @@ public sealed class AccessImportService : IAccessImportService
         var doDeleted  = await _trendDb.Dobavljaci      .Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
         var tiDeleted  = await _trendDb.TipoviObuce     .Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
 
+        if (includeAnalytics)
+        {
+            var accessStoreIds = await _analyticsDb.SalesFacts
+                .Where(x => x.DataOrigin == "access")
+                .Select(x => x.StoreId)
+                .Distinct()
+                .ToListAsync(ct);
+
+            // Delete analytics data imported from Access (DataOrigin="access")
+            // Note: per-batch FK does not exist in analytics tables, so this removes all Access-origin rows.
+            sfDeleted = await _analyticsDb.SalesFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
+            slfDeleted = await _analyticsDb.SalesLineFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
+            pdDeleted = await _analyticsDb.ProductsDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
+            imDeleted = await _analyticsDb.InventoryMovementFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
+            suppDeleted = await _analyticsDb.SuppliersDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
+            seasDeleted = await _analyticsDb.SeasonsDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
+            typeDeleted = await _analyticsDb.FootwearTypesDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
+            storeDeleted = await _analyticsDb.StoresDim
+                .Where(x => (x.DataOrigin == "access" || accessStoreIds.Contains(x.StoreId))
+                            && !_analyticsDb.SalesFacts.Any(sf => sf.StoreId == x.StoreId))
+                .ExecuteDeleteAsync(ct);
+        }
+
         _trendDb.DataImportBatches.Remove(batch);
         await _trendDb.SaveChangesAsync(ct);
 
+        var cacheInvalidated = false;
+        if (includeAnalytics && _analyticsCache is not null)
+        {
+            await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
+            cacheInvalidated = true;
+        }
+
         _logger.LogInformation(
-            "Deleted access-import batch {BatchId}: artikli={Ar}, prodaja={Pv}/{Sv}, dnevnik={Dn}, povracaj={Pv2}/{PvS}, sezone={Se}, dobavljaci={Do}, tipovi={Ti}, analytics pd={Pd}/sf={Sf}/slf={Slf}",
-            batchId, arDeleted, pvDeleted, svDeleted, dnDeleted, pvDeleted2, pvStavkeDeleted, seDeleted, doDeleted, tiDeleted, pdDeleted, sfDeleted, slfDeleted);
+            "Deleted access-import batch {BatchId}: artikli={Ar}, prodaja={Pv}/{Sv}, dnevnik={Dn}, povracaj={Pv2}/{PvS}, sezone={Se}, dobavljaci={Do}, tipovi={Ti}, analytics={IncludeAnalytics} pd={Pd}/sf={Sf}/slf={Slf}/im={Im}/sup={Sup}/seas={Seas}/types={Types}/stores={Stores}, cacheInvalidated={CacheInvalidated}",
+            batchId, arDeleted, pvDeleted, svDeleted, dnDeleted, pvDeleted2, pvStavkeDeleted, seDeleted, doDeleted, tiDeleted, includeAnalytics, pdDeleted, sfDeleted, slfDeleted, imDeleted, suppDeleted, seasDeleted, typeDeleted, storeDeleted, cacheInvalidated);
 
         return new DeleteBatchResult
         {
             Found          = true,
             BatchId        = batchId,
+            IncludeAnalytics = includeAnalytics,
             ArtikliDeleted = arDeleted,
             SezoneDeleted  = seDeleted,
             TipoviDeleted  = tiDeleted,
@@ -497,7 +537,13 @@ public sealed class AccessImportService : IAccessImportService
             PovracajStavkeDeleted = pvStavkeDeleted,
             ProductsDimDeleted   = pdDeleted,
             SalesFactsDeleted    = sfDeleted,
-            SalesLineFactsDeleted = slfDeleted
+            SalesLineFactsDeleted = slfDeleted,
+            InventoryMovementsDeleted = imDeleted,
+            SuppliersDimDeleted = suppDeleted,
+            SeasonsDimDeleted = seasDeleted,
+            FootwearTypesDimDeleted = typeDeleted,
+            StoresDimDeleted = storeDeleted,
+            CacheInvalidated = cacheInvalidated
         };
     }
 
@@ -750,6 +796,7 @@ public sealed class AccessImportService : IAccessImportService
                     DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
                     NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                     IDObjekat = I(row, "idobjekat", "storeid"),
+                    KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
                     DataOrigin = "access"
                 };
                 _trendDb.ProdajaZaglavlja.Add(e);
@@ -762,6 +809,7 @@ public sealed class AccessImportService : IAccessImportService
                 e.DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow;
                 e.NacinPlacanja = S(row, "nacinplacanja", "paymenttype");
                 e.IDObjekat = I(row, "idobjekat", "storeid");
+                e.KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir");
                 e.DataOrigin = "access";
                 result.ProdajaUpdated++;
             }
@@ -946,11 +994,7 @@ public sealed class AccessImportService : IAccessImportService
     private void SynthesizeProdajaFromDnevnik(bool overwriteExisting, AccessImportRunResponse result)
     {
         // Collect all DnevnikPromena entries that represent a sale (already in DbContext, not yet saved).
-        static bool IsSaleType(string tip) =>
-            tip.Contains("prodaj", StringComparison.OrdinalIgnoreCase) ||
-            tip.Contains("sale",   StringComparison.OrdinalIgnoreCase)  ||
-            tip.Contains("prodato",StringComparison.OrdinalIgnoreCase)  ||
-            tip.Contains("promet", StringComparison.OrdinalIgnoreCase);
+        static bool IsSaleType(string tip) => TipPromeneConstants.IsSale(tip);
 
         var saleEntries = _trendDb.DnevnikPromena.Local
             .Where(d => d.DataOrigin == "access" && IsSaleType(d.TipPromene))
@@ -1181,7 +1225,20 @@ public sealed class AccessImportService : IAccessImportService
     private void ImportNivelacije(OdbcConnection conn, string? table, bool overwriteExisting, AccessImportRunResponse result)
     {
         if (table is null) return;
-        var usedIds = _trendDb.DnevnikPromena.Select(x => x.Id).ToHashSet();
+
+        // tblNivelacije in legacy Access schema does not contain a date column.
+        // Every row points to tblDnevnikPromena via IDDnevnik, so we must inherit
+        // the original event date from that source row to preserve historical analytics.
+        var dnevnikById = _trendDb.DnevnikPromena.Local
+            .GroupBy(x => x.Id)
+            .ToDictionary(g => g.Key, g => g.First());
+        foreach (var d in _trendDb.DnevnikPromena.AsNoTracking())
+        {
+            if (!dnevnikById.ContainsKey(d.Id))
+                dnevnikById[d.Id] = d;
+        }
+
+        var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         foreach (var row in ReadRows(conn, table))
         {
@@ -1193,21 +1250,31 @@ public sealed class AccessImportService : IAccessImportService
             var kolicina  = I(row, "kolicina", "qty", "quantity") ?? 1;
             var iznos     = Math.Abs((novaCena.Value - (staraCena ?? 0m)) * kolicina);
             var srcId     = I(row, "iddnevnik", "id", "idlog") ?? 0;
+
+            dnevnikById.TryGetValue(srcId, out var sourceDnevnik);
+            var eventDate = DT(row, "datum", "datumnivelacije", "date")
+                ?? sourceDnevnik?.Datum
+                ?? DateTime.UtcNow;
+
             var assignedId = (srcId > 0 && !usedIds.Contains(srcId))
                 ? srcId : AllocateNextId(usedIds, ref next);
+            usedIds.Add(assignedId);
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = assignedId,
-                TipPromene = "Nivelacija",
-                Datum = DT(row, "datum", "datumnivelacije", "date") ?? DateTime.UtcNow,
+                TipPromene = TipPromeneConstants.Nivelacija,
+                Datum = eventDate,
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
                 StaraProdajnaCena = staraCena,
                 NovaProdajnaCena = novaCena,
                 Iznos = iznos,
-                IDObjekat = I(row, "idobjekat", "storeid", "idobjekta"),
+                IDObjekat = I(row, "idobjekat", "storeid", "idobjekta") ?? sourceDnevnik?.IDObjekat,
                 RedniBroj = I(row, "rednibr", "rbr", "seqno"),
-                BrojRacuna = S(row, "iddnevnik", "brdokumenta"),
+                BrojRacuna = srcId > 0
+                    ? srcId.ToString(CultureInfo.InvariantCulture)
+                    : S(row, "iddnevnik", "brdokumenta"),
+                DobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid") ?? sourceDnevnik?.DobavljacId,
                 DataOrigin = "access"
             });
             result.NivelacijeInserted++;
@@ -1218,7 +1285,7 @@ public sealed class AccessImportService : IAccessImportService
     private void ImportUnosRobe(OdbcConnection conn, string? table, bool overwriteExisting, AccessImportRunResponse result)
     {
         if (table is null) return;
-        var usedIds = _trendDb.DnevnikPromena.Select(x => x.Id).ToHashSet();
+        var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         foreach (var row in ReadRows(conn, table))
         {
@@ -1229,10 +1296,11 @@ public sealed class AccessImportService : IAccessImportService
             var srcId        = I(row, "iddnevnik", "id", "idlog") ?? 0;
             var assignedId   = (srcId > 0 && !usedIds.Contains(srcId))
                 ? srcId : AllocateNextId(usedIds, ref next);
+            usedIds.Add(assignedId);
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = assignedId,
-                TipPromene = "Ulaz robe",
+                TipPromene = TipPromeneConstants.UlazRobe,
                 Datum = DT(row, "datum", "datumunosarobe", "datumulaza", "date") ?? DateTime.UtcNow,
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
@@ -1252,7 +1320,7 @@ public sealed class AccessImportService : IAccessImportService
     private void ImportPovratnice(OdbcConnection conn, string? table, bool overwriteExisting, AccessImportRunResponse result)
     {
         if (table is null) return;
-        var usedIds = _trendDb.DnevnikPromena.Select(x => x.Id).ToHashSet();
+        var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         foreach (var row in ReadRows(conn, table))
         {
@@ -1263,10 +1331,11 @@ public sealed class AccessImportService : IAccessImportService
             var srcId     = I(row, "iddnevnik", "id", "idpovratnice", "idlog") ?? 0;
             var assignedId = (srcId > 0 && !usedIds.Contains(srcId))
                 ? srcId : AllocateNextId(usedIds, ref next);
+            usedIds.Add(assignedId);
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = assignedId,
-                TipPromene = "Povrat kupca",
+                TipPromene = TipPromeneConstants.PovratKupca,
                 Datum = DT(row, "datum", "datumpovratnice", "date") ?? DateTime.UtcNow,
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
@@ -1286,7 +1355,7 @@ public sealed class AccessImportService : IAccessImportService
     {
         // Each transfer row → TWO DnevnikPromena entries: izlaz from source + ulaz to destination
         if (table is null) return;
-        var usedIds = _trendDb.DnevnikPromena.Select(x => x.Id).ToHashSet();
+        var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         foreach (var row in ReadRows(conn, table))
         {
@@ -1302,7 +1371,7 @@ public sealed class AccessImportService : IAccessImportService
             var idOut = AllocateNextId(usedIds, ref next);
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
-                Id = idOut, TipPromene = "Prenos izlaz", Datum = datum,
+                Id = idOut, TipPromene = TipPromeneConstants.PrenosIzlaz, Datum = datum,
                 ArtikalId = idArtikal.Value, Kolicina = -kolicina,
                 NovaProdajnaCena = cena, Iznos = cena * kolicina,
                 IDObjekat = idIz, BrojRacuna = brDok, DataOrigin = "access"
@@ -1311,7 +1380,7 @@ public sealed class AccessImportService : IAccessImportService
             var idIn = AllocateNextId(usedIds, ref next);
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
-                Id = idIn, TipPromene = "Prenos ulaz", Datum = datum,
+                Id = idIn, TipPromene = TipPromeneConstants.PrenosUlaz, Datum = datum,
                 ArtikalId = idArtikal.Value, Kolicina = kolicina,
                 NovaProdajnaCena = cena, Iznos = cena * kolicina,
                 IDObjekat = idU, BrojRacuna = brDok, DataOrigin = "access"
@@ -1319,6 +1388,21 @@ public sealed class AccessImportService : IAccessImportService
             result.PrenosRobeInserted += 2;
         }
         _trendDb.SaveChanges();
+    }
+
+    /// <summary>
+    /// Returns the set of IDs already in use for DnevnikPromena by combining
+    /// persisted DB rows with any entities currently in the EF change tracker
+    /// (Added / Unchanged / Modified).  This prevents identity-conflict exceptions
+    /// when multiple import methods write to the same table within a single
+    /// DbContext lifetime before SaveChanges is called.
+    /// </summary>
+    private HashSet<int> GetDnevnikPromenaUsedIds()
+    {
+        var ids = _trendDb.DnevnikPromena.Select(x => x.Id).ToHashSet();
+        foreach (var entry in _trendDb.ChangeTracker.Entries<DnevnikPromena>())
+            ids.Add(entry.Entity.Id);
+        return ids;
     }
 
     private static int AllocateNextId(HashSet<int> usedIds, ref int nextGeneratedId)
@@ -1516,7 +1600,8 @@ public sealed class AccessImportService : IAccessImportService
                     StoreId   = storeId,
                     StoreName = storeData.Name    ?? $"Objekat {storeId}",
                     City      = storeData.Address ?? "N/A",
-                    Region    = "N/A"
+                    Region    = "N/A",
+                    DataOrigin = "access"
                 };
                 _analyticsDb.StoresDim.Add(newStore);
                 existingStores[storeId] = newStore;
@@ -1527,6 +1612,7 @@ public sealed class AccessImportService : IAccessImportService
                 var e = existingStores[storeId];
                 e.StoreName = storeData.Name    ?? e.StoreName;
                 e.City      = storeData.Address ?? e.City;
+                e.DataOrigin = "access";
                 result.StoresUpdated++;
             }
         }
@@ -1542,11 +1628,16 @@ public sealed class AccessImportService : IAccessImportService
                     StoreId   = storeId,
                     StoreName = storeData.Name    ?? $"Objekat {storeId}",
                     City      = storeData.Address ?? "N/A",
-                    Region    = "N/A"
+                    Region    = "N/A",
+                    DataOrigin = "access"
                 };
                 _analyticsDb.StoresDim.Add(newStore);
                 existingStores[storeId] = newStore;
                 result.StoresInserted++;
+            }
+            else
+            {
+                existingStores[storeId].DataOrigin = "access";
             }
 
             var total = s.Stavke.Sum(x => x.Kolicina * x.Cena);
@@ -1592,6 +1683,7 @@ public sealed class AccessImportService : IAccessImportService
                 Qty = l.Kolicina,
                 UnitPrice = l.Cena,
                 LineTotal = l.Kolicina * l.Cena,
+                NabavnaCena = l.NabavnaCena,
                 DataOrigin = "access"
             }))
             .ToList();
@@ -1600,6 +1692,144 @@ public sealed class AccessImportService : IAccessImportService
         {
             await _analyticsDb.SalesLineFacts.AddRangeAsync(newLines, ct);
             result.SalesLineFactsInserted = newLines.Count;
+        }
+
+        // ── Suppliers ──────────────────────────────────────────────────────────────
+        var importedSuppliers = await _trendDb.Dobavljaci.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
+        if (importedSuppliers.Count > 0)
+        {
+            var supplierIds = importedSuppliers.Select(x => x.Id).ToArray();
+            var existingSuppliers = await _analyticsDb.SuppliersDim.Where(x => supplierIds.Contains(x.SupplierId)).ToDictionaryAsync(x => x.SupplierId, ct);
+            foreach (var sup in importedSuppliers)
+            {
+                if (existingSuppliers.TryGetValue(sup.Id, out var sdim))
+                {
+                    sdim.Naziv = sup.Naziv ?? sdim.Naziv;
+                    sdim.Adresa = sup.Adresa;
+                    sdim.Telefon = sup.Telefon;
+                    sdim.Napomena = sup.Napomena;
+                    sdim.DataOrigin = "access";
+                    sdim.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    _analyticsDb.SuppliersDim.Add(new Domain.Model.SuppliersDim
+                    {
+                        SupplierId = sup.Id,
+                        Naziv = sup.Naziv ?? string.Empty,
+                        Adresa = sup.Adresa,
+                        Telefon = sup.Telefon,
+                        Napomena = sup.Napomena,
+                        DataOrigin = "access",
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+        }
+
+        // ── Seasons ────────────────────────────────────────────────────────────────
+        var importedSeasons = await _trendDb.Sezone.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
+        if (importedSeasons.Count > 0)
+        {
+            var seasonIds = importedSeasons.Select(x => x.Id).ToArray();
+            var existingSeasons = await _analyticsDb.SeasonsDim.Where(x => seasonIds.Contains(x.SeasonId)).ToDictionaryAsync(x => x.SeasonId, ct);
+            foreach (var s in importedSeasons)
+            {
+                if (existingSeasons.TryGetValue(s.Id, out var dim))
+                {
+                    dim.Naziv = s.Naziv;
+                    dim.DatumOd = DateTime.SpecifyKind(s.DatumOd, DateTimeKind.Utc);
+                    dim.DatumDo = DateTime.SpecifyKind(s.DatumDo, DateTimeKind.Utc);
+                    dim.DataOrigin = "access";
+                    dim.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    _analyticsDb.SeasonsDim.Add(new Domain.Model.SeasonsDim
+                    {
+                        SeasonId = s.Id,
+                        Naziv = s.Naziv,
+                        DatumOd = DateTime.SpecifyKind(s.DatumOd, DateTimeKind.Utc),
+                        DatumDo = DateTime.SpecifyKind(s.DatumDo, DateTimeKind.Utc),
+                        DataOrigin = "access",
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+        }
+
+        // ── Footwear types ─────────────────────────────────────────────────────────
+        var importedTypes = await _trendDb.TipoviObuce.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
+        if (importedTypes.Count > 0)
+        {
+            var typeIds = importedTypes.Select(x => x.Id).ToArray();
+            var existingTypes = await _analyticsDb.FootwearTypesDim.Where(x => typeIds.Contains(x.TypeId)).ToDictionaryAsync(x => x.TypeId, ct);
+            foreach (var t in importedTypes)
+            {
+                if (existingTypes.TryGetValue(t.Id, out var dim))
+                {
+                    dim.Naziv = t.Naziv;
+                    dim.DataOrigin = "access";
+                    dim.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    _analyticsDb.FootwearTypesDim.Add(new Domain.Model.FootwearTypesDim
+                    {
+                        TypeId = t.Id,
+                        Naziv = t.Naziv,
+                        DataOrigin = "access",
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+        }
+
+        // ── Inventory Movements ────────────────────────────────────────────────────
+        var importedMovements = await _trendDb.DnevnikPromena.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
+        if (importedMovements.Count > 0)
+        {
+            var sourceIds = importedMovements.Select(x => x.Id).ToArray();
+            var existingMovements = await _analyticsDb.InventoryMovementFacts
+                .Where(x => x.DataOrigin == "access" && sourceIds.Contains(x.SourceId))
+                .ToDictionaryAsync(x => x.SourceId, ct);
+            foreach (var m in importedMovements)
+            {
+                if (existingMovements.TryGetValue(m.Id, out var dim))
+                {
+                    dim.TipPromene = m.TipPromene;
+                    dim.Datum = DateTime.SpecifyKind(m.Datum, DateTimeKind.Utc);
+                    dim.ArtikalId = m.ArtikalId;
+                    dim.Kolicina = m.Kolicina;
+                    dim.StaraProdajnaCena = m.StaraProdajnaCena;
+                    dim.NovaProdajnaCena = m.NovaProdajnaCena;
+                    dim.Iznos = m.Iznos;
+                    dim.StoreId = m.IDObjekat;
+                    dim.DobavljacId = m.DobavljacId;
+                    dim.BrojDokumenta = m.BrojRacuna;
+                    dim.KorisnikIme = m.KorisnikIme;
+                    dim.DataOrigin = "access";
+                }
+                else
+                {
+                    _analyticsDb.InventoryMovementFacts.Add(new Domain.Model.InventoryMovementFact
+                    {
+                        SourceId = m.Id,
+                        TipPromene = m.TipPromene,
+                        Datum = DateTime.SpecifyKind(m.Datum, DateTimeKind.Utc),
+                        ArtikalId = m.ArtikalId,
+                        Kolicina = m.Kolicina,
+                        StaraProdajnaCena = m.StaraProdajnaCena,
+                        NovaProdajnaCena = m.NovaProdajnaCena,
+                        Iznos = m.Iznos,
+                        StoreId = m.IDObjekat,
+                        DobavljacId = m.DobavljacId,
+                        BrojDokumenta = m.BrojRacuna,
+                        KorisnikIme = m.KorisnikIme,
+                        DataOrigin = "access"
+                    });
+                }
+            }
         }
 
         await _analyticsDb.SaveChangesAsync(ct);

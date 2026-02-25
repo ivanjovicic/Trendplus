@@ -10,6 +10,7 @@ public sealed class ProdajaStavka
     public int IdArtikal { get; set; }
     public int Kolicina { get; set; }
     public decimal Cena { get; set; }
+    public decimal? NabavnaCena { get; set; }   // purchase price at time of sale (for GM analytics)
     
     // Navigation property
     public ProdajaZaglavlje? Prodaja { get; set; }

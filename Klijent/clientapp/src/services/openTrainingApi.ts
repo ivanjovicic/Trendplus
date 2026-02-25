@@ -36,6 +36,57 @@ export interface TopLabel {
     createdAt: string;
 }
 
+export interface ShoeTypeCount {
+    shoeType: string;
+    productCount: number;
+}
+
+export interface BrandCount {
+    brand: string;
+    productCount: number;
+}
+
+export interface DiagnosticsHistogramBucket {
+    rangeLabel: string;
+    lo: number;
+    hi: number;
+    count: number;
+}
+
+export interface DiagnosticsQuality {
+    total: number;
+    withRating: number;
+    withReviews: number;
+    withPrice: number;
+    withBrand: number;
+    withShoeType: number;
+    withRatingAndReviews: number;
+}
+
+export interface DiagnosticsTopGroup {
+    brand: string;
+    shoeType: string;
+    productCount: number;
+    withRating: number;
+}
+
+export interface DiagnosticsScoreStats {
+    count: number;
+    min: number;
+    max: number;
+    avg: number;
+    median: number;
+    p25: number;
+    p75: number;
+}
+
+export interface Diagnostics {
+    histogram: DiagnosticsHistogramBucket[];
+    quality: DiagnosticsQuality | null;
+    topGroups: DiagnosticsTopGroup[];
+    scoreStats: DiagnosticsScoreStats | null;
+}
+
 export interface RecomputeLabelsRequest {
     datasetNames?:       string[];
     minProductsPerGroup?: number;
@@ -68,10 +119,40 @@ export async function fetchOpenTrainingDatasets(): Promise<OpenTrainingDataset[]
 export async function fetchTopLabels(
     labelType: "popularity_prior" | "deal_score" = "popularity_prior",
     take: number = 20,
+    shoeType?: string,
+    brand?: string,
 ): Promise<TopLabel[]> {
     const params = new URLSearchParams({ labelType, take: String(take) });
+    if (shoeType) params.set("shoeType", shoeType);
+    if (brand) params.set("brand", brand);
+
     const res = await fetch(`${BASE}/api/open-training/labels/top?${params}`);
     if (!res.ok) throw new Error(`Top labels fetch failed: ${res.status}`);
+    return res.json();
+}
+
+export async function fetchShoeTypes(): Promise<ShoeTypeCount[]> {
+    const res = await fetch(`${BASE}/api/open-training/shoe-types`);
+    if (!res.ok) throw new Error(`Shoe types fetch failed: ${res.status}`);
+    return res.json();
+}
+
+export async function fetchBrands(shoeType?: string): Promise<BrandCount[]> {
+    const params = new URLSearchParams();
+    if (shoeType) params.set("shoeType", shoeType);
+    const suffix = params.size > 0 ? `?${params}` : "";
+
+    const res = await fetch(`${BASE}/api/open-training/brands${suffix}`);
+    if (!res.ok) throw new Error(`Brands fetch failed: ${res.status}`);
+    return res.json();
+}
+
+export async function fetchDiagnostics(
+    labelType: "popularity_prior" | "deal_score" = "popularity_prior",
+): Promise<Diagnostics> {
+    const params = new URLSearchParams({ labelType });
+    const res = await fetch(`${BASE}/api/open-training/diagnostics?${params}`);
+    if (!res.ok) throw new Error(`Diagnostics fetch failed: ${res.status}`);
     return res.json();
 }
 

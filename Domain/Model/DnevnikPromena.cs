@@ -5,7 +5,8 @@ namespace Domain.Model
     public class DnevnikPromena
     {
         public int Id { get; set; }
-        public string TipPromene { get; set; } = string.Empty; // "Unos robe", "Prodaja", "Nivelacija", "Ulaz robe", "Povrat kupca", "Prenos izlaz", "Prenos ulaz", etc.
+        /// <summary>Movement type. Use <see cref="TipPromeneConstants"/> constants for all comparisons.</summary>
+        public string TipPromene { get; set; } = string.Empty;
         public DateTime Datum { get; set; }
         public decimal Iznos { get; set; }
         public string? BrojRacuna { get; set; }
