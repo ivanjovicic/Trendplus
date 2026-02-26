@@ -1863,6 +1863,647 @@ try
     })
     .RequireRateLimiting("strict");
    
+    // ====================== INSIGHT STUDIO — ADVANCED ANALYTICS ENDPOINTS ======================
+
+    // KPI Snapshot — enriched KPI row with sparkline data
+    app.MapGet("/api/analytics/advanced/kpi-snapshot", async (
+        ITrendplusDbContext db,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default) =>
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var from = fromDate ?? now.AddDays(-30);
+            var to = toDate ?? now;
+            if (from.Kind == DateTimeKind.Unspecified) from = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+            if (to.Kind == DateTimeKind.Unspecified) to = DateTime.SpecifyKind(to, DateTimeKind.Utc);
+            var span = (to - from).TotalDays;
+            var prevFrom = from.AddDays(-span);
+            var prevTo = from;
+
+            var currentIds = await db.ProdajaZaglavlja
+                .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                .Select(p => p.Id).ToListAsync(ct);
+
+            var prevIds = await db.ProdajaZaglavlja
+                .Where(p => p.DatumProdaje >= prevFrom && p.DatumProdaje <= prevTo)
+                .Select(p => p.Id).ToListAsync(ct);
+
+            var currentRevenue = currentIds.Count == 0 ? 0m :
+                await db.ProdajaStavke.Where(ps => currentIds.Contains(ps.IdProdaja)).SumAsync(ps => ps.Kolicina * ps.Cena, ct);
+
+            var prevRevenue = prevIds.Count == 0 ? 0m :
+                await db.ProdajaStavke.Where(ps => prevIds.Contains(ps.IdProdaja)).SumAsync(ps => ps.Kolicina * ps.Cena, ct);
+
+            var currentUnits = currentIds.Count == 0 ? 0 :
+                await db.ProdajaStavke.Where(ps => currentIds.Contains(ps.IdProdaja)).SumAsync(ps => ps.Kolicina, ct);
+
+            var prevUnits = prevIds.Count == 0 ? 0 :
+                await db.ProdajaStavke.Where(ps => prevIds.Contains(ps.IdProdaja)).SumAsync(ps => ps.Kolicina, ct);
+
+            // Margin estimation from artikli
+            var currentStavkeWithCost = await (
+                from ps in db.ProdajaStavke
+                join a in db.Artikli on ps.IdArtikal equals a.Id
+                where currentIds.Contains(ps.IdProdaja) && a.NabavnaCena.HasValue
+                select new { Revenue = ps.Kolicina * ps.Cena, Cost = ps.Kolicina * a.NabavnaCena!.Value }
+            ).ToListAsync(ct);
+
+            var totalRev = currentStavkeWithCost.Sum(x => x.Revenue);
+            var totalCost = currentStavkeWithCost.Sum(x => x.Cost);
+            var marginPct = totalRev > 0 ? (double)((totalRev - totalCost) / totalRev * 100) : 0;
+
+            var oosCount = await db.Artikli.Where(a => a.Kolicina == 0).CountAsync(ct);
+            var lowStockCount = await db.Artikli.Where(a => a.Kolicina > 0 && a.Kolicina <= a.MinimalnaKolicina).CountAsync(ct);
+
+            // Sparkline: daily revenue for current period (up to 30 points)
+            var dailySparkline = await db.ProdajaZaglavlja
+                .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                .GroupBy(p => p.DatumProdaje.Date)
+                .Select(g => new { date = g.Key, ids = g.Select(x => x.Id).ToList() })
+                .ToListAsync(ct);
+
+            var allCurrentStavke = await db.ProdajaStavke.Where(ps => currentIds.Contains(ps.IdProdaja))
+                .Select(ps => new { ps.IdProdaja, ps.Kolicina, ps.Cena }).ToListAsync(ct);
+
+            var sparklineData = dailySparkline
+                .OrderBy(d => d.date)
+                .Select(d => new
+                {
+                    date = d.date.ToString("MM-dd"),
+                    revenue = allCurrentStavke.Where(s => d.ids.Contains(s.IdProdaja)).Sum(s => s.Kolicina * s.Cena)
+                })
+                .ToList();
+
+            var revenueChange = prevRevenue > 0 ? (double)((currentRevenue - prevRevenue) / prevRevenue * 100) : 0;
+            var unitsChange = prevUnits > 0 ? (double)((currentUnits - prevUnits) / (double)prevUnits * 100) : 0;
+
+            return Results.Ok(new
+            {
+                revenue = currentRevenue,
+                revenueChange,
+                units = currentUnits,
+                unitsChange,
+                transactions = currentIds.Count,
+                marginPct,
+                oosCount,
+                lowStockCount,
+                sparkline = sparklineData
+            });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška KPI snapshot");
+        }
+    }).RequireRateLimiting("db-heavy");
+
+    // Supplier Scorecard — scoring framework
+    app.MapGet("/api/analytics/advanced/supplier-scorecard", async (
+        ITrendplusDbContext db,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default) =>
+    {
+        try
+        {
+            var from = fromDate ?? DateTime.UtcNow.AddDays(-90);
+            var to = toDate ?? DateTime.UtcNow;
+            if (from.Kind == DateTimeKind.Unspecified) from = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+            if (to.Kind == DateTimeKind.Unspecified) to = DateTime.SpecifyKind(to, DateTimeKind.Utc);
+
+            var prodajeIds = await db.ProdajaZaglavlja
+                .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                .Select(p => p.Id).ToListAsync(ct);
+
+            var stavkeWithArtikal = await (
+                from ps in db.ProdajaStavke
+                join a in db.Artikli on ps.IdArtikal equals a.Id
+                join d in db.Dobavljaci on a.IDDobavljac equals d.Id into dj
+                from d in dj.DefaultIfEmpty()
+                where prodajeIds.Contains(ps.IdProdaja)
+                select new
+                {
+                    DobavljacId = d != null ? d.Id : (int?)null,
+                    DobavljacNaziv = d != null ? d.Naziv : "Nepoznato",
+                    Revenue = ps.Kolicina * ps.Cena,
+                    Cost = a.NabavnaCena.HasValue ? ps.Kolicina * a.NabavnaCena.Value : (decimal?)null,
+                    Units = ps.Kolicina,
+                    Kategorija = a.Kategorija ?? "Ostalo",
+                    ArtikalId = a.Id
+                }
+            ).ToListAsync(ct);
+
+            var totalRevenue = stavkeWithArtikal.Sum(x => x.Revenue);
+
+            var grouped = stavkeWithArtikal
+                .GroupBy(x => new { x.DobavljacId, x.DobavljacNaziv })
+                .Select(g =>
+                {
+                    var rev = g.Sum(x => x.Revenue);
+                    var withCost = g.Where(x => x.Cost.HasValue).ToList();
+                    var cost = withCost.Sum(x => x.Cost!.Value);
+                    var revWithCost = withCost.Sum(x => x.Revenue);
+                    var marginPct = revWithCost > 0 ? (double)((revWithCost - cost) / revWithCost * 100) : 0;
+                    var units = g.Sum(x => x.Units);
+                    var uniqueCategories = g.Select(x => x.Kategorija).Distinct().Count();
+                    var uniqueProducts = g.Select(x => x.ArtikalId).Distinct().Count();
+                    var dependencyRatio = totalRevenue > 0 ? (double)(rev / totalRevenue * 100) : 0;
+
+                    // Profitability score 0-100
+                    double avgSystemMargin = 35.0;
+                    if (stavkeWithArtikal.Any(x => x.Cost.HasValue))
+                    {
+                        var sysRevWithCost = stavkeWithArtikal.Where(x => x.Cost.HasValue).Sum(x => x.Revenue);
+                        var sysCost = stavkeWithArtikal.Where(x => x.Cost.HasValue).Sum(x => x.Cost!.Value);
+                        if (sysRevWithCost > 0)
+                            avgSystemMargin = (double)((sysRevWithCost - sysCost) / sysRevWithCost * 100);
+                    }
+                    var profitScore = Math.Min(100, (marginPct / Math.Max(avgSystemMargin, 1)) * 50 +
+                        (totalRevenue > 0 ? (double)(rev / totalRevenue) * 50 : 0));
+
+                    // Diversity score
+                    var allCategories = stavkeWithArtikal.Select(x => x.Kategorija).Distinct().Count();
+                    var diversityScore = allCategories > 0 ? (double)uniqueCategories / allCategories * 100 : 50;
+
+                    // Dependency penalty
+                    var dependencyScore = Math.Max(0, 100 - dependencyRatio * 2);
+
+                    // Composite
+                    var compositeScore = profitScore * 0.35 + diversityScore * 0.25 + dependencyScore * 0.4;
+
+                    var riskLevel = dependencyRatio > 30 ? "HIGH" : dependencyRatio > 15 ? "MED" : "LOW";
+
+                    return new
+                    {
+                        dobavljacId = g.Key.DobavljacId,
+                        dobavljacNaziv = g.Key.DobavljacNaziv ?? "Nepoznato",
+                        totalRevenue = rev,
+                        totalUnits = units,
+                        marginPct,
+                        uniqueProducts,
+                        uniqueCategories,
+                        dependencyRatio,
+                        profitScore,
+                        diversityScore,
+                        dependencyScore,
+                        compositeScore,
+                        riskLevel
+                    };
+                })
+                .OrderByDescending(x => x.totalRevenue)
+                .ToList();
+
+            return Results.Ok(grouped);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška supplier scorecard");
+        }
+    }).RequireRateLimiting("db-heavy");
+
+    // ABC Classification — products by revenue contribution
+    app.MapGet("/api/analytics/advanced/abc-classification", async (
+        ITrendplusDbContext db,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default) =>
+    {
+        try
+        {
+            var from = fromDate ?? DateTime.UtcNow.AddDays(-90);
+            var to = toDate ?? DateTime.UtcNow;
+            if (from.Kind == DateTimeKind.Unspecified) from = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+            if (to.Kind == DateTimeKind.Unspecified) to = DateTime.SpecifyKind(to, DateTimeKind.Utc);
+
+            var prodajeIds = await db.ProdajaZaglavlja
+                .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                .Select(p => p.Id).ToListAsync(ct);
+
+            if (!prodajeIds.Any())
+                return Results.Ok(new { items = new List<object>(), summary = new { countA = 0, countB = 0, countC = 0 } });
+
+            var productSales = await (
+                from ps in db.ProdajaStavke
+                join a in db.Artikli on ps.IdArtikal equals a.Id
+                where prodajeIds.Contains(ps.IdProdaja)
+                group ps by new { a.Id, a.Naziv, a.Kategorija, a.Pol } into g
+                select new
+                {
+                    artikalId = g.Key.Id,
+                    naziv = g.Key.Naziv,
+                    kategorija = g.Key.Kategorija ?? "Ostalo",
+                    pol = g.Key.Pol ?? "Neodređeno",
+                    totalRevenue = g.Sum(x => x.Kolicina * x.Cena),
+                    totalUnits = g.Sum(x => x.Kolicina)
+                }
+            ).OrderByDescending(x => x.totalRevenue).ToListAsync(ct);
+
+            var total = productSales.Sum(x => x.totalRevenue);
+            if (total == 0) return Results.Ok(new { items = new List<object>(), summary = new { countA = 0, countB = 0, countC = 0 } });
+
+            decimal cumulative = 0;
+            var result = productSales.Select(p =>
+            {
+                cumulative += p.totalRevenue;
+                var cumPct = (double)(cumulative / total * 100);
+                var revPct = (double)(p.totalRevenue / total * 100);
+                var cls = cumPct <= 70 ? "A" : cumPct <= 90 ? "B" : "C";
+                return new
+                {
+                    p.artikalId, p.naziv, p.kategorija, p.pol,
+                    p.totalRevenue, p.totalUnits, revPct,
+                    cumulativePct = cumPct, abcClass = cls
+                };
+            }).ToList();
+
+            var summary = new
+            {
+                countA = result.Count(x => x.abcClass == "A"),
+                countB = result.Count(x => x.abcClass == "B"),
+                countC = result.Count(x => x.abcClass == "C"),
+                revenueA = result.Where(x => x.abcClass == "A").Sum(x => x.totalRevenue),
+                revenueB = result.Where(x => x.abcClass == "B").Sum(x => x.totalRevenue),
+                revenueC = result.Where(x => x.abcClass == "C").Sum(x => x.totalRevenue),
+            };
+
+            return Results.Ok(new { items = result, summary });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška ABC klasifikacija");
+        }
+    }).RequireRateLimiting("db-heavy");
+
+    // Aging Stock Analysis
+    app.MapGet("/api/analytics/advanced/aging-stock", async (
+        ITrendplusDbContext db,
+        CancellationToken ct = default) =>
+    {
+        try
+        {
+            var all = await (
+                from a in db.Artikli
+                where a.Kolicina > 0
+                select new
+                {
+                    a.Id,
+                    a.Naziv,
+                    a.Kategorija,
+                    a.Pol,
+                    a.Kolicina,
+                    a.NabavnaCena,
+                    a.ProdajnaCena,
+                    a.UpdatedAt,
+                    a.IDDobavljac
+                }
+            ).ToListAsync(ct);
+
+            var lastSaleByArtikal = await (
+                from ps in db.ProdajaStavke
+                join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
+                group p.DatumProdaje by ps.IdArtikal into g
+                select new { artikalId = g.Key, lastSale = g.Max() }
+            ).ToListAsync(ct);
+
+            var lastSaleDict = lastSaleByArtikal.ToDictionary(x => x.artikalId, x => x.lastSale);
+
+            var dobavljaciDict = await db.Dobavljaci
+                .Where(d => all.Select(a => a.IDDobavljac).Contains(d.Id))
+                .ToDictionaryAsync(d => d.Id, d => d.Naziv ?? "Nepoznato", ct);
+
+            var today = DateTime.UtcNow.Date;
+
+            var result = all.Select(a =>
+            {
+                var lastSale = lastSaleDict.ContainsKey(a.Id) ? lastSaleDict[a.Id] : a.UpdatedAt;
+                var daysWithoutSale = (today - lastSale.Date).Days;
+                var agingCategory = daysWithoutSale < 30 ? "Aktivno" :
+                                    daysWithoutSale < 60 ? "Pazi" :
+                                    daysWithoutSale < 90 ? "Upozorenje" : "Kritično";
+                var stockValue = a.NabavnaCena.HasValue ? a.Kolicina * a.NabavnaCena.Value : (decimal?)null;
+                var dobavljacNaziv = a.IDDobavljac.HasValue && dobavljaciDict.ContainsKey(a.IDDobavljac.Value)
+                    ? dobavljaciDict[a.IDDobavljac.Value] : "Nepoznato";
+                return new
+                {
+                    a.Id, a.Naziv,
+                    kategorija = a.Kategorija ?? "Ostalo",
+                    pol = a.Pol ?? "Neodređeno",
+                    kolicina = a.Kolicina ?? 0,
+                    stockValue,
+                    dobavljacNaziv,
+                    lastSaleDate = lastSale.ToString("yyyy-MM-dd"),
+                    daysWithoutSale,
+                    agingCategory
+                };
+            })
+            .OrderByDescending(x => x.daysWithoutSale)
+            .ToList();
+
+            var summary = new
+            {
+                totalSKU = result.Count,
+                critical = result.Count(x => x.agingCategory == "Kritično"),
+                warning = result.Count(x => x.agingCategory == "Upozorenje"),
+                watch = result.Count(x => x.agingCategory == "Pazi"),
+                active = result.Count(x => x.agingCategory == "Aktivno"),
+                criticalStockValue = result.Where(x => x.agingCategory == "Kritično").Sum(x => x.stockValue ?? 0)
+            };
+
+            return Results.Ok(new { items = result, summary });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška aging stock");
+        }
+    }).RequireRateLimiting("db-heavy");
+
+    // Daily Analysis — Z-score for a specific date
+    app.MapGet("/api/analytics/advanced/daily-analysis", async (
+        ITrendplusDbContext db,
+        DateTime? analysisDate = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default) =>
+    {
+        try
+        {
+            var targetDate = (analysisDate ?? DateTime.UtcNow.AddDays(-1)).Date;
+            var from = fromDate ?? targetDate.AddDays(-60);
+            var to = toDate ?? targetDate;
+            if (from.Kind == DateTimeKind.Unspecified) from = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+            if (to.Kind == DateTimeKind.Unspecified) to = DateTime.SpecifyKind(to, DateTimeKind.Utc);
+
+            // All daily totals in the range (for z-score)
+            var prodajeAll = await db.ProdajaZaglavlja
+                .Where(p => p.DatumProdaje.Date >= from && p.DatumProdaje.Date <= to)
+                .ToListAsync(ct);
+
+            var allProdajeIds = prodajeAll.Select(p => p.Id).ToList();
+            var allStavke = await db.ProdajaStavke.Where(ps => allProdajeIds.Contains(ps.IdProdaja))
+                .Select(ps => new { ps.IdProdaja, ps.Kolicina, ps.Cena }).ToListAsync(ct);
+
+            var dailyRevenues = prodajeAll
+                .GroupBy(p => p.DatumProdaje.Date)
+                .Select(g =>
+                {
+                    var ids = g.Select(x => x.Id).ToList();
+                    var rev = allStavke.Where(s => ids.Contains(s.IdProdaja)).Sum(s => s.Kolicina * s.Cena);
+                    var units = allStavke.Where(s => ids.Contains(s.IdProdaja)).Sum(s => s.Kolicina);
+                    return new { date = g.Key, revenue = rev, units };
+                })
+                .OrderBy(x => x.date)
+                .ToList();
+
+            var targetDay = dailyRevenues.FirstOrDefault(d => d.date == targetDate);
+
+            // Z-score
+            var revenues = dailyRevenues.Select(x => (double)x.revenue).ToArray();
+            var mean = revenues.Length > 0 ? revenues.Average() : 0;
+            var stdDev = revenues.Length > 1 ?
+                Math.Sqrt(revenues.Sum(r => Math.Pow(r - mean, 2)) / (revenues.Length - 1)) : 0;
+            var zScore = stdDev > 0 && targetDay != null ? ((double)targetDay.revenue - mean) / stdDev : 0;
+            var isOutlier = Math.Abs(zScore) > 2;
+            var isExtremeOutlier = Math.Abs(zScore) > 3;
+
+            // Top 5 od target dana
+            var targetProdajeIds = prodajeAll.Where(p => p.DatumProdaje.Date == targetDate).Select(p => p.Id).ToList();
+            var top5 = new List<object>();
+            if (targetProdajeIds.Any())
+            {
+                top5 = await (
+                    from ps in db.ProdajaStavke
+                    join a in db.Artikli on ps.IdArtikal equals a.Id
+                    where targetProdajeIds.Contains(ps.IdProdaja)
+                    group new { ps, a } by new { a.Id, a.Naziv, a.Kategorija } into g
+                    orderby g.Sum(x => x.ps.Kolicina * x.ps.Cena) descending
+                    select (object)new
+                    {
+                        artikalId = g.Key.Id,
+                        naziv = g.Key.Naziv,
+                        kategorija = g.Key.Kategorija ?? "Ostalo",
+                        units = g.Sum(x => x.ps.Kolicina),
+                        revenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena)
+                    }
+                ).Take(5).ToListAsync(ct);
+            }
+
+            return Results.Ok(new
+            {
+                analysisDate = targetDate.ToString("yyyy-MM-dd"),
+                targetRevenue = targetDay?.revenue ?? 0,
+                targetUnits = targetDay?.units ?? 0,
+                meanRevenue = (decimal)mean,
+                zScore,
+                isOutlier,
+                isExtremeOutlier,
+                dailyData = dailyRevenues.Select(d => new
+                {
+                    date = d.date.ToString("yyyy-MM-dd"),
+                    revenue = d.revenue,
+                    units = d.units,
+                    isTarget = d.date == targetDate
+                }),
+                top5Articles = top5
+            });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška daily analysis");
+        }
+    }).RequireRateLimiting("db-heavy");
+
+    // Category Intelligence — velocity + profit lift
+    app.MapGet("/api/analytics/advanced/category-intelligence", async (
+        ITrendplusDbContext db,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default) =>
+    {
+        try
+        {
+            var from = fromDate ?? DateTime.UtcNow.AddDays(-90);
+            var to = toDate ?? DateTime.UtcNow;
+            if (from.Kind == DateTimeKind.Unspecified) from = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+            if (to.Kind == DateTimeKind.Unspecified) to = DateTime.SpecifyKind(to, DateTimeKind.Utc);
+            var days = Math.Max(1, (to - from).TotalDays);
+
+            var prodajeIds = await db.ProdajaZaglavlja
+                .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                .Select(p => p.Id).ToListAsync(ct);
+
+            var stavkeWithArtikal = await (
+                from ps in db.ProdajaStavke
+                join a in db.Artikli on ps.IdArtikal equals a.Id
+                where prodajeIds.Contains(ps.IdProdaja)
+                select new
+                {
+                    Kategorija = a.Kategorija ?? "Ostalo",
+                    Pol = a.Pol ?? "Neodređeno",
+                    Revenue = ps.Kolicina * ps.Cena,
+                    Cost = a.NabavnaCena.HasValue ? ps.Kolicina * a.NabavnaCena.Value : (decimal?)null,
+                    Units = ps.Kolicina,
+                    ArtikalId = a.Id
+                }
+            ).ToListAsync(ct);
+
+            var totalRevenue = stavkeWithArtikal.Sum(x => x.Revenue);
+            var totalWithCost = stavkeWithArtikal.Where(x => x.Cost.HasValue).ToList();
+            var totalMarginPct = totalWithCost.Any() ?
+                (double)((totalWithCost.Sum(x => x.Revenue) - totalWithCost.Sum(x => x.Cost!.Value)) / totalWithCost.Sum(x => x.Revenue) * 100) : 35;
+
+            var avgStock = await db.Artikli
+                .GroupBy(a => a.Kategorija ?? "Ostalo")
+                .Select(g => new { kategorija = g.Key, avgStock = g.Average(a => (double)(a.Kolicina ?? 0)) })
+                .ToListAsync(ct);
+            var avgStockDict = avgStock.ToDictionary(x => x.kategorija, x => x.avgStock);
+
+            var grouped = stavkeWithArtikal
+                .GroupBy(x => x.Kategorija)
+                .Select(g =>
+                {
+                    var rev = g.Sum(x => x.Revenue);
+                    var units = g.Sum(x => x.Units);
+                    var withCost = g.Where(x => x.Cost.HasValue).ToList();
+                    var marginPct = withCost.Any() ?
+                        (double)((withCost.Sum(x => x.Revenue) - withCost.Sum(x => x.Cost!.Value)) / withCost.Sum(x => x.Revenue) * 100) : 0;
+                    var profitLift = totalMarginPct > 0 ? (marginPct - totalMarginPct) / totalMarginPct * 100 : 0;
+                    var revShare = totalRevenue > 0 ? (double)(rev / totalRevenue * 100) : 0;
+
+                    var stockForCat = avgStockDict.ContainsKey(g.Key) ? avgStockDict[g.Key] : 1;
+                    var velocity = stockForCat > 0 ? units / days / Math.Max(stockForCat, 0.1) : 0;
+
+                    return new
+                    {
+                        kategorija = g.Key,
+                        totalRevenue = rev,
+                        totalUnits = units,
+                        marginPct,
+                        profitLift,
+                        revShare,
+                        velocity,
+                        uniqueSKU = g.Select(x => x.ArtikalId).Distinct().Count()
+                    };
+                })
+                .OrderByDescending(x => x.totalRevenue)
+                .ToList();
+
+            // Donut data (by Pol)
+            var byPol = stavkeWithArtikal
+                .GroupBy(x => x.Pol)
+                .Select(g => new
+                {
+                    pol = g.Key,
+                    totalRevenue = g.Sum(x => x.Revenue),
+                    totalUnits = g.Sum(x => x.Units),
+                    revShare = totalRevenue > 0 ? (double)(g.Sum(x => x.Revenue) / totalRevenue * 100) : 0
+                })
+                .OrderByDescending(x => x.totalRevenue)
+                .ToList();
+
+            return Results.Ok(new { byCategory = grouped, byGender = byPol });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška category intelligence");
+        }
+    }).RequireRateLimiting("db-heavy");
+
+    // Reorder Plan — DOH + reorder recommendations
+    app.MapGet("/api/analytics/advanced/reorder-plan", async (
+        ITrendplusDbContext db,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default) =>
+    {
+        try
+        {
+            var from = fromDate ?? DateTime.UtcNow.AddDays(-30);
+            var to = toDate ?? DateTime.UtcNow;
+            if (from.Kind == DateTimeKind.Unspecified) from = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+            if (to.Kind == DateTimeKind.Unspecified) to = DateTime.SpecifyKind(to, DateTimeKind.Utc);
+            var days = Math.Max(1, (to - from).TotalDays);
+
+            var prodajeIds = await db.ProdajaZaglavlja
+                .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                .Select(p => p.Id).ToListAsync(ct);
+
+            var salesByProduct = await (
+                from ps in db.ProdajaStavke
+                join a in db.Artikli on ps.IdArtikal equals a.Id
+                where prodajeIds.Contains(ps.IdProdaja)
+                group ps by new { a.Id, a.Naziv, a.Kategorija, a.Pol, a.IDDobavljac, a.NabavnaCena, a.ProdajnaCena, a.MinimalnaKolicina, a.Kolicina }
+                into g
+                select new
+                {
+                    artikalId = g.Key.Id,
+                    naziv = g.Key.Naziv,
+                    kategorija = g.Key.Kategorija ?? "Ostalo",
+                    pol = g.Key.Pol ?? "Neodređeno",
+                    dobavljacId = g.Key.IDDobavljac,
+                    nabavnaCena = g.Key.NabavnaCena,
+                    prodajnaCena = g.Key.ProdajnaCena,
+                    minKolicina = g.Key.MinimalnaKolicina ?? 5,
+                    currentStock = g.Key.Kolicina ?? 0,
+                    totalSold = g.Sum(x => x.Kolicina),
+                    totalRevenue = g.Sum(x => x.Kolicina * x.Cena)
+                }
+            ).ToListAsync(ct);
+
+            var dobavljaciDict = await db.Dobavljaci
+                .ToDictionaryAsync(d => d.Id, d => d.Naziv ?? "Nepoznato", ct);
+
+            var leadTimeDays = 14; // Assumed lead time
+
+            var result = salesByProduct.Select(p =>
+            {
+                var avgDailySales = p.totalSold / days;
+                var doh = avgDailySales > 0 ? p.currentStock / avgDailySales : 999;
+                var rop = avgDailySales * leadTimeDays * 1.5; // 1.5x safety factor
+                var needsReorder = p.currentStock <= rop;
+                var recommendedQty = needsReorder ? Math.Max((int)Math.Ceiling(avgDailySales * 30) - p.currentStock, 0) : 0;
+                var urgency = doh < 7 ? "KRITIČNO" : doh < 14 ? "HITNO" : doh < 30 ? "PREPORUČUJE SE" : "OK";
+                var dobavljacNaziv = p.dobavljacId.HasValue && dobavljaciDict.ContainsKey(p.dobavljacId.Value)
+                    ? dobavljaciDict[p.dobavljacId.Value] : "Nepoznato";
+
+                return new
+                {
+                    p.artikalId, p.naziv, p.kategorija, p.pol,
+                    dobavljacNaziv,
+                    p.currentStock,
+                    p.totalSold,
+                    avgDailySales,
+                    doh,
+                    rop,
+                    needsReorder,
+                    recommendedQty,
+                    urgency,
+                    p.prodajnaCena
+                };
+            })
+            .OrderBy(x => x.doh)
+            .ToList();
+
+            var summary = new
+            {
+                criticalCount = result.Count(x => x.urgency == "KRITIČNO"),
+                urgentCount = result.Count(x => x.urgency == "HITNO"),
+                recommendedCount = result.Count(x => x.urgency == "PREPORUČUJE SE"),
+                totalReorderValue = result.Where(x => x.needsReorder)
+                    .Sum(x => x.recommendedQty * (x.prodajnaCena ?? 0))
+            };
+
+            return Results.Ok(new { items = result, summary });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška reorder plan");
+        }
+    }).RequireRateLimiting("db-heavy");
+
+    // ====================== END INSIGHT STUDIO ENDPOINTS ======================
+
     app.MapAllEndpoints();
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Starting web host on port {port}...");

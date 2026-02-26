@@ -1,71 +1,65 @@
-/* ====================================================
-   Access Import Page — dark-mode card layout
-   Mirrors ProdajaPrePostNivelacijePage styling
-   ==================================================== */
+/* Access Import page - aligned to Inventory & Sales dark design system */
 
 .accimport-page {
-    background: #0f172a;
-    color: #e5e7eb;
-    border: 1px solid #1f2937;
-    border-radius: 14px;
+    background: linear-gradient(180deg, #161921 0%, #14161d 100%);
+    color: #dbe6fb;
+    border: 1px solid #2a2b32;
+    border-radius: 16px;
     padding: 16px;
+    box-shadow: 0 24px 40px -32px rgba(0, 0, 0, 0.9);
 }
 
 .accimport-title {
     margin: 0 0 6px;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
-    color: #f9fafb;
+    color: #f3f6ff;
 }
 
 .accimport-subtitle {
-    margin: 0 0 16px;
+    margin: 0 0 14px;
     font-size: 13px;
-    color: #9ca3af;
+    color: #9aabc7;
 }
-
-/* ---- Tab bar ---- */
 
 .accimport-tabs {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     margin-bottom: 14px;
-    border-bottom: 1px solid #1f2937;
-    padding-bottom: 0;
+    border-bottom: 1px solid #2a2b32;
 }
 
 .accimport-tab {
-    border: 1px solid #374151;
+    border: 1px solid #2f323b;
     border-bottom: none;
-    background: #0b1220;
-    color: #9ca3af;
-    border-radius: 8px 8px 0 0;
-    padding: 9px 16px;
-    font-size: 13px;
+    background: #14161d;
+    color: #97a7c2;
+    border-radius: 10px 10px 0 0;
+    padding: 9px 14px;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: all 0.15s ease;
 }
 
 .accimport-tab:hover {
-    color: #d1d5db;
+    color: #dbe6fb;
+    background: #1b1f29;
 }
 
 .accimport-tab.active {
-    background: #111827;
-    color: #f9fafb;
-    border-color: #1f2937;
+    background: #1f2d48;
+    color: #eaf1ff;
+    border-color: #3760b7;
 }
-
-/* ---- Filter bar / source bar ---- */
 
 .accimport-filterbar {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 10px;
-    background: #111827;
-    border: 1px solid #1f2937;
-    border-radius: 10px;
+    background: #14161d;
+    border: 1px solid #2f323b;
+    border-radius: 12px;
     padding: 12px;
     margin-bottom: 14px;
 }
@@ -78,24 +72,26 @@
 
 .accimport-label {
     font-size: 12px;
-    color: #9ca3af;
+    color: #93a7c8;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .accimport-input {
     width: 100%;
     padding: 8px 10px;
     border-radius: 8px;
-    border: 1px solid #374151;
-    background: #0b1220;
-    color: #e5e7eb;
+    border: 1px solid #2f323b;
+    background: #1a1b1f;
+    color: #e3ebff;
     font-size: 13px;
 }
 
 .accimport-input:focus {
     outline: none;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
+    border-color: #4f8cff;
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.2);
 }
 
 .accimport-checkbox-row {
@@ -103,16 +99,14 @@
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    color: #d1d5db;
+    color: #dbe6fb;
 }
 
 .accimport-checkbox-row input[type="checkbox"] {
     width: 14px;
     height: 14px;
-    accent-color: #2563eb;
+    accent-color: #4f8cff;
 }
-
-/* ---- Buttons ---- */
 
 .accimport-actions {
     display: flex;
@@ -122,69 +116,62 @@
 }
 
 .accimport-btn {
-    border: 0;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 8px 14px;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: opacity 0.15s;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
 }
 
 .accimport-btn:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: 0.55;
 }
 
 .accimport-btn-primary {
-    background: #2563eb;
+    background: #2d4f95;
+    border-color: #3760b7;
     color: #fff;
 }
 
 .accimport-btn-primary:hover:not(:disabled) {
-    background: #1d4ed8;
+    background: #3760b7;
 }
 
 .accimport-btn-secondary {
-    background: #1f2937;
-    color: #e5e7eb;
-    border: 1px solid #374151;
+    background: #222734;
+    color: #dbe6fb;
+    border-color: #3c4458;
 }
 
 .accimport-btn-secondary:hover:not(:disabled) {
-    background: #374151;
+    background: #2b3140;
 }
 
 .accimport-btn-success {
-    background: #059669;
+    background: #1e5b45;
+    border-color: #2d7759;
     color: #fff;
 }
 
 .accimport-btn-success:hover:not(:disabled) {
-    background: #047857;
+    background: #267058;
 }
 
-.accimport-btn-danger {
-    background: transparent;
-    color: #f87171;
-    border: 1px solid #7f1d1d;
-    font-size: 12px;
-    padding: 4px 10px;
-}
-
-.accimport-btn-danger:hover:not(:disabled) {
-    background: rgba(127, 29, 29, 0.3);
-}
-
+.accimport-btn-danger,
 .accimport-btn-clear {
-    background: transparent;
-    color: #f87171;
-    border: 1px solid #7f1d1d;
-    padding: 7px 10px;
+    background: #4d1f26;
+    color: #ffd5da;
+    border-color: #7f1d1d;
     font-size: 12px;
 }
 
-/* ---- File selector row ---- */
+.accimport-btn-danger:hover:not(:disabled),
+.accimport-btn-clear:hover:not(:disabled) {
+    background: #6c2932;
+}
 
 .accimport-file-row {
     display: flex;
@@ -195,67 +182,61 @@
 
 .accimport-file-name {
     font-size: 13px;
-    color: #9ca3af;
+    color: #9aabc7;
 }
 
 .accimport-file-name.has-file {
-    color: #34d399;
+    color: #6ee7b7;
 }
-
-/* ---- Cards / KPIs ---- */
 
 .accimport-kpis {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 10px;
     margin-bottom: 14px;
 }
 
 .accimport-kpi {
-    background: #111827;
-    border: 1px solid #1f2937;
-    border-radius: 10px;
+    background: #14161d;
+    border: 1px solid #2f323b;
+    border-radius: 12px;
     padding: 10px;
 }
 
 .accimport-kpi-label {
     font-size: 12px;
-    color: #9ca3af;
+    color: #93a7c8;
 }
 
 .accimport-kpi-value {
     margin-top: 6px;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
-    color: #f9fafb;
+    color: #f3f6ff;
 }
 
-.accimport-kpi-sub {
-    margin-top: 4px;
-    font-size: 12px;
-    color: #6b7280;
+.accimport-progress,
+.accimport-card,
+.accimport-table-wrap {
+    background: #14161d;
+    border: 1px solid #2f323b;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
 }
 
-/* ---- Progress card ---- */
-
-.accimport-progress {
-    background: #111827;
-    border: 1px solid #1f2937;
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 14px;
-}
-
-.accimport-progress-title {
+.accimport-progress-title,
+.accimport-card-title,
+.accimport-table-title {
+    margin: 0 0 8px;
     font-size: 14px;
     font-weight: 700;
-    color: #f9fafb;
-    margin-bottom: 8px;
+    color: #f3f6ff;
 }
 
 .accimport-progress-bar-track {
     height: 10px;
-    background: #1f2937;
+    background: #202431;
     border-radius: 6px;
     overflow: hidden;
     margin-bottom: 6px;
@@ -263,128 +244,94 @@
 
 .accimport-progress-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #2563eb, #34d399);
+    background: linear-gradient(90deg, #4f8cff, #4ac99b);
     border-radius: 6px;
-    transition: width 0.4s ease;
 }
 
 .accimport-progress-meta {
     display: flex;
     justify-content: space-between;
     font-size: 12px;
-    color: #9ca3af;
-}
-
-/* ---- Card ---- */
-
-.accimport-card {
-    background: #111827;
-    border: 1px solid #1f2937;
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 14px;
-}
-
-.accimport-card-title {
-    margin: 0 0 8px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #f9fafb;
-}
-
-/* ---- Table ---- */
-
-.accimport-table-wrap {
-    background: #111827;
-    border: 1px solid #1f2937;
-    border-radius: 10px;
-    padding: 10px;
-    margin-bottom: 12px;
-}
-
-.accimport-table-title {
-    margin: 0 0 8px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #f9fafb;
+    color: #9aabc7;
 }
 
 .accimport-scroll {
-    max-height: 400px;
+    max-height: 420px;
     overflow: auto;
-    border: 1px solid #1f2937;
-    border-radius: 8px;
+    border: 1px solid #2f323b;
+    border-radius: 10px;
 }
 
 .accimport-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
-    background: #0b1220;
+    background: #1a1b1f;
 }
 
 .accimport-table th {
     position: sticky;
     top: 0;
     z-index: 1;
-    background: #1f2937;
-    color: #d1d5db;
+    background: #14161d;
+    color: #93a7c8;
     text-align: left;
     font-weight: 700;
     padding: 8px;
-    border-bottom: 1px solid #374151;
+    border-bottom: 1px solid #2f323b;
 }
 
 .accimport-table td {
     padding: 8px;
-    border-bottom: 1px solid #1f2937;
+    border-bottom: 1px solid #262a34;
+    color: #dbe6fb;
 }
 
 .accimport-table tr:hover {
-    background: #111827;
+    background: #1f2330;
 }
 
 .accimport-table .align-right {
     text-align: right;
 }
 
-/* ---- Status badges ---- */
-
-.accimport-status {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.accimport-status-Completed { background: #064e3b; color: #6ee7b7; }
-.accimport-status-Running   { background: #1e3a5f; color: #93c5fd; }
-.accimport-status-Pending   { background: #1f2937; color: #9ca3af; }
-.accimport-status-Failed    { background: #7f1d1d; color: #fca5a5; }
-
-/* ---- Mapping badges ---- */
-
+.accimport-status,
 .accimport-mapping-badge {
     display: inline-block;
     padding: 2px 8px;
-    border-radius: 10px;
+    border-radius: 999px;
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
 }
 
-.accimport-mapping-matched { background: #064e3b; color: #6ee7b7; }
-.accimport-mapping-missing { background: #7f1d1d; color: #fca5a5; }
+.accimport-status-Completed,
+.accimport-mapping-matched {
+    background: #134e3a;
+    color: #6ee7b7;
+}
 
-/* ---- Schema collapsible ---- */
+.accimport-status-Running {
+    background: #1f2d48;
+    color: #9fc0ff;
+}
+
+.accimport-status-Pending {
+    background: #2a2f3b;
+    color: #9ca3af;
+}
+
+.accimport-status-Failed,
+.accimport-mapping-missing {
+    background: #4d1f26;
+    color: #fecaca;
+}
 
 .accimport-schema-details {
-    border: 1px solid #1f2937;
-    border-radius: 8px;
+    border: 1px solid #2f323b;
+    border-radius: 10px;
     padding: 8px 10px;
-    background: #0b1220;
+    background: #14161d;
     margin-bottom: 8px;
 }
 
@@ -395,11 +342,11 @@
     gap: 10px;
     flex-wrap: wrap;
     font-size: 13px;
-    color: #e5e7eb;
+    color: #dbe6fb;
 }
 
 .accimport-schema-summary strong {
-    color: #f9fafb;
+    color: #f3f6ff;
 }
 
 .accimport-schema-badge {
@@ -408,18 +355,18 @@
     border-radius: 999px;
     font-size: 11px;
     font-weight: 600;
-    border: 1px solid #374151;
+    border: 1px solid #3c4458;
 }
 
 .accimport-schema-badge.all-matched {
-    color: #34d399;
-    background: rgba(6, 78, 59, 0.3);
-    border-color: #064e3b;
+    color: #6ee7b7;
+    background: rgba(19, 78, 58, 0.35);
+    border-color: #2d7759;
 }
 
 .accimport-schema-badge.partial {
     color: #fbbf24;
-    background: rgba(120, 53, 15, 0.3);
+    background: rgba(120, 53, 15, 0.35);
     border-color: #78350f;
 }
 
@@ -432,53 +379,48 @@
 
 .accimport-col-chip {
     font-size: 11px;
-    background: #1f2937;
-    border: 1px solid #374151;
+    background: #1a1b1f;
+    border: 1px solid #3c4458;
     border-radius: 999px;
     padding: 2px 8px;
     color: #d1d5db;
 }
 
-/* ---- Alerts ---- */
+.accimport-error,
+.accimport-warning,
+.accimport-success,
+.accimport-delete-banner {
+    margin-bottom: 12px;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+}
 
 .accimport-error {
-    margin-bottom: 12px;
-    background: rgba(185, 28, 28, 0.2);
+    background: rgba(127, 29, 29, 0.25);
     border: 1px solid #7f1d1d;
-    border-radius: 8px;
-    padding: 10px;
     color: #fecaca;
-    font-size: 13px;
 }
 
 .accimport-warning {
-    margin-bottom: 12px;
-    background: rgba(120, 53, 15, 0.2);
+    background: rgba(120, 53, 15, 0.25);
     border: 1px solid #78350f;
-    border-radius: 8px;
-    padding: 10px;
     color: #fcd34d;
-    font-size: 13px;
 }
 
-.accimport-success {
-    margin-bottom: 12px;
-    background: rgba(6, 78, 59, 0.2);
-    border: 1px solid #064e3b;
-    border-radius: 8px;
-    padding: 10px;
+.accimport-success,
+.accimport-delete-banner {
+    background: rgba(19, 78, 58, 0.28);
+    border: 1px solid #2d7759;
     color: #6ee7b7;
-    font-size: 13px;
 }
 
 .accimport-empty-state {
     padding: 24px;
     text-align: center;
-    color: #9ca3af;
+    color: #9aabc7;
     font-size: 14px;
 }
-
-/* ---- Import result grid ---- */
 
 .accimport-result-grid {
     display: grid;
@@ -492,60 +434,39 @@
     align-items: baseline;
     font-size: 13px;
     padding: 4px 0;
-    border-bottom: 1px solid #1f2937;
+    border-bottom: 1px solid #2a2f3b;
 }
 
 .accimport-result-entity {
-    color: #9ca3af;
+    color: #9aabc7;
 }
 
 .accimport-result-counts {
     font-weight: 700;
-    color: #e5e7eb;
+    color: #e3ebff;
 }
 
 .accimport-result-counts .ins {
-    color: #34d399;
+    color: #6ee7b7;
 }
 
 .accimport-result-counts .upd {
-    color: #60a5fa;
-}
-
-/* ---- Delete result ---- */
-
-.accimport-delete-banner {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-    background: rgba(6, 78, 59, 0.2);
-    border: 1px solid #064e3b;
-    border-radius: 8px;
-    padding: 10px 14px;
-    color: #6ee7b7;
-    font-size: 13px;
+    color: #9fc0ff;
 }
 
 .accimport-delete-banner-close {
     margin-left: auto;
     border: none;
     background: transparent;
-    color: #6ee7b7;
+    color: inherit;
     cursor: pointer;
     font-weight: 700;
     font-size: 16px;
 }
 
-/* ---- Responsive ---- */
-
 @media (max-width: 1100px) {
-    .accimport-actions {
-        flex-wrap: wrap;
-    }
     .accimport-kpis {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
 }
 
@@ -553,13 +474,16 @@
     .accimport-tabs {
         flex-wrap: wrap;
     }
+
     .accimport-filterbar {
         grid-template-columns: 1fr;
     }
+
     .accimport-actions {
         flex-direction: column;
         align-items: stretch;
     }
+
     .accimport-kpis {
         grid-template-columns: 1fr 1fr;
     }

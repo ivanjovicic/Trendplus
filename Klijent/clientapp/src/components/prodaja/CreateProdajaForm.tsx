@@ -243,26 +243,20 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
     }, [stavke]);
 
     return (
-        <div className="card">
-            <h2 className="text-2xl font-semibold mb-6">Nova prodaja</h2>
-
-            <div style={{ marginBottom: "1.5rem" }}>
-                <label className="field-label">Broj racuna</label>
+        <div className="space-y-4">
+            <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
+                <h2 className="mb-4 text-xl font-semibold text-[#f3f6ff]">Nova prodaja</h2>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj racuna</label>
                 <input
                     placeholder="Broj racuna"
                     value={brojRacuna}
                     onChange={(e) => setBrojRacuna(e.target.value)}
-                    className="input-big"
+                    className="w-full rounded-xl border border-[#2f323b] bg-[#1a1b1f] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
                 />
-            </div>
+            </section>
 
-            <div style={{ marginBottom: "1.5rem", position: "relative" }} ref={searchRef}>
-                <label className="field-label">
-                    Pretrazi i dodaj artikal
-                    <span style={{ fontSize: "0.875rem", fontWeight: 400, marginLeft: "8px", color: "#6b7280" }}>
-                        (strelice za navigaciju, Enter za dodavanje)
-                    </span>
-                </label>
+            <section className="relative rounded-xl border border-[#2f323b] bg-[#14161d] p-4" ref={searchRef}>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Pretrazi i dodaj artikal</label>
                 <input
                     type="text"
                     placeholder="Pretrazi artikle po nazivu..."
@@ -273,191 +267,115 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                     }}
                     onFocus={() => setShowSearchResults(true)}
                     onKeyDown={handleKeyDown}
-                    className="input-big"
-                    style={{
-                        borderColor: showSearchResults && filteredArtikli.length > 0 ? "#2563eb" : undefined,
-                    }}
+                    className="w-full rounded-xl border border-[#2f323b] bg-[#1a1b1f] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
                 />
 
                 {showSearchResults && searchQuery.trim() && (
-                    <div
-                        style={{
-                            position: "absolute",
-                            top: "100%",
-                            left: 0,
-                            right: 0,
-                            background: "white",
-                            border: "2px solid #e5e7eb",
-                            borderRadius: "8px",
-                            marginTop: "4px",
-                            maxHeight: "300px",
-                            overflowY: "auto",
-                            zIndex: 1000,
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        }}
-                    >
+                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-[#2f323b] bg-[#1a1b1f] shadow-xl">
                         {isSearching ? (
-                            <div style={{ padding: "16px", textAlign: "center", color: "#6b7280" }}>
-                                Pretrazujem...
-                            </div>
+                            <div className="px-3 py-5 text-center text-sm text-[#9aabc7]">Pretrazujem...</div>
                         ) : filteredArtikli.length > 0 ? (
                             filteredArtikli.map((art, idx) => (
-                                <div
+                                <button
                                     key={art.id}
+                                    type="button"
                                     onClick={() => quickAddArtikal(art)}
-                                    style={{
-                                        padding: "12px",
-                                        borderBottom: "1px solid #f3f4f6",
-                                        cursor: "pointer",
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        transition: "background 0.15s",
-                                        background: idx === selectedIndex ? "#eff6ff" : "white",
-                                    }}
+                                    className={`flex w-full items-center justify-between border-b border-[#262a34] px-3 py-3 text-left transition ${idx === selectedIndex ? "bg-[#1f2d48]" : "hover:bg-[#1f2330]"}`}
                                     onMouseEnter={() => setSelectedIndex(idx)}
                                 >
                                     <div>
-                                        <div style={{ fontWeight: 600, color: "#111827" }}>{art.naziv}</div>
-                                        <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>ID: {art.id}</div>
+                                        <div className="font-semibold text-[#e7eeff]">{art.naziv}</div>
+                                        <div className="text-xs text-[#8ea0bd]">ID: {art.id}</div>
                                     </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <span style={{ fontWeight: 600, color: "#059669", fontSize: "1.125rem" }}>
-                                            {art.cena} RSD
-                                        </span>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                quickAddArtikal(art);
-                                            }}
-                                            style={{
-                                                background: idx === selectedIndex ? "#2563eb" : "#3b82f6",
-                                                color: "white",
-                                                padding: "6px 12px",
-                                                borderRadius: "6px",
-                                                border: "none",
-                                                cursor: "pointer",
-                                                fontSize: "0.875rem",
-                                                fontWeight: 600,
-                                            }}
-                                        >
-                                            + Dodaj
-                                        </button>
-                                    </div>
-                                </div>
+                                    <div className="text-sm font-semibold text-emerald-300">{art.cena} RSD</div>
+                                </button>
                             ))
                         ) : (
-                            <div style={{ padding: "16px", textAlign: "center", color: "#6b7280" }}>
-                                Nema rezultata za "{searchQuery}"
-                            </div>
+                            <div className="px-3 py-5 text-center text-sm text-[#9aabc7]">Nema rezultata za "{searchQuery}"</div>
                         )}
                     </div>
                 )}
-            </div>
+            </section>
 
-            <div style={{ marginBottom: "1.5rem" }}>
-                <h3 className="text-lg font-semibold mb-4">Stavke ({stavke.length})</h3>
+            <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
+                <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-[#93a7c8]">Stavke ({stavke.length})</h3>
+                    <button
+                        type="button"
+                        onClick={addStavka}
+                        className="rounded-lg border border-[#2d7759] bg-[#1e5b45] px-3 py-1.5 text-xs font-semibold text-emerald-100"
+                    >
+                        + Dodaj stavku
+                    </button>
+                </div>
 
-                {stavke.map((s, i) => (
-                    <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-                        <div style={{ flex: "1 1 200px", minWidth: "200px" }}>
-                            <label className="field-label" style={{ fontSize: "0.875rem" }}>Artikal</label>
-                            <select
-                                value={s.idArtikal}
-                                onChange={(e) => {
-                                    const id = Number(e.target.value);
-                                    const art = knownArtikli.find((a) => a.id === id);
-                                    updateStavka(i, { idArtikal: id, cena: art?.cena ?? s.cena });
-                                }}
-                                className="input-big"
-                                style={{ marginTop: "0.25rem", marginBottom: 0 }}
-                                aria-label={`Artikal ${i + 1}`}
-                            >
-                                {artikalOptions}
-                            </select>
+                <div className="space-y-3">
+                    {stavke.map((s, i) => (
+                        <div key={i} className="grid gap-2 rounded-lg border border-[#2a2f3b] bg-[#1a1b1f] p-3 lg:grid-cols-[1.8fr_0.7fr_0.8fr_auto]">
+                            <div>
+                                <label className="mb-1 block text-xs text-[#8ea0bd]">Artikal</label>
+                                <select
+                                    value={s.idArtikal}
+                                    onChange={(e) => {
+                                        const id = Number(e.target.value);
+                                        const art = knownArtikli.find((a) => a.id === id);
+                                        updateStavka(i, { idArtikal: id, cena: art?.cena ?? s.cena });
+                                    }}
+                                    className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+                                >
+                                    {artikalOptions}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs text-[#8ea0bd]">Kolicina</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={s.kolicina}
+                                    onChange={(e) => updateStavka(i, { kolicina: Number(e.target.value) })}
+                                    className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs text-[#8ea0bd]">Cena</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={s.cena}
+                                    onChange={(e) => updateStavka(i, { cena: Number(e.target.value) })}
+                                    className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+                                />
+                            </div>
+
+                            <div className="flex items-end">
+                                <button
+                                    type="button"
+                                    onClick={() => removeStavka(i)}
+                                    className="rounded-lg border border-rose-700 bg-rose-900/40 px-3 py-2 text-xs font-semibold text-rose-200"
+                                >
+                                    Ukloni
+                                </button>
+                            </div>
                         </div>
+                    ))}
+                </div>
+            </section>
 
-                        <div style={{ flex: "0 1 100px" }}>
-                            <label className="field-label" style={{ fontSize: "0.875rem" }}>Kolicina</label>
-                            <input
-                                type="number"
-                                min={1}
-                                value={s.kolicina}
-                                onChange={(e) => updateStavka(i, { kolicina: Number(e.target.value) })}
-                                className="input-big"
-                                style={{ marginTop: "0.25rem", marginBottom: 0 }}
-                                aria-label={`Kolicina ${i + 1}`}
-                            />
-                        </div>
-
-                        <div style={{ flex: "0 1 120px" }}>
-                            <label className="field-label" style={{ fontSize: "0.875rem" }}>Cena (RSD)</label>
-                            <input
-                                type="number"
-                                min={0}
-                                value={s.cena}
-                                onChange={(e) => updateStavka(i, { cena: Number(e.target.value) })}
-                                className="input-big"
-                                style={{ marginTop: "0.25rem", marginBottom: 0 }}
-                                aria-label={`Cena ${i + 1}`}
-                            />
-                        </div>
-
-                        <div style={{ flex: "0 0 auto", paddingTop: "1.75rem" }}>
-                            <button
-                                type="button"
-                                className="button-big"
-                                onClick={() => removeStavka(i)}
-                                style={{
-                                    background: "#dc2626",
-                                    width: "auto",
-                                    padding: "10px 16px",
-                                    marginTop: 0,
-                                }}
-                            >
-                                Ukloni
-                            </button>
-                        </div>
-                    </div>
-                ))}
-
+            <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
+                <div className="text-base font-semibold text-[#f3f6ff]">Ukupno: <span className="text-emerald-300">{safeNumber(ukupno, 0).toFixed(2)} RSD</span></div>
                 <button
                     type="button"
-                    className="button-big"
-                    onClick={addStavka}
-                    style={{
-                        background: "#059669",
-                        maxWidth: "200px",
-                        marginTop: "1rem",
-                    }}
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7] disabled:opacity-60"
                 >
-                    + Dodaj stavku
+                    {isSubmitting ? "Kreiram..." : "Sacuvaj prodaju"}
                 </button>
-            </div>
+            </section>
 
-            <div
-                style={{
-                    borderTop: "2px solid #e5e7eb",
-                    paddingTop: "1rem",
-                    marginBottom: "1rem",
-                    fontSize: "1.25rem",
-                    fontWeight: 600,
-                }}
-            >
-                Ukupno: {safeNumber(ukupno, 0).toFixed(2)} RSD
-            </div>
-
-            <button
-                type="button"
-                className="button-big"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                style={{ maxWidth: "300px" }}
-            >
-                {isSubmitting ? "Kreiram..." : "Sacuvaj prodaju"}
-            </button>
-
-            {error && <p className="error-msg" style={{ marginTop: "1rem" }}>{error}</p>}
+            {error && <p className="rounded-lg border border-rose-700 bg-rose-950/30 px-3 py-2 text-sm text-rose-300">{error}</p>}
         </div>
     );
 }

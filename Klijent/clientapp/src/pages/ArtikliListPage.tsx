@@ -1,10 +1,12 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { PackageSearch } from "lucide-react";
 import { getArtikliPaged } from "../services/artikliApi";
 import { getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
 import type { Dobavljac } from "../types/Dobavljaci";
 import { getDataScope } from "../utils/dataScope";
+import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
 
 type ArtikalListItem = {
   id: number;
@@ -31,11 +33,9 @@ export default function ArtikliListPage() {
   const [error, setError] = useState<string | null>(null);
   const [dataScope, setDataScope] = useState(getDataScope());
 
-  // Pagination state
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  // Filter states
   const [searchNaziv, setSearchNaziv] = useState("");
   const [filterSezona, setFilterSezona] = useState<number | "">("");
   const [filterDobavljac, setFilterDobavljac] = useState<number | "">("");
@@ -45,14 +45,11 @@ export default function ArtikliListPage() {
   const [filterMaxKolicina, setFilterMaxKolicina] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  // Sorting state
   const [sortBy, setSortBy] = useState<"naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id" | "dobavljac">("naziv");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // Jump-to-page state
   const [jumpTo, setJumpTo] = useState<string>("1");
 
-  // Handle column header click for sorting
   type SortCol = "naziv" | "prodajnaCena" | "nabavnaCena" | "kolicina" | "id" | "dobavljac";
 
   const handleSort = (column: SortCol) => {
@@ -67,7 +64,7 @@ export default function ArtikliListPage() {
 
   const renderSortIndicator = (column: SortCol) => {
     if (sortBy !== column) return null;
-    return sortDir === "asc" ? " ▲" : " ▼";
+    return sortDir === "asc" ? " ?" : " ?";
   };
 
   useEffect(() => {
@@ -121,7 +118,9 @@ export default function ArtikliListPage() {
       }
     };
     loadDobavljaci();
-    return () => { aborted = true; };
+    return () => {
+      aborted = true;
+    };
   }, []);
 
   const filters = useMemo(() => {
@@ -152,7 +151,6 @@ export default function ArtikliListPage() {
     return f;
   }, [searchNaziv, filterSezona, filterDobavljac, filterMinCena, filterMaxCena, filterMinKolicina, filterMaxKolicina, sortBy, sortDir]);
 
-  // keep jump input in sync
   useEffect(() => {
     setJumpTo(String(pageNumber));
   }, [pageNumber]);
@@ -162,7 +160,7 @@ export default function ArtikliListPage() {
 
     const load = async () => {
       const filterKey = JSON.stringify({ pageNumber, pageSize, dataScope, ...filters });
-      
+
       const sessionCached = sessionStorage.getItem(CACHE_KEY_ARTIKLI_PAGED + filterKey);
       const sessionTotal = sessionStorage.getItem(CACHE_KEY_TOTAL_COUNT + filterKey);
 
@@ -193,7 +191,7 @@ export default function ArtikliListPage() {
       } catch (e: unknown) {
         if (aborted) return;
         console.error(e);
-        setError(e instanceof Error ? e.message : "Greška pri učitavanju podataka.");
+        setError(e instanceof Error ? e.message : "Gre�ka pri ucitavanju podataka.");
       } finally {
         if (!aborted) setLoading(false);
       }
@@ -229,177 +227,85 @@ export default function ArtikliListPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  if (loading) {
-    return (
-      <div className="card">
-        <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje artikala...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="card">
-        <p className="error-msg">{error}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="card" style={{ margin: "2rem auto", maxWidth: "1200px" }}>
-      {/* Compact header + pagination in single row */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "0.75rem",
-          gap: 12,
-        }}
-      >
-        {/* Left: Title + Pagination controls - single line, no wrap */}
-        <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0, overflow: "hidden" }}>
-          <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "#1f2937", whiteSpace: "nowrap", flexShrink: 0 }}>
-            Lista artikala <span style={{ color: "#6b7280", fontWeight: 400, fontSize: "0.9375rem" }}>({artikli.length} / {totalCount})</span>
-          </h2>
-
-          <div style={{ display: "flex", gap: 6, alignItems: "center", whiteSpace: "nowrap", flexShrink: 0 }}>
-            <button
-              className="button-big"
-              style={{ padding: "2px 8px", background: pageNumber <= 1 ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
-              disabled={pageNumber <= 1}
-              onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-              title="Prethodna"
-            >
-              ←
-            </button>
-
-            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <input
-                className="input-big"
-                style={{ marginBottom: 0, width: "42px", padding: "2px 4px", fontSize: "0.75rem", textAlign: "center", height: "24px" }}
-                type="number"
-                min={1}
-                max={totalPages}
-                value={jumpTo}
-                onChange={(e) => setJumpTo(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const parsed = Number(jumpTo);
-                    if (!Number.isFinite(parsed)) return;
-                    const target = Math.min(totalPages, Math.max(1, Math.trunc(parsed)));
-                    setPageNumber(target);
-                  }
-                }}
-              />
-              <span style={{ color: "#6b7280", fontSize: "0.75rem" }}>/ {totalPages}</span>
-            </div>
-
-            <button
-              className="button-big"
-              style={{ padding: "2px 8px", background: pageNumber >= totalPages ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
-              disabled={pageNumber >= totalPages}
-              onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
-              title="Sledeća"
-            >
-              →
-            </button>
-
-            <span style={{ color: "#d1d5db", fontSize: "0.75rem", margin: "0 2px" }}>|</span>
-
-            <span style={{ color: "#6b7280", fontSize: "0.75rem" }}>Po strani:</span>
-            <select
-              className="input-big"
-              style={{ 
-                marginBottom: 0, 
-                width: "70px", 
-                padding: "2px 6px 2px 8px", 
-                fontSize: "0.75rem", 
-                height: "24px",
-                backgroundImage: "url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3e%3cpath fill=%27none%27 stroke=%27%236b7280%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27m2 5 6 6 6-6%27/%3e%3c/svg%3e')",
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 4px center",
-                backgroundSize: "12px",
-                paddingRight: "22px",
-              }}
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPageNumber(1);
-              }}
-            >
-              {[25, 50, 100, 200].map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Right: Compact filter button - unchanged */}
+    <InventoryPageShell
+      icon={PackageSearch}
+      title="Pregled i izmene artikala"
+      subtitle="Master lista artikala sa naprednim filterima, sortiranjem i brzim prelaskom na izmenu."
+      actions={
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="button-big"
-          style={{
-            background: showFilters ? "#dc2626" : "#3b82f6",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "3px",
-            padding: "3px 7px",
-            fontSize: "0.6875rem",
-            whiteSpace: "nowrap",
-            flexShrink: 0,
-            maxWidth: "80px",
-          }}
+          className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-3 py-2 text-xs font-semibold text-white"
         >
-          {showFilters ? "Sakrij" : "Filteri"}
-          {activeFiltersCount > 0 && (
-            <span
-              style={{
-                background: "white",
-                color: "#3b82f6",
-                borderRadius: "50%",
-                width: "15px",
-                height: "15px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "0.625rem",
-                fontWeight: 700,
-              }}
-            >
-              {activeFiltersCount}
-            </span>
-          )}
+          {showFilters ? "Sakrij filtere" : `Filteri ${activeFiltersCount > 0 ? `(${activeFiltersCount})` : ""}`}
         </button>
-      </div>
+      }
+    >
+      <InventoryKpiRow
+        items={[
+          { label: "Ukupno artikala", value: `${totalCount}` },
+          { label: "Prikazano", value: `${artikli.length}` },
+          { label: "Strana", value: `${pageNumber}/${totalPages}` },
+          { label: "Data scope", value: dataScope || "all" },
+        ]}
+      />
 
-      {showFilters && (
-        <div
-          style={{
-            background: "#f9fafb",
-            border: "2px solid #e5e7eb",
-            borderRadius: "12px",
-            padding: "1.5rem",
-            marginBottom: "1.5rem",
-          }}
-        >
-          <h3 style={{ fontWeight: 600, fontSize: "1.125rem", marginBottom: "1rem" }}>🔍 Filteri</h3>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-              gap: "1rem",
+      <InventoryPanel>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button
+            className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
+            disabled={pageNumber <= 1}
+            onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+          >
+            ?
+          </button>
+          <input
+            className="w-16 rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-1 text-center text-xs text-[#dbe6fb]"
+            type="number"
+            min={1}
+            max={totalPages}
+            value={jumpTo}
+            onChange={(e) => setJumpTo(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const parsed = Number(jumpTo);
+                if (!Number.isFinite(parsed)) return;
+                const target = Math.min(totalPages, Math.max(1, Math.trunc(parsed)));
+                setPageNumber(target);
+              }
+            }}
+          />
+          <span className="text-sm text-[#9aabc7]">/ {totalPages}</span>
+          <button
+            className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
+            disabled={pageNumber >= totalPages}
+            onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
+          >
+            ?
+          </button>
+          <span className="mx-1 text-[#57637a]">|</span>
+          <span className="text-xs text-[#9aabc7]">Po strani</span>
+          <select
+            className="rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-1 text-xs text-[#dbe6fb]"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPageNumber(1);
             }}
           >
+            {[25, 50, 100, 200].map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+
+        {showFilters && (
+          <div className="mb-4 grid gap-3 rounded-xl border border-[#2f323b] bg-[#14161d] p-3 md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label className="field-label">Pretraži po nazivu</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Naziv</label>
               <input
                 type="text"
-                className="input-big"
-                placeholder="Unesite naziv..."
+                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
                 value={searchNaziv}
                 onChange={(e) => {
                   setSearchNaziv(e.target.value);
@@ -409,9 +315,9 @@ export default function ArtikliListPage() {
             </div>
 
             <div>
-              <label className="field-label">Sezona</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Sezona</label>
               <select
-                className="input-big"
+                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
                 value={filterSezona}
                 onChange={(e) => {
                   setFilterSezona(e.target.value ? Number(e.target.value) : "");
@@ -420,214 +326,136 @@ export default function ArtikliListPage() {
               >
                 <option value="">Sve sezone</option>
                 {sezone.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.naziv}
-                  </option>
+                  <option key={s.id} value={s.id}>{s.naziv}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="field-label">Dobavljač</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Dobavljac</label>
               <select
-                className="input-big"
+                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
                 value={filterDobavljac}
                 onChange={(e) => {
                   setFilterDobavljac(e.target.value ? Number(e.target.value) : "");
                   setPageNumber(1);
                 }}
               >
-                <option value="">Svi dobavljači</option>
+                <option value="">Svi dobavljaci</option>
                 {dobavljaci.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.naziv}
-                  </option>
+                  <option key={d.id} value={d.id}>{d.naziv}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="field-label">Min. cena (RSD)</label>
-              <input
-                type="number"
-                className="input-big"
-                placeholder="0"
-                value={filterMinCena}
-                onChange={(e) => {
-                  setFilterMinCena(e.target.value);
-                  setPageNumber(1);
-                }}
-              />
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Cena (min/max)</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
+                  value={filterMinCena}
+                  onChange={(e) => {
+                    setFilterMinCena(e.target.value);
+                    setPageNumber(1);
+                  }}
+                  placeholder="Min"
+                />
+                <input
+                  type="number"
+                  className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
+                  value={filterMaxCena}
+                  onChange={(e) => {
+                    setFilterMaxCena(e.target.value);
+                    setPageNumber(1);
+                  }}
+                  placeholder="Max"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="field-label">Max. cena (RSD)</label>
-              <input
-                type="number"
-                className="input-big"
-                placeholder="999999"
-                value={filterMaxCena}
-                onChange={(e) => {
-                  setFilterMaxCena(e.target.value);
-                  setPageNumber(1);
-                }}
-              />
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Kolicina (min/max)</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
+                  value={filterMinKolicina}
+                  onChange={(e) => {
+                    setFilterMinKolicina(e.target.value);
+                    setPageNumber(1);
+                  }}
+                  placeholder="Min"
+                />
+                <input
+                  type="number"
+                  className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
+                  value={filterMaxKolicina}
+                  onChange={(e) => {
+                    setFilterMaxKolicina(e.target.value);
+                    setPageNumber(1);
+                  }}
+                  placeholder="Max"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="field-label">Min. količina</label>
-              <input
-                type="number"
-                className="input-big"
-                placeholder="0"
-                value={filterMinKolicina}
-                onChange={(e) => {
-                  setFilterMinKolicina(e.target.value);
-                  setPageNumber(1);
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="field-label">Max. količina</label>
-              <input
-                type="number"
-                className="input-big"
-                placeholder="999"
-                value={filterMaxKolicina}
-                onChange={(e) => {
-                  setFilterMaxKolicina(e.target.value);
-                  setPageNumber(1);
-                }}
-              />
+            <div className="xl:col-span-4">
+              <button
+                onClick={clearFilters}
+                className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb]"
+              >
+                Resetuj filtere
+              </button>
             </div>
           </div>
+        )}
 
-          <div style={{ display: "flex", gap: "12px", marginTop: "1rem" }}>
-            <button onClick={clearFilters} className="button-big" style={{ background: "#6b7280", maxWidth: "160px", padding: "8px 12px", fontSize: "0.875rem" }}>
-              Resetuj filtere
-            </button>
-          </div>
-        </div>
-      )}
+        {loading && <InventoryState message="Ucitavanje artikala..." tone="warning" />}
+        {!loading && error && <InventoryState message={error} tone="danger" />}
 
-      {artikli.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
-          <p style={{ fontSize: "1.125rem", fontWeight: 600, marginBottom: "0.5rem" }}>Nema rezultata</p>
-          <p>Pokušajte da promenite filtere pretrage</p>
-        </div>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th 
-                  onClick={() => handleSort("id")}
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po ID-ju"
-                >
-                  ID{renderSortIndicator("id")}
-                </th>
-                <th 
-                  onClick={() => handleSort("naziv")}
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po nazivu"
-                >
-                  Naziv{renderSortIndicator("naziv")}
-                </th>
-                <th 
-                  onClick={() => handleSort("prodajnaCena")}
-                  style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po prodajnoj ceni"
-                >
-                  Prodajna cena{renderSortIndicator("prodajnaCena")}
-                </th>
-                <th 
-                  onClick={() => handleSort("nabavnaCena")}
-                  style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po nabavnoj ceni"
-                >
-                  Nabavna cena{renderSortIndicator("nabavnaCena")}
-                </th>
-                <th 
-                  onClick={() => handleSort("kolicina")}
-                  style={{ textAlign: "center", cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po količini"
-                >
-                  Količina{renderSortIndicator("kolicina")}
-                </th>
-                <th
-                  onClick={() => handleSort("dobavljac")}
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po dobavljaču"
-                >
-                  Dobavljač{renderSortIndicator("dobavljac")}
-                </th>
-                <th style={{ textAlign: "center" }}>Akcije</th>
-              </tr>
-            </thead>
-            <tbody>
-              {artikli.map((a) => (
-                <tr key={a.id}>
-                  <td style={{ color: "#6b7280" }}>{a.id}</td>
-                  <td style={{ fontWeight: 600 }}>{a.naziv}</td>
-                  <td style={{ textAlign: "right", color: "#059669", fontWeight: 700 }}>
-                    {(a.prodajnaCena ?? 0).toFixed(2)} RSD
-                  </td>
-                  <td style={{ textAlign: "right", color: "#6b7280" }}>
-                    {a.nabavnaCena ? `${a.nabavnaCena.toFixed(2)} RSD` : "-"}
-                  </td>
-                  <td style={{ textAlign: "center", color: "#6b7280" }}>{a.kolicina ?? 0}</td>
-                  <td style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                    {a.dobavljacNaziv ?? "-"}
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    <Link
-                      to={`/artikli/${a.id}/edit`}
-                      style={{
-                        background: "#3b82f6",
-                        color: "white",
-                        padding: "6px 12px",
-                        borderRadius: "8px",
-                        textDecoration: "none",
-                        fontSize: "0.8125rem",
-                        fontWeight: 600,
-                        display: "inline-block",
-                        boxShadow: "0 4px 10px rgba(37, 99, 235, 0.18)",
-                      }}
-                    >
-                      Izmeni
-                    </Link>
-                  </td>
+        {!loading && !error && (
+          <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
+            <table className="min-w-full divide-y divide-[#2f323b] text-sm">
+              <thead className="bg-[#14161d] text-[#93a7c8]">
+                <tr>
+                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("id")}>ID{renderSortIndicator("id")}</th>
+                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("naziv")}>Naziv{renderSortIndicator("naziv")}</th>
+                  <th className="cursor-pointer px-3 py-3 text-right" onClick={() => handleSort("prodajnaCena")}>Prodajna{renderSortIndicator("prodajnaCena")}</th>
+                  <th className="cursor-pointer px-3 py-3 text-right" onClick={() => handleSort("nabavnaCena")}>Nabavna{renderSortIndicator("nabavnaCena")}</th>
+                  <th className="cursor-pointer px-3 py-3 text-right" onClick={() => handleSort("kolicina")}>Kolicina{renderSortIndicator("kolicina")}</th>
+                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("dobavljac")}>Dobavljac{renderSortIndicator("dobavljac")}</th>
+                  <th className="px-3 py-3 text-left">Akcija</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
+                {artikli.map((a) => (
+                  <tr key={a.id} className="hover:bg-[#1f2330]">
+                    <td className="px-3 py-3 text-xs text-[#a4b3cd]">{a.id}</td>
+                    <td className="px-3 py-3">{a.naziv}</td>
+                    <td className="px-3 py-3 text-right">{(a.prodajnaCena ?? 0).toFixed(2)}</td>
+                    <td className="px-3 py-3 text-right text-[#b1bfd7]">{a.nabavnaCena != null ? a.nabavnaCena.toFixed(2) : "-"}</td>
+                    <td className="px-3 py-3 text-right">{a.kolicina ?? "-"}</td>
+                    <td className="px-3 py-3">{a.dobavljacNaziv ?? "-"}</td>
+                    <td className="px-3 py-3">
+                      <Link
+                        to={`/artikli/${a.id}`}
+                        className="rounded-md border border-[#3760b7] bg-[#2d4f95] px-2 py-1 text-xs font-semibold text-white"
+                      >
+                        Izmeni
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-      {/* Bottom pagination - ultra-minimal */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: "0.5rem", paddingTop: "6px", borderTop: "1px solid #e5e7eb" }}>
-        <button
-          className="button-big"
-          style={{ padding: "2px 8px", background: pageNumber <= 1 ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
-          disabled={pageNumber <= 1}
-          onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-        >
-          ←
-        </button>
-        <span style={{ color: "#6b7280", fontSize: "0.75rem", minWidth: "50px", textAlign: "center" }}>
-          {pageNumber} / {totalPages}
-        </span>
-        <button
-          className="button-big"
-          style={{ padding: "2px 8px", background: pageNumber >= totalPages ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
-          disabled={pageNumber >= totalPages}
-          onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
-        >
-          →
-        </button>
-      </div>
-    </div>
+            {artikli.length === 0 && (
+              <p className="py-8 text-center text-sm text-[#9aabc7]">Nema artikala za zadate filtere.</p>
+            )}
+          </div>
+        )}
+      </InventoryPanel>
+    </InventoryPageShell>
   );
 }

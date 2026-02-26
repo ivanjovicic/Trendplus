@@ -1,9 +1,10 @@
-Ôªøimport { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ChartCandlestick } from "lucide-react";
 import { getNivelacije } from "../services/artikliApi";
 import { NivelacijaItem } from "../types/nivelacije";
+import { InventoryKpiRow, InventoryPageShell, InventoryPanel } from "../components/inventory/InventoryPageShell";
 
 type SortBy = "datum" | "artikalid" | "stara" | "nova" | "naziv";
-
 type SortDir = "asc" | "desc";
 
 export default function NivelacijePage() {
@@ -42,7 +43,7 @@ export default function NivelacijePage() {
       setItems(res.items);
       setTotalCount(res.totalCount);
     } catch (e: any) {
-      setError(e?.message ?? "Gre≈°ka pri uƒçitavanju nivelacija");
+      setError(e?.message ?? "Greöka pri ucitavanju nivelacija");
     } finally {
       setLoading(false);
     }
@@ -65,198 +66,147 @@ export default function NivelacijePage() {
   };
 
   return (
-    <div className="card" style={{ maxWidth: 1400 }}>
-      <h2 className="text-2xl font-semibold mb-6">{"\u{1F4C8}"} Pregled nivelacija</h2>
+    <InventoryPageShell
+      icon={ChartCandlestick}
+      title="Pregled nivelacija"
+      subtitle="Istorija svih promena cena sa filtriranjem po artiklu, periodu i smeru sortiranja."
+    >
+      <InventoryKpiRow
+        items={[
+          { label: "Ukupno zapisa", value: `${totalCount}` },
+          { label: "Stranica", value: `${pageNumber}/${totalPages}` },
+          { label: "Sortiranje", value: `${sortBy} ${sortDir.toUpperCase()}` },
+          { label: "Status", value: loading ? "Ucitavanje" : error ? "Greöka" : "Aktivno", tone: loading ? "warning" : error ? "danger" : "positive" },
+        ]}
+      />
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "1rem",
-          marginBottom: "1.5rem",
-          padding: "1rem",
-          background: "#f9fafb",
-          borderRadius: "12px",
-        }}
-      >
-        <div>
-          <label className="field-label" style={{ fontSize: "0.875rem" }}>
-            Artikal ID
-          </label>
-          <input
-            className="input-big"
-            value={artikalId}
-            onChange={e => {
-              setArtikalId(e.target.value);
-              setPageNumber(1);
-            }}
-            placeholder="npr. 123"
-          />
+      <InventoryPanel>
+        <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Artikal ID</label>
+            <input
+              className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+              value={artikalId}
+              onChange={e => {
+                setArtikalId(e.target.value);
+                setPageNumber(1);
+              }}
+              placeholder="npr. 123"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Naziv sadrûi</label>
+            <input
+              className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+              value={naziv}
+              onChange={e => {
+                setNaziv(e.target.value);
+                setPageNumber(1);
+              }}
+              placeholder="npr. patike"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Od datuma</label>
+            <input
+              type="datetime-local"
+              className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+              value={fromDate}
+              onChange={e => {
+                setFromDate(e.target.value);
+                setPageNumber(1);
+              }}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Do datuma</label>
+            <input
+              type="datetime-local"
+              className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+              value={toDate}
+              onChange={e => {
+                setToDate(e.target.value);
+                setPageNumber(1);
+              }}
+            />
+          </div>
+
+          <div className="flex items-end">
+            <button
+              className="w-full rounded-xl border border-[#3c4458] bg-[#222734] px-4 py-2 text-sm font-semibold text-[#dbe6fb] transition hover:bg-[#2b3140]"
+              onClick={() => {
+                setArtikalId("");
+                setNaziv("");
+                setFromDate("");
+                setToDate("");
+                setSortBy("datum");
+                setSortDir("desc");
+                setPageNumber(1);
+              }}
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
-        <div>
-          <label className="field-label" style={{ fontSize: "0.875rem" }}>
-            Naziv sadr≈æi
-          </label>
-          <input
-            className="input-big"
-            value={naziv}
-            onChange={e => {
-              setNaziv(e.target.value);
-              setPageNumber(1);
-            }}
-            placeholder="npr. patike"
-          />
-        </div>
+        {loading && <p className="py-8 text-center text-sm text-[#9aabc7]">Ucitavanje...</p>}
+        {error && <p className="py-8 text-center text-sm font-medium text-rose-300">{error}</p>}
 
-        <div>
-          <label className="field-label" style={{ fontSize: "0.875rem" }}>
-            Od datuma
-          </label>
-          <input
-            type="datetime-local"
-            className="input-big"
-            value={fromDate}
-            onChange={e => {
-              setFromDate(e.target.value);
-              setPageNumber(1);
-            }}
-          />
-        </div>
-
-        <div>
-          <label className="field-label" style={{ fontSize: "0.875rem" }}>
-            Do datuma
-          </label>
-          <input
-            type="datetime-local"
-            className="input-big"
-            value={toDate}
-            onChange={e => {
-              setToDate(e.target.value);
-              setPageNumber(1);
-            }}
-          />
-        </div>
-
-        <div style={{ display: "flex", alignItems: "flex-end" }}>
-          <button
-            className="button-big"
-            onClick={() => {
-              setArtikalId("");
-              setNaziv("");
-              setFromDate("");
-              setToDate("");
-              setSortBy("datum");
-              setSortDir("desc");
-              setPageNumber(1);
-            }}
-            style={{ background: "#6b7280", padding: "8px 16px", marginTop: 0, marginBottom: 0 }}
-          >
-            Reset
-          </button>
-        </div>
-      </div>
-
-      <div
-        style={{
-          marginBottom: "1rem",
-          padding: "0.75rem",
-          background: "#f3f4f6",
-          borderRadius: "8px",
-          fontSize: "0.95rem",
-        }}
-      >
-        <strong>Ukupno:</strong> {totalCount} | <strong>Stranica:</strong> {pageNumber} / {totalPages}
-      </div>
-
-      {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Uƒçitavanje...</p>}
-      {error && <p className="error-msg">{error}</p>}
-
-      {!loading && !error && (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
-            <thead>
-              <tr style={{ background: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                <th
-                  style={{ padding: 12, textAlign: "left", fontWeight: 600, cursor: "pointer" }}
-                  onClick={() => toggleSort("datum")}
-                >
-                  Datum {sortBy === "datum" ? (sortDir === "desc" ? "?" : "?") : ""}
-                </th>
-                <th
-                  style={{ padding: 12, textAlign: "left", fontWeight: 600, cursor: "pointer" }}
-                  onClick={() => toggleSort("artikalid")}
-                >
-                  Artikal {sortBy === "artikalid" ? (sortDir === "desc" ? "?" : "?") : ""}
-                </th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600, cursor: "pointer" }} onClick={() => toggleSort("naziv")}>
-                  Naziv {sortBy === "naziv" ? (sortDir === "desc" ? "?" : "?") : ""}
-                </th>
-                <th
-                  style={{ padding: 12, textAlign: "right", fontWeight: 600, cursor: "pointer" }}
-                  onClick={() => toggleSort("stara")}
-                >
-                  Stara cena {sortBy === "stara" ? (sortDir === "desc" ? "?" : "?") : ""}
-                </th>
-                <th
-                  style={{ padding: 12, textAlign: "right", fontWeight: 600, cursor: "pointer" }}
-                  onClick={() => toggleSort("nova")}
-                >
-                  Nova cena {sortBy === "nova" ? (sortDir === "desc" ? "?" : "?") : ""}
-                </th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Korisnik</th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Komentar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map(it => (
-                <tr key={it.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <td style={{ padding: 12, whiteSpace: "nowrap", fontFamily: "monospace", fontSize: "0.8rem" }}>
-                    {new Date(it.datum).toLocaleString("sr-RS")}
-                  </td>
-                  <td style={{ padding: 12 }}>{it.artikalId ?? "-"}</td>
-                  <td style={{ padding: 12 }}>{it.artikalNaziv ?? ""}</td>
-                  <td style={{ padding: 12, textAlign: "right" }}>{it.staraProdajnaCena ?? "-"}</td>
-                  <td style={{ padding: 12, textAlign: "right", fontWeight: 700 }}>{it.novaProdajnaCena ?? "-"}</td>
-                  <td style={{ padding: 12 }}>{it.korisnikIme ?? "-"}</td>
-                  <td style={{ padding: 12, wordBreak: "break-word" }}>{it.komentar ?? ""}</td>
+        {!loading && !error && (
+          <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
+            <table className="min-w-full divide-y divide-[#2f323b] text-sm">
+              <thead className="bg-[#14161d] text-[#93a7c8]">
+                <tr>
+                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => toggleSort("datum")}>Datum</th>
+                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => toggleSort("artikalid")}>Artikal</th>
+                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => toggleSort("naziv")}>Naziv</th>
+                  <th className="cursor-pointer px-3 py-3 text-right" onClick={() => toggleSort("stara")}>Stara cena</th>
+                  <th className="cursor-pointer px-3 py-3 text-right" onClick={() => toggleSort("nova")}>Nova cena</th>
+                  <th className="px-3 py-3 text-left">Korisnik</th>
+                  <th className="px-3 py-3 text-left">Komentar</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
+                {items.map(it => (
+                  <tr key={it.id} className="hover:bg-[#1f2330]">
+                    <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-[#a4b3cd]">{new Date(it.datum).toLocaleString("sr-RS")}</td>
+                    <td className="px-3 py-3">{it.artikalId ?? "-"}</td>
+                    <td className="px-3 py-3">{it.artikalNaziv ?? ""}</td>
+                    <td className="px-3 py-3 text-right text-[#b9c7df]">{it.staraProdajnaCena ?? "-"}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-emerald-300">{it.novaProdajnaCena ?? "-"}</td>
+                    <td className="px-3 py-3">{it.korisnikIme ?? "-"}</td>
+                    <td className="px-3 py-3">{it.komentar ?? ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {items.length === 0 && <p className="py-8 text-center text-sm text-[#9aabc7]">Nema rezultata.</p>}
+          </div>
+        )}
 
-          {items.length === 0 && (
-            <p style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>Nema rezultata.</p>
-          )}
-
-          {totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginTop: "1.5rem" }}>
-              <button
-                className="button-big"
-                onClick={() => setPageNumber(p => Math.max(1, p - 1))}
-                disabled={pageNumber === 1}
-                style={{ width: "auto", padding: "8px 16px", marginTop: 0 }}
-              >
-                Prethodna
-              </button>
-
-              <span style={{ padding: "8px 16px", alignSelf: "center", fontWeight: 600 }}>
-                {pageNumber} / {totalPages}
-              </span>
-
-              <button
-                className="button-big"
-                onClick={() => setPageNumber(p => Math.min(totalPages, p + 1))}
-                disabled={pageNumber === totalPages}
-                style={{ width: "auto", padding: "8px 16px", marginTop: 0 }}
-              >
-                Slede?a
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <button
+              className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb] disabled:opacity-40"
+              onClick={() => setPageNumber(p => Math.max(1, p - 1))}
+              disabled={pageNumber === 1}
+            >
+              Prethodna
+            </button>
+            <span className="text-sm text-[#93a7c8]">{pageNumber} / {totalPages}</span>
+            <button
+              className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb] disabled:opacity-40"
+              onClick={() => setPageNumber(p => Math.min(totalPages, p + 1))}
+              disabled={pageNumber === totalPages}
+            >
+              Sledeca
+            </button>
+          </div>
+        )}
+      </InventoryPanel>
+    </InventoryPageShell>
   );
 }

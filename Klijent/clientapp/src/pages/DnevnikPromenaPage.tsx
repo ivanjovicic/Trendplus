@@ -1,6 +1,8 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { ClipboardList } from "lucide-react";
 import { getDnevnikPromena } from "../services/dnevnikPromenaApi";
 import type { DnevnikPromenaItem } from "../types/dnevnikPromena";
+import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
 
 export default function DnevnikPromenaPage() {
   const [promene, setPromene] = useState<DnevnikPromenaItem[]>([]);
@@ -8,14 +10,10 @@ export default function DnevnikPromenaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Tip promene dropdown options
   const [tipoviPromena, setTipoviPromena] = useState<string[]>([]);
-
-  // Pagination
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  // Filters
   const [filterTipPromene, setFilterTipPromene] = useState<string | "">("");
   const [searchNaziv, setSearchNaziv] = useState("");
   const [searchBrojRacuna, setSearchBrojRacuna] = useState("");
@@ -23,14 +21,9 @@ export default function DnevnikPromenaPage() {
   const [filterToDate, setFilterToDate] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  // Sorting
   const [sortBy, setSortBy] = useState<"datum" | "tipPromene" | "iznos" | "naziv">("datum");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Jump to page
-  const [jumpTo, setJumpTo] = useState<string>("1");
-
-  // Load tip promene options
   useEffect(() => {
     let aborted = false;
 
@@ -47,26 +40,10 @@ export default function DnevnikPromenaPage() {
     };
 
     loadTipovi();
-
     return () => {
       aborted = true;
     };
   }, []);
-
-  const handleSort = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
-    if (sortBy === column) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(column);
-      setSortDir("asc");
-    }
-    setPageNumber(1);
-  };
-
-  const renderSortIndicator = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
-    if (sortBy !== column) return null;
-    return sortDir === "asc" ? " ▲" : " ▼";
-  };
 
   const filters = useMemo(() => {
     const f: Record<string, string | number> = {};
@@ -84,10 +61,6 @@ export default function DnevnikPromenaPage() {
   }, [filterTipPromene, searchNaziv, searchBrojRacuna, filterFromDate, filterToDate, sortBy, sortDir]);
 
   useEffect(() => {
-    setJumpTo(String(pageNumber));
-  }, [pageNumber]);
-
-  useEffect(() => {
     let aborted = false;
 
     const load = async () => {
@@ -103,7 +76,7 @@ export default function DnevnikPromenaPage() {
       } catch (err: unknown) {
         if (aborted) return;
         console.error(err);
-        setError((err as Error)?.message ?? "Greška pri učitavanju dnevnika promena.");
+        setError((err as Error)?.message ?? "Gre�ka pri ucitavanju dnevnika promena.");
       } finally {
         if (!aborted) setLoading(false);
       }
@@ -115,6 +88,21 @@ export default function DnevnikPromenaPage() {
       aborted = true;
     };
   }, [pageNumber, pageSize, filters]);
+
+  const handleSort = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
+    if (sortBy === column) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortDir("asc");
+    }
+    setPageNumber(1);
+  };
+
+  const renderSortIndicator = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
+    if (sortBy !== column) return null;
+    return sortDir === "asc" ? " ?" : " ?";
+  };
 
   const clearFilters = () => {
     setFilterTipPromene("");
@@ -148,389 +136,200 @@ export default function DnevnikPromenaPage() {
 
   const getTipPromeneColor = (tip: string) => {
     const tipLower = tip.toLowerCase();
-    if (tipLower.includes("prodaja")) return "#059669"; // green
-    if (tipLower.includes("nivelacija")) return "#dc2626"; // red
-    if (tipLower.includes("unos")) return "#3b82f6"; // blue
-    if (tipLower.includes("korekcija")) return "#f59e0b"; // amber
-    if (tipLower.includes("povraćaj")) return "#9333ea"; // purple
-    return "#6b7280"; // gray
+    if (tipLower.includes("prodaja")) return "bg-emerald-700";
+    if (tipLower.includes("nivelacija")) return "bg-rose-700";
+    if (tipLower.includes("unos")) return "bg-blue-700";
+    if (tipLower.includes("korekcija")) return "bg-amber-700";
+    if (tipLower.includes("povracaj")) return "bg-violet-700";
+    return "bg-slate-600";
   };
 
-  if (loading && promene.length === 0) {
-    return (
-      <div className="card">
-        <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje dnevnika promena...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="card">
-        <p className="error-msg">{error}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="card" style={{ margin: "2rem auto", maxWidth: "1400px" }}>
-      {/* Header + Pagination */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "0.75rem",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0, overflow: "hidden" }}>
-          <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "#1f2937", whiteSpace: "nowrap", flexShrink: 0 }}>
-            📋 Dnevnik Promena <span style={{ color: "#6b7280", fontWeight: 400, fontSize: "0.9375rem" }}>({promene.length} / {totalCount})</span>
-          </h2>
-
-          <div style={{ display: "flex", gap: 6, alignItems: "center", whiteSpace: "nowrap", flexShrink: 0 }}>
-            <button
-              className="button-big"
-              style={{ padding: "2px 8px", background: pageNumber <= 1 ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
-              disabled={pageNumber <= 1}
-              onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-              title="Prethodna"
-            >
-              ←
-            </button>
-
-            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <input
-                className="input-big"
-                style={{ marginBottom: 0, width: "42px", padding: "2px 4px", fontSize: "0.75rem", textAlign: "center", height: "24px" }}
-                type="number"
-                min={1}
-                max={totalPages}
-                value={jumpTo}
-                onChange={(e) => setJumpTo(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const parsed = Number(jumpTo);
-                    if (!Number.isFinite(parsed)) return;
-                    const target = Math.min(totalPages, Math.max(1, Math.trunc(parsed)));
-                    setPageNumber(target);
-                  }
-                }}
-              />
-              <span style={{ color: "#6b7280", fontSize: "0.75rem" }}>/ {totalPages}</span>
-            </div>
-
-            <button
-              className="button-big"
-              style={{ padding: "2px 8px", background: pageNumber >= totalPages ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
-              disabled={pageNumber >= totalPages}
-              onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
-              title="Sledeća"
-            >
-              →
-            </button>
-
-            <span style={{ color: "#d1d5db", fontSize: "0.75rem", margin: "0 2px" }}>|</span>
-
-            <span style={{ color: "#6b7280", fontSize: "0.75rem" }}>Po strani:</span>
-            <select
-              className="input-big"
-              style={{ 
-                marginBottom: 0, 
-                width: "70px", 
-                padding: "2px 6px 2px 8px", 
-                fontSize: "0.75rem", 
-                height: "24px",
-                backgroundImage: "url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3e%3cpath fill=%27none%27 stroke=%27%236b7280%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27m2 5 6 6 6-6%27/%3e%3c/svg%3e')",
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 4px center",
-                backgroundSize: "12px",
-                paddingRight: "22px",
-              }}
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPageNumber(1);
-              }}
-            >
-              {[25, 50, 100, 200].map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
+    <InventoryPageShell
+      icon={ClipboardList}
+      title="Dnevnik promena"
+      subtitle="Audit pregled svih poslovnih promena po artiklima, racunima i korisnicima."
+      actions={
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="button-big"
-          style={{
-            background: showFilters ? "#dc2626" : "#3b82f6",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "3px",
-            padding: "3px 7px",
-            fontSize: "0.6875rem",
-            whiteSpace: "nowrap",
-            flexShrink: 0,
-            maxWidth: "80px",
-          }}
+          className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-3 py-2 text-xs font-semibold text-white"
         >
-          {showFilters ? "Sakrij" : "Filteri"}
-          {activeFiltersCount > 0 && (
-            <span
-              style={{
-                background: "white",
-                color: "#3b82f6",
-                borderRadius: "50%",
-                width: "15px",
-                height: "15px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "0.625rem",
-                fontWeight: 700,
-              }}
-            >
-              {activeFiltersCount}
-            </span>
-          )}
+          {showFilters ? "Sakrij filtere" : `Filteri ${activeFiltersCount > 0 ? `(${activeFiltersCount})` : ""}`}
         </button>
-      </div>
+      }
+    >
+      <InventoryKpiRow
+        items={[
+          { label: "Zapisa", value: `${totalCount}` },
+          { label: "Prikazano", value: `${promene.length}` },
+          { label: "Strana", value: `${pageNumber}/${totalPages}` },
+          { label: "Status", value: loading ? "Ucitavanje" : error ? "Gre�ka" : "Spremno", tone: loading ? "warning" : error ? "danger" : "positive" },
+        ]}
+      />
 
-      {showFilters && (
-        <div
-          style={{
-            background: "#f9fafb",
-            border: "1px solid #e5e7eb",
-            borderRadius: "8px",
-            padding: "1rem",
-            marginBottom: "1rem",
-          }}
-        >
-          <h3 style={{ fontWeight: 600, fontSize: "0.9375rem", marginBottom: "0.75rem", color: "#374151" }}>🔍 Filteri</h3>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: "0.75rem",
+      <InventoryPanel>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button
+            className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
+            disabled={pageNumber <= 1}
+            onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+          >
+            ?
+          </button>
+          <span className="text-sm text-[#9aabc7]">{pageNumber} / {totalPages}</span>
+          <button
+            className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
+            disabled={pageNumber >= totalPages}
+            onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
+          >
+            ?
+          </button>
+          <span className="mx-1 text-[#57637a]">|</span>
+          <span className="text-xs text-[#9aabc7]">Po strani</span>
+          <select
+            className="rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-1 text-xs text-[#dbe6fb]"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPageNumber(1);
             }}
           >
+            {[25, 50, 100, 200].map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+
+        {showFilters && (
+          <div className="mb-4 grid gap-3 rounded-xl border border-[#2f323b] bg-[#14161d] p-3 md:grid-cols-2 xl:grid-cols-5">
             <div>
-              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Tip promene</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Tip promene</label>
               <select
-                className="input-big"
+                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
                 value={filterTipPromene}
                 onChange={(e) => {
                   setFilterTipPromene(e.target.value);
                   setPageNumber(1);
                 }}
-                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
               >
                 <option value="">Sve promene</option>
                 {tipoviPromena.map((tip) => (
-                  <option key={tip} value={tip}>
-                    {tip}
-                  </option>
+                  <option key={tip} value={tip}>{tip}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Artikal (naziv)</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Artikal</label>
               <input
                 type="text"
-                className="input-big"
-                placeholder="Unesite naziv..."
+                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
                 value={searchNaziv}
                 onChange={(e) => {
                   setSearchNaziv(e.target.value);
                   setPageNumber(1);
                 }}
-                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
               />
             </div>
 
             <div>
-              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Broj računa</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj racuna</label>
               <input
                 type="text"
-                className="input-big"
-                placeholder="SEED-0001..."
+                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
                 value={searchBrojRacuna}
                 onChange={(e) => {
                   setSearchBrojRacuna(e.target.value);
                   setPageNumber(1);
                 }}
-                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
               />
             </div>
 
             <div>
-              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Datum od</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Datum od</label>
               <input
                 type="date"
-                className="input-big"
+                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
                 value={filterFromDate}
                 onChange={(e) => {
                   setFilterFromDate(e.target.value);
                   setPageNumber(1);
                 }}
-                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
               />
             </div>
 
             <div>
-              <label className="field-label" style={{ fontSize: "0.8125rem", marginBottom: "0.25rem" }}>Datum do</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Datum do</label>
               <input
                 type="date"
-                className="input-big"
+                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
                 value={filterToDate}
                 onChange={(e) => {
                   setFilterToDate(e.target.value);
                   setPageNumber(1);
                 }}
-                style={{ fontSize: "0.875rem", padding: "6px 8px", height: "32px" }}
               />
             </div>
-          </div>
 
-          <div style={{ display: "flex", gap: "8px", marginTop: "0.75rem" }}>
-            <button onClick={clearFilters} className="button-big" style={{ background: "#6b7280", padding: "6px 12px", fontSize: "0.8125rem", height: "32px" }}>
-              Resetuj filtere
-            </button>
+            <div className="xl:col-span-5">
+              <button
+                onClick={clearFilters}
+                className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb]"
+              >
+                Resetuj filtere
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {promene.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
-          <p style={{ fontSize: "1.125rem", fontWeight: 600, marginBottom: "0.5rem" }}>Nema rezultata</p>
-          <p>Pokušajte da promenite filtere pretrage</p>
-        </div>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th 
-                  onClick={() => handleSort("datum")}
-                  style={{ cursor: "pointer", userSelect: "none", minWidth: "140px" }}
-                  title="Klikni za sortiranje po datumu"
-                >
-                  Datum{renderSortIndicator("datum")}
-                </th>
-                <th 
-                  onClick={() => handleSort("tipPromene")}
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po tipu promene"
-                >
-                  Tip promene{renderSortIndicator("tipPromene")}
-                </th>
-                <th 
-                  onClick={() => handleSort("naziv")}
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po nazivu artikla"
-                >
-                  Artikal{renderSortIndicator("naziv")}
-                </th>
-                <th>Dobavljač</th>
-                <th>Račun</th>
-                <th 
-                  onClick={() => handleSort("iznos")}
-                  style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}
-                  title="Klikni za sortiranje po iznosu"
-                >
-                  Iznos{renderSortIndicator("iznos")}
-                </th>
-                <th style={{ textAlign: "center" }}>Stara cena</th>
-                <th style={{ textAlign: "center" }}>Nova cena</th>
-                <th>Komentar</th>
-                <th>Korisnik</th>
-              </tr>
-            </thead>
-            <tbody>
-              {promene.map((item) => (
-                <tr key={item.id}>
-                  <td style={{ fontSize: "0.8125rem", color: "#6b7280" }}>
-                    {formatDate(item.datum)}
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                        background: getTipPromeneColor(item.tipPromene),
-                        color: "white",
-                      }}
-                    >
-                      {item.tipPromene}
-                    </span>
-                  </td>
-                  <td style={{ fontWeight: 500 }}>
-                    {item.artikalNaziv || "-"}
-                    {item.artikalId && (
-                      <span style={{ fontSize: "0.75rem", color: "#9ca3af", marginLeft: "6px" }}>
-                        (#{item.artikalId})
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                    {item.dobavljacNaziv || "-"}
-                  </td>
-                  <td style={{ fontSize: "0.8125rem", color: "#6b7280", fontFamily: "monospace" }}>
-                    {item.brojRacuna || "-"}
-                  </td>
-                  <td style={{ textAlign: "right", fontWeight: 600, color: item.iznos >= 0 ? "#059669" : "#dc2626" }}>
-                    {item.iznos.toFixed(2)} RSD
-                  </td>
-                  <td style={{ textAlign: "center", fontSize: "0.875rem", color: "#6b7280" }}>
-                    {item.staraProdajnaCena != null ? `${item.staraProdajnaCena.toFixed(2)} RSD` : "-"}
-                  </td>
-                  <td style={{ textAlign: "center", fontSize: "0.875rem", color: "#059669", fontWeight: 600 }}>
-                    {item.novaProdajnaCena != null ? `${item.novaProdajnaCena.toFixed(2)} RSD` : "-"}
-                  </td>
-                  <td style={{ maxWidth: "200px", fontSize: "0.8125rem", color: "#6b7280" }}>
-                    {item.komentar || "-"}
-                  </td>
-                  <td style={{ fontSize: "0.8125rem", color: "#6b7280" }}>
-                    {item.korisnikIme || "-"}
-                  </td>
+        {loading && promene.length === 0 && <InventoryState message="Ucitavanje dnevnika promena..." tone="warning" />}
+        {error && <InventoryState message={error} tone="danger" />}
+
+        {!loading && !error && promene.length === 0 && (
+          <InventoryState message="Nema rezultata za zadate filtere." tone="neutral" />
+        )}
+
+        {!error && promene.length > 0 && (
+          <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
+            <table className="min-w-full divide-y divide-[#2f323b] text-sm">
+              <thead className="bg-[#14161d] text-[#93a7c8]">
+                <tr>
+                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("datum")}>Datum{renderSortIndicator("datum")}</th>
+                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("tipPromene")}>Tip{renderSortIndicator("tipPromene")}</th>
+                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("naziv")}>Artikal{renderSortIndicator("naziv")}</th>
+                  <th className="px-3 py-3 text-left">Dobavljac</th>
+                  <th className="px-3 py-3 text-left">Racun</th>
+                  <th className="cursor-pointer px-3 py-3 text-right" onClick={() => handleSort("iznos")}>Iznos{renderSortIndicator("iznos")}</th>
+                  <th className="px-3 py-3 text-center">Stara</th>
+                  <th className="px-3 py-3 text-center">Nova</th>
+                  <th className="px-3 py-3 text-left">Komentar</th>
+                  <th className="px-3 py-3 text-left">Korisnik</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Bottom pagination */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: "0.5rem", paddingTop: "6px", borderTop: "1px solid #e5e7eb" }}>
-        <button
-          className="button-big"
-          style={{ padding: "2px 8px", background: pageNumber <= 1 ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
-          disabled={pageNumber <= 1}
-          onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-        >
-          ←
-        </button>
-        <span style={{ color: "#6b7280", fontSize: "0.75rem", minWidth: "50px", textAlign: "center" }}>
-          {pageNumber} / {totalPages}
-        </span>
-        <button
-          className="button-big"
-          style={{ padding: "2px 8px", background: pageNumber >= totalPages ? "#9ca3af" : "#6b7280", fontSize: "0.75rem", minWidth: "28px", lineHeight: "1.5" }}
-          disabled={pageNumber >= totalPages}
-          onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
-        >
-          →
-        </button>
-      </div>
-    </div>
+              </thead>
+              <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
+                {promene.map((item) => (
+                  <tr key={item.id} className="hover:bg-[#1f2330]">
+                    <td className="px-3 py-3 text-xs text-[#a4b3cd]">{formatDate(item.datum)}</td>
+                    <td className="px-3 py-3">
+                      <span className={`inline-block rounded-md px-2 py-1 text-xs font-semibold text-white ${getTipPromeneColor(item.tipPromene)}`}>
+                        {item.tipPromene}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 font-medium">{item.artikalNaziv || "-"}</td>
+                    <td className="px-3 py-3 text-[#b1bfd7]">{item.dobavljacNaziv || "-"}</td>
+                    <td className="px-3 py-3 font-mono text-xs text-[#a4b3cd]">{item.brojRacuna || "-"}</td>
+                    <td className={`px-3 py-3 text-right font-semibold ${item.iznos >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{item.iznos.toFixed(2)} RSD</td>
+                    <td className="px-3 py-3 text-center text-xs text-[#b1bfd7]">{item.staraProdajnaCena != null ? `${item.staraProdajnaCena.toFixed(2)} RSD` : "-"}</td>
+                    <td className="px-3 py-3 text-center text-xs font-semibold text-emerald-300">{item.novaProdajnaCena != null ? `${item.novaProdajnaCena.toFixed(2)} RSD` : "-"}</td>
+                    <td className="max-w-[220px] px-3 py-3 text-xs text-[#b1bfd7]">{item.komentar || "-"}</td>
+                    <td className="px-3 py-3 text-xs text-[#b1bfd7]">{item.korisnikIme || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </InventoryPanel>
+    </InventoryPageShell>
   );
 }

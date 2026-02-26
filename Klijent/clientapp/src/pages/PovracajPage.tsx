@@ -1,7 +1,9 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { RotateCcw } from "lucide-react";
 import PovracajWizard from "../components/povracaj/PovracajWizard";
 import { getPovracaji } from "../services/povracajApi";
 import type { PovracajZaglavlje } from "../types/povracaj";
+import { InventoryKpiRow, InventoryPageShell, InventoryPanel } from "../components/inventory/InventoryPageShell";
 
 export default function PovracajPage() {
   const [showWizard, setShowWizard] = useState(false);
@@ -24,7 +26,7 @@ export default function PovracajPage() {
       setTotalCount(res.totalCount ?? 0);
     } catch (e: unknown) {
       console.error(e);
-      setError(e instanceof Error ? e.message : "Greška pri učitavanju povraćaja");
+      setError(e instanceof Error ? e.message : "Gre�ka pri ucitavanju povracaja");
     } finally {
       setLoading(false);
     }
@@ -37,7 +39,7 @@ export default function PovracajPage() {
 
   const handleSuccess = () => {
     setShowWizard(false);
-    setSuccessMessage("Zapisnik o povraćaju uspešno kreiran!");
+    setSuccessMessage("Zapisnik o povracaju uspe�no kreiran!");
     setTimeout(() => setSuccessMessage(null), 5000);
     setPageNumber(1);
     load();
@@ -61,140 +63,110 @@ export default function PovracajPage() {
   };
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "1.5rem",
-          }}
-        >
-          <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#1f2937" }}>
-            ↩️ Povraćaj robe
-          </h1>
-          {!showWizard && (
-            <button
-              className="button-big"
-              onClick={() => setShowWizard(true)}
-              style={{ background: "#3b82f6", fontSize: "1rem", padding: "0.75rem 1.5rem" }}
-            >
-              + Novi povraćaj
-            </button>
-          )}
-        </div>
-
-        {successMessage && (
-          <div
-            style={{
-              background: "#f0fdf4",
-              border: "1px solid #a7f3d0",
-              color: "#059669",
-              padding: "1rem",
-              borderRadius: "8px",
-              marginBottom: "1.5rem",
-              fontSize: "1rem",
-              fontWeight: 600,
-            }}
+    <InventoryPageShell
+      icon={RotateCcw}
+      title="Povracaj robe"
+      subtitle="Pracenje zapisnika povracaja sa brzim otvaranjem wizard toka za novi unos."
+      actions={
+        !showWizard ? (
+          <button
+            type="button"
+            onClick={() => setShowWizard(true)}
+            className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7]"
           >
-            {successMessage}
-          </div>
-        )}
+            + Novi povracaj
+          </button>
+        ) : null
+      }
+    >
+      <InventoryKpiRow
+        items={[
+          { label: "Ukupno povracaja", value: `${totalCount}` },
+          { label: "Stranica", value: `${pageNumber}/${totalPages}` },
+          { label: "Status", value: loading ? "Ucitavanje" : error ? "Gre�ka" : "Spremno", tone: loading ? "warning" : error ? "danger" : "positive" },
+          { label: "Re�im", value: showWizard ? "Wizard" : "Pregled" },
+        ]}
+      />
 
+      {successMessage && (
+        <div className="rounded-xl border border-emerald-700 bg-emerald-950/30 px-4 py-3 text-sm font-medium text-emerald-300">
+          {successMessage}
+        </div>
+      )}
+
+      <InventoryPanel>
         {showWizard ? (
           <PovracajWizard onSuccess={handleSuccess} onCancel={handleCancel} />
         ) : (
-          <div className="card">
-            <h2 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "1rem" }}>
-              Kreirani povraćaji
-            </h2>
+          <>
+            <h2 className="mb-3 text-lg font-semibold text-[#f3f6ff]">Kreirani povracaji</h2>
 
-            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
-            {error && <p className="error-msg">{error}</p>}
+            {loading && <p className="py-8 text-center text-sm text-[#9aabc7]">Ucitavanje...</p>}
+            {error && <p className="py-8 text-center text-sm font-medium text-rose-300">{error}</p>}
 
             {!loading && !error && items.length === 0 && (
-              <div style={{ textAlign: "center", padding: "3rem" }}>
-                <p style={{ fontSize: "1.125rem", color: "#6b7280", marginBottom: "1rem" }}>
-                  Nema kreiranih povraćaja
-                </p>
-                <p style={{ color: "#9ca3af" }}>
-                  Kliknite na dugme "Novi povraćaj" da kreirate zapisnik o povraćaju robe
-                </p>
+              <div className="py-10 text-center">
+                <p className="mb-2 text-base text-[#dbe6fb]">Nema kreiranih povracaja</p>
+                <p className="text-sm text-[#9aabc7]">Kliknite na dugme "Novi povracaj" da kreirate zapisnik.</p>
               </div>
             )}
 
             {!loading && !error && items.length > 0 && (
               <>
-                <div style={{ overflowX: "auto" }}>
-                  <table className="table">
-                    <thead>
+                <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
+                  <table className="min-w-full divide-y divide-[#2f323b] text-sm">
+                    <thead className="bg-[#14161d] text-[#93a7c8]">
                       <tr>
-                        <th>Broj</th>
-                        <th>Datum</th>
-                        <th>Dobavljač</th>
-                        <th>Status</th>
-                        <th style={{ textAlign: "right" }}>Iznos</th>
-                        <th style={{ textAlign: "center" }}>Stavke</th>
+                        <th className="px-3 py-3 text-left">Broj</th>
+                        <th className="px-3 py-3 text-left">Datum</th>
+                        <th className="px-3 py-3 text-left">Dobavljac</th>
+                        <th className="px-3 py-3 text-left">Status</th>
+                        <th className="px-3 py-3 text-right">Iznos</th>
+                        <th className="px-3 py-3 text-center">Stavke</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
                       {items.map((p) => (
-                        <tr key={p.id}>
-                          <td style={{ fontFamily: "monospace", fontWeight: 700 }}>{p.brojZapisnika}</td>
-                          <td style={{ whiteSpace: "nowrap" }}>{formatDate(p.datumPovracaja)}</td>
-                          <td>{p.dobavljacNaziv ?? `#${p.dobavljacId}`}</td>
-                          <td>{p.status}</td>
-                          <td style={{ textAlign: "right", fontWeight: 700 }}>{p.ukupanIznos.toFixed(2)} RSD</td>
-                          <td style={{ textAlign: "center" }}>{p.brojStavki ?? "-"}</td>
+                        <tr key={p.id} className="hover:bg-[#1f2330]">
+                          <td className="px-3 py-3 font-mono font-semibold">{p.brojZapisnika}</td>
+                          <td className="whitespace-nowrap px-3 py-3">{formatDate(p.datumPovracaja)}</td>
+                          <td className="px-3 py-3">{p.dobavljacNaziv ?? `#${p.dobavljacId}`}</td>
+                          <td className="px-3 py-3">{p.status}</td>
+                          <td className="px-3 py-3 text-right font-semibold">{p.ukupanIznos.toFixed(2)} RSD</td>
+                          <td className="px-3 py-3 text-center">{p.brojStavki ?? "-"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 12,
-                    marginTop: "1rem",
-                  }}
-                >
-                  <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                    Prikazano: {items.length} / {totalCount}
-                  </div>
-
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="text-sm text-[#9aabc7]">Prikazano: {items.length} / {totalCount}</div>
+                  <div className="flex items-center gap-2">
                     <button
-                      className="button-big button-secondary"
                       type="button"
                       disabled={pageNumber <= 1}
                       onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-                      style={{ padding: "6px 10px", marginTop: 0 }}
+                      className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb] disabled:opacity-40"
                     >
-                      ←
+                      ?
                     </button>
-                    <span style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                      {pageNumber} / {totalPages}
-                    </span>
+                    <span className="text-sm text-[#9aabc7]">{pageNumber} / {totalPages}</span>
                     <button
-                      className="button-big button-secondary"
                       type="button"
                       disabled={pageNumber >= totalPages}
                       onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
-                      style={{ padding: "6px 10px", marginTop: 0 }}
+                      className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb] disabled:opacity-40"
                     >
-                      →
+                      ?
                     </button>
                   </div>
                 </div>
               </>
             )}
-          </div>
+          </>
         )}
-      </div>
-    </div>
+      </InventoryPanel>
+    </InventoryPageShell>
   );
 }

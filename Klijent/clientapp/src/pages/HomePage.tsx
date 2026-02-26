@@ -1,86 +1,98 @@
-﻿import React from "react";
-import { Link } from "react-router-dom";
+import { Activity, Boxes, TrendingUp } from "lucide-react";
+import DashboardCards from "../components/dashboard/DashboardCards";
+import TrendModelList from "../components/dashboard/TrendModelList";
 
-export default function HomePage() {
+function MetricTile({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "positive" | "warning";
+}) {
+  const toneClass =
+    tone === "positive"
+      ? "text-emerald-300"
+      : tone === "warning"
+      ? "text-amber-300"
+      : "text-[#dbe6fb]";
+
   return (
-    <div className="card" style={{ maxWidth: "600px" }}>
-      <h1
-        className="text-2xl font-bold mb-6"
-        style={{ marginBottom: "2rem", fontSize: "2rem" }}
-      >
-        📦 Trendplus
-      </h1>
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <Link to="/unos-robe" className="button-big" style={{ background: "#7c3aed" }}>
-          📦 Unos robe
-        </Link>
-        <Link to="/artikli/lista" className="button-big">
-          📋 Pregled i izmena artikala
-        </Link>
-        <Link to="/prodaja" className="button-big">
-          🛒 Prodaja
-        </Link>
-        
-        <div style={{ borderTop: "2px solid #e5e7eb", marginTop: "1rem", paddingTop: "1rem" }}>
-          <h3 style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.75rem", fontWeight: 600 }}>
-            🔧 Monitoring & Admin
-          </h3>
-          
-          <Link to="/outbox" className="button-big" style={{ background: "#8b5cf6" }}>
-            📨 Outbox Dashboard
-          </Link>
-          <Link to="/performance" className="button-big" style={{ background: "#f59e0b" }}>
-            ⚡ Performance Dashboard
-          </Link>
-          <Link to="/logs" className="button-big" style={{ background: "#059669" }}>
-            📋 Logs
-          </Link>
-          <Link to="/image-upload-test" className="button-big" style={{ background: "#3b82f6" }}>
-            📸 Upload slika (Test)
-          </Link>
-        </div>
-
-        <Link
-          to="/global-trends"
-          style={{
-            textDecoration: "none",
-            display: "flex",
-            alignItems: "center",
-            gap: "1rem",
-            padding: "1.5rem",
-            background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
-            borderRadius: "16px",
-            color: "white",
-            boxShadow: "0 10px 25px -5px rgba(139, 92, 246, 0.35), 0 8px 10px -6px rgba(139, 92, 246, 0.25)",
-            transition: "all 0.3s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-4px)";
-            e.currentTarget.style.boxShadow = "0 20px 30px -10px rgba(139, 92, 246, 0.45), 0 12px 15px -8px rgba(139, 92, 246, 0.35)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 10px 25px -5px rgba(139, 92, 246, 0.35), 0 8px 10px -6px rgba(139, 92, 246, 0.25)";
-          }}
-        >
-          <div
-            style={{
-              fontSize: "3rem",
-              lineHeight: 1,
-            }}
-          >
-            🌍
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.25rem" }}>
-              Global Trends
-            </div>
-            <div style={{ fontSize: "0.875rem", opacity: 0.9 }}>
-              EU Market & Social Media Analytics
-            </div>
-          </div>
-        </Link>
-      </div>
+    <div className="rounded-xl border border-[#2a2b32] bg-[#171920] p-4">
+      <p className="text-xs uppercase tracking-wide text-[#8ea0bd]">{label}</p>
+      <p className={`mt-2 text-2xl font-semibold ${toneClass}`}>{value}</p>
     </div>
   );
 }
+
+export default function HomePage() {
+  return (
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-[#2a2b32] bg-gradient-to-br from-[#1a1b1f] via-[#171922] to-[#14161d] p-5 shadow-[0_20px_40px_-28px_rgba(0,0,0,0.9)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold text-white">Trendplus Dashboard</h2>
+            <p className="mt-2 max-w-2xl text-sm text-[#9aabc7]">
+              Centralni pregled za prodaju, inventar, analitiku i trend scraping tokove.
+              Izaberi sekciju iz levog menija ili pokreni brzu akciju ispod.
+            </p>
+          </div>
+          <div className="rounded-xl border border-[#2e3f68] bg-[#1b2742] px-3 py-2 text-xs text-[#cfe0ff]">
+            Dark Operations Mode
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricTile label="Backend status" value="ONLINE" tone="positive" />
+          <MetricTile label="Aktivne sekcije" value="32" />
+          <MetricTile label="Import queue" value="5 jobs" tone="warning" />
+          <MetricTile label="Trend signal" value="+12.8%" tone="positive" />
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[#b7c7e5]">
+          <Boxes size={16} className="text-[#82a8ff]" />
+          Quick Actions
+        </div>
+        <DashboardCards />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+        <TrendModelList />
+
+        <div className="space-y-4 rounded-2xl border border-[#2a2b32] bg-[#1a1b1f] p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[#c4d2ee]">
+            <TrendingUp size={16} className="text-[#83a9ff]" />
+            Insight Pulse
+          </div>
+          <div className="grid gap-3">
+            <div className="rounded-xl border border-[#2f323b] bg-[#14161d] p-3">
+              <div className="mb-2 flex items-center gap-2 text-[#dbe8ff]">
+                <Activity size={14} className="text-emerald-300" />
+                <span className="text-sm font-medium">Najveci rast</span>
+              </div>
+              <p className="text-sm text-[#9eadc6]">Google Shopping trend score je porastao 18% u poslednja 24h.</p>
+            </div>
+            <div className="rounded-xl border border-[#2f323b] bg-[#14161d] p-3">
+              <div className="mb-2 flex items-center gap-2 text-[#dbe8ff]">
+                <Activity size={14} className="text-amber-300" />
+                <span className="text-sm font-medium">Potencijalni rizik</span>
+              </div>
+              <p className="text-sm text-[#9eadc6]">3 SKU artikla imaju nizak stock i visoku prodajnu dinamiku.</p>
+            </div>
+            <div className="rounded-xl border border-[#2f323b] bg-[#14161d] p-3">
+              <div className="mb-2 flex items-center gap-2 text-[#dbe8ff]">
+                <Activity size={14} className="text-sky-300" />
+                <span className="text-sm font-medium">Preporuka</span>
+              </div>
+              <p className="text-sm text-[#9eadc6]">Pokreni “Nivelacija cena” za top 10 artikala pre sledece kampanje.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+

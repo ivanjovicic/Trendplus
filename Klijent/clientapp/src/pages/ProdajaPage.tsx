@@ -1,7 +1,9 @@
 import React from "react";
+import { ShoppingCart } from "lucide-react";
 import CreateProdajaForm from "../components/prodaja/CreateProdajaForm";
 import { KreirajProdajuDto } from "../types/prodaja/prodaja";
 import { fetchProdajaArtikliLookup, type ProdajaArtikalLookupDto } from "../services/prodajaApi";
+import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
 
 type ProdajaArtikalOption = {
     id: number;
@@ -85,29 +87,37 @@ export default function ProdajaPage() {
         }
     };
 
-    if (loadingArtikli) {
-        return (
-            <div className="card">
-                <p style={{ textAlign: "center", padding: "2rem" }}>Ucitavanje artikala...</p>
-            </div>
-        );
-    }
-
-    if (artikli.length === 0) {
-        return (
-            <div className="card">
-                <p style={{ textAlign: "center", padding: "2rem", color: "#dc2626" }}>
-                    Nema dostupnih artikala. Molimo kreirajte artikle pre prodaje.
-                </p>
-            </div>
-        );
-    }
-
     return (
-        <CreateProdajaForm
-            artikli={artikli}
-            onSearchArtikli={handleSearchArtikli}
-            onSubmit={handleSubmit}
-        />
+        <InventoryPageShell
+            icon={ShoppingCart}
+            title="Prodaja"
+            subtitle="POS tok prodaje sa pretragom artikala i validacijom cene kroz checkout formu."
+        >
+            <InventoryKpiRow
+                items={[
+                    { label: "Artikli ucitani", value: `${artikli.length}` },
+                    { label: "Status kataloga", value: loadingArtikli ? "Ucitavanje" : "Spremno", tone: loadingArtikli ? "warning" : "positive" },
+                    { label: "Pretraga", value: "Lookup API" },
+                    { label: "Tok", value: "Cart + Submit" },
+                ]}
+            />
+
+            <InventoryPanel>
+                {loadingArtikli && <InventoryState message="Ucitavanje artikala..." tone="warning" />}
+                {!loadingArtikli && artikli.length === 0 && (
+                    <InventoryState
+                        message="Nema dostupnih artikala. Kreirajte artikle pre prodaje."
+                        tone="danger"
+                    />
+                )}
+                {!loadingArtikli && artikli.length > 0 && (
+                    <CreateProdajaForm
+                        artikli={artikli}
+                        onSearchArtikli={handleSearchArtikli}
+                        onSubmit={handleSubmit}
+                    />
+                )}
+            </InventoryPanel>
+        </InventoryPageShell>
     );
 }

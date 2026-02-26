@@ -1,5 +1,7 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { ClipboardPlus } from "lucide-react";
 import UnosRobeForm from "../components/UnosRobeForm";
+import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
 
 interface Dobavljac {
     id: number;
@@ -31,7 +33,7 @@ export default function UnosRobePage() {
                 } else {
                     console.error("Failed to fetch dobavljaci:", res.status, await res.text());
                     if (!aborted) {
-                        setError("Greška pri učitavanju dobavljača");
+                        setError("Gre�ka pri ucitavanju dobavljaca");
                         setLoading(false);
                     }
                 }
@@ -39,7 +41,7 @@ export default function UnosRobePage() {
                 if ((e as { name?: string })?.name === "AbortError") return;
                 console.error("Error fetching dobavljaci:", e);
                 if (!aborted) {
-                    setError("Greška pri povezivanju sa serverom");
+                    setError("Gre�ka pri povezivanju sa serverom");
                     setLoading(false);
                 }
             }
@@ -58,33 +60,34 @@ export default function UnosRobePage() {
         alert("Unos robe - coming soon!");
     };
 
-    if (loading) {
-        return (
-            <div className="card">
-                <p style={{ textAlign: 'center', padding: '2rem' }}>Učitavanje dobavljača...</p>
-            </div>
-        );
-    }
+    return (
+        <InventoryPageShell
+            icon={ClipboardPlus}
+            title="Unos robe"
+            subtitle="Prijem robe po dobavljacu sa kontrolom dostupnih partnera pre unosa."
+        >
+            <InventoryKpiRow
+                items={[
+                    { label: "Dobavljaci", value: `${dobavljaci.length}` },
+                    { label: "Status ucitavanja", value: loading ? "Ucitavanje" : "Spremno", tone: loading ? "warning" : "positive" },
+                    { label: "Gre�ke", value: error ? "1" : "0", tone: error ? "danger" : "positive" },
+                    { label: "Workflow", value: "Prijem robe" },
+                ]}
+            />
 
-    if (error) {
-        return (
-            <div className="card">
-                <p style={{ textAlign: 'center', padding: '2rem', color: '#dc2626' }}>
-                    {error}
-                </p>
-            </div>
-        );
-    }
-
-    if (dobavljaci.length === 0) {
-        return (
-            <div className="card">
-                <p style={{ textAlign: 'center', padding: '2rem', color: '#dc2626' }}>
-                    Nema dostupnih dobavljača. Molimo kreirajte dobavljače pre unosa robe.
-                </p>
-            </div>
-        );
-    }
-
-    return <UnosRobeForm dobavljaci={dobavljaci} onSubmit={handleSubmit} />;
+            <InventoryPanel>
+                {loading && <InventoryState message="Ucitavanje dobavljaca..." tone="warning" />}
+                {!loading && error && <InventoryState message={error} tone="danger" />}
+                {!loading && !error && dobavljaci.length === 0 && (
+                    <InventoryState
+                        message="Nema dostupnih dobavljaca. Kreirajte dobavljaca pre unosa robe."
+                        tone="warning"
+                    />
+                )}
+                {!loading && !error && dobavljaci.length > 0 && (
+                    <UnosRobeForm dobavljaci={dobavljaci} onSubmit={handleSubmit} />
+                )}
+            </InventoryPanel>
+        </InventoryPageShell>
+    );
 }

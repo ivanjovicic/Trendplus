@@ -269,6 +269,13 @@ public static class DatabaseInitializer
             -- Prodaja operational columns
             ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS ""korisnik_ime"" character varying(200);
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS ""nabavna_cena"" decimal(18,2);
+
+            -- Access import batch compatibility columns (migration 015)
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DurationSeconds"" integer;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalImported"" integer NOT NULL DEFAULT 0;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalUpdated"" integer NOT NULL DEFAULT 0;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalErrors"" integer NOT NULL DEFAULT 0;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'access';
         ";
 
         await using var connection = new NpgsqlConnection(connectionString);

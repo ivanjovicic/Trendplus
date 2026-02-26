@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { DatabaseZap } from "lucide-react";
 import {
     deleteAccessImportBatch,
     getAccessImportBatches,
@@ -10,6 +11,7 @@ import {
     type AccessImportTablePreview,
     type DeleteBatchResult,
 } from "../services/accessImportApi";
+import { InventoryKpiRow, InventoryPageShell } from "../components/inventory/InventoryPageShell";
 import "./AccessImportPage.css";
 
 type Tab = "source" | "preview" | "lastImport" | "batches";
@@ -131,7 +133,21 @@ export default function AccessImportPage() {
     // --- render ---
 
     return (
-        <div className="accimport-page">
+        <InventoryPageShell
+            icon={DatabaseZap}
+            title="Access Import"
+            subtitle="Safe import workflow za Access fajl, sa schema preview, batch istorijom i rollback brisanjem."
+        >
+            <InventoryKpiRow
+                items={[
+                    { label: "Batch zapisi", value: `${batches.length}` },
+                    { label: "Aktivni tab", value: activeTab },
+                    { label: "Status", value: busy ? "U toku" : "Idle", tone: busy ? "warning" : "positive" },
+                    { label: "Filter", value: batchStatusFilter },
+                ]}
+            />
+
+            <div className="accimport-page">
             <h1 className="accimport-title">Access Import (TRENDPLUS.accdb)</h1>
             <p className="accimport-subtitle">
                 ETL pipeline: Access → Trendplus DB + Analytics DB. Podrska za upsert, analizu seme, batch istoriju i kaskadno brisanje.
@@ -509,6 +525,7 @@ export default function AccessImportPage() {
                     </div>
                 </>
             )}
-        </div>
+            </div>
+        </InventoryPageShell>
     );
 }

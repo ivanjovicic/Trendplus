@@ -264,6 +264,7 @@ try
     builder.Services.AddScoped<IRuntimeScoringEngine, RuntimeScoringEngine>();
     builder.Services.AddScoped<IAccessImportService, AccessImportService>();
     builder.Services.AddScoped<IBatchLogService, BatchLogService>();
+    builder.Services.AddScoped<IPreNivelacijaScoringService, PreNivelacijaScoringService>();
 
     // Typed HttpClient services for external product APIs
     var serpTimeout = builder.Configuration.GetValue<int>("SerpApi:TimeoutSeconds", 20);
@@ -411,6 +412,8 @@ try
     // Map all other endpoints from AllEndpoints.cs
     app.MapAllEndpoints();
     app.MapCachedAnalyticsEndpoints();
+    app.MapInsightStudioEndpoints();
+    app.MapPreNivelacijaPriorityEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();
     app.MapAccessImportEndpoints();
