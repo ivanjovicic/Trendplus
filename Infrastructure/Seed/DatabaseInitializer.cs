@@ -129,6 +129,13 @@ public static class DatabaseInitializer
             "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql",
             logger);
 
+        // Additional nivelacija analytics views (rolling, momentum, OOS, DiD)
+        // used by pre/post analytics metrics (idempotent)
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("DefaultConnection")!,
+            "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql",
+            logger);
+
         // Check if we need to seed data
         if (!await context.Artikli.AnyAsync())
         {
