@@ -14,5 +14,17 @@ namespace Domain.Model
         public string Status { get; set; } = "running";
         public string? SummaryJson { get; set; }
         public string? ErrorMessage { get; set; }
+
+        // ── Enhanced columns (migration 015) ──
+        public int? DurationSeconds { get; set; }
+        public int TotalImported { get; set; }
+        public int TotalUpdated { get; set; }
+        public int TotalErrors { get; set; }
+
+        [MaxLength(32)]
+        public string DataOrigin { get; set; } = "access";
+
+        // Navigation
+        public ICollection<AccessImportLog> LogEntries { get; set; } = new List<AccessImportLog>();
     }
 }

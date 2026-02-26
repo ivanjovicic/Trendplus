@@ -292,7 +292,7 @@ function DashboardRow({ item, rank }: { item: DashboardItem; rank: number }) {
 // ── Main component ───────────────────────────────────────────────────────────
 
 export function TrendDashboard() {
-    const [data, setData] = useState<{ run: DashboardRun | null; items: DashboardItem[] } | null>(null);
+    const [data, setData] = useState<{ run: DashboardRun | null; items: DashboardItem[]; message?: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
@@ -305,7 +305,12 @@ export function TrendDashboard() {
                 setData(d);
                 setLastRefreshed(new Date());
             })
-            .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+            .catch((e) => {
+                const msg = e instanceof Error ? e.message : String(e);
+                setError(msg);
+                // Still set empty data so the component renders the empty state
+                setData({ run: null, items: [] });
+            })
             .finally(() => setLoading(false));
     }, []);
 
@@ -372,23 +377,36 @@ export function TrendDashboard() {
                 </div>
             </div>
 
-            {/* ── Error state ── */}
+            {/* ── Error state (Python offline / network error) ── */}
             {error && (
-                <div style={{ padding: "20px 24px", background: "#fff1f2", borderBottom: "1px solid #fecdd3" }}>
-                    <div style={{ fontWeight: 700, color: "#be123c", fontSize: 13 }}>❌ DB not reachable</div>
+                <div style={{ padding: "16px 20px", background: "#fff7ed", borderBottom: "1px solid #fed7aa" }}>
+                    <div style={{ fontWeight: 700, color: "#c2410c", fontSize: 13 }}>⚠️ Python servis nije dostupan</div>
                     <div style={{ color: "#6b7280", fontSize: 12, marginTop: 4 }}>{error}</div>
-                    <div style={{ color: "#9ca3af", fontSize: 11, marginTop: 4 }}>
-                        Run scrapers first to populate the DB, or check that the Python API is running and the analytics DB is configured.
+                    <div style={{ color: "#9ca3af", fontSize: 11, marginTop: 6 }}>
+                        Pokreni <code>cd Python &amp;&amp; start_api.bat</code> da bi pokrenuo Python API servis.
                     </div>
                 </div>
             )}
 
-            {/* ── No data ── */}
-            {!loading && !error && items.length === 0 && (
+            {/* ── No data / tables not initialized ── */}
+            {!loading && items.length === 0 && (
                 <div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>
                     <div style={{ fontSize: 40, marginBottom: 10 }}>📭</div>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: "#6b7280" }}>No scored runs in the database yet</div>
-                    <div style={{ fontSize: 13, marginTop: 6 }}>Configure scrapers above, run them, and the results will appear here automatically.</div>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: "#6b7280" }}>
+                        {data?.message?.includes("not yet initialized")
+                            ? "Scoring tabele nisu još inicijalozovane"
+                            : "Nema run-ova u bazi"}
+                    </div>
+                    <div style={{ fontSize: 13, marginTop: 6 }}>
+                        {data?.message
+                            ? data.message
+                            : "Podesi skrejpere, pokreni ih i rezultati će se automatski pojaviti."}
+                    </div>
+                    {data?.message?.includes("not yet initialized") && (
+                        <div style={{ marginTop: 12, fontSize: 12, background: "#f0fdf4", border: "1px solid #a7f3d0", borderRadius: 8, padding: "8px 16px", color: "#047857", display: "inline-block" }}>
+                            Pokreni: <code>Database/Analytics/004_AddScraperScoringTables.sql</code> na analytics bazi
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -11,6 +11,7 @@ import { OutboxStats, OutboxMessage } from "../types/outbox";
 import { useToast } from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
 import PromptNumberModal from "../components/PromptNumberModal";
+import { usePingControl } from "../context/PingControlContext";
 
 interface EventTypeStat {
     eventType: string;
@@ -21,6 +22,7 @@ interface EventTypeStat {
 }
 
 export default function OutboxDashboard() {
+    const { apiPingEnabled } = usePingControl();
     const toast = useToast();
 
     const [stats, setStats] = useState<OutboxStats | null>(null);
@@ -60,11 +62,11 @@ export default function OutboxDashboard() {
     }, []);
 
     useEffect(() => {
-        if (!autoRefresh) return;
+        if (!autoRefresh || !apiPingEnabled) return;
 
         const interval = setInterval(fetchStats, 10000);
         return () => clearInterval(interval);
-    }, [autoRefresh]);
+    }, [autoRefresh, apiPingEnabled]);
 
     const doRetry = async (id: number) => {
         setActionBusy(true);
@@ -166,8 +168,9 @@ export default function OutboxDashboard() {
                             type="checkbox"
                             checked={autoRefresh}
                             onChange={(e) => setAutoRefresh(e.target.checked)}
+                            disabled={!apiPingEnabled}
                         />
-                        Auto-refresh (10s)
+                        Auto-refresh (10s){!apiPingEnabled ? " - pauziran globalno" : ""}
                     </label>
 
                     <button

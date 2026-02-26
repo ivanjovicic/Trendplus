@@ -67,6 +67,13 @@ try
 
     Console.WriteLine("Configuration loaded");
 
+    // Workers default policy:
+    // - Development: enabled
+    // - Production/other: disabled
+    // Explicit Workers:Enabled overrides this default.
+    var workersEnabledFromConfig = builder.Configuration.GetValue<bool?>("Workers:Enabled");
+    var workersEnabled = workersEnabledFromConfig ?? builder.Environment.IsDevelopment();
+
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
@@ -119,6 +126,12 @@ try
     builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
     builder.Services.AddScoped<IOutboxService, OutboxService>();
     builder.Services.AddSingleton<WorkerHealthService>(); // Worker health monitoring
+    builder.Services.AddSingleton(sp =>
+        new WorkerRuntimeControlService(
+            workersEnabled,
+            workersEnabledFromConfig.HasValue
+                ? "config"
+                : (builder.Environment.IsDevelopment() ? "development-default" : "production-default")));
     
     // Embedding service for AI-powered image search
     var pythonServiceUrl = builder.Configuration["EmbeddingService:BaseUrl"] ?? "http://localhost:8000";
@@ -169,19 +182,12 @@ try
 
     // Image providers for trends carousel are optional and resolved dynamically in endpoints
 
-    // Background Workers (can be disabled in production via Workers:Enabled=false)
-    var workersEnabled = builder.Configuration.GetValue<bool>("Workers:Enabled", true);
-    if (workersEnabled)
-    {
-        builder.Services.AddHostedService<Workers.SyncWorker>();
-        builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
-        builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>(); // NEW: Pre-aggregate analytics
-        Console.WriteLine("Background workers: ENABLED");
-    }
-    else
-    {
-        Console.WriteLine("Background workers: DISABLED");
-    }
+    // Background workers are always registered, but execution is controlled at runtime
+    // via WorkerRuntimeControlService (so we can enable/disable without restart).
+    builder.Services.AddHostedService<Workers.SyncWorker>();
+    builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
+    builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>();
+    Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
 
     builder.Services.AddControllers();
     builder.Services.ConfigureHttpJsonOptions(opts =>
@@ -257,6 +263,7 @@ try
     builder.Services.AddScoped<IOpenProductTrainingSyncService, OpenProductTrainingSyncService>();
     builder.Services.AddScoped<IRuntimeScoringEngine, RuntimeScoringEngine>();
     builder.Services.AddScoped<IAccessImportService, AccessImportService>();
+    builder.Services.AddScoped<IBatchLogService, BatchLogService>();
 
     // Typed HttpClient services for external product APIs
     var serpTimeout = builder.Configuration.GetValue<int>("SerpApi:TimeoutSeconds", 20);

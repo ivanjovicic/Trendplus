@@ -1,32 +1,45 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     deleteAccessImportBatch,
     getAccessImportBatches,
     previewAccessImport,
     runAccessImport,
     type AccessImportBatchDto,
-    type AccessImportFieldMappingPreview,
     type AccessImportPreviewResponse,
     type AccessImportRunResponse,
     type AccessImportTablePreview,
     type DeleteBatchResult,
 } from "../services/accessImportApi";
+import "./AccessImportPage.css";
+
+type Tab = "source" | "preview" | "lastImport" | "batches";
+type BatchStatusFilter = "all" | "Completed" | "Running" | "Pending" | "Failed";
 
 function fmtDate(value: string | null): string {
-    if (!value) return "-";
+    if (!value) return "—";
     return new Date(value).toLocaleString("sr-RS");
 }
 
-function getMatchedMappingsCount(table: AccessImportTablePreview): number {
-    return table.fieldMappings.filter((m) => m.status.toLowerCase() === "matched").length;
+function matchedCount(t: AccessImportTablePreview): number {
+    return t.fieldMappings.filter((m) => m.status.toLowerCase() === "matched").length;
 }
 
-function getMappingStatusColor(mapping: AccessImportFieldMappingPreview): string {
-    return mapping.status.toLowerCase() === "matched" ? "#166534" : "#b91c1c";
+function ResultLine({ entity, inserted, updated }: { entity: string; inserted: number; updated: number }) {
+    if (inserted === 0 && updated === 0) return null;
+    return (
+        <div className="accimport-result-item">
+            <span className="accimport-result-entity">{entity}</span>
+            <span className="accimport-result-counts">
+                <span className="ins">+{inserted}</span>{" / "}
+                <span className="upd">{updated} upd</span>
+            </span>
+        </div>
+    );
 }
 
 export default function AccessImportPage() {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [activeTab, setActiveTab] = useState<Tab>("source");
     const [file, setFile] = useState<File | null>(null);
     const [useRootFile, setUseRootFile] = useState(false);
     const [includeAnalytics, setIncludeAnalytics] = useState(true);
@@ -34,32 +47,40 @@ export default function AccessImportPage() {
     const [preview, setPreview] = useState<AccessImportPreviewResponse | null>(null);
     const [runResult, setRunResult] = useState<AccessImportRunResponse | null>(null);
     const [batches, setBatches] = useState<AccessImportBatchDto[]>([]);
+    const [batchStatusFilter, setBatchStatusFilter] = useState<BatchStatusFilter>("all");
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [loadingImport, setLoadingImport] = useState(false);
+    const [importElapsed, setImportElapsed] = useState(0);
     const [deletingBatchId, setDeletingBatchId] = useState<number | null>(null);
     const [deleteIncludeAnalytics, setDeleteIncludeAnalytics] = useState(true);
     const [deleteResult, setDeleteResult] = useState<DeleteBatchResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // --- data loading ---
+
     const refreshBatches = async () => {
-        try {
-            setBatches(await getAccessImportBatches(20));
-        } catch {
-            // best effort
-        }
+        try { setBatches(await getAccessImportBatches(50)); } catch { /* best effort */ }
     };
 
+    useEffect(() => { void refreshBatches(); }, []);
+
+    // elapsed timer while importing
     useEffect(() => {
-        void refreshBatches();
-    }, []);
+        if (!loadingImport) { setImportElapsed(0); return; }
+        const t0 = Date.now();
+        const id = setInterval(() => setImportElapsed(Math.floor((Date.now() - t0) / 1000)), 500);
+        return () => clearInterval(id);
+    }, [loadingImport]);
+
+    // --- handlers ---
 
     const handlePreview = async () => {
         setError(null);
-        setRunResult(null);
         setLoadingPreview(true);
         try {
             const data = await previewAccessImport(file, useRootFile);
             setPreview(data);
+            setActiveTab("preview");
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Greska pri analizi ACCDB fajla.");
         } finally {
@@ -67,9 +88,23 @@ export default function AccessImportPage() {
         }
     };
 
+    const handleImport = async () => {
+        setError(null);
+        setLoadingImport(true);
+        try {
+            const data = await runAccessImport(file, { useRootFile, includeAnalytics, overwriteExisting });
+            setRunResult(data);
+            setActiveTab("lastImport");
+            await refreshBatches();
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Greska pri importu.");
+        } finally {
+            setLoadingImport(false);
+        }
+    };
+
     const handleDeleteBatch = async (batchId: number) => {
-        if (!window.confirm(`Obrisati sve podatke importovane u batch-u #${batchId}? Ova akcija je nepovratna.`))
-            return;
+        if (!window.confirm(`Obrisati batch #${batchId}? Ova akcija je nepovratna.`)) return;
         setError(null);
         setDeleteResult(null);
         setDeletingBatchId(batchId);
@@ -84,379 +119,396 @@ export default function AccessImportPage() {
         }
     };
 
-    const handleImport = async () => {
-        setError(null);
-        setLoadingImport(true);
-        try {
-            const data = await runAccessImport(file, {
-                useRootFile,
-                includeAnalytics,
-                overwriteExisting,
-            });
-            setRunResult(data);
-            await refreshBatches();
-        } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Greska pri importu.");
-        } finally {
-            setLoadingImport(false);
-        }
-    };
+    // --- derived ---
+
+    const filteredBatches = useMemo(
+        () => batchStatusFilter === "all" ? batches : batches.filter((b) => b.status === batchStatusFilter),
+        [batches, batchStatusFilter],
+    );
+
+    const busy = loadingPreview || loadingImport;
+
+    // --- render ---
 
     return (
-        <div style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 28 }}>
-            <div
-                style={{
-                    borderRadius: 14,
-                    padding: "18px 22px",
-                    background: "linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%)",
-                    color: "white",
-                    marginBottom: 16,
-                }}
-            >
-                <h1 style={{ margin: 0, fontSize: 24 }}>Access Import (TRENDPLUS.accdb)</h1>
-                <p style={{ margin: "8px 0 0", opacity: 0.92 }}>
-                    Import podataka iz Access baze u Trendplus i Analytics, sa podrskom za globalni prikaz:
-                    <strong> existing / imported / all</strong>.
-                </p>
+        <div className="accimport-page">
+            <h1 className="accimport-title">Access Import (TRENDPLUS.accdb)</h1>
+            <p className="accimport-subtitle">
+                ETL pipeline: Access → Trendplus DB + Analytics DB. Podrska za upsert, analizu seme, batch istoriju i kaskadno brisanje.
+            </p>
+
+            {/* ---- Tabs ---- */}
+            <div className="accimport-tabs">
+                {([
+                    ["source", "Izvor"],
+                    ["preview", "Analiza seme"],
+                    ["lastImport", "Poslednji import"],
+                    ["batches", "Istorija batch-eva"],
+                ] as const).map(([key, label]) => (
+                    <button
+                        key={key}
+                        className={`accimport-tab ${activeTab === key ? "active" : ""}`}
+                        onClick={() => setActiveTab(key)}
+                        type="button"
+                    >
+                        {label}
+                    </button>
+                ))}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 14 }}>
-                <section style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
-                    <h3 style={{ marginTop: 0 }}>1) Izvor ACCDB</h3>
+            {/* ---- Global error ---- */}
+            {error && <div className="accimport-error">{error}</div>}
 
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                        <input
-                            type="checkbox"
-                            checked={useRootFile}
-                            onChange={(e) => setUseRootFile(e.target.checked)}
-                        />
-                        Koristi TRENDPLUS.accdb automatski (root ili parent folder)
-                    </label>
-
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".accdb"
-                        style={{ display: "none" }}
-                        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                    />
-
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            style={{
-                                border: "1px solid #cbd5e1",
-                                background: "#f8fafc",
-                                borderRadius: 8,
-                                padding: "7px 12px",
-                                cursor: "pointer",
-                                fontWeight: 600,
-                            }}
-                        >
-                            Browse ACCDB
-                        </button>
-                        {file && (
-                            <button
-                                type="button"
-                                onClick={() => setFile(null)}
-                                style={{
-                                    border: "1px solid #fecaca",
-                                    background: "#fff1f2",
-                                    color: "#b91c1c",
-                                    borderRadius: 8,
-                                    padding: "7px 10px",
-                                    cursor: "pointer",
-                                    fontWeight: 600,
-                                }}
-                            >
-                                Clear
-                            </button>
-                        )}
-                        <span style={{ fontSize: 13, color: "#374151" }}>
-                            {file ? `Izabrano: ${file.name}` : "Nije izabran fajl"}
-                        </span>
+            {/* ---- Progress bar (visible on any tab while importing) ---- */}
+            {loadingImport && (
+                <div className="accimport-progress">
+                    <div className="accimport-progress-title">Import u toku...</div>
+                    <div className="accimport-progress-bar-track">
+                        <div className="accimport-progress-bar-fill" style={{ width: "100%", animation: "pulse 1.5s ease-in-out infinite" }} />
                     </div>
-
-                    <div style={{ display: "flex", gap: 14, marginBottom: 10, flexWrap: "wrap" }}>
-                        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <input
-                                type="checkbox"
-                                checked={includeAnalytics}
-                                onChange={(e) => setIncludeAnalytics(e.target.checked)}
-                            />
-                            Ukljuci upis u Analytics
-                        </label>
-                        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <input
-                                type="checkbox"
-                                checked={overwriteExisting}
-                                onChange={(e) => setOverwriteExisting(e.target.checked)}
-                            />
-                            Azuriraj postojece redove
-                        </label>
+                    <div className="accimport-progress-meta">
+                        <span>Status: Running</span>
+                        <span>Proteklo: {importElapsed}s</span>
                     </div>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button
-                            onClick={handlePreview}
-                            disabled={loadingPreview || loadingImport}
-                            style={{
-                                border: "none",
-                                borderRadius: 8,
-                                padding: "8px 12px",
-                                background: loadingPreview ? "#9ca3af" : "#2563eb",
-                                color: "white",
-                                fontWeight: 700,
-                                cursor: loadingPreview ? "not-allowed" : "pointer",
-                            }}
-                        >
-                            {loadingPreview ? "Analiziram..." : "Analiza seme"}
-                        </button>
-                        <button
-                            onClick={handleImport}
-                            disabled={loadingImport || loadingPreview}
-                            style={{
-                                border: "none",
-                                borderRadius: 8,
-                                padding: "8px 12px",
-                                background: loadingImport ? "#9ca3af" : "#059669",
-                                color: "white",
-                                fontWeight: 700,
-                                cursor: loadingImport ? "not-allowed" : "pointer",
-                            }}
-                        >
-                            {loadingImport ? "Importujem..." : "Pokreni import"}
-                        </button>
-                    </div>
-
-                    {error && (
-                        <div style={{ marginTop: 12, background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 12px" }}>
-                            {error}
-                        </div>
-                    )}
-                </section>
-
-                <section style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
-                    <h3 style={{ marginTop: 0 }}>2) Poslednji import</h3>
-                    {!runResult && <p style={{ color: "#6b7280" }}>Nije pokrenut import u ovoj sesiji.</p>}
-                    {runResult && (
-                        <div style={{ fontSize: 14 }}>
-                            <div><strong>Status:</strong> {runResult.status}</div>
-                            <div><strong>Batch ID:</strong> {runResult.batchId}</div>
-                            <div><strong>Fajl:</strong> {runResult.sourceFileName}</div>
-                            <div><strong>Start:</strong> {fmtDate(runResult.startedAtUtc)}</div>
-                            <div><strong>Kraj:</strong> {fmtDate(runResult.completedAtUtc)}</div>
-                            <hr style={{ margin: "10px 0" }} />
-                            <div>Artikli: +{runResult.artikliInserted} / update {runResult.artikliUpdated}</div>
-                            <div>Dobavljaci: +{runResult.dobavljaciInserted} / update {runResult.dobavljaciUpdated}</div>
-                            <div>Sezone: +{runResult.sezoneInserted} / update {runResult.sezoneUpdated}</div>
-                            <div>Tipovi: +{runResult.tipoviInserted} / update {runResult.tipoviUpdated}</div>
-                            <div>Prodaje: +{runResult.prodajaInserted} / update {runResult.prodajaUpdated}</div>
-                            <div>Stavke prodaje: +{runResult.prodajaStavkeInserted} / update {runResult.prodajaStavkeUpdated}</div>
-                            {(runResult.dnevnikInserted > 0 || runResult.dnevnikUpdated > 0) && (
-                                <div>Dnevnik promena: +{runResult.dnevnikInserted} / update {runResult.dnevnikUpdated}</div>
-                            )}
-                            {(runResult.povracajInserted > 0 || runResult.povracajUpdated > 0) && (
-                                <div>Povracaji: +{runResult.povracajInserted} / update {runResult.povracajUpdated}</div>
-                            )}
-                            {(runResult.povracajStavkeInserted > 0 || runResult.povracajStavkeUpdated > 0) && (
-                                <div>Stavke povracaja: +{runResult.povracajStavkeInserted} / update {runResult.povracajStavkeUpdated}</div>
-                            )}
-                            {runResult.includeAnalytics && (
-                                <>
-                                    <hr style={{ margin: "10px 0" }} />
-                                    <div>ProductsDim: +{runResult.productsDimInserted} / update {runResult.productsDimUpdated}</div>
-                                    <div>SalesFacts: +{runResult.salesFactsInserted} / update {runResult.salesFactsUpdated}</div>
-                                    <div>SalesLineFacts: +{runResult.salesLineFactsInserted}</div>
-                                    <div>Stores: +{runResult.storesInserted} / update {runResult.storesUpdated}</div>
-                                </>
-                            )}
-                        </div>
-                    )}
-                </section>
-            </div>
-
-            {preview && (
-                <section style={{ marginTop: 14, background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
-                    <h3 style={{ marginTop: 0 }}>3) Rezultat analize</h3>
-                    <div style={{ marginBottom: 8 }}>
-                        <strong>Can import:</strong> {preview.canImport ? "DA" : "NE"}
-                    </div>
-                    <div style={{ display: "grid", gap: 10 }}>
-                        {preview.tables.map((t) => {
-                            const matched = getMatchedMappingsCount(t);
-                            const total = t.fieldMappings.length;
-
-                            return (
-                                <details
-                                    key={t.key}
-                                    style={{
-                                        border: "1px solid #e5e7eb",
-                                        borderRadius: 8,
-                                        padding: "8px 10px",
-                                        background: "#fafafa",
-                                    }}
-                                >
-                                    <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                                        <strong>{t.key}</strong>
-                                        <span style={{ color: t.found ? "#111827" : "#9ca3af" }}>{t.tableName ?? "-"}</span>
-                                        <span style={{ fontSize: 12, color: "#475569" }}>rows: {t.rowCount}</span>
-                                        {total > 0 && (
-                                            <span
-                                                style={{
-                                                    fontSize: 12,
-                                                    color: matched === total ? "#166534" : "#9a3412",
-                                                    background: matched === total ? "#dcfce7" : "#fff7ed",
-                                                    border: "1px solid #e2e8f0",
-                                                    borderRadius: 999,
-                                                    padding: "2px 8px",
-                                                }}
-                                            >
-                                                mapirano {matched}/{total}
-                                            </span>
-                                        )}
-                                    </summary>
-
-                                    {t.accessColumns.length > 0 && (
-                                        <div style={{ marginTop: 8 }}>
-                                            <div style={{ fontSize: 12, color: "#475569", marginBottom: 4 }}>Access kolone</div>
-                                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                                {t.accessColumns.map((c) => (
-                                                    <span
-                                                        key={`${t.key}-${c}`}
-                                                        style={{
-                                                            fontSize: 12,
-                                                            background: "#f1f5f9",
-                                                            border: "1px solid #e2e8f0",
-                                                            borderRadius: 999,
-                                                            padding: "2px 8px",
-                                                        }}
-                                                    >
-                                                        {c}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {t.fieldMappings.length > 0 && (
-                                        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8, fontSize: 13 }}>
-                                            <thead>
-                                                <tr>
-                                                    <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: "4px" }}>Target polje</th>
-                                                    <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: "4px" }}>Access kolona</th>
-                                                    <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: "4px" }}>Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {t.fieldMappings.map((m) => (
-                                                    <tr key={`${t.key}-${m.targetField}`}>
-                                                        <td style={{ padding: "4px" }}>{m.targetField}</td>
-                                                        <td style={{ padding: "4px", color: m.sourceColumn ? "#111827" : "#9ca3af" }}>
-                                                            {m.sourceColumn ?? "-"}
-                                                        </td>
-                                                        <td style={{ padding: "4px", color: getMappingStatusColor(m), fontWeight: 600 }}>
-                                                            {m.status}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    )}
-                                </details>
-                            );
-                        })}
-                    </div>
-
-                    {preview.warnings.length > 0 && (
-                        <div style={{ marginTop: 10, background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412", borderRadius: 8, padding: "8px 10px" }}>
-                            {preview.warnings.map((w, i) => (
-                                <div key={i}>- {w}</div>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                </div>
             )}
 
-            <section style={{ marginTop: 14, background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
-                <h3 style={{ marginTop: 0 }}>4) Istorija batch-eva</h3>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 13 }}>
-                    <input
-                        type="checkbox"
-                        checked={deleteIncludeAnalytics}
-                        onChange={(e) => setDeleteIncludeAnalytics(e.target.checked)}
-                    />
-                    Pri brisanju batch-a obriši i Analytics podatke (DataOrigin=access)
-                </label>
-
-                {deleteResult && (
-                    <div style={{ marginBottom: 12, background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
-                        <strong>Batch #{deleteResult.batchId} obrisan.</strong>{" "}
-                        Artikli: {deleteResult.artikliDeleted}, Prodaje: {deleteResult.prodajaDeleted},
-                        Stavke: {deleteResult.stavkeDeleted}, Sezone: {deleteResult.sezoneDeleted},
-                        Dobavljaci: {deleteResult.dobavljaciDeleted}, Tipovi: {deleteResult.tipoviDeleted},
-                        Dnevnik: {deleteResult.dnevnikDeleted}, Povracaji: {deleteResult.povracajDeleted} ({deleteResult.povracajStavkeDeleted} stavki),
-                        ProductsDim: {deleteResult.productsDimDeleted}, SalesFacts: {deleteResult.salesFactsDeleted},
-                        SalesLineFacts: {deleteResult.salesLineFactsDeleted}, InventoryMoves: {deleteResult.inventoryMovementsDeleted},
-                        SuppliersDim: {deleteResult.suppliersDimDeleted}, SeasonsDim: {deleteResult.seasonsDimDeleted},
-                        TypesDim: {deleteResult.footwearTypesDimDeleted}, StoresDim: {deleteResult.storesDimDeleted},
-                        Cache invalidiran: {deleteResult.cacheInvalidated ? "da" : "ne"}.
-                        <button
-                            onClick={() => setDeleteResult(null)}
-                            style={{ marginLeft: 10, border: "none", background: "transparent", color: "#15803d", cursor: "pointer", fontWeight: 700 }}
-                        >x</button>
+            {/* ============ TAB: Source ============ */}
+            {activeTab === "source" && (
+                <div className="accimport-filterbar">
+                    {/* File source */}
+                    <div className="accimport-field" style={{ gridColumn: "1 / -1" }}>
+                        <span className="accimport-label">Izvor ACCDB fajla</span>
+                        <label className="accimport-checkbox-row">
+                            <input type="checkbox" checked={useRootFile} onChange={(e) => setUseRootFile(e.target.checked)} />
+                            Koristi TRENDPLUS.accdb automatski (root ili parent folder)
+                        </label>
                     </div>
-                )}
 
-                {batches.length === 0 ? (
-                    <p style={{ color: "#6b7280" }}>Nema import istorije.</p>
-                ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-                        <thead>
-                            <tr>
-                                <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: "6px 4px" }}>ID</th>
-                                <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: "6px 4px" }}>Fajl</th>
-                                <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: "6px 4px" }}>Status</th>
-                                <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: "6px 4px" }}>Pocetak</th>
-                                <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: "6px 4px" }}>Kraj</th>
-                                <th style={{ borderBottom: "1px solid #e5e7eb", padding: "6px 4px" }}></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {batches.map((b) => (
-                                <tr key={b.id}>
-                                    <td style={{ padding: "6px 4px" }}>{b.id}</td>
-                                    <td style={{ padding: "6px 4px" }}>{b.sourceFileName}</td>
-                                    <td style={{ padding: "6px 4px" }}>{b.status}</td>
-                                    <td style={{ padding: "6px 4px" }}>{fmtDate(b.startedAtUtc)}</td>
-                                    <td style={{ padding: "6px 4px" }}>{fmtDate(b.completedAtUtc)}</td>
-                                    <td style={{ padding: "6px 4px", textAlign: "right" }}>
-                                        <button
-                                            type="button"
-                                            disabled={deletingBatchId !== null}
-                                            onClick={() => void handleDeleteBatch(b.id)}
-                                            style={{
-                                                border: "1px solid #fecaca",
-                                                background: deletingBatchId === b.id ? "#fef2f2" : "#fff1f2",
-                                                color: "#b91c1c",
-                                                borderRadius: 6,
-                                                padding: "4px 10px",
-                                                cursor: deletingBatchId !== null ? "not-allowed" : "pointer",
-                                                fontSize: 12,
-                                                fontWeight: 600,
-                                                opacity: deletingBatchId !== null && deletingBatchId !== b.id ? 0.5 : 1,
-                                            }}
-                                        >
-                                            {deletingBatchId === b.id ? "Brisem..." : "Obrisi"}
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </section>
+                    <div className="accimport-field">
+                        <span className="accimport-label">Rucni izbor fajla</span>
+                        <input ref={fileInputRef} type="file" accept=".accdb" style={{ display: "none" }} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                        <div className="accimport-file-row">
+                            <button type="button" className="accimport-btn accimport-btn-secondary" onClick={() => fileInputRef.current?.click()}>
+                                Browse .accdb
+                            </button>
+                            {file && (
+                                <button type="button" className="accimport-btn accimport-btn-clear" onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
+                                    Obrisi
+                                </button>
+                            )}
+                            <span className={`accimport-file-name ${file ? "has-file" : ""}`}>
+                                {file ? file.name : "Nije izabran fajl"}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Options */}
+                    <div className="accimport-field">
+                        <span className="accimport-label">Opcije importa</span>
+                        <label className="accimport-checkbox-row">
+                            <input type="checkbox" checked={includeAnalytics} onChange={(e) => setIncludeAnalytics(e.target.checked)} />
+                            Ukljuci upis u Analytics
+                        </label>
+                        <label className="accimport-checkbox-row">
+                            <input type="checkbox" checked={overwriteExisting} onChange={(e) => setOverwriteExisting(e.target.checked)} />
+                            Azuriraj postojece redove (upsert)
+                        </label>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="accimport-field">
+                        <span className="accimport-label">Akcije</span>
+                        <div className="accimport-actions">
+                            <button className="accimport-btn accimport-btn-primary" onClick={() => void handlePreview()} disabled={busy}>
+                                {loadingPreview ? "Analiziram..." : "Analiza seme"}
+                            </button>
+                            <button className="accimport-btn accimport-btn-success" onClick={() => void handleImport()} disabled={busy}>
+                                {loadingImport ? "Importujem..." : "Pokreni import"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ============ TAB: Preview (Schema Analysis) ============ */}
+            {activeTab === "preview" && (
+                <>
+                    {!preview && !loadingPreview && (
+                        <div className="accimport-empty-state">
+                            Pokrenite "Analiza seme" na Izvor tabu da vidite rezultat.
+                        </div>
+                    )}
+                    {loadingPreview && <div className="accimport-empty-state">Analiziram ACCDB fajl...</div>}
+                    {preview && (
+                        <div className="accimport-card">
+                            <h3 className="accimport-card-title">
+                                Rezultat analize — {preview.sourceFileName}
+                                <span style={{ marginLeft: 10 }}>
+                                    {preview.canImport
+                                        ? <span className="accimport-status accimport-status-Completed">Moze se importovati</span>
+                                        : <span className="accimport-status accimport-status-Failed">Nije moguce importovati</span>
+                                    }
+                                </span>
+                            </h3>
+
+                            {preview.warnings.length > 0 && (
+                                <div className="accimport-warning">
+                                    {preview.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+                                </div>
+                            )}
+
+                            {/* KPI summary */}
+                            <div className="accimport-kpis">
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Pronadjene tabele</div>
+                                    <div className="accimport-kpi-value">{preview.tables.filter((t) => t.found).length} / {preview.tables.length}</div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Ukupno redova</div>
+                                    <div className="accimport-kpi-value">{preview.tables.reduce((s, t) => s + t.rowCount, 0).toLocaleString("sr-RS")}</div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Access tabele u fajlu</div>
+                                    <div className="accimport-kpi-value">{preview.availableTables.length}</div>
+                                </div>
+                            </div>
+
+                            {/* Schema details */}
+                            <div style={{ display: "grid", gap: 8 }}>
+                                {preview.tables.map((t) => {
+                                    const hits = matchedCount(t);
+                                    const total = t.fieldMappings.length;
+                                    return (
+                                        <details key={t.key} className="accimport-schema-details">
+                                            <summary className="accimport-schema-summary">
+                                                <strong>{t.key}</strong>
+                                                <span style={{ color: t.found ? "#e5e7eb" : "#6b7280" }}>{t.tableName ?? "—"}</span>
+                                                <span style={{ fontSize: 12, color: "#6b7280" }}>rows: {t.rowCount}</span>
+                                                {total > 0 && (
+                                                    <span className={`accimport-schema-badge ${hits === total ? "all-matched" : "partial"}`}>
+                                                        mapirano {hits}/{total}
+                                                    </span>
+                                                )}
+                                            </summary>
+
+                                            {t.accessColumns.length > 0 && (
+                                                <div style={{ marginTop: 8 }}>
+                                                    <div className="accimport-label" style={{ marginBottom: 4 }}>Access kolone</div>
+                                                    <div className="accimport-col-chips">
+                                                        {t.accessColumns.map((c) => (
+                                                            <span key={`${t.key}-${c}`} className="accimport-col-chip">{c}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {t.fieldMappings.length > 0 && (
+                                                <div className="accimport-scroll" style={{ marginTop: 8, maxHeight: 200 }}>
+                                                    <table className="accimport-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Target polje</th>
+                                                                <th>Access kolona</th>
+                                                                <th>Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {t.fieldMappings.map((m) => (
+                                                                <tr key={`${t.key}-${m.targetField}`}>
+                                                                    <td>{m.targetField}</td>
+                                                                    <td style={{ color: m.sourceColumn ? "#e5e7eb" : "#6b7280" }}>{m.sourceColumn ?? "—"}</td>
+                                                                    <td>
+                                                                        <span className={`accimport-mapping-badge ${m.status.toLowerCase() === "matched" ? "accimport-mapping-matched" : "accimport-mapping-missing"}`}>
+                                                                            {m.status}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </details>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* ============ TAB: Last Import ============ */}
+            {activeTab === "lastImport" && (
+                <>
+                    {!runResult && !loadingImport && (
+                        <div className="accimport-empty-state">Nije pokrenut import u ovoj sesiji.</div>
+                    )}
+                    {runResult && (
+                        <>
+                            {/* KPI row */}
+                            <div className="accimport-kpis">
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Status</div>
+                                    <div className="accimport-kpi-value">
+                                        <span className={`accimport-status accimport-status-${runResult.status}`}>{runResult.status}</span>
+                                    </div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Batch ID</div>
+                                    <div className="accimport-kpi-value">#{runResult.batchId}</div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Fajl</div>
+                                    <div className="accimport-kpi-value" style={{ fontSize: 14, wordBreak: "break-all" }}>{runResult.sourceFileName}</div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Pocetak</div>
+                                    <div className="accimport-kpi-value" style={{ fontSize: 14 }}>{fmtDate(runResult.startedAtUtc)}</div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Kraj</div>
+                                    <div className="accimport-kpi-value" style={{ fontSize: 14 }}>{fmtDate(runResult.completedAtUtc)}</div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Analytics</div>
+                                    <div className="accimport-kpi-value">{runResult.includeAnalytics ? "Da" : "Ne"}</div>
+                                </div>
+                            </div>
+
+                            {/* Entity counters */}
+                            <div className="accimport-card">
+                                <h3 className="accimport-card-title">Rezultati importa — Trendplus entiteti</h3>
+                                <div className="accimport-result-grid">
+                                    <ResultLine entity="Artikli" inserted={runResult.artikliInserted} updated={runResult.artikliUpdated} />
+                                    <ResultLine entity="Dobavljaci" inserted={runResult.dobavljaciInserted} updated={runResult.dobavljaciUpdated} />
+                                    <ResultLine entity="Sezone" inserted={runResult.sezoneInserted} updated={runResult.sezoneUpdated} />
+                                    <ResultLine entity="Tipovi obuce" inserted={runResult.tipoviInserted} updated={runResult.tipoviUpdated} />
+                                    <ResultLine entity="Prodaje" inserted={runResult.prodajaInserted} updated={runResult.prodajaUpdated} />
+                                    <ResultLine entity="Stavke prodaje" inserted={runResult.prodajaStavkeInserted} updated={runResult.prodajaStavkeUpdated} />
+                                    <ResultLine entity="Dnevnik promena" inserted={runResult.dnevnikInserted} updated={runResult.dnevnikUpdated} />
+                                    <ResultLine entity="Povracaji" inserted={runResult.povracajInserted} updated={runResult.povracajUpdated} />
+                                    <ResultLine entity="Stavke povracaja" inserted={runResult.povracajStavkeInserted} updated={runResult.povracajStavkeUpdated} />
+                                </div>
+                            </div>
+
+                            {runResult.includeAnalytics && (
+                                <div className="accimport-card">
+                                    <h3 className="accimport-card-title">Rezultati importa — Analytics dimenzije</h3>
+                                    <div className="accimport-result-grid">
+                                        <ResultLine entity="ProductsDim" inserted={runResult.productsDimInserted} updated={runResult.productsDimUpdated} />
+                                        <ResultLine entity="SalesFacts" inserted={runResult.salesFactsInserted} updated={runResult.salesFactsUpdated} />
+                                        <ResultLine entity="SalesLineFacts" inserted={runResult.salesLineFactsInserted} updated={0} />
+                                        <ResultLine entity="Stores" inserted={runResult.storesInserted} updated={runResult.storesUpdated} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {runResult.warnings.length > 0 && (
+                                <div className="accimport-warning">
+                                    {runResult.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </>
+            )}
+
+            {/* ============ TAB: Batch History ============ */}
+            {activeTab === "batches" && (
+                <>
+                    {/* Filter + options bar */}
+                    <div className="accimport-filterbar" style={{ gridTemplateColumns: "auto auto 1fr" }}>
+                        <div className="accimport-field">
+                            <span className="accimport-label">Filter po statusu</span>
+                            <select className="accimport-input" value={batchStatusFilter} onChange={(e) => setBatchStatusFilter(e.target.value as BatchStatusFilter)} style={{ minWidth: 160 }}>
+                                <option value="all">Svi statusi</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Running">Running</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Failed">Failed</option>
+                            </select>
+                        </div>
+                        <div className="accimport-field">
+                            <span className="accimport-label">Opcije brisanja</span>
+                            <label className="accimport-checkbox-row">
+                                <input type="checkbox" checked={deleteIncludeAnalytics} onChange={(e) => setDeleteIncludeAnalytics(e.target.checked)} />
+                                Obrisi i Analytics podatke (DataOrigin=access)
+                            </label>
+                        </div>
+                        <div className="accimport-field" style={{ alignItems: "flex-end" }}>
+                            <button className="accimport-btn accimport-btn-secondary" onClick={() => void refreshBatches()}>
+                                &#8635; Osvezi
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Delete result banner */}
+                    {deleteResult && (
+                        <div className="accimport-delete-banner">
+                            <strong>Batch #{deleteResult.batchId} obrisan:</strong>
+                            Artikli: {deleteResult.artikliDeleted},
+                            Prodaje: {deleteResult.prodajaDeleted},
+                            Stavke: {deleteResult.stavkeDeleted},
+                            Sezone: {deleteResult.sezoneDeleted},
+                            Dobavljaci: {deleteResult.dobavljaciDeleted},
+                            Tipovi: {deleteResult.tipoviDeleted},
+                            Dnevnik: {deleteResult.dnevnikDeleted},
+                            Povracaji: {deleteResult.povracajDeleted} ({deleteResult.povracajStavkeDeleted} stavki),
+                            ProductsDim: {deleteResult.productsDimDeleted},
+                            SalesFacts: {deleteResult.salesFactsDeleted},
+                            SalesLineFacts: {deleteResult.salesLineFactsDeleted},
+                            Inv.Moves: {deleteResult.inventoryMovementsDeleted},
+                            Cache: {deleteResult.cacheInvalidated ? "yes" : "no"}
+                            <button className="accimport-delete-banner-close" onClick={() => setDeleteResult(null)}>&times;</button>
+                        </div>
+                    )}
+
+                    {/* Table */}
+                    <div className="accimport-table-wrap">
+                        <h3 className="accimport-table-title">Batch istorija ({filteredBatches.length})</h3>
+                        <div className="accimport-scroll">
+                            <table className="accimport-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Fajl</th>
+                                        <th>Status</th>
+                                        <th>Pocetak</th>
+                                        <th>Kraj</th>
+                                        <th className="align-right">Akcije</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredBatches.length === 0 && (
+                                        <tr><td colSpan={6} className="accimport-empty-state">Nema batch zapisa za izabrani filter.</td></tr>
+                                    )}
+                                    {filteredBatches.map((b) => (
+                                        <tr key={b.id}>
+                                            <td>#{b.id}</td>
+                                            <td>{b.sourceFileName}</td>
+                                            <td><span className={`accimport-status accimport-status-${b.status}`}>{b.status}</span></td>
+                                            <td>{fmtDate(b.startedAtUtc)}</td>
+                                            <td>{fmtDate(b.completedAtUtc)}</td>
+                                            <td className="align-right">
+                                                <button
+                                                    type="button"
+                                                    disabled={deletingBatchId !== null}
+                                                    onClick={() => void handleDeleteBatch(b.id)}
+                                                    className="accimport-btn accimport-btn-danger"
+                                                    style={{ opacity: deletingBatchId !== null && deletingBatchId !== b.id ? 0.5 : 1 }}
+                                                >
+                                                    {deletingBatchId === b.id ? "Brisem..." : "Obrisi"}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

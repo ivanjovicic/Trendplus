@@ -1,4 +1,5 @@
 import { createContext, useEffect, useState } from "react";
+import { usePingControl } from "./PingControlContext";
 
 export type BackendStatus = {
     online: boolean;
@@ -8,9 +9,14 @@ export const BackendStatusContext = createContext<BackendStatus>({ online: true 
 
 export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [online, setOnline] = useState(true);
+    const { apiPingEnabled } = usePingControl();
     const HEALTH_POLL_INTERVAL_MS = import.meta.env.DEV ? 30000 : 120000;
     
     useEffect(() => {
+        if (!apiPingEnabled) {
+            return;
+        }
+
         const pingBackend = async () => {
             try {
                 // Use /health endpoint (proxied in dev, direct in prod)
@@ -28,7 +34,7 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
         pingBackend();
         const interval = setInterval(pingBackend, HEALTH_POLL_INTERVAL_MS);
         return () => clearInterval(interval);
-    }, [HEALTH_POLL_INTERVAL_MS]);
+    }, [HEALTH_POLL_INTERVAL_MS, apiPingEnabled]);
 
     return (
         <BackendStatusContext.Provider value={{ online }}>

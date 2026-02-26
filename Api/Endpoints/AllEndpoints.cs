@@ -66,12 +66,63 @@ public static class AllEndpoints
         .WithTags("System");
 
         // Worker health status
-        app.MapGet("/api/workers/health", (WorkerHealthService workerHealth) =>
+        app.MapGet("/api/workers/health", (WorkerHealthService workerHealth, WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
         {
             var summary = workerHealth.GetHealthSummary();
-            return Results.Ok(summary);
+            return Results.Ok(new
+            {
+                TotalWorkers = summary.TotalWorkers,
+                HealthyWorkers = summary.HealthyWorkers,
+                RunningWorkers = summary.RunningWorkers,
+                ErrorWorkers = summary.ErrorWorkers,
+                StoppedWorkers = summary.StoppedWorkers,
+                StaleWorkers = summary.StaleWorkers,
+                HasCriticalIssues = summary.HasCriticalIssues,
+                Workers = summary.Workers,
+                WorkersEnabled = workerControl.IsEnabled,
+                Environment = env.EnvironmentName,
+                LastSwitchAtUtc = workerControl.LastChangedUtc,
+                LastSwitchBy = workerControl.LastChangedBy
+            });
         })
         .WithName("WorkerHealthCheck")
+        .WithTags("System");
+
+        app.MapGet("/api/workers/control", (WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
+        {
+            return Results.Ok(workerControl.GetState(env.EnvironmentName));
+        })
+        .WithName("WorkerControlState")
+        .WithTags("System");
+
+        app.MapPost("/api/workers/control/enable", (WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
+        {
+            var changed = workerControl.SetEnabled(true, $"api:{env.EnvironmentName}");
+            return Results.Ok(new
+            {
+                Enabled = true,
+                Changed = changed,
+                Message = changed ? "Workeri su ukljuceni." : "Workeri su vec ukljuceni.",
+                LastSwitchAtUtc = workerControl.LastChangedUtc,
+                LastSwitchBy = workerControl.LastChangedBy
+            });
+        })
+        .WithName("EnableWorkers")
+        .WithTags("System");
+
+        app.MapPost("/api/workers/control/disable", (WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
+        {
+            var changed = workerControl.SetEnabled(false, $"api:{env.EnvironmentName}");
+            return Results.Ok(new
+            {
+                Enabled = false,
+                Changed = changed,
+                Message = changed ? "Workeri su iskljuceni." : "Workeri su vec iskljuceni.",
+                LastSwitchAtUtc = workerControl.LastChangedUtc,
+                LastSwitchBy = workerControl.LastChangedBy
+            });
+        })
+        .WithName("DisableWorkers")
         .WithTags("System");
 
         // Circuit Breaker Status
@@ -423,6 +474,159 @@ public static class AllEndpoints
         .WithName("OptimizeAnalytics")
         .WithTags("Analytics");
 
+        // ============ ADMIN - INIT SCORING TABLES (fixes /api/dashboard/latest 500) ============
+
+        app.MapPost("/api/admin/init-scoring-tables", async (
+            AnalyticsDbContext analyticsDb,
+            ILogger<Program> logger,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                logger.LogInformation("🚀 Initializing scoring tables on analytics DB...");
+
+                var connectionString = analyticsDb.Database.GetConnectionString();
+                if (string.IsNullOrEmpty(connectionString))
+                    return Results.Problem("No analytics connection string available", statusCode: 500);
+
+                await using var connection = new NpgsqlConnection(connectionString);
+                await connection.OpenAsync(ct);
+
+                var results = new List<string>();
+
+                // 1. items – canonical product registry
+                const string itemsSql = """
+                    CREATE TABLE IF NOT EXISTS items (
+                        item_id      BIGSERIAL PRIMARY KEY,
+                        canonical_key TEXT NOT NULL UNIQUE,
+                        brand         TEXT,
+                        name          TEXT,
+                        category      TEXT,
+                        gender        TEXT,
+                        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    );
+                    CREATE INDEX IF NOT EXISTS ix_items_canonical_key ON items (canonical_key);
+                    CREATE INDEX IF NOT EXISTS ix_items_category      ON items (category);
+                    """;
+                await using (var cmd = new NpgsqlCommand(itemsSql, connection))
+                    await cmd.ExecuteNonQueryAsync(ct);
+                results.Add("✅ items table ready");
+
+                // 2. runs – one row per scraper execution
+                const string runsSql = """
+                    CREATE TABLE IF NOT EXISTS runs (
+                        run_id      BIGSERIAL PRIMARY KEY,
+                        started_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        finished_at TIMESTAMPTZ,
+                        status      TEXT NOT NULL DEFAULT 'running'
+                                        CHECK (status IN ('running','completed','failed')),
+                        total_items INT,
+                        notes       TEXT
+                    );
+                    CREATE INDEX IF NOT EXISTS ix_runs_started_at ON runs (started_at DESC);
+                    CREATE INDEX IF NOT EXISTS ix_runs_status      ON runs (status);
+                    """;
+                await using (var cmd = new NpgsqlCommand(runsSql, connection))
+                    await cmd.ExecuteNonQueryAsync(ct);
+                results.Add("✅ runs table ready");
+
+                // 3. item_run_stats – one row per item per run (scoring result)
+                const string statsSql = """
+                    CREATE TABLE IF NOT EXISTS item_run_stats (
+                        id                   BIGSERIAL PRIMARY KEY,
+                        run_id               BIGINT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+                        item_id              BIGINT NOT NULL REFERENCES items(item_id) ON DELETE CASCADE,
+                        rank                 INT,
+                        final_score          NUMERIC(10,6),
+                        base_score           NUMERIC(10,6),
+                        momentum_raw         NUMERIC(10,6),
+                        momentum_normalized  NUMERIC(10,6),
+                        appearance_count     INT NOT NULL DEFAULT 1,
+                        source_count         INT NOT NULL DEFAULT 1,
+                        market_count         INT NOT NULL DEFAULT 1,
+                        score_components     JSONB,
+                        markets              JSONB,
+                        sources              JSONB,
+                        min_price            NUMERIC(12,2),
+                        max_price            NUMERIC(12,2),
+                        prev_final_score     NUMERIC(10,6),
+                        total_run_appearances INT NOT NULL DEFAULT 1,
+                        UNIQUE (run_id, item_id)
+                    );
+                    CREATE INDEX IF NOT EXISTS ix_irs_run_id   ON item_run_stats (run_id);
+                    CREATE INDEX IF NOT EXISTS ix_irs_item_id  ON item_run_stats (item_id);
+                    CREATE INDEX IF NOT EXISTS ix_irs_rank     ON item_run_stats (run_id, rank);
+                    """;
+                await using (var cmd = new NpgsqlCommand(statsSql, connection))
+                    await cmd.ExecuteNonQueryAsync(ct);
+                results.Add("✅ item_run_stats table ready");
+
+                // 4. item_appearances – raw scraper hit per run
+                const string appearancesSql = """
+                    CREATE TABLE IF NOT EXISTS item_appearances (
+                        id         BIGSERIAL PRIMARY KEY,
+                        run_id     BIGINT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+                        item_id    BIGINT NOT NULL REFERENCES items(item_id) ON DELETE CASCADE,
+                        source     TEXT,
+                        market     TEXT,
+                        price      NUMERIC(12,2),
+                        position   INT,
+                        scraped_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        raw_data   JSONB
+                    );
+                    CREATE INDEX IF NOT EXISTS ix_ia_run_id  ON item_appearances (run_id);
+                    CREATE INDEX IF NOT EXISTS ix_ia_item_id ON item_appearances (item_id);
+                    """;
+                await using (var cmd = new NpgsqlCommand(appearancesSql, connection))
+                    await cmd.ExecuteNonQueryAsync(ct);
+                results.Add("✅ item_appearances table ready");
+
+                // 5. v_item_run_stats – enriched view used by Python dashboard endpoint
+                const string viewSql = """
+                    CREATE OR REPLACE VIEW v_item_run_stats AS
+                    SELECT
+                        irs.run_id,
+                        irs.rank,
+                        irs.item_id,
+                        i.brand,
+                        i.name,
+                        i.category,
+                        NULL::text                AS image_url,
+                        irs.final_score,
+                        irs.base_score,
+                        irs.momentum_raw,
+                        irs.momentum_normalized,
+                        irs.appearance_count,
+                        irs.source_count,
+                        irs.market_count,
+                        irs.score_components,
+                        irs.markets,
+                        irs.sources,
+                        irs.min_price,
+                        irs.max_price,
+                        irs.prev_final_score,
+                        irs.total_run_appearances,
+                        i.canonical_key
+                    FROM item_run_stats irs
+                    JOIN items i ON i.item_id = irs.item_id;
+                    """;
+                await using (var cmd = new NpgsqlCommand(viewSql, connection))
+                    await cmd.ExecuteNonQueryAsync(ct);
+                results.Add("✅ v_item_run_stats view ready");
+
+                logger.LogInformation("✅ Scoring tables initialized successfully");
+                return Results.Ok(new { success = true, message = "Scoring tables initialized", results });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ Failed to init scoring tables");
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Failed to init scoring tables");
+            }
+        })
+        .WithName("InitScoringTables")
+        .WithTags("Analytics", "Admin");
+
         app.MapGet("/api/analytics/health", async (IAnalyticsDbContext db, ILogger<Program> logger) =>
         {
             try
@@ -566,7 +770,7 @@ public static class AllEndpoints
             {
                 return Results.Problem(
                     title: "Nivelacija view schema mismatch",
-                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql and 014_FixNivelacijaViewsFromDnevnik.sql, then restart the backend.",
+                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql, 014_FixNivelacijaViewsFromDnevnik.sql, and 016_AnalyticsNivelacijaEnhancements.sql, then restart the backend.",
                     statusCode: 500);
             }
             catch (Exception ex)
@@ -808,6 +1012,22 @@ public static class AllEndpoints
                     .Where(x => includeInactive || x.HasSalesWindow)
                     .ToList();
 
+                var metricWarnings = new List<string>();
+                var rollingWarning = await MapRollingAndMomentumToNivelacijaArticlesAsync(
+                    filteredRows,
+                    connection,
+                    eventDateOnly ?? DateTime.UtcNow.Date,
+                    ct);
+                if (!string.IsNullOrWhiteSpace(rollingWarning))
+                    metricWarnings.Add(rollingWarning);
+
+                var oosDidWarning = await MapOosAndDidToNivelacijaArticlesAsync(filteredRows, connection, ct);
+                if (!string.IsNullOrWhiteSpace(oosDidWarning))
+                    metricWarnings.Add(oosDidWarning);
+
+                MapElasticityAndLostSalesToNivelacijaArticles(filteredRows);
+                MapMetricReasons(filteredRows, metricWarnings);
+
                 var dataQuality = new VendorSalesNivelacijaDataQualityDto
                 {
                     RawRows = rawRows.Count,
@@ -931,6 +1151,43 @@ public static class AllEndpoints
                     .Select(x => x.PriceChangePercent!.Value)
                     .DefaultIfEmpty(0m)
                     .Average();
+                var momentumValues = filteredRows
+                    .Where(x => x.MomentumRevenue.HasValue)
+                    .Select(x => x.MomentumRevenue!.Value)
+                    .ToList();
+                var didValues = filteredRows
+                    .Where(x => x.DidRevenue.HasValue)
+                    .Select(x => x.DidRevenue!.Value)
+                    .ToList();
+                var elasticityValues = filteredRows
+                    .Where(x => x.PriceElasticity.HasValue)
+                    .Select(x => x.PriceElasticity!.Value)
+                    .ToList();
+                var lostSalesValues = filteredRows
+                    .Where(x => x.LostSalesOOS.HasValue)
+                    .Select(x => x.LostSalesOOS!.Value)
+                    .ToList();
+                var oosValues = filteredRows
+                    .Where(x => x.OOSRate.HasValue)
+                    .Select(x => x.OOSRate!.Value)
+                    .ToList();
+
+                decimal? avgMomentum = momentumValues.Count == 0 ? null : Math.Round(momentumValues.Average(), 2);
+                decimal? avgDidRevenue = didValues.Count == 0 ? null : Math.Round(didValues.Average(), 2);
+                decimal? avgElasticity = elasticityValues.Count == 0 ? null : Math.Round(elasticityValues.Average(), 4);
+                decimal? avgLostSalesOos = lostSalesValues.Count == 0 ? null : Math.Round(lostSalesValues.Average(), 2);
+                decimal? avgOosRate = oosValues.Count == 0 ? null : Math.Round(oosValues.Average(), 4);
+
+                var rowsWithFullMetrics = filteredRows.Count(x => string.IsNullOrWhiteSpace(x.MetricReason));
+                string? metricsStatus = null;
+                if (metricWarnings.Count > 0)
+                {
+                    metricsStatus = string.Join(" | ", metricWarnings.Distinct(StringComparer.Ordinal));
+                }
+                else if (filteredRows.Count > 0 && rowsWithFullMetrics < filteredRows.Count)
+                {
+                    metricsStatus = $"Partial metric coverage: {rowsWithFullMetrics}/{filteredRows.Count} rows with full advanced metrics.";
+                }
 
                 var insights = new List<VendorSalesNivelacijaInsightDto>();
                 var toneFromRevenue = totalPostRevenue - totalPreRevenue >= 0m ? "positive" : "negative";
@@ -1058,7 +1315,13 @@ public static class AllEndpoints
                     DataQuality = dataQuality,
                     CategoryStats = categoryStats,
                     PriceDirectionStats = priceDirectionStats,
-                    Insights = insights
+                    Insights = insights,
+                    AvgMomentumRevenue = avgMomentum,
+                    AvgElasticity = avgElasticity,
+                    AvgDidRevenue = avgDidRevenue,
+                    AvgLostSalesOOS = avgLostSalesOos,
+                    OOSRate = avgOosRate,
+                    MetricsStatus = metricsStatus
                 };
 
                 return Results.Ok(response);
@@ -1067,7 +1330,7 @@ public static class AllEndpoints
             {
                 return Results.Problem(
                     title: "Nivelacija view schema mismatch",
-                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql and 014_FixNivelacijaViewsFromDnevnik.sql, then restart the backend.",
+                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql, 014_FixNivelacijaViewsFromDnevnik.sql, and 016_AnalyticsNivelacijaEnhancements.sql, then restart the backend.",
                     statusCode: 500);
             }
             catch (Exception ex)
@@ -1111,6 +1374,18 @@ public static class AllEndpoints
             Results.Redirect($"/api/analytics/cached/reorder-suggestions{ctx.Request.QueryString}", permanent: false));
         app.MapGet("/api/analytics/sales/category-trends", (HttpContext ctx) =>
             Results.Redirect($"/api/analytics/cached/sales/category-trends{ctx.Request.QueryString}", permanent: false));
+        app.MapGet("/api/analytics/dashboard/advanced", (HttpContext ctx) =>
+            Results.Redirect($"/api/analytics/cached/dashboard/advanced{ctx.Request.QueryString}", permanent: false));
+        app.MapGet("/api/analytics/sales/top-products-advanced", (HttpContext ctx) =>
+            Results.Redirect($"/api/analytics/cached/sales/top-products-advanced{ctx.Request.QueryString}", permanent: false));
+        app.MapGet("/api/analytics/validation/completeness", (HttpContext ctx) =>
+            Results.Redirect($"/api/analytics/cached/validation/completeness{ctx.Request.QueryString}", permanent: false));
+        app.MapGet("/api/analytics/validation/freshness", (HttpContext ctx) =>
+            Results.Redirect($"/api/analytics/cached/validation/freshness{ctx.Request.QueryString}", permanent: false));
+        app.MapGet("/api/analytics/validation/lost-sales", (HttpContext ctx) =>
+            Results.Redirect($"/api/analytics/cached/validation/lost-sales{ctx.Request.QueryString}", permanent: false));
+        app.MapGet("/api/analytics/validation/negative-qty", (HttpContext ctx) =>
+            Results.Redirect($"/api/analytics/cached/validation/negative-qty{ctx.Request.QueryString}", permanent: false));
 
         app.MapGet("/api/analytics/sales/comparison", async (
             IAnalyticsDbContext db,
@@ -3010,6 +3285,238 @@ public static class AllEndpoints
          })
          .WithName("GetProductsRecent")
          .WithTags("Products", "Debug");
+    }
+
+    private static async Task<string?> MapRollingAndMomentumToNivelacijaArticlesAsync(
+        List<VendorSalesNivelacijaArticleStatDto> articles,
+        NpgsqlConnection connection,
+        DateTime eventDate,
+        CancellationToken ct)
+    {
+        if (articles.Count == 0) return null;
+
+        static string SkuKey(string? sku) => string.IsNullOrWhiteSpace(sku) ? string.Empty : sku.Trim().ToUpperInvariant();
+
+        var warnings = new List<string>();
+        var rollingMap = new Dictionary<string, (decimal? pre, decimal? post)>(StringComparer.Ordinal);
+        var momentumMap = new Dictionary<string, decimal?>(StringComparer.Ordinal);
+
+        try
+        {
+            const string rollingSql = """
+                SELECT
+                    UPPER(TRIM(COALESCE(a."PLU", ''))) AS sku_key,
+                    AVG(r.ma7_revenue) FILTER (WHERE r.day < @eventDate) AS pre,
+                    AVG(r.ma7_revenue) FILTER (WHERE r.day >= @eventDate) AS post
+                FROM vw_sales_rolling_7d r
+                JOIN "Artikli" a ON a."Id" = r.article_id
+                GROUP BY UPPER(TRIM(COALESCE(a."PLU", '')));
+                """;
+            await using var cmd = new NpgsqlCommand(rollingSql, connection);
+            cmd.Parameters.AddWithValue("eventDate", eventDate.Date);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                rollingMap[key] = (
+                    reader.IsDBNull(1) ? null : reader.GetDecimal(1),
+                    reader.IsDBNull(2) ? null : reader.GetDecimal(2));
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            warnings.Add("No rolling data (view missing)");
+        }
+        catch (Exception)
+        {
+            warnings.Add("Rolling lookup failed");
+        }
+
+        try
+        {
+            const string momentumSql = """
+                SELECT
+                    UPPER(TRIM(COALESCE(a."PLU", ''))) AS sku_key,
+                    m.momentum_revenue
+                FROM vw_sales_momentum m
+                JOIN "Artikli" a ON a."Id" = m.article_id;
+                """;
+            await using var cmd = new NpgsqlCommand(momentumSql, connection);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                momentumMap[key] = reader.IsDBNull(1) ? null : reader.GetDecimal(1);
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            warnings.Add("No momentum data (view missing)");
+        }
+        catch (Exception)
+        {
+            warnings.Add("Momentum lookup failed");
+        }
+
+        foreach (var row in articles)
+        {
+            var key = SkuKey(row.Sku);
+            if (rollingMap.TryGetValue(key, out var rolling))
+            {
+                row.Rolling7dPreRevenue = rolling.pre;
+                row.Rolling7dPostRevenue = rolling.post;
+            }
+            if (momentumMap.TryGetValue(key, out var momentum))
+            {
+                row.MomentumRevenue = momentum;
+            }
+        }
+
+        return warnings.Count == 0 ? null : string.Join("; ", warnings.Distinct(StringComparer.Ordinal));
+    }
+
+    private static async Task<string?> MapOosAndDidToNivelacijaArticlesAsync(
+        List<VendorSalesNivelacijaArticleStatDto> articles,
+        NpgsqlConnection connection,
+        CancellationToken ct)
+    {
+        if (articles.Count == 0) return null;
+
+        static string SkuKey(string? sku) => string.IsNullOrWhiteSpace(sku) ? string.Empty : sku.Trim().ToUpperInvariant();
+
+        var warnings = new List<string>();
+        var oosMap = new Dictionary<string, decimal?>(StringComparer.Ordinal);
+        var didMap = new Dictionary<string, (decimal? didRevenue, decimal? didQty)>(StringComparer.Ordinal);
+
+        try
+        {
+            const string oosSql = """
+                SELECT
+                    UPPER(TRIM(COALESCE(sku, ''))) AS sku_key,
+                    AVG(is_oos::numeric) AS oos_rate
+                FROM vw_stock_red_zone
+                GROUP BY UPPER(TRIM(COALESCE(sku, '')));
+                """;
+            await using var cmd = new NpgsqlCommand(oosSql, connection);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                oosMap[key] = reader.IsDBNull(1) ? null : reader.GetDecimal(1);
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            warnings.Add("No OOS data (view missing)");
+        }
+        catch (Exception)
+        {
+            warnings.Add("OOS lookup failed");
+        }
+
+        try
+        {
+            const string didSql = """
+                SELECT
+                    UPPER(TRIM(COALESCE(sku, ''))) AS sku_key,
+                    AVG(did_revenue) AS did_revenue,
+                    AVG(did_qty) AS did_qty
+                FROM vw_nivelacija_did
+                GROUP BY UPPER(TRIM(COALESCE(sku, '')));
+                """;
+            await using var cmd = new NpgsqlCommand(didSql, connection);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                didMap[key] = (
+                    reader.IsDBNull(1) ? null : reader.GetDecimal(1),
+                    reader.IsDBNull(2) ? null : reader.GetDecimal(2));
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            warnings.Add("No DiD data (view missing)");
+        }
+        catch (Exception)
+        {
+            warnings.Add("DiD lookup failed");
+        }
+
+        foreach (var row in articles)
+        {
+            var key = SkuKey(row.Sku);
+            if (oosMap.TryGetValue(key, out var oosRate))
+            {
+                row.OOSRate = oosRate;
+            }
+            if (didMap.TryGetValue(key, out var did))
+            {
+                row.DidRevenue = did.didRevenue;
+                row.DidQty = did.didQty;
+            }
+        }
+
+        return warnings.Count == 0 ? null : string.Join("; ", warnings.Distinct(StringComparer.Ordinal));
+    }
+
+    private static void MapElasticityAndLostSalesToNivelacijaArticles(List<VendorSalesNivelacijaArticleStatDto> articles)
+    {
+        foreach (var row in articles)
+        {
+            if (row.PriceChangePercent.HasValue && row.PreQty > 0)
+            {
+                var pricePct = row.PriceChangePercent.Value / 100m;
+                if (pricePct != 0m)
+                {
+                    var qtyPct = ((decimal)row.PostQty - row.PreQty) / row.PreQty;
+                    row.PriceElasticity = Math.Round(qtyPct / pricePct, 4);
+                }
+            }
+
+            if (!row.OOSRate.HasValue) continue;
+
+            var oos = row.OOSRate.Value;
+            if (oos < 0m) oos = 0m;
+            if (oos > 1m) oos = 1m;
+            if (oos >= 1m) continue;
+
+            // Lost sales proxy from realized post revenue under OOS pressure.
+            row.LostSalesOOS = Math.Round((row.PostRevenue * oos) / (1m - oos), 2);
+        }
+    }
+
+    private static void MapMetricReasons(
+        List<VendorSalesNivelacijaArticleStatDto> articles,
+        IReadOnlyCollection<string> globalWarnings)
+    {
+        foreach (var row in articles)
+        {
+            var reasons = new List<string>();
+            if (globalWarnings.Count > 0)
+                reasons.AddRange(globalWarnings);
+
+            if (!row.Rolling7dPreRevenue.HasValue && !row.Rolling7dPostRevenue.HasValue)
+                reasons.Add("No rolling data");
+            if (!row.MomentumRevenue.HasValue)
+                reasons.Add("No momentum data");
+            if (!row.OOSRate.HasValue)
+                reasons.Add("No OOS data");
+            if (!row.DidRevenue.HasValue && !row.DidQty.HasValue)
+                reasons.Add("No DiD data");
+            if (!row.PriceElasticity.HasValue)
+                reasons.Add("No elasticity data");
+            if (!row.LostSalesOOS.HasValue)
+                reasons.Add("No lost sales data");
+
+            row.MetricReason = reasons.Count == 0
+                ? null
+                : string.Join("; ", reasons.Distinct(StringComparer.Ordinal));
+        }
     }
 }
 

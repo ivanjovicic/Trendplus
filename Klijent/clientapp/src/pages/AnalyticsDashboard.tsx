@@ -1,695 +1,572 @@
-﻿/* eslint-disable react-hooks/set-state-in-effect */
-import { useCallback, useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { checkAnalyticsHealth, getInventoryStatus, getSalesSummary, getTopProducts } from "../services/analyticsApi";
-import type { InventoryStatus, SalesSummary, TopProductsResult } from "../types/analytics";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  checkAnalyticsHealth,
+  getDailySales,
+  getDashboardAdvanced,
+  getInventoryStatus,
+  getSalesSummary,
+  getTopProductsAdvanced,
+  getValidationCompleteness,
+  getValidationFreshness,
+  getValidationLostSales,
+} from "../services/analyticsApi";
+import type {
+  DailySale,
+  DashboardAdvancedSnapshot,
+  DashboardMetricCard,
+  DashboardValidationEndpoint,
+  InventoryStatus,
+  SalesSummary,
+  TopProductAdvancedItem,
+  TopProductsAdvancedResult,
+} from "../types/analytics";
+import "./AnalyticsDashboard.css";
 
-interface DailySale {
-  date: string;
-  totalRevenue: number;
-  transactionCount: number;
-  totalUnits: number;
-  [key: string]: string | number;
+type DatePreset = "today" | "yesterday" | "7d" | "30d" | "90d" | "thisMonth" | "lastMonth" | "custom";
+type TopTabKey = "revenue" | "units" | "velocity" | "margin";
+type Tone = "good" | "warning" | "critical" | "neutral";
+
+const HELP: Record<string, string> = {
+  promet: "Ukupan novac od prodaje u izabranom periodu.",
+  transakcije: "Jedan racun = jedna transakcija.",
+  jedinice: "Ukupan broj prodatih komada.",
+  sku: "Jedinstvena interna sifra artikla.",
+  velocity: "Prosecno prodata kolicina po danu.",
+  oos: "Out of stock: artikal je rasprodat i nije dostupan za prodaju.",
+  pareto: "Koliko mali broj artikala pravi vecinu prometa.",
+  ma7: "7-dnevni pokretni prosek smanjuje dnevni sum i prikazuje realniji trend.",
+  momentum: "Poredi poslednjih 7 dana sa prethodnih 7 dana.",
+  elasticnost: "Pokazuje koliko se traznja menja kada se menja cena.",
+  completeness: "Da li artikli imaju kljucna polja (naziv, sifra, kategorija).",
+  freshness: "Koliko je vremena proslo od poslednjeg osvezavanja podataka.",
+  margin: "Procenjeni uticaj na marzu (prodajna - nabavna cena).",
+  trend: "Smer promene u odnosu na prethodni uporediv period.",
+};
+
+function formatInputDateTime(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  const hour = String(value.getHours()).padStart(2, "0");
+  const minute = String(value.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
-interface Comparison {
-  current: {
-    totalRevenue: number;
-    totalTransactions: number;
-    totalUnits: number;
+function parseInputDate(value: string): Date {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function statusTone(value?: string | null): Tone {
+  if (!value) return "neutral";
+  if (value === "good") return "good";
+  if (value === "warning") return "warning";
+  if (value === "critical" || value === "error") return "critical";
+  return "neutral";
+}
+
+function statusLabel(value?: string | null): string {
+  const tone = statusTone(value);
+  if (tone === "good") return "Dobro";
+  if (tone === "warning") return "Upozorenje";
+  if (tone === "critical") return "Kriticno";
+  return "Neutralno";
+}
+
+function formatCurrency(value: number): string {
+  return `${new Intl.NumberFormat("sr-RS", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value)} RSD`;
+}
+
+function formatNumber(value: number, digits = 0): string {
+  return new Intl.NumberFormat("sr-RS", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
+function formatPercent(value?: number | null, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return `${formatNumber(value, digits)}%`;
+}
+
+function trendLabel(value?: number | null): string {
+  if (value == null) return "Nema trenda";
+  return value >= 0 ? "Rast" : "Pad";
+}
+
+function trAdvancedLabel(key: string, fallback: string): string {
+  const map: Record<string, string> = {
+    velocity: "Brzina prodaje (velocity)",
+    oos: "Rasprodato (OOS)",
+    pareto: "Pareto koncentracija",
+    data_health: "Svezina podataka",
+    completeness: "Kompletnost podataka",
   };
-  previous: {
-    totalRevenue: number;
-    totalTransactions: number;
-    totalUnits: number;
-  } | null;
-  change: {
-    revenue: number;
-    transactions: number;
-    units: number;
-  } | null;
+  return map[key] ?? fallback;
 }
 
-interface CategoryData {
-  kategorija: string;
-  pol: string;
-  totalRevenue: number;
-  totalUnits: number;
-  transactionCount: number;
-  [key: string]: string | number;
+function trDynamic(text: string): string {
+  return text
+    .replace("Top SKU:", "Top sifra:")
+    .replace("Lost sales estimate:", "Procena izgubljene prodaje:")
+    .replace("Top 50 share:", "Udeo top 50:")
+    .replace("Last import:", "Poslednji import:")
+    .replace("Missing:", "Nedostajuca polja:")
+    .replace("Completeness", "Kompletnost")
+    .replace("Freshness", "Svezina")
+    .replace("Lost Sales", "Izgubljena prodaja")
+    .replace("Replenishment", "Dopuna zaliha")
+    .replace("Data quality fix", "Ispravka kvaliteta podataka")
+    .replace("Refresh pipeline", "Osvezavanje pipeline-a")
+    .replace("Portfolio balance", "Balans asortimana")
+    .replace("Monitor", "Pracenje")
+    .replace("Lost sales estimate indicates stock-out pressure.", "Procena izgubljene prodaje ukazuje na pritisak rasprodatosti.")
+    .replace("Completeness validation is below target.", "Validacija kompletnosti je ispod cilja.")
+    .replace("Freshness validation indicates stale data.", "Validacija svezine pokazuje zastarele podatke.")
+    .replace("Pareto concentration is elevated.", "Pareto koncentracija je povecana.");
 }
 
-interface GenderData {
-  pol: string;
-  totalRevenue: number;
-  totalUnits: number;
-  [key: string]: string | number;
+function buildPresetRange(preset: DatePreset): { from: string; to: string } | null {
+  const now = new Date();
+  const from = new Date(now);
+  const to = new Date(now);
+  to.setHours(23, 59, 59, 999);
+  if (preset === "today") from.setHours(0, 0, 0, 0);
+  if (preset === "yesterday") {
+    from.setDate(now.getDate() - 1);
+    to.setDate(now.getDate() - 1);
+    from.setHours(0, 0, 0, 0);
+  }
+  if (preset === "7d") from.setDate(now.getDate() - 6);
+  if (preset === "30d") from.setDate(now.getDate() - 29);
+  if (preset === "90d") from.setDate(now.getDate() - 89);
+  if (preset === "thisMonth") from.setDate(1);
+  if (preset === "lastMonth") {
+    from.setMonth(now.getMonth() - 1, 1);
+    to.setMonth(now.getMonth(), 0);
+  }
+  if (preset === "custom") return null;
+  from.setHours(0, 0, 0, 0);
+  return { from: formatInputDateTime(from), to: formatInputDateTime(to) };
 }
 
-interface SupplierData {
-  dobavljacId: number | null;
-  dobavljacNaziv: string;
-  totalRevenue: number;
-  totalUnits: number;
-  transactionCount: number;
-  [key: string]: string | number | null;
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="info-tip" role="note" tabIndex={0} aria-label={text}>
+      i
+      <span className="info-tip-bubble">{text}</span>
+    </span>
+  );
 }
-
-interface QuickInsight {
-  bestDay: string | null;
-  bestDayRevenue: number;
-  topProduct: string | null;
-  lowStockAlert: number;
-}
-
-interface AlertItem {
-  type: string;
-  icon: string;
-  title: string;
-  message: string;
-}
-
-const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#10b981', '#6366f1', '#f97316'];
 
 export default function AnalyticsDashboard() {
+  const [preset, setPreset] = useState<DatePreset>("30d");
   const [fromDate, setFromDate] = useState<string>(() => {
-    const now = new Date();
-    const start = new Date(now);
-    start.setDate(now.getDate() - 30);
-    start.setHours(0, 0, 0, 0);
-    return start.toISOString().slice(0, 16);
+    const range = buildPresetRange("30d");
+    return range?.from ?? formatInputDateTime(new Date());
   });
   const [toDate, setToDate] = useState<string>(() => {
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    return end.toISOString().slice(0, 16);
+    const range = buildPresetRange("30d");
+    return range?.to ?? formatInputDateTime(new Date());
   });
-  const [top] = useState(10);
-  const [lowStockThreshold] = useState(2);
-  const [dateRangePreset, setDateRangePreset] = useState<string>("30d");
   const [summary, setSummary] = useState<SalesSummary | null>(null);
-  const [topProducts, setTopProducts] = useState<TopProductsResult | null>(null);
   const [inventory, setInventory] = useState<InventoryStatus | null>(null);
   const [dailySales, setDailySales] = useState<DailySale[]>([]);
-  const [comparison, setComparison] = useState<Comparison | null>(null);
-  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
-  const [genderData, setGenderData] = useState<GenderData[]>([]);
-  const [supplierData, setSupplierData] = useState<SupplierData[]>([]);
-  const [healthStatus, setHealthStatus] = useState<string>("");
-  const [quickInsights, setQuickInsights] = useState<QuickInsight | null>(null);
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errors, setErrors] = useState<{ summary?: string; topProducts?: string; inventory?: string; health?: string }>({});
+  const [advanced, setAdvanced] = useState<DashboardAdvancedSnapshot | null>(null);
+  const [topAdvanced, setTopAdvanced] = useState<TopProductsAdvancedResult | null>(null);
+  const [validCompleteness, setValidCompleteness] = useState<DashboardValidationEndpoint | null>(null);
+  const [validFreshness, setValidFreshness] = useState<DashboardValidationEndpoint | null>(null);
+  const [validLostSales, setValidLostSales] = useState<DashboardValidationEndpoint | null>(null);
+  const [healthText, setHealthText] = useState("");
+  const [topTab, setTopTab] = useState<TopTabKey>("revenue");
+  const [errors, setErrors] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const applyDateRangePreset = useCallback((preset: string) => {
-    setDateRangePreset(preset);
-    const now = new Date();
-    const start = new Date(now);
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
-    
-    switch (preset) {
-      case "today":
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "yesterday":
-        start.setDate(now.getDate() - 1);
-        start.setHours(0, 0, 0, 0);
-        end.setDate(now.getDate() - 1);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "7d":
-        start.setDate(now.getDate() - 7);
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "30d":
-        start.setDate(now.getDate() - 30);
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "90d":
-        start.setDate(now.getDate() - 90);
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "thisMonth":
-        start.setDate(1);
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "lastMonth":
-        start.setMonth(now.getMonth() - 1, 1);
-        start.setHours(0, 0, 0, 0);
-        end.setMonth(now.getMonth(), 0);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "custom":
-        return;
-      default:
-        return;
-    }
-    
-    setFromDate(start.toISOString().slice(0, 16));
-    setToDate(end.toISOString().slice(0, 16));
+  const isInvalidFilterRange = useMemo(() => parseInputDate(fromDate) > parseInputDate(toDate), [fromDate, toDate]);
+  const selectedDays = useMemo(() => {
+    const diff = parseInputDate(toDate).getTime() - parseInputDate(fromDate).getTime();
+    return Math.max(Math.floor(diff / (24 * 60 * 60 * 1000)) + 1, 1);
+  }, [fromDate, toDate]);
+
+  const applyPreset = useCallback((value: DatePreset) => {
+    setPreset(value);
+    const range = buildPresetRange(value);
+    if (!range) return;
+    setFromDate(range.from);
+    setToDate(range.to);
   }, []);
 
   const load = useCallback(async () => {
+    if (isInvalidFilterRange) {
+      setErrors(["Proverite filtere: datum od ne moze biti posle datuma do."]);
+      return;
+    }
     setLoading(true);
-    setErrors({});
-    setHealthStatus("");
-    const newErrors: typeof errors = {};
+    setErrors([]);
+    const [healthR, summaryR, inventoryR, dailyR, advancedR, topAdvancedR, compR, freshR, lostR] =
+      await Promise.allSettled([
+        checkAnalyticsHealth(),
+        getSalesSummary(fromDate, toDate, true),
+        getInventoryStatus(2, true),
+        getDailySales(fromDate, toDate, true),
+        getDashboardAdvanced(fromDate, toDate, true),
+        getTopProductsAdvanced(10, fromDate, toDate, true),
+        getValidationCompleteness(true),
+        getValidationFreshness(true),
+        getValidationLostSales(true),
+      ]);
 
-    const API = import.meta.env.VITE_API_BASE_URL;
-
-    try {
-      const health = await checkAnalyticsHealth();
-      setHealthStatus(`✅ Analytics baza: ${health.tables.salesFacts} prodaja, ${health.tables.salesLineFacts} stavki, ${health.tables.productsDim} proizvoda`);
-    } catch (e: unknown) {
-      newErrors.health = e instanceof Error ? e.message : "Provera zdravlja nije uspela";
-      setHealthStatus("");
+    const nextErrors: string[] = [];
+    if (healthR.status === "fulfilled") {
+      setHealthText(
+        `Analytics baza: ${healthR.value.tables.salesFacts} prodaja, ${healthR.value.tables.salesLineFacts} stavki, ${healthR.value.tables.productsDim} proizvoda`
+      );
+    } else {
+      setHealthText("");
+      nextErrors.push("Provera zdravstvenog stanja podataka nije dostupna.");
     }
-
-    try {
-      const s = await getSalesSummary(fromDate || undefined, toDate || undefined, true); // Dodaj parametar za cached
-      setSummary(s);
-    } catch (e: unknown) {
-      newErrors.summary = e instanceof Error ? e.message : "Greška pri učitavanju sažetka prodaje";
+    if (summaryR.status === "fulfilled") setSummary(summaryR.value);
+    else {
       setSummary(null);
+      nextErrors.push("Sazetak prodaje nije ucitan.");
     }
-
-    try {
-      const t = await getTopProducts(top, fromDate || undefined, toDate || undefined, true); // Dodaj parametar za cached
-      setTopProducts(t);
-    } catch (e: unknown) {
-      newErrors.topProducts = e instanceof Error ? e.message : "Greška pri učitavanju top proizvoda";
-      setTopProducts(null);
-    }
-
-    try {
-      const i = await getInventoryStatus(lowStockThreshold, true); // Dodaj parametar za cached
-      setInventory(i);
-    } catch (e: unknown) {
-      newErrors.inventory = e instanceof Error ? e.message : "Greška pri učitavanju statusa zaliha";
+    if (inventoryR.status === "fulfilled") setInventory(inventoryR.value);
+    else {
       setInventory(null);
+      nextErrors.push("Status zaliha nije ucitan.");
     }
-
-    // Daily sales
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/daily?${params.toString()}`);
-      if (res.ok) setDailySales(await res.json());
-    } catch { /* ignore */ }
-
-    // Comparison
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/comparison?${params.toString()}`);
-      if (res.ok) setComparison(await res.json());
-    } catch { /* ignore */ }
-
-    // Category data
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/by-category?${params.toString()}`);
-      if (res.ok) setCategoryData(await res.json());
-    } catch { /* ignore */ }
-
-    // Gender data
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/by-gender?${params.toString()}`);
-      if (res.ok) setGenderData(await res.json());
-    } catch { /* ignore */ }
-
-    // Supplier data
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/by-supplier?${params.toString()}`);
-      if (res.ok) setSupplierData(await res.json());
-    } catch { /* ignore */ }
-
-    // Quick Insights
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/quick-insights?${params.toString()}`);
-      if (res.ok) setQuickInsights(await res.json());
-    } catch { /* ignore */ }
-
-    // Alerts
-    try {
-      const res = await fetch(`${API}/api/analytics/alerts`);
-      if (res.ok) setAlerts(await res.json());
-    } catch { /* ignore */ }
-
-    setErrors(newErrors);
+    if (dailyR.status === "fulfilled") setDailySales(dailyR.value);
+    else setDailySales([]);
+    if (advancedR.status === "fulfilled") setAdvanced(advancedR.value);
+    else setAdvanced(null);
+    if (topAdvancedR.status === "fulfilled") setTopAdvanced(topAdvancedR.value);
+    else setTopAdvanced(null);
+    setValidCompleteness(compR.status === "fulfilled" ? compR.value : null);
+    setValidFreshness(freshR.status === "fulfilled" ? freshR.value : null);
+    setValidLostSales(lostR.status === "fulfilled" ? lostR.value : null);
+    setErrors(nextErrors);
     setLoading(false);
-  }, [fromDate, toDate, top, lowStockThreshold]);
+  }, [fromDate, toDate, isInvalidFilterRange]);
 
   useEffect(() => {
-    if (fromDate && toDate) {
-      void load();
-    }
-  }, [load, fromDate, toDate]);
+    void load();
+  }, [load]);
 
-  const formatCurrency = (x: number) =>
-    x.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " RSD";
+  const advancedByKey = useMemo(() => {
+    const map = new Map<string, DashboardMetricCard>();
+    for (const c of advanced?.cards ?? []) map.set(c.key, c);
+    return map;
+  }, [advanced]);
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit" });
-  };
+  const movingStats = useMemo(() => {
+    if (dailySales.length === 0) return { ma7Revenue: 0, momentumPct: null as number | null, elasticity: null as number | null };
+    const sorted = [...dailySales].sort((a, b) => a.date.localeCompare(b.date));
+    const last7 = sorted.slice(-7);
+    const prev7 = sorted.slice(-14, -7);
+    const sumR = (x: DailySale[]) => x.reduce((acc, v) => acc + v.totalRevenue, 0);
+    const sumU = (x: DailySale[]) => x.reduce((acc, v) => acc + v.totalUnits, 0);
+    const lastRev = sumR(last7);
+    const prevRev = sumR(prev7);
+    const lastUnits = sumU(last7);
+    const prevUnits = sumU(prev7);
+    const ma7Revenue = last7.length > 0 ? lastRev / last7.length : 0;
+    const momentumPct = prevRev > 0 ? Number((((lastRev - prevRev) / prevRev) * 100).toFixed(2)) : null;
+    const lastPrice = lastUnits > 0 ? lastRev / lastUnits : 0;
+    const prevPrice = prevUnits > 0 ? prevRev / prevUnits : 0;
+    const qtyChange = prevUnits > 0 ? (lastUnits - prevUnits) / prevUnits : 0;
+    const priceChange = prevPrice > 0 ? (lastPrice - prevPrice) / prevPrice : 0;
+    const elasticity = prevUnits > 0 && prevPrice > 0 && priceChange !== 0 ? Number((qtyChange / priceChange).toFixed(2)) : null;
+    return { ma7Revenue, momentumPct, elasticity };
+  }, [dailySales]);
 
-  const hasAnyData = summary || topProducts || inventory;
-  const hasErrors = Object.keys(errors).length > 0;
+  const derived = useMemo(() => {
+    const totalSku = inventory?.totalSkuCount ?? 0;
+    const out = inventory?.outOfStockCount ?? 0;
+    const low = inventory?.lowStockCount ?? 0;
+    const available = Math.max(totalSku - out, 0);
+    return {
+      revenuePerDay: summary ? summary.totalRevenue / selectedDays : 0,
+      transactionsPerDay: summary ? summary.totalTransactions / selectedDays : 0,
+      availablePct: totalSku > 0 ? (available / totalSku) * 100 : null,
+      unavailablePct: totalSku > 0 ? (out / totalSku) * 100 : null,
+      redZonePct: totalSku > 0 ? (low / totalSku) * 100 : null,
+    };
+  }, [inventory, summary, selectedDays]);
 
-  const renderTrendIndicator = (change: number | undefined) => {
-    if (!change) return null;
-    const isPositive = change > 0;
-    return (
-      <div style={{ fontSize: 13, color: isPositive ? "#059669" : "#dc2626", display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
-        {isPositive ? "↗️" : "↘️"} {Math.abs(change).toFixed(1)}% vs prethodni period
-      </div>
-    );
-  };
+  const topRows = useMemo(() => {
+    if (!topAdvanced) return [] as TopProductAdvancedItem[];
+    if (topTab === "revenue") return topAdvanced.byRevenue;
+    if (topTab === "units") return topAdvanced.byUnits;
+    if (topTab === "velocity") return topAdvanced.byVelocity;
+    return topAdvanced.byMarginImpact;
+  }, [topAdvanced, topTab]);
+
+  const validationRows = useMemo(
+    () =>
+      [
+        validCompleteness ? { name: "Kompletnost", ...validCompleteness } : null,
+        validFreshness ? { name: "Svezina", ...validFreshness } : null,
+        validLostSales ? { name: "Izgubljena prodaja", ...validLostSales } : null,
+      ].filter((x): x is { name: string } & DashboardValidationEndpoint => x !== null),
+    [validCompleteness, validFreshness, validLostSales]
+  );
 
   return (
-    <div className="card" style={{ maxWidth: 1400 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>📈 Analitika - Pregled</h2>
-        
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <select
-            value={dateRangePreset}
-            onChange={(e) => applyDateRangePreset(e.target.value)}
-            style={{ padding: "10px 16px", fontSize: 14, fontWeight: 500, border: "2px solid #e5e7eb", borderRadius: 8, background: "white", cursor: "pointer", minWidth: 200 }}
-          >
-            <option value="today">📅 Danas</option>
-            <option value="yesterday">📅 Juče</option>
-            <option value="7d">📅 Poslednjih 7 dana</option>
-            <option value="30d">📅 Poslednjih 30 dana</option>
-            <option value="90d">📅 Poslednjih 90 dana</option>
-            <option value="thisMonth">📅 Ovaj mesec</option>
-            <option value="lastMonth">📅 Prošli mesec</option>
-            <option value="custom">⚙️ Prilagođeni period</option>
+    <div className="analytics-dashboard">
+      <header className="analytics-header">
+        <div>
+          <h1>Analitika - Pregled</h1>
+          <p className="with-tip">
+            <span>Pregled KPI + detaljna analiza</span>
+            <InfoTip text="Gore su najvazniji brojevi za odluku, dole su detaljne analize i tabele." />
+          </p>
+        </div>
+        <div className="analytics-controls">
+          <select value={preset} onChange={(e) => applyPreset(e.target.value as DatePreset)}>
+            <option value="today">Danas</option>
+            <option value="yesterday">Juce</option>
+            <option value="7d">Poslednjih 7 dana</option>
+            <option value="30d">Poslednjih 30 dana</option>
+            <option value="90d">Poslednjih 90 dana</option>
+            <option value="thisMonth">Ovaj mesec</option>
+            <option value="lastMonth">Prosli mesec</option>
+            <option value="custom">Prilagodjeno</option>
           </select>
-          
-          <button onClick={load} style={{ padding: "10px 20px", fontSize: 14, fontWeight: 600, background: "#059669", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>
-            🔄 Osveži
-          </button>
+          <button onClick={() => void load()} disabled={loading}>Osvezi</button>
         </div>
-      </div>
+      </header>
 
-      {healthStatus && (
-        <div style={{ background: "#f0fdf4", border: "2px solid #059669", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 14, color: "#047857" }}>
-          {healthStatus}
-        </div>
+      {preset === "custom" && (
+        <section className="analytics-panel analytics-custom-range">
+          <label>Od<input type="datetime-local" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
+          <label>Do<input type="datetime-local" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
+          <button onClick={() => void load()} disabled={loading}>Primeni</button>
+        </section>
       )}
 
-      {/* Quick Insights */}
-      {!loading && quickInsights && (
-        <div style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: 12, padding: 20, marginBottom: 20, color: "white" }}>
-          <h3 style={{ margin: "0 0 16px 0", fontSize: 18, fontWeight: 700 }}>💡 Brzi uvidi</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-            {quickInsights.bestDay && (
-              <div>
-                <div style={{ fontSize: 13, opacity: 0.9 }}>🏆 Najbolji dan</div>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>{quickInsights.bestDay}</div>
-                <div style={{ fontSize: 14, opacity: 0.8 }}>{formatCurrency(quickInsights.bestDayRevenue)}</div>
-              </div>
-            )}
-            {quickInsights.topProduct && (
-              <div>
-                <div style={{ fontSize: 13, opacity: 0.9 }}>📈 Top proizvod</div>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>{quickInsights.topProduct}</div>
-              </div>
-            )}
-            {quickInsights.lowStockAlert > 0 && (
-              <div>
-                <div style={{ fontSize: 13, opacity: 0.9 }}>⚠️ Upozorenje</div>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>{quickInsights.lowStockAlert} proizvoda ispod minimuma</div>
-              </div>
-            )}
+      {healthText && <div className="analytics-health">{healthText}</div>}
+      {isInvalidFilterRange && <div className="analytics-empty warning">Proverite filtere: neispravan vremenski opseg.</div>}
+      {errors.length > 0 && (
+        <section className="analytics-panel analytics-errors">
+          <h3>Validacione poruke</h3>
+          <ul>{errors.map((e, i) => <li key={`err-${i}`}>{e}</li>)}</ul>
+        </section>
+      )}
+
+      <section className="analytics-section">
+        <h2 className="with-tip"><span>Pregledni dashboard</span><InfoTip text="Kljucne metrike za brzo poslovno odlucivanje." /></h2>
+        {loading && <div className="analytics-skeleton-grid">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="analytics-skeleton-card" />)}</div>}
+        {!loading && summary && (
+          <div className="analytics-card-grid">
+            <article className="metric-card good"><span className="metric-label"><span>Ukupan promet</span><InfoTip text={HELP.promet} /></span><strong>{formatCurrency(summary.totalRevenue)}</strong></article>
+            <article className="metric-card neutral"><span className="metric-label"><span>Transakcije</span><InfoTip text={HELP.transakcije} /></span><strong>{formatNumber(summary.totalTransactions)}</strong></article>
+            <article className="metric-card neutral"><span className="metric-label"><span>Prodate jedinice</span><InfoTip text={HELP.jedinice} /></span><strong>{formatNumber(summary.totalUnits)}</strong></article>
+            <article className="metric-card neutral"><span>Promet po danu</span><strong>{formatCurrency(derived.revenuePerDay)}</strong></article>
+            <article className="metric-card neutral"><span>Transakcije po danu</span><strong>{formatNumber(derived.transactionsPerDay, 1)}</strong></article>
+            <article className={`metric-card ${statusTone(advancedByKey.get("completeness")?.status)}`}><span className="metric-label"><span>Dostupnost SKU</span><InfoTip text={HELP.sku} /></span><strong>{formatPercent(derived.availablePct)}</strong><small>Nedostupno: {formatPercent(derived.unavailablePct)}</small></article>
+            <article className={`metric-card ${statusTone(advancedByKey.get("oos")?.status)}`}><span className="metric-label"><span>Crvena zona zaliha</span><InfoTip text={HELP.oos} /></span><strong>{formatPercent(derived.redZonePct)}</strong></article>
+            <article className={`metric-card ${statusTone(advancedByKey.get("velocity")?.status)}`}><span className="metric-label"><span>MA7 + Momentum</span><InfoTip text={`${HELP.ma7} ${HELP.momentum}`} /></span><strong>{formatCurrency(movingStats.ma7Revenue)}</strong><small>{trendLabel(movingStats.momentumPct)} {formatPercent(movingStats.momentumPct)}</small></article>
+            <article className="metric-card neutral"><span className="metric-label"><span>Elasticnost (aproks.)</span><InfoTip text={HELP.elasticnost} /></span><strong>{movingStats.elasticity == null ? "N/A" : formatNumber(movingStats.elasticity, 2)}</strong></article>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Alerts */}
-      {!loading && alerts.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>🔔 Obaveštenja</h3>
-          <div style={{ display: "grid", gap: 12 }}>
-            {alerts.map((alert, index) => (
-              <div key={index} style={{ 
-                background: alert.type === "error" ? "#fef2f2" : alert.type === "warning" ? "#fffbeb" : "#f0fdf4",
-                border: `2px solid ${alert.type === "error" ? "#dc2626" : alert.type === "warning" ? "#f59e0b" : "#059669"}`,
-                borderRadius: 8, padding: 16, display: "flex", alignItems: "flex-start", gap: 12
-              }}>
-                <span style={{ fontSize: 24 }}>{alert.icon}</span>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "#111827" }}>{alert.title}</div>
-                  <div style={{ fontSize: 14, color: "#6b7280" }}>{alert.message}</div>
-                </div>
-              </div>
+        {!loading && advanced && (
+          <div className="analytics-card-grid compact">
+            {advanced.cards.map((c) => (
+              <article key={c.key} className={`metric-card ${statusTone(c.status)}`}>
+                <span className="metric-label"><span>{trAdvancedLabel(c.key, c.label)}</span><InfoTip text={HELP[c.key] ?? "Napredna BI metrika."} /></span>
+                <strong>
+                  {formatNumber(c.value, c.unit === "%" ? 1 : 2)}{" "}
+                  {c.unit === "units/day" ? "kom/dan" : c.unit === "hours old" ? "sati od osvezavanja" : c.unit}
+                </strong>
+                <small>{c.trendPct != null ? `${trendLabel(c.trendPct)} ${formatPercent(c.trendPct)}` : statusLabel(c.status)}</small>
+                {c.subtitle && <small>{trDynamic(c.subtitle)}</small>}
+              </article>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Export Buttons */}
-      {!loading && summary && (
-        <div style={{ display: "flex", gap: 12, marginBottom: 20, padding: 16, background: "#f9fafb", borderRadius: 8, alignItems: "center" }}>
-          <span style={{ fontWeight: 600, fontSize: 14, color: "#374151" }}>📄 Izvezi:</span>
-          <button onClick={() => {
-            const params = new URLSearchParams();
-            if (fromDate) params.append("fromDate", fromDate);
-            if (toDate) params.append("toDate", toDate);
-            window.open(`${import.meta.env.VITE_API_BASE_URL}/api/analytics/export?${params.toString()}`, '_blank');
-          }} style={{ padding: "8px 16px", fontSize: 14, fontWeight: 600, background: "#059669", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}>
-            📊 CSV
-          </button>
-        </div>
-      )}
+        {!loading && advanced && (
+          <div className="analytics-panels-2">
+            <section className="analytics-panel">
+              <h3 className="with-tip"><span>Uvidi</span><InfoTip text="Automatski izdvojeni najvazniji signali iz podataka." /></h3>
+              <p className="section-note">Kratko objasnjenje sta se desava i zasto je vazno za posao.</p>
+              {advanced.insights.length === 0 && <div className="analytics-empty">Nema podataka za panel uvida.</div>}
+              {advanced.insights.map((item, idx) => (
+                <div key={`ins-${idx}`} className={`insight-row ${item.color}`}>
+                  <span className="badge">{item.badge}</span>
+                  <p>{trDynamic(item.description)}</p>
+                </div>
+              ))}
+            </section>
 
-      {hasErrors && (
-        <div style={{ background: "#fef2f2", border: "2px solid #dc2626", borderRadius: 8, padding: 16, marginBottom: 20 }}>
-          <div style={{ fontWeight: 600, color: "#dc2626", marginBottom: 8 }}>⚠️ Problem sa učitavanjem</div>
-          {errors.health && <div style={{ fontSize: 13, color: "#7f1d1d" }}>• {errors.health}</div>}
-          {errors.summary && <div style={{ fontSize: 13, color: "#7f1d1d" }}>• {errors.summary}</div>}
-          {errors.topProducts && <div style={{ fontSize: 13, color: "#7f1d1d" }}>• {errors.topProducts}</div>}
-          {errors.inventory && <div style={{ fontSize: 13, color: "#7f1d1d" }}>• {errors.inventory}</div>}
-        </div>
-      )}
+            <section className="analytics-panel">
+              <h3 className="with-tip"><span>Preporucene akcije</span><InfoTip text="Prakticni koraci koji pomazu rastu prometa ili smanjenju rizika." /></h3>
+              <p className="section-note">P1 je najhitnije, P3 je redovno pracenje.</p>
+              {advanced.actions.length === 0 && <div className="analytics-empty">Sve je u redu.</div>}
+              {advanced.actions.map((item, idx) => (
+                <div key={`act-${idx}`} className="action-row">
+                  <span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span>
+                  <div>
+                    <strong>{trDynamic(item.title)}</strong>
+                    <p>{trDynamic(item.recommendation)}</p>
+                  </div>
+                </div>
+              ))}
+            </section>
+          </div>
+        )}
 
-      {/* Custom Date Range */}
-      {dateRangePreset === "custom" && (
-        <div style={{ background: "#f9fafb", padding: 16, borderRadius: 8, marginBottom: 20, border: "2px solid #e5e7eb" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12, alignItems: "end" }}>
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Od datuma</label>
-              <input type="datetime-local" value={fromDate} onChange={(e) => setFromDate(e.target.value)} 
-                style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "2px solid #e5e7eb", borderRadius: 8 }} />
+        {!loading && validationRows.length > 0 && (
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Backend validacije</span><InfoTip text="Tehnicke kontrole kvaliteta podataka: kompletnost, svezina i procena izgubljene prodaje." /></h3>
+            <div className="validation-grid">
+              {validationRows.map((v) => (
+                <article key={v.name} className={`validation-card ${statusTone(v.status)}`}>
+                  <div className="validation-head"><strong>{v.name}</strong><span>{statusLabel(v.status)}</span></div>
+                  <p>{trDynamic(v.message)}</p>
+                </article>
+              ))}
+              {(advanced?.validations ?? []).map((v, idx) => (
+                <article key={`sv-${idx}`} className={`validation-card ${statusTone(v.severity)}`}>
+                  <div className="validation-head"><strong>Sistem</strong><span>{statusLabel(v.severity)}</span></div>
+                  <p>{trDynamic(v.message)}</p>
+                </article>
+              ))}
             </div>
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Do datuma</label>
-              <input type="datetime-local" value={toDate} onChange={(e) => setToDate(e.target.value)}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "2px solid #e5e7eb", borderRadius: 8 }} />
-            </div>
-            <button onClick={load} style={{ padding: "10px 20px", fontSize: 14, fontWeight: 600, background: "#3b82f6", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>
-              Primeni
-            </button>
-          </div>
-        </div>
-      )}
+          </section>
+        )}
+      </section>
 
-      {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
+      <section className="analytics-section">
+        <h2 className="with-tip"><span>Detaljna analiza</span><InfoTip text="Detaljniji pogled po trendu, zalihama i top proizvodima." /></h2>
 
-      {!loading && !hasAnyData && !hasErrors && (
-        <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
-          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Nema podataka</div>
-          <div style={{ fontSize: 14 }}>Kreirajte prodaju da bi se pojavili podaci.</div>
-        </div>
-      )}
-
-      {/* Summary Cards */}
-      {!loading && summary && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 20 }}>
-          <div className="card" style={{ margin: 0, border: "2px solid #059669" }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>💰 Ukupan promet</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{formatCurrency(summary.totalRevenue)}</div>
-            {renderTrendIndicator(comparison?.change?.revenue)}
-          </div>
-          <div className="card" style={{ margin: 0, border: "2px solid #3b82f6" }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>🛒 Transakcije</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#3b82f6" }}>{summary.totalTransactions}</div>
-            {renderTrendIndicator(comparison?.change?.transactions)}
-          </div>
-          <div className="card" style={{ margin: 0, border: "2px solid #8b5cf6" }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>📦 Prodate jedinice</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#8b5cf6" }}>{summary.totalUnits}</div>
-            {renderTrendIndicator(comparison?.change?.units)}
-          </div>
-          <div className="card" style={{ margin: 0, border: "2px solid #f59e0b" }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>🛍️ Prosečna korpa</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b" }}>{formatCurrency(summary.avgBasketValue)}</div>
-          </div>
-          <div className="card" style={{ margin: 0, border: "2px solid #ec4899" }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>💵 Prosečna cena</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#ec4899" }}>{formatCurrency(summary.avgItemPrice)}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Daily Sales Chart */}
-      {!loading && dailySales.length > 0 && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <h3 style={{ marginBottom: 16 }}>📈 Dnevna prodaja</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={dailySales}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickFormatter={formatDate} />
-              <YAxis />
-              <Tooltip formatter={(value, name) => {
-                if (name === "totalRevenue") return [formatCurrency(Number(value)), "Promet"];
-                if (name === "transactionCount") return [value, "Transakcije"];
-                return [value, String(name)];
-              }} labelFormatter={(label) => `Datum: ${label}`} />
-              <Legend />
-              <Line type="monotone" dataKey="totalRevenue" stroke="#059669" name="Promet" strokeWidth={2} />
-              <Line type="monotone" dataKey="transactionCount" stroke="#3b82f6" name="Transakcije" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Category & Gender Pie Charts */}
-      {!loading && (categoryData.length > 0 || genderData.length > 0) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-          {categoryData.length > 0 && (
-            <div className="card" style={{ margin: 0 }}>
-              <h3 style={{ marginBottom: 16 }}>🎯 Prodaja po kategorijama</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie data={categoryData} dataKey="totalRevenue" nameKey="kategorija" cx="50%" cy="50%" outerRadius={80}
-                    label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}>
-                    {categoryData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Legend />
-                </PieChart>
+        {!loading && dailySales.length > 0 && (
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Dnevni trend prodaje</span><InfoTip text="Linijski grafikon pokazuje kretanje prometa i transakcija po danima." /></h3>
+            <p className="section-note">Koristite ovaj grafikon da brzo uocite dane pada/rasta i nestabilnosti.</p>
+            <div className="chart-wrap">
+              <ResponsiveContainer width="100%" height={320}>
+                <LineChart data={dailySales}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
+                  <XAxis dataKey="date" tick={{ fill: "#9aa4c7", fontSize: 12 }} />
+                  <YAxis tick={{ fill: "#9aa4c7", fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ background: "#131a31", border: "1px solid #2a3350", color: "#ecf1ff" }}
+                    formatter={(value: number | string | undefined, name?: string) => [
+                      name === "totalRevenue"
+                        ? formatCurrency(typeof value === "number" ? value : Number(value ?? 0))
+                        : formatNumber(typeof value === "number" ? value : Number(value ?? 0)),
+                      name === "totalRevenue" ? "Promet" : "Transakcije",
+                    ]}
+                  />
+                  <Line type="monotone" dataKey="totalRevenue" stroke="#3dd9a4" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="transactionCount" stroke="#6ea8ff" strokeWidth={2} dot={false} />
+                </LineChart>
               </ResponsiveContainer>
             </div>
-          )}
+          </section>
+        )}
 
-          {genderData.length > 0 && (
-            <div className="card" style={{ margin: 0 }}>
-              <h3 style={{ marginBottom: 16 }}>👥 Prodaja po polu</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie data={genderData} dataKey="totalRevenue" nameKey="pol" cx="50%" cy="50%" outerRadius={80}
-                    label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}>
-                    {genderData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+        {!loading && inventory && (
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Brzi pregled zaliha</span><InfoTip text="Ukupno stanje i signal rizika od rasprodatosti." /></h3>
+            <div className="stock-grid">
+              <article className="stock-card"><span className="metric-label"><span>Ukupno SKU</span><InfoTip text={HELP.sku} /></span><strong>{formatNumber(inventory.totalSkuCount)}</strong></article>
+              <article className="stock-card"><span>Ukupno na stanju</span><strong>{formatNumber(inventory.totalOnHand)}</strong></article>
+              <article className="stock-card warning"><span>Niska zaliha</span><strong>{formatNumber(inventory.lowStockCount)}</strong></article>
+              <article className="stock-card critical"><span>Bez zaliha</span><strong>{formatNumber(inventory.outOfStockCount)}</strong></article>
             </div>
-          )}
-        </div>
-      )}
+          </section>
+        )}
 
-      {/* Supplier Chart & Table */}
-      {!loading && supplierData.length > 0 && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <h3 style={{ marginBottom: 16 }}>🏢 Prodaja po dobavljačima</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={supplierData} dataKey="totalRevenue" nameKey="dobavljacNaziv" cx="50%" cy="50%" outerRadius={80}
-                  label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}>
-                  {supplierData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="table" style={{ fontSize: '0.875rem' }}>
-                <thead>
-                  <tr>
-                    <th>Dobavljač</th>
-                    <th style={{ textAlign: 'right' }}>Promet</th>
-                    <th style={{ textAlign: 'right' }}>Kom</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {supplierData.map((sup, idx) => (
-                    <tr key={idx}>
-                      <td>
-                        <span style={{ display: 'inline-block', width: 12, height: 12, background: COLORS[idx % COLORS.length], borderRadius: '50%', marginRight: 8 }}></span>
-                        {sup.dobavljacNaziv}
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(sup.totalRevenue)}</td>
-                      <td style={{ textAlign: 'right' }}>{sup.totalUnits}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {!loading && topAdvanced && (
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa vise pogleda: promet, komadi, brzina prodaje i marza." /></h3>
+            <p className="section-note">Hover na red prikazuje sazetak trenda. Status zalihe je obojen radi brzeg skeniranja.</p>
+            <div className="top-tabs">
+              <button title="Rangiranje artikala po ukupnom prometu" className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Top po prometu</button>
+              <button title="Rangiranje po broju prodatih komada" className={topTab === "units" ? "active" : ""} onClick={() => setTopTab("units")}>Top po komadima</button>
+              <button title="Rangiranje po prosecno prodatim komadima dnevno" className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>Top po brzini prodaje</button>
+              <button title="Rangiranje po procenjenom uticaju na marzu" className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Top po marzi</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Inventory */}
-      {!loading && inventory && (
-        <div style={{ marginBottom: 20 }}>
-          <h3 style={{ marginBottom: 10 }}>📦 Brzi pregled zaliha</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Broj SKU</div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{inventory.totalSkuCount}</div>
-            </div>
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Ukupno na stanju</div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{inventory.totalOnHand}</div>
-            </div>
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Niske zalihe</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#f59e0b" }}>{inventory.lowStockCount}</div>
-            </div>
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Bez zaliha</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#dc2626" }}>{inventory.outOfStockCount}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Top Products Tables - RESPONSIVE */}
-      {!loading && topProducts && (topProducts.byRevenue?.length > 0 || topProducts.byUnits?.length > 0) && (
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 400px), 1fr))", 
-          gap: 20, 
-          marginBottom: 20 
-        }}>
-          {/* Top by Revenue */}
-          {topProducts.byRevenue && topProducts.byRevenue.length > 0 && (
-            <div className="card" style={{ margin: 0, overflow: "hidden" }}>
-              <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>💰 Top proizvodi po prometu</h3>
-              <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                <table style={{ 
-                  width: "100%", 
-                  borderCollapse: "collapse", 
-                  fontSize: "0.8125rem",
-                  minWidth: "350px"
-                }}>
+            {topTab === "margin" && !topAdvanced.marginAvailable && (
+              <div className="analytics-empty warning">Nema dovoljno podataka za prikaz uticaja na marzu.</div>
+            )}
+            {topRows.length === 0 && <div className="analytics-empty">Nema podataka.</div>}
+            {topRows.length > 0 && (
+              <div className="top-table-wrap">
+                <table className="top-table">
                   <thead>
-                    <tr style={{ background: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                      <th style={{ padding: "10px 8px", textAlign: "left", fontWeight: 600, whiteSpace: "nowrap" }}>Artikal</th>
-                      <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>Vel.</th>
-                      <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>Boja</th>
-                      <th style={{ padding: "10px 8px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>Promet</th>
-                      <th style={{ padding: "10px 8px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>Kom</th>
+                    <tr>
+                      <th><span className="with-tip"><span>SKU / Artikal</span><InfoTip text={HELP.sku} /></span></th>
+                      <th><span className="with-tip"><span>Promet</span><InfoTip text={HELP.promet} /></span></th>
+                      <th><span className="with-tip"><span>Kom</span><InfoTip text={HELP.jedinice} /></span></th>
+                      <th><span className="with-tip"><span>Brzina prodaje</span><InfoTip text={HELP.velocity} /></span></th>
+                      <th><span className="with-tip"><span>Uticaj na marzu</span><InfoTip text={HELP.margin} /></span></th>
+                      <th><span className="with-tip"><span>Trend</span><InfoTip text={HELP.trend} /></span></th>
+                      <th><span className="with-tip"><span>Status zalihe</span><InfoTip text="Dobro = stabilno, Upozorenje = niska zaliha, Kriticno = rasprodato." /></span></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {topProducts.byRevenue.map((p, idx) => (
-                      <tr key={`rev-${idx}`} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                        <td style={{ 
-                          padding: "10px 8px", 
-                          fontWeight: 600,
-                          maxWidth: "180px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap"
-                        }} title={p.productName}>
-                          {p.productName}
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "center", color: "#6b7280" }}>
-                          {p.velicina || "-"}
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "center", color: "#6b7280" }}>
-                          {p.boja || "-"}
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: 700, color: "#059669", whiteSpace: "nowrap" }}>
-                          {formatCurrency(p.totalRevenue)}
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "right", color: "#6b7280" }}>
-                          {p.totalUnits}
-                        </td>
+                    {topRows.map((row) => (
+                      <tr
+                        key={`${topTab}-${row.productId}`}
+                        title={`Trend: ${formatPercent(row.trendPct)} | Promet: ${formatCurrency(row.revenue)} | Komada: ${formatNumber(row.units)}`}
+                      >
+                        <td><div className="sku-cell"><strong>{row.sku}</strong><span>{row.productName}</span></div></td>
+                        <td>{formatCurrency(row.revenue)}</td>
+                        <td>{formatNumber(row.units)}</td>
+                        <td>{formatNumber(row.velocityUnitsPerDay, 2)}</td>
+                        <td>{row.marginImpact == null ? "N/A" : formatCurrency(row.marginImpact)}</td>
+                        <td className={row.trendPct != null && row.trendPct < 0 ? "trend down" : "trend up"}>{trendLabel(row.trendPct)} {formatPercent(row.trendPct)}</td>
+                        <td><span className={`stock-pill ${statusTone(row.stockStatus)}`}>{statusLabel(row.stockStatus)}</span></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
+            )}
+          </section>
+        )}
 
-          {/* Top by Units */}
-          {topProducts.byUnits && topProducts.byUnits.length > 0 && (
-            <div className="card" style={{ margin: 0, overflow: "hidden" }}>
-              <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700 }}>📦 Top proizvodi po količini</h3>
-              <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                <table style={{ 
-                  width: "100%", 
-                  borderCollapse: "collapse", 
-                  fontSize: "0.8125rem",
-                  minWidth: "350px"
-                }}>
-                  <thead>
-                    <tr style={{ background: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                      <th style={{ padding: "10px 8px", textAlign: "left", fontWeight: 600, whiteSpace: "nowrap" }}>Artikal</th>
-                      <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>Vel.</th>
-                      <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>Boja</th>
-                      <th style={{ padding: "10px 8px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>Kom</th>
-                      <th style={{ padding: "10px 8px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>Promet</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topProducts.byUnits.map((p, idx) => (
-                      <tr key={`units-${idx}`} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                        <td style={{ 
-                          padding: "10px 8px", 
-                          fontWeight: 600,
-                          maxWidth: "180px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap"
-                        }} title={p.productName}>
-                          {p.productName}
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "center", color: "#6b7280" }}>
-                          {p.velicina || "-"}
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "center", color: "#6b7280" }}>
-                          {p.boja || "-"}
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: 700, color: "#3b82f6" }}>
-                          {p.totalUnits}
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "right", color: "#6b7280", whiteSpace: "nowrap" }}>
-                          {formatCurrency(p.totalRevenue)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        {!loading && (
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Pojmovnik za laike</span><InfoTip text="Kratka objasnjenja manje poznatih analitickih izraza." /></h3>
+            <div className="glossary-grid">
+              {[
+                ["Brzina prodaje (Velocity)", HELP.velocity],
+                ["OOS", HELP.oos],
+                ["Pareto", HELP.pareto],
+                ["MA7", HELP.ma7],
+                ["Momentum", HELP.momentum],
+                ["Elasticnost", HELP.elasticnost],
+                ["Kompletnost (Completeness)", HELP.completeness],
+                ["Svezina podataka (Data Health)", HELP.freshness],
+                ["Uticaj na marzu (Margin impact)", HELP.margin],
+                ["SKU", HELP.sku],
+              ].map(([term, text]) => (
+                <article key={term} className="glossary-card">
+                  <strong>{term}</strong>
+                  <p>{text}</p>
+                </article>
+              ))}
             </div>
-          )}
-        </div>
-      )}
+          </section>
+        )}
+      </section>
     </div>
   );
 }

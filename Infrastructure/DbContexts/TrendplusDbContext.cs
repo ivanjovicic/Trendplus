@@ -225,9 +225,35 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Status).IsRequired().HasMaxLength(32);
                 eb.Property(e => e.SummaryJson);
                 eb.Property(e => e.ErrorMessage).HasMaxLength(4000);
+                eb.Property(e => e.DurationSeconds);
+                eb.Property(e => e.TotalImported).HasDefaultValue(0);
+                eb.Property(e => e.TotalUpdated).HasDefaultValue(0);
+                eb.Property(e => e.TotalErrors).HasDefaultValue(0);
+                eb.Property(e => e.DataOrigin).IsRequired().HasMaxLength(32).HasDefaultValue("access");
+
+                eb.HasMany(e => e.LogEntries)
+                  .WithOne(l => l.Batch)
+                  .HasForeignKey(l => l.BatchId)
+                  .OnDelete(DeleteBehavior.Cascade);
 
                 eb.HasIndex(e => e.StartedAtUtc);
                 eb.HasIndex(e => e.Status);
+            });
+
+            modelBuilder.Entity<AccessImportLog>(eb =>
+            {
+                eb.ToTable("AccessImportLog");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.TableName).IsRequired().HasMaxLength(128);
+                eb.Property(e => e.RowIndex).HasDefaultValue(0);
+                eb.Property(e => e.Severity).IsRequired().HasMaxLength(16).HasDefaultValue("info");
+                eb.Property(e => e.Message).IsRequired().HasMaxLength(2000);
+                eb.Property(e => e.SourceRowJson);
+                eb.Property(e => e.CreatedAtUtc).HasDefaultValueSql("NOW()");
+
+                eb.HasIndex(e => e.BatchId);
+                eb.HasIndex(e => e.Severity);
+                eb.HasIndex(e => new { e.BatchId, e.TableName });
             });
 
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
@@ -248,6 +274,7 @@ namespace Infrastructure.DbContexts
         public DbSet<PovracajZaglavlje> PovracajZaglavlja { get; set; } = null!;
         public DbSet<PovracajStavka> PovracajStavke { get; set; } = null!;
         public DbSet<DataImportBatch> DataImportBatches { get; set; } = null!;
+        public DbSet<AccessImportLog> AccessImportLogs { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {

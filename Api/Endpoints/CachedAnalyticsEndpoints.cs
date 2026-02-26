@@ -54,6 +54,12 @@ public static class CachedAnalyticsEndpoints
                 cacheKey,
                 async () =>
                 {
+                    var aggregatedSummary = await TryGetSalesSummaryFromAggregatesAsync(trendDb, fromDate, toDate, ct);
+                    if (aggregatedSummary is not null)
+                    {
+                        return aggregatedSummary;
+                    }
+
                     try
                     {
                         return await mediator.Send(new GetSalesSummaryQuery(fromDate, toDate, storeId), ct);
@@ -105,6 +111,12 @@ public static class CachedAnalyticsEndpoints
                 cacheKey,
                 async () =>
                 {
+                    var aggregatedTop = await TryGetTopProductsFromAggregatesAsync(trendDb, top, fromDate, toDate, ct);
+                    if (aggregatedTop is not null)
+                    {
+                        return aggregatedTop;
+                    }
+
                     try
                     {
                         return await mediator.Send(new GetTopProductsQuery(fromDate, toDate, top, storeId), ct);
@@ -134,6 +146,30 @@ public static class CachedAnalyticsEndpoints
                     }
                 },
                 CacheExpiration.Medium,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== TOP PRODUCTS ADVANCED (CACHED) ==========
+        group.MapGet("/sales/top-products-advanced", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int top = 10,
+            CancellationToken ct = default) =>
+        {
+            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            var cacheKey = AnalyticsCacheKeys.TopProductsAdvanced(top, fromDate, toDate);
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await GetTopProductsAdvancedSnapshotAsync(db, top, fromDate, toDate, ct),
+                CacheExpiration.Short,
                 ct);
 
             return Results.Ok(result);
@@ -195,6 +231,12 @@ public static class CachedAnalyticsEndpoints
                 cacheKey,
                 async () =>
                 {
+                    var aggregatedDaily = await TryGetDailySalesFromAggregatesAsync(trendDb, fromDate, toDate, ct);
+                    if (aggregatedDaily is not null && aggregatedDaily.Count > 0)
+                    {
+                        return aggregatedDaily;
+                    }
+
                     try
                     {
                         var query = db.SalesFacts.AsNoTracking();
@@ -278,6 +320,12 @@ public static class CachedAnalyticsEndpoints
                 cacheKey,
                 async () =>
                 {
+                    var aggregatedCategory = await TryGetCategoryDataFromAggregatesAsync(db, fromDate, toDate, ct);
+                    if (aggregatedCategory is not null && aggregatedCategory.Count > 0)
+                    {
+                        return aggregatedCategory;
+                    }
+
                     var query = from ps in db.ProdajaStavke
                                 join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
                                 join a in db.Artikli on ps.IdArtikal equals a.Id
@@ -321,6 +369,12 @@ public static class CachedAnalyticsEndpoints
                 cacheKey,
                 async () =>
                 {
+                    var aggregatedGender = await TryGetGenderDataFromAggregatesAsync(db, fromDate, toDate, ct);
+                    if (aggregatedGender is not null && aggregatedGender.Count > 0)
+                    {
+                        return aggregatedGender;
+                    }
+
                     var query = from ps in db.ProdajaStavke
                                 join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
                                 join a in db.Artikli on ps.IdArtikal equals a.Id
@@ -362,6 +416,12 @@ public static class CachedAnalyticsEndpoints
                 cacheKey,
                 async () =>
                 {
+                    var aggregatedSupplier = await TryGetSupplierDataFromAggregatesAsync(db, fromDate, toDate, ct);
+                    if (aggregatedSupplier is not null && aggregatedSupplier.Count > 0)
+                    {
+                        return aggregatedSupplier;
+                    }
+
                     var query = from ps in db.ProdajaStavke
                                 join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
                                 join a in db.Artikli on ps.IdArtikal equals a.Id
@@ -792,6 +852,172 @@ public static class CachedAnalyticsEndpoints
             return Results.Ok(result);
         });
 
+        // ========== ADVANCED DASHBOARD SNAPSHOT (CACHED) ==========
+        group.MapGet("/dashboard/advanced", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            CancellationToken ct = default) =>
+        {
+            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            var cacheKey = AnalyticsCacheKeys.DashboardAdvanced(fromDate, toDate);
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await BuildAdvancedDashboardSnapshotAsync(db, fromDate, toDate, ct),
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== VALIDATION: COMPLETENESS (CACHED) ==========
+        group.MapGet("/validation/completeness", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            CancellationToken ct = default) =>
+        {
+            var result = await cache.GetOrSetAsync(
+                AnalyticsCacheKeys.ValidationCompleteness,
+                async () =>
+                {
+                    var (score, totalSku, missingSku, _, _) = await GetCompletenessAndFreshnessAsync(db, ct);
+                    var status = score >= 0.98m ? "good" : score >= 0.90m ? "warning" : "critical";
+                    var message = status switch
+                    {
+                        "good" => "Completeness je stabilan.",
+                        "warning" => "Nedostaju bitna polja za deo artikala.",
+                        _ => "Nizak completeness: validacija podataka je prioritet."
+                    };
+                    return new DashboardValidationEndpointDto
+                    {
+                        Status = status,
+                        Message = message,
+                        Score = score,
+                        TotalSku = totalSku,
+                        AffectedSku = missingSku
+                    };
+                },
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== VALIDATION: FRESHNESS (CACHED) ==========
+        group.MapGet("/validation/freshness", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            CancellationToken ct = default) =>
+        {
+            var result = await cache.GetOrSetAsync(
+                AnalyticsCacheKeys.ValidationFreshness,
+                async () =>
+                {
+                    var (_, _, _, lastImport, freshnessHours) = await GetCompletenessAndFreshnessAsync(db, ct);
+                    var status = freshnessHours <= 6m ? "good" : freshnessHours <= 24m ? "warning" : "critical";
+                    var message = status switch
+                    {
+                        "good" => "Podaci su svezi.",
+                        "warning" => "Osvezavanje kasni, proverite import pipeline.",
+                        _ => "Podaci su zastareli: osvezite import i agregate."
+                    };
+                    return new DashboardValidationEndpointDto
+                    {
+                        Status = status,
+                        Message = message,
+                        LastImport = lastImport,
+                        FreshnessHours = freshnessHours
+                    };
+                },
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== VALIDATION: LOST SALES (CACHED) ==========
+        group.MapGet("/validation/lost-sales", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            CancellationToken ct = default) =>
+        {
+            var result = await cache.GetOrSetAsync(
+                AnalyticsCacheKeys.ValidationLostSales,
+                async () =>
+                {
+                    var (oosSkuCount, lostSalesEstimate) = await GetLostSalesSnapshotAsync(db, ct);
+                    var status = lostSalesEstimate <= 0m ? "good" : lostSalesEstimate < 50000m ? "warning" : "critical";
+                    var message = status switch
+                    {
+                        "good" => "Nema znacajnog gubitka prodaje zbog OOS.",
+                        "warning" => "Postoji procenjen gubitak prodaje zbog OOS.",
+                        _ => "Kritican OOS gubitak: replenishment je prioritet."
+                    };
+                    return new DashboardValidationEndpointDto
+                    {
+                        Status = status,
+                        Message = message,
+                        AffectedSku = oosSkuCount,
+                        LostSalesEstimate = lostSalesEstimate
+                    };
+                },
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== VALIDATION: NEGATIVE QUANTITY (CACHED) ==========
+        group.MapGet("/validation/negative-qty", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            CancellationToken ct = default) =>
+        {
+            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            var result = await cache.GetOrSetAsync(
+                AnalyticsCacheKeys.ValidationNegativeQty(fromDate, toDate),
+                async () =>
+                {
+                    var (negativeQtyCount, totalRows) = await GetNegativeQuantityValidationAsync(db, fromDate, toDate, ct);
+                    var rate = totalRows <= 0 ? 0m : Math.Round(((decimal)negativeQtyCount / totalRows) * 100m, 4);
+                    var status = totalRows == 0
+                        ? "info"
+                        : negativeQtyCount == 0
+                            ? "good"
+                            : rate <= 0.1m ? "warning" : "critical";
+                    var message = status switch
+                    {
+                        "good" => "Nema negativnih kolicina u prodajnim stavkama.",
+                        "warning" => "Pronadjene su negativne kolicine u malom broju stavki.",
+                        "critical" => "Negativne kolicine su iznad dozvoljenog praga i zahtevaju proveru.",
+                        _ => "Nema podataka za proveru negativnih kolicina."
+                    };
+                    return new DashboardValidationEndpointDto
+                    {
+                        Status = status,
+                        Message = message,
+                        NegativeQtyCount = negativeQtyCount,
+                        TotalRows = totalRows,
+                        Score = totalRows <= 0 ? null : Math.Round(1m - ((decimal)negativeQtyCount / totalRows), 6)
+                    };
+                },
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
         // ========== CACHE STATUS ENDPOINT ==========
         group.MapGet("/cache/status", (IAnalyticsCacheService cache) =>
         {
@@ -811,6 +1037,932 @@ public static class CachedAnalyticsEndpoints
             await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
             return Results.Ok(new { success = true, message = "Analytics cache invalidiran" });
         });
+    }
+
+    private static async Task<NpgsqlConnection?> OpenTrendplusConnectionAsync(ITrendplusDbContext db, CancellationToken ct)
+    {
+        var connectionString = db.Database.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return null;
+
+        var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync(ct);
+        return conn;
+    }
+
+    private static async Task<SalesSummaryDto?> TryGetSalesSummaryFromAggregatesAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        try
+        {
+            await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+            if (conn is null) return null;
+
+            const string sql = """
+                SELECT
+                    COUNT(*)::int AS days_count,
+                    COALESCE(SUM("TotalRevenue"), 0) AS total_revenue,
+                    COALESCE(SUM("TotalTransactions"), 0)::int AS total_transactions,
+                    COALESCE(SUM("TotalUnits"), 0)::int AS total_units
+                FROM "AnalyticsDailySummary"
+                WHERE (@fromDate IS NULL OR "Date" >= @fromDate::date)
+                  AND (@toDate IS NULL OR "Date" <= @toDate::date);
+                """;
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (!await reader.ReadAsync(ct)) return null;
+
+            var daysCount = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+            if (daysCount == 0) return null;
+
+            var totalRevenue = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
+            var totalTransactions = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
+            var totalUnits = reader.IsDBNull(3) ? 0 : reader.GetInt32(3);
+            var avgBasket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0m;
+            var avgItem = totalUnits > 0 ? totalRevenue / totalUnits : 0m;
+
+            return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, avgBasket, avgItem);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            return null;
+        }
+    }
+
+    private static async Task<TopProductsResult?> TryGetTopProductsFromAggregatesAsync(
+        ITrendplusDbContext db,
+        int top,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        try
+        {
+            await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+            if (conn is null) return null;
+
+            const string sql = """
+                SELECT
+                    "ProductId",
+                    COALESCE("ProductName", 'Nepoznato') AS product_name,
+                    COALESCE(SUM("TotalRevenue"), 0) AS total_revenue,
+                    COALESCE(SUM("TotalUnits"), 0)::int AS total_units
+                FROM "AnalyticsTopProducts"
+                WHERE (@fromDate IS NULL OR "Date" >= @fromDate::date)
+                  AND (@toDate IS NULL OR "Date" <= @toDate::date)
+                GROUP BY "ProductId", COALESCE("ProductName", 'Nepoznato');
+                """;
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+
+            var all = new List<TopProductDto>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                all.Add(new TopProductDto(
+                    ProductId: reader.IsDBNull(0) ? 0 : reader.GetInt32(0),
+                    ProductName: reader.IsDBNull(1) ? "Nepoznato" : reader.GetString(1),
+                    TotalRevenue: reader.IsDBNull(2) ? 0m : reader.GetDecimal(2),
+                    TotalUnits: reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
+                    Velicina: null,
+                    Boja: null));
+            }
+
+            if (all.Count == 0) return null;
+
+            var byRevenue = all.OrderByDescending(x => x.TotalRevenue).Take(top).ToList();
+            var byUnits = all.OrderByDescending(x => x.TotalUnits).Take(top).ToList();
+            return new TopProductsResult(byRevenue, byUnits);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            return null;
+        }
+    }
+
+    private static async Task<List<DailySaleDto>?> TryGetDailySalesFromAggregatesAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        try
+        {
+            await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+            if (conn is null) return null;
+
+            const string sql = """
+                SELECT
+                    "Date",
+                    COALESCE("TotalRevenue", 0) AS total_revenue,
+                    COALESCE("TotalTransactions", 0)::int AS total_transactions,
+                    COALESCE("TotalUnits", 0)::int AS total_units
+                FROM "AnalyticsDailySummary"
+                WHERE (@fromDate IS NULL OR "Date" >= @fromDate::date)
+                  AND (@toDate IS NULL OR "Date" <= @toDate::date)
+                ORDER BY "Date";
+                """;
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+
+            var list = new List<DailySaleDto>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var date = reader.IsDBNull(0) ? DateTime.UtcNow.Date : reader.GetDateTime(0);
+                list.Add(new DailySaleDto
+                {
+                    Date = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    TotalRevenue = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1),
+                    TransactionCount = reader.IsDBNull(2) ? 0 : reader.GetInt32(2),
+                    TotalUnits = reader.IsDBNull(3) ? 0 : reader.GetInt32(3)
+                });
+            }
+
+            return list;
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            return null;
+        }
+    }
+
+    private static async Task<List<CategoryDataDto>?> TryGetCategoryDataFromAggregatesAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        try
+        {
+            await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+            if (conn is null) return null;
+
+            const string sql = """
+                SELECT
+                    COALESCE("Kategorija", 'Ostalo') AS kategorija,
+                    COALESCE(SUM("TotalRevenue"), 0) AS total_revenue,
+                    COALESCE(SUM("TotalUnits"), 0)::int AS total_units,
+                    COALESCE(SUM("TransactionCount"), 0)::int AS transaction_count
+                FROM "AnalyticsCategorySummary"
+                WHERE (@fromDate IS NULL OR "Date" >= @fromDate::date)
+                  AND (@toDate IS NULL OR "Date" <= @toDate::date)
+                GROUP BY COALESCE("Kategorija", 'Ostalo')
+                ORDER BY total_revenue DESC;
+                """;
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+
+            var list = new List<CategoryDataDto>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                list.Add(new CategoryDataDto
+                {
+                    Kategorija = reader.IsDBNull(0) ? "Ostalo" : reader.GetString(0),
+                    Pol = "Ukupno",
+                    TotalRevenue = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1),
+                    TotalUnits = reader.IsDBNull(2) ? 0 : reader.GetInt32(2),
+                    TransactionCount = reader.IsDBNull(3) ? 0 : reader.GetInt32(3)
+                });
+            }
+
+            return list;
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            return null;
+        }
+    }
+
+    private static async Task<List<GenderDataDto>?> TryGetGenderDataFromAggregatesAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        try
+        {
+            await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+            if (conn is null) return null;
+
+            const string sql = """
+                SELECT
+                    COALESCE("Pol", 'Neodredjeno') AS pol,
+                    COALESCE(SUM("TotalRevenue"), 0) AS total_revenue,
+                    COALESCE(SUM("TotalUnits"), 0)::int AS total_units
+                FROM "AnalyticsGenderSummary"
+                WHERE (@fromDate IS NULL OR "Date" >= @fromDate::date)
+                  AND (@toDate IS NULL OR "Date" <= @toDate::date)
+                GROUP BY COALESCE("Pol", 'Neodredjeno')
+                ORDER BY total_revenue DESC;
+                """;
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+
+            var list = new List<GenderDataDto>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                list.Add(new GenderDataDto
+                {
+                    Pol = reader.IsDBNull(0) ? "Neodredjeno" : reader.GetString(0),
+                    TotalRevenue = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1),
+                    TotalUnits = reader.IsDBNull(2) ? 0 : reader.GetInt32(2)
+                });
+            }
+
+            return list;
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            return null;
+        }
+    }
+
+    private static async Task<List<SupplierDataDto>?> TryGetSupplierDataFromAggregatesAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        try
+        {
+            await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+            if (conn is null) return null;
+
+            const string sql = """
+                SELECT
+                    "DobavljacId",
+                    COALESCE("DobavljacNaziv", 'Nepoznato') AS dobavljac_naziv,
+                    COALESCE(SUM("TotalRevenue"), 0) AS total_revenue,
+                    COALESCE(SUM("TotalUnits"), 0)::int AS total_units,
+                    COALESCE(SUM("TransactionCount"), 0)::int AS transaction_count
+                FROM "AnalyticsSupplierSummary"
+                WHERE (@fromDate IS NULL OR "Date" >= @fromDate::date)
+                  AND (@toDate IS NULL OR "Date" <= @toDate::date)
+                GROUP BY "DobavljacId", COALESCE("DobavljacNaziv", 'Nepoznato')
+                ORDER BY total_revenue DESC;
+                """;
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+
+            var list = new List<SupplierDataDto>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                list.Add(new SupplierDataDto
+                {
+                    DobavljacId = reader.IsDBNull(0) ? null : reader.GetInt32(0),
+                    DobavljacNaziv = reader.IsDBNull(1) ? "Nepoznato" : reader.GetString(1),
+                    TotalRevenue = reader.IsDBNull(2) ? 0m : reader.GetDecimal(2),
+                    TotalUnits = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
+                    TransactionCount = reader.IsDBNull(4) ? 0 : reader.GetInt32(4)
+                });
+            }
+
+            return list;
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            return null;
+        }
+    }
+
+    private static async Task<(decimal score, int totalSku, int missingSku, DateTime? lastImport, decimal freshnessHours)> GetCompletenessAndFreshnessAsync(
+        ITrendplusDbContext db,
+        CancellationToken ct)
+    {
+        await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+        if (conn is null) return (0m, 0, 0, null, 999m);
+
+        try
+        {
+            const string healthSql = """
+                SELECT completeness_score, last_import
+                FROM vw_analytics_data_health
+                LIMIT 1;
+                """;
+            await using var cmd = new NpgsqlCommand(healthSql, conn);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (await reader.ReadAsync(ct))
+            {
+                var score = reader.IsDBNull(0) ? 0m : reader.GetDecimal(0);
+                var lastImport = reader.IsDBNull(1) ? (DateTime?)null : reader.GetDateTime(1);
+                var freshnessHours = lastImport.HasValue
+                    ? Math.Max(0m, Math.Round((decimal)(DateTime.UtcNow - lastImport.Value.ToUniversalTime()).TotalHours, 2))
+                    : 999m;
+
+                return (score, 0, 0, lastImport, freshnessHours);
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            // fallback below
+        }
+
+        const string fallbackSql = """
+            SELECT
+                COUNT(*)::int AS total_sku,
+                COUNT(*) FILTER (
+                  WHERE "Naziv" IS NULL OR "PLU" IS NULL OR "Kategorija" IS NULL
+                )::int AS missing_sku,
+                MAX("UpdatedAt") AS last_import
+            FROM "Artikli";
+            """;
+        await using (var cmd = new NpgsqlCommand(fallbackSql, conn))
+        await using (var reader = await cmd.ExecuteReaderAsync(ct))
+        {
+            if (await reader.ReadAsync(ct))
+            {
+                var total = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+                var missing = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
+                var lastImport = reader.IsDBNull(2) ? (DateTime?)null : reader.GetDateTime(2);
+                var score = total == 0 ? 0m : Math.Round(1m - ((decimal)missing / total), 4);
+                var freshnessHours = lastImport.HasValue
+                    ? Math.Max(0m, Math.Round((decimal)(DateTime.UtcNow - lastImport.Value.ToUniversalTime()).TotalHours, 2))
+                    : 999m;
+                return (score, total, missing, lastImport, freshnessHours);
+            }
+        }
+
+        return (0m, 0, 0, null, 999m);
+    }
+
+    private static async Task<(int oosSkuCount, decimal lostSalesEstimate)> GetLostSalesSnapshotAsync(
+        ITrendplusDbContext db,
+        CancellationToken ct)
+    {
+        await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+        if (conn is null) return (0, 0m);
+
+        try
+        {
+            const string viewSql = """
+                SELECT
+                    COALESCE(SUM(is_oos), 0)::int AS oos_sku_count,
+                    COALESCE(SUM(lost_sales_estimate), 0) AS lost_sales_estimate
+                FROM vw_analytics_oos_lost_sales;
+                """;
+            await using var cmd = new NpgsqlCommand(viewSql, conn);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (await reader.ReadAsync(ct))
+            {
+                var oosCount = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+                var lostSales = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
+                return (oosCount, Math.Round(lostSales, 2));
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            // fallback below
+        }
+
+        const string fallbackSql = """
+            WITH recent AS (
+              SELECT
+                ps."id_artikal" AS article_id,
+                AVG(ps."kolicina") AS avg_units_per_sale,
+                AVG(ps."cena") AS avg_price
+              FROM "prodaja_stavke" ps
+              JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
+              WHERE p."datum_prodaje" >= NOW() - INTERVAL '30 days'
+              GROUP BY ps."id_artikal"
+            )
+            SELECT
+              COUNT(*) FILTER (WHERE COALESCE(a."Kolicina", 0) <= 0)::int AS oos_sku_count,
+              COALESCE(SUM(
+                CASE WHEN COALESCE(a."Kolicina", 0) <= 0
+                     THEN COALESCE(r.avg_units_per_sale, 0) * COALESCE(r.avg_price, 0)
+                     ELSE 0
+                END
+              ), 0) AS lost_sales_estimate
+            FROM "Artikli" a
+            LEFT JOIN recent r ON r.article_id = a."Id";
+            """;
+        await using var fallbackCmd = new NpgsqlCommand(fallbackSql, conn);
+        await using var fallbackReader = await fallbackCmd.ExecuteReaderAsync(ct);
+        if (await fallbackReader.ReadAsync(ct))
+        {
+            var oosCount = fallbackReader.IsDBNull(0) ? 0 : fallbackReader.GetInt32(0);
+            var lostSales = fallbackReader.IsDBNull(1) ? 0m : fallbackReader.GetDecimal(1);
+            return (oosCount, Math.Round(lostSales, 2));
+        }
+
+        return (0, 0m);
+    }
+
+    private static async Task<(int negativeQtyCount, int totalRows)> GetNegativeQuantityValidationAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+        if (conn is null) return (0, 0);
+
+        const string sql = """
+            SELECT
+              COUNT(*) FILTER (WHERE ps."kolicina" < 0)::int AS negative_qty_count,
+              COUNT(*)::int AS total_rows
+            FROM "prodaja_stavke" ps
+            JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
+            WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
+              AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate);
+            """;
+        try
+        {
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (await reader.ReadAsync(ct))
+            {
+                var negativeQtyCount = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+                var totalRows = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
+                return (negativeQtyCount, totalRows);
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            return (0, 0);
+        }
+
+        return (0, 0);
+    }
+
+    private static async Task<(decimal avgVelocity, decimal topVelocity, string topSku, decimal? trendPct)> GetVelocitySnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+        if (conn is null) return (0m, 0m, "N/A", null);
+
+        const string velocitySql = """
+            WITH base AS (
+              SELECT
+                COALESCE(a."PLU", a."Id"::text) AS sku,
+                DATE(p."datum_prodaje") AS sale_day,
+                SUM(ps."kolicina")::decimal AS units_day
+              FROM "prodaja_stavke" ps
+              JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
+              JOIN "Artikli" a ON a."Id" = ps."id_artikal"
+              WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
+                AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
+              GROUP BY COALESCE(a."PLU", a."Id"::text), DATE(p."datum_prodaje")
+            ),
+            agg AS (
+              SELECT
+                sku,
+                SUM(units_day) / GREATEST(COUNT(*), 1) AS velocity
+              FROM base
+              GROUP BY sku
+            )
+            SELECT
+              COALESCE(AVG(velocity), 0) AS avg_velocity,
+              COALESCE(MAX(velocity), 0) AS top_velocity,
+              COALESCE((ARRAY_AGG(sku ORDER BY velocity DESC))[1], 'N/A') AS top_sku
+            FROM agg;
+            """;
+        await using var cmd = new NpgsqlCommand(velocitySql, conn);
+        cmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
+        decimal avgVelocity = 0m;
+        decimal topVelocity = 0m;
+        string topSku = "N/A";
+        await using (var reader = await cmd.ExecuteReaderAsync(ct))
+        {
+            if (await reader.ReadAsync(ct))
+            {
+                avgVelocity = reader.IsDBNull(0) ? 0m : reader.GetDecimal(0);
+                topVelocity = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
+                topSku = reader.IsDBNull(2) ? "N/A" : reader.GetString(2);
+            }
+        }
+
+        decimal? trendPct = null;
+        try
+        {
+            const string trendSql = """
+                SELECT
+                  COALESCE(SUM("TotalUnits") FILTER (WHERE "Date" >= CURRENT_DATE - INTERVAL '6 days'), 0) AS last7,
+                  COALESCE(SUM("TotalUnits") FILTER (WHERE "Date" BETWEEN CURRENT_DATE - INTERVAL '13 days' AND CURRENT_DATE - INTERVAL '7 days'), 0) AS prev7
+                FROM "AnalyticsDailySummary";
+                """;
+            await using var trendCmd = new NpgsqlCommand(trendSql, conn);
+            await using var trendReader = await trendCmd.ExecuteReaderAsync(ct);
+            if (await trendReader.ReadAsync(ct))
+            {
+                var last7 = trendReader.IsDBNull(0) ? 0m : trendReader.GetDecimal(0);
+                var prev7 = trendReader.IsDBNull(1) ? 0m : trendReader.GetDecimal(1);
+                trendPct = prev7 <= 0m
+                    ? (last7 > 0m ? 100m : 0m)
+                    : Math.Round(((last7 - prev7) / prev7) * 100m, 2);
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01")
+        {
+            trendPct = null;
+        }
+
+        return (Math.Round(avgVelocity, 2), Math.Round(topVelocity, 2), topSku, trendPct);
+    }
+
+    private static async Task<(decimal top20Share, decimal top50Share)> GetParetoSnapshotAsync(
+        ITrendplusDbContext db,
+        CancellationToken ct)
+    {
+        await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+        if (conn is null) return (0m, 0m);
+
+        try
+        {
+            const string paretoSql = """
+                WITH ranked AS (
+                  SELECT
+                    revenue,
+                    cumulative_share,
+                    ROW_NUMBER() OVER (ORDER BY revenue DESC, article_id) AS rn
+                  FROM vw_analytics_pareto
+                )
+                SELECT
+                  COALESCE(MAX(cumulative_share) FILTER (WHERE rn <= 20), 0),
+                  COALESCE(MAX(cumulative_share) FILTER (WHERE rn <= 50), 0)
+                FROM ranked;
+                """;
+            await using var cmd = new NpgsqlCommand(paretoSql, conn);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (await reader.ReadAsync(ct))
+            {
+                var top20 = reader.IsDBNull(0) ? 0m : reader.GetDecimal(0);
+                var top50 = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
+                return (Math.Round(top20, 4), Math.Round(top50, 4));
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            // fallback below
+        }
+
+        const string fallbackSql = """
+            WITH ranked AS (
+              SELECT SUM(ps."kolicina" * ps."cena") AS revenue
+              FROM "prodaja_stavke" ps
+              GROUP BY ps."id_artikal"
+            ),
+            ordered AS (
+              SELECT
+                revenue,
+                ROW_NUMBER() OVER (ORDER BY revenue DESC) AS rn,
+                CASE
+                  WHEN SUM(revenue) OVER () = 0 THEN 0
+                  ELSE SUM(revenue) OVER (ORDER BY revenue DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+                       / SUM(revenue) OVER ()
+                END AS cumulative_share
+              FROM ranked
+            )
+            SELECT
+              COALESCE(MAX(cumulative_share) FILTER (WHERE rn <= 20), 0),
+              COALESCE(MAX(cumulative_share) FILTER (WHERE rn <= 50), 0)
+            FROM ordered;
+            """;
+        await using var fallbackCmd = new NpgsqlCommand(fallbackSql, conn);
+        await using var fallbackReader = await fallbackCmd.ExecuteReaderAsync(ct);
+        if (await fallbackReader.ReadAsync(ct))
+        {
+            var top20 = fallbackReader.IsDBNull(0) ? 0m : fallbackReader.GetDecimal(0);
+            var top50 = fallbackReader.IsDBNull(1) ? 0m : fallbackReader.GetDecimal(1);
+            return (Math.Round(top20, 4), Math.Round(top50, 4));
+        }
+
+        return (0m, 0m);
+    }
+
+    private static async Task<TopProductsAdvancedResultDto> GetTopProductsAdvancedSnapshotAsync(
+        ITrendplusDbContext db,
+        int top,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        await using var conn = await OpenTrendplusConnectionAsync(db, ct);
+        if (conn is null)
+        {
+            return new TopProductsAdvancedResultDto
+            {
+                MarginAvailable = false,
+                MarginMessage = "Konekcija ka bazi nije dostupna."
+            };
+        }
+
+        var safeTop = Math.Max(1, Math.Min(top, 100));
+
+        const string sql = """
+            WITH period_meta AS (
+              SELECT
+                COALESCE(@fromDate::date, (SELECT MIN(DATE(p."datum_prodaje")) FROM "prodaja_zaglavlje" p), CURRENT_DATE) AS from_date,
+                COALESCE(@toDate::date, (SELECT MAX(DATE(p."datum_prodaje")) FROM "prodaja_zaglavlje" p), CURRENT_DATE) AS to_date
+            ),
+            period_size AS (
+              SELECT
+                from_date,
+                to_date,
+                GREATEST((to_date - from_date + 1), 1)::int AS days_count
+              FROM period_meta
+            ),
+            current_period AS (
+              SELECT
+                ps."id_artikal" AS product_id,
+                SUM(ps."kolicina" * ps."cena") AS revenue,
+                SUM(ps."kolicina")::int AS units,
+                GREATEST(COUNT(DISTINCT DATE(p."datum_prodaje")), 1)::int AS active_days,
+                CASE
+                  WHEN COUNT(*) FILTER (WHERE a."NabavnaCena" IS NOT NULL) = 0 THEN NULL
+                  ELSE SUM((ps."cena" - COALESCE(a."NabavnaCena", ps."cena")) * ps."kolicina")
+                END AS margin_impact
+              FROM "prodaja_stavke" ps
+              JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
+              JOIN "Artikli" a ON a."Id" = ps."id_artikal"
+              WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
+                AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
+              GROUP BY ps."id_artikal"
+            ),
+            previous_period AS (
+              SELECT
+                ps."id_artikal" AS product_id,
+                SUM(ps."kolicina")::decimal AS prev_units
+              FROM "prodaja_stavke" ps
+              JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
+              CROSS JOIN period_size s
+              WHERE p."datum_prodaje" >= (s.from_date - (s.days_count * INTERVAL '1 day'))
+                AND p."datum_prodaje" < s.from_date
+              GROUP BY ps."id_artikal"
+            )
+            SELECT
+              cp.product_id,
+              COALESCE(a."PLU", cp.product_id::text) AS sku,
+              COALESCE(a."Naziv", 'Nepoznato') AS product_name,
+              COALESCE(cp.revenue, 0) AS revenue,
+              COALESCE(cp.units, 0)::int AS units,
+              ROUND(COALESCE(cp.units, 0)::decimal / GREATEST(cp.active_days, 1), 2) AS velocity_units_per_day,
+              cp.margin_impact,
+              CASE
+                WHEN COALESCE(a."Kolicina", 0) <= 0 THEN 'critical'
+                WHEN COALESCE(a."Kolicina", 0) <= GREATEST(COALESCE(a."MinimalnaKolicina", 1), 1) THEN 'warning'
+                ELSE 'good'
+              END AS stock_status,
+              CASE
+                WHEN COALESCE(pp.prev_units, 0) = 0 AND COALESCE(cp.units, 0) > 0 THEN 100
+                WHEN COALESCE(pp.prev_units, 0) = 0 THEN 0
+                ELSE ROUND(((COALESCE(cp.units, 0)::decimal - pp.prev_units) / pp.prev_units) * 100, 2)
+              END AS trend_pct
+            FROM current_period cp
+            JOIN "Artikli" a ON a."Id" = cp.product_id
+            LEFT JOIN previous_period pp ON pp.product_id = cp.product_id;
+            """;
+
+        try
+        {
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
+
+            var all = new List<TopProductAdvancedItemDto>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                all.Add(new TopProductAdvancedItemDto
+                {
+                    ProductId = reader.IsDBNull(0) ? 0 : reader.GetInt32(0),
+                    Sku = reader.IsDBNull(1) ? "N/A" : reader.GetString(1),
+                    ProductName = reader.IsDBNull(2) ? "Nepoznato" : reader.GetString(2),
+                    Revenue = reader.IsDBNull(3) ? 0m : Math.Round(reader.GetDecimal(3), 2),
+                    Units = reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
+                    VelocityUnitsPerDay = reader.IsDBNull(5) ? 0m : Math.Round(reader.GetDecimal(5), 2),
+                    MarginImpact = reader.IsDBNull(6) ? null : Math.Round(reader.GetDecimal(6), 2),
+                    StockStatus = reader.IsDBNull(7) ? "neutral" : reader.GetString(7),
+                    TrendPct = reader.IsDBNull(8) ? null : Math.Round(reader.GetDecimal(8), 2)
+                });
+            }
+
+            var marginAvailable = all.Any(x => x.MarginImpact.HasValue);
+            return new TopProductsAdvancedResultDto
+            {
+                ByRevenue = all.OrderByDescending(x => x.Revenue).Take(safeTop).ToList(),
+                ByUnits = all.OrderByDescending(x => x.Units).Take(safeTop).ToList(),
+                ByVelocity = all.OrderByDescending(x => x.VelocityUnitsPerDay).Take(safeTop).ToList(),
+                ByMarginImpact = marginAvailable
+                    ? all.Where(x => x.MarginImpact.HasValue).OrderByDescending(x => x.MarginImpact).Take(safeTop).ToList()
+                    : [],
+                MarginAvailable = marginAvailable,
+                MarginMessage = marginAvailable ? null : "Nabavna cena nije dostupna za margin impact izracun."
+            };
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            return new TopProductsAdvancedResultDto
+            {
+                MarginAvailable = false,
+                MarginMessage = "Nedostaju tabele ili kolone za napredne top proizvode."
+            };
+        }
+    }
+
+    private static async Task<DashboardAdvancedSnapshotDto> BuildAdvancedDashboardSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        var (score, totalSku, missingSku, lastImport, freshnessHours) = await GetCompletenessAndFreshnessAsync(db, ct);
+        var (oosSkuCount, lostSalesEstimate) = await GetLostSalesSnapshotAsync(db, ct);
+        var (avgVelocity, topVelocity, topSku, velocityTrend) = await GetVelocitySnapshotAsync(db, fromDate, toDate, ct);
+        var (top20Share, top50Share) = await GetParetoSnapshotAsync(db, ct);
+
+        var completenessStatus = score >= 0.98m ? "good" : score >= 0.90m ? "warning" : "critical";
+        var freshnessStatus = freshnessHours <= 6m ? "good" : freshnessHours <= 24m ? "warning" : "critical";
+        var oosStatus = lostSalesEstimate <= 0m ? "good" : lostSalesEstimate < 50000m ? "warning" : "critical";
+        var velocityStatus = avgVelocity > 0m ? "good" : "warning";
+        var paretoStatus = top20Share > 0.80m ? "warning" : "good";
+
+        var snapshot = new DashboardAdvancedSnapshotDto
+        {
+            GeneratedAtUtc = DateTime.UtcNow,
+            Cards =
+            [
+                new DashboardMetricCardDto
+                {
+                    Key = "velocity",
+                    Label = "Velocity",
+                    Value = avgVelocity,
+                    Unit = "units/day",
+                    TrendPct = velocityTrend,
+                    Status = velocityStatus,
+                    Subtitle = $"Top SKU: {topSku} ({topVelocity.ToString("0.##", CultureInfo.InvariantCulture)})"
+                },
+                new DashboardMetricCardDto
+                {
+                    Key = "oos",
+                    Label = "OOS",
+                    Value = oosSkuCount,
+                    Unit = "SKU",
+                    TrendPct = null,
+                    Status = oosStatus,
+                    Subtitle = $"Lost sales estimate: {lostSalesEstimate.ToString("0.##", CultureInfo.InvariantCulture)} RSD"
+                },
+                new DashboardMetricCardDto
+                {
+                    Key = "pareto",
+                    Label = "Pareto",
+                    Value = Math.Round(top20Share * 100m, 2),
+                    Unit = "%",
+                    TrendPct = null,
+                    Status = paretoStatus,
+                    Subtitle = $"Top 50 share: {Math.Round(top50Share * 100m, 2).ToString("0.##", CultureInfo.InvariantCulture)}%"
+                },
+                new DashboardMetricCardDto
+                {
+                    Key = "data_health",
+                    Label = "Data Health",
+                    Value = freshnessHours,
+                    Unit = "hours old",
+                    TrendPct = null,
+                    Status = freshnessStatus,
+                    Subtitle = lastImport.HasValue
+                        ? $"Last import: {lastImport.Value.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)} UTC"
+                        : "Last import: N/A"
+                },
+                new DashboardMetricCardDto
+                {
+                    Key = "completeness",
+                    Label = "Completeness",
+                    Value = Math.Round(score * 100m, 2),
+                    Unit = "%",
+                    TrendPct = null,
+                    Status = completenessStatus,
+                    Subtitle = totalSku > 0 ? $"Missing: {missingSku}/{totalSku}" : "Missing: N/A"
+                }
+            ]
+        };
+
+        if (oosStatus != "good")
+        {
+            snapshot.Insights.Add(new DashboardInsightDto
+            {
+                Badge = "OOS",
+                Description = $"OOS signal: {oosSkuCount} SKU, estimated lost sales {lostSalesEstimate.ToString("0.##", CultureInfo.InvariantCulture)} RSD.",
+                Color = oosStatus == "critical" ? "red" : "yellow"
+            });
+            snapshot.Actions.Add(new DashboardActionDto
+            {
+                Priority = oosStatus == "critical" ? "P1" : "P2",
+                Title = "Replenishment",
+                Recommendation = "Prioritize refill for OOS/low-stock SKUs with highest velocity."
+            });
+            snapshot.Validations.Add(new DashboardValidationDto
+            {
+                Severity = oosStatus == "critical" ? "error" : "warning",
+                Message = "Lost sales estimate indicates stock-out pressure."
+            });
+        }
+
+        if (completenessStatus != "good")
+        {
+            snapshot.Insights.Add(new DashboardInsightDto
+            {
+                Badge = "Data",
+                Description = $"Completeness is {Math.Round(score * 100m, 2).ToString("0.##", CultureInfo.InvariantCulture)}%, missing core fields for {missingSku} SKU.",
+                Color = completenessStatus == "critical" ? "red" : "yellow"
+            });
+            snapshot.Actions.Add(new DashboardActionDto
+            {
+                Priority = "P1",
+                Title = "Data quality fix",
+                Recommendation = "Backfill PLU, name and category for missing SKUs before pricing decisions."
+            });
+            snapshot.Validations.Add(new DashboardValidationDto
+            {
+                Severity = completenessStatus == "critical" ? "error" : "warning",
+                Message = "Completeness validation is below target."
+            });
+        }
+
+        if (freshnessStatus != "good")
+        {
+            snapshot.Insights.Add(new DashboardInsightDto
+            {
+                Badge = "Freshness",
+                Description = $"Data is {freshnessHours.ToString("0.##", CultureInfo.InvariantCulture)}h old.",
+                Color = freshnessStatus == "critical" ? "red" : "yellow"
+            });
+            snapshot.Actions.Add(new DashboardActionDto
+            {
+                Priority = freshnessStatus == "critical" ? "P1" : "P2",
+                Title = "Refresh pipeline",
+                Recommendation = "Run import sync and refresh aggregate summaries."
+            });
+            snapshot.Validations.Add(new DashboardValidationDto
+            {
+                Severity = freshnessStatus == "critical" ? "error" : "warning",
+                Message = "Freshness validation indicates stale data."
+            });
+        }
+
+        if (paretoStatus == "warning")
+        {
+            snapshot.Insights.Add(new DashboardInsightDto
+            {
+                Badge = "Pareto",
+                Description = $"Top 20 SKUs contribute {Math.Round(top20Share * 100m, 2).ToString("0.##", CultureInfo.InvariantCulture)}% of revenue.",
+                Color = "yellow"
+            });
+            snapshot.Actions.Add(new DashboardActionDto
+            {
+                Priority = "P3",
+                Title = "Portfolio balance",
+                Recommendation = "Diversify sales concentration by promoting medium-performing SKUs."
+            });
+            snapshot.Validations.Add(new DashboardValidationDto
+            {
+                Severity = "info",
+                Message = "Pareto concentration is elevated."
+            });
+        }
+
+        if (snapshot.Insights.Count == 0)
+        {
+            snapshot.Insights.Add(new DashboardInsightDto
+            {
+                Badge = "OK",
+                Description = "Sve je u redu: kljucne validacije su u zelenoj zoni.",
+                Color = "green"
+            });
+        }
+
+        if (snapshot.Actions.Count == 0)
+        {
+            snapshot.Actions.Add(new DashboardActionDto
+            {
+                Priority = "P3",
+                Title = "Monitor",
+                Recommendation = "Nastavite monitoring metrika i osvezavajte agregate dnevno."
+            });
+        }
+
+        return snapshot;
     }
 
     private static bool IsMissingRelation(Exception ex) =>
@@ -858,4 +2010,81 @@ public class QuickInsightsDto
     public decimal BestDayRevenue { get; set; }
     public string? TopProduct { get; set; }
     public int LowStockAlert { get; set; }
+}
+
+public class TopProductAdvancedItemDto
+{
+    public int ProductId { get; set; }
+    public string Sku { get; set; } = "";
+    public string ProductName { get; set; } = "";
+    public decimal Revenue { get; set; }
+    public int Units { get; set; }
+    public decimal VelocityUnitsPerDay { get; set; }
+    public decimal? MarginImpact { get; set; }
+    public string StockStatus { get; set; } = "neutral";
+    public decimal? TrendPct { get; set; }
+}
+
+public class TopProductsAdvancedResultDto
+{
+    public List<TopProductAdvancedItemDto> ByRevenue { get; set; } = [];
+    public List<TopProductAdvancedItemDto> ByUnits { get; set; } = [];
+    public List<TopProductAdvancedItemDto> ByVelocity { get; set; } = [];
+    public List<TopProductAdvancedItemDto> ByMarginImpact { get; set; } = [];
+    public bool MarginAvailable { get; set; }
+    public string? MarginMessage { get; set; }
+}
+
+public class DashboardMetricCardDto
+{
+    public string Key { get; set; } = "";
+    public string Label { get; set; } = "";
+    public decimal Value { get; set; }
+    public string Unit { get; set; } = "";
+    public decimal? TrendPct { get; set; }
+    public string Status { get; set; } = "neutral";
+    public string Subtitle { get; set; } = "";
+}
+
+public class DashboardInsightDto
+{
+    public string Badge { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Color { get; set; } = "blue";
+}
+
+public class DashboardActionDto
+{
+    public string Priority { get; set; } = "P3";
+    public string Title { get; set; } = "";
+    public string Recommendation { get; set; } = "";
+}
+
+public class DashboardValidationDto
+{
+    public string Severity { get; set; } = "info";
+    public string Message { get; set; } = "";
+}
+
+public class DashboardValidationEndpointDto
+{
+    public string Status { get; set; } = "info";
+    public string Message { get; set; } = "";
+    public decimal? Score { get; set; }
+    public int? TotalSku { get; set; }
+    public int? AffectedSku { get; set; }
+    public DateTime? LastImport { get; set; }
+    public decimal? FreshnessHours { get; set; }
+    public decimal? LostSalesEstimate { get; set; }
+    public int? NegativeQtyCount { get; set; }
+    public int? TotalRows { get; set; }
+}
+
+public class DashboardAdvancedSnapshotDto
+{
+    public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
+    public List<DashboardMetricCardDto> Cards { get; set; } = [];
+    public List<DashboardInsightDto> Insights { get; set; } = [];
+    public List<DashboardActionDto> Actions { get; set; } = [];
+    public List<DashboardValidationDto> Validations { get; set; } = [];
 }

@@ -2,6 +2,8 @@
 import { Link } from "react-router-dom";
 import AutoReloadOnBackendOnline from "../components/AutoReloadOnBackendOnline";
 import WorkerStatusAlert from "../components/WorkerStatusAlert";
+import WorkerControlFlag from "../components/WorkerControlFlag";
+import ApiPingFlag from "../components/ApiPingFlag";
 import SeasonalImageCarousel from "../components/trendshoes/SeasonalImageCarousel";
 import Footer from "../components/Footer";
 import { BackendStatusContext } from "../context/BackendStatusContext";
@@ -40,6 +42,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <span style={{ color: online ? "#6ee7b7" : "#fecaca" }}>
                         Backend: {online ? "ONLINE" : "OFFLINE"}
                     </span>
+                    <ApiPingFlag />
+                    <WorkerControlFlag />
                     <span style={{ color: "#d1d5db" }}>Prikaz:</span>
                     <select
                         value={dataScope}

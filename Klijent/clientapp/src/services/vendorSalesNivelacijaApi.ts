@@ -35,6 +35,15 @@ export interface VendorSalesNivelacijaArticleStat {
     hasSalesWindow: boolean;
     priceChanged: boolean;
     priceChangePercent: number | null;
+    rolling7dPreRevenue?: number | null;
+    rolling7dPostRevenue?: number | null;
+    momentumRevenue?: number | null;
+    priceElasticity?: number | null;
+    didRevenue?: number | null;
+    didQty?: number | null;
+    lostSalesOOS?: number | null;
+    oosRate?: number | null;
+    metricReason?: string | null;
 }
 
 export interface VendorSalesNivelacijaTotals {
@@ -109,6 +118,12 @@ export interface VendorSalesNivelacijaResponse {
     categoryStats: VendorSalesNivelacijaCategoryStat[];
     priceDirectionStats: VendorSalesNivelacijaPriceDirectionStat[];
     insights: VendorSalesNivelacijaInsight[];
+    avgMomentumRevenue?: number | null;
+    avgElasticity?: number | null;
+    avgDidRevenue?: number | null;
+    avgLostSalesOOS?: number | null;
+    oosRate?: number | null;
+    metricsStatus?: string | null;
 }
 
 export interface VendorSalesNivelacijaQuery {

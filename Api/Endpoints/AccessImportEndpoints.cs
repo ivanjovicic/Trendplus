@@ -20,6 +20,36 @@ public static class AccessImportEndpoints
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportBatches");
 
+        group.MapGet("/batches/{batchId:long}", async (
+            long batchId,
+            IBatchLogService logService,
+            int logTake = 200,
+            string? severity = null,
+            CancellationToken ct = default) =>
+        {
+            var detail = await logService.GetBatchDetailAsync(batchId, logTake, severity, ct);
+            return detail is not null
+                ? Results.Ok(detail)
+                : Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
+        })
+        .RequireRateLimiting("db-heavy")
+        .WithName("GetAccessImportBatchDetail");
+
+        group.MapGet("/batches/{batchId:long}/logs", async (
+            long batchId,
+            IBatchLogService logService,
+            string? severity = null,
+            string? tableName = null,
+            int skip = 0,
+            int take = 100,
+            CancellationToken ct = default) =>
+        {
+            var logs = await logService.GetLogsAsync(batchId, severity, tableName, skip, take, ct);
+            return Results.Ok(logs);
+        })
+        .RequireRateLimiting("db-heavy")
+        .WithName("GetAccessImportBatchLogs");
+
         group.MapDelete("/batches/{batchId:long}", async (
             long batchId,
             IAccessImportService service,

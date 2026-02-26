@@ -1,0 +1,113 @@
+# INTEGRACIJA: Advanced Analytics za Pre/Posle Nivelacije (AllEndpoints.cs)
+
+Ova instrukcija omogućava backendu da puni napredne metrike (momentum, rolling, OOS, DiD, elasticnost, lost sales) za svaki artikal i summary polja u odgovoru.
+
+---
+
+## 1. Dodaj helper funkcije u AllEndpoints.cs
+
+**Ispod using-a ili na dno fajla dodaj:**
+
+```csharp
+private static void MapRollingAndMomentumToNivelacijaArticles(List<VendorSalesNivelacijaArticleStatDto> articles, NpgsqlConnection connection, DateTime? eventDate)
+{
+    var rollingMap = new Dictionary<int, (decimal? pre, decimal? post)>();
+    using (var cmd = new NpgsqlCommand("SELECT article_id, AVG(ma7_revenue) FILTER (WHERE day < @eventDate) AS pre, AVG(ma7_revenue) FILTER (WHERE day >= @eventDate) AS post FROM vw_sales_rolling_7d WHERE article_id IS NOT NULL GROUP BY article_id", connection))
+    {
+        cmd.Parameters.AddWithValue("eventDate", eventDate ?? DateTime.UtcNow.Date);
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+            rollingMap[r.GetInt32(0)] = (r.IsDBNull(1) ? null : r.GetDecimal(1), r.IsDBNull(2) ? null : r.GetDecimal(2));
+    }
+    var momentumMap = new Dictionary<int, decimal?>();
+    using (var cmd = new NpgsqlCommand("SELECT article_id, momentum_revenue FROM vw_sales_momentum", connection))
+    using (var r = cmd.ExecuteReader())
+        while (r.Read())
+            momentumMap[r.GetInt32(0)] = r.IsDBNull(1) ? null : r.GetDecimal(1);
+    foreach (var row in articles)
+    {
+        if (int.TryParse(row.Sku, out var artId))
+        {
+            if (rollingMap.TryGetValue(artId, out var roll))
+            {
+                row.Rolling7dPreRevenue = roll.pre;
+                row.Rolling7dPostRevenue = roll.post;
+            }
+            if (momentumMap.TryGetValue(artId, out var mom))
+                row.MomentumRevenue = mom;
+        }
+    }
+}
+
+private static void MapOOSAndDidToNivelacijaArticles(List<VendorSalesNivelacijaArticleStatDto> articles, NpgsqlConnection connection)
+{
+    var oosMap = new Dictionary<int, decimal?>();
+    using (var cmd = new NpgsqlCommand("SELECT article_id, AVG(is_oos::int) AS oos_rate FROM vw_stock_red_zone GROUP BY article_id", connection))
+    using (var r = cmd.ExecuteReader())
+        while (r.Read())
+            oosMap[r.GetInt32(0)] = r.IsDBNull(1) ? null : r.GetDecimal(1);
+    var didMap = new Dictionary<string, (decimal? didRevenue, decimal? didQty)>();
+    using (var cmd = new NpgsqlCommand("SELECT sku, did_revenue, did_qty FROM vw_nivelacija_did", connection))
+    using (var r = cmd.ExecuteReader())
+        while (r.Read())
+            didMap[r.GetString(0)] = (r.IsDBNull(1) ? null : r.GetDecimal(1), r.IsDBNull(2) ? null : r.GetDecimal(2));
+    foreach (var row in articles)
+    {
+        if (int.TryParse(row.Sku, out var artId))
+        {
+            if (oosMap.TryGetValue(artId, out var oos))
+                row.OOSRate = oos;
+        }
+        if (didMap.TryGetValue(row.Sku, out var did))
+        {
+            row.DidRevenue = did.didRevenue;
+            row.DidQty = did.didQty;
+        }
+    }
+}
+```
+
+---
+
+## 2. Pozovi helper funkcije u endpointu
+
+**U endpointu `/api/analytics/vendor-sales-nivelacija` (nakon što dobijete `filteredRows`, pre summary sekcije):**
+
+```csharp
+MapRollingAndMomentumToNivelacijaArticles(filteredRows, connection, eventDateOnly);
+MapOOSAndDidToNivelacijaArticles(filteredRows, connection);
+```
+
+---
+
+## 3. Summary polja
+
+**Nakon što su advanced metrike mapirane, izračunajte summary polja za response:**
+
+```csharp
+var avgMomentum = filteredRows.Where(x => x.MomentumRevenue.HasValue).Select(x => x.MomentumRevenue.Value).DefaultIfEmpty().Average();
+var avgOOS = filteredRows.Where(x => x.OOSRate.HasValue).Select(x => x.OOSRate.Value).DefaultIfEmpty().Average();
+var avgDid = filteredRows.Where(x => x.DidRevenue.HasValue).Select(x => x.DidRevenue.Value).DefaultIfEmpty().Average();
+// ...
+response.AvgMomentumRevenue = avgMomentum;
+response.OOSRate = avgOOS;
+response.AvgDidRevenue = avgDid;
+```
+
+---
+
+## 4. Null + reason handling
+
+Ako neka metrika nije dostupna za artikal, ostavite polje null i upišite razlog u `MetricReason` (npr. "No rolling data", "No OOS data", "No DiD data").
+
+---
+
+## 5. Testirajte endpoint
+
+- Proverite da li frontend dobija nova polja (momentum, rolling, OOS, DiD, ...)
+- Proverite da li summary polja na response-u imaju smisla
+- Proverite null+reason handling (artikli bez prodaje, OOS, outlier)
+
+---
+
+**Ova integracija je 100% kompatibilna sa postojećim UI i API.**

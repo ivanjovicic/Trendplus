@@ -67,6 +67,30 @@ export interface AccessImportBatchDto {
     status: string;
     summaryJson: string | null;
     errorMessage: string | null;
+    // Enhanced (migration 015)
+    durationSeconds: number | null;
+    totalImported: number;
+    totalUpdated: number;
+    totalErrors: number;
+    dataOrigin: string;
+}
+
+export interface AccessImportLogDto {
+    id: number;
+    batchId: number;
+    tableName: string;
+    rowIndex: number;
+    severity: string;
+    message: string;
+    sourceRowJson: string | null;
+    createdAtUtc: string;
+}
+
+export interface BatchDetailDto {
+    batch: AccessImportBatchDto;
+    logs: AccessImportLogDto[];
+    logCountBySeverity: Record<string, number>;
+    logCountByTable: Record<string, number>;
 }
 
 async function parseError(res: Response): Promise<string> {
@@ -110,6 +134,28 @@ export async function runAccessImport(
 
 export async function getAccessImportBatches(take = 20): Promise<AccessImportBatchDto[]> {
     const res = await fetch(`${API}/api/access-import/batches?take=${take}`);
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+}
+
+export async function getAccessImportBatchDetail(batchId: number, logTake = 200, severity?: string): Promise<BatchDetailDto> {
+    const params = new URLSearchParams({ logTake: String(logTake) });
+    if (severity) params.set("severity", severity);
+    const res = await fetch(`${API}/api/access-import/batches/${batchId}?${params}`);
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+}
+
+export async function getAccessImportBatchLogs(
+    batchId: number,
+    opts?: { severity?: string; tableName?: string; skip?: number; take?: number }
+): Promise<AccessImportLogDto[]> {
+    const params = new URLSearchParams();
+    if (opts?.severity) params.set("severity", opts.severity);
+    if (opts?.tableName) params.set("tableName", opts.tableName);
+    if (opts?.skip !== undefined) params.set("skip", String(opts.skip));
+    if (opts?.take !== undefined) params.set("take", String(opts.take));
+    const res = await fetch(`${API}/api/access-import/batches/${batchId}/logs?${params}`);
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }

@@ -99,6 +99,22 @@ function fmtQty(value: number): string {
     return `${value.toLocaleString("sr-RS")} kom`;
 }
 
+function fmtNullableRsd(value: number | null | undefined): string {
+    return value == null ? "N/A" : fmtRsd(Number(value));
+}
+
+function fmtNullableQty(value: number | null | undefined): string {
+    return value == null ? "N/A" : fmtQty(Number(value));
+}
+
+function fmtNullableSharePct(value: number | null | undefined): string {
+    return value == null ? "N/A" : fmtPct(Number(value) * 100);
+}
+
+function fmtNullableElasticity(value: number | null | undefined): string {
+    return value == null ? "N/A" : Number(value).toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
 function csvEscape(input: string | number): string {
     const str = String(input ?? "");
     if (str.includes(",") || str.includes("\"") || str.includes("\n")) return `"${str.replaceAll("\"", "\"\"")}"`;
@@ -128,6 +144,55 @@ function sortMark(field: string, activeField: string, dir: SortDirection): strin
 function compareSort(a: string | number, b: string | number, dir: SortDirection): number {
     const result = typeof a === "string" && typeof b === "string" ? a.localeCompare(b, "sr") : Number(a) - Number(b);
     return dir === "asc" ? result : -result;
+}
+
+// --- Analytics helpers ---
+
+type PriceBucket = "-5%→-10%" | "-10%→-20%" | "<-20%" | "+5%→+10%" | ">+10%" | "Ostalo";
+
+function normalizeVendorName(name: string): string {
+    const t = (name ?? "").trim();
+    return t === "" || t.toUpperCase() === "N/A" ? "Unknown Supplier" : t;
+}
+
+function skuClassify(x: VendorSalesNivelacijaArticleStat): "NEW" | "REVIVED" | "GAINER" | "LOSER" | "NEUTRAL" {
+    if (x.preQty === 0 && Number(x.preRevenue) === 0) return "NEW";
+    if (x.preQty < 3 && Number(x.preRevenue) < 20000) return "REVIVED";
+    if (Number(x.changeRevenue) > 0) return "GAINER";
+    if (Number(x.changeRevenue) < 0) return "LOSER";
+    return "NEUTRAL";
+}
+
+function confidenceScore(x: VendorSalesNivelacijaArticleStat): "Low" | "Medium" | "High" {
+    const total = x.preQty + x.postQty;
+    if (total >= 50) return "High";
+    if (total >= 10) return "Medium";
+    return "Low";
+}
+
+function logGrowthPct(pre: number, post: number): number | null {
+    if (pre <= 0 || post <= 0) return null;
+    return 100 * Math.log(post / pre);
+}
+
+function priceBucket(pct: number | null): PriceBucket {
+    if (pct == null) return "Ostalo";
+    if (pct <= -20) return "<-20%";
+    if (pct <= -10) return "-10%→-20%";
+    if (pct <= -5) return "-5%→-10%";
+    if (pct >= 10) return ">+10%";
+    if (pct >= 5) return "+5%→+10%";
+    return "Ostalo";
+}
+
+function actionRecommendation(x: VendorSalesNivelacijaArticleStat): "KEEP" | "MONITOR" | "ROLLBACK" {
+    const cls = skuClassify(x);
+    if (cls === "NEW" || cls === "REVIVED") return "MONITOR";
+    const conf = confidenceScore(x);
+    if (conf === "Low" || !x.hasSalesWindow) return "MONITOR";
+    if (Number(x.changeRevenue) < -10000) return "ROLLBACK";
+    if (Number(x.changeRevenue) >= 0) return "KEEP";
+    return "MONITOR";
 }
 
 function SortButton(props: { label: string; right?: boolean; onClick: () => void; marker: string }) {
@@ -167,6 +232,7 @@ export default function ProdajaPrePostNivelacijePage() {
     const [response, setResponse] = useState<VendorSalesNivelacijaResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [minValidityFilter, setMinValidityFilter] = useState(false);
 
     const loadOptions = useCallback(async () => {
         setLoadingOptions(true);
@@ -248,6 +314,18 @@ export default function ProdajaPrePostNivelacijePage() {
     const priceDirectionStats = response?.priceDirectionStats ?? [];
     const insights = response?.insights ?? [];
     const dataQuality = response?.dataQuality ?? null;
+
+    const normalizedVendorStats = useMemo(
+        () => vendorStatsRaw.map((x) => ({ ...x, vendorName: normalizeVendorName(x.vendorName) })),
+        [vendorStatsRaw]
+    );
+
+    const filteredArticleStats = useMemo(() => {
+        const normalized = articleStatsRaw.map((x) => ({ ...x, vendorName: normalizeVendorName(x.vendorName) }));
+        if (!minValidityFilter) return normalized;
+        return normalized.filter((x) => x.preQty >= 3 || Number(x.preRevenue) >= 20000);
+    }, [articleStatsRaw, minValidityFilter]);
+
     const nivelacijaSelectOptions = useMemo(
         () =>
             nivelacijaOptions.map((x) => ({
@@ -277,8 +355,8 @@ export default function ProdajaPrePostNivelacijePage() {
             if (field === "vendorName") return x.vendorName;
             return Number(x[field]);
         };
-        return [...vendorStatsRaw].sort((a, b) => compareSort(get(a, vendorSort.field), get(b, vendorSort.field), vendorSort.direction));
-    }, [vendorStatsRaw, vendorSort]);
+        return [...normalizedVendorStats].sort((a, b) => compareSort(get(a, vendorSort.field), get(b, vendorSort.field), vendorSort.direction));
+    }, [normalizedVendorStats, vendorSort]);
 
     const sortedArticleStats = useMemo(() => {
         const get = (x: VendorSalesNivelacijaArticleStat, field: ArticleSortField): string | number => {
@@ -288,8 +366,8 @@ export default function ProdajaPrePostNivelacijePage() {
             if (field === "newPrice") return x.newPrice ?? 0;
             return Number(x[field]);
         };
-        return [...articleStatsRaw].sort((a, b) => compareSort(get(a, articleSort.field), get(b, articleSort.field), articleSort.direction));
-    }, [articleStatsRaw, articleSort]);
+        return [...filteredArticleStats].sort((a, b) => compareSort(get(a, articleSort.field), get(b, articleSort.field), articleSort.direction));
+    }, [filteredArticleStats, articleSort]);
 
     const vendorChartData = useMemo(
         () =>
@@ -313,13 +391,33 @@ export default function ProdajaPrePostNivelacijePage() {
 
     const topGrowth = useMemo(() => {
         const delta = (x: VendorSalesNivelacijaArticleStat) => (chartMetric === "revenue" ? Number(x.changeRevenue) : x.changeQty);
-        return [...articleStatsRaw].filter((x) => delta(x) > 0).sort((a, b) => delta(b) - delta(a)).slice(0, 5);
-    }, [articleStatsRaw, chartMetric]);
+        return [...filteredArticleStats].filter((x) => delta(x) > 0).sort((a, b) => delta(b) - delta(a)).slice(0, 5);
+    }, [filteredArticleStats, chartMetric]);
 
     const topDrop = useMemo(() => {
         const delta = (x: VendorSalesNivelacijaArticleStat) => (chartMetric === "revenue" ? Number(x.changeRevenue) : x.changeQty);
-        return [...articleStatsRaw].filter((x) => delta(x) < 0).sort((a, b) => delta(a) - delta(b)).slice(0, 5);
-    }, [articleStatsRaw, chartMetric]);
+        return [...filteredArticleStats].filter((x) => delta(x) < 0).sort((a, b) => delta(a) - delta(b)).slice(0, 5);
+    }, [filteredArticleStats, chartMetric]);
+
+    const priceBucketStats = useMemo(() => {
+        const buckets: Record<PriceBucket, { count: number; changeQty: number; changeRevenue: number }> = {
+            "-5%→-10%": { count: 0, changeQty: 0, changeRevenue: 0 },
+            "-10%→-20%": { count: 0, changeQty: 0, changeRevenue: 0 },
+            "<-20%": { count: 0, changeQty: 0, changeRevenue: 0 },
+            "+5%→+10%": { count: 0, changeQty: 0, changeRevenue: 0 },
+            ">+10%": { count: 0, changeQty: 0, changeRevenue: 0 },
+            "Ostalo": { count: 0, changeQty: 0, changeRevenue: 0 },
+        };
+        for (const x of filteredArticleStats) {
+            const b = priceBucket(x.priceChangePercent);
+            buckets[b].count++;
+            buckets[b].changeQty += x.changeQty;
+            buckets[b].changeRevenue += Number(x.changeRevenue);
+        }
+        return Object.entries(buckets)
+            .filter(([, s]) => s.count > 0)
+            .map(([bucket, s]) => ({ bucket, ...s }));
+    }, [filteredArticleStats]);
 
     const setSortVendor = (field: VendorSortField) => {
         setVendorSort((prev) =>
@@ -347,6 +445,12 @@ export default function ProdajaPrePostNivelacijePage() {
     const metricWord = chartMetric === "revenue" ? "prometa" : "kolicine";
     const metricDelta = (x: VendorSalesNivelacijaArticleStat) => (chartMetric === "revenue" ? Number(x.changeRevenue) : x.changeQty);
     const formatMetricDelta = (v: number) => (chartMetric === "revenue" ? fmtRsd(v) : fmtQty(v));
+    const articleExtraColumns = 13;
+
+    const metricText = (valueText: string, reason?: string | null) =>
+        valueText === "N/A" && reason
+            ? `${valueText} (${reason})`
+            : valueText;
 
     const exportCsv = () => {
         if (!response) return;
@@ -368,6 +472,12 @@ export default function ProdajaPrePostNivelacijePage() {
         lines.push(`DataQualityDedupRows,${quality.deduplicatedRows}`);
         lines.push(`DataQualityAnalyzedRows,${quality.analyzedRows}`);
         lines.push(`DataQualityAnalyzedSharePercent,${Number(quality.analyzedSharePercent).toFixed(2)}`);
+        lines.push(`AvgMomentumRevenue,${response.avgMomentumRevenue != null ? Number(response.avgMomentumRevenue).toFixed(2) : ""}`);
+        lines.push(`AvgElasticity,${response.avgElasticity != null ? Number(response.avgElasticity).toFixed(4) : ""}`);
+        lines.push(`AvgDidRevenue,${response.avgDidRevenue != null ? Number(response.avgDidRevenue).toFixed(2) : ""}`);
+        lines.push(`AvgLostSalesOOS,${response.avgLostSalesOOS != null ? Number(response.avgLostSalesOOS).toFixed(2) : ""}`);
+        lines.push(`AvgOOSRate,${response.oosRate != null ? Number(response.oosRate).toFixed(4) : ""}`);
+        lines.push(`MetricsStatus,${csvEscape(response.metricsStatus ?? "")}`);
         lines.push("");
         lines.push("Prodaja po dobavljacima (pre/post nivelacije)");
         lines.push("DobavljacId,Dobavljac,PreKolicina,PostKolicina,PromenaKolicine,PrePromet,PostPromet,PromenaPrometa,PromenaProcenat,BrojArtikala");
@@ -378,7 +488,7 @@ export default function ProdajaPrePostNivelacijePage() {
         }
         lines.push("");
         lines.push("Prodaja po artiklima (pre/post nivelacije)");
-        lines.push("DatumNivelacije,DobavljacId,Dobavljac,SKU,Artikal,Kategorija,StaraCena,NovaCena,PreKolicina,PostKolicina,PromenaKolicine,PrePromet,PostPromet,PromenaPrometa,PromenaProcenat,ImaProdajuProzor,PromenaCene,PromenaCeneProcenat");
+        lines.push("DatumNivelacije,DobavljacId,Dobavljac,SKU,Artikal,Kategorija,StaraCena,NovaCena,PreKolicina,PostKolicina,PromenaKolicine,PrePromet,PostPromet,PromenaPrometa,PromenaProcenat,ImaProdajuProzor,PromenaCene,PromenaCeneProcenat,Klasifikacija,LogRast,Pouzdanost,Akcija,Rolling7dPreRevenue,Rolling7dPostRevenue,MomentumRevenue,OOSRatePct,LostSalesOOS,DiDRevenue,DiDQty,PriceElasticity,MetricReason");
         for (const x of sortedArticleStats) {
             lines.push(
                 [
@@ -400,6 +510,19 @@ export default function ProdajaPrePostNivelacijePage() {
                     x.hasSalesWindow ? "1" : "0",
                     x.priceChanged ? "1" : "0",
                     x.priceChangePercent != null ? Number(x.priceChangePercent).toFixed(2) : "",
+                    csvEscape(skuClassify(x)),
+                    (() => { const lg = logGrowthPct(Number(x.preRevenue), Number(x.postRevenue)); return lg != null ? lg.toFixed(2) : ""; })(),
+                    confidenceScore(x),
+                    actionRecommendation(x),
+                    x.rolling7dPreRevenue != null ? Number(x.rolling7dPreRevenue).toFixed(2) : "",
+                    x.rolling7dPostRevenue != null ? Number(x.rolling7dPostRevenue).toFixed(2) : "",
+                    x.momentumRevenue != null ? Number(x.momentumRevenue).toFixed(2) : "",
+                    x.oosRate != null ? Number(x.oosRate * 100).toFixed(2) : "",
+                    x.lostSalesOOS != null ? Number(x.lostSalesOOS).toFixed(2) : "",
+                    x.didRevenue != null ? Number(x.didRevenue).toFixed(2) : "",
+                    x.didQty != null ? Number(x.didQty).toFixed(2) : "",
+                    x.priceElasticity != null ? Number(x.priceElasticity).toFixed(4) : "",
+                    csvEscape(x.metricReason ?? ""),
                 ].join(",")
             );
         }
@@ -517,6 +640,14 @@ export default function ProdajaPrePostNivelacijePage() {
                         />
                         Ukljuci artikle bez prodaje u +/-30 dana
                     </label>
+                    <label className="nivelacija-checkbox-row">
+                        <input
+                            type="checkbox"
+                            checked={minValidityFilter}
+                            onChange={(e) => setMinValidityFilter(e.target.checked)}
+                        />
+                        Samo validni uzorci (pre qty ≥ 3 ili promet ≥ 20.000 RSD)
+                    </label>
                 </div>
                 <div className="nivelacija-actions">
                     <button className="nivelacija-btn nivelacija-btn-primary" onClick={() => void load()} disabled={loading}>Primeni</button>
@@ -530,6 +661,7 @@ export default function ProdajaPrePostNivelacijePage() {
                         setSelectedVendorId(null);
                         setSelectedCategory("");
                         setIncludeInactive(false);
+                        setMinValidityFilter(false);
                     }} disabled={loading}>Ocisti</button>
                     <button className="nivelacija-btn nivelacija-btn-export" onClick={exportCsv} disabled={loading || !response}>Izvezi CSV</button>
                 </div>
@@ -601,6 +733,23 @@ export default function ProdajaPrePostNivelacijePage() {
                     </div>
                     <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">Obuhvat</div><div className="nivelacija-kpi-value">{response.totals.vendorsCount} dobavljaca / {response.totals.articlesCount} artikala</div></div>
                     <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">Aktivni artikli</div><div className="nivelacija-kpi-value">{response.totals.activeArticlesCount}</div></div>
+                </div>
+            )}
+
+            {!!response && !loading && (
+                <div className="nivelacija-kpis nivelacija-kpis-advanced">
+                    <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">⚡ Prosecan momentum</div><div className="nivelacija-kpi-value">{fmtNullableRsd(response.avgMomentumRevenue)}</div></div>
+                    <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">🟦 Prosecan DiD promet</div><div className="nivelacija-kpi-value">{fmtNullableRsd(response.avgDidRevenue)}</div></div>
+                    <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">📉 Prosecna elasticnost</div><div className="nivelacija-kpi-value">{fmtNullableElasticity(response.avgElasticity)}</div></div>
+                    <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">🚨 OOS stopa</div><div className="nivelacija-kpi-value">{fmtNullableSharePct(response.oosRate)}</div></div>
+                    <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">💸 Prosecna izgubljena prodaja (OOS)</div><div className="nivelacija-kpi-value">{fmtNullableRsd(response.avgLostSalesOOS)}</div></div>
+                    <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">📊 Status metrika</div><div className="nivelacija-kpi-value">{response.metricsStatus ? "Partial" : "OK"}</div></div>
+                </div>
+            )}
+
+            {!!response?.metricsStatus && !loading && (
+                <div className="nivelacija-metrics-status">
+                    ⚠️ {response.metricsStatus}
                 </div>
             )}
 
@@ -694,6 +843,34 @@ export default function ProdajaPrePostNivelacijePage() {
                 </div>
             )}
 
+            {priceBucketStats.length > 0 && (
+                <div className="nivelacija-table-wrap">
+                    <h3 className="nivelacija-table-title">Segmentacija po cenovnom razredu (Price Bucket)</h3>
+                    <div className="nivelacija-scroll">
+                        <table className="nivelacija-table">
+                            <thead>
+                                <tr>
+                                    <th>Razred promene cene</th>
+                                    <th className="align-right">Broj SKU</th>
+                                    <th className="align-right">Promena kolicine</th>
+                                    <th className="align-right">Promena prometa</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {priceBucketStats.map((b) => (
+                                    <tr key={b.bucket}>
+                                        <td><span className={`bucket-badge bucket-${b.bucket.replace(/[^a-zA-Z0-9]/g, "-")}`}>{b.bucket}</span></td>
+                                        <td className="align-right">{b.count}</td>
+                                        <td className={`align-right ${b.changeQty >= 0 ? "delta-pos" : "delta-neg"}`}>{b.changeQty}</td>
+                                        <td className={`align-right ${b.changeRevenue >= 0 ? "delta-pos" : "delta-neg"}`}>{fmtRsd(b.changeRevenue)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             <div className="nivelacija-grid">
                 <div className="nivelacija-card">
                     <h3 className="nivelacija-card-title">Pre vs posle po dobavljacu</h3>
@@ -769,10 +946,23 @@ export default function ProdajaPrePostNivelacijePage() {
                                         <SortButton label={col.label} right={col.right} onClick={() => setSortArticle(col.field)} marker={sortMark(col.field, articleSort.field, articleSort.direction)} />
                                     </th>
                                 ))}
+                                <th>Klasifikacija</th>
+                                <th className="align-right">Log rast %</th>
+                                <th>Pouzdanost</th>
+                                <th>Akcija</th>
+                                <th className="align-right">Rolling 7d pre</th>
+                                <th className="align-right">Rolling 7d posle</th>
+                                <th className="align-right">Momentum</th>
+                                <th className="align-right">OOS %</th>
+                                <th className="align-right">Lost sales (OOS)</th>
+                                <th className="align-right">DiD promet</th>
+                                <th className="align-right">DiD qty</th>
+                                <th className="align-right">Elasticnost</th>
+                                <th>Metric reason</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {sortedArticleStats.length === 0 && <tr><td colSpan={articleColumns.length} className="empty-state">Nema podataka za izabrane filtere.</td></tr>}
+                            {sortedArticleStats.length === 0 && <tr><td colSpan={articleColumns.length + articleExtraColumns} className="empty-state">Nema podataka za izabrane filtere.</td></tr>}
                             {sortedArticleStats.map((x, idx) => (
                                 <tr key={`${x.vendorId ?? "n/a"}-${x.sku}-${x.eventDate}-${idx}`}>
                                     <td>{new Date(x.eventDate).toLocaleDateString("sr-RS")}</td>
@@ -789,6 +979,19 @@ export default function ProdajaPrePostNivelacijePage() {
                                     <td className="align-right">{fmtRsd(Number(x.postRevenue))}</td>
                                     <td className={`align-right ${Number(x.changeRevenue) >= 0 ? "delta-pos" : "delta-neg"}`}>{fmtRsd(Number(x.changeRevenue))}</td>
                                     <td className={`align-right ${Number(x.changePercent) >= 0 ? "delta-pos" : "delta-neg"}`}>{fmtPct(Number(x.changePercent))}</td>
+                                    <td>{(() => { const cls = skuClassify(x); return <span className={`sku-badge sku-badge-${cls}`}>{cls}</span>; })()}</td>
+                                    <td className="align-right">{(() => { const lg = logGrowthPct(Number(x.preRevenue), Number(x.postRevenue)); return lg != null ? fmtPct(lg) : "—"; })()}</td>
+                                    <td>{(() => { const c = confidenceScore(x); return <span className={`confidence-badge confidence-badge-${c}`}>{c}</span>; })()}</td>
+                                    <td>{(() => { const a = actionRecommendation(x); return <span className={`action-badge action-badge-${a}`}>{a}</span>; })()}</td>
+                                    <td className="align-right"><span title={x.metricReason ?? ""}>{metricText(fmtNullableRsd(x.rolling7dPreRevenue), x.metricReason)}</span></td>
+                                    <td className="align-right"><span title={x.metricReason ?? ""}>{metricText(fmtNullableRsd(x.rolling7dPostRevenue), x.metricReason)}</span></td>
+                                    <td className={`align-right ${Number(x.momentumRevenue ?? 0) >= 0 ? "delta-pos" : "delta-neg"}`}><span title={x.metricReason ?? ""}>{metricText(fmtNullableRsd(x.momentumRevenue), x.metricReason)}</span></td>
+                                    <td className="align-right"><span title={x.metricReason ?? ""}>{metricText(fmtNullableSharePct(x.oosRate), x.metricReason)}</span></td>
+                                    <td className="align-right"><span title={x.metricReason ?? ""}>{metricText(fmtNullableRsd(x.lostSalesOOS), x.metricReason)}</span></td>
+                                    <td className={`align-right ${Number(x.didRevenue ?? 0) >= 0 ? "delta-pos" : "delta-neg"}`}><span title={x.metricReason ?? ""}>{metricText(fmtNullableRsd(x.didRevenue), x.metricReason)}</span></td>
+                                    <td className={`align-right ${Number(x.didQty ?? 0) >= 0 ? "delta-pos" : "delta-neg"}`}><span title={x.metricReason ?? ""}>{metricText(fmtNullableQty(x.didQty), x.metricReason)}</span></td>
+                                    <td className="align-right"><span title={x.metricReason ?? ""}>{metricText(fmtNullableElasticity(x.priceElasticity), x.metricReason)}</span></td>
+                                    <td><span className="metric-reason-badge" title={x.metricReason ?? ""}>{x.metricReason ?? "OK"}</span></td>
                                 </tr>
                             ))}
                         </tbody>

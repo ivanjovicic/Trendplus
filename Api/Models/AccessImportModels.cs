@@ -83,6 +83,33 @@ namespace Api.Models
         public string Status { get; set; } = string.Empty;
         public string? SummaryJson { get; set; }
         public string? ErrorMessage { get; set; }
+
+        // Enhanced (migration 015)
+        public int? DurationSeconds { get; set; }
+        public int TotalImported { get; set; }
+        public int TotalUpdated { get; set; }
+        public int TotalErrors { get; set; }
+        public string DataOrigin { get; set; } = "access";
+    }
+
+    public sealed class AccessImportLogDto
+    {
+        public long Id { get; set; }
+        public long BatchId { get; set; }
+        public string TableName { get; set; } = string.Empty;
+        public int RowIndex { get; set; }
+        public string Severity { get; set; } = "info";
+        public string Message { get; set; } = string.Empty;
+        public string? SourceRowJson { get; set; }
+        public DateTime CreatedAtUtc { get; set; }
+    }
+
+    public sealed class BatchDetailDto
+    {
+        public AccessImportBatchDto Batch { get; set; } = null!;
+        public List<AccessImportLogDto> Logs { get; set; } = new();
+        public Dictionary<string, int> LogCountBySeverity { get; set; } = new();
+        public Dictionary<string, int> LogCountByTable { get; set; } = new();
     }
 
     public sealed class DeleteBatchResult

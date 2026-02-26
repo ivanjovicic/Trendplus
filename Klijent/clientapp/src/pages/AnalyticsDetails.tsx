@@ -1,655 +1,480 @@
-﻿import React, { useCallback, useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, LineChart, Line } from 'recharts';
-import { getInventoryStatus, getTopProducts } from "../services/analyticsApi";
-import type { InventoryStatus, TopProductsResult } from "../types/analytics";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  checkAnalyticsHealth,
+  getDailySales,
+  getDashboardAdvanced,
+  getInventoryStatus,
+  getSalesSummary,
+  getTopProductsAdvanced,
+  getValidationCompleteness,
+  getValidationFreshness,
+  getValidationLostSales,
+  getValidationNegativeQty,
+} from "../services/analyticsApi";
+import type { DashboardValidationEndpoint, DailySale, TopProductAdvancedItem, TopProductsAdvancedResult } from "../types/analytics";
+import "./AnalyticsDetails.css";
 
-interface TransactionStats {
-  avgItemsPerTransaction: number;
-  avgTransactionValue: number;
-  totalTransactions: number;
-}
+type DatePreset = "today" | "yesterday" | "7d" | "30d" | "90d" | "thisMonth" | "lastMonth" | "custom";
+type TopTab = "revenue" | "units" | "velocity" | "margin";
+type Tone = "good" | "warning" | "critical" | "neutral";
 
-interface PaymentMethodData {
-  nacinPlacanja: string;
-  totalRevenue: number;
-  transactionCount: number;
-  [key: string]: string | number;
-}
-
-interface WeekdayData {
-  dayOfWeek: string;
-  dayName: string;
-  totalRevenue: number;
-  transactionCount: number;
-  [key: string]: string | number;
-}
-
-interface HourData {
-  hour: number;
-  totalRevenue: number;
-  transactionCount: number;
-  [key: string]: number;
-}
-
-interface ReorderSuggestion {
-  id: number;
-  naziv: string;
-  kolicina: number;
-  minimalnaKolicina: number;
-  kategorija: string;
-  nabavnaCena: number;
-}
-
-interface DailySalesComparison {
+interface TrendPoint {
   date: string;
-  totalRevenue: number;
-  transactionCount: number;
-  avgBasketValue: number;
+  revenue: number;
+  ma7: number | null;
+  ma30: number | null;
+  anomaly: "spike" | "drop" | null;
 }
 
-interface CategoryTrend {
-  date: string;
-  [key: string]: string | number; // Allow both string (date) and number (revenue values)
+const PRESETS: Record<DatePreset, string> = {
+  today: "Danas",
+  yesterday: "Juce",
+  "7d": "Poslednjih 7 dana",
+  "30d": "Poslednjih 30 dana",
+  "90d": "Poslednjih 90 dana",
+  thisMonth: "Ovaj mesec",
+  lastMonth: "Prosli mesec",
+  custom: "Prilagodjeno",
+};
+
+const fmtCur = (v: number) => `${new Intl.NumberFormat("sr-RS", { maximumFractionDigits: 2 }).format(v)} RSD`;
+const fmtNum = (v: number, d = 0) => new Intl.NumberFormat("sr-RS", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+const fmtPct = (v?: number | null, d = 1) => (v == null || Number.isNaN(v) ? "N/A" : `${fmtNum(v, d)}%`);
+const tone = (s?: string | null): Tone => (!s ? "neutral" : s === "error" ? "critical" : (s as Tone));
+const toneText = (t: Tone) => (t === "good" ? "Dobro" : t === "warning" ? "Upozorenje" : t === "critical" ? "Kriticno" : "Neutralno");
+const trendArrow = (v?: number | null) => (v == null ? "\u2022" : v >= 0 ? "\u2191" : "\u2193");
+
+function inDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const h = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${d}T${h}:${mi}`;
 }
 
-const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#10b981', '#6366f1', '#f97316'];
+function presetRange(p: DatePreset): { from: string; to: string } | null {
+  const now = new Date();
+  const from = new Date(now);
+  const to = new Date(now);
+  to.setHours(23, 59, 59, 999);
+  if (p === "today") from.setHours(0, 0, 0, 0);
+  else if (p === "yesterday") {
+    from.setDate(now.getDate() - 1);
+    to.setDate(now.getDate() - 1);
+    from.setHours(0, 0, 0, 0);
+  } else if (p === "7d") from.setDate(now.getDate() - 6);
+  else if (p === "30d") from.setDate(now.getDate() - 29);
+  else if (p === "90d") from.setDate(now.getDate() - 89);
+  else if (p === "thisMonth") from.setDate(1);
+  else if (p === "lastMonth") {
+    from.setMonth(now.getMonth() - 1, 1);
+    to.setMonth(now.getMonth(), 0);
+  } else return null;
+  from.setHours(0, 0, 0, 0);
+  return { from: inDate(from), to: inDate(to) };
+}
+
+function moving(values: number[], w: number): Array<number | null> {
+  return values.map((_, i) => (i + 1 < w ? null : values.slice(i - w + 1, i + 1).reduce((a, b) => a + b, 0) / w));
+}
+
+function slope(values: number[]): number | null {
+  if (values.length < 2) return null;
+  const n = values.length;
+  const xm = (n - 1) / 2;
+  const ym = values.reduce((a, b) => a + b, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < n; i += 1) {
+    num += (i - xm) * (values[i] - ym);
+    den += (i - xm) * (i - xm);
+  }
+  return den === 0 ? null : num / den;
+}
+
+function std(values: number[]): number {
+  if (values.length < 2) return 0;
+  const m = values.reduce((a, b) => a + b, 0) / values.length;
+  const v = values.reduce((a, x) => a + (x - m) ** 2, 0) / values.length;
+  return Math.sqrt(v);
+}
+
+function topRows(data: TopProductsAdvancedResult | null, tab: TopTab): TopProductAdvancedItem[] {
+  if (!data) return [];
+  if (tab === "revenue") return data.byRevenue;
+  if (tab === "units") return data.byUnits;
+  if (tab === "velocity") return data.byVelocity;
+  return data.byMarginImpact;
+}
 
 export default function AnalyticsDetails() {
-  const [fromDate, setFromDate] = useState<string>(() => {
-    const now = new Date();
-    const start = new Date(now);
-    start.setDate(now.getDate() - 30);
-    start.setHours(0, 0, 0, 0);
-    return start.toISOString().slice(0, 16);
-  });
-  const [toDate, setToDate] = useState<string>(() => {
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    return end.toISOString().slice(0, 16);
-  });
-  const [top, setTop] = useState(10);
-  const [lowStockThreshold, setLowStockThreshold] = useState(2);
-  const [dateRangePreset, setDateRangePreset] = useState<string>("30d");
-  const [topProducts, setTopProducts] = useState<TopProductsResult | null>(null);
-  const [inventory, setInventory] = useState<InventoryStatus | null>(null);
-  const [transactionStats, setTransactionStats] = useState<TransactionStats | null>(null);
-  const [paymentData, setPaymentData] = useState<PaymentMethodData[]>([]);
-  const [weekdayData, setWeekdayData] = useState<WeekdayData[]>([]);
-  const [hourData, setHourData] = useState<HourData[]>([]);
-  const [reorderSuggestions, setReorderSuggestions] = useState<ReorderSuggestion[]>([]);
-  const [dailySalesComparison, setDailySalesComparison] = useState<DailySalesComparison[]>([]);
-  const [categoryTrends, setCategoryTrends] = useState<CategoryTrend[]>([]);
+  const [preset, setPreset] = useState<DatePreset>("30d");
+  const [fromDate, setFromDate] = useState(() => presetRange("30d")?.from ?? inDate(new Date()));
+  const [toDate, setToDate] = useState(() => presetRange("30d")?.to ?? inDate(new Date()));
+  const [topTab, setTopTab] = useState<TopTab>("revenue");
+  const [showFullList, setShowFullList] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [errors, setErrors] = useState<{ topProducts?: string; inventory?: string }>({});
-
-  const applyDateRangePreset = (preset: string) => {
-    setDateRangePreset(preset);
-    const now = new Date();
-    const start = new Date(now);
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
-    
-    console.log("📅 applyDateRangePreset - preset:", preset, "now:", now.toISOString());
-    
-    switch (preset) {
-      case "today":
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "yesterday":
-        start.setDate(now.getDate() - 1);
-        start.setHours(0, 0, 0, 0);
-        end.setDate(now.getDate() - 1);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "7d":
-        start.setDate(now.getDate() - 7);
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "30d":
-        start.setDate(now.getDate() - 30);
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "90d":
-        start.setDate(now.getDate() - 90);
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "thisMonth":
-        start.setDate(1);
-        start.setHours(0, 0, 0, 0);
-        break;
-      case "lastMonth":
-        start.setMonth(now.getMonth() - 1, 1);
-        start.setHours(0, 0, 0, 0);
-        end.setMonth(now.getMonth(), 0);
-        end.setHours(23, 59, 59, 999);
-        break;
-      case "custom":
-        return;
-      default:
-        return;
-    }
-    
-    const startISO = start.toISOString().slice(0, 16);
-    const endISO = end.toISOString().slice(0, 16);
-    
-    console.log("📅 Setting dates - start:", startISO, "end:", endISO);
-    
-    setFromDate(startISO);
-    setToDate(endISO);
-  };
+  const [errors, setErrors] = useState<string[]>([]);
+  const [healthText, setHealthText] = useState("");
+  const [summary, setSummary] = useState<{ totalRevenue: number; totalTransactions: number; totalUnits: number } | null>(null);
+  const [daily, setDaily] = useState<DailySale[]>([]);
+  const [inventory, setInventory] = useState<{ totalSkuCount: number; lowStockCount: number; outOfStockCount: number } | null>(null);
+  const [top, setTop] = useState<TopProductsAdvancedResult | null>(null);
+  const [validC, setValidC] = useState<DashboardValidationEndpoint | null>(null);
+  const [validF, setValidF] = useState<DashboardValidationEndpoint | null>(null);
+  const [validL, setValidL] = useState<DashboardValidationEndpoint | null>(null);
+  const [validN, setValidN] = useState<DashboardValidationEndpoint | null>(null);
+  const [adv, setAdv] = useState<{ cards: Array<{ key: string; value: number; trendPct?: number | null; status: string; subtitle: string }>; insights: Array<{ badge: string; description: string; color?: string }>; actions: Array<{ priority: string; title: string; recommendation: string }>; validations: Array<{ severity: string; message: string }> } | null>(null);
 
   const load = useCallback(async () => {
-    console.log("🔄 Starting load() - fromDate:", fromDate, "toDate:", toDate);
     setLoading(true);
-    setErrors({});
-    const newErrors: typeof errors = {};
-
-    const API = import.meta.env.VITE_API_BASE_URL;
-    console.log("🌐 API Base URL:", API);
-
-    try {
-      const t = await getTopProducts(top, fromDate || undefined, toDate || undefined, true); // Dodaj parametar za cached
-      setTopProducts(t);
-    } catch (e: unknown) {
-      console.error("❌ Top products greška:", e);
-      newErrors.topProducts = e instanceof Error ? e.message : "Greška pri učitavanju top proizvoda";
-      setTopProducts(null);
-    }
-
-    try {
-      const i = await getInventoryStatus(lowStockThreshold, true); // Dodaj parametar za cached
-      setInventory(i);
-    } catch (e: unknown) {
-      console.error("Inventory greška:", e);
-      newErrors.inventory = e instanceof Error ? e.message : "Greška pri učitavanju statusa zaliha";
-      setInventory(null);
-    }
-
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/transaction-stats?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTransactionStats(data);
-      }
-    } catch (e) {
-      console.error("Transaction stats greška:", e);
-    }
-
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/by-payment?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPaymentData(data);
-      }
-    } catch (e) {
-      console.error("Payment data greška:", e);
-    }
-
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/by-weekday?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setWeekdayData(data);
-      }
-    } catch (e) {
-      console.error("Weekday data greška:", e);
-    }
-
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/by-hour?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setHourData(data);
-      }
-    } catch (e) {
-      console.error("Hour data greška:", e);
-    }
-
-    try {
-      const res = await fetch(`${API}/api/analytics/reorder-suggestions`);
-      if (res.ok) {
-        const data = await res.json();
-        setReorderSuggestions(data);
-      }
-    } catch (e) {
-      console.error("Reorder suggestions greška:", e);
-    }
-
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/daily?${params.toString()}`);
-      if (res.ok) {
-        const data: Array<{date: string; totalRevenue: number; transactionCount: number}> = await res.json();
-        setDailySalesComparison(data.map((item) => ({
-          date: item.date,
-          totalRevenue: item.totalRevenue,
-          transactionCount: item.transactionCount,
-          avgBasketValue: item.totalRevenue / (item.transactionCount || 1)
-        })));
-      }
-    } catch (e) {
-      console.error("Daily sales comparison greška:", e);
-    }
-
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.append("fromDate", fromDate);
-      if (toDate) params.append("toDate", toDate);
-      const res = await fetch(`${API}/api/analytics/sales/category-trends?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCategoryTrends(data);
-      }
-    } catch (e) {
-      console.error("Category trends greška:", e);
-    }
-
-    setErrors(newErrors);
+    setErrors([]);
+    const rs = await Promise.allSettled([
+      checkAnalyticsHealth(),
+      getSalesSummary(fromDate, toDate, true),
+      getDailySales(fromDate, toDate, true),
+      getInventoryStatus(2, true),
+      getTopProductsAdvanced(20, fromDate, toDate, true),
+      getDashboardAdvanced(fromDate, toDate, true),
+      getValidationCompleteness(true),
+      getValidationFreshness(true),
+      getValidationLostSales(true),
+      getValidationNegativeQty(fromDate, toDate, true),
+    ]);
+    const errs: string[] = [];
+    if (rs[0].status === "fulfilled") setHealthText(`Analytics baza: ${rs[0].value.tables.salesFacts} prodaja, ${rs[0].value.tables.salesLineFacts} stavki, ${rs[0].value.tables.productsDim} proizvoda.`);
+    else errs.push("Health check nije dostupan.");
+    if (rs[1].status === "fulfilled") setSummary(rs[1].value); else errs.push("Sazetak nije ucitan.");
+    if (rs[2].status === "fulfilled") setDaily(rs[2].value); else errs.push("Dnevna serija nije ucitana.");
+    if (rs[3].status === "fulfilled") setInventory(rs[3].value); else errs.push("Zalihe nisu ucitane.");
+    if (rs[4].status === "fulfilled") setTop(rs[4].value); else errs.push("Top lista nije ucitana.");
+    if (rs[5].status === "fulfilled") setAdv(rs[5].value); else errs.push("Advanced snapshot nije ucitan.");
+    setValidC(rs[6].status === "fulfilled" ? rs[6].value : null);
+    setValidF(rs[7].status === "fulfilled" ? rs[7].value : null);
+    setValidL(rs[8].status === "fulfilled" ? rs[8].value : null);
+    setValidN(rs[9].status === "fulfilled" ? rs[9].value : null);
+    setErrors(errs);
     setLoading(false);
-  }, [fromDate, toDate, top, lowStockThreshold]);
+  }, [fromDate, toDate]);
 
   useEffect(() => {
-    console.log("📅 useEffect triggered - fromDate:", fromDate, "toDate:", toDate);
-    if (fromDate && toDate) {
-      console.log("✅ Calling load()...");
-      void load();
-    } else {
-      console.log("⚠️ Skipping load() - missing dates");
-    }
-  }, [load, fromDate, toDate]); // eslint-disable-line react-hooks/exhaustive-deps
+    void load();
+  }, [load]);
 
-  const formatCurrency = (x: number) =>
-    x.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " RSD";
+  useEffect(() => {
+    if (!showFullList) return;
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowFullList(false);
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [showFullList]);
 
-  const hasErrors = Object.keys(errors).length > 0;
+  const derived = useMemo(() => {
+    const days = Math.max(1, Math.floor((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (24 * 3600 * 1000)) + 1);
+    const rev = summary?.totalRevenue ?? 0;
+    const tx = summary?.totalTransactions ?? 0;
+    const units = summary?.totalUnits ?? 0;
+    return { days, revPerDay: rev / days, txPerDay: tx / days, unitsPerDay: units / days };
+  }, [fromDate, summary, toDate]);
+
+  const trend = useMemo<TrendPoint[]>(() => {
+    const s = [...daily].sort((a, b) => a.date.localeCompare(b.date));
+    if (s.length === 0) return [];
+    const r = s.map((x) => x.totalRevenue);
+    const m7 = moving(r, 7);
+    const m30 = moving(r, 30);
+    const dev = std(r);
+    return s.map((x, i) => {
+      const b = m30[i] ?? m7[i] ?? x.totalRevenue;
+      const d = x.totalRevenue - b;
+      const a = dev > 0 && d >= dev * 2 ? "spike" : dev > 0 && d <= -dev * 2 ? "drop" : null;
+      return { date: x.date, revenue: x.totalRevenue, ma7: m7[i], ma30: m30[i], anomaly: a };
+    });
+  }, [daily]);
+
+  const metric = useMemo(() => {
+    const l7 = trend.slice(-7).map((x) => x.revenue);
+    const p7 = trend.slice(-14, -7).map((x) => x.revenue);
+    const sl = slope(l7);
+    const sL = l7.reduce((a, b) => a + b, 0);
+    const sP = p7.reduce((a, b) => a + b, 0);
+    const pct = sP > 0 ? ((sL - sP) / sP) * 100 : null;
+    const oos = inventory?.outOfStockCount ?? 0;
+    const total = inventory?.totalSkuCount ?? 0;
+    const inStock = total > 0 ? ((total - oos) / total) * 100 : null;
+    const red = total > 0 ? ((inventory?.lowStockCount ?? 0) / total) * 100 : null;
+    const pareto = adv?.cards.find((c) => c.key === "pareto")?.value ?? null;
+    return { sl, pct, inStock, red, pareto };
+  }, [adv?.cards, inventory, trend]);
+
+  const shortTop = useMemo(() => topRows(top, topTab).slice(0, 5), [top, topTab]);
+  const fullTop = useMemo(() => topRows(top, topTab).slice(0, 20), [top, topTab]);
+  const gainers = useMemo(
+    () =>
+      (top?.byRevenue ?? [])
+        .filter((x) => (x.trendPct ?? 0) > 0)
+        .sort((a, b) => (b.trendPct ?? 0) - (a.trendPct ?? 0))
+        .slice(0, 5),
+    [top]
+  );
+  const losers = useMemo(
+    () =>
+      (top?.byRevenue ?? [])
+        .filter((x) => (x.trendPct ?? 0) < 0)
+        .sort((a, b) => (a.trendPct ?? 0) - (b.trendPct ?? 0))
+        .slice(0, 5),
+    [top]
+  );
 
   return (
-    <div className="card" style={{ maxWidth: 1400 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>📊 Detaljne analize</h2>
-        
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+    <div className="analytics-details">
+      <header className="ad-header">
+        <div>
+          <h1>Detaljne analize</h1>
+          <p>{healthText || "Premium dark analytics pregled"}</p>
+        </div>
+        <div className="ad-controls">
           <select
-            value={dateRangePreset}
-            onChange={(e) => applyDateRangePreset(e.target.value)}
-            style={{
-              padding: "10px 16px",
-              fontSize: 14,
-              fontWeight: 500,
-              border: "2px solid #e5e7eb",
-              borderRadius: 8,
-              background: "white",
-              cursor: "pointer",
-              minWidth: 200
+            value={preset}
+            onChange={(e) => {
+              const p = e.target.value as DatePreset;
+              setPreset(p);
+              const r = presetRange(p);
+              if (!r) return;
+              setFromDate(r.from);
+              setToDate(r.to);
             }}
           >
-            <option value="today">📅 Danas</option>
-            <option value="yesterday">📅 Juče</option>
-            <option value="7d">📅 Poslednjih 7 dana</option>
-            <option value="30d">📅 Poslednjih 30 dana</option>
-            <option value="90d">📅 Poslednjih 90 dana</option>
-            <option value="thisMonth">📅 Ovaj mesec</option>
-            <option value="lastMonth">📅 Prošli mesec</option>
-            <option value="custom">⚙️ Prilagođeni period</option>
+            {Object.entries(PRESETS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
           </select>
-          
-          <button onClick={load} className="button-big" style={{ background: "#059669", padding: "10px 20px" }}>
-            🔄 Osveži
+          <button onClick={() => void load()} disabled={loading}>
+            Osvezi
           </button>
         </div>
-      </div>
+      </header>
 
-      {hasErrors && (
-        <div style={{ background: "#fef2f2", border: "2px solid #dc2626", borderRadius: 8, padding: 16, marginBottom: 20 }}>
-          <div style={{ fontWeight: 600, color: "#dc2626", marginBottom: 8 }}>⚠️ Problem sa učitavanjem podataka</div>
-          {errors.topProducts && <div style={{ fontSize: 13, color: "#7f1d1d" }}>• Top proizvodi: {errors.topProducts}</div>}
-          {errors.inventory && <div style={{ fontSize: 13, color: "#7f1d1d" }}>• Zalihe: {errors.inventory}</div>}
-        </div>
+      {preset === "custom" && (
+        <section className="ad-panel ad-custom">
+          <label>
+            Od
+            <input type="datetime-local" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          </label>
+          <label>
+            Do
+            <input type="datetime-local" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          </label>
+        </section>
       )}
 
-      {dateRangePreset === "custom" && (
-        <div style={{ background: "#f9fafb", padding: 16, borderRadius: 8, marginBottom: 20, border: "2px solid #e5e7eb" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12, alignItems: "end" }}>
-            <div>
-              <label className="field-label">Od datuma</label>
-              <input className="input-big" type="datetime-local" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+      {errors.length > 0 && (
+        <section className="ad-panel ad-error">
+          <h3>Greske pri ucitavanju</h3>
+          {errors.map((x, i) => (
+            <div key={`e-${i}`}>- {x}</div>
+          ))}
+        </section>
+      )}
+
+      {loading && (
+        <section className="ad-skeleton-grid">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={`sk-${i}`} className="ad-skeleton" />
+          ))}
+        </section>
+      )}
+
+      {!loading && (
+        <>
+          <section className="ad-grid ad-kpi-grid">
+            <article className="ad-kpi-card"><span>Promet</span><strong>{fmtCur(summary?.totalRevenue ?? 0)}</strong><small>Ukupno u periodu</small></article>
+            <article className="ad-kpi-card"><span>Transakcije</span><strong>{fmtNum(summary?.totalTransactions ?? 0)}</strong><small>Ukupan broj racuna</small></article>
+            <article className="ad-kpi-card"><span>Jedinice</span><strong>{fmtNum(summary?.totalUnits ?? 0)}</strong><small>Ukupan broj komada</small></article>
+            <article className="ad-kpi-card"><span>Promet/dan</span><strong>{fmtCur(derived.revPerDay)}</strong><small>Formula: Promet / broj dana</small></article>
+            <article className="ad-kpi-card"><span>Transakcije/dan</span><strong>{fmtNum(derived.txPerDay, 1)}</strong><small>Formula: Racuni / broj dana</small></article>
+            <article className="ad-kpi-card"><span>Jedinice/dan</span><strong>{fmtNum(derived.unitsPerDay, 1)}</strong><small>Formula: Komadi / broj dana</small></article>
+          </section>
+
+          <section className="ad-grid ad-risk-grid">
+            <article className={`ad-risk-card ${metric.inStock != null && metric.inStock >= 95 ? "good" : metric.inStock != null && metric.inStock >= 90 ? "warning" : "critical"}`}>
+              <span>In-stock %</span><strong>{fmtPct(metric.inStock)}</strong><small>(SKU na stanju / ukupan SKU) * 100</small>
+            </article>
+            <article className={`ad-risk-card ${tone(validL?.status)}`}><span>OOS + Lost sales</span><strong>{fmtNum(inventory?.outOfStockCount ?? 0)} | {fmtCur(validL?.lostSalesEstimate ?? 0)}</strong><small>Rizik od rasprodatosti</small></article>
+            <article className={`ad-risk-card ${metric.red != null && metric.red < 8 ? "good" : metric.red != null && metric.red < 15 ? "warning" : "critical"}`}><span>Red zone SKU %</span><strong>{fmtPct(metric.red)}</strong><small>Niska zaliha / ukupan SKU</small></article>
+            <article className={`ad-risk-card ${metric.pareto != null && metric.pareto > 85 ? "warning" : "good"}`}><span>Pareto 80/20</span><strong>{fmtPct(metric.pareto)}</strong><small>Udeo prometa top 20 SKU</small></article>
+            <article className={`ad-risk-card ${tone(validF?.status)}`}><span>Data Health</span><strong>{validC?.score == null ? "N/A" : fmtPct(validC.score * 100)} | {validF?.freshnessHours == null ? "N/A" : `${fmtNum(validF.freshnessHours, 1)}h`}</strong><small>Completeness + freshness</small></article>
+          </section>
+
+          <section className="ad-grid ad-main-grid">
+            <article className="ad-panel">
+              <h3>Trend performansi</h3>
+              {trend.length > 0 ? (
+                <div className="ad-chart">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={trend}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2a3556" />
+                      <XAxis dataKey="date" tick={{ fill: "#9fb2de", fontSize: 12 }} />
+                      <YAxis tick={{ fill: "#9fb2de", fontSize: 12 }} />
+                      <Tooltip formatter={(v: number | string | undefined, n?: string) => [fmtCur(Number(v ?? 0)), n ?? "vrednost"]} contentStyle={{ background: "#0f1730", border: "1px solid #32406b" }} />
+                      <Line type="monotone" dataKey="revenue" stroke="#40d69f" strokeWidth={2.2} dot={false} name="Promet" />
+                      <Line type="monotone" dataKey="ma7" stroke="#6ca8ff" strokeWidth={2} dot={false} name="MA7" />
+                      <Line type="monotone" dataKey="ma30" stroke="#ffbe5a" strokeWidth={2} dot={false} name="MA30" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="ad-empty">Nema podataka za trend grafikon.</div>
+              )}
+              <div className="ad-meta"><span>Momentum: {fmtPct(metric.pct)}</span><span>Slope: {metric.sl == null ? "N/A" : fmtNum(metric.sl, 2)}</span></div>
+            </article>
+            <article className="ad-panel">
+              <h3>Quick Insights</h3>
+              {(adv?.insights ?? []).slice(0, 3).map((x, i) => (
+                <div key={`qi-${i}`} className={`ad-insight ${tone(x.color)}`}>
+                  <strong>{x.badge}</strong>
+                  <p>{x.description}</p>
+                </div>
+              ))}
+              {(adv?.insights?.length ?? 0) === 0 && <div className="ad-empty">Nema insight signala.</div>}
+            </article>
+          </section>
+
+          <section className="ad-grid ad-main-grid">
+            <article className="ad-panel">
+              <h3>Top gainers</h3>
+              {gainers.length === 0 && <div className="ad-empty">Nema pozitivnih trendova.</div>}
+              {gainers.map((x) => <div key={`g-${x.productId}`} className="ad-row"><span>{x.productName}</span><strong className="up">+{fmtPct(x.trendPct)}</strong></div>)}
+            </article>
+            <article className="ad-panel">
+              <h3>Top losers</h3>
+              {losers.length === 0 && <div className="ad-empty">Nema negativnih trendova.</div>}
+              {losers.map((x) => <div key={`l-${x.productId}`} className="ad-row"><span>{x.productName}</span><strong className="down">{fmtPct(x.trendPct)}</strong></div>)}
+            </article>
+          </section>
+
+          <section className="ad-panel">
+            <div className="ad-top-head">
+              <h3>Top proizvodi (kratka lista, max 5)</h3>
+              <div className="ad-tabs">
+                <button className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Promet</button>
+                <button className={topTab === "units" ? "active" : ""} onClick={() => setTopTab("units")}>Komadi</button>
+                <button className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>Velocity</button>
+                <button className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Marza</button>
+                <button onClick={() => setShowFullList(true)}>Prikazi celu listu</button>
+              </div>
             </div>
-            <div>
-              <label className="field-label">Do datuma</label>
-              <input className="input-big" type="datetime-local" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <div className="ad-table-head">
+              <span>SKU / Artikal</span>
+              <span>Promet</span>
+              <span>Kom</span>
+              <span>Velocity</span>
+              <span>Trend</span>
+              <span>Status</span>
             </div>
-            <button onClick={load} className="button-big" style={{ background: "#3b82f6" }}>Primeni</button>
-          </div>
-        </div>
-      )}
+            {shortTop.length === 0 && <div className="ad-empty">Nema podataka za izabrani tab.</div>}
+            {shortTop.map((row) => (
+              <div key={`${topTab}-${row.productId}`} className="ad-table-row">
+                <span><strong>{row.sku}</strong><small>{row.productName}</small></span>
+                <span>{fmtCur(row.revenue)}</span>
+                <span>{fmtNum(row.units)}</span>
+                <span>{fmtNum(row.velocityUnitsPerDay, 2)}</span>
+                <span
+                  className={(row.trendPct ?? 0) >= 0 ? "up" : "down"}
+                  title="Trend u odnosu na prethodni uporedivi period"
+                >
+                  {trendArrow(row.trendPct)} {fmtPct(row.trendPct)}
+                </span>
+                <span className={`status-tag ${tone(row.stockStatus)}`}>{toneText(tone(row.stockStatus))}</span>
+              </div>
+            ))}
+          </section>
 
-      <details style={{ marginBottom: 20 }}>
-        <summary style={{ cursor: "pointer", padding: "12px 16px", background: "#f9fafb", borderRadius: 8, fontWeight: 600, fontSize: 14 }}>
-          ⚙️ Napredna podešavanja
-        </summary>
-        <div style={{ padding: 16, background: "#f9fafb", borderRadius: 8, marginTop: 8, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-          <div>
-            <label className="field-label">Top proizvoda</label>
-            <input className="input-big" type="number" min={1} max={50} value={top} onChange={(e) => setTop(Number(e.target.value))} />
-          </div>
-          <div>
-            <label className="field-label">Prag za niske zalihe</label>
-            <input className="input-big" type="number" min={0} value={lowStockThreshold} onChange={(e) => setLowStockThreshold(Number(e.target.value))} />
-          </div>
-        </div>
-      </details>
+          <section className="ad-grid ad-main-grid">
+            <article className="ad-panel">
+              <h3>Data quality</h3>
+              <div className="ad-row"><span>Completeness</span><strong>{validC?.score == null ? "N/A" : fmtPct(validC.score * 100)}</strong></div>
+              <div className="ad-row"><span>Missing core fields</span><strong>{validC?.affectedSku ?? "N/A"}</strong></div>
+              <div className="ad-row"><span>Freshness</span><strong>{validF?.freshnessHours == null ? "N/A" : `${fmtNum(validF.freshnessHours, 1)}h`}</strong></div>
+              <div className="ad-row"><span>Lost sales estimate</span><strong>{fmtCur(validL?.lostSalesEstimate ?? 0)}</strong></div>
+              <div className="ad-row">
+                <span>Negative qty</span>
+                <strong>
+                  {validN?.negativeQtyCount == null
+                    ? "N/A"
+                    : `${fmtNum(validN.negativeQtyCount)}${validN.totalRows && validN.totalRows > 0 ? ` (${fmtPct((validN.negativeQtyCount / validN.totalRows) * 100, 3)})` : ""}`}
+                </strong>
+              </div>
+            </article>
+            <article className="ad-panel">
+              <h3>Recommended actions</h3>
+              {(adv?.actions ?? []).slice(0, 5).map((a, i) => (
+                <div key={`ra-${i}`} className="ad-action">
+                  <strong>[{a.priority}] {a.title}</strong>
+                  <p>{a.recommendation}</p>
+                </div>
+              ))}
+              {(adv?.actions?.length ?? 0) === 0 && <div className="ad-empty">Nema akcija za period.</div>}
+              {(adv?.validations ?? []).slice(0, 3).map((v, i) => (
+                <div key={`rv-${i}`} className={`ad-validation ${tone(v.severity)}`}>
+                  <strong>{toneText(tone(v.severity))}</strong>
+                  <p>{v.message}</p>
+                </div>
+              ))}
+            </article>
+          </section>
 
-      {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
-
-      {!loading && !topProducts && (
-        <div style={{ padding: 20, background: "#fffbeb", borderRadius: 8, marginBottom: 20 }}>
-          <div style={{ fontWeight: 600, color: "#f59e0b" }}>⚠️ Nema top proizvoda</div>
-          <div style={{ fontSize: 14, color: "#92400e" }}>
-            topProducts state je null ili undefined. Proveri Network tab ili Console za greške.
-          </div>
-        </div>
-      )}
-
-      {!loading && transactionStats && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 20 }}>
-          <div className="card" style={{ margin: 0, border: "2px solid #3b82f6" }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>📝 Prosečno artikala po računu</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#3b82f6" }}>{transactionStats.avgItemsPerTransaction.toFixed(1)}</div>
-          </div>
-          <div className="card" style={{ margin: 0, border: "2px solid #8b5cf6" }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>💰 Prosečna vrednost računa</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#8b5cf6" }}>{formatCurrency(transactionStats.avgTransactionValue)}</div>
-          </div>
-          <div className="card" style={{ margin: 0, border: "2px solid #059669" }}>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>🧾 Ukupno računa</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{transactionStats.totalTransactions}</div>
-          </div>
-        </div>
-      )}
-
-      {!loading && (paymentData.length > 0 || weekdayData.length > 0) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-          {paymentData.length > 0 && (
-            <div className="card" style={{ margin: 0 }}>
-              <h3 style={{ marginBottom: 16 }}>💳 Prodaja po načinu plaćanja</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie 
-                    data={paymentData} 
-                    dataKey="totalRevenue" 
-                    nameKey="nacinPlacanja" 
-                    cx="50%" 
-                    cy="50%" 
-                    outerRadius={80}
-                    label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(1)}%`}
-                  >
-                    {paymentData.map((_, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {weekdayData.length > 0 && (
-            <div className="card" style={{ margin: 0 }}>
-              <h3 style={{ marginBottom: 16 }}>📅 Prodaja po danima u nedelji</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={weekdayData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="dayName" />
-                  <YAxis />
-                  <Tooltip formatter={(value, name) => {
-                    if (name === "totalRevenue") return [formatCurrency(Number(value)), "Promet"];
-                    return [value, "Transakcije"];
-                  }} />
-                  <Legend />
-                  <Bar dataKey="totalRevenue" fill="#059669" name="Promet" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      )}
-
-      {!loading && hourData.length > 0 && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <h3 style={{ marginBottom: 16 }}>⏰ Prodaja po satima (Peak Hours)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={hourData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hour" label={{ value: 'Sat', position: 'insideBottom', offset: -5 }} />
-              <YAxis />
-              <Tooltip formatter={(value, name) => {
-                if (name === "totalRevenue") return [formatCurrency(Number(value)), "Promet"];
-                return [value, "Transakcije"];
-              }} />
-              <Legend />
-              <Bar dataKey="totalRevenue" fill="#3b82f6" name="Promet" />
-              <Bar dataKey="transactionCount" fill="#f59e0b" name="Transakcije" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {!loading && dailySalesComparison.length > 0 && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <h3 style={{ marginBottom: 16 }}>📈 Kumulativna prodaja - Trend</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={dailySalesComparison}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#059669" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickFormatter={(date) => new Date(date).toLocaleDateString('sr-RS', { day: '2-digit', month: '2-digit' })} />
-              <YAxis />
-              <Tooltip 
-                formatter={(value, name) => {
-                  if (name === "totalRevenue") return [formatCurrency(Number(value)), "Promet"];
-                  if (name === "avgBasketValue") return [formatCurrency(Number(value)), "Prosečna korpa"];
-                  return [value, String(name)];
-                }}
-                labelFormatter={(label) => new Date(String(label)).toLocaleDateString('sr-RS')}
-              />
-              <Legend />
-              <Area type="monotone" dataKey="totalRevenue" stroke="#059669" fillOpacity={1} fill="url(#colorRevenue)" name="Promet" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {!loading && dailySalesComparison.length > 0 && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <h3 style={{ marginBottom: 16 }}>📊 Poređenje metrika kroz vreme</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={dailySalesComparison}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickFormatter={(date) => new Date(date).toLocaleDateString('sr-RS', { day: '2-digit', month: '2-digit' })} />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" />
-              <Tooltip 
-                formatter={(value, name) => {
-                  if (name === "totalRevenue" || name === "avgBasketValue") {
-                    return [formatCurrency(Number(value)), String(name)];
-                  }
-                  return [value, String(name)];
-                }}
-                labelFormatter={(label) => new Date(String(label)).toLocaleDateString('sr-RS')}
-              />
-              <Legend />
-              <Line yAxisId="left" type="monotone" dataKey="totalRevenue" stroke="#059669" strokeWidth={2} name="Promet" />
-              <Line yAxisId="right" type="monotone" dataKey="transactionCount" stroke="#3b82f6" strokeWidth={2} name="Transakcije" />
-              <Line yAxisId="left" type="monotone" dataKey="avgBasketValue" stroke="#f59e0b" strokeWidth={2} name="Prosečna korpa" strokeDasharray="5 5" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {!loading && categoryTrends.length > 0 && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <h3 style={{ marginBottom: 16 }}>🎯 Prodaja po kategorijama kroz vreme</h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={categoryTrends}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickFormatter={(date) => new Date(date).toLocaleDateString('sr-RS', { day: '2-digit', month: '2-digit' })} />
-              <YAxis />
-              <Tooltip 
-                formatter={(value) => formatCurrency(Number(value))}
-                labelFormatter={(label) => new Date(String(label)).toLocaleDateString('sr-RS')}
-              />
-              <Legend />
-              {categoryTrends.length > 0 && Object.keys(categoryTrends[0])
-                .filter(key => key !== 'date')
-                .map((category, index) => (
-                  <Bar key={category} dataKey={category} stackId="a" fill={COLORS[index % COLORS.length]} />
+          {showFullList && (
+            <div className="ad-modal-backdrop" onClick={() => setShowFullList(false)}>
+              <section
+                className="ad-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Cela top lista proizvoda"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="ad-modal-head">
+                  <h3>Top proizvodi - cela lista (max 20)</h3>
+                  <button className="ad-modal-close" onClick={() => setShowFullList(false)}>
+                    Zatvori
+                  </button>
+                </div>
+                <div className="ad-table-head">
+                  <span>SKU / Artikal</span>
+                  <span>Promet</span>
+                  <span>Kom</span>
+                  <span>Velocity</span>
+                  <span>Trend</span>
+                  <span>Status</span>
+                </div>
+                {fullTop.length === 0 && <div className="ad-empty">Nema podataka za izabrani tab.</div>}
+                {fullTop.map((row) => (
+                  <div key={`modal-${topTab}-${row.productId}`} className="ad-table-row">
+                    <span>
+                      <strong>{row.sku}</strong>
+                      <small>{row.productName}</small>
+                    </span>
+                    <span>{fmtCur(row.revenue)}</span>
+                    <span>{fmtNum(row.units)}</span>
+                    <span>{fmtNum(row.velocityUnitsPerDay, 2)}</span>
+                    <span
+                      className={(row.trendPct ?? 0) >= 0 ? "up" : "down"}
+                      title="Trend u odnosu na prethodni uporedivi period"
+                    >
+                      {trendArrow(row.trendPct)} {fmtPct(row.trendPct)}
+                    </span>
+                    <span className={`status-tag ${tone(row.stockStatus)}`}>{toneText(tone(row.stockStatus))}</span>
+                  </div>
                 ))}
-
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {!loading && reorderSuggestions.length > 0 && (
-        <div className="card" style={{ marginBottom: 20, border: "2px solid #dc2626" }}>
-          <h3 style={{ marginBottom: 16, color: "#dc2626" }}>🔔 Preporuke za naručivanje ({reorderSuggestions.length})</h3>
-          <div style={{ overflowX: "auto" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Artikal</th>
-                  <th>Kategorija</th>
-                  <th style={{ textAlign: "right" }}>Trenutno</th>
-                  <th style={{ textAlign: "right" }}>Minimum</th>
-                  <th style={{ textAlign: "right" }}>Predlog</th>
-                  <th style={{ textAlign: "right" }}>Nabavna cena</th>
-                  <th style={{ textAlign: "right" }}>Ukupno</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reorderSuggestions.map((item) => {
-                  const suggestedQty = Math.max(10, (item.minimalnaKolicina || 5) * 2);
-                  const totalCost = suggestedQty * (item.nabavnaCena || 0);
-                  return (
-                    <tr key={item.id}>
-                      <td style={{ fontWeight: 600 }}>{item.naziv}</td>
-                      <td>{item.kategorija || "N/A"}</td>
-                      <td style={{ textAlign: "right", color: "#dc2626", fontWeight: 700 }}>{item.kolicina}</td>
-                      <td style={{ textAlign: "right" }}>{item.minimalnaKolicina || 5}</td>
-                      <td style={{ textAlign: "right", fontWeight: 600, color: "#059669" }}>{suggestedQty}</td>
-                      <td style={{ textAlign: "right" }}>{formatCurrency(item.nabavnaCena || 0)}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700 }}>{formatCurrency(totalCost)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr style={{ background: "#f9fafb", fontWeight: 700 }}>
-                  <td colSpan={6} style={{ textAlign: "right", padding: 12 }}>UKUPAN TROŠAK NARUČIVANJA:</td>
-                  <td style={{ textAlign: "right", padding: 12, color: "#059669", fontSize: 16 }}>
-                    {formatCurrency(reorderSuggestions.reduce((sum, item) => {
-                      const suggestedQty = Math.max(10, (item.minimalnaKolicina || 5) * 2);
-                      return sum + suggestedQty * (item.nabavnaCena || 0);
-                    }, 0))}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {!loading && inventory && (
-        <div style={{ marginBottom: 20 }}>
-          <h3 style={{ marginBottom: 10 }}>📦 Status zaliha</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Broj SKU</div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{inventory.totalSkuCount}</div>
+              </section>
             </div>
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Ukupno na stanju</div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{inventory.totalOnHand}</div>
-            </div>
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Niske zalihe (prag: {lowStockThreshold})</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#f59e0b" }}>{inventory.lowStockCount}</div>
-            </div>
-            <div className="card" style={{ margin: 0 }}>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Bez zaliha</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#dc2626" }}>{inventory.outOfStockCount}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!loading && topProducts && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div>
-            <h3 style={{ marginBottom: 10 }}>💰 Top proizvodi po prometu</h3>
-            <div style={{ overflowX: "auto" }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Artikal</th>
-                    <th style={{ textAlign: "right" }}>Promet</th>
-                    <th style={{ textAlign: "right" }}>Kom</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topProducts.byRevenue.map((p) => (
-                    <tr key={p.productId}>
-                      <td>{p.productName}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700 }}>{formatCurrency(p.totalRevenue)}</td>
-                      <td style={{ textAlign: "right" }}>{p.totalUnits}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div>
-            <h3 style={{ marginBottom: 10 }}>📊 Top proizvodi po količini</h3>
-            <div style={{ overflowX: "auto" }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Artikal</th>
-                    <th style={{ textAlign: "right" }}>Kom</th>
-                    <th style={{ textAlign: "right" }}>Promet</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topProducts.byUnits.map((p) => (
-                    <tr key={p.productId}>
-                      <td>{p.productName}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700 }}>{p.totalUnits}</td>
-                      <td style={{ textAlign: "right" }}>{formatCurrency(p.totalRevenue)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );

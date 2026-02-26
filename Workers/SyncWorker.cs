@@ -20,17 +20,20 @@ namespace Workers
         private readonly ILogger<SyncWorker> _logger;
         private readonly IServiceProvider _provider;
         private readonly WorkerHealthService _healthService;
+        private readonly WorkerRuntimeControlService _controlService;
         
         private const string WorkerName = "SyncWorker";
 
         public SyncWorker(
             ILogger<SyncWorker> logger, 
             IServiceProvider provider,
-            WorkerHealthService healthService)
+            WorkerHealthService healthService,
+            WorkerRuntimeControlService controlService)
         {
             _logger = logger;
             _provider = provider;
             _healthService = healthService;
+            _controlService = controlService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -39,10 +42,39 @@ namespace Workers
             _healthService.ReportRunning(WorkerName, "Starting up...");
 
             var delayInterval = TimeSpan.FromSeconds(60);
+            var pauseCheckInterval = TimeSpan.FromSeconds(5);
             const int maxAttempts = 3;
+            var paused = false;
 
             while (!stoppingToken.IsCancellationRequested)
             {
+                if (!_controlService.IsEnabled)
+                {
+                    if (!paused)
+                    {
+                        _logger.LogInformation("{WorkerName} paused (global workers switch OFF).", WorkerName);
+                        _healthService.ReportStopped(WorkerName, "Pauziran - workers switch je iskljucen.");
+                        paused = true;
+                    }
+
+                    try
+                    {
+                        await Task.Delay(pauseCheckInterval, stoppingToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    continue;
+                }
+
+                if (paused)
+                {
+                    _logger.LogInformation("{WorkerName} resumed (global workers switch ON).", WorkerName);
+                    _healthService.ReportRunning(WorkerName, "Nastavljen rad nakon ukljucivanja workers switch-a.");
+                    paused = false;
+                }
+
                 try
                 {
                     int processed = 0;

@@ -18,6 +18,7 @@ public class AnalyticsAggregationWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AnalyticsAggregationWorker> _logger;
     private readonly WorkerHealthService _healthService;
+    private readonly WorkerRuntimeControlService _controlService;
     
     private const string WorkerName = "AnalyticsAggregationWorker";
     
@@ -28,11 +29,13 @@ public class AnalyticsAggregationWorker : BackgroundService
     public AnalyticsAggregationWorker(
         IServiceScopeFactory scopeFactory,
         ILogger<AnalyticsAggregationWorker> logger,
-        WorkerHealthService healthService)
+        WorkerHealthService healthService,
+        WorkerRuntimeControlService controlService)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
         _healthService = healthService;
+        _controlService = controlService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -42,9 +45,39 @@ public class AnalyticsAggregationWorker : BackgroundService
 
         // Wait a bit for the application to fully start
         await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        var paused = false;
+        var pauseCheckInterval = TimeSpan.FromSeconds(5);
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            if (!_controlService.IsEnabled)
+            {
+                if (!paused)
+                {
+                    _logger.LogInformation("📊 {WorkerName} paused (global workers switch OFF).", WorkerName);
+                    _healthService.ReportStopped(WorkerName, "Pauziran - workers switch je iskljucen.");
+                    paused = true;
+                }
+
+                try
+                {
+                    await Task.Delay(pauseCheckInterval, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (paused)
+            {
+                _logger.LogInformation("📊 {WorkerName} resumed (global workers switch ON).", WorkerName);
+                _healthService.ReportRunning(WorkerName, "Nastavljen rad nakon ukljucivanja workers switch-a.");
+                paused = false;
+            }
+
             try
             {
                 _healthService.ReportRunning(WorkerName, "Refreshing analytics...");

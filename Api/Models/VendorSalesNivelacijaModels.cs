@@ -20,6 +20,17 @@ public sealed class VendorSalesNivelacijaArticleStatDto
     public bool HasSalesWindow { get; set; }
     public bool PriceChanged { get; set; }
     public decimal? PriceChangePercent { get; set; }
+
+    // --- Advanced metrics ---
+    public decimal? Rolling7dPreRevenue { get; set; }
+    public decimal? Rolling7dPostRevenue { get; set; }
+    public decimal? MomentumRevenue { get; set; }
+    public decimal? PriceElasticity { get; set; }
+    public decimal? DidRevenue { get; set; }
+    public decimal? DidQty { get; set; }
+    public decimal? LostSalesOOS { get; set; }
+    public decimal? OOSRate { get; set; }
+    public string? MetricReason { get; set; } // null if all metrics are valid, else reason for nulls
 }
 
 public sealed class VendorSalesNivelacijaVendorStatDto
@@ -117,6 +128,14 @@ public sealed class VendorSalesNivelacijaResponseDto
     public List<VendorSalesNivelacijaCategoryStatDto> CategoryStats { get; set; } = [];
     public List<VendorSalesNivelacijaPriceDirectionStatDto> PriceDirectionStats { get; set; } = [];
     public List<VendorSalesNivelacijaInsightDto> Insights { get; set; } = [];
+
+    // Advanced metrics summary
+    public decimal? AvgMomentumRevenue { get; set; }
+    public decimal? AvgElasticity { get; set; }
+    public decimal? AvgDidRevenue { get; set; }
+    public decimal? AvgLostSalesOOS { get; set; }
+    public decimal? OOSRate { get; set; }
+    public string? MetricsStatus { get; set; } // null if all metrics valid, else reason
 }
 
 public sealed class VendorSalesNivelacijaOptionDto

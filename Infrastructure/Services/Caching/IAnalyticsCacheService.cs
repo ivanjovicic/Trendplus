@@ -110,6 +110,21 @@ public static class AnalyticsCacheKeys
 
     // Reorder Suggestions
     public static string ReorderSuggestions => $"{Prefix}reorder-suggestions";
+
+    // Dashboard Advanced Snapshot
+    public static string DashboardAdvanced(DateTime? from, DateTime? to) =>
+        $"{Prefix}dashboard-advanced:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+
+    // Top Products (advanced tabs)
+    public static string TopProductsAdvanced(int top, DateTime? from, DateTime? to) =>
+        $"{Prefix}top-advanced:{top}:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+
+    // Validation endpoints
+    public const string ValidationCompleteness = $"{Prefix}validation:completeness";
+    public const string ValidationFreshness = $"{Prefix}validation:freshness";
+    public const string ValidationLostSales = $"{Prefix}validation:lost-sales";
+    public static string ValidationNegativeQty(DateTime? from, DateTime? to) =>
+        $"{Prefix}validation:negative-qty:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
 }
 
 /// <summary>

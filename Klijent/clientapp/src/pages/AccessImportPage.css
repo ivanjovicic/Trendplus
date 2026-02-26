@@ -1,0 +1,566 @@
+/* ====================================================
+   Access Import Page — dark-mode card layout
+   Mirrors ProdajaPrePostNivelacijePage styling
+   ==================================================== */
+
+.accimport-page {
+    background: #0f172a;
+    color: #e5e7eb;
+    border: 1px solid #1f2937;
+    border-radius: 14px;
+    padding: 16px;
+}
+
+.accimport-title {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #f9fafb;
+}
+
+.accimport-subtitle {
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: #9ca3af;
+}
+
+/* ---- Tab bar ---- */
+
+.accimport-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #1f2937;
+    padding-bottom: 0;
+}
+
+.accimport-tab {
+    border: 1px solid #374151;
+    border-bottom: none;
+    background: #0b1220;
+    color: #9ca3af;
+    border-radius: 8px 8px 0 0;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.accimport-tab:hover {
+    color: #d1d5db;
+}
+
+.accimport-tab.active {
+    background: #111827;
+    color: #f9fafb;
+    border-color: #1f2937;
+}
+
+/* ---- Filter bar / source bar ---- */
+
+.accimport-filterbar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+
+.accimport-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.accimport-label {
+    font-size: 12px;
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+.accimport-input {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    background: #0b1220;
+    color: #e5e7eb;
+    font-size: 13px;
+}
+
+.accimport-input:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
+}
+
+.accimport-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #d1d5db;
+}
+
+.accimport-checkbox-row input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #2563eb;
+}
+
+/* ---- Buttons ---- */
+
+.accimport-actions {
+    display: flex;
+    gap: 8px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.accimport-btn {
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.accimport-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.accimport-btn-primary {
+    background: #2563eb;
+    color: #fff;
+}
+
+.accimport-btn-primary:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.accimport-btn-secondary {
+    background: #1f2937;
+    color: #e5e7eb;
+    border: 1px solid #374151;
+}
+
+.accimport-btn-secondary:hover:not(:disabled) {
+    background: #374151;
+}
+
+.accimport-btn-success {
+    background: #059669;
+    color: #fff;
+}
+
+.accimport-btn-success:hover:not(:disabled) {
+    background: #047857;
+}
+
+.accimport-btn-danger {
+    background: transparent;
+    color: #f87171;
+    border: 1px solid #7f1d1d;
+    font-size: 12px;
+    padding: 4px 10px;
+}
+
+.accimport-btn-danger:hover:not(:disabled) {
+    background: rgba(127, 29, 29, 0.3);
+}
+
+.accimport-btn-clear {
+    background: transparent;
+    color: #f87171;
+    border: 1px solid #7f1d1d;
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+/* ---- File selector row ---- */
+
+.accimport-file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.accimport-file-name {
+    font-size: 13px;
+    color: #9ca3af;
+}
+
+.accimport-file-name.has-file {
+    color: #34d399;
+}
+
+/* ---- Cards / KPIs ---- */
+
+.accimport-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.accimport-kpi {
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.accimport-kpi-label {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.accimport-kpi-value {
+    margin-top: 6px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #f9fafb;
+}
+
+.accimport-kpi-sub {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+/* ---- Progress card ---- */
+
+.accimport-progress {
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+
+.accimport-progress-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f9fafb;
+    margin-bottom: 8px;
+}
+
+.accimport-progress-bar-track {
+    height: 10px;
+    background: #1f2937;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.accimport-progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #34d399);
+    border-radius: 6px;
+    transition: width 0.4s ease;
+}
+
+.accimport-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* ---- Card ---- */
+
+.accimport-card {
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+
+.accimport-card-title {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f9fafb;
+}
+
+/* ---- Table ---- */
+
+.accimport-table-wrap {
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.accimport-table-title {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f9fafb;
+}
+
+.accimport-scroll {
+    max-height: 400px;
+    overflow: auto;
+    border: 1px solid #1f2937;
+    border-radius: 8px;
+}
+
+.accimport-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: #0b1220;
+}
+
+.accimport-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #1f2937;
+    color: #d1d5db;
+    text-align: left;
+    font-weight: 700;
+    padding: 8px;
+    border-bottom: 1px solid #374151;
+}
+
+.accimport-table td {
+    padding: 8px;
+    border-bottom: 1px solid #1f2937;
+}
+
+.accimport-table tr:hover {
+    background: #111827;
+}
+
+.accimport-table .align-right {
+    text-align: right;
+}
+
+/* ---- Status badges ---- */
+
+.accimport-status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.accimport-status-Completed { background: #064e3b; color: #6ee7b7; }
+.accimport-status-Running   { background: #1e3a5f; color: #93c5fd; }
+.accimport-status-Pending   { background: #1f2937; color: #9ca3af; }
+.accimport-status-Failed    { background: #7f1d1d; color: #fca5a5; }
+
+/* ---- Mapping badges ---- */
+
+.accimport-mapping-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.accimport-mapping-matched { background: #064e3b; color: #6ee7b7; }
+.accimport-mapping-missing { background: #7f1d1d; color: #fca5a5; }
+
+/* ---- Schema collapsible ---- */
+
+.accimport-schema-details {
+    border: 1px solid #1f2937;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #0b1220;
+    margin-bottom: 8px;
+}
+
+.accimport-schema-summary {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: #e5e7eb;
+}
+
+.accimport-schema-summary strong {
+    color: #f9fafb;
+}
+
+.accimport-schema-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid #374151;
+}
+
+.accimport-schema-badge.all-matched {
+    color: #34d399;
+    background: rgba(6, 78, 59, 0.3);
+    border-color: #064e3b;
+}
+
+.accimport-schema-badge.partial {
+    color: #fbbf24;
+    background: rgba(120, 53, 15, 0.3);
+    border-color: #78350f;
+}
+
+.accimport-col-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.accimport-col-chip {
+    font-size: 11px;
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 999px;
+    padding: 2px 8px;
+    color: #d1d5db;
+}
+
+/* ---- Alerts ---- */
+
+.accimport-error {
+    margin-bottom: 12px;
+    background: rgba(185, 28, 28, 0.2);
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    padding: 10px;
+    color: #fecaca;
+    font-size: 13px;
+}
+
+.accimport-warning {
+    margin-bottom: 12px;
+    background: rgba(120, 53, 15, 0.2);
+    border: 1px solid #78350f;
+    border-radius: 8px;
+    padding: 10px;
+    color: #fcd34d;
+    font-size: 13px;
+}
+
+.accimport-success {
+    margin-bottom: 12px;
+    background: rgba(6, 78, 59, 0.2);
+    border: 1px solid #064e3b;
+    border-radius: 8px;
+    padding: 10px;
+    color: #6ee7b7;
+    font-size: 13px;
+}
+
+.accimport-empty-state {
+    padding: 24px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* ---- Import result grid ---- */
+
+.accimport-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.accimport-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid #1f2937;
+}
+
+.accimport-result-entity {
+    color: #9ca3af;
+}
+
+.accimport-result-counts {
+    font-weight: 700;
+    color: #e5e7eb;
+}
+
+.accimport-result-counts .ins {
+    color: #34d399;
+}
+
+.accimport-result-counts .upd {
+    color: #60a5fa;
+}
+
+/* ---- Delete result ---- */
+
+.accimport-delete-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    background: rgba(6, 78, 59, 0.2);
+    border: 1px solid #064e3b;
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #6ee7b7;
+    font-size: 13px;
+}
+
+.accimport-delete-banner-close {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: #6ee7b7;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 1100px) {
+    .accimport-actions {
+        flex-wrap: wrap;
+    }
+    .accimport-kpis {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .accimport-tabs {
+        flex-wrap: wrap;
+    }
+    .accimport-filterbar {
+        grid-template-columns: 1fr;
+    }
+    .accimport-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .accimport-kpis {
+        grid-template-columns: 1fr 1fr;
+    }
+}

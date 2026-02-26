@@ -1414,8 +1414,22 @@ async def dashboard_latest(limit: int = 20):
     except HTTPException:
         raise
     except Exception as ex:
+        ex_str = str(ex)
+        # PostgreSQL "undefined table/column" (42P01 / 42703) – scoring tables
+        # haven't been created yet.  Return an empty-but-valid payload so the
+        # frontend can display a "no runs yet" state instead of crashing.
+        pg_code = getattr(getattr(ex, "pgcode", None), "__str__", lambda: "")()
+        if not pg_code:
+            pg_code = str(getattr(ex, "pgcode", ""))
+        if pg_code in ("42P01", "42703") or "does not exist" in ex_str.lower() or "undefined" in ex_str.lower():
+            logging.info("dashboard_latest: scoring tables not yet created – returning empty payload. Detail: %s", ex_str)
+            return {
+                "run": None,
+                "items": [],
+                "message": "Scoring tables not yet initialized. Run the scoring pipeline first.",
+            }
         logging.warning("dashboard_latest error: %s", ex)
-        raise HTTPException(status_code=500, detail=str(ex))
+        raise HTTPException(status_code=500, detail=ex_str)
 
 
 # ============================================================

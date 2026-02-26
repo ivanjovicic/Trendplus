@@ -20,6 +20,7 @@ namespace Workers
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<OutboxProcessorWorker> _logger;
         private readonly WorkerHealthService _healthService;
+        private readonly WorkerRuntimeControlService _controlService;
         private readonly TimeSpan _interval = TimeSpan.FromSeconds(30);
         
         private const string WorkerName = "OutboxProcessorWorker";
@@ -27,20 +28,52 @@ namespace Workers
         public OutboxProcessorWorker(
             IServiceProvider serviceProvider,
             ILogger<OutboxProcessorWorker> logger,
-            WorkerHealthService healthService)
+            WorkerHealthService healthService,
+            WorkerRuntimeControlService controlService)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
             _healthService = healthService;
+            _controlService = controlService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("OutboxProcessorWorker started");
             _healthService.ReportRunning(WorkerName, "Starting up...");
+            var paused = false;
+            var pauseCheckInterval = TimeSpan.FromSeconds(5);
 
             while (!stoppingToken.IsCancellationRequested)
             {
+                if (!_controlService.IsEnabled)
+                {
+                    if (!paused)
+                    {
+                        _logger.LogInformation("{WorkerName} paused (global workers switch OFF).", WorkerName);
+                        _healthService.ReportStopped(WorkerName, "Pauziran - workers switch je iskljucen.");
+                        paused = true;
+                    }
+
+                    try
+                    {
+                        await Task.Delay(pauseCheckInterval, stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if (paused)
+                {
+                    _logger.LogInformation("{WorkerName} resumed (global workers switch ON).", WorkerName);
+                    _healthService.ReportRunning(WorkerName, "Nastavljen rad nakon ukljucivanja workers switch-a.");
+                    paused = false;
+                }
+
                 try
                 {
                     _healthService.ReportRunning(WorkerName, "Processing messages...");

@@ -1,0 +1,71 @@
+# INTEGRACIJA: Advanced Analytics za Pre/Posle Nivelacije (Frontend)
+
+Ova instrukcija omogućava prikaz i korišćenje naprednih metrika (momentum, rolling, OOS, DiD, elasticnost, lost sales) na stranicama:
+- AnalyticsDashboard.tsx
+- ProdajaPrePostNivelacijePage.tsx
+- povezani helpers/types/api
+
+---
+
+## 1. Proširi tipove (types/analytics.ts)
+
+Dodaj u `VendorSalesNivelacijaArticleStat` i `VendorSalesNivelacijaResponse`:
+
+```ts
+// ...existing fields...
+rolling7dPreRevenue?: number | null;
+rolling7dPostRevenue?: number | null;
+momentumRevenue?: number | null;
+priceElasticity?: number | null;
+didRevenue?: number | null;
+didQty?: number | null;
+lostSalesOOS?: number | null;
+oosRate?: number | null;
+metricReason?: string | null;
+
+// U response:
+avgMomentumRevenue?: number | null;
+avgElasticity?: number | null;
+avgDidRevenue?: number | null;
+avgLostSalesOOS?: number | null;
+oosRate?: number | null;
+metricsStatus?: string | null;
+```
+
+---
+
+## 2. Proširi API servis (analyticsApi.ts)
+
+Proveri da li se nova polja mapiraju u odgovarajuće tipove. Ako koristiš `as VendorSalesNivelacijaResponse`, TypeScript će automatski mapirati nova polja.
+
+---
+
+## 3. Prikaz u UI (ProdajaPrePostNivelacijePage.tsx, AnalyticsDashboard.tsx)
+
+- Prikaži nove metrike u tabelama i/ili karticama:
+    - Momentum (⚡): `momentumRevenue`
+    - Rolling 7d (📈): `rolling7dPreRevenue`, `rolling7dPostRevenue`
+    - OOS (🚨): `oosRate`, `lostSalesOOS`
+    - DiD (🟦/🟥): `didRevenue`, `didQty`
+    - Elasticnost (📉/📈): `priceElasticity`
+    - metricReason (tooltip ili badge ako je null)
+- Prikaži summary polja iz response-a (npr. prosečan momentum, OOS rate, DiD, ...)
+- Ako je polje null, prikaži "N/A" ili tooltip sa `metricReason`.
+
+---
+
+## 4. CSV/Excel export
+
+- Dodaj nova polja u export (ako korisnik eksportuje tabelu, neka vidi i napredne metrike).
+
+---
+
+## 5. Testiraj
+
+- Proveri da li se nove metrike prikazuju za artikle gde backend vraća podatke.
+- Proveri null+reason handling (artikli bez prodaje, OOS, outlier).
+- Proveri summary polja na vrhu strane.
+
+---
+
+**Ova integracija je 100% kompatibilna sa postojećim UI i API.**

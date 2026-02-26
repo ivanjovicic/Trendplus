@@ -442,7 +442,12 @@ public sealed class AccessImportService : IAccessImportService
                 CompletedAtUtc = x.CompletedAtUtc,
                 Status = x.Status,
                 SummaryJson = x.SummaryJson,
-                ErrorMessage = x.ErrorMessage
+                ErrorMessage = x.ErrorMessage,
+                DurationSeconds = x.DurationSeconds,
+                TotalImported = x.TotalImported,
+                TotalUpdated = x.TotalUpdated,
+                TotalErrors = x.TotalErrors,
+                DataOrigin = x.DataOrigin
             })
             .ToListAsync(ct);
     }
