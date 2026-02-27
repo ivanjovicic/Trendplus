@@ -413,6 +413,7 @@ try
     app.MapAllEndpoints();
     app.MapCachedAnalyticsEndpoints();
     app.MapInsightStudioEndpoints();
+    app.MapInsightStudioV2Endpoints();
     app.MapPreNivelacijaPriorityEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();

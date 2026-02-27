@@ -9,6 +9,8 @@ import {
 
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const SCENARIO_STORAGE_KEY = "runtime-scoring-scenarios-v1";
+const MAX_SCENARIOS = 25;
 
 const SHOE_CATEGORIES = [
     { value: "sneakers", label: "Patike / Sneakers" },
@@ -138,6 +140,30 @@ function ScoreRow({ fieldKey, value }: { fieldKey: string; value: number }) {
 }
 
 type FormErrors = { file?: string; cost?: string; targetPrice?: string; brand?: string };
+type SaveNotice = { kind: "success" | "error"; text: string } | null;
+type SavedScenario = {
+    id: string;
+    createdAt: string;
+    name: string;
+    input: {
+        brand?: string;
+        category?: string;
+        market?: string;
+        cost?: number;
+        targetPrice?: number;
+        velicina?: string;
+        boja?: string;
+        materijal?: string;
+        imageName?: string;
+    };
+    output: {
+        finalScore: number;
+        sellProbabilityRS: number;
+        verdict: string;
+        recommendedPriceRange: string;
+        confidence: number;
+    };
+};
 
 // ─── page ─────────────────────────────────────────────────────────────────────
 
@@ -158,7 +184,9 @@ export default function RuntimeScoringPage() {
     const [error, setError]           = useState<string | null>(null);
     const [formErrors, setFormErrors] = useState<FormErrors>({});
     const [result, setResult]         = useState<RuntimeScoringEvaluateResponse | null>(null);
+    const [saveNotice, setSaveNotice] = useState<SaveNotice>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const formRef = useRef<HTMLFormElement>(null);
 
     useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
@@ -212,6 +240,7 @@ export default function RuntimeScoringPage() {
         e.preventDefault();
         setError(null);
         setResult(null);
+        setSaveNotice(null);
         if (!validate() || !file) return;
         setLoading(true);
         try {
@@ -238,17 +267,116 @@ export default function RuntimeScoringPage() {
 
     const sellBarColor = sellProbabilityPercent >= 60 ? "#15803d" : sellProbabilityPercent >= 30 ? "#d97706" : "#dc2626";
 
+    const handleRunEvaluation = useCallback(() => {
+        formRef.current?.requestSubmit();
+    }, []);
+
+    const handleSaveScenario = useCallback(() => {
+        if (!result) {
+            setSaveNotice({ kind: "error", text: "Prvo pokreni procenu, pa zatim sačuvaj scenario." });
+            return;
+        }
+
+        const scenarioName = `${brand.trim() || "Bez brenda"} / ${category.toUpperCase()} / ${market}`;
+        const scenario: SavedScenario = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            createdAt: new Date().toISOString(),
+            name: scenarioName,
+            input: {
+                brand: brand.trim() || undefined,
+                category: category || undefined,
+                market: market || undefined,
+                cost: parseDecimal(cost),
+                targetPrice: parseDecimal(targetPrice),
+                velicina: velicina.trim() || undefined,
+                boja: boja.trim() || undefined,
+                materijal: materijal || undefined,
+                imageName: file?.name,
+            },
+            output: {
+                finalScore: result.finalScore,
+                sellProbabilityRS: result.sellProbabilityRS,
+                verdict: result.verdict,
+                recommendedPriceRange: result.recommendedPriceRange,
+                confidence: result.confidence,
+            },
+        };
+
+        try {
+            const currentRaw = localStorage.getItem(SCENARIO_STORAGE_KEY);
+            const current = currentRaw ? (JSON.parse(currentRaw) as SavedScenario[]) : [];
+            const next = [scenario, ...current].slice(0, MAX_SCENARIOS);
+            localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(next));
+            setSaveNotice({ kind: "success", text: `Scenario je sačuvan (${next.length}/${MAX_SCENARIOS}).` });
+        } catch {
+            setSaveNotice({ kind: "error", text: "Nije moguće sačuvati scenario (localStorage nije dostupan)." });
+        }
+    }, [result, brand, category, market, cost, targetPrice, velicina, boja, materijal, file]);
+
     return (
         <div style={{ maxWidth: 1160, margin: "0 auto", paddingBottom: 40 }}>
             {/* header */}
             <div style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #4338ca 100%)", color: "white", borderRadius: 14, padding: "20px 24px", marginBottom: 18 }}>
-                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Runtime Scoring Engine</h1>
-                <p style={{ margin: "6px 0 0", opacity: 0.9, fontSize: 13 }}>
-                    Ubaci sliku modela i proceni score, verovatnoću prodaje i signal tržišta u realnom vremenu.
-                </p>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Runtime Scoring Engine</h1>
+                        <p style={{ margin: "6px 0 0", opacity: 0.9, fontSize: 13 }}>
+                            Ubaci sliku modela i proceni score, verovatnocu prodaje i signal tr�i�ta u realnom vremenu.
+                        </p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                            type="button"
+                            onClick={handleRunEvaluation}
+                            disabled={loading}
+                            style={{
+                                border: "none",
+                                borderRadius: 8,
+                                padding: "10px 14px",
+                                color: "white",
+                                background: loading ? "#9ca3af" : "#0f766e",
+                                fontWeight: 700,
+                                cursor: loading ? "not-allowed" : "pointer",
+                            }}
+                        >
+                            {loading ? "Pokrecem..." : "Pokreni procenu"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSaveScenario}
+                            disabled={loading || !result}
+                            style={{
+                                border: "1px solid #ffffff66",
+                                borderRadius: 8,
+                                padding: "10px 14px",
+                                color: "white",
+                                background: loading || !result ? "rgba(255,255,255,.2)" : "rgba(255,255,255,.14)",
+                                fontWeight: 700,
+                                cursor: loading || !result ? "not-allowed" : "pointer",
+                            }}
+                        >
+                            Sacuvaj scenario
+                        </button>
+                    </div>
+                </div>
+                {saveNotice && (
+                    <div
+                        style={{
+                            marginTop: 12,
+                            borderRadius: 8,
+                            padding: "8px 10px",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background: saveNotice.kind === "success" ? "#dcfce7" : "#fef2f2",
+                            color: saveNotice.kind === "success" ? "#166534" : "#b91c1c",
+                        }}
+                    >
+                        {saveNotice.text}
+                    </div>
+                )}
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, alignItems: "start" }}>
+            <form ref={formRef} onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, alignItems: "start" }}>
                 {/* ── LEFT: input panel ── */}
                 <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#111827" }}>Parametri procene</div>
@@ -415,17 +543,38 @@ export default function RuntimeScoringPage() {
                         </div>
                     </div>
 
-                    <button
-                        type="submit" disabled={loading}
-                        style={{ width: "100%", border: "none", borderRadius: 8, padding: "11px 12px", color: "white", background: loading ? "#9ca3af" : "#2563eb", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: 14, letterSpacing: ".02em", transition: "background .15s" }}
-                    >
-                        {loading ? (
-                            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                                <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid #ffffff55", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-                                Računam…
-                            </span>
-                        ) : "Izračunaj score"}
-                    </button>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            style={{ width: "100%", border: "none", borderRadius: 8, padding: "11px 12px", color: "white", background: loading ? "#9ca3af" : "#2563eb", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: 14, letterSpacing: ".02em", transition: "background .15s" }}
+                        >
+                            {loading ? (
+                                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                                    <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid #ffffff55", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                                    Racunam...
+                                </span>
+                            ) : "Pokreni procenu"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSaveScenario}
+                            disabled={loading || !result}
+                            style={{
+                                width: "100%",
+                                border: "1px solid #d1d5db",
+                                borderRadius: 8,
+                                padding: "11px 12px",
+                                color: loading || !result ? "#9ca3af" : "#374151",
+                                background: "white",
+                                fontWeight: 700,
+                                cursor: loading || !result ? "not-allowed" : "pointer",
+                                fontSize: 14,
+                            }}
+                        >
+                            Sacuvaj scenario
+                        </button>
+                    </div>
                 </div>
 
                 {/* ── RIGHT: results panel ── */}
@@ -629,5 +778,7 @@ function getInsightIcon(text: string): string {
 function cleanInsightText(text: string): string {
     return text.replace(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u, "");
 }
+
+
 
 

@@ -21,11 +21,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <HeaderStatus onOpenMobileNav={() => setMobileOpen(true)} />
 
           <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-5">
-            <div className="space-y-5">
-              {children}
-              <SeasonalImageCarousel />
-            </div>
+            <div className="space-y-5">{children}</div>
           </main>
+
+          <section className="w-full pb-5">
+            <SeasonalImageCarousel />
+          </section>
 
           <DashboardFooter />
         </div>
@@ -33,4 +34,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-

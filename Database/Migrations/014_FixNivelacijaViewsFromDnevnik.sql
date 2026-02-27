@@ -40,6 +40,7 @@ WHERE line."DataOrigin" = 'access'
 
 -- Recreate views from scratch to avoid column-order/name conflicts between
 -- previous versions (013) and this upgraded layout (with old_price/new_price).
+DROP VIEW IF EXISTS "vw_nivelacija_did";
 DROP VIEW IF EXISTS "vw_vendor_sales_nivelacija";
 DROP VIEW IF EXISTS "vw_sales_post_nivelacija";
 DROP VIEW IF EXISTS "vw_sales_pre_nivelacija";

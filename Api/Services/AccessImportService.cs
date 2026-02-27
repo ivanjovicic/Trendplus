@@ -1705,8 +1705,13 @@ public sealed class AccessImportService : IAccessImportService
         {
             var supplierIds = importedSuppliers.Select(x => x.Id).ToArray();
             var existingSuppliers = await _analyticsDb.SuppliersDim.Where(x => supplierIds.Contains(x.SupplierId)).ToDictionaryAsync(x => x.SupplierId, ct);
+            var processedSupplierIds = new HashSet<int>();
             foreach (var sup in importedSuppliers)
             {
+                if (processedSupplierIds.Contains(sup.Id))
+                    continue;
+                processedSupplierIds.Add(sup.Id);
+                
                 if (existingSuppliers.TryGetValue(sup.Id, out var sdim))
                 {
                     sdim.Naziv = sup.Naziv ?? sdim.Naziv;
@@ -1738,8 +1743,13 @@ public sealed class AccessImportService : IAccessImportService
         {
             var seasonIds = importedSeasons.Select(x => x.Id).ToArray();
             var existingSeasons = await _analyticsDb.SeasonsDim.Where(x => seasonIds.Contains(x.SeasonId)).ToDictionaryAsync(x => x.SeasonId, ct);
+            var processedSeasonIds = new HashSet<int>();
             foreach (var s in importedSeasons)
             {
+                if (processedSeasonIds.Contains(s.Id))
+                    continue;
+                processedSeasonIds.Add(s.Id);
+                
                 if (existingSeasons.TryGetValue(s.Id, out var dim))
                 {
                     dim.Naziv = s.Naziv;
@@ -1769,8 +1779,13 @@ public sealed class AccessImportService : IAccessImportService
         {
             var typeIds = importedTypes.Select(x => x.Id).ToArray();
             var existingTypes = await _analyticsDb.FootwearTypesDim.Where(x => typeIds.Contains(x.TypeId)).ToDictionaryAsync(x => x.TypeId, ct);
+            var processedTypeIds = new HashSet<int>();
             foreach (var t in importedTypes)
             {
+                if (processedTypeIds.Contains(t.Id))
+                    continue;
+                processedTypeIds.Add(t.Id);
+                
                 if (existingTypes.TryGetValue(t.Id, out var dim))
                 {
                     dim.Naziv = t.Naziv;

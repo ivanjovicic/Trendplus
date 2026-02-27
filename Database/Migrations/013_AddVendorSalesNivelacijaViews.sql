@@ -62,7 +62,8 @@ CREATE INDEX IF NOT EXISTS "IX_DnevnikPromena_TipPromene_Datum"
 
 -- Drop views before recreating so column-list changes from later migrations
 -- don't cause "cannot drop columns from view" on subsequent startups.
--- Dependency order: consolidated view first, then its sources.
+-- Dependency order: drop downstream analytics views first.
+DROP VIEW IF EXISTS "vw_nivelacija_did";
 DROP VIEW IF EXISTS "vw_vendor_sales_nivelacija";
 DROP VIEW IF EXISTS "vw_sales_post_nivelacija";
 DROP VIEW IF EXISTS "vw_sales_pre_nivelacija";
