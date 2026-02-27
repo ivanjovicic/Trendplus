@@ -169,20 +169,29 @@ public class AnalyticsAggregationWorker : BackgroundService
         try
         {
             var sql = @"
-                INSERT INTO ""AnalyticsDailySummary"" (""Date"", ""TotalRevenue"", ""TotalTransactions"", ""TotalUnits"", ""AvgBasketValue"", ""AvgItemPrice"", ""UpdatedAt"")
+                INSERT INTO ""AnalyticsDailySummary"" (
+                    ""Date"", ""TotalRevenue"", ""TotalTransactions"", ""TotalUnits"", ""AvgBasketValue"", ""AvgItemPrice"", ""BasketStdDev"", ""ItemPriceStdDev"", ""EffectiveTransactionCount"", ""DataConfidence"", ""UpdatedAt""
+                )
                 SELECT 
                     @date::DATE,
-                    COALESCE(SUM(ps.kolicina * ps.cena), 0),
-                    COUNT(DISTINCT p.id),
-                    COALESCE(SUM(ps.kolicina), 0),
+                    COALESCE(SUM(ps.kolicina * ps.cena), 0) AS TotalRevenue,
+                    COUNT(DISTINCT p.id) AS TotalTransactions,
+                    COALESCE(SUM(ps.kolicina), 0) AS TotalUnits,
                     CASE WHEN COUNT(DISTINCT p.id) > 0 
                         THEN COALESCE(SUM(ps.kolicina * ps.cena), 0) / COUNT(DISTINCT p.id)
                         ELSE 0 
-                    END,
+                    END AS AvgBasketValue,
                     CASE WHEN SUM(ps.kolicina) > 0 
                         THEN COALESCE(SUM(ps.kolicina * ps.cena), 0) / SUM(ps.kolicina)
                         ELSE 0 
-                    END,
+                    END AS AvgItemPrice,
+                    COALESCE(STDDEV_POP(ps.kolicina * ps.cena), 0) AS BasketStdDev,
+                    COALESCE(STDDEV_POP(ps.cena), 0) AS ItemPriceStdDev,
+                    COUNT(DISTINCT p.id) * 0.95 AS EffectiveTransactionCount, -- Adjusted for confidence
+                    CASE 
+                        WHEN COUNT(DISTINCT p.id) > 0 AND SUM(ps.kolicina) > 0 THEN 1.0
+                        ELSE 0.5 -- Lower confidence for partial data
+                    END AS DataConfidence,
                     NOW()
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
@@ -193,6 +202,10 @@ public class AnalyticsAggregationWorker : BackgroundService
                     ""TotalUnits"" = EXCLUDED.""TotalUnits"",
                     ""AvgBasketValue"" = EXCLUDED.""AvgBasketValue"",
                     ""AvgItemPrice"" = EXCLUDED.""AvgItemPrice"",
+                    ""BasketStdDev"" = EXCLUDED.""BasketStdDev"",
+                    ""ItemPriceStdDev"" = EXCLUDED.""ItemPriceStdDev"",
+                    ""EffectiveTransactionCount"" = EXCLUDED.""EffectiveTransactionCount"",
+                    ""DataConfidence"" = EXCLUDED.""DataConfidence"",
                     ""UpdatedAt"" = NOW();";
 
             await using var cmd = new NpgsqlCommand(sql, connection);

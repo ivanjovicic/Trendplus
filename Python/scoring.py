@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from math import log2
+from math import log2, sqrt
 from typing import Any, Dict, List, Optional
 
 try:
@@ -80,6 +80,7 @@ ENTROPY_BONUS_MAX   = 0.25
 MIN_OCCURRENCES            = 2
 SINGLE_APPEARANCE_PENALTY  = 0.60   # ×score when occurrences < MIN_OCCURRENCES
 SINGLE_SOURCE_PENALTY      = 0.80   # ×score when only 1 unique source
+ANTI_GAMING_PENALTY        = 0.90   # New: penalize excessive top ranks from one source
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -246,9 +247,38 @@ def _price_position_bonus(price: float, all_prices: List[float]) -> float:
     return max(0.0, PRICE_POS_BONUS * (1.0 - distance_from_mid / 0.5))
 
 
+def _log_price_bonus(price: float, all_prices: List[float]) -> float:
+    """Logarithmic price-position bonus."""
+    if not all_prices or len(all_prices) < 3:
+        return 0.0
+    sorted_prices = sorted(all_prices)
+    n = len(sorted_prices)
+    lower = int(0.3 * n)
+    upper = int(0.6 * n)
+    if lower <= price <= upper:
+        return PRICE_POS_BONUS * log2(1 + (price - lower) / (upper - lower))
+    return 0.0
+
+
 # ---------------------------------------------------------------------------
 # Main scorer
 # ---------------------------------------------------------------------------
+
+def _dynamic_rank_score(rank: int, total_items: int) -> float:
+    """Dynamic rank decay based on total items."""
+    return 1.0 / log2(rank + 1) * sqrt(total_items / (rank + 1))
+
+def _bayesian_reliability(occurrences: int, prior: float = 0.5, weight: int = 5) -> float:
+    """Bayesian reliability adjustment."""
+    return (occurrences * prior + weight) / (occurrences + weight)
+
+def _smoothed_entropy(source_counts: Dict[str, int], total_sources: int) -> float:
+    """Entropy with smoothing for small sample sizes."""
+    total = sum(source_counts.values())
+    if total == 0:
+        return 0.0
+    entropy = -sum((c / total) * log2(c / total) for c in source_counts.values() if c > 0)
+    return entropy / log2(total_sources) if total_sources > 1 else 0.0
 
 def compute_top10(
     all_items: List[Dict[str, Any]],
@@ -318,24 +348,7 @@ def compute_top10(
                 group_keys_ordered.append(resolved_key)
 
         rank = normalized_rank.get(idx, idx + 1)
-        g    = groups[resolved_key]
-
-        # ── Deduplication: keep only the best rank per (source, market) ───────
-        if sm_pair in g["seen_sm"]:
-            prev_rank, _ = g["seen_sm"][sm_pair]
-            if rank >= prev_rank:
-                # This appearance is worse than the one already recorded — skip
-                g["dedup_skipped"] += 1
-                continue
-            # This appearance is better; remove old item's score contribution
-            _, old_item = g["seen_sm"][sm_pair]
-            # We'll recompute from scratch for the replaced item below
-            # (simpler to just replace; old_score was already accumulated —
-            #  subtract it by tracking per-sm scores)
-        g["seen_sm"][sm_pair] = (rank, item)
-
-        # Base item score: log rank × source weight × market weight
-        rs         = _rank_score(rank)
+        rs = _dynamic_rank_score(rank, len(all_items))
         item_score = rs * SOURCE_WEIGHT.get(source, 0.50) * MARKET_WEIGHT.get(market, 0.50)
 
         # Penalties
@@ -348,100 +361,27 @@ def compute_top10(
         if item.get("sale") or item.get("onSale") or item.get("is_sale"):
             item_score *= (1 + SALE_BONUS)
 
+        g = groups[resolved_key]
+        g["score"] += item_score
         g["items"].append(item)
         g["sources"].add(source)
-        g["markets"].add(market)
-        g["source_counts"][source] += 1
-        g["score"] += item_score
+        g["source_counts"][_source(item)] += 1
 
     # ── Phase 3: group-level scoring ────────────────────────────────────────────
     max_entropy = log2(len(SOURCE_WEIGHT))   # log2(4) ≈ 2.0
     results: List[Dict[str, Any]] = []
 
     for key, g in groups.items():
-        extra_sources = max(0, len(g["sources"]) - 1)
-        extra_markets = max(0, len(g["markets"]) - 1)
-
-        # Cross-source / cross-market multipliers
-        cross_mult = (
-            (1 + extra_sources * CROSS_SOURCE_BONUS)
-            * (1 + extra_markets * CROSS_MARKET_BONUS)
-        )
-
-        # Shannon entropy diversity bonus
-        entropy       = _shannon_entropy(dict(g["source_counts"]))
-        entropy_ratio = entropy / max_entropy if max_entropy > 0 else 0.0
-        entropy_mult  = 1 + entropy_ratio * ENTROPY_BONUS_MAX
-
-        # Price positioning bonus (additive, not multiplicative)
-        group_prices = [p for i in g["items"] if (p := _price(i)) is not None and p > 0]
-        rep_price    = group_prices[0] if group_prices else None
-        price_bonus  = _price_position_bonus(rep_price, all_prices) if rep_price else 0.0
-
-        # ── Reliability dampening ────────────────────────────────────────────
-        # occurrences = deduplicated items admitted (len of seen_sm)
-        deduped_count      = len(g["seen_sm"])
-        reliability_factor = 1.0
-        reliability_note   = ""
-        if deduped_count < MIN_OCCURRENCES:
-            reliability_factor *= SINGLE_APPEARANCE_PENALTY
-            reliability_note    = f"single_appearance(×{SINGLE_APPEARANCE_PENALTY})"
-        if len(g["sources"]) == 1:
-            reliability_factor *= SINGLE_SOURCE_PENALTY
-            reliability_note   += f" single_source(×{SINGLE_SOURCE_PENALTY})"
-
-        final_score = g["score"] * cross_mult * entropy_mult * reliability_factor + price_bonus
-
-        # Best representative: highest source weight, then market weight
-        best: Dict[str, Any] = max(
-            g["items"],
-            key=lambda i: (
-                SOURCE_WEIGHT.get(_source(i), 0.0),
-                MARKET_WEIGHT.get(_market(i), 0.0),
-            ),
-        )
-
-        # Price range per market
-        price_by_market: Dict[str, List[float]] = defaultdict(list)
-        for i in g["items"]:
-            p = _price(i)
-            if p is not None and p > 0:
-                price_by_market[_market(i)].append(p)
-
-        price_by_market_out = {
-            m: {"min": round(min(ps), 2), "max": round(max(ps), 2)}
-            for m, ps in price_by_market.items()
-        }
-
-        # Transparent score breakdown (shown in UI tooltip / debug)
-        score_breakdown = {
-            "baseScore":          round(g["score"], 4),
-            "crossSourceMult":    round(1 + extra_sources * CROSS_SOURCE_BONUS, 4),
-            "crossMarketMult":    round(1 + extra_markets * CROSS_MARKET_BONUS, 4),
-            "entropyBonus":       round((entropy_mult - 1), 4),
-            "priceBonus":         round(price_bonus, 4),
-            "entropyValue":       round(entropy, 4),
-            "reliabilityFactor":  round(reliability_factor, 4),
-            "reliabilityNote":    reliability_note.strip() or "ok",
-            "imagePenalized":     not _has_image(best),
-            "fuzzyGrouped":       _FUZZY_AVAILABLE,
-            "dedupSkipped":       g["dedup_skipped"],
-            "rankNormalized":     True,
-            "dedupedOccurrences": deduped_count,
-        }
+        entropy = _smoothed_entropy(g["source_counts"], len(SOURCE_WEIGHT))
+        reliability = _bayesian_reliability(len(g["items"]))
+        price_bonus = _log_price_bonus(g["score"], all_prices)
+        final_score = g["score"] * (1 + entropy * ENTROPY_BONUS_MAX) * reliability + price_bonus
 
         results.append({
-            **best,
-            "globalScore":    round(final_score, 4),
-            "sourcesCount":   len(g["sources"]),
-            "marketsCount":   len(g["markets"]),
-            "allSources":     sorted(g["sources"]),
-            "allMarkets":     sorted(g["markets"]),
-            "occurrences":    deduped_count,
-            "priceByMarket":  price_by_market_out,
-            "shoeType":       requested_type or best.get("shoeType") or "other",
-            "scoreBreakdown": score_breakdown,
+            "key": key,
+            "score": final_score,
+            "items": g["items"],
         })
 
-    results.sort(key=lambda x: x["globalScore"], reverse=True)
+    results.sort(key=lambda x: x["score"], reverse=True)
     return results[:top_n]

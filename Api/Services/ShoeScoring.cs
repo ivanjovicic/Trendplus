@@ -3,7 +3,7 @@ namespace Api.Services
     /// <summary>
     /// Shared weighted trend score formula used by Amazon, eBay and Google Shopping sync services.
     ///
-    /// Base score = rating * log10(reviewCount + 2) * priceFactor
+    /// Base score = bayesianSmoothedRating * log10(reviewCount + 2) * priceFactor
     ///
     /// Runtime score additionally uses:
     /// - popularityPriorScore (0-100) from open_product_training labels
@@ -18,14 +18,21 @@ namespace Api.Services
             decimal popularityPriorScore = 0m,
             decimal dealScore = 0m)
         {
+            // Bayesian-smoothed rating (stabilizes small-review items without changing the overall score scale).
+            reviewCount = Math.Max(reviewCount, 0);
+            const float PRIOR_MEAN = 3.8f;
+            const float PRIOR_WEIGHT = 10f;
+            var observedRating = rating <= 0 ? PRIOR_MEAN : rating;
+            var smoothedRating = (observedRating * reviewCount + PRIOR_MEAN * PRIOR_WEIGHT) / (reviewCount + PRIOR_WEIGHT);
+
             // Popularity component: rating * log10(reviews + 2)
-            float popularity = rating * (float)Math.Log10(reviewCount + 2);
+            var popularity = smoothedRating * (float)Math.Log10(reviewCount + 2);
 
             // Price factor (EUR-centric; symmetric penalty outside sweet spot)
-            float priceFactor = 1.0f;
+            var priceFactor = 1.0f;
             if (price.HasValue)
             {
-                float p = (float)price.Value;
+                var p = (float)price.Value;
                 priceFactor = p < 15f ? 0.55f
                     : p < 40f ? 0.80f
                     : p <= 120f ? 1.15f

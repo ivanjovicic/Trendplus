@@ -110,6 +110,13 @@ public static class DatabaseInitializer
             configuration.GetConnectionString("DefaultConnection")!,
             logger);
 
+        // Nightly analytics materialized views (daily facts + rolling + momentum) (idempotent)
+        // Keep this early so it still gets applied even if later nivelacija scripts fail.
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("DefaultConnection")!,
+            "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql",
+            logger);
+
         // Access-import support patch (idempotent)
         await ExecuteSqlFileAsync(
             configuration.GetConnectionString("DefaultConnection")!,

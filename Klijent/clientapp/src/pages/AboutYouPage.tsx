@@ -131,14 +131,14 @@ export default function AboutYouPage() {
                 priceMax: filterPriceMax,
             };
 
-            toast.info("Calling About You scraper...");
+            toast.info("Pokretanje About You scrapera...");
             const data = await runAboutYouScraper(payload);
             const items: AboutYouItem[] = data?.items || [];
             setResults(items);
-            toast.success(`About You: loaded ${data?.count ?? items.length} items`);
+            toast.success(`About You: učitano ${data?.count ?? items.length} rezultata`);
         } catch (e) {
             console.error(e);
-            toast.error(e instanceof Error ? e.message : "Failed to run About You scraper");
+            toast.error(e instanceof Error ? e.message : "Greška pri pokretanju About You scrapera");
         } finally {
             setLoading(false);
         }
@@ -146,12 +146,12 @@ export default function AboutYouPage() {
 
     return (
         <div style={{ maxWidth: 1200, margin: "2rem auto", padding: "0 1rem" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>About You — EU Market Scraper</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12, color: "#c9d3e4" }}>About You — Scraper EU tržišta</h1>
 
             <div className="card" style={{ marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ minWidth: 420, flex: 1 }}>
-                        <label className="field-label">Category URL</label>
+                        <label className="field-label">URL kategorije</label>
                         <input
                             className="input-big"
                             value={aboutYouUrl}
@@ -161,7 +161,7 @@ export default function AboutYouPage() {
                     </div>
 
                     <div style={{ minWidth: 180 }}>
-                        <label className="field-label">Country</label>
+                        <label className="field-label">Zemlja</label>
                         <select
                             className="input-big"
                             value={country}
@@ -176,25 +176,25 @@ export default function AboutYouPage() {
                     </div>
 
                     <div style={{ minWidth: 200 }}>
-                        <label className="field-label">Page Mode</label>
+                        <label className="field-label">Režim stranica</label>
                         <select
                             className="input-big"
                             value={pageMode}
                             onChange={(e) => setPageMode((e.target.value as "auto" | "manual") || "auto")}
                         >
-                            <option value="auto">Auto (Recommended)</option>
-                            <option value="manual">Manual</option>
+                            <option value="auto">Automatski (preporučeno)</option>
+                            <option value="manual">Ručno</option>
                         </select>
                         {pageMode === "auto" && (
-                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                                Auto mode stops when no new products are found.
+                            <div style={{ fontSize: 12, color: "#8A95B0", marginTop: 4 }}>
+                                Automatski režim staje kada nema novih proizvoda.
                             </div>
                         )}
                     </div>
 
                     {pageMode === "manual" && (
                         <div style={{ minWidth: 160 }}>
-                            <label className="field-label">Pages</label>
+                            <label className="field-label">Stranice</label>
                             <input
                                 type="number"
                                 className="input-big"
@@ -202,14 +202,14 @@ export default function AboutYouPage() {
                                 min={1}
                                 onChange={(e) => setFilterPages(Number(e.target.value) || 1)}
                             />
-                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                                Use 1-3 pages to keep scraper fast.
+                            <div style={{ fontSize: 12, color: "#8A95B0", marginTop: 4 }}>
+                                Koristite 1-3 stranice za brže pokretanje.
                             </div>
                         </div>
                     )}
 
                     <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Brand</label>
+                        <label className="field-label">Brend</label>
                         <SearchableSelect
                             value={filterBrand}
                             onChange={setFilterBrand}
@@ -220,7 +220,7 @@ export default function AboutYouPage() {
                     </div>
 
                     <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Keyword</label>
+                        <label className="field-label">Ključna reč</label>
                         <SearchableSelect
                             value={filterKeyword}
                             onChange={(v) => setFilterKeyword(Array.isArray(v) ? v.join(" ") : v)}
@@ -230,7 +230,7 @@ export default function AboutYouPage() {
                     </div>
 
                     <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Price Min (€)</label>
+                        <label className="field-label">Min cena (€)</label>
                         <input
                             type="number"
                             className="input-big"
@@ -241,7 +241,7 @@ export default function AboutYouPage() {
                     </div>
 
                     <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Price Max (€)</label>
+                        <label className="field-label">Max cena (€)</label>
                         <input
                             type="number"
                             className="input-big"
@@ -252,23 +252,23 @@ export default function AboutYouPage() {
                     </div>
 
                     <div style={{ minWidth: 180 }}>
-                        <label className="field-label">Sort</label>
+                        <label className="field-label">Sortiranje</label>
                         <select
                             className="input-big"
                             value={filterSort}
                             onChange={(e) => setFilterSort(e.target.value)}
                         >
-                            <option value="popularity">🔥 Popularity</option>
-                            <option value="price-asc">💸 Price: Low → High</option>
-                            <option value="price-desc">💰 Price: High → Low</option>
-                            <option value="name-asc">🔤 Name A → Z</option>
-                            <option value="name-desc">🔤 Name Z → A</option>
+                            <option value="popularity">🔥 Popularnost</option>
+                            <option value="price-asc">💸 Cena: raste</option>
+                            <option value="price-desc">💰 Cena: pada</option>
+                            <option value="name-asc">🔤 Naziv A → Z</option>
+                            <option value="name-desc">🔤 Naziv Z → A</option>
                         </select>
                     </div>
 
                     <div style={{ marginLeft: "auto" }}>
                         <button className="button-big" onClick={runAboutYouFiltered} disabled={loading} style={{ minWidth: 170 }}>
-                            {loading ? "⏳ Scraping..." : "🔍 Run About You"}
+                            {loading ? "⏳ Pretraga u toku..." : "🔍 Pokreni About You"}
                         </button>
                     </div>
                 </div>
@@ -276,7 +276,7 @@ export default function AboutYouPage() {
 
             {results.length > 0 && (
                 <div>
-                    <h3 style={{ marginBottom: 12 }}>Results ({results.length})</h3>
+                    <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Rezultati ({results.length})</h3>
                     <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
                         {results.map((p, idx) => (
                             <div key={idx} className="card" style={{ padding: 12 }}>
@@ -286,8 +286,8 @@ export default function AboutYouPage() {
                                         height: 170,
                                         overflow: "hidden",
                                         borderRadius: 8,
-                                        background: "#ffffff",
-                                        border: "1px solid #e5e7eb",
+                                        background: "#1A1F2E",
+                                        border: "1px solid #2A3045",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
@@ -306,12 +306,12 @@ export default function AboutYouPage() {
                                     ) : null}
                                 </div>
                                 <div style={{ paddingTop: 12 }}>
-                                    <div style={{ fontSize: 12, color: "#6b7280" }}>{p.brand || "About You"}</div>
+                                    <div style={{ fontSize: 12, color: "#8A95B0" }}>{p.brand || "About You"}</div>
                                     <div style={{ fontWeight: 700, margin: "6px 0" }}>{p.name}</div>
                                     <div style={{ color: "#059669", fontWeight: 700 }}>{p.price || "-"}</div>
                                     {p.url && (
-                                        <a href={p.url} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }}>
-                                            View
+                                        <a href={p.url} target="_blank" rel="noreferrer" style={{ color: "#4F8EF7" }}>
+                                            Pogledaj
                                         </a>
                                     )}
                                 </div>

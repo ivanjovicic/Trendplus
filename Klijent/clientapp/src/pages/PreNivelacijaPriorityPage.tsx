@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Lightbulb, Siren, Sparkles } from "lucide-react";
+import { AlertTriangle, Lightbulb, Siren, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   CartesianGrid,
   Legend,
@@ -288,7 +288,11 @@ export default function PreNivelacijaPriorityPage() {
                 </thead>
                 <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
                   {data.candidates.map((row) => (
-                    <tr key={row.artikalId} className="hover:bg-[#1f2330]">
+                    <tr key={row.artikalId} className={`hover:brightness-110 ${
+                      row.priorityBand === "high" ? "bg-rose-950/20" :
+                      row.priorityBand === "medium" ? "bg-amber-950/15" :
+                      "hover:bg-[#1f2330]"
+                    }`}>
                       <td className="px-3 py-2">{row.sku}</td>
                       <td className="px-3 py-2">{row.supplierName}</td>
                       <td className="px-3 py-2 text-right">{row.stockUnits}</td>
@@ -312,9 +316,10 @@ export default function PreNivelacijaPriorityPage() {
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={data.page <= 1}
-                  className="rounded-md border border-[#3c4458] bg-[#222734] px-2 py-1 text-xs text-[#dbe6fb] disabled:opacity-50"
+                  className="rounded-md border border-[#3c4458] bg-[#222734] p-1.5 text-[#dbe6fb] disabled:opacity-50"
+                  title="Prethodna"
                 >
-                  {"<"}
+                  <ChevronLeft size={14} />
                 </button>
                 <span className="text-xs text-[#93a7c8]">
                   {data.page} / {Math.max(1, Math.ceil(data.totalCandidates / data.pageSize))}
@@ -328,9 +333,10 @@ export default function PreNivelacijaPriorityPage() {
                     })
                   }
                   disabled={data.page >= Math.max(1, Math.ceil(data.totalCandidates / data.pageSize))}
-                  className="rounded-md border border-[#3c4458] bg-[#222734] px-2 py-1 text-xs text-[#dbe6fb] disabled:opacity-50"
+                  className="rounded-md border border-[#3c4458] bg-[#222734] p-1.5 text-[#dbe6fb] disabled:opacity-50"
+                  title="Sledeca"
                 >
-                  {">"}
+                  <ChevronRight size={14} />
                 </button>
               </div>
             </div>

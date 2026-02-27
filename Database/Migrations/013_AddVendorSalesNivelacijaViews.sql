@@ -3,43 +3,49 @@
 -- Price history + pre/post nivelacija analytics views
 -- ==========================================================
 
--- 1) Canonical price history table (source for nivelacija date)
-CREATE TABLE IF NOT EXISTS "price_history" (
-    "Id" BIGSERIAL PRIMARY KEY,
-    "ArticleId" INTEGER NOT NULL,
-    "VendorId" INTEGER NULL,
-    "OldPrice" NUMERIC(18,2) NULL,
-    "NewPrice" NUMERIC(18,2) NULL,
-    "EffectiveFrom" TIMESTAMP WITH TIME ZONE NULL,
-    "ChangedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    "SourceDnevnikId" INTEGER NULL,
-    "CreatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+-- 1️⃣ Create price_history table
+CREATE TABLE IF NOT EXISTS price_history (
+    id BIGSERIAL PRIMARY KEY,
+    article_id INTEGER NOT NULL,
+    vendor_id INTEGER NULL,
+    old_price NUMERIC(18,4),
+    new_price NUMERIC(18,4),
+    effective_from TIMESTAMPTZ NOT NULL,
+    changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    source_dnevnik_id INTEGER UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_price_history_article
+        FOREIGN KEY (article_id)
+        REFERENCES "Artikli"("Id")
+        ON DELETE CASCADE,
+    CONSTRAINT fk_price_history_vendor
+        FOREIGN KEY (vendor_id)
+        REFERENCES "Dobavljaci"("Id")
+        ON DELETE SET NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS "IX_price_history_SourceDnevnikId"
-    ON "price_history" ("SourceDnevnikId");
+-- 2️⃣ Create indexes for price_history
+CREATE INDEX IF NOT EXISTS idx_price_history_article_date
+ON price_history (article_id, effective_from DESC);
 
-CREATE INDEX IF NOT EXISTS "IX_price_history_ArticleId_ChangedAt"
-    ON "price_history" ("ArticleId", "ChangedAt" DESC);
+CREATE INDEX IF NOT EXISTS idx_price_history_vendor_date
+ON price_history (vendor_id, effective_from DESC);
 
-CREATE INDEX IF NOT EXISTS "IX_price_history_VendorId_ChangedAt"
-    ON "price_history" ("VendorId", "ChangedAt" DESC);
-
--- 2) Backfill from DnevnikPromena (if available)
-INSERT INTO "price_history" (
-    "ArticleId",
-    "VendorId",
-    "OldPrice",
-    "NewPrice",
-    "EffectiveFrom",
-    "ChangedAt",
-    "SourceDnevnikId"
+-- 3️⃣ Backfill price_history table
+INSERT INTO price_history (
+    article_id,
+    vendor_id,
+    old_price,
+    new_price,
+    effective_from,
+    changed_at,
+    source_dnevnik_id
 )
 SELECT
     d."ArtikalId",
     COALESCE(d."DobavljacId", a."IDDobavljac"),
-    d."StaraProdajnaCena",
-    d."NovaProdajnaCena",
+    d."StaraProdajnaCena"::NUMERIC(18,4),
+    d."NovaProdajnaCena"::NUMERIC(18,4),
     d."Datum",
     d."Datum",
     d."Id"
@@ -47,100 +53,147 @@ FROM "DnevnikPromena" d
 LEFT JOIN "Artikli" a ON a."Id" = d."ArtikalId"
 WHERE d."ArtikalId" IS NOT NULL
   AND d."Datum" IS NOT NULL
-  AND d."TipPromene" ILIKE '%nivel%'
-ON CONFLICT ("SourceDnevnikId") DO NOTHING;
+  AND d."TipPromene" IN ('Nivelacija','Nivelacija cena')
+ON CONFLICT (source_dnevnik_id) DO NOTHING;
 
--- 3) Helpful indexes for report queries
-CREATE INDEX IF NOT EXISTS "IX_prodaja_stavke_id_artikal"
-    ON "prodaja_stavke" ("id_artikal");
-
-CREATE INDEX IF NOT EXISTS "IX_prodaja_zaglavlje_datum_prodaje"
-    ON "prodaja_zaglavlje" ("datum_prodaje");
-
-CREATE INDEX IF NOT EXISTS "IX_DnevnikPromena_TipPromene_Datum"
-    ON "DnevnikPromena" ("TipPromene", "Datum");
-
--- Drop views before recreating so column-list changes from later migrations
--- don't cause "cannot drop columns from view" on subsequent startups.
--- Dependency order: drop downstream analytics views first.
-DROP VIEW IF EXISTS "vw_nivelacija_did";
-DROP VIEW IF EXISTS "vw_vendor_sales_nivelacija";
-DROP VIEW IF EXISTS "vw_sales_post_nivelacija";
-DROP VIEW IF EXISTS "vw_sales_pre_nivelacija";
-
--- 4) Pre-nivelacija view (30 days before event)
-CREATE OR REPLACE VIEW "vw_sales_pre_nivelacija" AS
-SELECT
-    ph."Id" AS price_event_id,
-    COALESCE(ph."EffectiveFrom", ph."ChangedAt") AS event_date,
-    COALESCE(ph."VendorId", a."IDDobavljac") AS vendor_id,
-    COALESCE(d."Naziv", 'N/A') AS vendor_name,
-    COALESCE(NULLIF(a."PLU", ''), a."Id"::TEXT) AS sku,
-    a."Naziv" AS article_name,
-    COALESCE(a."Kategorija", 'N/A') AS category,
-    COALESCE(pre_stats.pre_qty, 0)::INT AS pre_qty,
-    COALESCE(pre_stats.pre_revenue, 0)::NUMERIC(18,2) AS pre_revenue
-FROM "price_history" ph
-JOIN "Artikli" a ON a."Id" = ph."ArticleId"
-LEFT JOIN "Dobavljaci" d ON d."Id" = COALESCE(ph."VendorId", a."IDDobavljac")
-LEFT JOIN LATERAL (
+-- 4️⃣ Create pre nivelacija view
+CREATE OR REPLACE VIEW vw_sales_pre_nivelacija AS
+WITH sales_daily AS (
     SELECT
-        SUM(ps."kolicina") AS pre_qty,
-        SUM(ps."kolicina" * ps."cena") AS pre_revenue
+        ps."id_artikal" AS article_id,
+        pz."datum_prodaje"::date AS day,
+        SUM(ps."kolicina")::NUMERIC AS units,
+        SUM(ps."kolicina" * ps."cena")::NUMERIC(18,2) AS revenue
     FROM "prodaja_stavke" ps
-    JOIN "prodaja_zaglavlje" pz ON pz."id" = ps."id_prodaja"
-    WHERE ps."id_artikal" = ph."ArticleId"
-      AND pz."datum_prodaje" >= COALESCE(ph."EffectiveFrom", ph."ChangedAt") - INTERVAL '30 days'
-      AND pz."datum_prodaje" < COALESCE(ph."EffectiveFrom", ph."ChangedAt")
-) pre_stats ON TRUE;
-
--- 5) Post-nivelacija view (30 days after event)
-CREATE OR REPLACE VIEW "vw_sales_post_nivelacija" AS
+    JOIN "prodaja_zaglavlje" pz
+        ON pz."id" = ps."id_prodaja"
+    GROUP BY ps."id_artikal", pz."datum_prodaje"::date
+)
 SELECT
-    ph."Id" AS price_event_id,
-    COALESCE(ph."EffectiveFrom", ph."ChangedAt") AS event_date,
-    COALESCE(ph."VendorId", a."IDDobavljac") AS vendor_id,
-    COALESCE(d."Naziv", 'N/A') AS vendor_name,
-    COALESCE(NULLIF(a."PLU", ''), a."Id"::TEXT) AS sku,
+    ph.id AS price_event_id,
+    ph.effective_from::date AS event_date,
+    ph.vendor_id,
+    COALESCE(d."Naziv",'N/A') AS vendor_name,
+    ph.article_id,
+    COALESCE(NULLIF(a."PLU",''), ph.article_id::text) AS sku,
     a."Naziv" AS article_name,
-    COALESCE(a."Kategorija", 'N/A') AS category,
-    COALESCE(post_stats.post_qty, 0)::INT AS post_qty,
-    COALESCE(post_stats.post_revenue, 0)::NUMERIC(18,2) AS post_revenue
-FROM "price_history" ph
-JOIN "Artikli" a ON a."Id" = ph."ArticleId"
-LEFT JOIN "Dobavljaci" d ON d."Id" = COALESCE(ph."VendorId", a."IDDobavljac")
-LEFT JOIN LATERAL (
-    SELECT
-        SUM(ps."kolicina") AS post_qty,
-        SUM(ps."kolicina" * ps."cena") AS post_revenue
-    FROM "prodaja_stavke" ps
-    JOIN "prodaja_zaglavlje" pz ON pz."id" = ps."id_prodaja"
-    WHERE ps."id_artikal" = ph."ArticleId"
-      AND pz."datum_prodaje" >= COALESCE(ph."EffectiveFrom", ph."ChangedAt")
-      AND pz."datum_prodaje" < COALESCE(ph."EffectiveFrom", ph."ChangedAt") + INTERVAL '30 days'
-) post_stats ON TRUE;
+    COALESCE(a."Kategorija",'N/A') AS category,
+    ph.old_price,
+    ph.new_price,
 
--- 6) Consolidated vendor/article delta view
-CREATE OR REPLACE VIEW "vw_vendor_sales_nivelacija" AS
+    COALESCE(SUM(s.units),0) AS pre_qty,
+    COALESCE(SUM(s.revenue),0) AS pre_revenue,
+
+    LEAST(COUNT(DISTINCT s.day)/30.0,1) AS coverage_pre30,
+    COUNT(DISTINCT s.day) AS valid_days_pre30
+
+FROM price_history ph
+JOIN "Artikli" a ON a."Id" = ph.article_id
+LEFT JOIN "Dobavljaci" d ON d."Id" = ph.vendor_id
+LEFT JOIN sales_daily s
+    ON s.article_id = ph.article_id
+   AND s.day >= ph.effective_from - INTERVAL '30 days'
+   AND s.day <  ph.effective_from
+
+GROUP BY
+    ph.id, ph.effective_from,
+    ph.vendor_id, d."Naziv",
+    ph.article_id, a."PLU",
+    a."Naziv", a."Kategorija",
+    ph.old_price, ph.new_price;
+
+-- 5️⃣ Create post nivelacija view
+CREATE OR REPLACE VIEW vw_sales_post_nivelacija AS
+WITH sales_daily AS (
+    SELECT
+        ps."id_artikal" AS article_id,
+        pz."datum_prodaje"::date AS day,
+        SUM(ps."kolicina")::NUMERIC AS units,
+        SUM(ps."kolicina" * ps."cena")::NUMERIC(18,2) AS revenue
+    FROM "prodaja_stavke" ps
+    JOIN "prodaja_zaglavlje" pz
+        ON pz."id" = ps."id_prodaja"
+    GROUP BY ps."id_artikal", pz."datum_prodaje"::date
+)
+SELECT
+    ph.id AS price_event_id,
+    ph.effective_from::date AS event_date,
+    ph.vendor_id,
+    COALESCE(d."Naziv",'N/A') AS vendor_name,
+    ph.article_id,
+    COALESCE(NULLIF(a."PLU",''), ph.article_id::text) AS sku,
+    a."Naziv" AS article_name,
+    COALESCE(a."Kategorija",'N/A') AS category,
+    ph.old_price,
+    ph.new_price,
+
+    COALESCE(SUM(s.units),0) AS post_qty,
+    COALESCE(SUM(s.revenue),0) AS post_revenue,
+
+    LEAST(COUNT(DISTINCT s.day)/30.0,1) AS coverage_post30,
+    COUNT(DISTINCT s.day) AS valid_days_post30
+
+FROM price_history ph
+JOIN "Artikli" a ON a."Id" = ph.article_id
+LEFT JOIN "Dobavljaci" d ON d."Id" = ph.vendor_id
+LEFT JOIN sales_daily s
+    ON s.article_id = ph.article_id
+   AND s.day >= ph.effective_from
+   AND s.day <  ph.effective_from + INTERVAL '30 days'
+
+GROUP BY
+    ph.id, ph.effective_from,
+    ph.vendor_id, d."Naziv",
+    ph.article_id, a."PLU",
+    a."Naziv", a."Kategorija",
+    ph.old_price, ph.new_price;
+
+-- 6️⃣ Create consolidated vendor sales nivelacija view
+CREATE OR REPLACE VIEW vw_vendor_sales_nivelacija AS
 SELECT
     pre.price_event_id,
     pre.event_date,
     pre.vendor_id,
     pre.vendor_name,
+    pre.article_id,
     pre.sku,
     pre.article_name,
     pre.category,
+
     pre.pre_qty,
+    post.post_qty,
     pre.pre_revenue,
-    COALESCE(post.post_qty, 0)::INT AS post_qty,
-    COALESCE(post.post_revenue, 0)::NUMERIC(18,2) AS post_revenue,
-    (COALESCE(post.post_qty, 0) - pre.pre_qty)::INT AS change_qty,
-    (COALESCE(post.post_revenue, 0) - pre.pre_revenue)::NUMERIC(18,2) AS change_revenue,
+    post.post_revenue,
+
+    pre.coverage_pre30,
+    post.coverage_post30,
+
+    (post.post_qty - pre.pre_qty) AS change_qty,
+    (post.post_revenue - pre.pre_revenue) AS change_revenue,
+
     CASE
-        WHEN pre.pre_revenue = 0 AND COALESCE(post.post_revenue, 0) > 0 THEN 100::NUMERIC(10,2)
-        WHEN pre.pre_revenue = 0 THEN 0::NUMERIC(10,2)
-        ELSE ROUND(((COALESCE(post.post_revenue, 0) - pre.pre_revenue) / pre.pre_revenue) * 100, 2)
-    END AS change_percent
-FROM "vw_sales_pre_nivelacija" pre
-LEFT JOIN "vw_sales_post_nivelacija" post
-    ON post.price_event_id = pre.price_event_id;
+        WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 100
+        WHEN pre.pre_qty = 0 THEN 0
+        ELSE ROUND(
+            ((post.post_qty - pre.pre_qty)
+             / NULLIF(pre.pre_qty,0)) * 100, 2)
+    END AS change_percent_qty,
+
+    CASE
+        WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 100
+        WHEN pre.pre_revenue = 0 THEN 0
+        ELSE ROUND(
+            ((post.post_revenue - pre.pre_revenue)
+             / NULLIF(pre.pre_revenue,0)) * 100, 2)
+    END AS change_percent_revenue
+
+FROM vw_sales_pre_nivelacija pre
+LEFT JOIN vw_sales_post_nivelacija post
+  ON pre.price_event_id = post.price_event_id;
+
+-- 7️⃣ Additional indexes
+CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_artikal_prodaja
+ON "prodaja_stavke" ("id_artikal","id_prodaja");
+
+CREATE INDEX IF NOT EXISTS idx_prodaja_zaglavlje_id_datum
+ON "prodaja_zaglavlje" ("id","datum_prodaje");

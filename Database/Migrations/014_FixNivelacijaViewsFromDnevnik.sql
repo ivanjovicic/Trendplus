@@ -38,109 +38,182 @@ WHERE line."DataOrigin" = 'access'
   AND src."Id" = line."BrojRacuna"::INT
   AND src."Datum" IS NOT NULL;
 
--- Recreate views from scratch to avoid column-order/name conflicts between
--- previous versions (013) and this upgraded layout (with old_price/new_price).
-DROP VIEW IF EXISTS "vw_nivelacija_did";
-DROP VIEW IF EXISTS "vw_vendor_sales_nivelacija";
-DROP VIEW IF EXISTS "vw_sales_post_nivelacija";
-DROP VIEW IF EXISTS "vw_sales_pre_nivelacija";
+-- Drop existing views
+DROP VIEW IF EXISTS vw_vendor_sales_nivelacija;
+DROP VIEW IF EXISTS vw_sales_post_nivelacija;
+DROP VIEW IF EXISTS vw_sales_pre_nivelacija;
 
--- 2) Pre-nivelacija view (30 days before event) from DnevnikPromena.
---    event_date prefers source dnevnik date (BrojRacuna -> source Id).
-CREATE OR REPLACE VIEW "vw_sales_pre_nivelacija" AS
-SELECT
-    d."Id"::BIGINT                                     AS price_event_id,
-    COALESCE(src."Datum", d."Datum")                  AS event_date,
-    COALESCE(d."DobavljacId", a."IDDobavljac")        AS vendor_id,
-    COALESCE(dob."Naziv", 'N/A')                      AS vendor_name,
-    COALESCE(NULLIF(a."PLU", ''), a."Id"::TEXT)       AS sku,
-    a."Naziv"                                          AS article_name,
-    COALESCE(a."Kategorija", 'N/A')                   AS category,
-    d."StaraProdajnaCena"                              AS old_price,
-    d."NovaProdajnaCena"                               AS new_price,
-    COALESCE(pre_stats.pre_qty, 0)::INT               AS pre_qty,
-    COALESCE(pre_stats.pre_revenue, 0)::NUMERIC(18,2) AS pre_revenue
-FROM "DnevnikPromena" d
-JOIN "Artikli" a ON a."Id" = d."ArtikalId"
-LEFT JOIN "Dobavljaci" dob ON dob."Id" = COALESCE(d."DobavljacId", a."IDDobavljac")
-LEFT JOIN "DnevnikPromena" src
-  ON src."Id" = CASE
-      WHEN d."BrojRacuna" ~ '^-?[0-9]+$' THEN d."BrojRacuna"::INT
-      ELSE NULL
-  END
-LEFT JOIN LATERAL (
+-- Create pre-aggregated sales data
+CREATE OR REPLACE VIEW vw_sales_pre_nivelacija AS
+WITH nivelacija_events AS (
+    SELECT *
+    FROM (
+        SELECT
+            d."Id"::BIGINT AS price_event_id,
+            COALESCE(src."Datum", d."Datum")::date AS event_date,
+            a."Id" AS article_id,
+            COALESCE(NULLIF(a."PLU", ''), a."Id"::TEXT) AS sku,
+            a."Naziv" AS article_name,
+            a."Kategorija" AS category,
+            COALESCE(d."DobavljacId", a."IDDobavljac") AS vendor_id,
+            dob."Naziv" AS vendor_name,
+            d."StaraProdajnaCena"::NUMERIC(18,4) AS old_price,
+            d."NovaProdajnaCena"::NUMERIC(18,4) AS new_price,
+            ROW_NUMBER() OVER (
+                PARTITION BY a."Id",
+                             COALESCE(src."Datum", d."Datum"),
+                             d."StaraProdajnaCena",
+                             d."NovaProdajnaCena"
+                ORDER BY d."Id" DESC
+            ) rn
+        FROM "DnevnikPromena" d
+        JOIN "Artikli" a ON a."Id" = d."ArtikalId"
+        LEFT JOIN "Dobavljaci" dob
+            ON dob."Id" = COALESCE(d."DobavljacId", a."IDDobavljac")
+        LEFT JOIN "DnevnikPromena" src
+            ON src."Id" = CASE
+                WHEN d."BrojRacuna" ~ '^[0-9]+$'
+                THEN d."BrojRacuna"::INT
+            END
+        WHERE d."TipPromene" IN ('Nivelacija','Nivelacija cena')
+          AND d."ArtikalId" IS NOT NULL
+          AND COALESCE(src."Datum", d."Datum") IS NOT NULL
+    ) x
+    WHERE rn = 1
+),
+sales_daily AS (
     SELECT
-        SUM(ps."kolicina")               AS pre_qty,
-        SUM(ps."kolicina" * ps."cena")   AS pre_revenue
+        ps."id_artikal" AS article_id,
+        pz."datum_prodaje"::date AS day,
+        SUM(ps."kolicina")::NUMERIC AS units,
+        SUM(ps."kolicina"*ps."cena")::NUMERIC(18,2) AS revenue
     FROM "prodaja_stavke" ps
-    JOIN "prodaja_zaglavlje" pz ON pz."id" = ps."id_prodaja"
-    WHERE ps."id_artikal" = d."ArtikalId"
-      AND pz."datum_prodaje" >= COALESCE(src."Datum", d."Datum") - INTERVAL '30 days'
-      AND pz."datum_prodaje" < COALESCE(src."Datum", d."Datum")
-) pre_stats ON TRUE
-WHERE d."TipPromene" IN ('Nivelacija', 'Nivelacija cena')
-  AND d."ArtikalId" IS NOT NULL
-  AND COALESCE(src."Datum", d."Datum") IS NOT NULL;
-
--- 3) Post-nivelacija view (30 days after event) from DnevnikPromena.
-CREATE OR REPLACE VIEW "vw_sales_post_nivelacija" AS
+    JOIN "prodaja_zaglavlje" pz
+        ON pz."id" = ps."id_prodaja"
+    GROUP BY ps."id_artikal", pz."datum_prodaje"::date
+)
 SELECT
-    d."Id"::BIGINT                                      AS price_event_id,
-    COALESCE(src."Datum", d."Datum")                  AS event_date,
-    COALESCE(d."DobavljacId", a."IDDobavljac")        AS vendor_id,
-    COALESCE(dob."Naziv", 'N/A')                      AS vendor_name,
-    COALESCE(NULLIF(a."PLU", ''), a."Id"::TEXT)       AS sku,
-    a."Naziv"                                          AS article_name,
-    COALESCE(a."Kategorija", 'N/A')                   AS category,
-    d."StaraProdajnaCena"                              AS old_price,
-    d."NovaProdajnaCena"                               AS new_price,
-    COALESCE(post_stats.post_qty, 0)::INT              AS post_qty,
-    COALESCE(post_stats.post_revenue, 0)::NUMERIC(18,2) AS post_revenue
-FROM "DnevnikPromena" d
-JOIN "Artikli" a ON a."Id" = d."ArtikalId"
-LEFT JOIN "Dobavljaci" dob ON dob."Id" = COALESCE(d."DobavljacId", a."IDDobavljac")
-LEFT JOIN "DnevnikPromena" src
-  ON src."Id" = CASE
-      WHEN d."BrojRacuna" ~ '^-?[0-9]+$' THEN d."BrojRacuna"::INT
-      ELSE NULL
-  END
-LEFT JOIN LATERAL (
-    SELECT
-        SUM(ps."kolicina")               AS post_qty,
-        SUM(ps."kolicina" * ps."cena")   AS post_revenue
-    FROM "prodaja_stavke" ps
-    JOIN "prodaja_zaglavlje" pz ON pz."id" = ps."id_prodaja"
-    WHERE ps."id_artikal" = d."ArtikalId"
-      AND pz."datum_prodaje" >= COALESCE(src."Datum", d."Datum")
-      AND pz."datum_prodaje" < COALESCE(src."Datum", d."Datum") + INTERVAL '30 days'
-) post_stats ON TRUE
-WHERE d."TipPromene" IN ('Nivelacija', 'Nivelacija cena')
-  AND d."ArtikalId" IS NOT NULL
-  AND COALESCE(src."Datum", d."Datum") IS NOT NULL;
+    e.*,
+    COALESCE(SUM(s.units),0) AS pre_qty,
+    COALESCE(SUM(s.revenue),0) AS pre_revenue,
+    LEAST(
+        COUNT(DISTINCT s.day) / 30.0,
+        1
+    ) AS coverage_pre30,
+    COUNT(DISTINCT s.day) AS valid_days_pre30,
+    (
+        COUNT(DISTINCT s.day) < 7
+        OR COALESCE(SUM(s.units),0) < 3
+        OR COALESCE(SUM(s.revenue),0) < 100
+    ) AS is_low_signal
+FROM nivelacija_events e
+LEFT JOIN sales_daily s
+  ON s.article_id = e.article_id
+ AND s.day >= e.event_date - INTERVAL '30 days'
+ AND s.day <  e.event_date
+GROUP BY
+    e.price_event_id, e.event_date,
+    e.article_id, e.sku,
+    e.article_name, e.category,
+    e.vendor_id, e.vendor_name,
+    e.old_price, e.new_price;
 
--- 4) Consolidated vendor/article delta view.
-CREATE OR REPLACE VIEW "vw_vendor_sales_nivelacija" AS
+-- Create post view
+CREATE OR REPLACE VIEW vw_sales_post_nivelacija AS
+WITH nivelacija_events AS (
+    SELECT * FROM vw_sales_pre_nivelacija
+),
+sales_daily AS (
+    SELECT
+        ps."id_artikal" AS article_id,
+        pz."datum_prodaje"::date AS day,
+        SUM(ps."kolicina")::NUMERIC AS units,
+        SUM(ps."kolicina"*ps."cena")::NUMERIC(18,2) AS revenue
+    FROM "prodaja_stavke" ps
+    JOIN "prodaja_zaglavlje" pz
+        ON pz."id" = ps."id_prodaja"
+    GROUP BY ps."id_artikal", pz."datum_prodaje"::date
+)
+SELECT
+    e.price_event_id,
+    e.event_date,
+    e.vendor_id,
+    e.vendor_name,
+    e.article_id,
+    e.sku,
+    e.article_name,
+    e.category,
+    e.old_price,
+    e.new_price,
+    COALESCE(SUM(s.units),0) AS post_qty,
+    COALESCE(SUM(s.revenue),0) AS post_revenue,
+    LEAST(COUNT(DISTINCT s.day)/30.0,1) AS coverage_post30,
+    COUNT(DISTINCT s.day) AS valid_days_post30
+FROM nivelacija_events e
+LEFT JOIN sales_daily s
+  ON s.article_id = e.article_id
+ AND s.day >= e.event_date
+ AND s.day <  e.event_date + INTERVAL '30 days'
+GROUP BY
+    e.price_event_id, e.event_date,
+    e.vendor_id, e.vendor_name,
+    e.article_id, e.sku,
+    e.article_name, e.category,
+    e.old_price, e.new_price;
+
+-- Create vendor delta view
+CREATE OR REPLACE VIEW vw_vendor_sales_nivelacija AS
 SELECT
     pre.price_event_id,
     pre.event_date,
     pre.vendor_id,
     pre.vendor_name,
+    pre.article_id,
     pre.sku,
-    pre.article_name,
-    pre.category,
-    pre.old_price,
-    pre.new_price,
-    pre.pre_qty,
-    pre.pre_revenue,
-    COALESCE(post.post_qty, 0)::INT                   AS post_qty,
-    COALESCE(post.post_revenue, 0)::NUMERIC(18,2)     AS post_revenue,
-    (COALESCE(post.post_qty, 0) - pre.pre_qty)::INT   AS change_qty,
-    (COALESCE(post.post_revenue, 0) - pre.pre_revenue)::NUMERIC(18,2) AS change_revenue,
+
+    pre.pre_qty::NUMERIC,
+    post.post_qty::NUMERIC,
+    pre.pre_revenue::NUMERIC(18,2),
+    post.post_revenue::NUMERIC(18,2),
+
+    pre.coverage_pre30,
+    post.coverage_post30,
+
+    (post.post_qty - pre.pre_qty) AS change_qty,
+    (post.post_revenue - pre.pre_revenue) AS change_revenue,
+
     CASE
-        WHEN pre.pre_revenue = 0 AND COALESCE(post.post_revenue, 0) > 0 THEN 100::NUMERIC(10,2)
-        WHEN pre.pre_revenue = 0 THEN 0::NUMERIC(10,2)
-        ELSE ROUND(((COALESCE(post.post_revenue, 0) - pre.pre_revenue) / pre.pre_revenue) * 100, 2)
-    END AS change_percent
-FROM "vw_sales_pre_nivelacija" pre
-LEFT JOIN "vw_sales_post_nivelacija" post
-    ON post.price_event_id = pre.price_event_id;
+        WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 100
+        WHEN pre.pre_qty = 0 THEN 0
+        ELSE ROUND(
+            ((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty,0))*100,2
+        )
+    END AS change_percent_qty,
+
+    CASE
+        WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 100
+        WHEN pre.pre_revenue = 0 THEN 0
+        ELSE ROUND(
+            ((post.post_revenue - pre.pre_revenue)
+             / NULLIF(pre.pre_revenue,0))*100,2
+        )
+    END AS change_percent_revenue,
+
+    (pre.is_low_signal OR post.coverage_post30 < 0.2) AS is_low_signal
+
+FROM vw_sales_pre_nivelacija pre
+LEFT JOIN vw_sales_post_nivelacija post
+  ON pre.price_event_id = post.price_event_id;
+
+-- Recommended indexes
+CREATE INDEX IF NOT EXISTS idx_dnevnik_tip_artikal_datum
+ON "DnevnikPromena" ("TipPromene","ArtikalId","Datum");
+
+CREATE INDEX IF NOT EXISTS idx_dnevnik_brojracuna
+ON "DnevnikPromena" ("BrojRacuna");
+
+CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_artikal_prodaja
+ON "prodaja_stavke" ("id_artikal","id_prodaja");
+
+CREATE INDEX IF NOT EXISTS idx_prodaja_zaglavlje_id_datum
+ON "prodaja_zaglavlje" ("id","datum_prodaje");

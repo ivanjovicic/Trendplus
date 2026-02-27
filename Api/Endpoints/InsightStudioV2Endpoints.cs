@@ -26,24 +26,19 @@ public static class InsightStudioV2Endpoints
         {
             try
             {
-                var from = fromDate.HasValue
+                var fromUtc = fromDate.HasValue
                     ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
                     : DateTime.UtcNow.AddDays(-90);
-                var to = toDate.HasValue
+                var toUtc = toDate.HasValue
                     ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
                     : DateTime.UtcNow;
 
                 var salesData = await (
                     from pz in db.ProdajaZaglavlja
-                    where pz.DatumProdaje >= from && pz.DatumProdaje <= to
-                    select new { pz.Id, pz.DatumProdaje }
+                    join ps in db.ProdajaStavke on pz.Id equals ps.IdProdaja
+                    where pz.DatumProdaje >= fromUtc && pz.DatumProdaje <= toUtc
+                    select new { pz.DatumProdaje, ps.Kolicina, ps.Cena }
                 ).ToListAsync(ct);
-
-                var ids = salesData.Select(x => x.Id).ToList();
-                var stavke = await db.ProdajaStavke
-                    .Where(ps => ids.Contains(ps.IdProdaja))
-                    .Select(ps => new { ps.IdProdaja, ps.Kolicina, ps.Cena })
-                    .ToListAsync(ct);
 
                 // Build heatmap: dayOfWeek (0=Mon..6=Sun) × week number
                 var dayNames = new[] { "Pon", "Uto", "Sre", "Čet", "Pet", "Sub", "Ned" };
@@ -53,18 +48,14 @@ public static class InsightStudioV2Endpoints
                         DayOfWeek = ((int)s.DatumProdaje.DayOfWeek + 6) % 7, // Mon=0
                         WeekStart = s.DatumProdaje.Date.AddDays(-((int)(s.DatumProdaje.DayOfWeek + 6) % 7))
                     })
-                    .Select(g =>
+                    .Select(g => new
                     {
-                        var dayIds = g.Select(x => x.Id).ToList();
-                        return new
-                        {
-                            day = g.Key.DayOfWeek,
-                            dayName = dayNames[g.Key.DayOfWeek],
-                            weekStart = g.Key.WeekStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                            revenue = stavke.Where(s => dayIds.Contains(s.IdProdaja)).Sum(s => s.Kolicina * s.Cena),
-                            units = stavke.Where(s => dayIds.Contains(s.IdProdaja)).Sum(s => s.Kolicina),
-                            transactions = dayIds.Count
-                        };
+                        day = g.Key.DayOfWeek,
+                        dayName = dayNames[g.Key.DayOfWeek],
+                        weekStart = g.Key.WeekStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        revenue = g.Sum(s => s.Kolicina * s.Cena),
+                        units = g.Sum(s => s.Kolicina),
+                        transactions = g.Count()
                     })
                     .OrderBy(x => x.weekStart)
                     .ThenBy(x => x.day)
@@ -103,7 +94,7 @@ public static class InsightStudioV2Endpoints
         {
             try
             {
-                var from = fromDate.HasValue
+                var fromUtc = fromDate.HasValue
                     ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
@@ -111,64 +102,43 @@ public static class InsightStudioV2Endpoints
                     : DateTime.UtcNow;
 
                 // Get multi-item transactions only
-                var multiItemSaleIds = await db.ProdajaStavke
-                    .Join(db.ProdajaZaglavlja.Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to),
-                        ps => ps.IdProdaja, p => p.Id, (ps, p) => new { ps.IdProdaja, ps.IdArtikal })
-                    .GroupBy(x => x.IdProdaja)
-                    .Where(g => g.Count() >= 2)
-                    .Select(g => g.Key)
-                    .ToListAsync(ct);
-
-                if (multiItemSaleIds.Count == 0)
-                    return Results.Ok(new { pairs = new List<object>(), totalMultiItemTransactions = 0 });
-
                 var basketItems = await (
                     from ps in db.ProdajaStavke
+                    join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
                     join a in db.Artikli on ps.IdArtikal equals a.Id
-                    where multiItemSaleIds.Contains(ps.IdProdaja)
-                    select new { ps.IdProdaja, a.Id, Kategorija = a.Kategorija ?? "Ostalo" }
+                    where p.DatumProdaje >= fromUtc && p.DatumProdaje <= to
+                    group a by ps.IdProdaja into g
+                    where g.Count() >= 2
+                    select g.Select(x => x.Kategorija ?? "Ostalo").Distinct().ToList()
                 ).ToListAsync(ct);
 
-                // Category-level co-occurrence pairs
-                var baskets = basketItems
-                    .GroupBy(x => x.IdProdaja)
-                    .Select(g => g.Select(x => x.Kategorija).Distinct().ToList())
-                    .Where(b => b.Count >= 2)
-                    .ToList();
+                if (basketItems.Count == 0)
+                    return Results.Ok(new { pairs = new List<object>(), totalMultiItemTransactions = 0 });
 
-                var pairCounts = new Dictionary<string, int>();
-                foreach (var basket in baskets)
-                {
-                    for (int i = 0; i < basket.Count; i++)
-                        for (int j = i + 1; j < basket.Count; j++)
-                        {
-                            var key = string.Compare(basket[i], basket[j], StringComparison.Ordinal) < 0
-                                ? $"{basket[i]}|{basket[j]}"
-                                : $"{basket[j]}|{basket[i]}";
-                            pairCounts[key] = pairCounts.GetValueOrDefault(key, 0) + 1;
-                        }
-                }
+                var pairCounts = basketItems
+                    .SelectMany(basket => basket
+                        .SelectMany((item, i) => basket.Skip(i + 1)
+                            .Select(other => string.Compare(item, other, StringComparison.Ordinal) < 0
+                                ? (item: item, other: other)
+                                : (item: other, other: item))))
+                    .GroupBy(pair => pair)
+                    .ToDictionary(g => g.Key, g => g.Count());
 
                 var pairs = pairCounts
                     .Where(kv => kv.Value >= minSupport)
                     .OrderByDescending(kv => kv.Value)
                     .Take(20)
-                    .Select(kv =>
+                    .Select(kv => new
                     {
-                        var parts = kv.Key.Split('|');
-                        var lift = baskets.Count > 0
-                            ? (double)kv.Value / baskets.Count * 100 : 0;
-                        return new
-                        {
-                            categoryA = parts[0],
-                            categoryB = parts[1],
-                            coOccurrences = kv.Value,
-                            supportPct = lift
-                        };
+                        categoryA = kv.Key.item,
+                        categoryB = kv.Key.other,
+                        coOccurrences = kv.Value,
+                        supportPct = basketItems.Count > 0
+                            ? (double)kv.Value / basketItems.Count * 100 : 0
                     })
                     .ToList();
 
-                return Results.Ok(new { pairs, totalMultiItemTransactions = multiItemSaleIds.Count });
+                return Results.Ok(new { pairs, totalMultiItemTransactions = basketItems.Count });
             }
             catch (Exception ex)
             {
@@ -185,22 +155,19 @@ public static class InsightStudioV2Endpoints
         {
             try
             {
-                var from = fromDate.HasValue
+                var fromUtc = fromDate.HasValue
                     ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
                     ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
                     : DateTime.UtcNow;
-                var days = Math.Max(1, (to - from).TotalDays);
-
-                var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
-                    .Select(p => p.Id).ToListAsync(ct);
+                var days = Math.Max(1, (to - fromUtc).TotalDays);
 
                 var productData = await (
                     from ps in db.ProdajaStavke
+                    join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
                     join a in db.Artikli on ps.IdArtikal equals a.Id
-                    where prodajeIds.Contains(ps.IdProdaja)
+                    where p.DatumProdaje >= fromUtc && p.DatumProdaje <= to
                     group new { ps, a } by new { a.Id, a.Naziv, a.Kategorija, a.Pol, a.NabavnaCena, a.Kolicina } into g
                     select new
                     {
@@ -220,15 +187,17 @@ public static class InsightStudioV2Endpoints
                 var allMargins = productData
                     .Where(p => p.totalCost.HasValue && p.totalRevenue > 0)
                     .Select(p => (double)((p.totalRevenue - p.totalCost!.Value) / p.totalRevenue * 100))
+                    .OrderBy(x => x)
                     .ToList();
                 var medianMargin = allMargins.Count > 0
-                    ? allMargins.OrderBy(x => x).ElementAt(allMargins.Count / 2) : 35;
+                    ? allMargins[allMargins.Count / 2] : 35;
 
                 var allVelocities = productData
                     .Select(p => p.totalUnits / days)
+                    .OrderBy(x => x)
                     .ToList();
                 var medianVelocity = allVelocities.Count > 0
-                    ? allVelocities.OrderBy(x => x).ElementAt(allVelocities.Count / 2) : 0.1;
+                    ? allVelocities[allVelocities.Count / 2] : 0.1;
 
                 var items = productData.Select(p =>
                 {
@@ -640,16 +609,16 @@ public static class InsightStudioV2Endpoints
             try
             {
                 var now = DateTime.UtcNow;
-                var from = fromDate.HasValue
+                var fromUtc = fromDate.HasValue
                     ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
                     : now.AddDays(-90);
-                var to = toDate.HasValue
+                var toUtc = toDate.HasValue
                     ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
                     : now;
-                var days = Math.Max(1, (to - from).TotalDays);
+                var days = Math.Max(1, (toUtc - fromUtc).TotalDays);
 
                 var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= fromUtc && p.DatumProdaje <= toUtc)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var stavke = await (
@@ -680,7 +649,7 @@ public static class InsightStudioV2Endpoints
                     from ps in db.PovracajStavke
                     join pz in db.PovracajZaglavlja on ps.IdPovracaj equals pz.Id
                     join a in db.Artikli on ps.IdArtikal equals a.Id
-                    where pz.DatumPovracaja >= from && pz.DatumPovracaja <= to
+                    where pz.DatumPovracaja >= fromUtc && pz.DatumPovracaja <= toUtc
                     group ps by a.IDDobavljac into g
                     select new { dobId = g.Key, returnUnits = g.Sum(x => x.Kolicina) }
                 ).ToDictionaryAsync(x => x.dobId, x => x.returnUnits, ct);

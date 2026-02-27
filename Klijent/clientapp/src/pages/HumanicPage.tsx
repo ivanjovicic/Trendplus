@@ -97,14 +97,14 @@ export default function HumanicPage() {
                 priceMax: filterPriceMax,
             };
 
-            toast.info("Calling Humanic scraper...");
+            toast.info("Pokretanje Humanic scraper-a...");
             const data = await runHumanicScraper(payload);
             const items: HumanicItem[] = data?.items || [];
             setResults(items);
-            toast.success(`Humanic: loaded ${data?.count ?? items.length} items`);
+            toast.success(`Humanic: učitano ${data?.count ?? items.length} stavki`);
         } catch (e) {
             console.error(e);
-            toast.error(e instanceof Error ? e.message : "Failed to run Humanic scraper");
+            toast.error(e instanceof Error ? e.message : "Greška pri pokretanju Humanic scraper-a");
         } finally {
             setLoading(false);
         }
@@ -112,12 +112,12 @@ export default function HumanicPage() {
 
     return (
         <div style={{ maxWidth: 1200, margin: "2rem auto", padding: "0 1rem" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>Humanic - EU Market Scraper</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12, color: "#c9d3e4" }}>Humanic — Scraper EU tržišta</h1>
 
             <div className="card" style={{ marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ minWidth: 420, flex: 1 }}>
-                        <label className="field-label">Category URL</label>
+                        <label className="field-label">URL kategorije</label>
                         <input
                             className="input-big"
                             value={humanicUrl}
@@ -127,25 +127,25 @@ export default function HumanicPage() {
                     </div>
 
                     <div style={{ minWidth: 200 }}>
-                        <label className="field-label">Page Mode</label>
+                        <label className="field-label">Režim stranica</label>
                         <select
                             className="input-big"
                             value={pageMode}
                             onChange={(e) => setPageMode((e.target.value as "auto" | "manual") || "auto")}
                         >
-                            <option value="auto">Auto (Recommended)</option>
-                            <option value="manual">Manual</option>
+                            <option value="auto">Automatski (preporučeno)</option>
+                            <option value="manual">Ručno</option>
                         </select>
                         {pageMode === "auto" && (
-                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                                Auto mode stops when no new products are found.
+                            <div style={{ fontSize: 12, color: "#8A95B0", marginTop: 4 }}>
+                                Automatski režim se zaustavlja kad nema novih proizvoda.
                             </div>
                         )}
                     </div>
 
                     {pageMode === "manual" && (
                         <div style={{ minWidth: 160 }}>
-                            <label className="field-label">Pages</label>
+                            <label className="field-label">Stranice</label>
                             <input
                                 type="number"
                                 className="input-big"
@@ -153,29 +153,29 @@ export default function HumanicPage() {
                                 min={1}
                                 onChange={(e) => setFilterPages(Number(e.target.value) || 1)}
                             />
-                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                                Use 1-3 pages to keep scraper fast.
+                            <div style={{ fontSize: 12, color: "#8A95B0", marginTop: 4 }}>
+                                Koristite 1-3 stranice za brže pokretanje.
                             </div>
                         </div>
                     )}
 
                     <div style={{ minWidth: 180 }}>
-                        <label className="field-label">Sort</label>
+                        <label className="field-label">Sortiranje</label>
                         <select
                             className="input-big"
                             value={filterSort}
                             onChange={(e) => setFilterSort(e.target.value)}
                         >
                             <option value="bestseller">Bestseller</option>
-                            <option value="new">Neuheiten</option>
-                            <option value="price-asc">Price: Low to High</option>
-                            <option value="price-desc">Price: High to Low</option>
-                            <option value="relevance">Relevance</option>
+                            <option value="new">Noviteti</option>
+                            <option value="price-asc">Cena: raste</option>
+                            <option value="price-desc">Cena: pada</option>
+                            <option value="relevance">Relevantnost</option>
                         </select>
                     </div>
 
                     <div style={{ minWidth: 240 }}>
-                        <label className="field-label">Brand</label>
+                        <label className="field-label">Brend</label>
                         <SearchableSelect
                             value={filterBrand}
                             onChange={setFilterBrand}
@@ -186,7 +186,7 @@ export default function HumanicPage() {
                     </div>
 
                     <div style={{ minWidth: 260 }}>
-                        <label className="field-label">Upper Material</label>
+                        <label className="field-label">Materijal gornjišta</label>
                         <SearchableSelect
                             value={filterUpperMaterials}
                             onChange={setFilterUpperMaterials}
@@ -197,7 +197,7 @@ export default function HumanicPage() {
                     </div>
 
                     <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Keyword</label>
+                        <label className="field-label">Ključna reč</label>
                         <SearchableSelect
                             value={filterKeyword}
                             onChange={(v) => setFilterKeyword(Array.isArray(v) ? v.join(" ") : v)}
@@ -207,7 +207,7 @@ export default function HumanicPage() {
                     </div>
 
                     <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Price Min (EUR)</label>
+                        <label className="field-label">Min cena (EUR)</label>
                         <input
                             type="number"
                             className="input-big"
@@ -218,7 +218,7 @@ export default function HumanicPage() {
                     </div>
 
                     <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Price Max (EUR)</label>
+                        <label className="field-label">Max cena (EUR)</label>
                         <input
                             type="number"
                             className="input-big"
@@ -230,7 +230,7 @@ export default function HumanicPage() {
 
                     <div style={{ marginLeft: "auto" }}>
                         <button className="button-big" onClick={runHumanicFiltered} disabled={loading} style={{ minWidth: 160 }}>
-                            {loading ? "Scraping..." : "Run Humanic"}
+                            {loading ? "Pokretanje..." : "Pokreni Humanic"}
                         </button>
                     </div>
                 </div>
@@ -238,7 +238,7 @@ export default function HumanicPage() {
 
             {results.length > 0 && (
                 <div>
-                    <h3 style={{ marginBottom: 12 }}>Results ({results.length})</h3>
+                    <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Rezultati ({results.length})</h3>
                     <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))" }}>
                         {results.map((p, idx) => (
                             <div key={idx} className="card" style={{ padding: 12 }}>
@@ -248,8 +248,8 @@ export default function HumanicPage() {
                                         height: 170,
                                         overflow: "hidden",
                                         borderRadius: 8,
-                                        background: "#ffffff",
-                                        border: "1px solid #e5e7eb",
+                                        background: "#1A1F2E",
+                                        border: "1px solid #2A3045",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
@@ -268,15 +268,15 @@ export default function HumanicPage() {
                                     ) : null}
                                 </div>
                                 <div style={{ paddingTop: 12 }}>
-                                    <div style={{ fontSize: 12, color: "#6b7280" }}>{p.brand || "Humanic"}</div>
-                                    <div style={{ fontWeight: 700, margin: "6px 0" }}>{p.name}</div>
+                                    <div style={{ fontSize: 12, color: "#8A95B0" }}>{p.brand || "Humanic"}</div>
+                                    <div style={{ fontWeight: 700, margin: "6px 0", color: "#c9d3e4" }}>{p.name}</div>
                                     <div style={{ color: "#059669", fontWeight: 700 }}>{p.price || "-"}</div>
                                     {p.old_price && p.old_price !== p.price && (
-                                        <div style={{ color: "#6b7280", fontSize: 12, textDecoration: "line-through" }}>{p.old_price}</div>
+                                        <div style={{ color: "#8A95B0", fontSize: 12, textDecoration: "line-through" }}>{p.old_price}</div>
                                     )}
                                     {p.url && (
-                                        <a href={p.url} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }}>
-                                            View
+                                        <a href={p.url} target="_blank" rel="noreferrer" style={{ color: "#4F8EF7" }}>
+                                            Pogledaj
                                         </a>
                                     )}
                                 </div>

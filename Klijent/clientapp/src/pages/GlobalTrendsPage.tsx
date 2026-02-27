@@ -164,15 +164,15 @@ export default function GlobalTrendsPage() {
                 }
 
                 if (found > 0) {
-                    toast.success(`Imported ${found} Zalando products`);
+                    toast.success(`Uvezeno ${found} Zalando proizvoda`);
                     await fetchProductsForSource("zalando");
                 } else {
-                    toast.warning(`No Zalando products found after import. Try refreshing or check backend logs.`);
+                    toast.warning(`Nisu pronađeni Zalando proizvodi nakon uvoza. Pokušajte ponovo ili proverite backend logove.`);
                 }
             }
         } catch (error) {
             console.error("Scraper error:", error);
-            toast.error(error instanceof Error ? error.message : "Scraper failed");
+            toast.error(error instanceof Error ? error.message : "Greška pri pokretanju scraper-a");
         } finally {
             setLoading(false);
         }
@@ -222,13 +222,13 @@ export default function GlobalTrendsPage() {
             const data = await resp.json();
             setAdhocProducts(data.products || []);
             if (data.imported) {
-                toast.success(`Scraped ${data.scraped} products and imported to core`);
+                toast.success(`Scraped ${data.scraped} proizvoda, uvezeno u bazu`);
             } else {
-                toast.success(`Loaded ${data.count || (data.products?.length || 0)} products from Zalando`);
+                toast.success(`Učitano ${data.count || (data.products?.length || 0)} proizvoda sa Zalando-a`);
             }
         } catch (e) {
             console.error("Zalando ad-hoc error:", e);
-            toast.error(e instanceof Error ? e.message : "Failed to run Zalando scraper");
+            toast.error(e instanceof Error ? e.message : "Greška pri pokretanju Zalando scraper-a");
         } finally {
             setLoading(false);
         }
@@ -255,10 +255,10 @@ export default function GlobalTrendsPage() {
 
             const data = await runDeichmannScraper(payload);
             setScrapedProducts(data.items || data.items || []);
-            toast.success(`Deichmann returned ${data.count ?? (data.items?.length ?? 0)} items`);
+            toast.success(`Deichmann: učitano ${data.count ?? (data.items?.length ?? 0)} stavki`);
         } catch (e) {
             console.error("Deichmann error:", e);
-            toast.error(e instanceof Error ? e.message : "Failed to run Deichmann scraper");
+            toast.error(e instanceof Error ? e.message : "Greška pri pokretanju Deichmann scraper-a");
         } finally {
             setLoading(false);
         }
@@ -275,11 +275,11 @@ export default function GlobalTrendsPage() {
         <div style={{ maxWidth: "1400px", margin: "2rem auto", padding: "0 1rem" }}>
             {/* Header */}
             <div style={{ marginBottom: "2rem" }}>
-                <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#1f2937", marginBottom: "0.5rem" }}>
-                    🌍 Global Trends Analytics
+                <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#c9d3e4", marginBottom: "0.5rem" }}>
+                    🌍 Globalna analitika trendova
                 </h1>
-                <p style={{ color: "#6b7280", fontSize: "1rem" }}>
-                    Track EU fashion trends and social media buzz from TikTok & Instagram
+                <p style={{ color: "#8A95B0", fontSize: "1rem" }}>
+                    Prati EU modne trendove i buzz sa TikToka i Instagrama
                 </p>
             </div>
 
@@ -288,14 +288,14 @@ export default function GlobalTrendsPage() {
                 display: "flex", 
                 gap: "1rem", 
                 marginBottom: "2rem",
-                borderBottom: "2px solid #e5e7eb"
+                borderBottom: "2px solid #2A3045"
             }}>
                 <button
                     onClick={() => setActiveTab("trends")}
                     style={{
                         padding: "1rem 2rem",
                         background: activeTab === "trends" ? "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" : "transparent",
-                        color: activeTab === "trends" ? "white" : "#6b7280",
+                        color: activeTab === "trends" ? "white" : "#8A95B0",
                         border: "none",
                         borderBottom: activeTab === "trends" ? "3px solid #3b82f6" : "none",
                         cursor: "pointer",
@@ -305,14 +305,14 @@ export default function GlobalTrendsPage() {
                         transition: "all 0.2s"
                     }}
                 >
-                    📊 Social Media Trends
+                    📊 Trendovi na mrežama
                 </button>
                 <button
                     onClick={() => setActiveTab("scrapers")}
                     style={{
                         padding: "1rem 2rem",
                         background: activeTab === "scrapers" ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "transparent",
-                        color: activeTab === "scrapers" ? "white" : "#6b7280",
+                        color: activeTab === "scrapers" ? "white" : "#8A95B0",
                         border: "none",
                         borderBottom: activeTab === "scrapers" ? "3px solid #10b981" : "none",
                         cursor: "pointer",
@@ -322,7 +322,7 @@ export default function GlobalTrendsPage() {
                         transition: "all 0.2s"
                     }}
                 >
-                    🔍 EU Market Scrapers
+                    🔍 Scraperi EU tržišta
                 </button>
             </div>
 
@@ -332,8 +332,8 @@ export default function GlobalTrendsPage() {
                     <div className="card" style={{ marginBottom: "1.5rem" }}>
                         <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
                             <div style={{ flex: "1", minWidth: "200px" }}>
-                                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600 }}>
-                                    Category
+                                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, color: "#8A95B0" }}>
+                                    Kategorija
                                 </label>
                                 <select
                                     className="input-big"
@@ -357,7 +357,7 @@ export default function GlobalTrendsPage() {
                                     marginTop: 0
                                 }}
                             >
-                                {loading ? "⏳ Loading..." : "🔍 Fetch Trends"}
+                                {loading ? "⏳ Učitavanje..." : "🔍 Učitaj trendove"}
                             </button>
                         </div>
                     </div>
@@ -432,7 +432,7 @@ export default function GlobalTrendsPage() {
                                         <div style={{ marginBottom: "1rem" }}>
                                             <div style={{ 
                                                 fontSize: "0.875rem", 
-                                                color: "#6b7280",
+                                                color: "#8A95B0",
                                                 marginBottom: "0.25rem",
                                                 fontWeight: 600
                                             }}>
@@ -442,7 +442,7 @@ export default function GlobalTrendsPage() {
                                                 fontSize: "1.25rem", 
                                                 fontWeight: 700, 
                                                 margin: 0,
-                                                color: "#1f2937"
+                                                color: "#c9d3e4"
                                             }}>
                                                 {trend.productName}
                                             </h3>
@@ -463,23 +463,23 @@ export default function GlobalTrendsPage() {
                                             gap: "0.75rem", 
                                             marginBottom: "1rem",
                                             padding: "1rem",
-                                            background: "#f9fafb",
+                                            background: "#1A1F2E",
                                             borderRadius: "8px"
                                         }}>
                                             <div style={{ textAlign: "center" }}>
-                                                <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>Trend Score</div>
-                                                <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#1f2937" }}>
+                                                <div style={{ fontSize: "0.75rem", color: "#8A95B0" }}>Trend skor</div>
+                                                <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#c9d3e4" }}>
                                                     {trend.finalTrendScore.toFixed(1)}
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: "center" }}>
-                                                <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>TikTok</div>
+                                                <div style={{ fontSize: "0.75rem", color: "#8A95B0" }}>TikTok</div>
                                                 <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#dc2626" }}>
                                                     {trend.tiktokScore.toFixed(1)}
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: "center" }}>
-                                                <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>Instagram</div>
+                                                <div style={{ fontSize: "0.75rem", color: "#8A95B0" }}>Instagram</div>
                                                 <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#c026d3" }}>
                                                     {trend.instagramScore.toFixed(1)}
                                                 </div>
@@ -491,10 +491,10 @@ export default function GlobalTrendsPage() {
                                             <div style={{ 
                                                 fontSize: "0.875rem", 
                                                 fontWeight: 600, 
-                                                color: "#374151",
+                                                color: "#c9d3e4",
                                                 marginBottom: "0.5rem"
                                             }}>
-                                                Key Features:
+                                                Ključne karakteristike:
                                             </div>
                                             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                                                 {trend.keyFeatures.map((feature, idx) => (
@@ -502,8 +502,8 @@ export default function GlobalTrendsPage() {
                                                         key={idx}
                                                         style={{
                                                             padding: "0.25rem 0.75rem",
-                                                            background: "#dbeafe",
-                                                            color: "#1e40af",
+                                                            background: "rgba(79, 142, 247, 0.15)",
+                                                            color: "#4F8EF7",
                                                             borderRadius: "999px",
                                                             fontSize: "0.75rem",
                                                             fontWeight: 500
@@ -520,10 +520,10 @@ export default function GlobalTrendsPage() {
                                             <div style={{ 
                                                 fontSize: "0.875rem", 
                                                 fontWeight: 600, 
-                                                color: "#374151",
+                                                color: "#c9d3e4",
                                                 marginBottom: "0.5rem"
                                             }}>
-                                                Popular Colors:
+                                                Popularne boje:
                                             </div>
                                             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                                                 {trend.popularColors.map((color, idx) => (
@@ -531,8 +531,8 @@ export default function GlobalTrendsPage() {
                                                         key={idx}
                                                         style={{
                                                             padding: "0.25rem 0.75rem",
-                                                            background: "#f3f4f6",
-                                                            color: "#4b5563",
+                                                            background: "#2A3045",
+                                                            color: "#c9d3e4",
                                                             borderRadius: "999px",
                                                             fontSize: "0.75rem",
                                                             fontWeight: 500
@@ -547,8 +547,8 @@ export default function GlobalTrendsPage() {
                                         {/* Social Stats */}
                                         <div style={{ 
                                             fontSize: "0.75rem", 
-                                            color: "#6b7280",
-                                            borderTop: "1px solid #e5e7eb",
+                                            color: "#8A95B0",
+                                            borderTop: "1px solid #2A3045",
                                             paddingTop: "1rem"
                                         }}>
                                             <div>📱 TikTok: {(trend.tiktokViews / 1000000000).toFixed(1)}B views</div>
@@ -561,9 +561,9 @@ export default function GlobalTrendsPage() {
                     )}
 
                     {trends.length === 0 && !loading && (
-                        <div className="card" style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
-                            <p style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>📊 No trends data</p>
-                            <p>Select a category and click "Fetch Trends"</p>
+                        <div className="card" style={{ textAlign: "center", padding: "3rem", color: "#8A95B0" }}>
+                            <p style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>📊 Nema podataka o trendovima</p>
+                            <p>Odaberite kategoriju i kliknite "🔍 Učitaj trendove"</p>
                         </div>
                     )}
                 </div>
@@ -575,15 +575,15 @@ export default function GlobalTrendsPage() {
                     <div className="card" style={{ marginBottom: "1.5rem" }}>
                         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                             <div style={{ minWidth: 180 }}>
-                                <label className="field-label">Zalando pages</label>
+                                <label className="field-label">Zalando stranice</label>
                                 <input type="number" className="input-big" value={zalandoPages} min={1} onChange={(e) => setZalandoPages(Number(e.target.value) || 1)} />
                             </div>
                             <div style={{ minWidth: 180 }}>
-                                <label className="field-label">Deichmann pages</label>
+                                <label className="field-label">Deichmann stranice</label>
                                 <input type="number" className="input-big" value={deichmannPages} min={1} onChange={(e) => setDeichmannPages(Number(e.target.value) || 1)} />
                             </div>
                             <div style={{ minWidth: 220 }}>
-                                <label className="field-label">Category</label>
+                                <label className="field-label">Kategorija</label>
                                 <select className="input-big" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
                                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
@@ -598,7 +598,7 @@ export default function GlobalTrendsPage() {
                                         minWidth: "200px"
                                     }}
                                 >
-                                    {loading ? "⏳ Scraping..." : "🚀 Run Scrapers"}
+                                    {loading ? "⏳ Pokrećanje..." : "🚀 Pokreni scrapere"}
                                 </button>
                             </div>
                         </div>
@@ -611,8 +611,8 @@ export default function GlobalTrendsPage() {
                             marginBottom: "1.5rem",
                             padding: "1.25rem",
                             borderRadius: "12px",
-                            background: "white",
-                            border: "1px solid #e5e7eb",
+                            background: "#161A23",
+                            border: "1px solid #2A3045",
                             display: "flex",
                             flexWrap: "wrap",
                             gap: "1rem",
@@ -621,7 +621,7 @@ export default function GlobalTrendsPage() {
                     >
                         {/* Brand (Searchable Select) */}
                         <div style={{ minWidth: 220 }}>
-                            <label className="field-label">Brand</label>
+                            <label className="field-label">Brend</label>
                             <SearchableSelect 
                                 value={filterBrand}
                                 onChange={setFilterBrand}
@@ -633,7 +633,7 @@ export default function GlobalTrendsPage() {
 
                         {/* Gender with icons */}
                         <div style={{ minWidth: 160 }}>
-                            <label className="field-label">Gender</label>
+                            <label className="field-label">Pol</label>
                             <select
                                 className="input-big"
                                 value={filterGender}
@@ -647,7 +647,7 @@ export default function GlobalTrendsPage() {
                         </div>
 
                         <div style={{ minWidth: 200 }}>
-                            <label className="field-label">Zalando Country</label>
+                            <label className="field-label">Zalando zemlja</label>
                             <select
                                 className="input-big"
                                 value={filterZalandoCountry}
@@ -663,7 +663,7 @@ export default function GlobalTrendsPage() {
 
                         {/* Price Range */}
                         <div style={{ minWidth: 150 }}>
-                            <label className="field-label">Price Min (€)</label>
+                            <label className="field-label">Min cena (€)</label>
                             <input
                                 type="number"
                                 className="input-big"
@@ -676,7 +676,7 @@ export default function GlobalTrendsPage() {
                         </div>
 
                         <div style={{ minWidth: 150 }}>
-                            <label className="field-label">Price Max (€)</label>
+                            <label className="field-label">Max cena (€)</label>
                             <input
                                 type="number"
                                 className="input-big"
@@ -690,22 +690,22 @@ export default function GlobalTrendsPage() {
 
                         {/* Sort */}
                         <div style={{ minWidth: 160 }}>
-                            <label className="field-label">Sort by</label>
+                            <label className="field-label">Sortiranje</label>
                             <select
                                 className="input-big"
                                 value={filterSort}
                                 onChange={(e) => setFilterSort(e.target.value)}
                             >
-                                <option value="popularity">🔥 Popularity</option>
-                                <option value="price-asc">💸 Price: Low → High</option>
-                                <option value="price-desc">💰 Price: High → Low</option>
-                                <option value="new">✨ New Arrivals</option>
+                                <option value="popularity">🔥 Popularnost</option>
+                                <option value="price-asc">💸 Cena: rasтуće</option>
+                                <option value="price-desc">💰 Cena: opadajuće</option>
+                                <option value="new">✨ Novo u ponudi</option>
                             </select>
                         </div>
 
                         {/* Pages */}
                         <div style={{ minWidth: 100 }}>
-                            <label className="field-label">Pages</label>
+                            <label className="field-label">Stranice</label>
                             <input
                                 type="number"
                                 className="input-big"
@@ -722,10 +722,10 @@ export default function GlobalTrendsPage() {
                                 value={filterActivationDate ?? ""}
                                 onChange={(e) => setFilterActivationDate(e.target.value || undefined)}
                             >
-                                <option value="">No filter</option>
-                                <option value="0-7">Last 0-7 days</option>
-                                <option value="0-7.7-14">0-7 & 7-14 days</option>
-                                <option value="0-30.0-7.7-14">0-30 & 0-7 & 7-14 days</option>
+                                <option value="">Bez filtera</option>
+                                <option value="0-7">Posled. 0-7 dana</option>
+                                <option value="0-7.7-14">0-7 i 7-14 dana</option>
+                                <option value="0-30.0-7.7-14">0-30, 0-7 i 7-14 dana</option>
                             </select>
                         </div>
 
@@ -744,7 +744,7 @@ export default function GlobalTrendsPage() {
                                 checked={filterImportToCore}
                                 onChange={(e) => setFilterImportToCore(e.target.checked)}
                             />
-                            <span style={{ fontSize: 14, color: "#374151" }}>Import to Core DB</span>
+                            <span style={{ fontSize: 14, color: "#c9d3e4" }}>Uvezi u bazu</span>
                         </label>
 
                         {/* Run button */}
@@ -757,7 +757,7 @@ export default function GlobalTrendsPage() {
                                 minWidth: 180,
                             }}
                         >
-                            🔍 Run Ad-hoc Search
+                            🔍 Pokreni pretragu
                         </button>
                     </div>
 
@@ -796,7 +796,7 @@ export default function GlobalTrendsPage() {
 
                     {scrapedProducts.length > 0 && (
                         <div style={{ marginTop: 20 }}>
-                            <h3 style={{ marginBottom: 12 }}>Scraped Products</h3>
+                            <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Rezultati scraper-a</h3>
                             <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
                                 {scrapedProducts.map((p) => (
                                     <div key={p.id} className="card" style={{ padding: 12 }}>
@@ -812,11 +812,11 @@ export default function GlobalTrendsPage() {
                                             ) : null}
                                         </div>
                                         <div style={{ paddingTop: 8 }}>
-                                            <div style={{ fontSize: 12, color: "#6b7280" }}>{p.brand}</div>
-                                            <div style={{ fontWeight: 700, margin: "6px 0" }}>{p.name}</div>
+                                            <div style={{ fontSize: 12, color: "#8A95B0" }}>{p.brand}</div>
+                                            <div style={{ fontWeight: 700, margin: "6px 0", color: "#c9d3e4" }}>{p.name}</div>
                                             <div style={{ color: "#059669", fontWeight: 700 }}>{p.price != null ? `${p.price}` : "-"}</div>
                                             {p.url && (
-                                                <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>Pogledaj</a>
+                                                <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: "#4F8EF7" }}>Pogledaj</a>
                                             )}
                                         </div>
                                     </div>
@@ -827,11 +827,11 @@ export default function GlobalTrendsPage() {
 
                     {adhocProducts.length > 0 && (
                         <div style={{ marginTop: 20 }}>
-                            <h3 style={{ marginBottom: 12 }}>Ad-hoc Zalando Results</h3>
+                            <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Zalando ad-hoc rezultati</h3>
                             <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
                                 {adhocProducts.map((p: any, idx: number) => (
                                     <div key={idx} className="card" style={{ padding: 12 }}>
-                                        <div style={{ width: "100%", height: 160, overflow: "hidden", borderRadius: 8, background: "#f3f4f6" }}>
+                                        <div style={{ width: "100%", height: 160, overflow: "hidden", borderRadius: 8, background: "#1A1F2E" }}>
                                             {p.image_url ? (
                                                 <img
                                                     src={p.image_url}
@@ -843,11 +843,11 @@ export default function GlobalTrendsPage() {
                                             ) : null}
                                         </div>
                                         <div style={{ paddingTop: 8 }}>
-                                            <div style={{ fontSize: 12, color: "#6b7280" }}>{p.brand}</div>
-                                            <div style={{ fontWeight: 700, margin: "6px 0" }}>{p.name}</div>
+                                            <div style={{ fontSize: 12, color: "#8A95B0" }}>{p.brand}</div>
+                                            <div style={{ fontWeight: 700, margin: "6px 0", color: "#c9d3e4" }}>{p.name}</div>
                                             <div style={{ color: "#059669", fontWeight: 700 }}>{p.price || "-"}</div>
                                             {p.url && (
-                                                <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>Pogledaj</a>
+                                                <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: "#4F8EF7" }}>Pogledaj</a>
                                             )}
                                         </div>
                                     </div>
@@ -857,9 +857,9 @@ export default function GlobalTrendsPage() {
                     )}
 
                     {scraperResults.length === 0 && !loading && (
-                        <div className="card" style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
-                            <p style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>🔍 No results yet</p>
-                            <p>Click "Run All Scrapers" to fetch data</p>
+                        <div className="card" style={{ textAlign: "center", padding: "3rem", color: "#8A95B0" }}>
+                            <p style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>🔍 Nema rezultata</p>
+                            <p>Klikni "🚀 Pokreni scrapere" za učitavanje podataka</p>
                         </div>
                     )}
 

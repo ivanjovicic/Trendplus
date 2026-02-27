@@ -51,12 +51,19 @@ def check_stock():
     low_stock_pct = df.is_low_stock.mean() * 100
     print(f"[stock] OOS: {oos_pct:.1f}%  Low stock: {low_stock_pct:.1f}%")
 
+def check_stock_red_zone():
+    df = fetch_df(QUERIES["stock"])
+    print("[stock_red_zone] N =", len(df))
+    assert (df.stock >= 0).all(), "Negative stock!"
+    print("[stock_red_zone] OK: No negative values.")
+
 def main():
     check_pre_post()
     check_did()
     check_rolling()
     check_momentum()
     check_stock()
+    check_stock_red_zone()
     print("Sanity-check completed.")
 
 if __name__ == "__main__":

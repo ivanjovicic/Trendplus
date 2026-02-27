@@ -1,6 +1,7 @@
 using Api.Services;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Trendplus2.Endpoints
 {
@@ -263,6 +264,7 @@ namespace Trendplus2.Endpoints
                 IConfiguration configuration,
                 IOpenProductTrainingSyncService syncService,
                 IPopularityAndDealScoringService scoringService,
+                IMemoryCache cache,
                 CancellationToken ct = default) =>
             {
                 var datasetNames = ResolveDatasetNames(request?.DatasetNames, configuration);
@@ -277,6 +279,7 @@ namespace Trendplus2.Endpoints
                 var syncResult = await syncService.SyncFromAnalyticsAsync(datasetNames, ct);
                 var minProductsPerGroup = request?.MinProductsPerGroup ?? 10;
                 var result = await scoringService.ComputeAndPersistAsync(datasetNames, minProductsPerGroup, ct);
+                cache.Remove(OpenProductTrainingSignalProvider.RuntimeGroupSignalsCacheKey);
 
                 return Results.Ok(new
                 {

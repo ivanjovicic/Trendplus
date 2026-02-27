@@ -2,6 +2,7 @@ using Domain.Model.OpenProductTraining;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Npgsql;
 
 namespace Api.Services
 {
@@ -176,7 +177,6 @@ namespace Api.Services
 
             var globalMinLog = allLogReviews.Min();
             var globalMaxLog = allLogReviews.Max();
-            var globalDenomLog = Math.Max(globalMaxLog - globalMinLog, 1e-9);
 
             var groupStats = productsForPopularity
                 .GroupBy(x => new BrandCategoryKey(
@@ -187,8 +187,8 @@ namespace Api.Services
                 {
                     BrandId = g.Key.BrandId,
                     ShoeType = g.Key.ShoeType,
-                    AvgRating = g.Average(x => x.AvgRating!.Value),
-                    MedianLogReviews = Median(g.Select(x => Math.Log(1.0 + x.ReviewCount!.Value))),
+                    AvgRating = BayesianAverage(g.Select(x => x.AvgRating!.Value), 3.5m, 10),
+                    MedianLogReviews = WinsorizedMedianLog(g.Select(x => x.ReviewCount!.Value)),
                     MedianPrice = Median(g.Select(x => x.Price)),
                     ProductCount = g.Count()
                 })
@@ -198,11 +198,8 @@ namespace Api.Services
                 x => new BrandCategoryKey(x.BrandId, x.ShoeType),
                 x => x);
 
-            // Compute cross-group rating bounds for relative normalization
-            // (avoids hardcoded [3.0, 5.0] range that crushes low-rated groups to near-zero)
             var globalMinRating = groupStats.Count > 0 ? groupStats.Min(g => g.AvgRating) : 3.0m;
             var globalMaxRating = groupStats.Count > 0 ? groupStats.Max(g => g.AvgRating) : 5.0m;
-            var globalRatingDenom = Math.Max((double)(globalMaxRating - globalMinRating), 0.05);
 
             var now = DateTime.UtcNow;
             var labelsToAdd = new List<TrainingLabel>(candidates.Count * 2);
@@ -213,15 +210,10 @@ namespace Api.Services
                 if (!statsByKey.TryGetValue(key, out var stats))
                     continue;
 
-                // Normalize rating relative to the actual range across ALL groups
-                // (previously hardcoded to [3.0, 5.0] which crushed low-rated groups to near-zero)
-                var ratingNorm = Clamp01((double)((stats.AvgRating - globalMinRating) / (decimal)globalRatingDenom));
-                var reviewNorm = Clamp01((stats.MedianLogReviews - globalMinLog) / globalDenomLog);
+                var ratingPercentile = PercentileNormalize(stats.AvgRating, globalMinRating, globalMaxRating);
+                var reviewPercentile = PercentileNormalize(stats.MedianLogReviews, globalMinLog, globalMaxLog);
 
-                // Weighted: rating matters more for brand reputation,
-                // reviews give volume signal. Add a 5-point floor so no qualifying
-                // group scores absolute zero (distinguishes "signal exists" from "no data").
-                var rawPopularity = 0.65 * ratingNorm + 0.35 * reviewNorm;
+                var rawPopularity = Clamp01(0.65 * ratingPercentile + 0.35 * reviewPercentile);
                 var popularityPriorScore = Math.Round(5.0m + (decimal)(rawPopularity * 95.0), 2);
 
                 decimal dealScore = 0m;
@@ -230,7 +222,7 @@ namespace Api.Services
                     var relative = (double)((stats.MedianPrice - product.Price) / stats.MedianPrice);
                     var dealNorm = relative <= 0
                         ? 0
-                        : relative >= 0.30   // was 0.40 — 30% below median is already a solid deal
+                        : relative >= 0.30
                             ? 1
                             : relative / 0.30;
 
@@ -294,16 +286,54 @@ namespace Api.Services
                 existing.Count,
                 labelsToAdd.Count);
 
-            return new PopularityDealComputationResult
-            {
-                DatasetCount = datasetIds.Count,
-                CandidateProducts = candidates.Count,
-                ScoredProducts = targetProductIds.Count,
-                GroupCount = statsByKey.Count,
-                RemovedLabels = existing.Count,
-                InsertedLabels = labelsToAdd.Count,
-                ComputedAtUtc = now
-            };
+              return new PopularityDealComputationResult
+              {
+                  DatasetCount = datasetIds.Count,
+                  CandidateProducts = candidates.Count,
+                  ScoredProducts = targetProductIds.Count,
+                  GroupCount = statsByKey.Count,
+                  RemovedLabels = existing.Count,
+                  InsertedLabels = labelsToAdd.Count,
+                  ComputedAtUtc = now
+             };
+        }
+
+        private static decimal BayesianAverage(IEnumerable<decimal> ratings, decimal priorMean, int priorWeight)
+        {
+            var count = ratings.Count();
+            if (count == 0) return priorMean;
+            var sum = ratings.Sum();
+            return (sum + priorMean * priorWeight) / (count + priorWeight);
+        }
+
+        private static double WinsorizedMedianLog(IEnumerable<int> reviewCounts)
+        {
+            var logs = reviewCounts.Select(x => Math.Log(1.0 + x)).OrderBy(x => x).ToList();
+            if (logs.Count == 0) return 0;
+
+            var lowerIndex = (int)Math.Floor(logs.Count * 0.05);
+            var upperIndex = (int)Math.Ceiling(logs.Count * 0.95) - 1;
+            lowerIndex = Math.Clamp(lowerIndex, 0, logs.Count - 1);
+            upperIndex = Math.Clamp(upperIndex, 0, logs.Count - 1);
+
+            var lower = logs[lowerIndex];
+            var upper = logs[upperIndex];
+            var trimmed = logs.Where(x => x >= lower && x <= upper).ToList();
+            return trimmed.Count == 0 ? logs[logs.Count / 2] : trimmed.Average();
+        }
+
+        private static double PercentileNormalize(decimal value, decimal min, decimal max)
+        {
+            var denom = max - min;
+            if (denom == 0m) return 0.5;
+            return Clamp01((double)((value - min) / denom));
+        }
+
+        private static double PercentileNormalize(double value, double min, double max)
+        {
+            var denom = max - min;
+            if (Math.Abs(denom) < 1e-9) return 0.5;
+            return Clamp01((value - min) / denom);
         }
 
         private static double Median(IEnumerable<double> values)
@@ -365,9 +395,11 @@ namespace Api.Services
         {
             public decimal TypicalPrice { get; init; }
             public decimal PopularityPriorScore { get; init; }
+            public int SampleSize { get; init; }
         }
 
-        private const string CacheKey = "open-product-training:runtime-group-signals:v1";
+        public const string RuntimeGroupSignalsCacheKey = "open-product-training:runtime-group-signals:v2";
+        private const int MinSampleSizeForTrainingSignal = 10;
         private static readonly RuntimeScoringSignals EmptySignals = new(0m, 0m, null, false);
 
         private readonly OpenProductTrainingDbContext _db;
@@ -407,84 +439,95 @@ namespace Api.Services
             }
 
             var popularityPrior = ClampScore(stats.PopularityPriorScore);
+            var typicalPrice = stats.TypicalPrice > 0 ? stats.TypicalPrice : (decimal?)null;
             var dealScore = 0m;
 
-            if (price.HasValue && stats.TypicalPrice > 0)
+            if (price.HasValue && typicalPrice.HasValue)
             {
-                dealScore = ComputeDealScore(price.Value, stats.TypicalPrice);
+                dealScore = ComputeDealScore(price.Value, typicalPrice.Value);
             }
 
-            return new RuntimeScoringSignals(popularityPrior, dealScore, stats.TypicalPrice, true);
+            var hasTrainingSignal = stats.SampleSize >= MinSampleSizeForTrainingSignal && popularityPrior > 0m;
+            return new RuntimeScoringSignals(popularityPrior, dealScore, typicalPrice, hasTrainingSignal);
         }
 
         private async Task<Dictionary<string, RuntimeGroupStats>> GetOrBuildStatsMapAsync(CancellationToken ct)
         {
-            if (_cache.TryGetValue(CacheKey, out Dictionary<string, RuntimeGroupStats>? cached) && cached is not null)
+            if (_cache.TryGetValue(RuntimeGroupSignalsCacheKey, out Dictionary<string, RuntimeGroupStats>? cached) && cached is not null)
                 return cached;
+
+            var cs = _db.Database.GetConnectionString();
+            if (string.IsNullOrWhiteSpace(cs))
+                return new Dictionary<string, RuntimeGroupStats>(StringComparer.Ordinal);
+
+            const string sql = @"
+                SELECT
+                    brand_key,
+                    shoe_type_key,
+                    popularity_prior_score,
+                    typical_price,
+                    sample_size
+                FROM vw_brand_shoe_runtime_priors;";
 
             try
             {
-                var rows = await _db.Products
-                    .AsNoTracking()
-                    .Where(p => p.BrandId != null && p.Price != null && !string.IsNullOrWhiteSpace(p.ShoeType))
-                    .Select(p => new
-                    {
-                        Brand = p.Brand != null ? p.Brand.Name : null,
-                        p.ShoeType,
-                        Price = p.Price!.Value,
-                        PopularityPrior = p.TrainingLabels
-                            .Where(l => l.LabelType == PopularityAndDealScoringService.PopularityPriorLabelType && l.ValueNumeric != null)
-                            .OrderByDescending(l => l.CreatedAt)
-                            .ThenByDescending(l => l.Id)
-                            .Select(l => l.ValueNumeric)
-                            .FirstOrDefault()
-                    })
-                    .ToListAsync(ct);
-
                 var map = new Dictionary<string, RuntimeGroupStats>(StringComparer.Ordinal);
+                var rows = new List<(string ShoeTypeKey, decimal PopularityPrior, decimal TypicalPrice, int SampleSize)>();
 
-                foreach (var group in rows.GroupBy(x => BuildKey(x.Brand, x.ShoeType)))
+                await using var conn = new NpgsqlConnection(cs);
+                await conn.OpenAsync(ct);
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                await using var r = await cmd.ExecuteReaderAsync(ct);
+
+                while (await r.ReadAsync(ct))
                 {
-                    var prices = group.Select(x => x.Price).ToList();
-                    if (prices.Count == 0)
+                    var brandKey = r.IsDBNull(0) ? string.Empty : r.GetString(0);
+                    var shoeTypeKey = r.IsDBNull(1) ? string.Empty : r.GetString(1);
+                    if (string.IsNullOrWhiteSpace(shoeTypeKey))
                         continue;
 
-                    var popularityValues = group
-                        .Where(x => x.PopularityPrior.HasValue)
-                        .Select(x => x.PopularityPrior!.Value)
-                        .ToList();
+                    brandKey = brandKey.Trim().ToLowerInvariant();
+                    shoeTypeKey = shoeTypeKey.Trim().ToLowerInvariant();
 
-                    map[group.Key] = new RuntimeGroupStats
+                    var popularityPrior = r.IsDBNull(2) ? 0m : r.GetDecimal(2);
+                    var typicalPrice = r.IsDBNull(3) ? 0m : r.GetDecimal(3);
+                    var sampleSize = r.IsDBNull(4) ? 0 : r.GetInt32(4);
+
+                    map[$"{brandKey}|{shoeTypeKey}"] = new RuntimeGroupStats
                     {
-                        TypicalPrice = Median(prices),
-                        PopularityPriorScore = popularityValues.Count == 0 ? 0m : popularityValues.Average()
+                        TypicalPrice = typicalPrice,
+                        PopularityPriorScore = popularityPrior,
+                        SampleSize = sampleSize
+                    };
+
+                    rows.Add((shoeTypeKey, popularityPrior, typicalPrice, sampleSize));
+                }
+
+                // Fallback by shoe type across all brands.
+                foreach (var group in rows.GroupBy(x => x.ShoeTypeKey, StringComparer.Ordinal))
+                {
+                    var total = group.Sum(x => Math.Max(x.SampleSize, 0));
+                    if (total <= 0)
+                        continue;
+
+                    var weightedPopularity = group.Sum(x => x.PopularityPrior * x.SampleSize) / total;
+                    var typical = WeightedMedian(group.Select(x => (x.TypicalPrice, x.SampleSize)));
+
+                    map[$"*|{group.Key}"] = new RuntimeGroupStats
+                    {
+                        TypicalPrice = typical,
+                        PopularityPriorScore = Math.Round(weightedPopularity, 2),
+                        SampleSize = total
                     };
                 }
 
-                // fallback by shoe type across all brands
-                foreach (var group in rows.GroupBy(x => BuildKey("*", x.ShoeType)))
-                {
-                    if (map.ContainsKey(group.Key))
-                        continue;
-
-                    var prices = group.Select(x => x.Price).ToList();
-                    if (prices.Count == 0)
-                        continue;
-
-                    var popularityValues = group
-                        .Where(x => x.PopularityPrior.HasValue)
-                        .Select(x => x.PopularityPrior!.Value)
-                        .ToList();
-
-                    map[group.Key] = new RuntimeGroupStats
-                    {
-                        TypicalPrice = Median(prices),
-                        PopularityPriorScore = popularityValues.Count == 0 ? 0m : popularityValues.Average()
-                    };
-                }
-
-                _cache.Set(CacheKey, map, _cacheDuration);
+                _cache.Set(RuntimeGroupSignalsCacheKey, map, _cacheDuration);
                 return map;
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable || ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+            {
+                _logger.LogWarning(ex, "Open-product-training runtime priors view missing.");
+                return new Dictionary<string, RuntimeGroupStats>(StringComparer.Ordinal);
             }
             catch (Exception ex)
             {
@@ -494,6 +537,33 @@ namespace Api.Services
 
                 return new Dictionary<string, RuntimeGroupStats>(StringComparer.Ordinal);
             }
+        }
+
+        private static decimal ClampScore(decimal value)
+            => value < 0m ? 0m : (value > 100m ? 100m : value);
+
+        private static decimal WeightedMedian(IEnumerable<(decimal Value, int Weight)> values)
+        {
+            var items = values
+                .Where(x => x.Weight > 0 && x.Value > 0)
+                .OrderBy(x => x.Value)
+                .ToList();
+
+            if (items.Count == 0)
+                return 0m;
+
+            var totalWeight = items.Sum(x => x.Weight);
+            var threshold = (totalWeight + 1) / 2;
+            var cumulative = 0;
+
+            foreach (var item in items)
+            {
+                cumulative += item.Weight;
+                if (cumulative >= threshold)
+                    return Math.Round(item.Value, 2, MidpointRounding.AwayFromZero);
+            }
+
+            return Math.Round(items[^1].Value, 2, MidpointRounding.AwayFromZero);
         }
 
         private static decimal ComputeDealScore(decimal currentPrice, decimal typicalPrice)
@@ -519,21 +589,6 @@ namespace Api.Services
 
             return Math.Round((decimal)(Clamp01(normalized) * 100.0), 2);
         }
-
-        private static decimal Median(IEnumerable<decimal> values)
-        {
-            var ordered = values.OrderBy(x => x).ToArray();
-            if (ordered.Length == 0)
-                return 0m;
-
-            var mid = ordered.Length / 2;
-            return ordered.Length % 2 == 0
-                ? (ordered[mid - 1] + ordered[mid]) / 2m
-                : ordered[mid];
-        }
-
-        private static decimal ClampScore(decimal value)
-            => value < 0 ? 0 : (value > 100 ? 100 : value);
 
         private static double Clamp01(double value)
             => value < 0 ? 0 : (value > 1 ? 1 : value);

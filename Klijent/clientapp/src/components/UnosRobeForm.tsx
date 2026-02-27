@@ -98,10 +98,10 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
         <div className="space-y-4">
             <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
                 <h2 className="mb-4 text-xl font-semibold text-[#f3f6ff]">Unos robe</h2>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj racuna *</label>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj računa *</label>
                 <input
                     type="text"
-                    placeholder="Unesite broj racuna..."
+                    placeholder="Unesite broj računa..."
                     value={brojRacuna}
                     onChange={(e) => setBrojRacuna(e.target.value)}
                     className="w-full rounded-xl border border-[#2f323b] bg-[#1a1b1f] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
@@ -110,12 +110,12 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
 
             <section className="relative rounded-xl border border-[#2f323b] bg-[#14161d] p-4" ref={searchRef}>
                 <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">
-                    Pretraga dobavljaca *
+                    Pretraga dobavljača *
                 </label>
                 <p className="mb-2 text-xs text-[#8193b1]">Strelice gore/dole za navigaciju, Enter za izbor.</p>
                 <input
                     type="text"
-                    placeholder="Pretrazi po nazivu, adresi ili telefonu..."
+                    placeholder="Pretraži po nazivu, adresi ili telefonu..."
                     value={searchQuery}
                     onChange={(e) => {
                         setSearchQuery(e.target.value);
@@ -155,7 +155,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 <section className="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4">
                     <div className="flex items-start justify-between gap-3">
                         <div>
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-300">Izabrani dobavljac</h3>
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-300">Izabrani dobavljač</h3>
                             <p className="mt-1 text-base font-semibold text-[#f3f6ff]">{selectedDobavljac.naziv}</p>
                             {selectedDobavljac.adresa && <p className="text-sm text-emerald-200">Adresa: {selectedDobavljac.adresa}</p>}
                             {selectedDobavljac.telefon && <p className="text-sm text-emerald-200">Telefon: {selectedDobavljac.telefon}</p>}
@@ -176,7 +176,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
 
             {!selectedDobavljac && !searchQuery && (
                 <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
-                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#93a7c8]">Lista svih dobavljaca</h3>
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#93a7c8]">Lista svih dobavljača</h3>
                     <div className="grid max-h-80 gap-2 overflow-y-auto sm:grid-cols-2">
                         {dobavljaci.map((dob) => (
                             <button
@@ -197,8 +197,8 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
             <section className={`rounded-xl border p-4 ${canProceed ? "border-emerald-700 bg-emerald-950/20" : "border-[#2f323b] bg-[#14161d]"}`}>
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#93a7c8]">Pregled unosa</h3>
                 <div className="space-y-1 text-sm text-[#dbe6fb]">
-                    <p><span className="text-[#93a7c8]">Broj racuna:</span> {brojRacuna || "[Nije unet]"}</p>
-                    <p><span className="text-[#93a7c8]">Dobavljac:</span> {selectedDobavljac?.naziv || "[Nije izabran]"}</p>
+                    <p><span className="text-[#93a7c8]">Broj računa:</span> {brojRacuna || "[Nije unet]"}</p>
+                    <p><span className="text-[#93a7c8]">Dobavljač:</span> {selectedDobavljac?.naziv || "[Nije izabran]"}</p>
                 </div>
                 <button
                     onClick={handleUnosClick}

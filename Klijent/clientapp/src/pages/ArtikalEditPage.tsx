@@ -1,5 +1,6 @@
 ﻿import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 import CreateArtikalForm from "../components/CreateArtikalForm";
 import { ArtikalFormData } from "../types/artikalformdata";
 import { getArtikal, updateArtikal } from "../services/artikliApi";
@@ -110,24 +111,56 @@ export default function ArtikalEditPage() {
     };
 
     if (error) {
-        return <div className="card"><p className="error-msg">{error}</p></div>;
+        return (
+            <div className="space-y-4">
+                <Breadcrumb artikalId={artikalId} />
+                <div className="rounded-xl border border-[#2f323b] bg-[#161A23] p-6">
+                    <p className="text-sm text-red-400">{error}</p>
+                    <Link to="/artikli" className="mt-3 inline-flex items-center gap-1 text-xs text-[#4F8EF7] hover:underline">
+                        ← Nazad na listu
+                    </Link>
+                </div>
+            </div>
+        );
     }
 
     if (loadingArtikal || !initialData) {
-        return <div className="card"><p>Učitavanje artikla...</p></div>;
+        return (
+            <div className="space-y-4">
+                <Breadcrumb artikalId={artikalId} />
+                <div className="rounded-xl border border-[#2f323b] bg-[#161A23] p-6">
+                    <p className="text-sm text-[#8A95B0]">Učitavanje artikla...</p>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <CreateArtikalForm
-            tipoviObuce={tipovi}
-            dobavljaci={dobavljaci}
-            initialData={initialData}
-            onSubmit={handleEditSubmit}
-            mode="edit"
-            artikalId={artikalId}
-            currentImagePath={currentImagePath}
-            onImageChange={setCurrentImagePath}
-        />
+        <div className="space-y-4">
+            <Breadcrumb artikalId={artikalId} />
+            <CreateArtikalForm
+                tipoviObuce={tipovi}
+                dobavljaci={dobavljaci}
+                initialData={initialData}
+                onSubmit={handleEditSubmit}
+                mode="edit"
+                artikalId={artikalId}
+                currentImagePath={currentImagePath}
+                onImageChange={setCurrentImagePath}
+            />
+        </div>
+    );
+}
+
+function Breadcrumb({ artikalId }: { artikalId: number }) {
+    return (
+        <nav className="flex items-center gap-1.5 text-xs text-[#8A95B0]">
+            <Link to="/" className="hover:text-[#c9d3e4]">Početna</Link>
+            <ChevronRight size={12} className="opacity-40" />
+            <Link to="/artikli" className="hover:text-[#c9d3e4]">Artikli</Link>
+            <ChevronRight size={12} className="opacity-40" />
+            <span className="text-[#c9d3e4] font-medium">Izmena #{artikalId}</span>
+        </nav>
     );
 }
 

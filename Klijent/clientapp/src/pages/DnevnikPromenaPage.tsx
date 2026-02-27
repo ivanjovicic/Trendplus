@@ -76,7 +76,7 @@ export default function DnevnikPromenaPage() {
       } catch (err: unknown) {
         if (aborted) return;
         console.error(err);
-        setError((err as Error)?.message ?? "Greška pri ucitavanju dnevnika promena.");
+        setError((err as Error)?.message ?? "Greï¿½ka pri ucitavanju dnevnika promena.");
       } finally {
         if (!aborted) setLoading(false);
       }
@@ -163,7 +163,7 @@ export default function DnevnikPromenaPage() {
           { label: "Zapisa", value: `${totalCount}` },
           { label: "Prikazano", value: `${promene.length}` },
           { label: "Strana", value: `${pageNumber}/${totalPages}` },
-          { label: "Status", value: loading ? "Ucitavanje" : error ? "Greška" : "Spremno", tone: loading ? "warning" : error ? "danger" : "positive" },
+          { label: "Status", value: loading ? "UÄitavanje" : error ? "GreÅ¡ka" : "Spremno", tone: loading ? "warning" : error ? "danger" : "positive" },
         ]}
       />
 
@@ -282,7 +282,7 @@ export default function DnevnikPromenaPage() {
           </div>
         )}
 
-        {loading && promene.length === 0 && <InventoryState message="Ucitavanje dnevnika promena..." tone="warning" />}
+        {loading && promene.length === 0 && <InventoryState message="UÄitavanje dnevnika promena..." tone="warning" />}
         {error && <InventoryState message={error} tone="danger" />}
 
         {!loading && !error && promene.length === 0 && (

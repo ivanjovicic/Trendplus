@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { PackageSearch } from "lucide-react";
+import { PackageSearch, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, X, PackageX } from "lucide-react";
 import { getArtikliPaged } from "../services/artikliApi";
 import { getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
@@ -63,8 +63,10 @@ export default function ArtikliListPage() {
   };
 
   const renderSortIndicator = (column: SortCol) => {
-    if (sortBy !== column) return null;
-    return sortDir === "asc" ? " ?" : " ?";
+    if (sortBy !== column) return <ArrowUpDown size={12} className="ml-1 inline opacity-30" />;
+    return sortDir === "asc"
+      ? <ArrowUp size={12} className="ml-1 inline text-[#4F8EF7]" />
+      : <ArrowDown size={12} className="ml-1 inline text-[#4F8EF7]" />;
   };
 
   useEffect(() => {
@@ -191,7 +193,7 @@ export default function ArtikliListPage() {
       } catch (e: unknown) {
         if (aborted) return;
         console.error(e);
-        setError(e instanceof Error ? e.message : "Gre�ka pri ucitavanju podataka.");
+        setError(e instanceof Error ? e.message : "Gre�ka pri ucitavanju podataka.");
       } finally {
         if (!aborted) setLoading(false);
       }
@@ -253,35 +255,40 @@ export default function ArtikliListPage() {
       <InventoryPanel>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
-            className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
+            className="flex items-center gap-1 rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
             disabled={pageNumber <= 1}
             onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+            title="Prethodna strana"
           >
-            ?
+            <ChevronLeft size={14} />
           </button>
-          <input
-            className="w-16 rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-1 text-center text-xs text-[#dbe6fb]"
-            type="number"
-            min={1}
-            max={totalPages}
-            value={jumpTo}
-            onChange={(e) => setJumpTo(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const parsed = Number(jumpTo);
-                if (!Number.isFinite(parsed)) return;
-                const target = Math.min(totalPages, Math.max(1, Math.trunc(parsed)));
-                setPageNumber(target);
-              }
-            }}
-          />
-          <span className="text-sm text-[#9aabc7]">/ {totalPages}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-[#9aabc7]">Strana</span>
+            <input
+              className="w-14 rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-1 text-center text-xs text-[#dbe6fb]"
+              type="number"
+              min={1}
+              max={totalPages}
+              value={jumpTo}
+              onChange={(e) => setJumpTo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const parsed = Number(jumpTo);
+                  if (!Number.isFinite(parsed)) return;
+                  const target = Math.min(totalPages, Math.max(1, Math.trunc(parsed)));
+                  setPageNumber(target);
+                }
+              }}
+            />
+            <span className="text-xs text-[#9aabc7]">/ {totalPages}</span>
+          </div>
           <button
-            className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
+            className="flex items-center gap-1 rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
             disabled={pageNumber >= totalPages}
             onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
+            title="Sledeća strana"
           >
-            ?
+            <ChevronRight size={14} />
           </button>
           <span className="mx-1 text-[#57637a]">|</span>
           <span className="text-xs text-[#9aabc7]">Po strani</span>
@@ -400,13 +407,43 @@ export default function ArtikliListPage() {
               </div>
             </div>
 
-            <div className="xl:col-span-4">
+            <div className="xl:col-span-4 flex flex-wrap items-center gap-2">
               <button
                 onClick={clearFilters}
-                className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb]"
+                className="flex items-center gap-1 rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb] hover:bg-[#2d3347]"
               >
-                Resetuj filtere
+                <X size={13} /> Resetuj sve
               </button>
+              {searchNaziv && (
+                <span className="flex items-center gap-1 rounded-full border border-[#3760b7] bg-[#1e2d52] px-2 py-0.5 text-xs text-[#93bbf4]">
+                  Naziv: {searchNaziv}
+                  <button onClick={() => { setSearchNaziv(""); setPageNumber(1); }}><X size={11} /></button>
+                </span>
+              )}
+              {filterSezona !== "" && (
+                <span className="flex items-center gap-1 rounded-full border border-[#3760b7] bg-[#1e2d52] px-2 py-0.5 text-xs text-[#93bbf4]">
+                  Sezona: {sezone.find(s => s.id === filterSezona)?.naziv ?? filterSezona}
+                  <button onClick={() => { setFilterSezona(""); setPageNumber(1); }}><X size={11} /></button>
+                </span>
+              )}
+              {filterDobavljac !== "" && (
+                <span className="flex items-center gap-1 rounded-full border border-[#3760b7] bg-[#1e2d52] px-2 py-0.5 text-xs text-[#93bbf4]">
+                  Dobavljač: {dobavljaci.find(d => d.id === Number(filterDobavljac))?.naziv ?? filterDobavljac}
+                  <button onClick={() => { setFilterDobavljac(""); setPageNumber(1); }}><X size={11} /></button>
+                </span>
+              )}
+              {(filterMinCena || filterMaxCena) && (
+                <span className="flex items-center gap-1 rounded-full border border-[#3760b7] bg-[#1e2d52] px-2 py-0.5 text-xs text-[#93bbf4]">
+                  Cena: {filterMinCena || "0"} – {filterMaxCena || "∞"}
+                  <button onClick={() => { setFilterMinCena(""); setFilterMaxCena(""); setPageNumber(1); }}><X size={11} /></button>
+                </span>
+              )}
+              {(filterMinKolicina || filterMaxKolicina) && (
+                <span className="flex items-center gap-1 rounded-full border border-[#3760b7] bg-[#1e2d52] px-2 py-0.5 text-xs text-[#93bbf4]">
+                  Kol: {filterMinKolicina || "0"} – {filterMaxKolicina || "∞"}
+                  <button onClick={() => { setFilterMinKolicina(""); setFilterMaxKolicina(""); setPageNumber(1); }}><X size={11} /></button>
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -451,7 +488,18 @@ export default function ArtikliListPage() {
             </table>
 
             {artikli.length === 0 && (
-              <p className="py-8 text-center text-sm text-[#9aabc7]">Nema artikala za zadate filtere.</p>
+              <div className="flex flex-col items-center gap-3 py-12 text-center">
+                <PackageX size={36} className="text-[#3A4565]" />
+                <p className="text-sm font-medium text-[#9aabc7]">Nema artikala za zadate filtere</p>
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={clearFilters}
+                    className="flex items-center gap-1 rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] hover:bg-[#2d3347]"
+                  >
+                    <X size={12} /> Ukloni filtere
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}

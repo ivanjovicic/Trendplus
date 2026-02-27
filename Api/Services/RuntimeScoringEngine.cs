@@ -103,6 +103,38 @@ namespace Api.Services
             var sizeColorScore = await ComputeSizeColorScoreAsync(input.Velicina, input.Boja);
             var materialScore  = ComputeMaterialScore(input.Materijal);
 
+            var baselinePrice = Median(new[] { scraped.MedianPrice, marketplace.AvgPrice, training.TypicalPrice }
+                .Where(x => x.HasValue)
+                .Select(x => x!.Value));
+
+            var priceFitScore = ComputePriceFit(input.TargetPrice, baselinePrice);
+            var marginScore = ComputeMargin(input.Cost, input.TargetPrice);
+
+            var scrapedFinalScore = NormalizeScraperScore(scraped.AvgFinalScore);
+            var marketplaceTrendScore = NormalizeMarketplaceTrendScore(marketplace.AvgTrendScore);
+            var trainingPopularity = ClampScore((double)training.PopularityPriorScore);
+
+            // Popularity should gracefully degrade when training signals are missing.
+            // Blend training prior with scraper, otherwise use scraper + marketplace as proxy.
+            var popularityScore = trainingPopularity > 0
+                ? NormalizeScore(0.70 * trainingPopularity + 0.30 * scrapedFinalScore)
+                : NormalizeScore(0.60 * scrapedFinalScore + 0.40 * marketplaceTrendScore);
+
+            // Trend momentum: prefer scraper momentum; fallback to marketplace trend.
+            var scrapedMomentumScore = NormalizeMomentum(scraped.AvgMomentum);
+            var trendMomentum = scrapedMomentumScore > 0
+                ? NormalizeScore(0.80 * scrapedMomentumScore + 0.20 * scrapedFinalScore)
+                : marketplaceTrendScore;
+
+            // Deal: scenario-specific (target vs baseline) with optional training prior.
+            var dealFromBaseline = input.TargetPrice.HasValue && baselinePrice.HasValue
+                ? ComputeDeal(input.TargetPrice.Value, baselinePrice.Value)
+                : 0d;
+            var dealFromTraining = ClampScore((double)training.DealScore);
+            var dealScore = dealFromBaseline > 0 && dealFromTraining > 0
+                ? NormalizeScore(0.70 * dealFromBaseline + 0.30 * dealFromTraining)
+                : (dealFromBaseline > 0 ? dealFromBaseline : dealFromTraining);
+
             // Aggregate local demand score (only counted when at least one signal provided)
             var hasLocalSignals = input.DobavljacId.HasValue || input.TipObuceId.HasValue
                                || input.SezonaId.HasValue
@@ -110,83 +142,66 @@ namespace Api.Services
                                || !string.IsNullOrWhiteSpace(input.Boja)
                                || !string.IsNullOrWhiteSpace(input.Materijal);
 
-            var localDemandScore = hasLocalSignals
-                ? ClampScore(0.28 * supplierScore + 0.30 * shoeTypeScore + 0.22 * seasonalScore
-                           + 0.12 * sizeColorScore + 0.08 * materialScore)
+            var normalizedLocalDemandScore = hasLocalSignals
+                ? NormalizeScore(0.28 * supplierScore + 0.30 * shoeTypeScore + 0.22 * seasonalScore
+                   + 0.12 * sizeColorScore + 0.08 * materialScore)
                 : 0d;
 
-            var popularityScore = training.HasTrainingSignal
-                ? ClampScore((double)training.PopularityPriorScore * 0.70 + NormalizeScraperScore(scraped.AvgFinalScore) * 0.30)
-                : ClampScore(NormalizeScraperScore(scraped.AvgFinalScore) * 0.60 + NormalizeLegacyTrend(marketplace.AvgTrendScore) * 0.40);
-
-            var trendMomentum = ClampScore(NormalizeMomentum(scraped.AvgMomentum) * 0.8 + NormalizeScraperScore(scraped.AvgFinalScore) * 0.2);
-            var baselinePrice = Median(new[] { training.TypicalPrice, scraped.MedianPrice, marketplace.AvgPrice }
-                .Where(x => x.HasValue)
-                .Select(x => x!.Value));
-
-            var dealScore = (double)training.DealScore;
-            if (dealScore <= 0 && baselinePrice.HasValue && input.TargetPrice.HasValue && baselinePrice.Value > 0)
-            {
-                dealScore = ComputeDeal(input.TargetPrice.Value, baselinePrice.Value);
-            }
-            dealScore = ClampScore(dealScore);
-
-            var priceFitScore = ComputePriceFit(input.TargetPrice, baselinePrice);
-            var marginScore = ComputeMargin(input.Cost, input.TargetPrice);
-            var marketDemandScore = ClampScore(
+            var normalizedMarketDemandScore = NormalizeScore(
                 0.40 * popularityScore +
                 0.25 * trendMomentum +
                 0.20 * sourceCoverageScore +
                 0.15 * NormalizeScraperScore(scraped.AvgMarketScore));
 
-            var sellProbability = hasLocalSignals
-                ? Clamp01(
-                    (0.30 * marketDemandScore +
-                     0.18 * priceFitScore +
-                     0.14 * dealScore +
-                     0.15 * localDemandScore +
-                     0.10 * imageSimilarityScore +
-                     0.09 * marginScore +
-                     0.04 * sourceCoverageScore) / 100d)
-                : Clamp01(
-                    (0.38 * marketDemandScore +
-                     0.20 * priceFitScore +
-                     0.14 * dealScore +
-                     0.12 * imageSimilarityScore +
-                     0.10 * marginScore +
-                     0.06 * sourceCoverageScore) / 100d);
+            var sellProbabilityScore = hasLocalSignals
+                ? NormalizeScore(0.30 * normalizedMarketDemandScore + 0.18 * priceFitScore + 0.14 * dealScore
+                    + 0.15 * normalizedLocalDemandScore + 0.10 * imageSimilarityScore + 0.09 * marginScore
+                    + 0.04 * sourceCoverageScore)
+                : NormalizeScore(0.38 * normalizedMarketDemandScore + 0.20 * priceFitScore + 0.14 * dealScore
+                    + 0.12 * imageSimilarityScore + 0.10 * marginScore
+                    + 0.06 * sourceCoverageScore);
 
-            var localFinalScore = ClampScore(
-                0.34 * (sellProbability * 100d) +
+            var sellProbability = Clamp01(sellProbabilityScore / 100d);
+
+            var localFinalScore = NormalizeScore(
+                0.34 * sellProbabilityScore +
                 0.18 * priceFitScore +
                 0.16 * popularityScore +
                 0.12 * dealScore +
                 0.10 * marginScore +
                 0.10 * trendMomentum);
 
-            var python = await TryPredictWithPythonAsync(new
+            var pythonPayload = new
             {
-                embedding,
-                cost = input.Cost,
-                target_price = input.TargetPrice,
+                market,
                 brand,
                 category,
-                market,
-                popularity_score = popularityScore,
-                deal_score = dealScore,
-                price_fit_score = priceFitScore,
-                margin_score = marginScore,
-                trend_momentum = trendMomentum,
-                source_coverage_count = sourceCoverageCount
-            }, ct);
+                cost = input.Cost,
+                targetPrice = input.TargetPrice,
+                baselinePrice,
+                popularityScore,
+                trendMomentum,
+                dealScore,
+                marginScore,
+                priceFitScore,
+                sourceCoverageScore,
+                imageSimilarityScore,
+                supplierScore,
+                shoeTypeScore,
+                seasonalScore,
+                sizeColorScore,
+                materialScore
+            };
 
+            var python = await TryPredictWithPythonAsync(pythonPayload, ct);
             if (python.SellProbability.HasValue)
             {
-                sellProbability = Clamp01((sellProbability * 0.4) + (python.SellProbability.Value * 0.6));
+                // Python returns probability in [0,1]. Keep response semantics stable.
+                sellProbability = Clamp01((sellProbability * 0.40) + (python.SellProbability.Value * 0.60));
             }
 
             var finalScore = python.FinalScore.HasValue
-                ? ClampScore((localFinalScore * 0.4) + (python.FinalScore.Value * 0.6))
+                ? NormalizeScore((localFinalScore * 0.4) + (python.FinalScore.Value * 0.6))
                 : localFinalScore;
 
             var currency = scraped.Currency ?? marketplace.Currency ?? "EUR";
@@ -200,7 +215,7 @@ namespace Api.Services
 
             var (verdict, verdictColor) = GetVerdict(finalScore);
             var scoreLabel   = GetScoreLabel(finalScore);
-            var confidence   = ComputeConfidence(training.HasTrainingSignal, sourceCoverageCount, imageSimilarityScore, baselinePrice?.ToString());
+            var confidence   = ComputeConfidence(training.HasTrainingSignal, sourceCoverageCount, imageSimilarityScore, baselinePrice.HasValue);
             var pricePos     = GetPricePositioning(input.TargetPrice, baselinePrice);
             var insights     = BuildInsights(
                 effPriceFit, effPopularity, effDeal, effMargin, effTrend,
@@ -216,7 +231,7 @@ namespace Api.Services
                 MarginScore    = effMargin,
                 TrendMomentum  = effTrend,
                 RecommendedPriceRange = priceRange,
-                MarketDemandScore = Round2(marketDemandScore),
+                MarketDemandScore = Round2(normalizedMarketDemandScore),
                 ImageSimilarityScore = Round2(imageSimilarityScore),
                 SourceCoverageScore = Round2(sourceCoverageScore),
                 SourceCoverageCount = sourceCoverageCount,
@@ -225,7 +240,7 @@ namespace Api.Services
                 SeasonalScore   = Round2(seasonalScore),
                 SizeColorScore  = Round2(sizeColorScore),
                 MaterialScore   = Round2(materialScore),
-                LocalDemandScore = Round2(localDemandScore),
+                LocalDemandScore = Round2(normalizedLocalDemandScore),
                 HasTrainingSignal = training.HasTrainingSignal,
                 UsedPythonModel = python.Used,
                 Market = market,
@@ -496,7 +511,11 @@ namespace Api.Services
                 var q = _analyticsDb.AmazonShoeProducts.AsNoTracking();
                 if (!string.IsNullOrWhiteSpace(brandLike)) q = q.Where(x => x.Brand != null && EF.Functions.ILike(x.Brand, brandLike));
                 if (!string.IsNullOrWhiteSpace(categoryLike)) q = q.Where(x => x.Category != null && EF.Functions.ILike(x.Category, categoryLike));
-                var rows = await q.Select(x => new { x.TrendScore, x.Price, x.Currency }).Take(1000).ToListAsync(ct);
+                var rows = await q
+                    .OrderByDescending(x => x.LastSynced)
+                    .Select(x => new { x.TrendScore, x.Price, x.Currency })
+                    .Take(1000)
+                    .ToListAsync(ct);
                 if (rows.Count == 0) return default;
                 return (rows.Count, rows.Average(x => (double)x.TrendScore), rows.Where(x => x.Price.HasValue).Select(x => x.Price!.Value).DefaultIfEmpty().Average(), rows.Where(x => !string.IsNullOrWhiteSpace(x.Currency)).Select(x => x.Currency).FirstOrDefault());
             }
@@ -506,7 +525,11 @@ namespace Api.Services
                 var q = _analyticsDb.EbayShoeProducts.AsNoTracking();
                 if (!string.IsNullOrWhiteSpace(brandLike)) q = q.Where(x => x.Brand != null && EF.Functions.ILike(x.Brand, brandLike));
                 if (!string.IsNullOrWhiteSpace(categoryLike)) q = q.Where(x => x.Category != null && EF.Functions.ILike(x.Category, categoryLike));
-                var rows = await q.Select(x => new { x.TrendScore, x.Price, x.Currency }).Take(1000).ToListAsync(ct);
+                var rows = await q
+                    .OrderByDescending(x => x.LastSynced)
+                    .Select(x => new { x.TrendScore, x.Price, x.Currency })
+                    .Take(1000)
+                    .ToListAsync(ct);
                 if (rows.Count == 0) return default;
                 return (rows.Count, rows.Average(x => (double)x.TrendScore), rows.Where(x => x.Price.HasValue).Select(x => x.Price!.Value).DefaultIfEmpty().Average(), rows.Where(x => !string.IsNullOrWhiteSpace(x.Currency)).Select(x => x.Currency).FirstOrDefault());
             }
@@ -516,23 +539,22 @@ namespace Api.Services
                 var q = _analyticsDb.GoogleShoppingProducts.AsNoTracking();
                 if (!string.IsNullOrWhiteSpace(brandLike)) q = q.Where(x => x.Brand != null && EF.Functions.ILike(x.Brand, brandLike));
                 if (!string.IsNullOrWhiteSpace(categoryLike)) q = q.Where(x => x.Category != null && EF.Functions.ILike(x.Category, categoryLike));
-                var rows = await q.Select(x => new { x.TrendScore, x.Price, x.Currency }).Take(1000).ToListAsync(ct);
+                var rows = await q
+                    .OrderByDescending(x => x.LastSynced)
+                    .Select(x => new { x.TrendScore, x.Price, x.Currency })
+                    .Take(1000)
+                    .ToListAsync(ct);
                 if (rows.Count == 0) return default;
                 return (rows.Count, rows.Average(x => (double)x.TrendScore), rows.Where(x => x.Price.HasValue).Select(x => x.Price!.Value).DefaultIfEmpty().Average(), rows.Where(x => !string.IsNullOrWhiteSpace(x.Currency)).Select(x => x.Currency).FirstOrDefault());
             }
 
             try
             {
-                var amazonTask = AggregateAmazon();
-                var ebayTask   = AggregateEbay();
-                var googleTask = AggregateGoogle();
-                await Task.WhenAll(amazonTask, ebayTask, googleTask);
-
                 var snapshots = new List<(int Count, double AvgTrend, decimal? AvgPrice, string? Currency)>
                 {
-                    await amazonTask,
-                    await ebayTask,
-                    await googleTask
+                    await AggregateAmazon(),
+                    await AggregateEbay(),
+                    await AggregateGoogle()
                 }.Where(x => x.Count > 0).ToList();
 
                 if (snapshots.Count == 0) return default;
@@ -625,24 +647,24 @@ namespace Api.Services
 
         private static double ComputePriceFit(decimal? target, decimal? baseline)
         {
-            if (!target.HasValue || target.Value <= 0) return 50;
-            if (!baseline.HasValue || baseline.Value <= 0) return 55;
+            if (!target.HasValue || target.Value <= 0) return 50; // Fallback to average value
+            if (!baseline.HasValue || baseline.Value <= 0) return 50;
             var deviation = Math.Abs((double)((target.Value - baseline.Value) / baseline.Value));
-            return ClampScore(100d - (deviation * 200d));
+            return ClampScore(100d - (deviation * 150d)); // Reduced penalty for deviations
         }
 
         private static double ComputeMargin(decimal? cost, decimal? target)
         {
             if (!cost.HasValue || !target.HasValue || target.Value <= 0) return 50;
-            if (cost.Value >= target.Value) return 0;
+            if (cost.Value >= target.Value) return ClampScore(-50); // Penalize negative margins
             var margin = (double)((target.Value - cost.Value) / target.Value);
-            // Full score at 70% margin — realistic for shoe retail
             return margin >= 0.70 ? 100 : ClampScore((margin / 0.70) * 100d);
         }
 
         private static double ComputeDeal(decimal current, decimal baseline)
         {
-            var rel = baseline <= 0 ? 0 : (double)((baseline - current) / baseline);
+            if (baseline <= 0) return 50; // Fallback to average value
+            var rel = (double)((baseline - current) / baseline);
             if (rel <= 0) return 0;
             if (rel >= 0.30) return 100;
             return ClampScore((rel / 0.30) * 100d);
@@ -660,7 +682,18 @@ namespace Api.Services
             // Return 0 when embedding unavailable — do not inflate score artificially
             => items.Count == 0 ? 0 : ClampScore(items.OrderByDescending(x => x.Similarity).Take(3).Average(x => x.Similarity) * 100d);
 
-        private static double NormalizeLegacyTrend(double score) => score <= 0 ? 0 : ClampScore(score <= 12 ? (score / 10d) * 100d : score);
+        private static double NormalizeMarketplaceTrendScore(double score)
+        {
+            if (score <= 0) return 0;
+
+            // Auto-detect common score scales:
+            // - [0..1]   already normalized
+            // - [0..30]  ShoeScoring.Compute legacy range
+            // - [0..100] percent-like range
+            if (score <= 1.2) return ClampScore(score * 100d);
+            if (score <= 40) return ClampScore((score / 30d) * 100d);
+            return ClampScore(score);
+        }
         private static double NormalizeScraperScore(decimal score) => score <= 0 ? 0 : ClampScore(score <= 1 ? (double)score * 100d : (double)score);
         private static double NormalizeMomentum(decimal score) => score <= 0 ? 0 : ClampScore(score <= 1.5m ? (double)score * 100d : (double)score);
 
@@ -688,14 +721,14 @@ namespace Api.Services
         };
 
         private static double ComputeConfidence(
-            bool hasTraining, int sourceCoverage, double imageSim, string? baseline)
+            bool hasTraining, int sourceCoverage, double imageSim, bool hasBaseline)
         {
             double c = 0;
             if (hasTraining)   c += 35;
             c += Math.Min(sourceCoverage * 10, 35);
             if (imageSim > 50) c += 20;
             else if (imageSim > 20) c += 10;
-            if (baseline != null) c += 10;
+            if (hasBaseline) c += 10;
             return Math.Min(c, 100);
         }
 
@@ -771,10 +804,10 @@ namespace Api.Services
 
         private static string? NormalizeText(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         private static string? ToLike(string? value) => string.IsNullOrWhiteSpace(value) ? null : $"%{value}%";
+        private static double NormalizeScore(double value) => ClampScore(value);
         private static double ClampScore(double value) => value < 0 ? 0 : (value > 100 ? 100 : value);
         private static double Clamp01(double value) => value < 0 ? 0 : (value > 1 ? 1 : value);
         private static double Round2(double value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
         private static double Round4(double value) => Math.Round(value, 4, MidpointRounding.AwayFromZero);
     }
 }
-

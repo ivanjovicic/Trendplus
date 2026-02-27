@@ -84,6 +84,8 @@ try
     builder.Services.Configure<EbayOptions>(builder.Configuration.GetSection(EbayOptions.Section));
     builder.Services.Configure<GoogleShoppingOptions>(builder.Configuration.GetSection(GoogleShoppingOptions.Section));
     builder.Services.Configure<RuntimeScoringOptions>(builder.Configuration.GetSection(RuntimeScoringOptions.Section));
+    builder.Services.Configure<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>(
+        builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section));
 
     // DbContext
     builder.Services.AddDbContext<TrendplusDbContext>(options =>
@@ -187,6 +189,7 @@ try
     builder.Services.AddHostedService<Workers.SyncWorker>();
     builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
     builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>();
+    builder.Services.AddHostedService<Workers.NightlyAnalyticsRefreshWorker>();
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
 
     builder.Services.AddControllers();

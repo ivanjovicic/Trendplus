@@ -755,9 +755,9 @@ export default function ScraperHubPage() {
             setErrorsByRun(nextErrors);
             setVisibleSources(enabledSources);
             if (enabledMarkets.length > 0) setVisibleMarkets(enabledMarkets);
-            toast.success(`Loaded ${nextItems.length} items from ${runs.length} jobs.`);
+            toast.success(`Učitano ${nextItems.length} artikala iz ${runs.length} upita.`);
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Failed to run scrapers.");
+            toast.error(error instanceof Error ? error.message : "Greška pri pokretanju scrapera.");
         } finally {
             setLoading(false);
         }
@@ -773,9 +773,9 @@ export default function ScraperHubPage() {
                 gap: 5,
                 padding: "5px 13px",
                 borderRadius: 999,
-                border: `1.5px solid ${active ? "#4f46e5" : "#e5e7eb"}`,
-                background: active ? "#4f46e5" : "#f9fafb",
-                color: active ? "#fff" : "#374151",
+                border: `1.5px solid ${active ? "#4f46e5" : "#2A3045"}`,
+                background: active ? "#4f46e5" : "#1A1F2E",
+                color: active ? "#fff" : "#c9d3e4",
                 fontWeight: active ? 600 : 400,
                 fontSize: 13,
                 cursor: "pointer",
@@ -825,26 +825,26 @@ export default function ScraperHubPage() {
             <div style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                     <div>
-                        <h1 style={{ fontSize: 26, fontWeight: 800, color: "#111827", margin: 0 }}>
+                        <h1 style={{ fontSize: 26, fontWeight: 800, color: "#c9d3e4", margin: 0 }}>
                             🧩 Scraper Hub — Top 10
                         </h1>
-                        <p style={{ color: "#6b7280", marginTop: 4, marginBottom: 0, fontSize: 14 }}>
-                            Global popularity rank + per-source lists. Zalando, Deichmann, About You, Humanic — grouped &amp; scored.
+                        <p style={{ color: "#8A95B0", marginTop: 4, marginBottom: 0, fontSize: 14 }}>
+                            Globalni rang popularnosti + po-izvorni spiskovi. Zalando, Deichmann, About You, Humanic — grupisano i rangirano.
                         </p>
                     </div>
                     {hasResults && (
                         <div style={{ display: "flex", gap: 10 }}>
-                            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
+                            <div style={{ background: "rgba(5, 150, 105, 0.15)", border: "1px solid #065f46", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
                                 <div style={{ fontSize: 20, fontWeight: 800, color: "#059669" }}>{totalRawItems}</div>
-                                <div style={{ fontSize: 11, color: "#6b7280" }}>items</div>
+                                <div style={{ fontSize: 11, color: "#8A95B0" }}>artikala</div>
                             </div>
-                            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
+                            <div style={{ background: "rgba(37, 99, 235, 0.15)", border: "1px solid #1d4ed8", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
                                 <div style={{ fontSize: 20, fontWeight: 800, color: "#2563eb" }}>{filteredGlobal.length}</div>
-                                <div style={{ fontSize: 11, color: "#6b7280" }}>groups</div>
+                                <div style={{ fontSize: 11, color: "#8A95B0" }}>grupa</div>
                             </div>
-                            <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
+                            <div style={{ background: "rgba(217, 119, 6, 0.15)", border: "1px solid #b45309", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
                                 <div style={{ fontSize: 20, fontWeight: 800, color: "#d97706" }}>{totalRuns}</div>
-                                <div style={{ fontSize: 11, color: "#6b7280" }}>runs</div>
+                                <div style={{ fontSize: 11, color: "#8A95B0" }}>upita</div>
                             </div>
                         </div>
                     )}
@@ -852,11 +852,11 @@ export default function ScraperHubPage() {
             </div>
 
             {/* ── CONFIG CARD ── */}
-            <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 14, padding: 20, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,.06)" }}>
+            <div style={{ background: "#161A23", border: "1px solid #2A3045", borderRadius: 14, padding: 20, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,.3)" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 20, flexWrap: "wrap" }}>
 
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", marginBottom: 8 }}>Sources</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", marginBottom: 8 }}>Izvori</div>
                         <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                             {(Object.keys(SOURCE_LABEL) as SourceId[]).map((source) => (
                                 <SourcePill key={source} source={source} active={!!enabledScrapers[source]} onClick={() => {
@@ -869,7 +869,7 @@ export default function ScraperHubPage() {
                     </div>
 
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", marginBottom: 8 }}>Markets (Zalando / About You)</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", marginBottom: 8 }}>Tržišta (Zalando / About You)</div>
                         <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                             {MARKET_LIST.map((market) => (
                                 <PillToggle key={market} label={market} emoji={MARKET_FLAG[market]} active={enabledMarkets.includes(market)} onClick={() => {
@@ -886,33 +886,33 @@ export default function ScraperHubPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, justifyContent: "flex-end", minWidth: 300 }}>
                         <div style={{ display: "flex", gap: 8 }}>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", marginBottom: 6 }}>Type</div>
+                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", marginBottom: 6 }}>Tip</div>
                                 <select className="input-big" value={scrapeType} onChange={(e) => { setScrapeType(e.target.value as ScrapeType); setTypeFilter(e.target.value as "all" | ShoeType); }} style={{ width: "100%" }}>
-                                    <option value="all">All types</option>
-                                    <optgroup label="Sneakers & Sport">
-                                        <option value="sneakers">👟 Sneakers</option>
-                                        <option value="running">🏃 Running</option>
+                                    <option value="all">Svi tipovi</option>
+                                    <optgroup label="Patike i sport">
+                                        <option value="sneakers">👟 Patike</option>
+                                        <option value="running">🏃 Trkačke</option>
                                     </optgroup>
-                                    <optgroup label="Boots">
-                                        <option value="ankle_boots">👢 Ankle Boots</option>
-                                        <option value="boots">🥾 Boots (all)</option>
+                                    <optgroup label="Čizme">
+                                        <option value="ankle_boots">👢 Gleženjčke</option>
+                                        <option value="boots">🥾 Čizme (sve)</option>
                                     </optgroup>
-                                    <optgroup label="Open / Flat">
-                                        <option value="sandals">🩴 Sandals</option>
-                                        <option value="flats">🩰 Flats / Ballerinas</option>
-                                        <option value="loafers">🥿 Loafers</option>
+                                    <optgroup label="Sandale / ravna">
+                                        <option value="sandals">🩴 Sandale</option>
+                                        <option value="flats">🩰 Ravna / Balerinke</option>
+                                        <option value="loafers">🥿 Mokasine</option>
                                     </optgroup>
-                                    <optgroup label="Heels">
-                                        <option value="heels">👠 Heels / Pumps</option>
+                                    <optgroup label="Potpetice">
+                                        <option value="heels">👠 Potpetice / Pumpe</option>
                                     </optgroup>
                                 </select>
                             </div>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", marginBottom: 6 }}>Pages</div>
+                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", marginBottom: 6 }}>Stranice</div>
                                 <div style={{ display: "flex", gap: 6 }}>
                                     <select className="input-big" value={pageMode} onChange={(e) => setPageMode(e.target.value as "auto" | "manual")} style={{ flex: 1 }}>
-                                        <option value="manual">Manual</option>
-                                        <option value="auto">Auto</option>
+                                        <option value="manual">Ručno</option>
+                                        <option value="auto">Automatski</option>
                                     </select>
                                     {pageMode === "manual" && (
                                         <input className="input-big" type="number" min={1} max={5} value={pages} onChange={(e) => setPages(Math.max(1, Number(e.target.value) || 1))} style={{ width: 56 }} />
@@ -942,9 +942,9 @@ export default function ScraperHubPage() {
                             }}
                         >
                             {loading ? (
-                                <>⏳ Scraping...</>
+                                <>⏳ Pokretanje...</>
                             ) : (
-                                <>🚀 Run All Scrapers</>
+                                <>🚀 Pokreni sve scrapere</>
                             )}
                         </button>
                     </div>
@@ -953,28 +953,28 @@ export default function ScraperHubPage() {
 
             {/* ── GLOBAL TOP 10 ── */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: 0 }}>🌍 Global Top 10</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: "#c9d3e4", margin: 0 }}>🌍 Globalni Top 10</h2>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     {/* ── Brand filter ── */}
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", whiteSpace: "nowrap" }}>Brand</label>
+                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", whiteSpace: "nowrap" }}>Brend</label>
                         <select
                             value={brandFilter}
                             onChange={(e) => setBrandFilter(e.target.value)}
                             style={{
                                 padding: "5px 10px",
                                 borderRadius: 8,
-                                border: `1.5px solid ${brandFilter !== "all" ? "#6366f1" : "#e5e7eb"}`,
+                                border: `1.5px solid ${brandFilter !== "all" ? "#6366f1" : "#2A3045"}`,
                                 fontSize: 13,
                                 fontWeight: brandFilter !== "all" ? 700 : 400,
-                                color: brandFilter !== "all" ? "#4f46e5" : "#374151",
-                                background: brandFilter !== "all" ? "#eef2ff" : "white",
+                                color: brandFilter !== "all" ? "#a5b4fc" : "#c9d3e4",
+                                background: brandFilter !== "all" ? "rgba(99, 102, 241, 0.15)" : "#1A1F2E",
                                 cursor: "pointer",
                                 minWidth: 140,
                                 maxWidth: 220,
                             }}
                         >
-                            <option value="all">All brands ({availableBrands.length})</option>
+                            <option value="all">Svi brendovi ({availableBrands.length})</option>
                             {availableBrands.map((b) => (
                                 <option key={b} value={b}>{b}</option>
                             ))}
@@ -989,20 +989,20 @@ export default function ScraperHubPage() {
                             </button>
                         )}
                     </div>
-                    <span style={{ fontSize: 13, color: "#6b7280" }}>
+                    <span style={{ fontSize: 13, color: "#8A95B0" }}>
                         {top10Loading
-                            ? "⏳ Computing scores…"
-                            : `${filteredGlobal.length} groups · top ${globalTop10.length} shown${scoredTop10.length > 0 ? " · ★ Python scored" : ""}`
+                            ? "⏳ Računanje skorova…"
+                            : `${filteredGlobal.length} grupa · prikazano top ${globalTop10.length}${scoredTop10.length > 0 ? " · ★ Python scored" : ""}`
                         }
                     </span>
                 </div>
             </div>
 
             {globalTop10.length === 0 && !loading && (
-                <div style={{ textAlign: "center", padding: 40, background: "#f9fafb", borderRadius: 14, color: "#6b7280", marginBottom: 28 }}>
+                <div style={{ textAlign: "center", padding: 40, background: "#161A23", border: "1px solid #2A3045", borderRadius: 14, color: "#8A95B0", marginBottom: 28 }}>
                     <div style={{ fontSize: 36, marginBottom: 8 }}>📭</div>
-                    <div style={{ fontWeight: 600 }}>No results yet</div>
-                    <div style={{ fontSize: 13, marginTop: 4 }}>Configure scrapers above and click Run.</div>
+                    <div style={{ fontWeight: 600 }}>Nema rezultata</div>
+                    <div style={{ fontSize: 13, marginTop: 4 }}>Podešavanja gore, zatim klikni Pokreni.</div>
                 </div>
             )}
 
@@ -1022,10 +1022,10 @@ export default function ScraperHubPage() {
                             <div
                                 key={group.key}
                                 style={{
-                                    background: "white",
+                                    background: "#161A23",
                                     borderRadius: 14,
-                                    boxShadow: idx < 3 ? "0 6px 20px rgba(0,0,0,.10)" : "0 2px 8px rgba(0,0,0,.06)",
-                                    border: idx < 3 ? "2px solid #fbbf24" : "1px solid #e5e7eb",
+                                    boxShadow: idx < 3 ? "0 6px 20px rgba(0,0,0,.4)" : "0 2px 8px rgba(0,0,0,.3)",
+                                    border: idx < 3 ? "2px solid #fbbf24" : "1px solid #2A3045",
                                     overflow: "hidden",
                                     display: "flex",
                                     flexDirection: "column",
@@ -1034,7 +1034,7 @@ export default function ScraperHubPage() {
                             >
                                 {/* image */}
                                 <div
-                                    style={{ width: "100%", height: 180, background: "#f3f4f6", position: "relative", cursor: group.representative?.image ? "pointer" : "default", overflow: "hidden" }}
+                                    style={{ width: "100%", height: 180, background: "#1A1F2E", position: "relative", cursor: group.representative?.image ? "pointer" : "default", overflow: "hidden" }}
                                     onClick={() => openModal(group.representative?.image, `${group.brand} ${group.modelName}`)}
                                 >
                                     {group.representative?.image ? (
@@ -1062,7 +1062,7 @@ export default function ScraperHubPage() {
                                 {/* body */}
                                 <div style={{ padding: "10px 12px 14px", flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
                                     <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, textTransform: "uppercase" }}>{group.brand}</div>
-                                    <div style={{ fontWeight: 700, fontSize: 14, color: "#111827", lineHeight: 1.3 }}>{group.modelName}</div>
+                                    <div style={{ fontWeight: 700, fontSize: 14, color: "#c9d3e4", lineHeight: 1.3 }}>{group.modelName}</div>
 
                                     <div style={{ marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                         <span style={{ color: "#059669", fontWeight: 700, fontSize: 14 }}>
@@ -1081,7 +1081,7 @@ export default function ScraperHubPage() {
                                             </span>
                                         ))}
                                         {uniqueMarkets.map((m) => (
-                                            <span key={m} style={{ fontSize: 10, background: "#f3f4f6", color: "#374151", borderRadius: 5, padding: "1px 6px" }}>
+                                            <span key={m} style={{ fontSize: 10, background: "#2A3045", color: "#c9d3e4", borderRadius: 5, padding: "1px 6px" }}>
                                                 {MARKET_FLAG[m as MarketCode]}{m}
                                             </span>
                                         ))}
@@ -1091,7 +1091,7 @@ export default function ScraperHubPage() {
                                     {group.priceByMarket && Object.keys(group.priceByMarket).length > 1 && (
                                         <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
                                             {Object.entries(group.priceByMarket).map(([mkt, range]) => (
-                                                <span key={mkt} style={{ fontSize: 10, background: "#f0fdf4", color: "#065f46", borderRadius: 5, padding: "1px 6px", fontWeight: 600 }}>
+                                                <span key={mkt} style={{ fontSize: 10, background: "rgba(5,150,105,0.15)", color: "#34d399", borderRadius: 5, padding: "1px 6px", fontWeight: 600 }}>
                                                     {MARKET_FLAG[mkt as MarketCode] ?? mkt} {range.min === range.max ? `${range.min}` : `${range.min}–${range.max}`}
                                                 </span>
                                             ))}
@@ -1115,7 +1115,7 @@ export default function ScraperHubPage() {
                                             rel="noreferrer"
                                             style={{ marginTop: 8, display: "block", textAlign: "center", background: "#4f46e5", color: "white", borderRadius: 7, padding: "6px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}
                                         >
-                                            View product →
+                                            Pogledaj →
                                         </a>
                                     )}
                                 </div>
@@ -1129,8 +1129,8 @@ export default function ScraperHubPage() {
             {visibleRuns.length > 0 && (
                 <>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                        <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: 0 }}>📋 Top 10 per source &amp; market</h2>
-                        <span style={{ fontSize: 13, color: "#6b7280" }}>{visibleRuns.length} panels</span>
+                        <h2 style={{ fontSize: 20, fontWeight: 800, color: "#c9d3e4", margin: 0 }}>📋 Top 10 po izvoru i tržištu</h2>
+                        <span style={{ fontSize: 13, color: "#8A95B0" }}>{visibleRuns.length} panela</span>
                     </div>
                     <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))" }}>
                         {visibleRuns.map((run) => {
@@ -1162,12 +1162,12 @@ export default function ScraperHubPage() {
                                     {/* body */}
                                     <div style={{ padding: "8px 10px" }}>
                                         {errorsByRun[run.id] && (
-                                            <div style={{ color: "#b91c1c", fontSize: 12, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "6px 10px", marginBottom: 8 }}>
+                                            <div style={{ color: "#fca5a5", fontSize: 12, background: "rgba(127,29,29,0.25)", border: "1px solid #7f1d1d", borderRadius: 7, padding: "6px 10px", marginBottom: 8 }}>
                                                 ❌ {errorsByRun[run.id]}
                                             </div>
                                         )}
                                         {rows.length === 0 && !errorsByRun[run.id] && (
-                                            <div style={{ color: "#9ca3af", fontSize: 13, padding: "12px 4px", textAlign: "center" }}>No items scraped.</div>
+                                            <div style={{ color: "#8A95B0", fontSize: 13, padding: "12px 4px", textAlign: "center" }}>Nema scraped stavki.</div>
                                         )}
                                         {rows.map((group, index) => (
                                             <div
@@ -1177,7 +1177,7 @@ export default function ScraperHubPage() {
                                                     gridTemplateColumns: "36px 52px 1fr auto",
                                                     alignItems: "center",
                                                     gap: 8,
-                                                    borderBottom: index < rows.length - 1 ? "1px solid #f3f4f6" : "none",
+                                                    borderBottom: index < rows.length - 1 ? "1px solid #2A3045" : "none",
                                                     padding: "7px 4px",
                                                 }}
                                             >
@@ -1187,7 +1187,7 @@ export default function ScraperHubPage() {
                                                 </div>
                                                 {/* thumbnail */}
                                                 <div
-                                                    style={{ width: 52, height: 52, borderRadius: 8, overflow: "hidden", border: "1px solid #e5e7eb", background: "#f9fafb", cursor: group.representative?.image ? "pointer" : "default", flexShrink: 0 }}
+                                                    style={{ width: 52, height: 52, borderRadius: 8, overflow: "hidden", border: "1px solid #2A3045", background: "#1A1F2E", cursor: group.representative?.image ? "pointer" : "default", flexShrink: 0 }}
                                                     onClick={() => openModal(group.representative?.image, `${group.brand} ${group.modelName}`)}
                                                 >
                                                     {group.representative?.image ? (
@@ -1200,7 +1200,7 @@ export default function ScraperHubPage() {
                                                 <div style={{ overflow: "hidden" }}>
                                                     <div style={{ fontSize: 10, color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{group.brand}</div>
                                                     <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{group.modelName}</div>
-                                                    <div style={{ fontSize: 10, color: "#6b7280" }}>{group.shoeStyle}</div>
+                                                    <div style={{ fontSize: 10, color: "#8A95B0" }}>{group.shoeStyle}</div>
                                                 </div>
                                                 {/* price + link */}
                                                 <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -1209,7 +1209,7 @@ export default function ScraperHubPage() {
                                                     </div>
                                                     {group.representative?.url && (
                                                         <a href={group.representative.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: c.text, fontWeight: 600, textDecoration: "none" }}>
-                                                            Open ↗
+                                                            Otvori ↗
                                                         </a>
                                                     )}
                                                 </div>

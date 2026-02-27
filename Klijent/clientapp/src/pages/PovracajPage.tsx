@@ -26,7 +26,7 @@ export default function PovracajPage() {
       setTotalCount(res.totalCount ?? 0);
     } catch (e: unknown) {
       console.error(e);
-      setError(e instanceof Error ? e.message : "Gre�ka pri ucitavanju povracaja");
+      setError(e instanceof Error ? e.message : "Greška pri učitavanju povraćaja");
     } finally {
       setLoading(false);
     }
@@ -39,7 +39,7 @@ export default function PovracajPage() {
 
   const handleSuccess = () => {
     setShowWizard(false);
-    setSuccessMessage("Zapisnik o povracaju uspe�no kreiran!");
+    setSuccessMessage("Zapisnik o povraćaju uspešno kreiran!");
     setTimeout(() => setSuccessMessage(null), 5000);
     setPageNumber(1);
     load();
@@ -65,8 +65,8 @@ export default function PovracajPage() {
   return (
     <InventoryPageShell
       icon={RotateCcw}
-      title="Povracaj robe"
-      subtitle="Pracenje zapisnika povracaja sa brzim otvaranjem wizard toka za novi unos."
+      title="Povraćaj robe"
+      subtitle="Praćenje zapisnika povraćaja sa brzim otvaranjem wizard toka za novi unos."
       actions={
         !showWizard ? (
           <button
@@ -74,17 +74,17 @@ export default function PovracajPage() {
             onClick={() => setShowWizard(true)}
             className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7]"
           >
-            + Novi povracaj
+            + Novi povraćaj
           </button>
         ) : null
       }
     >
       <InventoryKpiRow
         items={[
-          { label: "Ukupno povracaja", value: `${totalCount}` },
+          { label: "Ukupno povraćaja", value: `${totalCount}` },
           { label: "Stranica", value: `${pageNumber}/${totalPages}` },
-          { label: "Status", value: loading ? "Ucitavanje" : error ? "Gre�ka" : "Spremno", tone: loading ? "warning" : error ? "danger" : "positive" },
-          { label: "Re�im", value: showWizard ? "Wizard" : "Pregled" },
+          { label: "Status", value: loading ? "Učitavanje" : error ? "Greška" : "Spremno", tone: loading ? "warning" : error ? "danger" : "positive" },
+          { label: "Režim", value: showWizard ? "Wizard" : "Pregled" },
         ]}
       />
 
@@ -99,15 +99,15 @@ export default function PovracajPage() {
           <PovracajWizard onSuccess={handleSuccess} onCancel={handleCancel} />
         ) : (
           <>
-            <h2 className="mb-3 text-lg font-semibold text-[#f3f6ff]">Kreirani povracaji</h2>
+            <h2 className="mb-3 text-lg font-semibold text-[#f3f6ff]">Kreirani povraćaji</h2>
 
-            {loading && <p className="py-8 text-center text-sm text-[#9aabc7]">Ucitavanje...</p>}
+            {loading && <p className="py-8 text-center text-sm text-[#9aabc7]">Učitavanje...</p>}
             {error && <p className="py-8 text-center text-sm font-medium text-rose-300">{error}</p>}
 
             {!loading && !error && items.length === 0 && (
               <div className="py-10 text-center">
-                <p className="mb-2 text-base text-[#dbe6fb]">Nema kreiranih povracaja</p>
-                <p className="text-sm text-[#9aabc7]">Kliknite na dugme "Novi povracaj" da kreirate zapisnik.</p>
+                <p className="mb-2 text-base text-[#dbe6fb]">Nema kreiranih povraćaja</p>
+                <p className="text-sm text-[#9aabc7]">Kliknite na dugme "Novi povraćaj" da kreirate zapisnik.</p>
               </div>
             )}
 

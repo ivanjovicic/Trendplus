@@ -2,12 +2,12 @@ import { Link } from "react-router-dom";
 import { BarChart3, Package, ShoppingCart, Tags, Undo2, Wrench } from "lucide-react";
 
 const QUICK_ACTIONS = [
-  { to: "/artikli/lista", title: "Pregled artikala", subtitle: "Brzo azuriranje kataloga", icon: Package },
-  { to: "/prodaja", title: "Prodaja", subtitle: "Kreiranje novih racuna", icon: ShoppingCart },
-  { to: "/nivelacija", title: "Nivelacija", subtitle: "Korekcija cena i marzi", icon: Tags },
-  { to: "/povracaj", title: "Povracaj robe", subtitle: "Obrada reklamacija", icon: Undo2 },
+  { to: "/prodaja", title: "Prodaja", subtitle: "Kreiranje novih računa", icon: ShoppingCart },
+  { to: "/unos-robe", title: "Unos robe", subtitle: "Prijem robe po dobavljaču", icon: Package },
+  { to: "/nivelacija", title: "Nivelacija", subtitle: "Korekcija cena i marži", icon: Tags },
+  { to: "/povracaj", title: "Povraćaj robe", subtitle: "Obrada reklamacija", icon: Undo2 },
   { to: "/analytics", title: "Analitika", subtitle: "KPI i trend performanse", icon: BarChart3 },
-  { to: "/logs", title: "Logovi", subtitle: "Monitoring i dijagnostika", icon: Wrench },
+  { to: "/logs", title: "Logovi", subtitle: "Nadzor i dijagnostika", icon: Wrench },
 ];
 
 export default function DashboardCards() {

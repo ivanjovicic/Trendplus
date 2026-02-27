@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { GaugeCircle } from "lucide-react";
+import { GaugeCircle, Check, AlertCircle, X, TrendingUp, TrendingDown } from "lucide-react";
 import { getArtikli, nivelacijaCena } from "../services/artikliApi";
 import { Artikal } from "../types/Artikal";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel } from "../components/inventory/InventoryPageShell";
@@ -27,7 +27,7 @@ export default function NivelacijaCenaPage() {
                 const data = await getArtikli();
                 setArtikli(data);
             } catch (e: any) {
-                setError(e?.message ?? "Greöka pri ucitavanju artikala");
+                setError(e?.message ?? "GreÔøΩka pri ucitavanju artikala");
             } finally {
                 setLoading(false);
             }
@@ -88,9 +88,9 @@ export default function NivelacijaCenaPage() {
                     : prev
             );
 
-            setSuccess("Cena je uspeöno izmenjena (trag sacuvan u DnevnikPromena).");
+            setSuccess("Cena je uspeÔøΩno izmenjena (trag sacuvan u DnevnikPromena).");
         } catch (e: any) {
-            setError(e?.message ?? "Greöka pri snimanju");
+            setError(e?.message ?? "GreÔøΩka pri snimanju");
         } finally {
             setIsSaving(false);
         }
@@ -107,19 +107,31 @@ export default function NivelacijaCenaPage() {
                     { label: "Artikli", value: `${artikli.length}` },
                     { label: "Selektovan SKU", value: selected ? `#${selected.id}` : "Nije izabran", tone: selected ? "positive" : "warning" },
                     { label: "Status snimanja", value: isSaving ? "Snimanje" : "Idle", tone: isSaving ? "warning" : "neutral" },
-                    { label: "Rezultat", value: success ? "Uspeh" : error ? "Greöka" : "-", tone: success ? "positive" : error ? "danger" : "neutral" },
+                    { label: "Rezultat", value: success ? "Uspeh" : error ? "GreÔøΩka" : "-", tone: success ? "positive" : error ? "danger" : "neutral" },
                 ]}
             />
 
             <InventoryPanel className="max-w-5xl">
                 <h2 className="mb-4 text-xl font-semibold text-[#f3f6ff]">Izmena cena po artiklu</h2>
 
-                {loading && <p className="text-sm text-[#9aabc7]">Ucitavanje artikala...</p>}
-                {error && <p className="text-sm font-medium text-rose-300">{error}</p>}
-                {success && <p className="text-sm font-medium text-emerald-300">{success}</p>}
+                {loading && <p className="text-sm text-[#9aabc7]">Uƒçitavanje artikala...</p>}
+                {error && (
+                  <div className="flex items-start gap-2 rounded-xl border border-[#7f1d1d] bg-[#2b0a0a] px-3 py-2 text-sm text-[#f87171]">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                    <span className="flex-1">{error}</span>
+                    <button type="button" onClick={() => setError(null)} className="shrink-0 hover:text-white"><X size={14} /></button>
+                  </div>
+                )}
+                {success && (
+                  <div className="flex items-start gap-2 rounded-xl border border-[#14532d] bg-[#0d2118] px-3 py-2 text-sm text-[#4ade80]">
+                    <Check size={16} className="mt-0.5 shrink-0" />
+                    <span className="flex-1">{success}</span>
+                    <button type="button" onClick={() => setSuccess(null)} className="shrink-0 hover:text-white"><X size={14} /></button>
+                  </div>
+                )}
 
                 <div className="mt-4">
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Pretraûi artikal</label>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">PretraÔøΩi artikal</label>
                     <div className="relative">
                         <input
                             className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
@@ -158,6 +170,19 @@ export default function NivelacijaCenaPage() {
                             <div className="text-sm text-[#9fc0ff]">
                                 Trenutno: prodajna {selected.prodajnaCena} | nabavna {selected.nabavnaCena ?? "-"} | prva {selected.prvaProdajnaCena ?? "-"}
                             </div>
+                            {(() => {
+                              const delta = Number(novaProdajnaCena) - (selected.prodajnaCena ?? 0);
+                              const pct = selected.prodajnaCena ? (delta / selected.prodajnaCena) * 100 : 0;
+                              if (delta === 0) return null;
+                              const up = delta > 0;
+                              return (
+                                <div className={`mt-2 flex items-center gap-1.5 text-sm font-semibold ${up ? "text-emerald-300" : "text-rose-300"}`}>
+                                  {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                  {up ? "+" : ""}{delta.toFixed(2)} RSD ({up ? "+" : ""}{pct.toFixed(1)}%)
+                                  <span className="text-xs font-normal text-[#8A95B0]">‚Äî nova vs stara cena</span>
+                                </div>
+                              );
+                            })()}
                         </div>
 
                         <div className="grid gap-3 md:grid-cols-3">

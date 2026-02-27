@@ -57,11 +57,11 @@ export default function DeichmannPage() {
     const categories = ["Patike", "Sandale", "Cipele", "Cizme"];
 
     const sortOptions = [
-        { label: "Newest", value: "new-desc" },
-        { label: "Reduction", value: "reduction-desc" },
-        { label: "Relevance", value: "key-relevance" },
-        { label: "Price: Low → High", value: "price-asc" },
-        { label: "Price: High → Low", value: "price-desc" }
+        { label: "Najnovije", value: "new-desc" },
+        { label: "Akcija", value: "reduction-desc" },
+        { label: "Relevantnost", value: "key-relevance" },
+        { label: "Cena: raste", value: "price-asc" },
+        { label: "Cena: pada", value: "price-desc" }
     ];
 
     const openImage = (src?: string, title?: string) => {
@@ -111,15 +111,15 @@ export default function DeichmannPage() {
             }
 
             console.log("▶ Calling Deichmann scraper with payload:", payload);
-            toast.info("Calling Deichmann scraper...");
+            toast.info("Pokretanje Deichmann scraper-a...");
             const data = await runDeichmannScraper(payload);
-            console.log("◀ Deichmann scraper response:", data);
+            console.log("◄ Deichmann scraper response:", data);
             const items = data.items || [];
             setResults(items);
-            toast.success(`Deichmann: loaded ${data.count ?? items.length} items`);
+            toast.success(`Deichmann: učitano ${data.count ?? items.length} stavki`);
         } catch (e) {
             console.error(e);
-            toast.error(e instanceof Error ? e.message : "Failed to run Deichmann scraper");
+            toast.error(e instanceof Error ? e.message : "Greška pri pokretanju Deichmann scraper-a");
         } finally {
             setLoading(false);
         }
@@ -127,24 +127,24 @@ export default function DeichmannPage() {
 
     return (
         <div style={{ maxWidth: 1200, margin: "2rem auto", padding: "0 1rem" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>Deichmann — EU Market Scraper</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12, color: "#c9d3e4" }}>Deichmann — Scraper EU tržišta</h1>
 
             <div className="card" style={{ marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ minWidth: 180 }}>
-                        <label className="field-label">Deichmann pages</label>
+                        <label className="field-label">Deichmann stranice</label>
                         <input type="number" className="input-big" value={filterPages} min={1} onChange={(e) => setFilterPages(Number(e.target.value) || 1)} />
                     </div>
 
                     <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Category</label>
+                        <label className="field-label">Kategorija</label>
                         <select className="input-big" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
                             {categories.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                     </div>
 
                     <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Brand</label>
+                        <label className="field-label">Brend</label>
                         <SearchableSelect 
                             value={filterBrand}
                             onChange={setFilterBrand}
@@ -155,35 +155,35 @@ export default function DeichmannPage() {
                     </div>
 
                     <div style={{ minWidth: 160 }}>
-                        <label className="field-label">Gender</label>
+                        <label className="field-label">Pol</label>
                         <select
                             className="input-big"
                             value={filterGender}
                             onChange={(e) => setFilterGender(e.target.value)}
                         >
                             <option value="">Unisex</option>
-                            <option value="women">👠 Women</option>
-                            <option value="men">👞 Men</option>
-                            <option value="kids">🧒 Kids</option>
+                            <option value="women">👠 žene</option>
+                            <option value="men">👞 Muškarci</option>
+                            <option value="kids">🧒 Deca</option>
                         </select>
                     </div>
 
                     <div style={{ minWidth: 160 }}>
-                        <label className="field-label">Sort by</label>
+                        <label className="field-label">Sortiranje</label>
                         <select
                             className="input-big"
                             value={filterSort}
                             onChange={(e) => setFilterSort(e.target.value)}
                         >
-                            <option value="popularity">🔥 Popularity</option>
-                            <option value="price-asc">💸 Price: Low → High</option>
-                            <option value="price-desc">💰 Price: High → Low</option>
-                            <option value="new">✨ New Arrivals</option>
+                            <option value="popularity">🔥 Popularnost</option>
+                            <option value="price-asc">💸 Cena: raste</option>
+                            <option value="price-desc">💰 Cena: pada</option>
+                            <option value="new">✨ Novo u ponudi</option>
                         </select>
                     </div>
 
                     <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Price Min (€)</label>
+                        <label className="field-label">Min cena (€)</label>
                         <input
                             type="number"
                             className="input-big"
@@ -194,7 +194,7 @@ export default function DeichmannPage() {
                     </div>
 
                     <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Price Max (€)</label>
+                        <label className="field-label">Max cena (€)</label>
                         <input
                             type="number"
                             className="input-big"
@@ -205,7 +205,7 @@ export default function DeichmannPage() {
                     </div>
 
                     <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Size (EUR)</label>
+                        <label className="field-label">Veličina (EUR)</label>
                         <SearchableSelect
                             value={size ?? []}
                             onChange={(v) => setSize(v as string[])}
@@ -222,10 +222,10 @@ export default function DeichmannPage() {
                             value={filterActivationDate ?? ""}
                             onChange={(e) => setFilterActivationDate(e.target.value || undefined)}
                         >
-                            <option value="">No filter</option>
-                            <option value="0-7">Last 0-7 days</option>
-                            <option value="0-7.7-14">0-7 & 7-14 days</option>
-                            <option value="0-30.0-7.7-14">0-30 & 0-7 & 7-14 days</option>
+                            <option value="">Bez filtera</option>
+                            <option value="0-7">Posled. 0-7 dana</option>
+                            <option value="0-7.7-14">0-7 i 7-14 dana</option>
+                            <option value="0-30.0-7.7-14">0-30, 0-7 i 7-14 dana</option>
                         </select>
                     </div>
 
@@ -243,12 +243,12 @@ export default function DeichmannPage() {
                             checked={filterImportToCore}
                             onChange={(e) => setFilterImportToCore(e.target.checked)}
                         />
-                        <span style={{ fontSize: 14, color: "#374151" }}>Import to Core DB</span>
+                        <span style={{ fontSize: 14, color: "#c9d3e4" }}>Uvezi u bazu</span>
                     </label>
 
                     <div style={{ marginLeft: "auto" }}>
                         <button className="button-big" onClick={runDeichmannFiltered} disabled={loading} style={{ minWidth: 160 }}>
-                            {loading ? '⏳ Scraping...' : '🔍 Run Deichmann'}
+                            {loading ? '⏳ Pokretanje...' : '🔍 Pokreni Deichmann'}
                         </button>
                     </div>
                 </div>
@@ -256,20 +256,20 @@ export default function DeichmannPage() {
 
             {results.length > 0 && (
                 <div>
-                    <h3 style={{ marginBottom: 12 }}>Results ({results.length})</h3>
+                    <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Rezultati ({results.length})</h3>
                     <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
                         {results.map((p, idx) => (
                             <div key={idx} className="card" style={{ padding: 12 }}>
-                                <div style={{ width: '100%', height: 220, overflow: 'hidden', borderRadius: 8, background: '#f3f4f6' }}>
+                                <div style={{ width: '100%', height: 220, overflow: 'hidden', borderRadius: 8, background: '#1A1F2E' }}>
                                     {p.image ? (
                                         <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={() => openImage(p.image, p.name)} onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=No+Image' }} />
                                     ) : null}
                                 </div>
                                 <div style={{ paddingTop: 12 }}>
-                                    <div style={{ fontSize: 12, color: '#6b7280' }}>{p.brand}</div>
-                                    <div style={{ fontWeight: 700, margin: '6px 0' }}>{p.name}</div>
+                                    <div style={{ fontSize: 12, color: '#8A95B0' }}>{p.brand}</div>
+                                    <div style={{ fontWeight: 700, margin: '6px 0', color: '#c9d3e4' }}>{p.name}</div>
                                     <div style={{ color: '#059669', fontWeight: 700 }}>{p.price || '-'}</div>
-                                    {p.url && <a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>View</a>}
+                                    {p.url && <a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#4F8EF7' }}>Pogledaj</a>}
                                 </div>
                             </div>
                         ))}
