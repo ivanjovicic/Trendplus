@@ -95,7 +95,6 @@ export default function AccessImportPage() {
         try {
             const data = await previewAccessImport(file, useRootFile);
             setPreview(data);
-            setActiveTab("preview");
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Greska pri analizi ACCDB fajla.");
         } finally {
@@ -285,6 +284,25 @@ export default function AccessImportPage() {
                             </div>
                         )}
                     </div>
+
+                    {preview && (
+                        <div className="accimport-field" style={{ gridColumn: "1 / -1" }}>
+                            <div className={preview.canImport ? "accimport-success" : "accimport-warning"} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                <span>
+                                    Analiza seme: <strong>{preview.canImport ? "OK" : "BLOKIRANO"}</strong> • Tabele:{" "}
+                                    <strong>{preview.tables.filter((t) => t.found).length}/{preview.tables.length}</strong>
+                                </span>
+                                <button
+                                    type="button"
+                                    className="accimport-btn accimport-btn-secondary"
+                                    onClick={() => setActiveTab("preview")}
+                                    disabled={busy}
+                                >
+                                    Otvori detalje
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

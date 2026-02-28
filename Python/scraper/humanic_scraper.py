@@ -3,8 +3,13 @@ import os
 import re
 from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
+import random
+from datetime import datetime
+from playwright.async_api import async_playwright
 
 from bs4 import BeautifulSoup
+from scraper.schema import ScrapedItem
+from scraper.normalization import parse_price, infer_category_from_name, compute_rank
 
 
 DEFAULT_HUMANIC_URL = "https://www.humanic.net/at/c/Damenschuhe/womenShoes"
@@ -294,14 +299,14 @@ async def _scrape_humanic_infinite_scroll(
                 pass
 
             idle_rounds = 0
-            for round_num in range(1, max_scroll_rounds + 1):
-                html = await page.content()
-                soup = BeautifulSoup(html, "lxml")
-                tiles = soup.select("li.productcell.masonry-grid__item, li.productcell.algolia.masonry-grid__item, li.productcell")
+            start_time = datetime.utcnow()
 
+            while True:
+                tiles = await page.query_selector_all("li.productcell")
                 before_count = len(all_items)
+
                 for tile in tiles:
-                    item = _tile_to_item(tile)
+                    item = await self._tile_to_item(tile)
                     if not item:
                         continue
                     key = item.get("url") or f"{item.get('brand')}|{item.get('name')}|{item.get('price')}"
@@ -311,32 +316,19 @@ async def _scrape_humanic_infinite_scroll(
                     all_items.append(item)
 
                 new_unique = len(all_items) - before_count
-                logging.info(
-                    "Humanic round %s -> domTiles=%s newUnique=%s totalUnique=%s",
-                    round_num,
-                    len(tiles),
-                    new_unique,
-                    len(all_items),
-                )
-
-                if not auto_pages and len(all_items) >= target_unique:
-                    break
-
-                prev_height = await page.evaluate("document.body.scrollHeight")
-                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                await page.mouse.wheel(0, 3000)
-                await page.wait_for_timeout(1200)
-                curr_height = await page.evaluate("document.body.scrollHeight")
-
-                if new_unique == 0 and curr_height <= (prev_height + 5):
+                if new_unique == 0:
                     idle_rounds += 1
                 else:
                     idle_rounds = 0
 
-                if auto_pages and idle_rounds >= 5:
+                elapsed_time = (datetime.utcnow() - start_time).total_seconds()
+                if idle_rounds >= 3 or elapsed_time > 45:
                     break
-                if not auto_pages and idle_rounds >= 4 and len(all_items) >= max(10, target_unique // 2):
-                    break
+
+                await page.mouse.wheel(0, 3000)
+                await page.wait_for_timeout(random.randint(200, 600))
+
+            return all_items
         finally:
             await page.close()
             await context.close()
@@ -345,61 +337,40 @@ async def _scrape_humanic_infinite_scroll(
     return all_items
 
 
-async def scrape_humanic_filtered(**filters: Any) -> List[Dict[str, Any]]:
-    url = filters.get("url")
-    category = filters.get("category")
-    sort = filters.get("sort", "bestseller")
-    price_min = filters.get("priceMin")
-    price_max = filters.get("priceMax")
-    brand = filters.get("brand")
-    keyword = filters.get("keyword")
+def _to_scraped_item_humanic(d: Dict[str, Any]) -> ScrapedItem:
+    price, currency = parse_price(d.get("price"), market=d.get("country", "AT"))
 
-    raw_upper_materials = filters.get("upperMaterials")
-    if isinstance(raw_upper_materials, list):
-        upper_materials = [str(item).strip() for item in raw_upper_materials if str(item).strip()]
-    else:
-        upper_materials = _split_csv(str(raw_upper_materials)) if raw_upper_materials else []
+    page = d.get("page") or 1
+    pos = d.get("positionOnPage") or 1
+    page_size = len(d.get("_page_cards", [])) if d.get("_page_cards") else 30
 
-    requested_pages = int(filters.get("pages", 0) or 0)
-    auto_pages = requested_pages <= 0
-    max_pages = 10 if auto_pages else requested_pages
-    if max_pages < 1:
-        max_pages = 1
-
-    base_url = _normalize_humanic_url(
-        url=url,
-        category=category,
-        sort=sort,
-        upper_materials=upper_materials,
-        brand=brand,
+    return ScrapedItem(
+        source="humanic",
+        market=d.get("country", "AT"),
+        brand=d.get("brand") or "",
+        name=d.get("name") or "",
+        priceValue=price,
+        currency=currency,
+        url=d.get("url"),
+        imageUrl=d.get("image"),
+        rank=compute_rank(page, pos, page_size),
+        page=page,
+        positionOnPage=pos,
+        sortMode=d.get("sort") or "popularity",
+        sku=None,
+        category=infer_category_from_name(d.get("name") or ""),
+        gender=d.get("gender"),
+        isNew=False,
+        isOnSale=bool(d.get("old_price")),
+        hasImage=bool(d.get("image")),
+        backend="algolia",
+        backendIndex=d.get("backendIndex"),
+        backendRank=d.get("backendRank"),
+        raw=d,
     )
 
-    logging.info(
-        "Humanic scraper -> url=%s brand=%s keyword=%s priceMin=%s priceMax=%s upperMaterials=%s pages=%s mode=%s sort=%s",
-        base_url,
-        brand,
-        keyword,
-        price_min,
-        price_max,
-        upper_materials,
-        max_pages,
-        "auto" if auto_pages else "manual",
-        _normalize_sort_value(sort),
-    )
 
-    all_items = await _scrape_humanic_infinite_scroll(
-        base_url=base_url,
-        max_pages=max_pages,
-        auto_pages=auto_pages,
-    )
-
-    filtered = _apply_local_filters(
-        items=all_items,
-        brand=brand,
-        keyword=keyword,
-        price_min=price_min,
-        price_max=price_max,
-    )
-    filtered = _sort_items(filtered, sort)
-    logging.info("Humanic scraper done: raw=%s filtered=%s", len(all_items), len(filtered))
-    return filtered
+async def scrape_humanic_filtered(**filters: Any) -> List[ScrapedItem]:
+    raw_results = await _scrape_humanic_infinite_scroll(filters)
+    items = [_to_scraped_item_humanic(r) for r in raw_results]
+    return items

@@ -1,4 +1,5 @@
 using Domain.Model.OpenProductTraining;
+using Infrastructure.OpenProductTraining.V2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -24,8 +25,21 @@ namespace Infrastructure.DbContexts
         public DbSet<TrainingProductSplit> ProductSplits => Set<TrainingProductSplit>();
         public DbSet<TrainingProductFeatureVector> ProductFeatureVectors => Set<TrainingProductFeatureVector>();
 
+        // Open Product Training 2.0 (ML infra)
+        public DbSet<TrainingRun> TrainingRuns => Set<TrainingRun>();
+        public DbSet<ModelVersion> ModelVersions => Set<ModelVersion>();
+        public DbSet<ProductFeatureVectorText> ProductFeatureVectorTexts => Set<ProductFeatureVectorText>();
+        public DbSet<ProductFeatureVectorImageV2> ProductFeatureVectorImagesV2 => Set<ProductFeatureVectorImageV2>();
+        public DbSet<ProductFeatureVectorPriceHistory> ProductFeatureVectorPriceHistories => Set<ProductFeatureVectorPriceHistory>();
+        public DbSet<TrainingLabelSellProbabilityRs> TrainingSellProbabilityRsLabels => Set<TrainingLabelSellProbabilityRs>();
+        public DbSet<BrandNormalized> BrandNormalized => Set<BrandNormalized>();
+        public DbSet<CategoryNormalized> CategoryNormalized => Set<CategoryNormalized>();
+        public DbSet<ProductQualityFlag> ProductQualityFlags => Set<ProductQualityFlag>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.HasPostgresExtension("vector");
+
             modelBuilder.Entity<TrainingDataset>(entity =>
             {
                 entity.ToTable("dataset");
@@ -245,9 +259,178 @@ namespace Infrastructure.DbContexts
             // ── Npgsql 6+ fix: map all DateTime properties from TIMESTAMPTZ as UTC ──
             // The open_product_training schema was created with TIMESTAMPTZ columns.
             // Npgsql 6+ refuses to read timestamptz into DateTime unless Kind=Utc is set.
+            // ------------------------------------------------------------
+            // Open Product Training 2.0 - ML infra tables (pgvector + jsonb)
+            // ------------------------------------------------------------
+
+            modelBuilder.Entity<TrainingRun>(entity =>
+            {
+                entity.ToTable("training_run");
+                entity.Property(x => x.Id).HasColumnName("id");
+                entity.Property(x => x.ModelType).HasColumnName("model_type");
+                entity.Property(x => x.DatasetId).HasColumnName("dataset_id");
+                entity.Property(x => x.FeatureViewName).HasColumnName("feature_view_name");
+                entity.Property(x => x.Status).HasColumnName("status");
+                entity.Property(x => x.StartedAt).HasColumnName("started_at");
+                entity.Property(x => x.CompletedAt).HasColumnName("completed_at");
+                entity.Property(x => x.CodeVersion).HasColumnName("code_version");
+                entity.Property(x => x.ParamsJson).HasColumnName("params_json").HasColumnType("jsonb");
+                entity.Property(x => x.MetricsJson).HasColumnName("metrics_json").HasColumnType("jsonb");
+                entity.Property(x => x.ArtifactUri).HasColumnName("artifact_uri");
+                entity.Property(x => x.Notes).HasColumnName("notes");
+                entity.Property(x => x.ErrorMessage).HasColumnName("error_message");
+                entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+
+                entity.HasIndex(x => new { x.ModelType, x.CreatedAt });
+                entity.HasIndex(x => x.Status);
+            });
+
+            modelBuilder.Entity<ModelVersion>(entity =>
+            {
+                entity.ToTable("model_version");
+                entity.Property(x => x.Id).HasColumnName("id");
+                entity.Property(x => x.ModelType).HasColumnName("model_type");
+                entity.Property(x => x.Version).HasColumnName("version");
+                entity.Property(x => x.TrainingRunId).HasColumnName("training_run_id");
+                entity.Property(x => x.IsActive).HasColumnName("is_active");
+                entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+                entity.Property(x => x.OnnxPath).HasColumnName("onnx_path");
+                entity.Property(x => x.OnnxSha256).HasColumnName("onnx_sha256");
+                entity.Property(x => x.FeatureSchemaJson).HasColumnName("feature_schema_json").HasColumnType("jsonb");
+                entity.Property(x => x.MetricsJson).HasColumnName("metrics_json").HasColumnType("jsonb");
+                entity.Property(x => x.CalibrationJson).HasColumnName("calibration_json").HasColumnType("jsonb");
+                entity.Property(x => x.ShapSummaryJson).HasColumnName("shap_summary_json").HasColumnType("jsonb");
+                entity.Property(x => x.FeatureImportanceJson).HasColumnName("feature_importance_json").HasColumnType("jsonb");
+                entity.Property(x => x.MinFeatureValues).HasColumnName("min_feature_values").HasColumnType("jsonb");
+                entity.Property(x => x.MaxFeatureValues).HasColumnName("max_feature_values").HasColumnType("jsonb");
+                entity.Property(x => x.Notes).HasColumnName("notes");
+
+                entity.HasIndex(x => new { x.ModelType, x.Version }).IsUnique();
+                entity.HasIndex(x => x.CreatedAt);
+            });
+
+            modelBuilder.Entity<BrandNormalized>(entity =>
+            {
+                entity.ToTable("brand_normalized");
+                entity.Property(x => x.Id).HasColumnName("id");
+                entity.Property(x => x.RawBrand).HasColumnName("raw_brand");
+                entity.Property(x => x.NormalizedKey).HasColumnName("normalized_key");
+                entity.Property(x => x.BrandId).HasColumnName("brand_id");
+                entity.Property(x => x.Confidence).HasColumnName("confidence");
+                entity.Property(x => x.Source).HasColumnName("source");
+                entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+
+                entity.HasIndex(x => x.RawBrand).IsUnique();
+                entity.HasIndex(x => x.NormalizedKey);
+            });
+
+            modelBuilder.Entity<CategoryNormalized>(entity =>
+            {
+                entity.ToTable("category_normalized");
+                entity.Property(x => x.Id).HasColumnName("id");
+                entity.Property(x => x.RawCategory).HasColumnName("raw_category");
+                entity.Property(x => x.NormalizedKey).HasColumnName("normalized_key");
+                entity.Property(x => x.CategoryId).HasColumnName("category_id");
+                entity.Property(x => x.Confidence).HasColumnName("confidence");
+                entity.Property(x => x.Source).HasColumnName("source");
+                entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+
+                entity.HasIndex(x => x.RawCategory).IsUnique();
+                entity.HasIndex(x => x.NormalizedKey);
+            });
+
+            modelBuilder.Entity<ProductQualityFlag>(entity =>
+            {
+                entity.ToTable("product_quality_flags");
+                entity.Property(x => x.Id).HasColumnName("id");
+                entity.Property(x => x.ProductId).HasColumnName("product_id");
+                entity.Property(x => x.FlagKey).HasColumnName("flag_key");
+                entity.Property(x => x.Severity).HasColumnName("severity");
+                entity.Property(x => x.Details).HasColumnName("details").HasColumnType("jsonb");
+                entity.Property(x => x.TrainingRunId).HasColumnName("training_run_id");
+                entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+
+                entity.HasIndex(x => x.ProductId);
+                entity.HasIndex(x => new { x.ProductId, x.FlagKey }).IsUnique();
+            });
+
+            modelBuilder.Entity<TrainingLabelSellProbabilityRs>(entity =>
+            {
+                entity.ToTable("training_label_sell_probability_rs");
+                entity.Property(x => x.Id).HasColumnName("id");
+                entity.Property(x => x.ProductId).HasColumnName("product_id");
+                entity.Property(x => x.HorizonDays).HasColumnName("horizon_days");
+                entity.Property(x => x.LabelValue).HasColumnName("label_value").HasColumnType("numeric(10,6)");
+                entity.Property(x => x.LabelVersion).HasColumnName("label_version");
+                entity.Property(x => x.AsOfDate).HasColumnName("as_of_date");
+                entity.Property(x => x.ComputedAt).HasColumnName("computed_at");
+                entity.Property(x => x.Source).HasColumnName("source");
+                entity.Property(x => x.Notes).HasColumnName("notes");
+
+                entity.HasIndex(x => new { x.ProductId, x.HorizonDays, x.LabelVersion }).IsUnique();
+            });
+
+            modelBuilder.Entity<ProductFeatureVectorText>(entity =>
+            {
+                entity.ToTable("product_feature_vector_text");
+                entity.Property(x => x.Id).HasColumnName("id");
+                entity.Property(x => x.ProductId).HasColumnName("product_id");
+                entity.Property(x => x.EmbeddingModel).HasColumnName("embedding_model");
+                entity.Property(x => x.Embedding).HasColumnName("embedding").HasColumnType("vector(256)");
+                entity.Property(x => x.EmbeddingPca64).HasColumnName("embedding_pca_64").HasColumnType("vector(64)");
+                entity.Property(x => x.TextHash).HasColumnName("text_hash");
+                entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+
+                entity.HasIndex(x => new { x.ProductId, x.EmbeddingModel }).IsUnique();
+            });
+
+            modelBuilder.Entity<ProductFeatureVectorImageV2>(entity =>
+            {
+                entity.ToTable("product_feature_vector_image_v2");
+                entity.Property(x => x.Id).HasColumnName("id");
+                entity.Property(x => x.ProductId).HasColumnName("product_id");
+                entity.Property(x => x.EmbeddingModel).HasColumnName("embedding_model");
+                entity.Property(x => x.Embedding256).HasColumnName("embedding_256").HasColumnType("vector(256)");
+                entity.Property(x => x.EmbeddingPca64).HasColumnName("embedding_pca_64").HasColumnType("vector(64)");
+                entity.Property(x => x.ClusterId).HasColumnName("cluster_id");
+                entity.Property(x => x.ClusterDistance).HasColumnName("cluster_distance").HasColumnType("numeric(12,6)");
+                entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+
+                entity.HasIndex(x => new { x.ProductId, x.EmbeddingModel }).IsUnique();
+                entity.HasIndex(x => x.ClusterId);
+            });
+
+            modelBuilder.Entity<ProductFeatureVectorPriceHistory>(entity =>
+            {
+                entity.ToTable("product_feature_vector_price_history");
+                entity.Property(x => x.Id).HasColumnName("id");
+                entity.Property(x => x.ProductId).HasColumnName("product_id");
+                entity.Property(x => x.FeatureVersion).HasColumnName("feature_version");
+                entity.Property(x => x.ComputedAt).HasColumnName("computed_at");
+                entity.Property(x => x.Currency).HasColumnName("currency");
+                entity.Property(x => x.PriceObsCount).HasColumnName("price_obs_count");
+                entity.Property(x => x.Volatility7d).HasColumnName("volatility_7d");
+                entity.Property(x => x.Volatility30d).HasColumnName("volatility_30d");
+                entity.Property(x => x.Volatility90d).HasColumnName("volatility_90d");
+                entity.Property(x => x.Momentum7d).HasColumnName("momentum_7d");
+                entity.Property(x => x.Momentum30d).HasColumnName("momentum_30d");
+                entity.Property(x => x.Momentum90d).HasColumnName("momentum_90d");
+                entity.Property(x => x.DiscountFreq30d).HasColumnName("discount_freq_30d");
+                entity.Property(x => x.DiscountFreq90d).HasColumnName("discount_freq_90d");
+                entity.Property(x => x.TypicalChangeRate30d).HasColumnName("typical_change_rate_30d");
+                entity.Property(x => x.Vector32).HasColumnName("vector").HasColumnType("vector(32)");
+                entity.Property(x => x.Details).HasColumnName("details").HasColumnType("jsonb");
+
+                entity.HasIndex(x => new { x.ProductId, x.FeatureVersion }).IsUnique();
+            });
+
             var utcConverter = new ValueConverter<DateTime, DateTime>(
                 write => write.ToUniversalTime(),
                 read  => DateTime.SpecifyKind(read, DateTimeKind.Utc));
+
+            var utcNullableConverter = new ValueConverter<DateTime?, DateTime?>(
+                write => write.HasValue ? write.Value.ToUniversalTime() : write,
+                read  => read.HasValue ? DateTime.SpecifyKind(read.Value, DateTimeKind.Utc) : read);
 
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
@@ -256,6 +439,13 @@ namespace Infrastructure.DbContexts
                 {
                     property.SetColumnType("timestamp with time zone");
                     property.SetValueConverter(utcConverter);
+                }
+
+                foreach (var property in entityType.GetProperties()
+                    .Where(p => p.ClrType == typeof(DateTime?)))
+                {
+                    property.SetColumnType("timestamp with time zone");
+                    property.SetValueConverter(utcNullableConverter);
                 }
             }
 

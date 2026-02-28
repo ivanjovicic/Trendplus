@@ -5,6 +5,7 @@ using Api.Config;
 using Api.Models;
 using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
+using Domain.Model.OpenProductTraining;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -20,7 +21,7 @@ namespace Api.Services
     }
 
     public sealed record RuntimeScoringEngineInput(
-        string ImagePath,
+        string? ImagePath,
         decimal? Cost,
         decimal? TargetPrice,
         string? Brand,
@@ -37,6 +38,7 @@ namespace Api.Services
     {
         private readonly IEmbeddingService _embeddingService;
         private readonly IOpenProductTrainingSignalProvider _trainingSignals;
+        private readonly ISellProbabilityRsOnnxScorer _onnxScorer;
         private readonly AnalyticsDbContext _analyticsDb;
         private readonly ITrendplusDbContext _trendDb;
         private readonly IHttpClientFactory _httpClientFactory;
@@ -46,6 +48,7 @@ namespace Api.Services
         public RuntimeScoringEngine(
             IEmbeddingService embeddingService,
             IOpenProductTrainingSignalProvider trainingSignals,
+            ISellProbabilityRsOnnxScorer onnxScorer,
             AnalyticsDbContext analyticsDb,
             ITrendplusDbContext trendDb,
             IHttpClientFactory httpClientFactory,
@@ -54,6 +57,7 @@ namespace Api.Services
         {
             _embeddingService = embeddingService;
             _trainingSignals = trainingSignals;
+            _onnxScorer = onnxScorer;
             _analyticsDb = analyticsDb;
             _trendDb = trendDb;
             _httpClientFactory = httpClientFactory;
@@ -77,18 +81,21 @@ namespace Api.Services
 
             float[]? embedding = null;
             List<SimilarProduct> similarProducts = new();
-            try
+            if (!string.IsNullOrWhiteSpace(input.ImagePath))
             {
-                embedding = await _embeddingService.GetEmbeddingAsync(input.ImagePath, ct);
-                similarProducts = await _embeddingService.FindSimilarProductsAsync(
-                    embedding,
-                    threshold: 0.62f,
-                    limit: 8,
-                    ct);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Embedding fallback in runtime scoring.");
+                try
+                {
+                    embedding = await _embeddingService.GetEmbeddingAsync(input.ImagePath, ct);
+                    similarProducts = await _embeddingService.FindSimilarProductsAsync(
+                        embedding,
+                        threshold: 0.62f,
+                        limit: 8,
+                        ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Embedding fallback in runtime scoring.");
+                }
             }
 
             var imageSimilarityScore = ComputeImageSimilarity(similarProducts);
@@ -155,21 +162,13 @@ namespace Api.Services
 
             var sellProbabilityScore = hasLocalSignals
                 ? NormalizeScore(0.30 * normalizedMarketDemandScore + 0.18 * priceFitScore + 0.14 * dealScore
-                    + 0.15 * normalizedLocalDemandScore + 0.10 * imageSimilarityScore + 0.09 * marginScore
-                    + 0.04 * sourceCoverageScore)
+                     + 0.15 * normalizedLocalDemandScore + 0.10 * imageSimilarityScore + 0.09 * marginScore
+                     + 0.04 * sourceCoverageScore)
                 : NormalizeScore(0.38 * normalizedMarketDemandScore + 0.20 * priceFitScore + 0.14 * dealScore
-                    + 0.12 * imageSimilarityScore + 0.10 * marginScore
-                    + 0.06 * sourceCoverageScore);
+                     + 0.12 * imageSimilarityScore + 0.10 * marginScore
+                     + 0.06 * sourceCoverageScore);
 
             var sellProbability = Clamp01(sellProbabilityScore / 100d);
-
-            var localFinalScore = NormalizeScore(
-                0.34 * sellProbabilityScore +
-                0.18 * priceFitScore +
-                0.16 * popularityScore +
-                0.12 * dealScore +
-                0.10 * marginScore +
-                0.10 * trendMomentum);
 
             var pythonPayload = new
             {
@@ -193,12 +192,50 @@ namespace Api.Services
                 materialScore
             };
 
-            var python = await TryPredictWithPythonAsync(pythonPayload, ct);
-            if (python.SellProbability.HasValue)
+            // Prefer ONNX in-process inference (fast) and keep Python as fallback (optional).
+            SellProbabilityRsModelResult? onnx = null;
+            try
             {
-                // Python returns probability in [0,1]. Keep response semantics stable.
-                sellProbability = Clamp01((sellProbability * 0.40) + (python.SellProbability.Value * 0.60));
+                var onnxFeatures = BuildSellProbabilityRsOnnxFeatures(
+                    price: input.TargetPrice ?? baselinePrice ?? training.TypicalPrice,
+                    training: training,
+                    momentumProxy: scraped.AvgMomentum,
+                    hasImageEmbedding: embedding is not null,
+                    brand: brand);
+
+                onnx = await _onnxScorer.TryPredictAsync(onnxFeatures, ct);
+                if (onnx is not null)
+                {
+                    // Blend to keep backwards-compatible behavior and to guard against missing runtime features.
+                    sellProbability = Clamp01((sellProbability * 0.35) + (onnx.Prediction * 0.65));
+                }
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "ONNX sell_probability_rs prediction failed; keeping local scoring.");
+            }
+
+            var python = default((bool Used, double? SellProbability, double? FinalScore, double? PriceFitScore, double? PopularityScore, double? DealScore, double? MarginScore, double? TrendMomentum));
+            if (onnx is null)
+            {
+                python = await TryPredictWithPythonAsync(pythonPayload, ct);
+                if (python.SellProbability.HasValue)
+                {
+                    // Python returns probability in [0,1]. Keep response semantics stable.
+                    sellProbability = Clamp01((sellProbability * 0.40) + (python.SellProbability.Value * 0.60));
+                }
+            }
+
+            // Re-anchor score to the final probability so FinalScore stays consistent with SellProbabilityRS.
+            sellProbabilityScore = NormalizeScore(sellProbability * 100d);
+
+            var localFinalScore = NormalizeScore(
+                0.34 * sellProbabilityScore +
+                0.18 * priceFitScore +
+                0.16 * popularityScore +
+                0.12 * dealScore +
+                0.10 * marginScore +
+                0.10 * trendMomentum);
 
             var finalScore = python.FinalScore.HasValue
                 ? NormalizeScore((localFinalScore * 0.4) + (python.FinalScore.Value * 0.6))
@@ -243,6 +280,11 @@ namespace Api.Services
                 LocalDemandScore = Round2(normalizedLocalDemandScore),
                 HasTrainingSignal = training.HasTrainingSignal,
                 UsedPythonModel = python.Used,
+                UsedOnnxModel = onnx is not null,
+                OnnxModelType = onnx?.ModelType,
+                OnnxModelVersion = onnx?.Version,
+                OnnxRawSellProbability = onnx?.RawPrediction,
+                OnnxSellProbability = onnx?.Prediction,
                 Market = market,
                 Currency = currency,
                 TypicalPrice = baselinePrice,
@@ -634,6 +676,59 @@ namespace Api.Services
             }
         }
 
+        private static IReadOnlyDictionary<string, float> BuildSellProbabilityRsOnnxFeatures(
+            decimal? price,
+            RuntimeScoringSignals training,
+            decimal momentumProxy,
+            bool hasImageEmbedding,
+            string? brand)
+        {
+            static float F(decimal? v) => v.HasValue ? (float)v.Value : 0f;
+
+            static float MomentumAsReturn(decimal v)
+            {
+                if (v == 0) return 0f;
+                var m = (double)v;
+                if (m > 1.5) m /= 100.0; // heuristics: detect percent-like scale
+                m = Math.Clamp(m, -1.0, 1.0);
+                return (float)m;
+            }
+
+            var priorsLevel = training.HasTrainingSignal
+                ? (string.IsNullOrWhiteSpace(brand) ? 2f : 3f)
+                : 0f;
+
+            return new Dictionary<string, float>(StringComparer.Ordinal)
+            {
+                ["price"] = F(price),
+                ["avg_rating"] = 0f,
+                ["review_count"] = 0f,
+                ["sentiment_score"] = 0f,
+                ["review_velocity_30d_proxy"] = 0f,
+                ["volatility_7d"] = 0f,
+                ["volatility_30d"] = 0f,
+                ["volatility_90d"] = 0f,
+                ["momentum_7d"] = 0f,
+                ["momentum_30d"] = MomentumAsReturn(momentumProxy),
+                ["momentum_90d"] = 0f,
+                ["discount_freq_30d"] = 0f,
+                ["discount_freq_90d"] = 0f,
+                ["typical_change_rate_30d"] = 0f,
+                ["popularity_prior"] = F(training.PopularityPriorScore),
+                ["deal_score_prior"] = F(training.DealScore),
+                ["typical_price_prior"] = F(training.TypicalPrice),
+                ["priors_level"] = priorsLevel,
+                ["has_image_embedding"] = hasImageEmbedding ? 1f : 0f,
+                ["image_cluster_id"] = -1f,
+                ["rs_sold_qty_30d"] = 0f,
+                ["rs_inflow_qty_30d"] = 0f,
+                ["sell_through_velocity_30d"] = 0f,
+                ["supply_demand_ratio_30d"] = 0f,
+                ["median_days_to_sale_proxy"] = 0f,
+                ["price_elasticity_90d"] = 0f,
+            };
+        }
+
         private static string BuildRange(decimal? baseline, decimal? target, string currency)
         {
             decimal? center = baseline.HasValue && target.HasValue
@@ -809,5 +904,56 @@ namespace Api.Services
         private static double Clamp01(double value) => value < 0 ? 0 : (value > 1 ? 1 : value);
         private static double Round2(double value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
         private static double Round4(double value) => Math.Round(value, 4, MidpointRounding.AwayFromZero);
+    }
+
+    public class ShopifyImporter
+    {
+        private readonly HttpClient _http;
+        private readonly OpenProductTrainingDbContext _db;
+        private readonly ILogger<ShopifyImporter> _log;
+
+        public ShopifyImporter(HttpClient http, OpenProductTrainingDbContext db, ILogger<ShopifyImporter> log)
+        {
+            _http = http;
+            _db = db;
+            _log = log;
+        }
+
+        public async Task ImportAsync(string shopDomain, int datasetId, CancellationToken ct = default)
+        {
+            var url = $"https://{shopDomain}/products.json?limit=250";
+
+            _log.LogInformation("Importing Shopify products from {domain}", shopDomain);
+
+            var json = await _http.GetStringAsync(url, ct);
+            var root = JsonDocument.Parse(json).RootElement;
+
+            if (!root.TryGetProperty("products", out var arr))
+            {
+                _log.LogWarning("No products found in {domain}", shopDomain);
+                return;
+            }
+
+            int count = 0;
+            foreach (var p in arr.EnumerateArray())
+            {
+                var externalId = p.GetProperty("id").GetInt64().ToString();
+
+                var raw = new RawTrainingProduct
+                {
+                    DatasetId = datasetId,
+                    ExternalId = externalId,
+                    RawPayload = p.GetRawText(),
+                    ImportedAt = DateTime.UtcNow
+                };
+
+                await _db.RawProducts.AddAsync(raw, ct);
+                count++;
+            }
+
+            await _db.SaveChangesAsync(ct);
+
+            _log.LogInformation("Imported {count} products from {domain}", count, shopDomain);
+        }
     }
 }

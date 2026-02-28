@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus, urljoin
 
 import scraper.browser_manager as browser_manager
+from scraper.schema import ScrapedItem
+from scraper.normalization import parse_price, infer_category_from_name, compute_rank
 
 ZALANDO_BASE_BY_COUNTRY: Dict[str, str] = {
     "DE": "https://www.zalando.de",
@@ -538,6 +540,44 @@ async def _scrape_zalando_page(
             pass
 
 
+async def _extract_zalando_sku(url: str) -> Optional[str]:
+    import re
+    match = re.search(r"-([a-z0-9]+-[a-z0-9]+)\.html", url)
+    return match.group(1) if match else None
+
+
+def _to_scraped_item_zalando(d: Dict[str, Any]) -> ScrapedItem:
+    price, currency = parse_price(d.get("price"), market=d.get("country", "DE"))
+
+    page = d.get("page") or 1
+    pos = d.get("positionOnPage") or 1
+    page_size = 72  # Zalando often has 72 items per page
+
+    return ScrapedItem(
+        source="zalando",
+        market=d.get("country", "DE"),
+        brand=d.get("brand") or "",
+        name=d.get("name") or "",
+        priceValue=price,
+        currency=currency,
+        url=d.get("url"),
+        imageUrl=d.get("image_url"),
+        rank=compute_rank(page, pos, page_size),
+        page=page,
+        positionOnPage=pos,
+        sortMode=d.get("sort") or "popularity",
+        sku=_extract_zalando_sku(d.get("url")),
+        category=infer_category_from_name(d.get("name") or ""),
+        gender=d.get("gender"),
+        isNew=False,
+        isOnSale="%" in (d.get("price") or "") or "statt" in (d.get("price") or "").lower(),
+        hasImage=bool(d.get("image_url")),
+        backend=None,
+        backendIndex=None,
+        backendRank=None,
+        raw=d,
+    )
+
 async def scrape_zalando_playwright(
     max_pages: int = 1,
     category: str = "sneaker",
@@ -548,7 +588,7 @@ async def scrape_zalando_playwright(
     priceMin: Optional[int] = None,
     priceMax: Optional[int] = None,
     activationDate: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+) -> List[ScrapedItem]:
     max_pages = int(max_pages or 1)
     if max_pages < 1:
         max_pages = 1
@@ -583,4 +623,4 @@ async def scrape_zalando_playwright(
         results.extend(page_results)
 
     print(f"[Zalando] Total scraped: {len(results)}")
-    return results
+    return [_to_scraped_item_zalando(r) for r in results]

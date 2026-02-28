@@ -107,7 +107,7 @@ export default function PreNivelacijaPriorityPage() {
       (data?.candidates ?? []).map((x) => ({
         x: x.stockUnits,
         y: Number(x.velocity180),
-        z: Math.max(1, Number(x.scenarioHighlightNow.expectedRevenue30d) / 1000),
+        z: Math.max(1, Number(x.scenarioHighlightNow?.expectedRevenue30d ?? 0) / 1000),
         label: x.sku,
         band: x.priorityBand,
       })),
@@ -116,10 +116,11 @@ export default function PreNivelacijaPriorityPage() {
 
   const queueSections = useMemo(() => {
     if (!data) return [];
+    const queues = data.queues ?? { highlightNow: [], monitor: [], likelyMarkdownSoon: [] };
     return [
-      { label: "Highlight now", items: data.queues.highlightNow },
-      { label: "Monitor", items: data.queues.monitor },
-      { label: "Likely markdown soon", items: data.queues.likelyMarkdownSoon },
+      { label: "Highlight now", items: queues.highlightNow ?? [] },
+      { label: "Monitor", items: queues.monitor ?? [] },
+      { label: "Likely markdown soon", items: queues.likelyMarkdownSoon ?? [] },
     ];
   }, [data]);
 

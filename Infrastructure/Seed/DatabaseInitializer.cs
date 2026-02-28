@@ -164,14 +164,41 @@ public static class DatabaseInitializer
     {
         const string sql = @"
             -- Source table indexes used by analytics aggregation worker
-            CREATE INDEX IF NOT EXISTS idx_prodaja_zaglavlje_datum_prodaje
-                ON prodaja_zaglavlje (datum_prodaje DESC);
+            DO $$
+            BEGIN
+                IF to_regclass('public.prodaja_zaglavlje') IS NOT NULL
+                   AND EXISTS (
+                       SELECT 1 FROM information_schema.columns
+                       WHERE table_schema = 'public' AND table_name = 'prodaja_zaglavlje' AND column_name = 'datum_prodaje'
+                   )
+                THEN
+                    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_prodaja_zaglavlje_datum_prodaje ON prodaja_zaglavlje (datum_prodaje DESC)';
+                END IF;
+            END $$;
 
-            CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_id_prodaja
-                ON prodaja_stavke (id_prodaja);
+            DO $$
+            BEGIN
+                IF to_regclass('public.prodaja_stavke') IS NOT NULL
+                   AND EXISTS (
+                       SELECT 1 FROM information_schema.columns
+                       WHERE table_schema = 'public' AND table_name = 'prodaja_stavke' AND column_name = 'id_prodaja'
+                   )
+                THEN
+                    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_id_prodaja ON prodaja_stavke (id_prodaja)';
+                END IF;
+            END $$;
 
-            CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_id_artikal
-                ON prodaja_stavke (id_artikal);
+            DO $$
+            BEGIN
+                IF to_regclass('public.prodaja_stavke') IS NOT NULL
+                   AND EXISTS (
+                       SELECT 1 FROM information_schema.columns
+                       WHERE table_schema = 'public' AND table_name = 'prodaja_stavke' AND column_name = 'id_artikal'
+                   )
+                THEN
+                    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_id_artikal ON prodaja_stavke (id_artikal)';
+                END IF;
+            END $$;
 
             -- Pre-aggregated analytics cache tables
             CREATE TABLE IF NOT EXISTS ""AnalyticsDailySummary"" (
@@ -454,6 +481,17 @@ public static class DatabaseInitializer
         await ExecuteSqlFileAsync(
             configuration.GetConnectionString("AnalyticsConnection")!,
             "Database/OpenProductTraining/003_add_ml_export_views.sql",
+            logger);
+
+        // Open Product Training 2.0 schema extensions + feature-store views (idempotent).
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "Database/OpenProductTraining/004_open_training_2_0.sql",
+            logger);
+
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "Database/OpenProductTraining/005_open_training_2_0_views.sql",
             logger);
 
         await EnsureOpenProductTrainingDatasetsAsync(

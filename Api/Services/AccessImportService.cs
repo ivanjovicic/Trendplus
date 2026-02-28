@@ -166,6 +166,17 @@ public sealed class AccessImportService : IAccessImportService
             ]
         };
 
+    // Minimal required fields to consider a table "import-safe" (preview diagnostics only).
+    // Import itself still validates and can fallback (e.g. synthesize sales from DnevnikPromena).
+    private static readonly IReadOnlyDictionary<string, string[]> PreviewRequiredFields =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["artikli"] = ["Id", "Naziv"],
+            ["prodaja_zaglavlje"] = ["Id", "DatumProdaje"],
+            ["prodaja_stavke"] = ["IdProdaja", "IdArtikal", "Kolicina", "Cena"],
+            ["dnevnik_promena"] = ["Id", "TipPromene", "Datum"],
+        };
+
     private readonly TrendplusDbContext _trendDb;
     private readonly AnalyticsDbContext _analyticsDb;
     private readonly IAnalyticsCacheService? _analyticsCache;
@@ -191,82 +202,113 @@ public sealed class AccessImportService : IAccessImportService
         if (!File.Exists(accessFilePath))
             throw new FileNotFoundException("ACCDB fajl nije pronađen.", accessFilePath);
 
-        var lockFilePath = TryGetAccessLockFilePath(accessFilePath);
         return await Task.Run(() =>
         {
-            using var conn = CreateOdbcConnection(accessFilePath);
-            conn.Open();
-            var tables = GetUserTables(conn, includeTemporaryTables);
-
-            var map = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            var snapshot = CreateSnapshotIfLocked(accessFilePath);
+            try
             {
-                ["tipovi_obuce"]    = FindTable(conn, tables, TipoviCandidates),
-                ["dobavljaci"]      = FindTable(conn, tables, DobavljaciCandidates),
-                ["sezone"]         = FindTable(conn, tables, SezoneCandidates,
-                                         sigRequired: ["idsezona", "naziv"]),
-                ["artikli"]        = FindTable(conn, tables, ArtikliCandidates,
-                                         sigRequired: ["idartikal", "naziv"],
-                                         sigBonus:    ["nabavnacena", "prodajnacena", "plu"]),
-                ["prodaja_zaglavlje"] = FindTable(conn, tables, ProdajaCandidates),
-                ["prodaja_stavke"]  = FindTable(conn, tables, ProdajaStavkeCandidates),
-                ["dnevnik_promena"] = FindTable(conn, tables, DnevnikPromenaCandidates,
-                                         sigRequired: ["iddnevnik", "datum"]),
-                ["povracaj_zaglavlje"] = FindTable(conn, tables, PovracajCandidates),
-                ["povracaj_stavke"] = FindTable(conn, tables, PovracajStavkeCandidates2),
-                ["nivelacije"]      = FindTable(conn, tables, NivelacijeCandidates,
-                                         sigRequired: ["idartikal", "novacena"]),
-                ["unos_robe"]       = FindTable(conn, tables, UnosRobeCandidates,
-                                         sigRequired: ["idartikal", "kolicina", "iddobavljac"]),
-                ["povratnice"]      = FindTable(conn, tables, PovratniceCandidates,
-                                         sigRequired: ["idartikal", "kolicina"],
-                                         sigBonus:    ["razlog", "idpovratnice"]),
-                ["prenos_robe"]     = FindTable(conn, tables, PrenosRobeCandidates,
-                                         sigRequired: ["idartikal", "kolicina"],
-                                         sigBonus:    ["idobjekatiz", "idobjekatulaz", "idobjekat"]),
-                ["objekti"]         = FindTable(conn, tables, ObjekatCandidates,
-                                         sigRequired: ["idobjekat", "nazivobjekta"]),
-            };
+                using var conn = CreateOdbcConnection(snapshot.FilePath);
+                conn.Open();
+                var tables = GetUserTables(conn, includeTemporaryTables);
 
-            var response = new AccessImportPreviewResponse
-            {
-                SourceFileName = Path.GetFileName(accessFilePath),
-                CanImport = map["artikli"] is not null,
-                AvailableTables = tables.OrderBy(x => x).ToList(),
-                Tables = new List<AccessImportTablePreview>()
-            };
-            if (lockFilePath is not null)
-                response.Warnings.Add($"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Preporuka: zatvori Access pre importa.");
-
-            foreach (var entry in map)
-            {
-                var tablePreview = BuildTablePreview(conn, entry.Key, entry.Value);
-                response.Tables.Add(tablePreview);
-
-                if (entry.Key.Equals("prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase)
-                    && tablePreview.Found
-                    && IsProdajaLineTableByColumns(tablePreview.AccessColumns))
+                var map = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 {
-                    response.Warnings.Add($"Tabela '{tablePreview.TableName}' izgleda kao stavke prodaje (IDDnevnik/IDArtikal/Kolicina/ProdajnaCena), ne kao zaglavlje.");
+                    ["tipovi_obuce"]    = FindTable(conn, tables, TipoviCandidates),
+                    ["dobavljaci"]      = FindTable(conn, tables, DobavljaciCandidates),
+                    ["sezone"]         = FindTable(conn, tables, SezoneCandidates,
+                                             sigRequired: ["idsezona", "naziv"]),
+                    ["artikli"]        = FindTable(conn, tables, ArtikliCandidates,
+                                             sigRequired: ["idartikal", "naziv"],
+                                             sigBonus:    ["nabavnacena", "prodajnacena", "plu"]),
+                    ["prodaja_zaglavlje"] = FindTable(conn, tables, ProdajaCandidates),
+                    ["prodaja_stavke"]  = FindTable(conn, tables, ProdajaStavkeCandidates),
+                    ["dnevnik_promena"] = FindTable(conn, tables, DnevnikPromenaCandidates,
+                                             sigRequired: ["iddnevnik", "datum"]),
+                    ["povracaj_zaglavlje"] = FindTable(conn, tables, PovracajCandidates),
+                    ["povracaj_stavke"] = FindTable(conn, tables, PovracajStavkeCandidates2),
+                    ["nivelacije"]      = FindTable(conn, tables, NivelacijeCandidates,
+                                             sigRequired: ["idartikal", "novacena"]),
+                    ["unos_robe"]       = FindTable(conn, tables, UnosRobeCandidates,
+                                             sigRequired: ["idartikal", "kolicina", "iddobavljac"]),
+                    ["povratnice"]      = FindTable(conn, tables, PovratniceCandidates,
+                                             sigRequired: ["idartikal", "kolicina"],
+                                             sigBonus:    ["razlog", "idpovratnice"]),
+                    ["prenos_robe"]     = FindTable(conn, tables, PrenosRobeCandidates,
+                                             sigRequired: ["idartikal", "kolicina"],
+                                             sigBonus:    ["idobjekatiz", "idobjekatulaz", "idobjekat"]),
+                    ["objekti"]         = FindTable(conn, tables, ObjekatCandidates,
+                                             sigRequired: ["idobjekat", "nazivobjekta"]),
+                };
+
+                var response = new AccessImportPreviewResponse
+                {
+                    SourceFileName = Path.GetFileName(accessFilePath),
+                    CanImport = map["artikli"] is not null,
+                    AvailableTables = tables.OrderBy(x => x).ToList(),
+                    Tables = new List<AccessImportTablePreview>()
+                };
+                if (!string.IsNullOrWhiteSpace(snapshot.Warning))
+                    response.Warnings.Add(snapshot.Warning);
+
+                foreach (var entry in map)
+                {
+                    var tablePreview = BuildTablePreview(conn, entry.Key, entry.Value);
+                    response.Tables.Add(tablePreview);
+
+                    if (entry.Key.Equals("prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase)
+                        && tablePreview.Found
+                        && IsProdajaLineTableByColumns(tablePreview.AccessColumns))
+                    {
+                        response.Warnings.Add($"Tabela '{tablePreview.TableName}' izgleda kao stavke prodaje (IDDnevnik/IDArtikal/Kolicina/ProdajnaCena), ne kao zaglavlje.");
+                    }
                 }
+
+                if (!response.CanImport)
+                    response.Warnings.Add("Nije pronađena tabela za artikle (obavezna).");
+
+                // Preview diagnostics for required fields (improves "canImport" accuracy and helps mapping/debugging).
+                foreach (var req in PreviewRequiredFields)
+                {
+                    var tablePreview = response.Tables.FirstOrDefault(t =>
+                        t.Key.Equals(req.Key, StringComparison.OrdinalIgnoreCase));
+
+                    if (tablePreview is null || !tablePreview.Found)
+                        continue;
+
+                    var missing = FindMissingPreviewFields(tablePreview, req.Value);
+                    if (missing.Count > 0)
+                    {
+                        response.Warnings.Add($"Tabela '{tablePreview.TableName}' ({tablePreview.Key}) nema obavezna polja: {string.Join(", ", missing)}.");
+
+                        // Hard-block only when Artikli cannot be identified reliably.
+                        if (req.Key.Equals("artikli", StringComparison.OrdinalIgnoreCase))
+                            response.CanImport = false;
+                    }
+
+                    // Best-effort sample validation (nulls/duplicates) to catch mapping issues early.
+                    TryAddSampleDataWarnings(conn, tablePreview, req.Value, response.Warnings);
+                }
+
+                if (map["prodaja_zaglavlje"] is null && map["dnevnik_promena"] is not null)
+                    response.Warnings.Add("Nije pronađena tabela prodaje — prodaja će biti sintetizovana iz DnevnikPromena (tip='Prodaja').");
+
+                if (map["prodaja_stavke"] is null && map["prodaja_zaglavlje"] is not null)
+                    response.Warnings.Add("Nije pronađena tabela stavki prodaje — zaglavlja bez stavki biće uvezena bez linija.");
+
+                var foundMovements = new[] { "nivelacije", "unos_robe", "povratnice", "prenos_robe" }
+                    .Where(k => map.ContainsKey(k) && map[k] is not null)
+                    .Select(k => map[k]!)
+                    .ToList();
+                if (foundMovements.Count > 0)
+                    response.Warnings.Add($"Pronađene tabele kretanja zaliha: {string.Join(", ", foundMovements)}.");
+
+                return response;
             }
-
-            if (!response.CanImport)
-                response.Warnings.Add("Nije pronađena tabela za artikle (obavezna).");
-
-            if (map["prodaja_zaglavlje"] is null && map["dnevnik_promena"] is not null)
-                response.Warnings.Add("Nije pronađena tabela prodaje — prodaja će biti sintetizovana iz DnevnikPromena (tip='Prodaja').");
-
-            if (map["prodaja_stavke"] is null && map["prodaja_zaglavlje"] is not null)
-                response.Warnings.Add("Nije pronađena tabela stavki prodaje — zaglavlja bez stavki biće uvezena bez linija.");
-
-            var foundMovements = new[] { "nivelacije", "unos_robe", "povratnice", "prenos_robe" }
-                .Where(k => map.ContainsKey(k) && map[k] is not null)
-                .Select(k => map[k]!)
-                .ToList();
-            if (foundMovements.Count > 0)
-                response.Warnings.Add($"Pronađene tabele kretanja zaliha: {string.Join(", ", foundMovements)}.");
-
-            return response;
+            finally
+            {
+                if (snapshot.IsSnapshot)
+                    TryDeleteFile(snapshot.FilePath);
+            }
         }, ct);
     }
 
@@ -337,6 +379,32 @@ public sealed class AccessImportService : IAccessImportService
         return output;
     }
 
+    private static List<string> FindMissingPreviewFields(AccessImportTablePreview tablePreview, IReadOnlyCollection<string> requiredTargets)
+    {
+        if (requiredTargets.Count == 0)
+            return new List<string>();
+
+        // If mappings couldn't be computed (ODBC preview failed), treat all required fields as missing.
+        if (tablePreview.FieldMappings.Count == 0)
+            return requiredTargets.ToList();
+
+        var missing = new List<string>();
+        foreach (var field in requiredTargets)
+        {
+            var mapping = tablePreview.FieldMappings.FirstOrDefault(m =>
+                m.TargetField.Equals(field, StringComparison.OrdinalIgnoreCase));
+
+            if (mapping is null ||
+                string.IsNullOrWhiteSpace(mapping.SourceColumn) ||
+                mapping.Status.Equals("missing", StringComparison.OrdinalIgnoreCase))
+            {
+                missing.Add(field);
+            }
+        }
+
+        return missing;
+    }
+
     private static bool IsProdajaLineTableByColumns(IReadOnlyCollection<string> columns)
     {
         var normalized = columns.Select(Normalize).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -378,13 +446,14 @@ public sealed class AccessImportService : IAccessImportService
             IncludeAnalytics = includeAnalytics,
             StartedAtUtc = started
         };
-        var lockFilePath = TryGetAccessLockFilePath(accessFilePath);
-        if (lockFilePath is not null)
-            result.Warnings.Add($"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Import može da padne ili bude nepotpun; preporuka: zatvori Access pa pokušaj ponovo.");
+
+        var snapshot = CreateSnapshotIfLocked(accessFilePath);
+        if (!string.IsNullOrWhiteSpace(snapshot.Warning))
+            result.Warnings.Add(snapshot.Warning);
 
         try
         {
-            await Task.Run(() => ImportTrendplus(accessFilePath, overwriteExisting, includeTemporaryTables, result), ct);
+            await Task.Run(() => ImportTrendplus(snapshot.FilePath, overwriteExisting, includeTemporaryTables, result), ct);
             await _trendDb.SaveChangesAsync(ct);
             await ResetTrendplusSequencesAsync(ct);
 
@@ -429,6 +498,11 @@ public sealed class AccessImportService : IAccessImportService
 
             _logger.LogError(ex, "Access import failed.");
             throw;
+        }
+        finally
+        {
+            if (snapshot.IsSnapshot)
+                TryDeleteFile(snapshot.FilePath);
         }
     }
 
@@ -1884,7 +1958,7 @@ public sealed class AccessImportService : IAccessImportService
     private static OdbcConnection CreateOdbcConnection(string accessFilePath)
     {
         string cs = OperatingSystem.IsWindows()
-            ? $"Driver={{Microsoft Access Driver (*.mdb, *.accdb)}};Dbq={accessFilePath};"
+            ? $"Driver={{Microsoft Access Driver (*.mdb, *.accdb)}};Dbq={accessFilePath};ReadOnly=1;"
             : $"Driver=MDBTools;Database={accessFilePath};";   // mdbtools ODBC on Linux/macOS
         return new OdbcConnection(cs);
     }
@@ -2025,6 +2099,181 @@ public sealed class AccessImportService : IAccessImportService
         if (string.IsNullOrWhiteSpace(identifier))
             return "[]";
         return $"[{identifier.Replace("]", "]]")}]";
+    }
+
+    private sealed record AccessFileSnapshot(string FilePath, bool IsSnapshot, string? Warning);
+
+    private static AccessFileSnapshot CreateSnapshotIfLocked(string accessFilePath)
+    {
+        var lockFilePath = TryGetAccessLockFilePath(accessFilePath);
+        if (lockFilePath is null)
+            return new AccessFileSnapshot(accessFilePath, false, null);
+
+        try
+        {
+            var tmpDir = Path.Combine(Path.GetTempPath(), "trendplus_access_snapshots");
+            Directory.CreateDirectory(tmpDir);
+
+            var ext = Path.GetExtension(accessFilePath);
+            var baseName = Path.GetFileNameWithoutExtension(accessFilePath);
+            var tmpName = $"{baseName}_snapshot_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{ext}";
+            var tmpPath = Path.Combine(tmpDir, tmpName);
+
+            File.Copy(accessFilePath, tmpPath, overwrite: true);
+
+            return new AccessFileSnapshot(
+                FilePath: tmpPath,
+                IsSnapshot: true,
+                Warning: $"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Koristi se snapshot kopija '{tmpName}'.");
+        }
+        catch (Exception ex)
+        {
+            return new AccessFileSnapshot(
+                FilePath: accessFilePath,
+                IsSnapshot: false,
+                Warning: $"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Snapshot kopija nije uspela ({ex.GetType().Name}). Preporuka: zatvori Access pre importa.");
+        }
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // best effort
+        }
+    }
+
+    private static void TryAddSampleDataWarnings(
+        OdbcConnection conn,
+        AccessImportTablePreview tablePreview,
+        IReadOnlyCollection<string> requiredTargets,
+        List<string> warnings)
+    {
+        if (tablePreview is null || !tablePreview.Found || string.IsNullOrWhiteSpace(tablePreview.TableName))
+            return;
+
+        try
+        {
+            const int sampleTake = 1000;
+
+            var mappings = requiredTargets
+                .Select(t =>
+                {
+                    var source = tablePreview.FieldMappings
+                        .FirstOrDefault(m => m.TargetField.Equals(t, StringComparison.OrdinalIgnoreCase))
+                        ?.SourceColumn;
+                    return (Target: t, Source: source);
+                })
+                .Where(x => !string.IsNullOrWhiteSpace(x.Source))
+                .ToList();
+
+            if (mappings.Count == 0)
+                return;
+
+            var selectCols = string.Join(", ", mappings.Select(m => QuoteAccessIdentifier(m.Source!)));
+            var sql = $"SELECT TOP {sampleTake} {selectCols} FROM {QuoteAccessIdentifier(tablePreview.TableName)}";
+
+            using var cmd = new OdbcCommand(sql, conn);
+            using var r = cmd.ExecuteReader();
+            if (r is null)
+                return;
+
+            var nullCount = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var nonPositiveCount = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var dupCount = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var idSets = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            var rows = 0;
+
+            while (r.Read())
+            {
+                rows++;
+                for (var i = 0; i < mappings.Count; i++)
+                {
+                    var target = mappings[i].Target;
+                    var value = r.IsDBNull(i) ? null : r.GetValue(i);
+
+                    if (value is null || value is DBNull)
+                    {
+                        nullCount[target] = nullCount.TryGetValue(target, out var n) ? n + 1 : 1;
+                        continue;
+                    }
+
+                    // Quick numeric sanity checks for a few known targets.
+                    if (target.Equals("Kolicina", StringComparison.OrdinalIgnoreCase) ||
+                        target.Equals("Cena", StringComparison.OrdinalIgnoreCase) ||
+                        target.Equals("NabavnaCena", StringComparison.OrdinalIgnoreCase) ||
+                        target.Equals("ProdajnaCena", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var d = ConvertToDecimal(value);
+                        if (!d.HasValue || d.Value <= 0)
+                            nonPositiveCount[target] = nonPositiveCount.TryGetValue(target, out var np) ? np + 1 : 1;
+                    }
+
+                    // Duplicate checks only for true table identifiers (avoid noise on line tables).
+                    var checkUniqId =
+                        target.Equals("Id", StringComparison.OrdinalIgnoreCase)
+                        && (tablePreview.Key.Equals("artikli", StringComparison.OrdinalIgnoreCase)
+                            || tablePreview.Key.Equals("prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase)
+                            || tablePreview.Key.Equals("dnevnik_promena", StringComparison.OrdinalIgnoreCase));
+
+                    if (checkUniqId)
+                    {
+                        var s = Convert.ToString(value, CultureInfo.InvariantCulture);
+                        if (!string.IsNullOrWhiteSpace(s))
+                        {
+                            if (!idSets.TryGetValue(target, out var set))
+                            {
+                                set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                                idSets[target] = set;
+                            }
+
+                            if (!set.Add(s))
+                                dupCount[target] = dupCount.TryGetValue(target, out var dups) ? dups + 1 : 1;
+                        }
+                    }
+                }
+            }
+
+            if (rows == 0)
+                return;
+
+            // Only warn when something looks suspicious (avoid noise).
+            static void AddIf(string key, Dictionary<string, int> map, int threshold, string msgPrefix, List<string> w, string tableName, int sampleN)
+            {
+                if (map.TryGetValue(key, out var n) && n >= threshold)
+                    w.Add($"{msgPrefix} Tabela '{tableName}': {n}/{sampleN} redova u uzorku ima problem sa poljem '{key}'.");
+            }
+
+            var tn = tablePreview.TableName!;
+            AddIf("Id", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("Naziv", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("Datum", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("DatumProdaje", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("TipPromene", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("IdProdaja", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("IdArtikal", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("Kolicina", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("Cena", nullCount, 1, "⚠", warnings, tn, rows);
+
+            foreach (var (k, v) in dupCount.Where(x => x.Value > 0))
+            {
+                warnings.Add($"⚠ Tabela '{tn}': duplikati u uzorku za '{k}' = {v} (od {rows} redova).");
+            }
+
+            foreach (var (k, v) in nonPositiveCount.Where(x => x.Value > 0))
+            {
+                warnings.Add($"⚠ Tabela '{tn}': {v}/{rows} redova u uzorku ima '{k}' <= 0 ili nije broj.");
+            }
+        }
+        catch
+        {
+            // table might be unreadable; keep preview resilient
+        }
     }
 
     private static string? TryGetAccessLockFilePath(string accessFilePath)

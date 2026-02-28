@@ -251,6 +251,61 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => e.LastSynced);
                 entity.Property(e => e.Price).HasColumnType("numeric(18,4)");
             });
+
+            // ── Trend Momentum Engine ─────────────────────────────────────
+
+            modelBuilder.Entity<TrendProductSnapshot>(entity =>
+            {
+                entity.ToTable("trend_product_snapshots");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Score).HasColumnType("double precision");
+                entity.Property(e => e.SocialScore).HasColumnType("double precision");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+                entity.HasIndex(e => new { e.CanonicalKey, e.SnapshotDate })
+                      .HasDatabaseName("idx_trend_snapshots_key_date");
+            });
+
+            modelBuilder.Entity<TrendProductMomentum>(entity =>
+            {
+                entity.ToTable("trend_product_momentum");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.MomentumScore).HasColumnType("double precision");
+                entity.Property(e => e.ScoreDelta).HasColumnType("double precision");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+                entity.HasIndex(e => new { e.SnapshotDate, e.CanonicalKey })
+                      .HasDatabaseName("idx_trend_momentum_date_key");
+            });
+
+            modelBuilder.Entity<TrendplusIndexRecord>(entity =>
+            {
+                entity.ToTable("trendplus_index");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.IndexValue).HasColumnType("double precision");
+                entity.Property(e => e.BaseComponent).HasColumnType("double precision");
+                entity.Property(e => e.MomentumComponent).HasColumnType("double precision");
+                entity.Property(e => e.SocialComponent).HasColumnType("double precision");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+                entity.HasIndex(e => new { e.ScopeType, e.ScopeValue, e.SnapshotDate })
+                      .IsUnique()
+                      .HasDatabaseName("idx_trendplus_index_scope_date");
+                entity.HasIndex(e => e.SnapshotDate)
+                      .HasDatabaseName("idx_trendplus_index_date");
+            });
+
+            modelBuilder.Entity<InventoryRecommendation>(entity =>
+            {
+                entity.ToTable("inventory_recommendations");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SalesVelocity).HasColumnType("double precision");
+                entity.Property(e => e.StockOnHand).HasColumnType("double precision");
+                entity.Property(e => e.TrendScore).HasColumnType("double precision");
+                entity.Property(e => e.MomentumScore).HasColumnType("double precision");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+                entity.HasIndex(e => e.SnapshotDate)
+                      .HasDatabaseName("idx_inv_rec_date");
+                entity.HasIndex(e => new { e.ProductId, e.SnapshotDate })
+                      .HasDatabaseName("idx_inv_rec_product");
+            });
         }
 
         public DbSet<ProductsDim> ProductsDim => Set<ProductsDim>();
@@ -277,6 +332,12 @@ namespace Infrastructure.DbContexts
 
         // Google Shopping (SerpAPI)
         public DbSet<GoogleShoppingProduct> GoogleShoppingProducts => Set<GoogleShoppingProduct>();
+
+        // ── Trend Momentum Engine & Pipeline ─────────────────────────────
+        public DbSet<TrendProductSnapshot> TrendProductSnapshots => Set<TrendProductSnapshot>();
+        public DbSet<TrendProductMomentum> TrendProductMomentums => Set<TrendProductMomentum>();
+        public DbSet<TrendplusIndexRecord> TrendplusIndexRecords => Set<TrendplusIndexRecord>();
+        public DbSet<InventoryRecommendation> InventoryRecommendations => Set<InventoryRecommendation>();
 
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }

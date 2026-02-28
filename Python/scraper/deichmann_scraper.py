@@ -1,8 +1,16 @@
 ﻿import asyncio
+import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional
+import random
+from scraper.schema import ScrapedItem
+from scraper.normalization import parse_price, infer_category_from_name, compute_rank
 
+# Initialize logger
+logger = logging.getLogger("scraper.deichmann")
+
+# Import scraper.browser_manager as browser_manager
 import scraper.browser_manager as browser_manager
-
 
 DEICHMANN_BRAND_MAP: Dict[str, str] = {
     "rieker": "rieker_1-94255",
@@ -60,87 +68,53 @@ DEICHMANN_COOKIE_TEXTS: List[str] = [
     "Accept all", "Accept",
 ]
 
+# Centralized slug resolver
 
-def normalize_deichmann_brand(brand: str | None) -> str | None:
-    if not brand:
-        return None
-    b = brand.strip()
-    if not b:
-        return None
-    return DEICHMANN_BRAND_MAP.get(b.lower(), b)
-
-
-def build_deichmann_url(
-    gender: str | None = None,
-    category: str | None = None,
-    country: str | None = "DE",
-    sort: str | None = None,
-    priceMin: int | None = None,
-    priceMax: int | None = None,
-    sale: bool | None = None,
-    isNew: bool | None = None,
-    size: str | None = None,
-    brand: str | None = None,
-    isLeather: str | None = None,
-    waterResistance: str | None = None,
-    page: int = 1,
-) -> str:
-    code = (country or "DE").strip().upper()
-    locale = DEICHMANN_LOCALE_BY_COUNTRY.get(code, "de-de")
-    gender_key = "women" if (gender or "").lower() in ("women", "damen", "noi", "femei", "") else "men"
-    gender_segment = DEICHMANN_GENDER_BY_COUNTRY.get(code, DEICHMANN_GENDER_BY_COUNTRY["DE"])[gender_key]
+def resolve_category_slug(country: str, category: str) -> str:
+    code = country.strip().upper()
     default_cat = DEICHMANN_DEFAULT_CATEGORY_BY_COUNTRY.get(code, "schuhe-82")
-
     raw_cat = (category or "").strip() or default_cat
 
-    # Resolve per-country slug translations for known DE slugs.
     if code in ("HU", "RO") and raw_cat in DEICHMANN_SLUG_TRANSLATIONS:
-        raw_cat = DEICHMANN_SLUG_TRANSLATIONS[raw_cat].get(code, default_cat)
-    elif code in ("HU", "RO"):
-        # Unknown DE slug — fall back to generic women shoes for the market.
-        # Keep already-localized category slugs (typically ending with "-<id>").
-        known_de_slugs = set(DEICHMANN_SLUG_TRANSLATIONS.keys()) | {"schuhe-82"}
-        is_localized_slug = bool(raw_cat) and raw_cat.rsplit("-", 1)[-1].isdigit()
-        if raw_cat in known_de_slugs:
-            raw_cat = default_cat
-        elif raw_cat not in {default_cat} and not is_localized_slug:
-            raw_cat = default_cat
+        return DEICHMANN_SLUG_TRANSLATIONS[raw_cat].get(code, default_cat)
 
-    # Normalise legacy aliases
-    if raw_cat in ("sneakers", "sneaker"):
-        raw_cat = "sneaker-143" if code not in ("HU", "RO") else DEICHMANN_SLUG_TRANSLATIONS.get("sneaker-143", {}).get(code, default_cat)
+    is_localized_slug = bool(raw_cat) and raw_cat.rsplit("-", 1)[-1].isdigit()
+    if raw_cat not in DEICHMANN_SLUG_TRANSLATIONS and not is_localized_slug:
+        return default_cat
 
-    # Strip any gender prefix the caller may have included
-    if "/" in raw_cat:
-        raw_cat = raw_cat.split("/", 1)[1]
+    return raw_cat
 
-    category_path = f"{gender_segment}/{raw_cat}"
-    base = f"https://www.deichmann.com/{locale}/c/{category_path}"
-    params: List[str] = []
+# Adaptive scrolling
+async def adaptive_scroll(page, max_scrolls=20, timeout=5):
+    last_card_count = 0
+    for _ in range(max_scrolls):
+        await page.mouse.wheel(0, 2500)
+        await page.wait_for_timeout(400)
+        cards = await page.query_selector_all("[data-testid='product-tile']")
+        if len(cards) == last_card_count:
+            timeout -= 1
+            if timeout <= 0:
+                break
+        else:
+            last_card_count = len(cards)
 
-    if sort:
-        params.append(f"sort={sort}")
-    if priceMin is not None or priceMax is not None:
-        low = priceMin or 0
-        high = priceMax if priceMax is not None else ""
-        params.append(f"prices={low}~{high}")
-    if sale:
-        params.append("sale=true")
-    if isNew:
-        params.append("isNew=true")
-    if size:
-        params.append(f"sizeEu={size}")
-    brand_param = normalize_deichmann_brand(brand)
-    if brand_param:
-        params.append(f"brand={brand_param}")
-    if isLeather:
-        params.append(f"isLeather={isLeather}")
-    if waterResistance:
-        params.append(f"waterResistanceLevel={waterResistance}")
-    params.append(f"page={page}")
+# Deduplication
 
-    return base + "?" + "&".join(params)
+def deduplicate_results(results):
+    seen = set()
+    deduped = []
+    for result in results:
+        key = result.get("url") or result.get("sku")
+        if key and key not in seen:
+            seen.add(key)
+            deduped.append(result)
+    return deduped
 
+# Anti-bot measures
+async def apply_anti_bot_measures(page):
+    await page.set_viewport_size({"width": random.randint(800, 1200), "height": random.randint(600, 900)})
+    user_agent = f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{random.randint(80, 100)}.0.0.0 Safari/537.36"
+    await page.set_user_agent(user_agent)
 
 async def _scrape_deichmann_page(page_index: int, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
     await browser_manager.init_browser()
@@ -186,9 +160,7 @@ async def _scrape_deichmann_page(page_index: int, filters: Dict[str, Any]) -> Li
                 pass
 
         # Scroll to trigger lazy-loaded cards
-        for _ in range(10):
-            await page.mouse.wheel(0, 2500)
-            await page.wait_for_timeout(400)
+        await adaptive_scroll(page)
 
         # Product card selectors (ordered by specificity, most-likely-current first)
         card_selectors = [
@@ -298,36 +270,39 @@ async def _scrape_deichmann_page(page_index: int, filters: Dict[str, Any]) -> Li
             pass
 
 
-async def scrape_deichmann_filtered(**filters: Any) -> List[Dict[str, Any]]:
-    max_pages = int(filters.get("pages", 1) or 1)
-    if max_pages < 1:
-        max_pages = 1
+def _to_scraped_item_deichmann(d: Dict[str, Any]) -> ScrapedItem:
+    price, currency = parse_price(d.get("price"), market=d.get("country", "DE"))
 
-    print(
-        "[Deichmann] Start "
-        f"country={filters.get('country', 'DE')} / "
-        f"category={filters.get('category')} / "
-        f"brand={filters.get('brand')} / "
-        f"gender={filters.get('gender')} / "
-        f"sort={filters.get('sort')} / "
-        f"pages={max_pages}"
+    page = d.get("page") or 1
+    pos = d.get("positionOnPage") or 1
+    page_size = len(d.get("_page_cards", [])) if d.get("_page_cards") else 30
+
+    return ScrapedItem(
+        source="deichmann",
+        market=d.get("country", "DE"),
+        brand=d.get("brand") or "",
+        name=d.get("name") or "",
+        priceValue=price,
+        currency=currency,
+        url=d.get("url"),
+        imageUrl=d.get("image"),
+        rank=compute_rank(page, pos, page_size),
+        page=page,
+        positionOnPage=pos,
+        sortMode=d.get("sort") or "popularity",
+        sku=None,
+        category=infer_category_from_name(d.get("name") or ""),
+        gender=d.get("gender"),
+        isNew=False,
+        isOnSale=bool(d.get("old_price")),
+        hasImage=bool(d.get("image")),
+        backend=None,
+        backendIndex=None,
+        backendRank=None,
+        raw=d,
     )
 
-    results: List[Dict[str, Any]] = []
-
-    # Async version using asyncio.gather instead of ThreadPoolExecutor
-    tasks = [
-        _scrape_deichmann_page(page_idx, filters)
-        for page_idx in range(1, max_pages + 1)
-    ]
-
-    page_results_list = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    for page_idx, page_results in enumerate(page_results_list, start=1):
-        if isinstance(page_results, Exception):
-            print(f"Deichmann page scrape failed (page={page_idx}): {page_results}")
-        else:
-            results.extend(page_results)
-
-    print(f"[Deichmann] Total scraped: {len(results)}")
-    return results
+async def scrape_deichmann_filtered(**filters: Any) -> List[ScrapedItem]:
+    raw_results = await _scrape_deichmann_pages(filters)
+    items = [_to_scraped_item_deichmann(r) for r in raw_results]
+    return items

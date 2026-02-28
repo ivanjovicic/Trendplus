@@ -49,6 +49,11 @@ namespace Api.Models
 
         public bool HasTrainingSignal { get; set; }
         public bool UsedPythonModel { get; set; }
+        public bool UsedOnnxModel { get; set; }
+        public string? OnnxModelType { get; set; }
+        public int? OnnxModelVersion { get; set; }
+        public double? OnnxRawSellProbability { get; set; }
+        public double? OnnxSellProbability { get; set; }
         public string Market { get; set; } = "RS";
         public string? Currency { get; set; }
         public decimal? TypicalPrice { get; set; }
@@ -84,4 +89,3 @@ namespace Api.Models
         public string? ShoeType { get; set; }
     }
 }
-

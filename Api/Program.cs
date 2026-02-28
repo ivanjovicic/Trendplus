@@ -20,6 +20,7 @@ using Infrastructure.Seed;
 using MediatR;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
 using System.Globalization;
@@ -86,6 +87,8 @@ try
     builder.Services.Configure<RuntimeScoringOptions>(builder.Configuration.GetSection(RuntimeScoringOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section));
+    builder.Services.Configure<Infrastructure.Configuration.OpenTrainingModelTrainingOptions>(
+        builder.Configuration.GetSection(Infrastructure.Configuration.OpenTrainingModelTrainingOptions.Section));
 
     // DbContext
     builder.Services.AddDbContext<TrendplusDbContext>(options =>
@@ -107,13 +110,14 @@ try
         ?? builder.Configuration.GetConnectionString("AnalyticsConnection");
 
     builder.Services.AddDbContext<OpenProductTrainingDbContext>(options =>
-        options.UseNpgsql(openProductTrainingConnection)
+        options.UseNpgsql(openProductTrainingConnection, o => o.UseVector())
                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
     Console.WriteLine("DbContext registered");
 
     // FluentValidation - auto-register all validators
     builder.Services.AddValidatorsFromAssemblyContaining<CreateArtikalCommandValidator>();
+    builder.Services.AddValidatorsFromAssemblyContaining<Api.Validators.StartTrainingRunRequestValidator>();
 
     // Memory Cache - required by GetArtikliQueryHandler and other caching services
     builder.Services.AddMemoryCache();
@@ -190,6 +194,7 @@ try
     builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
     builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>();
     builder.Services.AddHostedService<Workers.NightlyAnalyticsRefreshWorker>();
+    builder.Services.AddHostedService<Workers.OpenTrainingModelTrainingWorker>();
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
 
     builder.Services.AddControllers();
@@ -281,6 +286,7 @@ try
     builder.Services.AddScoped<IPopularityAndDealScoringService, PopularityAndDealScoringService>();
     builder.Services.AddScoped<IOpenProductTrainingSignalProvider, OpenProductTrainingSignalProvider>();
     builder.Services.AddScoped<IOpenProductTrainingSyncService, OpenProductTrainingSyncService>();
+    builder.Services.AddSingleton<ISellProbabilityRsOnnxScorer, SellProbabilityRsOnnxScorer>();
     builder.Services.AddScoped<IRuntimeScoringEngine, RuntimeScoringEngine>();
     builder.Services.AddScoped<IAccessImportService, AccessImportService>();
     builder.Services.AddScoped<IBatchLogService, BatchLogService>();

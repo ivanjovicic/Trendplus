@@ -682,53 +682,96 @@ public static class AllEndpoints
 
                 take = Math.Clamp(take, 10, 1000);
 
-                const string sql = """
-                    WITH ranked AS (
-                        SELECT
-                            event_date::date AS event_date,
-                            vendor_id,
-                            article_id,
-                            old_price,
-                            new_price,
-                            pre_qty,
-                            pre_revenue,
-                            post_qty,
-                            post_revenue,
-                            ROW_NUMBER() OVER (
-                                PARTITION BY
-                                    event_date::date,
-                                    COALESCE(vendor_id, -1),
-                                    article_id,
-                                    old_price,
-                                    new_price
-                                ORDER BY price_event_id DESC
-                            ) AS rn
-                        FROM "vw_vendor_sales_nivelacija"
-                        WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
-                          AND (@category IS NULL OR category ILIKE @categoryPattern)
-                    )
-                    SELECT
-                        event_date,
-                        COUNT(*)::INT AS events_count,
-                        COUNT(DISTINCT vendor_id)::INT AS vendors_count,
-                        COUNT(DISTINCT article_id)::INT AS articles_count,
-                        COUNT(*) FILTER (
-                            WHERE pre_qty <> 0
-                               OR post_qty <> 0
-                               OR pre_revenue <> 0
-                               OR post_revenue <> 0
-                        )::INT AS active_articles_count
-                    FROM ranked
-                    WHERE rn = 1
-                    GROUP BY event_date
-                    ORDER BY event_date DESC
-                    LIMIT @take;
-                    """;
-
                 var options = new List<VendorSalesNivelacijaOptionDto>();
 
                 await using var connection = new NpgsqlConnection(connectionString);
                 await connection.OpenAsync(ct);
+
+                var hasOldPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "old_price", ct);
+                var hasNewPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "new_price", ct);
+                var hasPriceColumns = hasOldPrice && hasNewPrice;
+
+                var sql = hasPriceColumns
+                    ? """
+                        WITH ranked AS (
+                            SELECT
+                                event_date::date AS event_date,
+                                vendor_id,
+                                article_id,
+                                old_price,
+                                new_price,
+                                pre_qty,
+                                pre_revenue,
+                                post_qty,
+                                post_revenue,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY
+                                        event_date::date,
+                                        COALESCE(vendor_id, -1),
+                                        article_id,
+                                        old_price,
+                                        new_price
+                                    ORDER BY price_event_id DESC
+                                ) AS rn
+                            FROM "vw_vendor_sales_nivelacija"
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern)
+                        )
+                        SELECT
+                            event_date,
+                            COUNT(*)::INT AS events_count,
+                            COUNT(DISTINCT vendor_id)::INT AS vendors_count,
+                            COUNT(DISTINCT article_id)::INT AS articles_count,
+                            COUNT(*) FILTER (
+                                WHERE pre_qty <> 0
+                                   OR post_qty <> 0
+                                   OR pre_revenue <> 0
+                                   OR post_revenue <> 0
+                            )::INT AS active_articles_count
+                        FROM ranked
+                        WHERE rn = 1
+                        GROUP BY event_date
+                        ORDER BY event_date DESC
+                        LIMIT @take;
+                        """
+                    : """
+                        WITH ranked AS (
+                            SELECT
+                                event_date::date AS event_date,
+                                vendor_id,
+                                article_id,
+                                pre_qty,
+                                pre_revenue,
+                                post_qty,
+                                post_revenue,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY
+                                        event_date::date,
+                                        COALESCE(vendor_id, -1),
+                                        article_id
+                                    ORDER BY price_event_id DESC
+                                ) AS rn
+                            FROM "vw_vendor_sales_nivelacija"
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern)
+                        )
+                        SELECT
+                            event_date,
+                            COUNT(*)::INT AS events_count,
+                            COUNT(DISTINCT vendor_id)::INT AS vendors_count,
+                            COUNT(DISTINCT article_id)::INT AS articles_count,
+                            COUNT(*) FILTER (
+                                WHERE pre_qty <> 0
+                                   OR post_qty <> 0
+                                   OR pre_revenue <> 0
+                                   OR post_revenue <> 0
+                            )::INT AS active_articles_count
+                        FROM ranked
+                        WHERE rn = 1
+                        GROUP BY event_date
+                        ORDER BY event_date DESC
+                        LIMIT @take;
+                        """;
 
                 await using var command = new NpgsqlCommand(sql, connection);
                 command.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
@@ -815,6 +858,13 @@ public static class AllEndpoints
                 await using var connection = new NpgsqlConnection(connectionString);
                 await connection.OpenAsync(ct);
 
+                var hasOldPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "old_price", ct);
+                var hasNewPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "new_price", ct);
+                var hasPriceColumns = hasOldPrice && hasNewPrice;
+
+                var hasRevenuePercent = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "change_percent_revenue", ct);
+                var changePercentExpr = hasRevenuePercent ? "change_percent_revenue" : "change_percent_qty";
+
                 const string rawCountSql = """
                     SELECT COUNT(*)::INT
                     FROM "vw_vendor_sales_nivelacija"
@@ -863,69 +913,121 @@ public static class AllEndpoints
                     }
                 }
 
-                const string rowsSql = """
-                    WITH ranked AS (
+                var rowsSql = hasPriceColumns
+                    ? $"""
+                        WITH ranked AS (
+                            SELECT
+                                price_event_id,
+                                event_date::date AS event_date,
+                                vendor_id,
+                                COALESCE(vendor_name, 'N/A') AS vendor_name,
+                                article_id,
+                                COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
+                                COALESCE(article_name, '') AS article_name,
+                                COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                                old_price,
+                                new_price,
+                                COALESCE(pre_qty, 0)::numeric AS pre_qty,
+                                COALESCE(pre_revenue, 0)::numeric AS pre_revenue,
+                                COALESCE(post_qty, 0)::numeric AS post_qty,
+                                COALESCE(post_revenue, 0)::numeric AS post_revenue,
+                                COALESCE(change_qty, 0)::numeric AS change_qty,
+                                COALESCE(change_revenue, 0)::numeric AS change_revenue,
+                                COALESCE({changePercentExpr}, 0)::numeric AS change_percent,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY
+                                        event_date::date,
+                                        COALESCE(vendor_id, -1),
+                                        article_id,
+                                        old_price,
+                                        new_price
+                                    ORDER BY price_event_id DESC
+                                ) AS rn
+                            FROM "vw_vendor_sales_nivelacija"
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                              AND (@eventDate IS NULL OR event_date::date = @eventDate)
+                              AND (@fromDate IS NULL OR event_date::date >= @fromDate)
+                              AND (@toDate IS NULL OR event_date::date <= @toDate)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern)
+                        )
                         SELECT
                             price_event_id,
-                            event_date::date AS event_date,
+                            event_date,
                             vendor_id,
-                            COALESCE(vendor_name, 'N/A') AS vendor_name,
+                            vendor_name,
                             article_id,
-                            COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
-                            COALESCE(article_name, '') AS article_name,
-                            COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                            sku,
+                            article_name,
+                            category,
                             old_price,
                             new_price,
-                            COALESCE(pre_qty, 0)::numeric AS pre_qty,
-                            COALESCE(pre_revenue, 0)::numeric AS pre_revenue,
-                            COALESCE(post_qty, 0)::numeric AS post_qty,
-                            COALESCE(post_revenue, 0)::numeric AS post_revenue,
-                            COALESCE(change_qty, 0)::numeric AS change_qty,
-                            COALESCE(change_revenue, 0)::numeric AS change_revenue,
-                            COALESCE(change_percent_qty, 0)::numeric AS change_percent_qty,
-                            COALESCE(change_percent_revenue, 0)::numeric AS change_percent_revenue,
-                            COALESCE(coverage_pre30, 0)::numeric AS coverage_pre30,
-                            COALESCE(coverage_post30, 0)::numeric AS coverage_post30,
-                            COALESCE(is_low_signal, FALSE) AS is_low_signal,
-                            ROW_NUMBER() OVER (
-                                PARTITION BY
-                                    event_date::date,
-                                    COALESCE(vendor_id, -1),
-                                    article_id,
-                                    old_price,
-                                    new_price
-                                ORDER BY price_event_id DESC
-                            ) AS rn
-                        FROM "vw_vendor_sales_nivelacija"
-                        WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
-                          AND (@eventDate IS NULL OR event_date::date = @eventDate)
-                          AND (@fromDate IS NULL OR event_date::date >= @fromDate)
-                          AND (@toDate IS NULL OR event_date::date <= @toDate)
-                          AND (@category IS NULL OR category ILIKE @categoryPattern)
-                    )
-                    SELECT
-                        price_event_id,
-                        event_date,
-                        vendor_id,
-                        vendor_name,
-                        article_id,
-                        sku,
-                        article_name,
-                        category,
-                        old_price,
-                        new_price,
-                        pre_qty,
-                        pre_revenue,
-                        post_qty,
-                        post_revenue,
-                        change_qty,
-                        change_revenue,
-                        change_percent_qty,
-                        change_percent_revenue
-                    FROM ranked
-                    WHERE rn = 1
-                    ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
-                    """;
+                            pre_qty,
+                            pre_revenue,
+                            post_qty,
+                            post_revenue,
+                            change_qty,
+                            change_revenue,
+                            change_percent
+                        FROM ranked
+                        WHERE rn = 1
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
+                        """
+                    : $"""
+                        WITH ranked AS (
+                            SELECT
+                                price_event_id,
+                                event_date::date AS event_date,
+                                vendor_id,
+                                COALESCE(vendor_name, 'N/A') AS vendor_name,
+                                article_id,
+                                COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
+                                COALESCE(article_name, '') AS article_name,
+                                COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                                NULL::numeric AS old_price,
+                                NULL::numeric AS new_price,
+                                COALESCE(pre_qty, 0)::numeric AS pre_qty,
+                                COALESCE(pre_revenue, 0)::numeric AS pre_revenue,
+                                COALESCE(post_qty, 0)::numeric AS post_qty,
+                                COALESCE(post_revenue, 0)::numeric AS post_revenue,
+                                COALESCE(change_qty, 0)::numeric AS change_qty,
+                                COALESCE(change_revenue, 0)::numeric AS change_revenue,
+                                COALESCE({changePercentExpr}, 0)::numeric AS change_percent,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY
+                                        event_date::date,
+                                        COALESCE(vendor_id, -1),
+                                        article_id
+                                    ORDER BY price_event_id DESC
+                                ) AS rn
+                            FROM "vw_vendor_sales_nivelacija"
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                              AND (@eventDate IS NULL OR event_date::date = @eventDate)
+                              AND (@fromDate IS NULL OR event_date::date >= @fromDate)
+                              AND (@toDate IS NULL OR event_date::date <= @toDate)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern)
+                        )
+                        SELECT
+                            price_event_id,
+                            event_date,
+                            vendor_id,
+                            vendor_name,
+                            article_id,
+                            sku,
+                            article_name,
+                            category,
+                            old_price,
+                            new_price,
+                            pre_qty,
+                            pre_revenue,
+                            post_qty,
+                            post_revenue,
+                            change_qty,
+                            change_revenue,
+                            change_percent
+                        FROM ranked
+                        WHERE rn = 1
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
+                        """;
 
                 var dedupRows = new List<VendorSalesNivelacijaArticleStatDto>();
 
@@ -961,8 +1063,7 @@ public static class AllEndpoints
                         var postRevenue = reader.IsDBNull(13) ? 0m : reader.GetDecimal(13);
                         var changeQty = reader.IsDBNull(14) ? 0 : (int)reader.GetDecimal(14);
                         var changeRevenue = reader.IsDBNull(15) ? 0m : reader.GetDecimal(15);
-                        _ = reader.IsDBNull(16) ? 0m : reader.GetDecimal(16); // change_percent_qty (unused)
-                        var changePercentRevenue = reader.IsDBNull(17) ? 0m : reader.GetDecimal(17);
+                        var changePercentRevenue = reader.IsDBNull(16) ? 0m : reader.GetDecimal(16);
 
                         var hasSalesWindow =
                             preQty != 0 || postQty != 0 || preRevenue != 0m || postRevenue != 0m;
@@ -3498,6 +3599,28 @@ public static class AllEndpoints
                 ? null
                 : string.Join("; ", reasons.Distinct(StringComparer.Ordinal));
         }
+    }
+
+    private static async Task<bool> RelationHasColumnAsync(
+        NpgsqlConnection connection,
+        string relationName,
+        string columnName,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = @rel
+              AND column_name = @col
+            LIMIT 1;
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("rel", relationName);
+        cmd.Parameters.AddWithValue("col", columnName);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is not null;
     }
 }
 

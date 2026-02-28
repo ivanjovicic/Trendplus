@@ -675,7 +675,7 @@ export default function ProdajaPrePostNivelacijePage() {
                 </div>
             </div>
 
-            {!loading && !error && response && response.totals.articlesCount === 0 && (
+            {!loading && !error && response && (response.totals?.articlesCount ?? 0) === 0 && (
                 <div className="nivelacija-empty-state">
                     Nema podataka za izabrane filtere. Proverite da li postoji prodaja u periodu 30 dana pre/posle izabrane nivelacije.
                 </div>
@@ -731,7 +731,7 @@ export default function ProdajaPrePostNivelacijePage() {
                         <div className="nivelacija-kpi-label">Prosecna promena cene</div>
                         <div className="nivelacija-kpi-value">{fmtPct(Number(response.totals.avgPriceChangePercent))}</div>
                     </div>
-                    <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">Obuhvat</div><div className="nivelacija-kpi-value">{response.totals.vendorsCount} dobavljaca / {response.totals.articlesCount} artikala</div></div>
+                    <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">Obuhvat</div><div className="nivelacija-kpi-value">{response.totals?.vendorsCount ?? 0} dobavljaca / {response.totals?.articlesCount ?? 0} artikala</div></div>
                     <div className="nivelacija-kpi"><div className="nivelacija-kpi-label">Aktivni artikli</div><div className="nivelacija-kpi-value">{response.totals.activeArticlesCount}</div></div>
                 </div>
             )}

@@ -9,6 +9,7 @@ playwright==1.41.2  # Browser automation for JS-rendered pages
 
 # Database
 psycopg2-binary==2.9.9
+asyncpg>=0.29.0          # Async PostgreSQL driver (used by db/connection.py)
 pgvector==0.2.4
 
 # API server
@@ -28,7 +29,8 @@ pytrends==4.9.2  # Google Trends API
 # Utilities
 python-dotenv==1.0.0
 schedule==1.2.0
-rapidfuzz==3.6.1          # Fuzzy product name matching in scorer
+apscheduler>=3.10.0      # Scheduler for daily pipeline (pipeline/scheduler.py)
+rapidfuzz==3.6.1         # Fuzzy product name matching (scoring.py + scorer)
 
 # Testing
 pytest==7.4.4
