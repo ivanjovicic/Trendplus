@@ -66,6 +66,19 @@ export default function AccessImportPage() {
 
     useEffect(() => { void refreshBatches(); }, []);
 
+    // Keep "root file" and "manual file" mutually exclusive (reduces confusion).
+    useEffect(() => {
+        if (!useRootFile) return;
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setPreview(null);
+    }, [useRootFile]);
+
+    // Invalidate schema preview when the source file changes.
+    useEffect(() => {
+        setPreview(null);
+    }, [file]);
+
     // elapsed timer while importing
     useEffect(() => {
         if (!loadingImport) { setImportElapsed(0); return; }
@@ -129,6 +142,8 @@ export default function AccessImportPage() {
     );
 
     const busy = loadingPreview || loadingImport;
+    const sourceSelected = useRootFile || !!file;
+    const previewBlocksImport = preview !== null && !preview.canImport;
 
     // --- render ---
 
@@ -156,10 +171,10 @@ export default function AccessImportPage() {
             {/* ---- Tabs ---- */}
             <div className="accimport-tabs">
                 {([
-                    ["source", "Izvor"],
-                    ["preview", "Analiza seme"],
-                    ["lastImport", "Poslednji import"],
-                    ["batches", "Istorija batch-eva"],
+                    ["source", "1) Izvor"],
+                    ["preview", "2) Analiza & Import"],
+                    ["lastImport", "3) Rezultat"],
+                    ["batches", "4) Istorija"],
                 ] as const).map(([key, label]) => (
                     <button
                         key={key}
@@ -201,11 +216,27 @@ export default function AccessImportPage() {
                         </label>
                     </div>
 
-                    <div className="accimport-field">
+                    <div className={`accimport-field ${useRootFile ? "is-disabled" : ""}`}>
                         <span className="accimport-label">Rucni izbor fajla</span>
-                        <input ref={fileInputRef} type="file" accept=".accdb" style={{ display: "none" }} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".accdb"
+                            style={{ display: "none" }}
+                            onChange={(e) => {
+                                const selected = e.target.files?.[0] ?? null;
+                                if (selected) setUseRootFile(false);
+                                setFile(selected);
+                            }}
+                        />
                         <div className="accimport-file-row">
-                            <button type="button" className="accimport-btn accimport-btn-secondary" onClick={() => fileInputRef.current?.click()}>
+                            <button
+                                type="button"
+                                className="accimport-btn accimport-btn-secondary"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={useRootFile}
+                                title={useRootFile ? "Iskljuci automatski fajl da bi izabrao rucno." : "Izaberi .accdb fajl"}
+                            >
                                 Browse .accdb
                             </button>
                             {file && (
@@ -236,13 +267,23 @@ export default function AccessImportPage() {
                     <div className="accimport-field">
                         <span className="accimport-label">Akcije</span>
                         <div className="accimport-actions">
-                            <button className="accimport-btn accimport-btn-primary" onClick={() => void handlePreview()} disabled={busy}>
+                            <button className="accimport-btn accimport-btn-primary" onClick={() => void handlePreview()} disabled={busy || !sourceSelected}>
                                 {loadingPreview ? "Analiziram..." : "Analiza seme"}
                             </button>
-                            <button className="accimport-btn accimport-btn-success" onClick={() => void handleImport()} disabled={busy}>
+                            <button className="accimport-btn accimport-btn-success" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport}>
                                 {loadingImport ? "Importujem..." : "Pokreni import"}
                             </button>
                         </div>
+                        {previewBlocksImport && (
+                            <div className="accimport-hint">
+                                Import je blokiran: analiza seme je vratila da fajl nije spreman za import.
+                            </div>
+                        )}
+                        {!sourceSelected && (
+                            <div className="accimport-hint">
+                                Izaberi fajl ili ukljuci automatski TRENDPLUS.accdb.
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -250,9 +291,55 @@ export default function AccessImportPage() {
             {/* ============ TAB: Preview (Schema Analysis) ============ */}
             {activeTab === "preview" && (
                 <>
+                    <div className="accimport-filterbar accimport-filterbar-compact">
+                        <div className="accimport-field" style={{ gridColumn: "1 / -1" }}>
+                            <span className="accimport-label">Trenutni izvor</span>
+                            <div className="accimport-source-row">
+                                <span className={`accimport-file-name ${sourceSelected ? "has-file" : ""}`}>
+                                    {useRootFile ? "TRENDPLUS.accdb (automatski)" : file ? file.name : "Nije izabran fajl"}
+                                </span>
+                                <button className="accimport-btn accimport-btn-secondary" type="button" onClick={() => setActiveTab("source")} disabled={busy}>
+                                    Promeni izvor
+                                </button>
+                            </div>
+                        </div>
+                        <div className="accimport-field">
+                            <span className="accimport-label">Opcije importa</span>
+                            <label className="accimport-checkbox-row">
+                                <input type="checkbox" checked={includeAnalytics} onChange={(e) => setIncludeAnalytics(e.target.checked)} />
+                                Ukljuci upis u Analytics
+                            </label>
+                            <label className="accimport-checkbox-row">
+                                <input type="checkbox" checked={overwriteExisting} onChange={(e) => setOverwriteExisting(e.target.checked)} />
+                                Azuriraj postojece redove (upsert)
+                            </label>
+                        </div>
+                        <div className="accimport-field">
+                            <span className="accimport-label">Akcije</span>
+                            <div className="accimport-actions">
+                                <button className="accimport-btn accimport-btn-secondary" type="button" onClick={() => void handlePreview()} disabled={busy || !sourceSelected}>
+                                    {loadingPreview ? "Analiziram..." : "Ponovi analizu"}
+                                </button>
+                                <button className="accimport-btn accimport-btn-success" type="button" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport}>
+                                    {loadingImport ? "Importujem..." : "Pokreni import"}
+                                </button>
+                            </div>
+                            {previewBlocksImport && (
+                                <div className="accimport-hint">
+                                    Import je blokiran: analiza seme je vratila da fajl nije spreman za import.
+                                </div>
+                            )}
+                            {!sourceSelected && (
+                                <div className="accimport-hint">
+                                    Izaberi fajl ili ukljuci automatski TRENDPLUS.accdb.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {!preview && !loadingPreview && (
                         <div className="accimport-empty-state">
-                            Pokrenite "Analiza seme" na Izvor tabu da vidite rezultat.
+                            Pokrenite analizu seme (ili izaberite izvor) da vidite rezultat.
                         </div>
                     )}
                     {loadingPreview && <div className="accimport-empty-state">Analiziram ACCDB fajl...</div>}

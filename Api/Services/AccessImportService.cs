@@ -106,7 +106,7 @@ public sealed class AccessImportService : IAccessImportService
                 new FieldAlias("Kolicina", "kolicina", "qty", "quantity"),
                 new FieldAlias("StaraProdajnaCena", "staracena", "staraprodajnacena", "oldprice"),
                 new FieldAlias("NovaProdajnaCena", "novacena", "novaprodajnacena", "newprice"),
-                new FieldAlias("Komentar", "komentar", "napomena", "comment", "opis"),
+                new FieldAlias("Komentar", "komentar", "comment", "napomena", "opis"),
                 new FieldAlias("KorisnikIme", "korisnik", "korisnikime", "username", "operater")
             ],
             ["povracaj_zaglavlje"] =
@@ -191,6 +191,7 @@ public sealed class AccessImportService : IAccessImportService
         if (!File.Exists(accessFilePath))
             throw new FileNotFoundException("ACCDB fajl nije pronađen.", accessFilePath);
 
+        var lockFilePath = TryGetAccessLockFilePath(accessFilePath);
         return await Task.Run(() =>
         {
             using var conn = CreateOdbcConnection(accessFilePath);
@@ -233,6 +234,8 @@ public sealed class AccessImportService : IAccessImportService
                 AvailableTables = tables.OrderBy(x => x).ToList(),
                 Tables = new List<AccessImportTablePreview>()
             };
+            if (lockFilePath is not null)
+                response.Warnings.Add($"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Preporuka: zatvori Access pre importa.");
 
             foreach (var entry in map)
             {
@@ -289,7 +292,7 @@ public sealed class AccessImportService : IAccessImportService
         var columns = new List<string>();
         try
         {
-            using var cmd = new OdbcCommand($"SELECT * FROM `{table}` WHERE 1=0", conn);
+            using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)} WHERE 1=0", conn);
             using var r = cmd.ExecuteReader();
             if (r is null) return columns;
 
@@ -375,6 +378,9 @@ public sealed class AccessImportService : IAccessImportService
             IncludeAnalytics = includeAnalytics,
             StartedAtUtc = started
         };
+        var lockFilePath = TryGetAccessLockFilePath(accessFilePath);
+        if (lockFilePath is not null)
+            result.Warnings.Add($"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Import može da padne ili bude nepotpun; preporuka: zatvori Access pa pokušaj ponovo.");
 
         try
         {
@@ -570,8 +576,8 @@ public sealed class AccessImportService : IAccessImportService
         // New movement types
         var nivelacije    = FindTable(conn, tables, NivelacijeCandidates,  sigRequired: ["idartikal", "novacena"]);
         var unosRobe      = FindTable(conn, tables, UnosRobeCandidates,    sigRequired: ["idartikal", "kolicina", "iddobavljac"]);
-        var povratnice    = FindTable(conn, tables, PovratniceCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["razlog"]);
-        var prenosRobe    = FindTable(conn, tables, PrenosRobeCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["idobjekatiz", "idobjekatulaz"]);
+        var povratnice    = FindTable(conn, tables, PovratniceCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["razlog", "idpovratnice"]);
+        var prenosRobe    = FindTable(conn, tables, PrenosRobeCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["idobjekatiz", "idobjekatulaz", "idobjekat"]);
         var objekti       = FindTable(conn, tables, ObjekatCandidates,     sigRequired: ["idobjekat", "nazivobjekta"]);
 
         if (artikli is null)
@@ -797,7 +803,7 @@ public sealed class AccessImportService : IAccessImportService
                 e = new Domain.Model.Prodaja.ProdajaZaglavlje
                 {
                     Id = id.Value,
-                    BrojRacuna = S(row, "brojracuna", "invoice", "receiptnumber"),
+                    BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
                     DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
                     NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                     IDObjekat = I(row, "idobjekat", "storeid"),
@@ -810,7 +816,7 @@ public sealed class AccessImportService : IAccessImportService
             }
             else if (overwriteExisting)
             {
-                e.BrojRacuna = S(row, "brojracuna", "invoice", "receiptnumber");
+                e.BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
                 e.DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow;
                 e.NacinPlacanja = S(row, "nacinplacanja", "paymenttype");
                 e.IDObjekat = I(row, "idobjekat", "storeid");
@@ -875,7 +881,7 @@ public sealed class AccessImportService : IAccessImportService
     {
         try
         {
-            using var cmd = new OdbcCommand($"SELECT * FROM `{table}` WHERE 1=0", conn);
+            using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)} WHERE 1=0", conn);
             using var r = cmd.ExecuteReader();
             if (r is null) return false;
 
@@ -1008,7 +1014,7 @@ public sealed class AccessImportService : IAccessImportService
         if (saleEntries.Count == 0) return;
 
         var existingZaglavlja = _trendDb.ProdajaZaglavlja.ToDictionary(x => x.Id);
-        var existingBrojevi   = _trendDb.ProdajaZaglavlja
+        var existingBrojevi = _trendDb.ProdajaZaglavlja
             .Where(x => x.BrojRacuna != null)
             .ToDictionary(x => x.BrojRacuna!, StringComparer.OrdinalIgnoreCase);
 
@@ -1181,7 +1187,7 @@ public sealed class AccessImportService : IAccessImportService
                               "brnaloga", "brojnaloga", "nalog", "brojkalkulacije");
 
             var komentar = S(row, "komentar", "comment", "napomena", "opis", "beleska", "info", "memo");
-            var dobavljacId = I(row, "iddobavljac", "iddobavljaca", "dobavljacid", "supplierid", "idd", "iddob");
+            var dobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid", "idd", "iddob");
             if (!dobavljacId.HasValue)
             {
                 var dobavljacNaziv = S(row, "dobavljac", "dobavljacnaziv", "supplier", "suppliername", "nazivdobavljaca");
@@ -1276,9 +1282,7 @@ public sealed class AccessImportService : IAccessImportService
                 Iznos = iznos,
                 IDObjekat = I(row, "idobjekat", "storeid", "idobjekta") ?? sourceDnevnik?.IDObjekat,
                 RedniBroj = I(row, "rednibr", "rbr", "seqno"),
-                BrojRacuna = srcId > 0
-                    ? srcId.ToString(CultureInfo.InvariantCulture)
-                    : S(row, "iddnevnik", "brdokumenta"),
+                BrojRacuna = S(row, "brdokumenta", "iddnevnik"),
                 DobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid") ?? sourceDnevnik?.DobavljacId,
                 DataOrigin = "access"
             });
@@ -1902,7 +1906,7 @@ public sealed class AccessImportService : IAccessImportService
     {
         try
         {
-            using var cmd = new OdbcCommand($"SELECT COUNT(*) FROM `{table}`", conn);
+            using var cmd = new OdbcCommand($"SELECT COUNT(*) FROM {QuoteAccessIdentifier(table)}", conn);
             return ConvertToInt(cmd.ExecuteScalar()) ?? 0;
         }
         catch
@@ -1913,7 +1917,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private static IEnumerable<Dictionary<string, object?>> ReadRows(OdbcConnection conn, string table)
     {
-        using var cmd = new OdbcCommand($"SELECT * FROM `{table}`", conn);
+        using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)}", conn);
         using var r = cmd.ExecuteReader();
         if (r is null) yield break;
 
@@ -1927,39 +1931,52 @@ public sealed class AccessImportService : IAccessImportService
         }
     }
 
-    private static string? FindTable(OdbcConnection conn, IEnumerable<string> tables, string[] candidates,
-        string[]? sigRequired = null, string[]? sigBonus = null)
+    private static string? FindTable(OdbcConnection conn, IReadOnlyList<string> tables, string[] candidates, string[]? sigRequired = null, string[]? sigBonus = null)
     {
-        var tableList = (tables as IReadOnlyList<string>) ?? tables.ToList();
-        var normalized = tableList.Select(t => new { Original = t, Key = Normalize(t) }).ToList();
+        var normalized = tables.Select(t => new { Original = t, Key = Normalize(t) }).ToList();
 
-        // 1. Exact name match
-        foreach (var c in candidates.Select(Normalize))
+        // 1. Exact name match (normalized)
+        foreach (var candidate in candidates)
         {
-            var exact = normalized.FirstOrDefault(x => x.Key == c);
-            if (exact is not null) return exact.Original;
+            var key = Normalize(candidate);
+            var exact = normalized.FirstOrDefault(x => x.Key == key);
+            if (exact is not null)
+                return exact.Original;
         }
 
-        // 2. Contains name match
-        foreach (var c in candidates.Select(Normalize))
+        // 2. Contains match (normalized)
+        foreach (var candidate in candidates)
         {
-            var contains = normalized.FirstOrDefault(x => x.Key.Contains(c, StringComparison.Ordinal));
-            if (contains is not null) return contains.Original;
+            var key = Normalize(candidate);
+            var contains = normalized.FirstOrDefault(x => x.Key.Contains(key, StringComparison.Ordinal));
+            if (contains is not null)
+                return contains.Original;
         }
 
-        // 3. Column-signature fallback
+        // 3. Column-signature fallback (required + best bonus score)
         if (sigRequired?.Length > 0)
         {
             string? bestTable = null;
             var bestScore = -1;
-            foreach (var t in tableList)
+            var requiredKeys = sigRequired.Select(Normalize).ToArray();
+            var bonusKeys = sigBonus?.Select(Normalize).ToArray();
+
+            foreach (var table in tables)
             {
-                var cols = ReadColumnNamesNormalized(conn, t);
-                if (!sigRequired.Select(Normalize).All(r => cols.Contains(r))) continue;
-                var score = sigBonus?.Count(b => cols.Contains(Normalize(b))) ?? 0;
-                if (score > bestScore) { bestScore = score; bestTable = t; }
+                var cols = ReadColumnNamesNormalized(conn, table);
+                if (!requiredKeys.All(cols.Contains))
+                    continue;
+
+                var score = bonusKeys?.Count(cols.Contains) ?? 0;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestTable = table;
+                }
             }
-            if (bestTable is not null) return bestTable;
+
+            if (bestTable is not null)
+                return bestTable;
         }
 
         return null;
@@ -1970,7 +1987,7 @@ public sealed class AccessImportService : IAccessImportService
         var cols = new HashSet<string>(StringComparer.Ordinal);
         try
         {
-            using var cmd = new OdbcCommand($"SELECT * FROM `{table}` WHERE 1=0", conn);
+            using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)} WHERE 1=0", conn);
             using var r = cmd.ExecuteReader();
             if (r is null) return cols;
             for (var i = 0; i < r.FieldCount; i++)
@@ -1983,29 +2000,56 @@ public sealed class AccessImportService : IAccessImportService
     private static string Normalize(string? s)
     {
         if (string.IsNullOrWhiteSpace(s)) return string.Empty;
-        Span<char> buffer = stackalloc char[s.Length];
-        var j = 0;
-        foreach (var c in s)
-            if (char.IsLetterOrDigit(c))
-                buffer[j++] = char.ToLowerInvariant(c);
-        return new string(buffer[..j]);
-    }
-
-    private static string NormalizeLookup(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return string.Empty;
-
         var normalized = s.Normalize(NormalizationForm.FormD);
-        var chars = new List<char>(normalized.Length);
+        Span<char> buffer = stackalloc char[normalized.Length];
+        var j = 0;
         foreach (var c in normalized)
         {
             if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark)
                 continue;
 
             if (char.IsLetterOrDigit(c))
-                chars.Add(char.ToLowerInvariant(c));
+                buffer[j++] = char.ToLowerInvariant(c);
         }
-        return chars.Count == 0 ? string.Empty : new string(chars.ToArray());
+
+        return j == 0 ? string.Empty : new string(buffer[..j]);
+    }
+
+    private static string NormalizeLookup(string? s)
+    {
+        return Normalize(s);
+    }
+
+    private static string QuoteAccessIdentifier(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier))
+            return "[]";
+        return $"[{identifier.Replace("]", "]]")}]";
+    }
+
+    private static string? TryGetAccessLockFilePath(string accessFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(accessFilePath))
+            return null;
+
+        var dir = Path.GetDirectoryName(accessFilePath);
+        var name = Path.GetFileNameWithoutExtension(accessFilePath);
+        var ext = Path.GetExtension(accessFilePath);
+
+        if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(ext))
+            return null;
+
+        var lockExt = ext.Equals(".accdb", StringComparison.OrdinalIgnoreCase)
+            ? ".laccdb"
+            : ext.Equals(".mdb", StringComparison.OrdinalIgnoreCase)
+                ? ".ldb"
+                : null;
+
+        if (lockExt is null)
+            return null;
+
+        var lockPath = Path.Combine(dir, name + lockExt);
+        return File.Exists(lockPath) ? lockPath : null;
     }
 
     private static object? Get(Dictionary<string, object?> row, params string[] aliases)

@@ -64,10 +64,18 @@
     margin-bottom: 14px;
 }
 
+.accimport-filterbar-compact {
+    padding: 10px;
+}
+
 .accimport-field {
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.accimport-field.is-disabled {
+    opacity: 0.55;
 }
 
 .accimport-label {
@@ -187,6 +195,20 @@
 
 .accimport-file-name.has-file {
     color: #6ee7b7;
+}
+
+.accimport-source-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.accimport-hint {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #9aabc7;
 }
 
 .accimport-kpis {
