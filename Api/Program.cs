@@ -438,6 +438,7 @@ try
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();
     app.MapAccessImportEndpoints();
+    app.MapRedisEndpoints();
     
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");

@@ -37,9 +37,19 @@ public interface IAnalyticsCacheService
     Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null, CancellationToken ct = default) where T : class;
     
     /// <summary>
-    /// Proverava da li Redis dostupan.
+    /// Proverava da li Redis dostupan (konekcija).
     /// </summary>
     bool IsRedisAvailable { get; }
+
+    /// <summary>
+    /// Da li je Redis ukljucen (rucni toggle).
+    /// </summary>
+    bool IsRedisEnabled { get; }
+
+    /// <summary>
+    /// Rucno ukljuci/iskljuci Redis koriscenje.
+    /// </summary>
+    void SetRedisEnabled(bool enabled);
 }
 
 /// <summary>

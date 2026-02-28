@@ -2,6 +2,7 @@ import { useContext, useState } from "react";
 import { Menu, RefreshCw, Server } from "lucide-react";
 import ApiPingFlag from "../../components/ApiPingFlag";
 import WorkerControlFlag from "../../components/WorkerControlFlag";
+import RedisToggleFlag from "../../components/RedisToggleFlag";
 import { BackendStatusContext } from "../../context/BackendStatusContext";
 import { getDataScope, setDataScope, type DataScope } from "../../utils/dataScope";
 
@@ -51,6 +52,7 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
 
         <ApiPingFlag />
         <WorkerControlFlag />
+        <RedisToggleFlag />
 
         <div className="ml-auto flex items-center gap-2">
           <label className="text-xs text-[#90a0ba]">Prikaz</label>

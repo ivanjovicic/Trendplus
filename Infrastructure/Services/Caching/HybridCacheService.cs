@@ -34,6 +34,7 @@ public class HybridCacheService : IAnalyticsCacheService
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly JsonSerializerOptions _jsonOptions;
     private bool _redisAvailable;
+    private bool _redisUserEnabled = true;
     private DateTime _lastRedisCheck = DateTime.MinValue;
     private readonly TimeSpan _redisCheckInterval = TimeSpan.FromMinutes(1);
 
@@ -58,13 +59,18 @@ public class HybridCacheService : IAnalyticsCacheService
     {
         get
         {
-            // Periodično proveravaj Redis dostupnost
             if (DateTime.UtcNow - _lastRedisCheck > _redisCheckInterval)
-            {
                 CheckRedisAvailability();
-            }
             return _redisAvailable;
         }
+    }
+
+    public bool IsRedisEnabled => _redisUserEnabled;
+
+    public void SetRedisEnabled(bool enabled)
+    {
+        _redisUserEnabled = enabled;
+        _logger.LogInformation("Redis cache {State} by user toggle", enabled ? "ENABLED" : "DISABLED");
     }
 
     private void CheckRedisAvailability()
@@ -99,8 +105,8 @@ public class HybridCacheService : IAnalyticsCacheService
             return memoryValue;
         }
 
-        // L2: Redis (ako je dostupan)
-        if (_redisAvailable && _distributedCache != null)
+        // L2: Redis (ako je dostupan i ukljucen)
+        if (_redisUserEnabled && _redisAvailable && _distributedCache != null)
         {
             try
             {
@@ -135,8 +141,8 @@ public class HybridCacheService : IAnalyticsCacheService
         // L1: In-Memory (uvek)
         SetMemoryCache(key, value, exp);
 
-        // L2: Redis (ako je dostupan)
-        if (_redisAvailable && _distributedCache != null)
+        // L2: Redis (ako je dostupan i ukljucen)
+        if (_redisUserEnabled && _redisAvailable && _distributedCache != null)
         {
             try
             {
@@ -168,7 +174,7 @@ public class HybridCacheService : IAnalyticsCacheService
         _keys.TryRemove(key, out _);
 
         // L2: Redis
-        if (_redisAvailable && _distributedCache != null)
+        if (_redisUserEnabled && _redisAvailable && _distributedCache != null)
         {
             try
             {
@@ -198,7 +204,7 @@ public class HybridCacheService : IAnalyticsCacheService
             
             // L2: Redis - NAPOMENA: Redis ne podržava wildcard delete bez SCAN
             // Za jednostavnost, brišemo poznate ključeve
-            if (_redisAvailable && _distributedCache != null)
+            if (_redisUserEnabled && _redisAvailable && _distributedCache != null)
             {
                 foreach (var key in keysToRemove)
                 {

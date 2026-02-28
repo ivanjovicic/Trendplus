@@ -28,6 +28,8 @@ public class InMemoryCacheService : IAnalyticsCacheService
     }
 
     public bool IsRedisAvailable => false;
+    public bool IsRedisEnabled => false;
+    public void SetRedisEnabled(bool enabled) { /* no-op: no Redis in InMemory implementation */ }
 
     public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
     {
