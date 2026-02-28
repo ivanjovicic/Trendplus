@@ -312,8 +312,16 @@ public static class AllEndpoints
                         ""TotalUnits"" INT NOT NULL DEFAULT 0,
                         ""AvgBasketValue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
                         ""AvgItemPrice"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""BasketStdDev"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""ItemPriceStdDev"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""EffectiveTransactionCount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                        ""DataConfidence"" DECIMAL(18,2) NOT NULL DEFAULT 0,
                         ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT NOW()
                     );
+                    ALTER TABLE IF EXISTS ""AnalyticsDailySummary"" ADD COLUMN IF NOT EXISTS ""BasketStdDev"" DECIMAL(18,2) NOT NULL DEFAULT 0;
+                    ALTER TABLE IF EXISTS ""AnalyticsDailySummary"" ADD COLUMN IF NOT EXISTS ""ItemPriceStdDev"" DECIMAL(18,2) NOT NULL DEFAULT 0;
+                    ALTER TABLE IF EXISTS ""AnalyticsDailySummary"" ADD COLUMN IF NOT EXISTS ""EffectiveTransactionCount"" DECIMAL(18,2) NOT NULL DEFAULT 0;
+                    ALTER TABLE IF EXISTS ""AnalyticsDailySummary"" ADD COLUMN IF NOT EXISTS ""DataConfidence"" DECIMAL(18,2) NOT NULL DEFAULT 0;
                     CREATE INDEX IF NOT EXISTS idx_daily_summary_date ON ""AnalyticsDailySummary"" (""Date"" DESC);
 
                     -- Category Summary
