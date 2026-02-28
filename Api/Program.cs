@@ -252,6 +252,10 @@ try
     // Cache wiring:
     // - Development default: In-Memory only (unless explicitly enabled via Caching:UseRedis=true)
     // - Production default: Hybrid (In-Memory + Redis)
+    //
+    // NOTE: Some scoped clients (e.g. CommonMatchesClient) depend on IDistributedCache.
+    // Ensure a safe default is always available even when Redis is disabled.
+    builder.Services.AddDistributedMemoryCache();
     var useRedisCache = builder.Configuration.GetValue<bool?>("Caching:UseRedis")
         ?? !builder.Environment.IsDevelopment();
 
