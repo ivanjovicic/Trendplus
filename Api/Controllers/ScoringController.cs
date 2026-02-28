@@ -68,6 +68,7 @@ namespace Api.Controllers
                     Brand: request.Brand,
                     Category: request.Category,
                     Market: request.Market,
+                    ArtikalId: request.ArtikalId,
                     DobavljacId: request.DobavljacId,
                     TipObuceId: request.TipObuceId,
                     SezonaId: request.SezonaId,
@@ -103,4 +104,3 @@ namespace Api.Controllers
         }
     }
 }
-

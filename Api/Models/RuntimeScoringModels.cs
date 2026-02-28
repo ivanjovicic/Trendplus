@@ -8,6 +8,7 @@ namespace Api.Models
         [Required]
         public IFormFile? Image { get; set; }
 
+        public int? ArtikalId { get; set; }
         public decimal? Cost { get; set; }
         public decimal? TargetPrice { get; set; }
         public string? Brand { get; set; }
@@ -54,6 +55,19 @@ namespace Api.Models
         public int? OnnxModelVersion { get; set; }
         public double? OnnxRawSellProbability { get; set; }
         public double? OnnxSellProbability { get; set; }
+        public bool UsedEnterpriseModel { get; set; }
+        public double? EnterpriseLinearScore { get; set; }
+        public double? EnterpriseRawProbability { get; set; }
+        public double? EnterpriseSoftmaxProbability { get; set; }
+        public double? EnterpriseCalibratedProbability { get; set; }
+        public double? EnterpriseFinalProbability { get; set; }
+        public string? EnterpriseModelType { get; set; }
+        public int? EnterpriseModelVersion { get; set; }
+        public bool EnterpriseModelFromDatabase { get; set; }
+        public double? ExternalModelProbability { get; set; }
+        public bool UsedFeatureStoreFeatures { get; set; }
+        public int? FeatureStoreLocalProductId { get; set; }
+        public long? FeatureStoreTrainingProductId { get; set; }
         public string Market { get; set; } = "RS";
         public string? Currency { get; set; }
         public decimal? TypicalPrice { get; set; }

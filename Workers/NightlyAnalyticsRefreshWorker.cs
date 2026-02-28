@@ -1,4 +1,4 @@
-using Infrastructure.Configuration;
+﻿using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,7 +48,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("🌙 {WorkerName} starting...", WorkerName);
+        _logger.LogInformation("ðŸŒ™ {WorkerName} starting...", WorkerName);
         _healthService.ReportRunning(WorkerName, "Starting up...");
 
         var paused = false;
@@ -143,7 +143,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         }
 
         _healthService.ReportStopped(WorkerName, "Graceful shutdown");
-        _logger.LogInformation("🌙 {WorkerName} stopped", WorkerName);
+        _logger.LogInformation("ðŸŒ™ {WorkerName} stopped", WorkerName);
     }
 
     private async Task RunNightlyRefreshAsync(CancellationToken ct)
@@ -152,7 +152,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         var sw = Stopwatch.StartNew();
 
         _healthService.ReportRunning(WorkerName, "Nightly refresh started...");
-        _logger.LogInformation("🌙 Nightly analytics refresh started at {StartedAtUtc:O}", startedAtUtc);
+        _logger.LogInformation("ðŸŒ™ Nightly analytics refresh started at {StartedAtUtc:O}", startedAtUtc);
 
         var warnings = new List<string>();
         var errors = new List<string>();
@@ -163,7 +163,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             var msg = "Missing Trendplus DB connection string.";
-            _logger.LogError("🌙 {Message}", msg);
+            _logger.LogError("ðŸŒ™ {Message}", msg);
             _healthService.ReportError(WorkerName, new InvalidOperationException(msg));
             return;
         }
@@ -174,64 +174,28 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         var acquired = await TryAcquireLockAsync(connection, ct);
         if (!acquired)
         {
-            _logger.LogInformation("🌙 Skipping refresh because another instance holds advisory lock.");
+            _logger.LogInformation("ðŸŒ™ Skipping refresh because another instance holds advisory lock.");
             _healthService.ReportHealthy(WorkerName, "Skipped (another instance is running nightly refresh).");
             return;
         }
 
         try
         {
-            if (_options.MaterializedViewsToRefresh.Count == 0)
-            {
-                warnings.Add("No materialized views configured for refresh.");
-            }
+            await RefreshMaterializedViewsAsync(
+                connection,
+                _options.MaterializedViewsToRefresh,
+                warnings,
+                errors,
+                sourceLabel: "trendplus",
+                ct: ct);
 
-            foreach (var mv in _options.MaterializedViewsToRefresh)
-            {
-                ct.ThrowIfCancellationRequested();
-
-                if (!TryParseRelation(mv, out var schema, out var rel, out var quoted))
-                {
-                    warnings.Add($"Invalid MV identifier: {mv}");
-                    continue;
-                }
-
-                var exists = await IsMaterializedViewAsync(connection, schema, rel, ct);
-                if (!exists)
-                {
-                    warnings.Add($"Missing MV: {schema}.{rel}");
-                    continue;
-                }
-
-                _healthService.ReportRunning(WorkerName, $"Refreshing {schema}.{rel}...");
-                var refreshSw = Stopwatch.StartNew();
-                try
-                {
-                    var refreshSql = _options.RefreshConcurrently
-                        ? $"REFRESH MATERIALIZED VIEW CONCURRENTLY {quoted};"
-                        : $"REFRESH MATERIALIZED VIEW {quoted};";
-
-                    await ExecuteNonQueryAsync(connection, refreshSql, _options.CommandTimeoutSeconds, ct);
-                    refreshSw.Stop();
-                    _logger.LogInformation(
-                        "🌙 Refreshed {Relation} in {DurationMs}ms",
-                        $"{schema}.{rel}",
-                        refreshSw.Elapsed.TotalMilliseconds);
-                }
-                catch (PostgresException ex) when (ex.SqlState == "0A000")
-                {
-                    // Feature not supported (e.g. CONCURRENTLY without unique index).
-                    refreshSw.Stop();
-                    errors.Add($"Refresh failed for {schema}.{rel}: {ex.MessageText}");
-                    _logger.LogError(ex, "🌙 Refresh failed for {Relation}", $"{schema}.{rel}");
-                }
-                catch (PostgresException ex)
-                {
-                    refreshSw.Stop();
-                    errors.Add($"Refresh failed for {schema}.{rel}: {ex.MessageText}");
-                    _logger.LogError(ex, "🌙 Refresh failed for {Relation}", $"{schema}.{rel}");
-                }
-            }
+            await RefreshOpenTrainingMaterializedViewsAsync(
+                scope.ServiceProvider,
+                trendplusConnectionString: connectionString,
+                trendplusConnection: connection,
+                warnings: warnings,
+                errors: errors,
+                ct: ct);
 
             if (_options.VacuumAnalyzeTargets.Count == 0)
             {
@@ -263,7 +227,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                     await ExecuteNonQueryAsync(connection, vacuumSql, _options.CommandTimeoutSeconds, ct);
                     vacuumSw.Stop();
                     _logger.LogInformation(
-                        "🌙 Vacuumed {Relation} in {DurationMs}ms",
+                        "ðŸŒ™ Vacuumed {Relation} in {DurationMs}ms",
                         $"{schema}.{rel}",
                         vacuumSw.Elapsed.TotalMilliseconds);
                 }
@@ -271,7 +235,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 {
                     vacuumSw.Stop();
                     errors.Add($"VACUUM failed for {schema}.{rel}: {ex.MessageText}");
-                    _logger.LogError(ex, "🌙 VACUUM failed for {Relation}", $"{schema}.{rel}");
+                    _logger.LogError(ex, "ðŸŒ™ VACUUM failed for {Relation}", $"{schema}.{rel}");
                 }
             }
         }
@@ -285,7 +249,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         if (errors.Count > 0)
         {
             var message = $"Nightly refresh finished with {errors.Count} errors; {warnings.Count} warnings. Duration: {sw.Elapsed.TotalSeconds:0}s";
-            _logger.LogError("🌙 {Message}", message);
+            _logger.LogError("ðŸŒ™ {Message}", message);
             _healthService.ReportError(WorkerName, new InvalidOperationException(message));
             return;
         }
@@ -294,8 +258,140 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
 
         var okMessage = $"Nightly refresh OK. Duration: {sw.Elapsed.TotalSeconds:0}s"
                         + (warnings.Count > 0 ? $" | Warnings: {string.Join("; ", warnings.Distinct())}" : string.Empty);
-        _logger.LogInformation("🌙 {Message}", okMessage);
+        _logger.LogInformation("ðŸŒ™ {Message}", okMessage);
         _healthService.ReportHealthy(WorkerName, okMessage);
+    }
+
+    private async Task RefreshOpenTrainingMaterializedViewsAsync(
+        IServiceProvider serviceProvider,
+        string trendplusConnectionString,
+        NpgsqlConnection trendplusConnection,
+        List<string> warnings,
+        List<string> errors,
+        CancellationToken ct)
+    {
+        var targets = _options.OpenTrainingMaterializedViewsToRefresh
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (targets.Count == 0)
+            return;
+
+        var openTrainingDb = serviceProvider.GetRequiredService<OpenProductTrainingDbContext>();
+        var openTrainingConnectionString = openTrainingDb.Database.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(openTrainingConnectionString))
+        {
+            warnings.Add("OpenTraining connection string missing; skipping OpenTraining MV refresh.");
+            return;
+        }
+
+        if (string.Equals(
+            trendplusConnectionString.Trim(),
+            openTrainingConnectionString.Trim(),
+            StringComparison.OrdinalIgnoreCase))
+        {
+            var trendplusSet = new HashSet<string>(_options.MaterializedViewsToRefresh, StringComparer.OrdinalIgnoreCase);
+            var sameConnectionTargets = targets.Where(x => !trendplusSet.Contains(x)).ToList();
+            if (sameConnectionTargets.Count == 0)
+                return;
+
+            await RefreshMaterializedViewsAsync(
+                trendplusConnection,
+                sameConnectionTargets,
+                warnings,
+                errors,
+                sourceLabel: "open_training",
+                ct: ct);
+            return;
+        }
+
+        await using var openConnection = new NpgsqlConnection(openTrainingConnectionString);
+        await openConnection.OpenAsync(ct);
+
+        var acquired = await TryAcquireLockAsync(openConnection, ct);
+        if (!acquired)
+        {
+            warnings.Add("Skipped OpenTraining MV refresh because another instance holds advisory lock.");
+            return;
+        }
+
+        try
+        {
+            await RefreshMaterializedViewsAsync(
+                openConnection,
+                targets,
+                warnings,
+                errors,
+                sourceLabel: "open_training",
+                ct: ct);
+        }
+        finally
+        {
+            await ReleaseLockAsync(openConnection, ct);
+        }
+    }
+
+    private async Task RefreshMaterializedViewsAsync(
+        NpgsqlConnection connection,
+        IReadOnlyCollection<string> materializedViews,
+        List<string> warnings,
+        List<string> errors,
+        string sourceLabel,
+        CancellationToken ct)
+    {
+        if (materializedViews.Count == 0)
+        {
+            warnings.Add($"No materialized views configured for refresh ({sourceLabel}).");
+            return;
+        }
+
+        foreach (var mv in materializedViews)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (!TryParseRelation(mv, out var schema, out var rel, out var quoted))
+            {
+                warnings.Add($"Invalid MV identifier ({sourceLabel}): {mv}");
+                continue;
+            }
+
+            var exists = await IsMaterializedViewAsync(connection, schema, rel, ct);
+            if (!exists)
+            {
+                warnings.Add($"Missing MV ({sourceLabel}): {schema}.{rel}");
+                continue;
+            }
+
+            _healthService.ReportRunning(WorkerName, $"Refreshing {sourceLabel}:{schema}.{rel}...");
+            var refreshSw = Stopwatch.StartNew();
+            try
+            {
+                var refreshSql = _options.RefreshConcurrently
+                    ? $"REFRESH MATERIALIZED VIEW CONCURRENTLY {quoted};"
+                    : $"REFRESH MATERIALIZED VIEW {quoted};";
+
+                await ExecuteNonQueryAsync(connection, refreshSql, _options.CommandTimeoutSeconds, ct);
+                refreshSw.Stop();
+                _logger.LogInformation(
+                    "ðŸŒ™ Refreshed {Scope}/{Relation} in {DurationMs}ms",
+                    sourceLabel,
+                    $"{schema}.{rel}",
+                    refreshSw.Elapsed.TotalMilliseconds);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "0A000")
+            {
+                refreshSw.Stop();
+                errors.Add($"Refresh failed ({sourceLabel}) for {schema}.{rel}: {ex.MessageText}");
+                _logger.LogError(ex, "ðŸŒ™ Refresh failed ({Scope}) for {Relation}", sourceLabel, $"{schema}.{rel}");
+            }
+            catch (PostgresException ex)
+            {
+                refreshSw.Stop();
+                errors.Add($"Refresh failed ({sourceLabel}) for {schema}.{rel}: {ex.MessageText}");
+                _logger.LogError(ex, "ðŸŒ™ Refresh failed ({Scope}) for {Relation}", sourceLabel, $"{schema}.{rel}");
+            }
+        }
     }
 
     private static TimeSpan ParseRunAtUtc(string value)

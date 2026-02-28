@@ -494,6 +494,11 @@ public static class DatabaseInitializer
             "Database/OpenProductTraining/005_open_training_2_0_views.sql",
             logger);
 
+        await ExecuteSqlFileAsync(
+            configuration.GetConnectionString("AnalyticsConnection")!,
+            "Database/OpenProductTraining/006_runtime_priors_materialized.sql",
+            logger);
+
         await EnsureOpenProductTrainingDatasetsAsync(
             configuration.GetConnectionString("AnalyticsConnection")!,
             configuration,

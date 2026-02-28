@@ -171,6 +171,23 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
+function MetricCard(props: {
+  label: string;
+  value: string;
+  tone?: Tone;
+  infoTip?: string;
+}) {
+  return (
+    <article className={`metric-card ${props.tone ?? "neutral"}`}>
+      <span className="metric-label">
+        <span>{props.label}</span>
+        {props.infoTip ? <InfoTip text={props.infoTip} /> : null}
+      </span>
+      <strong>{props.value}</strong>
+    </article>
+  );
+}
+
 export default function AnalyticsDashboard() {
   const [preset, setPreset] = useState<DatePreset>("30d");
   const [fromDate, setFromDate] = useState<string>(() => {
@@ -370,15 +387,54 @@ export default function AnalyticsDashboard() {
         {loading && <div className="analytics-skeleton-grid">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="analytics-skeleton-card" />)}</div>}
         {!loading && summary && (
           <div className="analytics-card-grid">
-            <article className="metric-card good"><span className="metric-label"><span>Ukupan promet</span><InfoTip text={HELP.promet} /></span><strong>{formatCurrency(summary.totalRevenue)}</strong></article>
-            <article className="metric-card neutral"><span className="metric-label"><span>Transakcije</span><InfoTip text={HELP.transakcije} /></span><strong>{formatNumber(summary.totalTransactions)}</strong></article>
-            <article className="metric-card neutral"><span className="metric-label"><span>Prodate jedinice</span><InfoTip text={HELP.jedinice} /></span><strong>{formatNumber(summary.totalUnits)}</strong></article>
-            <article className="metric-card neutral"><span>Promet po danu</span><strong>{formatCurrency(derived.revenuePerDay)}</strong></article>
-            <article className="metric-card neutral"><span>Transakcije po danu</span><strong>{formatNumber(derived.transactionsPerDay, 1)}</strong></article>
-            <article className={`metric-card ${statusTone(advancedByKey.get("completeness")?.status)}`}><span className="metric-label"><span>Dostupnost SKU</span><InfoTip text={HELP.sku} /></span><strong>{formatPercent(derived.availablePct)}</strong><small>Nedostupno: {formatPercent(derived.unavailablePct)}</small></article>
-            <article className={`metric-card ${statusTone(advancedByKey.get("oos")?.status)}`}><span className="metric-label"><span>Crvena zona zaliha</span><InfoTip text={HELP.oos} /></span><strong>{formatPercent(derived.redZonePct)}</strong></article>
-            <article className={`metric-card ${statusTone(advancedByKey.get("velocity")?.status)}`}><span className="metric-label"><span>MA7 + Momentum</span><InfoTip text={`${HELP.ma7} ${HELP.momentum}`} /></span><strong>{formatCurrency(movingStats.ma7Revenue)}</strong><small>{trendLabel(movingStats.momentumPct)} {formatPercent(movingStats.momentumPct)}</small></article>
-            <article className="metric-card neutral"><span className="metric-label"><span>Elasticnost (aproks.)</span><InfoTip text={HELP.elasticnost} /></span><strong>{movingStats.elasticity == null ? "N/A" : formatNumber(movingStats.elasticity, 2)}</strong></article>
+            <MetricCard
+              label="Ukupan promet"
+              value={formatCurrency(summary.totalRevenue)}
+              tone="good"
+              infoTip={HELP.promet}
+            />
+            <MetricCard
+              label="Transakcije"
+              value={formatNumber(summary.totalTransactions)}
+              infoTip={HELP.transakcije}
+            />
+            <MetricCard
+              label="Prodate jedinice"
+              value={formatNumber(summary.totalUnits)}
+              infoTip={HELP.jedinice}
+            />
+            <MetricCard
+              label="Promet po danu"
+              value={formatCurrency(derived.revenuePerDay)}
+            />
+            <MetricCard
+              label="Transakcije po danu"
+              value={formatNumber(derived.transactionsPerDay, 1)}
+            />
+            <MetricCard
+              label="Dostupnost SKU"
+              value={formatPercent(derived.availablePct)}
+              tone="good"
+              infoTip={HELP.sku}
+            />
+            <MetricCard
+              label="Crvena zona zaliha"
+              value={formatPercent(derived.redZonePct)}
+              tone="warning"
+              infoTip={HELP.oos}
+            />
+            <MetricCard
+              label="MA7 + Momentum"
+              value={formatCurrency(movingStats.ma7Revenue)}
+              tone="good"
+              infoTip={HELP.ma7}
+            />
+            <MetricCard
+              label="Elasticnost (aproks.)"
+              value={movingStats.elasticity == null ? "N/A" : formatNumber(movingStats.elasticity, 2)}
+              tone="neutral"
+              infoTip={HELP.elasticnost}
+            />
           </div>
         )}
 
@@ -494,7 +550,7 @@ export default function AnalyticsDashboard() {
 
         {!loading && topAdvanced && (
           <section className="analytics-panel">
-            <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa vise pogleda: promet, komadi, brzina prodaje i marza." /></h3>
+            <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa vise pogleda: promet, komada, brzina prodaje i marza." /></h3>
             <p className="section-note">Hover na red prikazuje sazetak trenda. Status zalihe je obojen radi brzeg skeniranja.</p>
             <div className="top-tabs">
               <button title="Rangiranje artikala po ukupnom prometu" className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Top po prometu</button>

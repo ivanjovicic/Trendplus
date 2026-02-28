@@ -460,7 +460,16 @@ namespace Api.Services
             if (string.IsNullOrWhiteSpace(cs))
                 return new Dictionary<string, RuntimeGroupStats>(StringComparer.Ordinal);
 
-            const string sql = @"
+            const string sqlMaterialized = @"
+                SELECT
+                    brand_key,
+                    shoe_type_key,
+                    popularity_prior_score,
+                    typical_price,
+                    sample_size
+                FROM mv_brand_shoe_runtime_priors;";
+
+            const string sqlViewFallback = @"
                 SELECT
                     brand_key,
                     shoe_type_key,
@@ -476,31 +485,45 @@ namespace Api.Services
 
                 await using var conn = new NpgsqlConnection(cs);
                 await conn.OpenAsync(ct);
-                await using var cmd = new NpgsqlCommand(sql, conn);
-                await using var r = await cmd.ExecuteReaderAsync(ct);
+                await using var cmd = new NpgsqlCommand(sqlMaterialized, conn);
 
-                while (await r.ReadAsync(ct))
+                NpgsqlDataReader r;
+                try
                 {
-                    var brandKey = r.IsDBNull(0) ? string.Empty : r.GetString(0);
-                    var shoeTypeKey = r.IsDBNull(1) ? string.Empty : r.GetString(1);
-                    if (string.IsNullOrWhiteSpace(shoeTypeKey))
-                        continue;
+                    r = await cmd.ExecuteReaderAsync(ct);
+                }
+                catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable || ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+                {
+                    _logger.LogDebug(ex, "Materialized runtime priors missing, falling back to view.");
+                    cmd.CommandText = sqlViewFallback;
+                    r = await cmd.ExecuteReaderAsync(ct);
+                }
 
-                    brandKey = brandKey.Trim().ToLowerInvariant();
-                    shoeTypeKey = shoeTypeKey.Trim().ToLowerInvariant();
-
-                    var popularityPrior = r.IsDBNull(2) ? 0m : r.GetDecimal(2);
-                    var typicalPrice = r.IsDBNull(3) ? 0m : r.GetDecimal(3);
-                    var sampleSize = r.IsDBNull(4) ? 0 : r.GetInt32(4);
-
-                    map[$"{brandKey}|{shoeTypeKey}"] = new RuntimeGroupStats
+                await using (r)
+                {
+                    while (await r.ReadAsync(ct))
                     {
-                        TypicalPrice = typicalPrice,
-                        PopularityPriorScore = popularityPrior,
-                        SampleSize = sampleSize
-                    };
+                        var brandKey = r.IsDBNull(0) ? string.Empty : r.GetString(0);
+                        var shoeTypeKey = r.IsDBNull(1) ? string.Empty : r.GetString(1);
+                        if (string.IsNullOrWhiteSpace(shoeTypeKey))
+                            continue;
 
-                    rows.Add((shoeTypeKey, popularityPrior, typicalPrice, sampleSize));
+                        brandKey = brandKey.Trim().ToLowerInvariant();
+                        shoeTypeKey = shoeTypeKey.Trim().ToLowerInvariant();
+
+                        var popularityPrior = r.IsDBNull(2) ? 0m : r.GetDecimal(2);
+                        var typicalPrice = r.IsDBNull(3) ? 0m : r.GetDecimal(3);
+                        var sampleSize = r.IsDBNull(4) ? 0 : r.GetInt32(4);
+
+                        map[$"{brandKey}|{shoeTypeKey}"] = new RuntimeGroupStats
+                        {
+                            TypicalPrice = typicalPrice,
+                            PopularityPriorScore = popularityPrior,
+                            SampleSize = sampleSize
+                        };
+
+                        rows.Add((shoeTypeKey, popularityPrior, typicalPrice, sampleSize));
+                    }
                 }
 
                 // Fallback by shoe type across all brands.

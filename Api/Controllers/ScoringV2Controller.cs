@@ -68,6 +68,7 @@ public sealed class ScoringV2Controller : ControllerBase
                 Brand: request.Brand,
                 Category: request.Category,
                 Market: request.Market,
+                ArtikalId: request.ArtikalId,
                 DobavljacId: request.DobavljacId,
                 TipObuceId: request.TipObuceId,
                 SezonaId: request.SezonaId,
@@ -116,6 +117,7 @@ public sealed class ScoringV2Controller : ControllerBase
                 Brand: request.Brand,
                 Category: request.Category,
                 Market: request.Market,
+                ArtikalId: request.ArtikalId,
                 DobavljacId: request.DobavljacId,
                 TipObuceId: request.TipObuceId,
                 SezonaId: request.SezonaId,
@@ -207,10 +209,10 @@ public sealed record RuntimeScoringDebugRequestDto(
     string? Brand,
     string? Category,
     string? Market,
+    int? ArtikalId = null,
     int? DobavljacId = null,
     int? TipObuceId = null,
     int? SezonaId = null,
     string? Velicina = null,
     string? Boja = null,
     string? Materijal = null);
-

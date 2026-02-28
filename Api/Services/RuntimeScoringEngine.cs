@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Linq;
 using Api.Config;
 using Api.Models;
 using Application.Artikli.Common.Interfaces;
@@ -27,6 +28,7 @@ namespace Api.Services
         string? Brand,
         string? Category,
         string? Market,
+        int?    ArtikalId    = null,
         int?    DobavljacId  = null,
         int?    TipObuceId   = null,
         int?    SezonaId     = null,
@@ -40,29 +42,39 @@ namespace Api.Services
         private readonly IOpenProductTrainingSignalProvider _trainingSignals;
         private readonly ISellProbabilityRsOnnxScorer _onnxScorer;
         private readonly AnalyticsDbContext _analyticsDb;
+        private readonly OpenProductTrainingDbContext _openTrainingDb;
         private readonly ITrendplusDbContext _trendDb;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IEnterpriseScoringModelProvider _enterpriseModelProvider;
         private readonly RuntimeScoringOptions _options;
         private readonly ILogger<RuntimeScoringEngine> _logger;
+        private readonly EnterpriseScoringLinearModel _enterpriseFallbackModel;
+
+        private sealed record FeatureStoreSnapshot(long ProductId, int? LocalProductId, IReadOnlyDictionary<string, float> Features);
 
         public RuntimeScoringEngine(
             IEmbeddingService embeddingService,
             IOpenProductTrainingSignalProvider trainingSignals,
             ISellProbabilityRsOnnxScorer onnxScorer,
             AnalyticsDbContext analyticsDb,
+            OpenProductTrainingDbContext openTrainingDb,
             ITrendplusDbContext trendDb,
             IHttpClientFactory httpClientFactory,
-            IOptions<RuntimeScoringOptions> options,
+            IEnterpriseScoringModelProvider enterpriseModelProvider,
+            IOptionsSnapshot<RuntimeScoringOptions> options,
             ILogger<RuntimeScoringEngine> logger)
         {
             _embeddingService = embeddingService;
             _trainingSignals = trainingSignals;
             _onnxScorer = onnxScorer;
             _analyticsDb = analyticsDb;
+            _openTrainingDb = openTrainingDb;
             _trendDb = trendDb;
             _httpClientFactory = httpClientFactory;
+            _enterpriseModelProvider = enterpriseModelProvider;
             _options = options.Value;
             _logger = logger;
+            _enterpriseFallbackModel = new EnterpriseScoringLinearModel(_options.Enterprise);
         }
 
         public async Task<RuntimeScoringEvaluateResponse> EvaluateAsync(
@@ -99,9 +111,13 @@ namespace Api.Services
             }
 
             var imageSimilarityScore = ComputeImageSimilarity(similarProducts);
-            var sourceCoverageCount = scraped.SourceCount + marketplace.SourceCount;
-            // 3 marketplace sources max + scraper; cap denominator at 6 for a fair coverage score
-            var sourceCoverageScore = ClampScore((Math.Min(sourceCoverageCount, 6) / 6d) * 100d);
+            var coverageItemsPerUnit = Math.Max(1, _options.Tuning.MarketplaceCoverageItemsPerUnit);
+            var coverageMaxUnits = Math.Max(0, _options.Tuning.MarketplaceCoverageMaxUnits);
+            var marketplaceCoverageUnits = Math.Min(marketplace.SourceCount / coverageItemsPerUnit, coverageMaxUnits);
+            var sourceCoverageCount = scraped.SourceCount + marketplaceCoverageUnits;
+            // capped coverage buckets: scraper sources + marketplace depth buckets
+            var coverageNormalizationUnits = Math.Max(1, _options.Tuning.SourceCoverageNormalizationMaxUnits);
+            var sourceCoverageScore = ClampScore((Math.Min(sourceCoverageCount, coverageNormalizationUnits) / (double)coverageNormalizationUnits) * 100d);
 
             // ── Local-data signals (from own sales / seasonal DB) ──────────────────
             var supplierScore  = await ComputeSupplierScoreAsync(input.DobavljacId);
@@ -168,7 +184,22 @@ namespace Api.Services
                      + 0.12 * imageSimilarityScore + 0.10 * marginScore
                      + 0.06 * sourceCoverageScore);
 
-            var sellProbability = Clamp01(sellProbabilityScore / 100d);
+            var heuristicSellProbability = Clamp01(sellProbabilityScore / 100d);
+            var canonicalFeatures = BuildEnterpriseCanonicalFeatures(
+                priceFitScore,
+                marginScore,
+                popularityScore,
+                trendMomentum,
+                sourceCoverageScore,
+                normalizedLocalDemandScore,
+                imageSimilarityScore,
+                dealScore,
+                supplierScore,
+                seasonalScore);
+            var enterpriseRuntimeModel = _options.Enterprise.Enabled
+                ? await ResolveEnterpriseRuntimeModelAsync(ct)
+                : (Model: (EnterpriseScoringLinearModel?)null, Version: (int?)null, ModelType: (string?)null, FromDatabase: false);
+            var enterprise = enterpriseRuntimeModel.Model?.Compute(canonicalFeatures);
 
             var pythonPayload = new
             {
@@ -192,6 +223,14 @@ namespace Api.Services
                 materialScore
             };
 
+            var localProductId = await ResolveLocalProductIdAsync(input, ct);
+            var featureStoreSnapshot = await TryLoadFeatureStoreSnapshotAsync(
+                localProductId,
+                brandLike,
+                categoryLike,
+                input.TargetPrice,
+                ct);
+
             // Prefer ONNX in-process inference (fast) and keep Python as fallback (optional).
             SellProbabilityRsModelResult? onnx = null;
             try
@@ -201,14 +240,10 @@ namespace Api.Services
                     training: training,
                     momentumProxy: scraped.AvgMomentum,
                     hasImageEmbedding: embedding is not null,
-                    brand: brand);
+                    brand: brand,
+                    featureStoreFeatures: featureStoreSnapshot?.Features);
 
                 onnx = await _onnxScorer.TryPredictAsync(onnxFeatures, ct);
-                if (onnx is not null)
-                {
-                    // Blend to keep backwards-compatible behavior and to guard against missing runtime features.
-                    sellProbability = Clamp01((sellProbability * 0.35) + (onnx.Prediction * 0.65));
-                }
             }
             catch (Exception ex)
             {
@@ -219,30 +254,41 @@ namespace Api.Services
             if (onnx is null)
             {
                 python = await TryPredictWithPythonAsync(pythonPayload, ct);
-                if (python.SellProbability.HasValue)
-                {
-                    // Python returns probability in [0,1]. Keep response semantics stable.
-                    sellProbability = Clamp01((sellProbability * 0.40) + (python.SellProbability.Value * 0.60));
-                }
             }
+
+            var externalModelProbability = onnx?.Prediction ?? python.SellProbability;
+            var sellProbability = ResolveFinalSellProbability(
+                heuristicSellProbability,
+                externalModelProbability,
+                enterprise?.FinalProbability,
+                usedOnnxModel: onnx is not null,
+                hasFeatureStoreFeatures: featureStoreSnapshot is not null);
+
+            var currency = scraped.Currency ?? marketplace.Currency ?? "EUR";
+            var priceRange = BuildRange(baselinePrice, input.TargetPrice, currency);
+            var pricePos = GetPricePositioning(input.TargetPrice, baselinePrice);
+
+            sellProbability = ApplyBusinessProbabilityOverlay(
+                sellProbability,
+                pricePositioning: pricePos,
+                sourceCoverageCount: sourceCoverageCount,
+                marginScore: marginScore,
+                hasTrainingSignal: training.HasTrainingSignal,
+                dealScore: dealScore);
 
             // Re-anchor score to the final probability so FinalScore stays consistent with SellProbabilityRS.
             sellProbabilityScore = NormalizeScore(sellProbability * 100d);
 
             var localFinalScore = NormalizeScore(
-                0.34 * sellProbabilityScore +
-                0.18 * priceFitScore +
-                0.16 * popularityScore +
-                0.12 * dealScore +
+                0.55 * sellProbabilityScore +
+                0.15 * priceFitScore +
                 0.10 * marginScore +
-                0.10 * trendMomentum);
+                0.10 * trendMomentum +
+                0.10 * popularityScore);
 
             var finalScore = python.FinalScore.HasValue
                 ? NormalizeScore((localFinalScore * 0.4) + (python.FinalScore.Value * 0.6))
                 : localFinalScore;
-
-            var currency = scraped.Currency ?? marketplace.Currency ?? "EUR";
-            var priceRange = BuildRange(baselinePrice, input.TargetPrice, currency);
 
             var effPriceFit  = Round2(python.PriceFitScore  ?? priceFitScore);
             var effPopularity = Round2(python.PopularityScore ?? popularityScore);
@@ -253,7 +299,6 @@ namespace Api.Services
             var (verdict, verdictColor) = GetVerdict(finalScore);
             var scoreLabel   = GetScoreLabel(finalScore);
             var confidence   = ComputeConfidence(training.HasTrainingSignal, sourceCoverageCount, imageSimilarityScore, baselinePrice.HasValue);
-            var pricePos     = GetPricePositioning(input.TargetPrice, baselinePrice);
             var insights     = BuildInsights(
                 effPriceFit, effPopularity, effDeal, effMargin, effTrend,
                 imageSimilarityScore, sourceCoverageCount, training.HasTrainingSignal, pricePos);
@@ -285,6 +330,19 @@ namespace Api.Services
                 OnnxModelVersion = onnx?.Version,
                 OnnxRawSellProbability = onnx?.RawPrediction,
                 OnnxSellProbability = onnx?.Prediction,
+                UsedEnterpriseModel = enterprise is not null,
+                EnterpriseLinearScore = enterprise?.LinearScore,
+                EnterpriseRawProbability = enterprise?.RawProbability,
+                EnterpriseSoftmaxProbability = enterprise?.SoftmaxProbability,
+                EnterpriseCalibratedProbability = enterprise?.CalibratedProbability,
+                EnterpriseFinalProbability = enterprise?.FinalProbability,
+                EnterpriseModelType = enterpriseRuntimeModel.ModelType,
+                EnterpriseModelVersion = enterpriseRuntimeModel.Version,
+                EnterpriseModelFromDatabase = enterpriseRuntimeModel.FromDatabase,
+                ExternalModelProbability = externalModelProbability,
+                UsedFeatureStoreFeatures = featureStoreSnapshot is not null,
+                FeatureStoreLocalProductId = featureStoreSnapshot?.LocalProductId,
+                FeatureStoreTrainingProductId = featureStoreSnapshot?.ProductId,
                 Market = market,
                 Currency = currency,
                 TypicalPrice = baselinePrice,
@@ -494,7 +552,15 @@ namespace Api.Services
                     COALESCE(AVG(irs.final_score), 0),
                     COALESCE(AVG(irs.momentum_normalized), 0),
                     COALESCE(AVG(CASE WHEN ims.market = @market THEN ims.score END), 0),
-                    COALESCE(COUNT(DISTINCT CASE WHEN s.market = @market THEN s.source_name END), 0),
+                    COALESCE((
+                        SELECT COUNT(DISTINCT s.source_name)
+                        FROM (
+                            SELECT DISTINCT item_id, source_name, market
+                            FROM item_sources
+                        ) s
+                        JOIN filtered f2 ON f2.item_id = s.item_id
+                        WHERE s.market = @market
+                    ), 0),
                     (
                         SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY s2.price)
                         FROM item_sources s2 JOIN filtered f2 ON f2.item_id = s2.item_id
@@ -509,7 +575,6 @@ namespace Api.Services
                 LEFT JOIN item_run_stats irs ON irs.run_id = l.run_id
                 LEFT JOIN filtered f ON f.item_id = irs.item_id
                 LEFT JOIN item_market_stats ims ON ims.run_id = irs.run_id AND ims.item_id = irs.item_id
-                LEFT JOIN item_sources s ON s.item_id = irs.item_id
                 WHERE f.item_id IS NOT NULL;";
 
             try
@@ -592,11 +657,16 @@ namespace Api.Services
 
             try
             {
+                var amazonTask = AggregateAmazon();
+                var ebayTask = AggregateEbay();
+                var googleTask = AggregateGoogle();
+                await Task.WhenAll(amazonTask, ebayTask, googleTask);
+
                 var snapshots = new List<(int Count, double AvgTrend, decimal? AvgPrice, string? Currency)>
                 {
-                    await AggregateAmazon(),
-                    await AggregateEbay(),
-                    await AggregateGoogle()
+                    amazonTask.Result,
+                    ebayTask.Result,
+                    googleTask.Result
                 }.Where(x => x.Count > 0).ToList();
 
                 if (snapshots.Count == 0) return default;
@@ -610,13 +680,257 @@ namespace Api.Services
                     weightedPrice = Math.Round(weightedPrice.Value, 2);
                 }
 
-                return (avgTrend, weightedPrice, snapshots.Count, snapshots.Select(x => x.Currency).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)));
+                return (avgTrend, weightedPrice, total, snapshots.Select(x => x.Currency).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)));
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable || ex.SqlState == PostgresErrorCodes.UndefinedColumn)
             {
                 _logger.LogWarning(ex, "Marketplace fallback tables missing.");
                 return default;
             }
+        }
+
+        private async Task<int?> ResolveLocalProductIdAsync(RuntimeScoringEngineInput input, CancellationToken ct)
+        {
+            if (input.ArtikalId.HasValue)
+                return input.ArtikalId.Value;
+
+            var hasFilter =
+                input.DobavljacId.HasValue ||
+                input.TipObuceId.HasValue ||
+                input.SezonaId.HasValue ||
+                !string.IsNullOrWhiteSpace(input.Category) ||
+                !string.IsNullOrWhiteSpace(input.Velicina) ||
+                !string.IsNullOrWhiteSpace(input.Boja) ||
+                !string.IsNullOrWhiteSpace(input.Materijal);
+
+            if (!hasFilter)
+                return null;
+
+            var query = _trendDb.Artikli.AsNoTracking();
+
+            if (input.DobavljacId.HasValue)
+                query = query.Where(a => a.IDDobavljac == input.DobavljacId.Value);
+            if (input.TipObuceId.HasValue)
+                query = query.Where(a => a.IDTipObuce == input.TipObuceId.Value);
+            if (input.SezonaId.HasValue)
+                query = query.Where(a => a.IDSezona == input.SezonaId.Value);
+
+            var categoryLike = ToLike(NormalizeText(input.Category));
+            if (!string.IsNullOrWhiteSpace(categoryLike))
+                query = query.Where(a => a.Kategorija != null && EF.Functions.ILike(a.Kategorija, categoryLike));
+
+            var sizeLike = ToLike(NormalizeText(input.Velicina));
+            if (!string.IsNullOrWhiteSpace(sizeLike))
+                query = query.Where(a => a.Velicina != null && EF.Functions.ILike(a.Velicina, sizeLike));
+
+            var colorLike = ToLike(NormalizeText(input.Boja));
+            if (!string.IsNullOrWhiteSpace(colorLike))
+                query = query.Where(a => a.Boja != null && EF.Functions.ILike(a.Boja, colorLike));
+
+            var materialLike = ToLike(NormalizeText(input.Materijal));
+            if (!string.IsNullOrWhiteSpace(materialLike))
+                query = query.Where(a => a.Materijal != null && EF.Functions.ILike(a.Materijal, materialLike));
+
+            var candidates = await query
+                .OrderByDescending(a => a.UpdatedAt)
+                .Select(a => new { a.Id, a.ProdajnaCena, a.UpdatedAt })
+                .Take(200)
+                .ToListAsync(ct);
+
+            if (candidates.Count == 0)
+                return null;
+
+            if (input.TargetPrice.HasValue)
+            {
+                var target = input.TargetPrice.Value;
+                var bestByPrice = candidates
+                    .Where(c => c.ProdajnaCena.HasValue && c.ProdajnaCena.Value > 0)
+                    .OrderBy(c => Math.Abs((double)(c.ProdajnaCena!.Value - target)))
+                    .ThenByDescending(c => c.UpdatedAt)
+                    .Select(c => (int?)c.Id)
+                    .FirstOrDefault();
+
+                if (bestByPrice.HasValue)
+                    return bestByPrice.Value;
+            }
+
+            return candidates
+                .OrderByDescending(c => c.UpdatedAt)
+                .Select(c => (int?)c.Id)
+                .FirstOrDefault();
+        }
+
+        private async Task<FeatureStoreSnapshot?> TryLoadFeatureStoreSnapshotAsync(
+            int? localProductId,
+            string? brandLike,
+            string? categoryLike,
+            decimal? targetPrice,
+            CancellationToken ct)
+        {
+            var connectionString = _openTrainingDb.Database.GetConnectionString();
+            if (string.IsNullOrWhiteSpace(connectionString))
+                return null;
+
+            const string selectColumns = """
+                SELECT
+                    product_id,
+                    local_product_id,
+                    price,
+                    avg_rating,
+                    review_count,
+                    sentiment_score,
+                    review_velocity_30d_proxy,
+                    volatility_7d,
+                    volatility_30d,
+                    volatility_90d,
+                    momentum_7d,
+                    momentum_30d,
+                    momentum_90d,
+                    discount_freq_30d,
+                    discount_freq_90d,
+                    typical_change_rate_30d,
+                    popularity_prior,
+                    deal_score_prior,
+                    typical_price_prior,
+                    priors_level,
+                    has_image_embedding,
+                    image_cluster_id,
+                    rs_sold_qty_30d,
+                    rs_inflow_qty_30d,
+                    sell_through_velocity_30d,
+                    supply_demand_ratio_30d,
+                    median_days_to_sale_proxy,
+                    price_elasticity_90d
+                FROM vw_feature_store
+                """;
+
+            const string sqlByLocalProduct = selectColumns + """
+                WHERE local_product_id = @localProductId
+                ORDER BY updated_at DESC NULLS LAST, product_id DESC
+                LIMIT 1;
+                """;
+
+            const string sqlByBrandCategory = selectColumns + """
+                WHERE (@brand IS NULL OR brand ILIKE @brand)
+                  AND (@category IS NULL OR category ILIKE @category)
+                ORDER BY
+                    CASE
+                        WHEN @targetPrice IS NULL OR price IS NULL OR price <= 0 THEN 999999.0
+                        ELSE ABS(price - @targetPrice)
+                    END,
+                    updated_at DESC NULLS LAST,
+                    product_id DESC
+                LIMIT 1;
+                """;
+
+            try
+            {
+                await using var conn = new NpgsqlConnection(connectionString);
+                await conn.OpenAsync(ct);
+
+                if (localProductId.HasValue)
+                {
+                    await using var byLocal = new NpgsqlCommand(sqlByLocalProduct, conn);
+                    byLocal.Parameters.AddWithValue("localProductId", localProductId.Value);
+                    await using var localReader = await byLocal.ExecuteReaderAsync(ct);
+                    if (await localReader.ReadAsync(ct))
+                        return ReadFeatureStoreSnapshot(localReader);
+                }
+
+                if (string.IsNullOrWhiteSpace(brandLike) && string.IsNullOrWhiteSpace(categoryLike))
+                    return null;
+
+                await using var byBrand = new NpgsqlCommand(sqlByBrandCategory, conn);
+                byBrand.Parameters.AddWithValue("brand", (object?)brandLike ?? DBNull.Value);
+                byBrand.Parameters.AddWithValue("category", (object?)categoryLike ?? DBNull.Value);
+                byBrand.Parameters.AddWithValue("targetPrice", (object?)targetPrice ?? DBNull.Value);
+                await using var brandReader = await byBrand.ExecuteReaderAsync(ct);
+                if (await brandReader.ReadAsync(ct))
+                    return ReadFeatureStoreSnapshot(brandReader);
+
+                return null;
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable || ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+            {
+                _logger.LogDebug(ex, "Feature store view unavailable. Continuing with heuristic runtime features.");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load feature store snapshot for ONNX runtime scoring.");
+                return null;
+            }
+        }
+
+        private static FeatureStoreSnapshot ReadFeatureStoreSnapshot(NpgsqlDataReader reader)
+        {
+            var productIdOrd = reader.GetOrdinal("product_id");
+            var localProductIdOrd = reader.GetOrdinal("local_product_id");
+
+            var productId = reader.IsDBNull(productIdOrd)
+                ? 0L
+                : Convert.ToInt64(reader.GetValue(productIdOrd), CultureInfo.InvariantCulture);
+
+            int? localProductId = null;
+            if (!reader.IsDBNull(localProductIdOrd))
+                localProductId = Convert.ToInt32(reader.GetValue(localProductIdOrd), CultureInfo.InvariantCulture);
+
+            float ReadFloat(string name)
+            {
+                var ord = reader.GetOrdinal(name);
+                if (reader.IsDBNull(ord))
+                    return 0f;
+
+                var value = reader.GetValue(ord);
+                return value switch
+                {
+                    float f => f,
+                    double d => (float)d,
+                    decimal m => (float)m,
+                    int i => i,
+                    long l => l,
+                    short s => s,
+                    bool b => b ? 1f : 0f,
+                    _ => float.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed)
+                        ? parsed
+                        : 0f
+                };
+            }
+
+            var priorsLevelOrd = reader.GetOrdinal("priors_level");
+            var priorsLevelRaw = reader.IsDBNull(priorsLevelOrd) ? null : Convert.ToString(reader.GetValue(priorsLevelOrd), CultureInfo.InvariantCulture);
+
+            var features = new Dictionary<string, float>(StringComparer.Ordinal)
+            {
+                ["price"] = ReadFloat("price"),
+                ["avg_rating"] = ReadFloat("avg_rating"),
+                ["review_count"] = ReadFloat("review_count"),
+                ["sentiment_score"] = ReadFloat("sentiment_score"),
+                ["review_velocity_30d_proxy"] = ReadFloat("review_velocity_30d_proxy"),
+                ["volatility_7d"] = ReadFloat("volatility_7d"),
+                ["volatility_30d"] = ReadFloat("volatility_30d"),
+                ["volatility_90d"] = ReadFloat("volatility_90d"),
+                ["momentum_7d"] = ReadFloat("momentum_7d"),
+                ["momentum_30d"] = ReadFloat("momentum_30d"),
+                ["momentum_90d"] = ReadFloat("momentum_90d"),
+                ["discount_freq_30d"] = ReadFloat("discount_freq_30d"),
+                ["discount_freq_90d"] = ReadFloat("discount_freq_90d"),
+                ["typical_change_rate_30d"] = ReadFloat("typical_change_rate_30d"),
+                ["popularity_prior"] = ReadFloat("popularity_prior"),
+                ["deal_score_prior"] = ReadFloat("deal_score_prior"),
+                ["typical_price_prior"] = ReadFloat("typical_price_prior"),
+                ["priors_level"] = PriorsLevelToCode(priorsLevelRaw),
+                ["has_image_embedding"] = ReadFloat("has_image_embedding"),
+                ["image_cluster_id"] = ReadFloat("image_cluster_id"),
+                ["rs_sold_qty_30d"] = ReadFloat("rs_sold_qty_30d"),
+                ["rs_inflow_qty_30d"] = ReadFloat("rs_inflow_qty_30d"),
+                ["sell_through_velocity_30d"] = ReadFloat("sell_through_velocity_30d"),
+                ["supply_demand_ratio_30d"] = ReadFloat("supply_demand_ratio_30d"),
+                ["median_days_to_sale_proxy"] = ReadFloat("median_days_to_sale_proxy"),
+                ["price_elasticity_90d"] = ReadFloat("price_elasticity_90d"),
+            };
+
+            return new FeatureStoreSnapshot(productId, localProductId, features);
         }
 
         private async Task<(bool Used, double? SellProbability, double? FinalScore, double? PriceFitScore, double? PopularityScore, double? DealScore, double? MarginScore, double? TrendMomentum)> TryPredictWithPythonAsync(
@@ -676,12 +990,167 @@ namespace Api.Services
             }
         }
 
+        private async Task<(EnterpriseScoringLinearModel? Model, int? Version, string? ModelType, bool FromDatabase)> ResolveEnterpriseRuntimeModelAsync(CancellationToken ct)
+        {
+            if (!_options.Enterprise.Enabled)
+                return (null, null, null, false);
+
+            if (!_options.Enterprise.PreferModelVersionParameters)
+                return (_enterpriseFallbackModel, null, _options.Enterprise.ModelType, false);
+
+            try
+            {
+                var dbModel = await _enterpriseModelProvider.TryGetActiveAsync(ct);
+                if (dbModel is null || dbModel.FeatureWeights.Count == 0)
+                    return (_enterpriseFallbackModel, null, _options.Enterprise.ModelType, false);
+
+                var model = new EnterpriseScoringLinearModel(_options.Enterprise, dbModel);
+                return (model, dbModel.Version, dbModel.ModelType, true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed loading enterprise model_version parameters; using config fallback.");
+                return (_enterpriseFallbackModel, null, _options.Enterprise.ModelType, false);
+            }
+        }
+
+        private static IReadOnlyDictionary<string, double> BuildEnterpriseCanonicalFeatures(
+            double priceFitScore,
+            double marginScore,
+            double popularityScore,
+            double trendMomentum,
+            double sourceCoverageScore,
+            double localDemandScore,
+            double imageSimilarityScore,
+            double dealScore,
+            double supplierScore,
+            double seasonScore)
+            => new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["price_fit"] = Clamp01(priceFitScore / 100d),
+                ["margin"] = Clamp01(marginScore / 100d),
+                ["popularity"] = Clamp01(popularityScore / 100d),
+                ["trend_momentum"] = Clamp01(trendMomentum / 100d),
+                ["source_coverage"] = Clamp01(sourceCoverageScore / 100d),
+                ["local_demand"] = Clamp01(localDemandScore / 100d),
+                ["image_similarity"] = Clamp01(imageSimilarityScore / 100d),
+                ["deal_score"] = Clamp01(dealScore / 100d),
+                ["supplier_score"] = Clamp01(supplierScore / 100d),
+                ["season_score"] = Clamp01(seasonScore / 100d),
+            };
+
+        private double ResolveFinalSellProbability(
+            double heuristicProbability,
+            double? externalModelProbability,
+            double? enterpriseProbability,
+            bool usedOnnxModel,
+            bool hasFeatureStoreFeatures)
+        {
+            heuristicProbability = Clamp01(heuristicProbability);
+            var external = externalModelProbability.HasValue ? Clamp01(externalModelProbability.Value) : (double?)null;
+            var enterprise = enterpriseProbability.HasValue ? Clamp01(enterpriseProbability.Value) : (double?)null;
+
+            if (!_options.Enterprise.Enabled)
+            {
+                if (!external.HasValue)
+                    return heuristicProbability;
+
+                if (usedOnnxModel)
+                {
+                    var confidenceWeight = hasFeatureStoreFeatures ? 0.70 : 0.50;
+                    return BlendProbabilities(
+                        (heuristicProbability, 1d - confidenceWeight),
+                        (external.Value, confidenceWeight));
+                }
+
+                return BlendProbabilities(
+                    (heuristicProbability, 0.40),
+                    (external.Value, 0.60));
+            }
+
+            if (external.HasValue)
+            {
+                var baseExternalWeight = Clamp01(_options.Enterprise.ExternalModelWeight);
+                if (usedOnnxModel)
+                {
+                    var confidenceWeight = hasFeatureStoreFeatures ? 0.70 : 0.50;
+                    // keep configurable weight, but ensure ONNX confidence rule has minimum influence
+                    baseExternalWeight = Math.Max(baseExternalWeight, confidenceWeight);
+                }
+
+                var remainingWeight = Math.Max(0d, 1d - baseExternalWeight);
+                var baseHeuristicWeight = Math.Max(0d, _options.Enterprise.HeuristicWeightWithExternalModel);
+                var baseEnterpriseWeight = Math.Max(0d, _options.Enterprise.EnterpriseWeightWithExternalModel);
+                var baseRemainder = baseHeuristicWeight + baseEnterpriseWeight;
+
+                var heuristicWeight = baseRemainder > 0d
+                    ? remainingWeight * (baseHeuristicWeight / baseRemainder)
+                    : remainingWeight * 0.5;
+                var enterpriseWeight = baseRemainder > 0d
+                    ? remainingWeight * (baseEnterpriseWeight / baseRemainder)
+                    : remainingWeight * 0.5;
+
+                return BlendProbabilities(
+                    (heuristicProbability, heuristicWeight),
+                    (external.Value, baseExternalWeight),
+                    (enterprise ?? heuristicProbability, enterpriseWeight));
+            }
+
+            return BlendProbabilities(
+                (heuristicProbability, _options.Enterprise.HeuristicWeightWithoutExternalModel),
+                (enterprise ?? heuristicProbability, _options.Enterprise.EnterpriseWeightWithoutExternalModel));
+        }
+
+        private static double ApplyBusinessProbabilityOverlay(
+            double probability,
+            string pricePositioning,
+            int sourceCoverageCount,
+            double marginScore,
+            bool hasTrainingSignal,
+            double dealScore)
+        {
+            var adjusted = Clamp01(probability);
+
+            if (sourceCoverageCount <= 0 && !hasTrainingSignal)
+                adjusted *= 0.88;
+
+            if (marginScore < 15)
+                adjusted *= 0.82;
+
+            if (pricePositioning == "iznad_tržišta" && dealScore < 20)
+                adjusted *= 0.92;
+
+            if (hasTrainingSignal && sourceCoverageCount >= 2 && marginScore >= 40 && dealScore >= 35)
+                adjusted = Math.Min(1d, adjusted * 1.05);
+
+            return Clamp01(adjusted);
+        }
+
+        private static double BlendProbabilities(params (double Value, double Weight)[] parts)
+        {
+            if (parts.Length == 0)
+                return 0d;
+
+            var sumWeights = parts.Sum(x => x.Weight > 0 ? x.Weight : 0d);
+            if (sumWeights <= 0d)
+                return Clamp01(parts[0].Value);
+
+            var weighted = parts.Sum(x =>
+            {
+                var weight = x.Weight > 0 ? x.Weight : 0d;
+                return Clamp01(x.Value) * weight;
+            });
+
+            return Clamp01(weighted / sumWeights);
+        }
+
         private static IReadOnlyDictionary<string, float> BuildSellProbabilityRsOnnxFeatures(
             decimal? price,
             RuntimeScoringSignals training,
             decimal momentumProxy,
             bool hasImageEmbedding,
-            string? brand)
+            string? brand,
+            IReadOnlyDictionary<string, float>? featureStoreFeatures = null)
         {
             static float F(decimal? v) => v.HasValue ? (float)v.Value : 0f;
 
@@ -698,7 +1167,7 @@ namespace Api.Services
                 ? (string.IsNullOrWhiteSpace(brand) ? 2f : 3f)
                 : 0f;
 
-            return new Dictionary<string, float>(StringComparer.Ordinal)
+            var features = new Dictionary<string, float>(StringComparer.Ordinal)
             {
                 ["price"] = F(price),
                 ["avg_rating"] = 0f,
@@ -727,6 +1196,49 @@ namespace Api.Services
                 ["median_days_to_sale_proxy"] = 0f,
                 ["price_elasticity_90d"] = 0f,
             };
+
+            if (featureStoreFeatures is not null)
+            {
+                foreach (var (key, value) in featureStoreFeatures)
+                {
+                    if (!float.IsNaN(value) && !float.IsInfinity(value))
+                        features[key] = value;
+                }
+            }
+
+            // Runtime request/market signals have precedence when available.
+            if (price.HasValue && price.Value > 0)
+                features["price"] = F(price);
+            if (training.PopularityPriorScore > 0)
+                features["popularity_prior"] = F(training.PopularityPriorScore);
+            if (training.DealScore > 0)
+                features["deal_score_prior"] = F(training.DealScore);
+            if (training.TypicalPrice.HasValue && training.TypicalPrice.Value > 0)
+                features["typical_price_prior"] = F(training.TypicalPrice);
+            if (training.HasTrainingSignal)
+                features["priors_level"] = Math.Max(features["priors_level"], priorsLevel);
+
+            if (Math.Abs(features["momentum_30d"]) < 1e-6f)
+                features["momentum_30d"] = MomentumAsReturn(momentumProxy);
+
+            if (hasImageEmbedding)
+                features["has_image_embedding"] = Math.Max(features["has_image_embedding"], 1f);
+
+            return features;
+        }
+
+        private static float PriorsLevelToCode(string? priorsLevel)
+        {
+            if (string.IsNullOrWhiteSpace(priorsLevel))
+                return 0f;
+
+            return priorsLevel.Trim().ToLowerInvariant() switch
+            {
+                "brand_category" => 3f,
+                "category" => 2f,
+                "brand" => 1f,
+                _ => 0f
+            };
         }
 
         private static string BuildRange(decimal? baseline, decimal? target, string currency)
@@ -740,29 +1252,41 @@ namespace Api.Services
             return $"{currency} {low:F2} - {high:F2}";
         }
 
-        private static double ComputePriceFit(decimal? target, decimal? baseline)
+        private double ComputePriceFit(decimal? target, decimal? baseline)
         {
             if (!target.HasValue || target.Value <= 0) return 50; // Fallback to average value
             if (!baseline.HasValue || baseline.Value <= 0) return 50;
+
             var deviation = Math.Abs((double)((target.Value - baseline.Value) / baseline.Value));
-            return ClampScore(100d - (deviation * 150d)); // Reduced penalty for deviations
+
+            // Smooth exponential decay avoids sudden drops for small deviations.
+            var decay = Math.Clamp(_options.Tuning.PriceFitExponentialDecay, 0.05, 50d);
+            var score = 100d * Math.Exp(-decay * deviation);
+            return ClampScore(score);
         }
 
         private static double ComputeMargin(decimal? cost, decimal? target)
         {
             if (!cost.HasValue || !target.HasValue || target.Value <= 0) return 50;
-            if (cost.Value >= target.Value) return ClampScore(-50); // Penalize negative margins
+
+            if (cost.Value >= target.Value)
+                return 5; // explicit catastrophic margin signal, not generic zero
+
             var margin = (double)((target.Value - cost.Value) / target.Value);
-            return margin >= 0.70 ? 100 : ClampScore((margin / 0.70) * 100d);
+
+            const double optimalMargin = 0.60;
+            return ClampScore((margin / optimalMargin) * 100d);
         }
 
-        private static double ComputeDeal(decimal current, decimal baseline)
+        private double ComputeDeal(decimal current, decimal baseline)
         {
             if (baseline <= 0) return 50; // Fallback to average value
             var rel = (double)((baseline - current) / baseline);
             if (rel <= 0) return 0;
-            if (rel >= 0.30) return 100;
-            return ClampScore((rel / 0.30) * 100d);
+
+            // Smooth saturation without hard threshold.
+            var multiplier = Math.Clamp(_options.Tuning.DealTanhMultiplier, 0.1, 100d);
+            return ClampScore(100d * Math.Tanh(rel * multiplier));
         }
 
         private static decimal? Median(IEnumerable<decimal> values)
@@ -790,7 +1314,15 @@ namespace Api.Services
             return ClampScore(score);
         }
         private static double NormalizeScraperScore(decimal score) => score <= 0 ? 0 : ClampScore(score <= 1 ? (double)score * 100d : (double)score);
-        private static double NormalizeMomentum(decimal score) => score <= 0 ? 0 : ClampScore(score <= 1.5m ? (double)score * 100d : (double)score);
+        private static double NormalizeMomentum(decimal score)
+        {
+            if (score == 0) return 0;
+
+            var m = (double)score;
+            if (m > 1.5) m /= 100.0; // detect percent-like scale
+            m = Math.Clamp(m, -1.0, 1.0);
+            return ClampScore((m + 1.0) * 50.0); // maps [-1..1] -> [0..100]
+        }
 
         private static string NormalizeMarket(string? market, string fallback)
             => string.IsNullOrWhiteSpace(market) ? (string.IsNullOrWhiteSpace(fallback) ? "RS" : fallback.Trim().ToUpperInvariant()) : market.Trim().ToUpperInvariant();
@@ -815,16 +1347,25 @@ namespace Api.Services
             _ => "Loše"
         };
 
-        private static double ComputeConfidence(
+        private double ComputeConfidence(
             bool hasTraining, int sourceCoverage, double imageSim, bool hasBaseline)
         {
-            double c = 0;
-            if (hasTraining)   c += 35;
-            c += Math.Min(sourceCoverage * 10, 35);
-            if (imageSim > 50) c += 20;
-            else if (imageSim > 20) c += 10;
-            if (hasBaseline) c += 10;
-            return Math.Min(c, 100);
+            var tuning = _options.Tuning;
+            var baseConfidence = Math.Clamp(tuning.ConfidenceBase, 0d, 100d);
+            var trainingBonus = Math.Max(0d, tuning.ConfidenceTrainingBonus);
+            var perSource = Math.Max(0d, tuning.ConfidencePerSource);
+            var sourceCap = Math.Max(0d, tuning.ConfidenceSourceCap);
+            var imageDivisor = Math.Max(0.001d, tuning.ConfidenceImageDivisor);
+            var imageCap = Math.Max(0d, tuning.ConfidenceImageCap);
+            var baselineBonus = Math.Max(0d, tuning.ConfidenceBaselineBonus);
+            var confidenceCap = Math.Clamp(tuning.ConfidenceCap, 1d, 100d);
+
+            double c = baseConfidence; // floor confidence, never claim certainty from sparse signals
+            if (hasTraining) c += trainingBonus;
+            c += Math.Min(sourceCoverage * perSource, sourceCap);
+            c += Math.Min(imageSim / imageDivisor, imageCap);
+            if (hasBaseline) c += baselineBonus;
+            return Math.Min(c, confidenceCap);
         }
 
         private static string GetPricePositioning(decimal? target, decimal? baseline)
@@ -934,20 +1475,44 @@ namespace Api.Services
                 return;
             }
 
-            int count = 0;
+            var incoming = new List<(string ExternalId, string RawPayload)>();
             foreach (var p in arr.EnumerateArray())
             {
-                var externalId = p.GetProperty("id").GetInt64().ToString();
+                var externalId = p.GetProperty("id").GetInt64().ToString(CultureInfo.InvariantCulture);
+                incoming.Add((externalId, p.GetRawText()));
+            }
+
+            if (incoming.Count == 0)
+            {
+                _log.LogInformation("No importable products in {Domain}", shopDomain);
+                return;
+            }
+
+            var incomingIds = incoming.Select(x => x.ExternalId).Distinct(StringComparer.Ordinal).ToArray();
+            var existingIds = await _db.RawProducts
+                .AsNoTracking()
+                .Where(x => x.DatasetId == datasetId && incomingIds.Contains(x.ExternalId))
+                .Select(x => x.ExternalId)
+                .ToListAsync(ct);
+
+            var existingSet = new HashSet<string>(existingIds, StringComparer.Ordinal);
+
+            int count = 0;
+            foreach (var item in incoming)
+            {
+                if (existingSet.Contains(item.ExternalId))
+                    continue;
 
                 var raw = new RawTrainingProduct
                 {
                     DatasetId = datasetId,
-                    ExternalId = externalId,
-                    RawPayload = p.GetRawText(),
+                    ExternalId = item.ExternalId,
+                    RawPayload = item.RawPayload,
                     ImportedAt = DateTime.UtcNow
                 };
 
                 await _db.RawProducts.AddAsync(raw, ct);
+                existingSet.Add(item.ExternalId);
                 count++;
             }
 

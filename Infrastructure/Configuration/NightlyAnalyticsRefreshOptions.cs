@@ -55,4 +55,13 @@ public sealed class NightlyAnalyticsRefreshOptions
         "prodaja_zaglavlje",
         "mv_daily_sales_facts"
     };
+
+    /// <summary>
+    /// Optional OpenProductTraining materialized views refreshed in the same nightly window.
+    /// Uses OpenProductTraining DB connection string.
+    /// </summary>
+    public List<string> OpenTrainingMaterializedViewsToRefresh { get; set; } = new()
+    {
+        "mv_brand_shoe_runtime_priors"
+    };
 }

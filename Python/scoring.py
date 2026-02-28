@@ -17,17 +17,17 @@ except ImportError:
 
 SOURCE_WEIGHT: Dict[str, float] = {
     "zalando":   1.00,
-    "aboutyou":  0.85,
-    "deichmann": 0.70,
-    "humanic":   0.60,
+    "aboutyou":  0.90,   # synced with trend_engine/core.py
+    "deichmann": 0.75,   # synced with trend_engine/core.py
+    "humanic":   0.70,   # synced with trend_engine/core.py
 }
 
 MARKET_WEIGHT: Dict[str, float] = {
     "DE": 1.00,
-    "AT": 0.80,
-    "CH": 0.75,
-    "HU": 0.55,
-    "RO": 0.50,
+    "AT": 0.85,   # synced with trend_engine/core.py
+    "CH": 0.80,   # synced with trend_engine/core.py
+    "HU": 0.60,   # synced with trend_engine/core.py
+    "RO": 0.55,   # synced with trend_engine/core.py
 }
 
 CROSS_SOURCE_BONUS  = 0.40   # per additional unique source
@@ -451,6 +451,9 @@ def compute_top10(
         market_boost = 1.0 + CROSS_MARKET_BONUS * max(0, unique_markets - 1)
         entropy_boost = 1.0 + entropy_ratio * ENTROPY_BONUS_MAX
 
+        # Calculate cross-market entropy
+        market_entropy_ratio = _smoothed_entropy(g["markets"], len(MARKET_WEIGHT))
+        market_entropy_boost = 1 + market_entropy_ratio * ENTROPY_BONUS_MAX
         raw_score = (
             base_sum
             * source_boost
@@ -460,6 +463,14 @@ def compute_top10(
             * brand_factor
             * anti_gaming
         )
+        raw_score *= market_entropy_boost
+
+        # Apply market maturity weight
+        group_market_weight = mean(MARKET_WEIGHT[market] for market in g["markets"])
+        raw_score *= group_market_weight
+
+        # Apply confidence as a multiplier
+        raw_score *= (0.8 + 0.2 * _confidence(occurrences, unique_sources, entropy_ratio))
 
         if occurrences < MIN_OCCURRENCES:
             raw_score *= SINGLE_APPEARANCE_PENALTY

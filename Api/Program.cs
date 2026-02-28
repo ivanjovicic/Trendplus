@@ -89,6 +89,8 @@ try
         builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.OpenTrainingModelTrainingOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.OpenTrainingModelTrainingOptions.Section));
+    builder.Services.Configure<Infrastructure.Configuration.TrendIngestionOptions>(
+        builder.Configuration.GetSection(Infrastructure.Configuration.TrendIngestionOptions.Section));
 
     // DbContext
     builder.Services.AddDbContext<TrendplusDbContext>(options =>
@@ -186,6 +188,15 @@ try
         client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pythonModelTimeout));
     });
 
+    // Named HttpClient for trend_engine FastAPI (port 8001)
+    var trendEngineBase = builder.Configuration["TrendIngestion:PythonApiBaseUrl"] ?? "http://localhost:8001";
+    var trendEngineTimeout = builder.Configuration.GetValue<int?>("TrendIngestion:PythonCallTimeoutSeconds") ?? 300;
+    builder.Services.AddHttpClient("TrendEngine", client =>
+    {
+        client.BaseAddress = new Uri(trendEngineBase);
+        client.Timeout = TimeSpan.FromSeconds(Math.Max(60, trendEngineTimeout));
+    });
+
     // Image providers for trends carousel are optional and resolved dynamically in endpoints
 
     // Background workers are always registered, but execution is controlled at runtime
@@ -195,6 +206,7 @@ try
     builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>();
     builder.Services.AddHostedService<Workers.NightlyAnalyticsRefreshWorker>();
     builder.Services.AddHostedService<Workers.OpenTrainingModelTrainingWorker>();
+    builder.Services.AddHostedService<Workers.TrendIngestionWorker>();
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
 
     builder.Services.AddControllers();
@@ -287,6 +299,7 @@ try
     builder.Services.AddScoped<IOpenProductTrainingSignalProvider, OpenProductTrainingSignalProvider>();
     builder.Services.AddScoped<IOpenProductTrainingSyncService, OpenProductTrainingSyncService>();
     builder.Services.AddSingleton<ISellProbabilityRsOnnxScorer, SellProbabilityRsOnnxScorer>();
+    builder.Services.AddSingleton<IEnterpriseScoringModelProvider, EnterpriseScoringModelProvider>();
     builder.Services.AddScoped<IRuntimeScoringEngine, RuntimeScoringEngine>();
     builder.Services.AddScoped<IAccessImportService, AccessImportService>();
     builder.Services.AddScoped<IBatchLogService, BatchLogService>();
