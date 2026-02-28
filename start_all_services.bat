@@ -25,6 +25,7 @@ if not exist "%ROOT%Klijent\clientapp\package.json" (
 )
 
 echo [0/4] Starting Redis on port 6379...
+docker context use desktop-linux >nul 2>&1
 set "REDIS_STARTED=0"
 call :start_redis
 if "%REDIS_STARTED%"=="1" (
@@ -116,16 +117,14 @@ endlocal
 exit /b 0
 
 :start_redis
-docker info >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARN] Docker daemon is not available.
-    where redis-server >nul 2>&1
-    if %errorlevel% equ 0 (
-        echo [INFO] Starting local redis-server fallback...
-        start "Redis" cmd /k "redis-server"
-        timeout /t 2 /nobreak >nul
-        set "REDIS_STARTED=1"
-    )
+if not exist "\\.\pipe\dockerDesktopLinuxEngine" (
+    set "DOCKER_RUNNING=0"
+) else (
+    set "DOCKER_RUNNING=1"
+)
+if "%DOCKER_RUNNING%"=="0" (
+    echo [WARN] Docker Linux engine is not available. Skipping host redis fallback.
+    echo [INFO] Start Docker Desktop ^(Linux containers^) and run: docker compose up -d redis
     exit /b 0
 )
 
@@ -142,8 +141,12 @@ if %errorlevel% equ 0 (
 exit /b 0
 
 :start_postgres
-docker info >nul 2>&1
-if %errorlevel% neq 0 (
+if not exist "\\.\pipe\dockerDesktopLinuxEngine" (
+    set "DOCKER_RUNNING=0"
+) else (
+    set "DOCKER_RUNNING=1"
+)
+if "%DOCKER_RUNNING%"=="0" (
     echo [WARN] Docker daemon is not available.
     exit /b 0
 )

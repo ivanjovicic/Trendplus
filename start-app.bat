@@ -8,6 +8,7 @@ REM ============================================
 REM STEP 0: Start Redis (Docker)
 REM ============================================
 echo [0/4] Starting Redis...
+docker context use desktop-linux >nul 2>&1
 set "REDIS_STARTED=0"
 call :start_redis
 if "%REDIS_STARTED%"=="1" (
@@ -113,16 +114,9 @@ pause
 exit /b 0
 
 :start_redis
-docker info >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ⚠ Docker daemon is not available.
-    where redis-server >nul 2>&1
-    if %errorlevel% equ 0 (
-        echo   Starting local redis-server fallback...
-        start "Redis" cmd /k "redis-server"
-        timeout /t 2 /nobreak >nul
-        set "REDIS_STARTED=1"
-    )
+if not exist "\\.\pipe\dockerDesktopLinuxEngine" (
+    echo [WARN] Docker Desktop Linux engine is not running.
+    echo [WARN] Open Docker Desktop, switch to Linux containers, then retry.
     exit /b 0
 )
 
@@ -139,9 +133,8 @@ if %errorlevel% equ 0 (
 exit /b 0
 
 :start_postgres
-docker info >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ⚠ Docker daemon is not available.
+if not exist "\\.\pipe\dockerDesktopLinuxEngine" (
+    echo [WARN] Docker Desktop Linux engine is not running.
     exit /b 0
 )
 

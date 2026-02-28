@@ -39,16 +39,16 @@ echo [OK] dotnet build-server stopped.
 echo.
 
 echo [5/5] Stopping Redis container (if started by docker compose)...
-where docker >nul 2>&1
-if %errorlevel% equ 0 (
+docker context use desktop-linux >nul 2>&1
+if not exist "\\.\pipe\dockerDesktopLinuxEngine" (
+    echo [INFO] Docker daemon is not running. Skipping Redis stop.
+) else (
     docker compose stop redis >nul 2>&1
     if %errorlevel% equ 0 (
         echo [OK] Redis stopped.
     ) else (
         echo [INFO] Redis was not running ^(or docker compose not configured here^).
     )
-) else (
-    echo [INFO] Docker not found in PATH. Skipping Redis stop.
 )
 echo.
 

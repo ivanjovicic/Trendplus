@@ -943,7 +943,7 @@ def _resolve_analytics_dsn() -> str:
     for c in candidates:
         if c and c.strip():
             return _dotnet_conn_to_psycopg2_dsn(c.strip())
-    return "host=localhost port=5432 dbname=analytics user=postgres password=postgres"
+    return "host=localhost port=5434 dbname=analytics user=postgres password=postgres"
 
 
 def _safe_float(v: Any) -> Optional[float]:

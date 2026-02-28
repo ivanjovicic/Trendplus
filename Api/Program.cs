@@ -249,14 +249,27 @@ try
         });
     });
 
-    // add Redis cache
-    builder.Services.AddStackExchangeRedisCache(options =>
+    // Cache wiring:
+    // - Development default: In-Memory only (unless explicitly enabled via Caching:UseRedis=true)
+    // - Production default: Hybrid (In-Memory + Redis)
+    var useRedisCache = builder.Configuration.GetValue<bool?>("Caching:UseRedis")
+        ?? !builder.Environment.IsDevelopment();
+
+    if (useRedisCache)
     {
-        var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-        options.Configuration = $"{redisConnection},abortConnect=false,connectTimeout=500,syncTimeout=500,asyncTimeout=500,connectRetry=1";
-        options.InstanceName = "trendplus:";
-    });
-    builder.Services.AddSingleton<IAnalyticsCacheService, HybridCacheService>();
+        builder.Services.AddStackExchangeRedisCache(options =>
+        {
+            var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+            options.Configuration = $"{redisConnection},abortConnect=false,connectTimeout=500,syncTimeout=500,asyncTimeout=500,connectRetry=1";
+            options.InstanceName = "trendplus:";
+        });
+        builder.Services.AddSingleton<IAnalyticsCacheService, HybridCacheService>();
+    }
+    else
+    {
+        Console.WriteLine("Caching: Redis disabled (using In-Memory cache only).");
+        builder.Services.AddSingleton<IAnalyticsCacheService, InMemoryCacheService>();
+    }
 
     // Register Api.Services.CommonMatchesClient (implementation in Api project)
     builder.Services.AddScoped<ICommonMatchesClient, CommonMatchesClient>();

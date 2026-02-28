@@ -307,10 +307,10 @@ export default function AnalyticsDashboard() {
 
   const topRows = useMemo(() => {
     if (!topAdvanced) return [] as TopProductAdvancedItem[];
-    if (topTab === "revenue") return topAdvanced.byRevenue;
-    if (topTab === "units") return topAdvanced.byUnits;
-    if (topTab === "velocity") return topAdvanced.byVelocity;
-    return topAdvanced.byMarginImpact;
+    if (topTab === "revenue") return topAdvanced.byRevenue ?? [];
+    if (topTab === "units") return topAdvanced.byUnits ?? [];
+    if (topTab === "velocity") return topAdvanced.byVelocity ?? [];
+    return topAdvanced.byMarginImpact ?? [];
   }, [topAdvanced, topTab]);
 
   const validationRows = useMemo(

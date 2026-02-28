@@ -24,7 +24,46 @@ CREATE TABLE IF NOT EXISTS price_history (
         ON DELETE SET NULL
 );
 
--- 2️⃣ Create indexes for price_history
+-- 2️⃣ Reconcile schema: table may have been created with PascalCase columns (older schema)
+DO $reconcile$
+DECLARE
+    has_snake BOOLEAN;
+BEGIN
+    -- Check if snake_case column exists
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'price_history' AND column_name = 'article_id'
+    ) INTO has_snake;
+
+    IF NOT has_snake THEN
+        ALTER TABLE price_history ADD COLUMN IF NOT EXISTS article_id INTEGER;
+        ALTER TABLE price_history ADD COLUMN IF NOT EXISTS vendor_id INTEGER;
+        ALTER TABLE price_history ADD COLUMN IF NOT EXISTS old_price NUMERIC(18,4);
+        ALTER TABLE price_history ADD COLUMN IF NOT EXISTS new_price NUMERIC(18,4);
+        ALTER TABLE price_history ADD COLUMN IF NOT EXISTS effective_from TIMESTAMPTZ;
+        ALTER TABLE price_history ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ;
+        ALTER TABLE price_history ADD COLUMN IF NOT EXISTS source_dnevnik_id INTEGER;
+        ALTER TABLE price_history ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+        -- Copy data from PascalCase columns (if they exist)
+        BEGIN
+            UPDATE price_history SET
+                article_id       = "ArticleId",
+                vendor_id        = "VendorId",
+                old_price        = "OldPrice",
+                new_price        = "NewPrice",
+                effective_from   = "EffectiveFrom",
+                changed_at       = "ChangedAt",
+                source_dnevnik_id = "SourceDnevnikId",
+                created_at       = "CreatedAt"
+            WHERE article_id IS NULL;
+        EXCEPTION WHEN undefined_column THEN NULL;
+        END;
+    END IF;
+END
+$reconcile$;
+
+-- Create indexes for price_history
 CREATE INDEX IF NOT EXISTS idx_price_history_article_date
 ON price_history (article_id, effective_from DESC);
 

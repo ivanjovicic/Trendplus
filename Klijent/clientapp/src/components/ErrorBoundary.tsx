@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from "react";
+﻿import React, { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
     children: ReactNode;
@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component<Props, State> {
                             fontSize: "3rem",
                             marginBottom: "1rem",
                         }}>
-                            ??
+                            !
                         </div>
                         <h2 style={{
                             fontSize: "1.5rem",
@@ -63,14 +63,14 @@ export class ErrorBoundary extends Component<Props, State> {
                             color: "#dc2626",
                             marginBottom: "1rem",
                         }}>
-                            Ne�to je po�lo naopako
+                            Nešto je pošlo naopako
                         </h2>
                         <p style={{
                             fontSize: "1rem",
                             color: "#6b7280",
                             marginBottom: "1.5rem",
                         }}>
-                            Do�lo je do neo?ekivane gre�ke. Poku�ajte ponovo ili kontaktirajte podr�ku.
+                            Došlo je do neočekivane greške. Pokušajte ponovo ili kontaktirajte podršku.
                         </p>
                         {this.state.error && (
                             <details style={{
@@ -86,7 +86,7 @@ export class ErrorBoundary extends Component<Props, State> {
                                     color: "#374151",
                                     marginBottom: "0.5rem",
                                 }}>
-                                    Tehni?ki detalji
+                                    Tehnički detalji
                                 </summary>
                                 <pre style={{
                                     fontSize: "0.875rem",
@@ -112,7 +112,7 @@ export class ErrorBoundary extends Component<Props, State> {
                                 cursor: "pointer",
                             }}
                         >
-                            ?? Poku�aj ponovo
+                            Pokušaj ponovo
                         </button>
                     </div>
                 </div>
