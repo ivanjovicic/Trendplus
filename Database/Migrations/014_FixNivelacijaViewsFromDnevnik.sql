@@ -39,9 +39,9 @@ WHERE line."DataOrigin" = 'access'
   AND src."Datum" IS NOT NULL;
 
 -- Drop existing views
-DROP VIEW IF EXISTS vw_vendor_sales_nivelacija;
-DROP VIEW IF EXISTS vw_sales_post_nivelacija;
-DROP VIEW IF EXISTS vw_sales_pre_nivelacija;
+DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;
+DROP VIEW IF EXISTS vw_sales_post_nivelacija CASCADE;
+DROP VIEW IF EXISTS vw_sales_pre_nivelacija CASCADE;
 
 -- Create pre-aggregated sales data
 CREATE OR REPLACE VIEW vw_sales_pre_nivelacija AS
