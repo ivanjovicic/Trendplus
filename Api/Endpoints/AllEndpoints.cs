@@ -687,9 +687,9 @@ public static class AllEndpoints
                         SELECT
                             event_date::date AS event_date,
                             vendor_id,
-                            sku,
-                            article_name,
-                            category,
+                            article_id,
+                            old_price,
+                            new_price,
                             pre_qty,
                             pre_revenue,
                             post_qty,
@@ -698,13 +698,9 @@ public static class AllEndpoints
                                 PARTITION BY
                                     event_date::date,
                                     COALESCE(vendor_id, -1),
-                                    sku,
-                                    article_name,
-                                    category,
-                                    pre_qty,
-                                    pre_revenue,
-                                    post_qty,
-                                    post_revenue
+                                    article_id,
+                                    old_price,
+                                    new_price
                                 ORDER BY price_event_id DESC
                             ) AS rn
                         FROM "vw_vendor_sales_nivelacija"
@@ -715,7 +711,7 @@ public static class AllEndpoints
                         event_date,
                         COUNT(*)::INT AS events_count,
                         COUNT(DISTINCT vendor_id)::INT AS vendors_count,
-                        COUNT(DISTINCT sku)::INT AS articles_count,
+                        COUNT(DISTINCT article_id)::INT AS articles_count,
                         COUNT(*) FILTER (
                             WHERE pre_qty <> 0
                                OR post_qty <> 0
@@ -779,18 +775,517 @@ public static class AllEndpoints
         .RequireRateLimiting("analytics");
 
         app.MapGet("/api/analytics/vendor-sales-nivelacija", async (
-            TrendplusDbContext db,
-            bool? enrich = false,
+            TrendplusDbContext trendplusDb,
+            int? vendorId = null,
+            DateTime? eventDate = null,
+            DateTime? from = null,
+            DateTime? to = null,
+            string? category = null,
+            bool includeInactive = false,
             CancellationToken ct = default) =>
         {
-            var query = @"SELECT * FROM vw_vendor_sales_nivelacija";
-            if (enrich == true)
+            try
             {
-                query += " WHERE is_low_signal = FALSE"; // Filter low-signal events if enrich is enabled
-            }
+                var connectionString = trendplusDb.Database.GetConnectionString();
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    return Results.Problem(
+                        title: "Missing database connection",
+                        detail: "Trendplus connection string is missing.",
+                        statusCode: 500);
+                }
 
-            var results = await db.Database.ExecuteSqlRawAsync(query, ct);
-            return Results.Ok(results);
+                var eventDateOnly = eventDate?.Date;
+                var fromDateOnly = from?.ToUniversalTime().Date;
+                var toDateOnly = to?.ToUniversalTime().Date;
+
+                if (fromDateOnly.HasValue && toDateOnly.HasValue && fromDateOnly.Value > toDateOnly.Value)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = "Invalid date range: from must be <= to",
+                        from = fromDateOnly.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        to = toDateOnly.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                    });
+                }
+
+                var categoryTrimmed = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
+                var categoryPattern = string.IsNullOrWhiteSpace(categoryTrimmed) ? null : $"%{categoryTrimmed}%";
+
+                await using var connection = new NpgsqlConnection(connectionString);
+                await connection.OpenAsync(ct);
+
+                const string rawCountSql = """
+                    SELECT COUNT(*)::INT
+                    FROM "vw_vendor_sales_nivelacija"
+                    WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                      AND (@eventDate IS NULL OR event_date::date = @eventDate)
+                      AND (@fromDate IS NULL OR event_date::date >= @fromDate)
+                      AND (@toDate IS NULL OR event_date::date <= @toDate)
+                      AND (@category IS NULL OR category ILIKE @categoryPattern);
+                    """;
+
+                var rawRows = 0;
+                await using (var cmd = new NpgsqlCommand(rawCountSql, connection))
+                {
+                    cmd.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("eventDate", (object?)eventDateOnly ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("fromDate", (object?)fromDateOnly ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("toDate", (object?)toDateOnly ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("category", (object?)categoryTrimmed ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("categoryPattern", (object?)categoryPattern ?? DBNull.Value);
+                    rawRows = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
+                }
+
+                var categories = new List<string>();
+                const string categoriesSql = """
+                    SELECT DISTINCT COALESCE(NULLIF(category, ''), 'N/A') AS category
+                    FROM "vw_vendor_sales_nivelacija"
+                    WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                      AND (@eventDate IS NULL OR event_date::date = @eventDate)
+                      AND (@fromDate IS NULL OR event_date::date >= @fromDate)
+                      AND (@toDate IS NULL OR event_date::date <= @toDate)
+                    ORDER BY COALESCE(NULLIF(category, ''), 'N/A');
+                    """;
+
+                await using (var cmd = new NpgsqlCommand(categoriesSql, connection))
+                {
+                    cmd.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("eventDate", (object?)eventDateOnly ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("fromDate", (object?)fromDateOnly ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("toDate", (object?)toDateOnly ?? DBNull.Value);
+                    await using var reader = await cmd.ExecuteReaderAsync(ct);
+                    while (await reader.ReadAsync(ct))
+                    {
+                        var value = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+                        if (!string.IsNullOrWhiteSpace(value))
+                            categories.Add(value);
+                    }
+                }
+
+                const string rowsSql = """
+                    WITH ranked AS (
+                        SELECT
+                            price_event_id,
+                            event_date::date AS event_date,
+                            vendor_id,
+                            COALESCE(vendor_name, 'N/A') AS vendor_name,
+                            article_id,
+                            COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
+                            COALESCE(article_name, '') AS article_name,
+                            COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                            old_price,
+                            new_price,
+                            COALESCE(pre_qty, 0)::numeric AS pre_qty,
+                            COALESCE(pre_revenue, 0)::numeric AS pre_revenue,
+                            COALESCE(post_qty, 0)::numeric AS post_qty,
+                            COALESCE(post_revenue, 0)::numeric AS post_revenue,
+                            COALESCE(change_qty, 0)::numeric AS change_qty,
+                            COALESCE(change_revenue, 0)::numeric AS change_revenue,
+                            COALESCE(change_percent_qty, 0)::numeric AS change_percent_qty,
+                            COALESCE(change_percent_revenue, 0)::numeric AS change_percent_revenue,
+                            COALESCE(coverage_pre30, 0)::numeric AS coverage_pre30,
+                            COALESCE(coverage_post30, 0)::numeric AS coverage_post30,
+                            COALESCE(is_low_signal, FALSE) AS is_low_signal,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY
+                                    event_date::date,
+                                    COALESCE(vendor_id, -1),
+                                    article_id,
+                                    old_price,
+                                    new_price
+                                ORDER BY price_event_id DESC
+                            ) AS rn
+                        FROM "vw_vendor_sales_nivelacija"
+                        WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                          AND (@eventDate IS NULL OR event_date::date = @eventDate)
+                          AND (@fromDate IS NULL OR event_date::date >= @fromDate)
+                          AND (@toDate IS NULL OR event_date::date <= @toDate)
+                          AND (@category IS NULL OR category ILIKE @categoryPattern)
+                    )
+                    SELECT
+                        price_event_id,
+                        event_date,
+                        vendor_id,
+                        vendor_name,
+                        article_id,
+                        sku,
+                        article_name,
+                        category,
+                        old_price,
+                        new_price,
+                        pre_qty,
+                        pre_revenue,
+                        post_qty,
+                        post_revenue,
+                        change_qty,
+                        change_revenue,
+                        change_percent_qty,
+                        change_percent_revenue
+                    FROM ranked
+                    WHERE rn = 1
+                    ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
+                    """;
+
+                var dedupRows = new List<VendorSalesNivelacijaArticleStatDto>();
+
+                var inactiveRows = 0;
+                var unchangedPriceRows = 0;
+
+                await using (var cmd = new NpgsqlCommand(rowsSql, connection))
+                {
+                    cmd.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("eventDate", (object?)eventDateOnly ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("fromDate", (object?)fromDateOnly ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("toDate", (object?)toDateOnly ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("category", (object?)categoryTrimmed ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("categoryPattern", (object?)categoryPattern ?? DBNull.Value);
+
+                    await using var reader = await cmd.ExecuteReaderAsync(ct);
+                    while (await reader.ReadAsync(ct))
+                    {
+                        _ = reader.GetInt64(0); // price_event_id (not returned)
+                        var evDate = DateTime.SpecifyKind(reader.GetDateTime(1), DateTimeKind.Utc);
+                        var vId = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2);
+                        var vName = reader.IsDBNull(3) ? "N/A" : reader.GetString(3);
+                        _ = reader.GetInt32(4); // article_id (used by metrics queries, not returned)
+                        var sku = reader.IsDBNull(5) ? string.Empty : reader.GetString(5);
+                        var articleName = reader.IsDBNull(6) ? string.Empty : reader.GetString(6);
+                        var cat = reader.IsDBNull(7) ? "N/A" : reader.GetString(7);
+                        var oldPrice = reader.IsDBNull(8) ? (decimal?)null : reader.GetDecimal(8);
+                        var newPrice = reader.IsDBNull(9) ? (decimal?)null : reader.GetDecimal(9);
+
+                        var preQty = reader.IsDBNull(10) ? 0 : (int)reader.GetDecimal(10);
+                        var preRevenue = reader.IsDBNull(11) ? 0m : reader.GetDecimal(11);
+                        var postQty = reader.IsDBNull(12) ? 0 : (int)reader.GetDecimal(12);
+                        var postRevenue = reader.IsDBNull(13) ? 0m : reader.GetDecimal(13);
+                        var changeQty = reader.IsDBNull(14) ? 0 : (int)reader.GetDecimal(14);
+                        var changeRevenue = reader.IsDBNull(15) ? 0m : reader.GetDecimal(15);
+                        _ = reader.IsDBNull(16) ? 0m : reader.GetDecimal(16); // change_percent_qty (unused)
+                        var changePercentRevenue = reader.IsDBNull(17) ? 0m : reader.GetDecimal(17);
+
+                        var hasSalesWindow =
+                            preQty != 0 || postQty != 0 || preRevenue != 0m || postRevenue != 0m;
+
+                        if (!hasSalesWindow)
+                            inactiveRows++;
+
+                        var priceChanged = oldPrice.HasValue && newPrice.HasValue && oldPrice.Value != newPrice.Value;
+                        if (oldPrice.HasValue && newPrice.HasValue && oldPrice.Value == newPrice.Value)
+                            unchangedPriceRows++;
+
+                        decimal? priceChangePercent = null;
+                        if (priceChanged && oldPrice.GetValueOrDefault() != 0m)
+                        {
+                            priceChangePercent = Math.Round(((newPrice!.Value - oldPrice!.Value) / oldPrice.Value) * 100m, 2);
+                        }
+
+                        var dto = new VendorSalesNivelacijaArticleStatDto
+                        {
+                            EventDate = evDate,
+                            VendorId = vId,
+                            VendorName = vName,
+                            Sku = sku,
+                            ArticleName = articleName,
+                            Category = string.IsNullOrWhiteSpace(cat) ? "N/A" : cat,
+                            OldPrice = oldPrice,
+                            NewPrice = newPrice,
+                            PreQty = preQty,
+                            PreRevenue = preRevenue,
+                            PostQty = postQty,
+                            PostRevenue = postRevenue,
+                            ChangeQty = changeQty,
+                            ChangeRevenue = changeRevenue,
+                            ChangePercent = changePercentRevenue,
+                            HasSalesWindow = hasSalesWindow,
+                            PriceChanged = priceChanged,
+                            PriceChangePercent = priceChangePercent
+                        };
+
+                        dedupRows.Add(dto);
+                    }
+                }
+
+                var deduplicatedRows = dedupRows.Count;
+
+                // Analyze rows: remove unchanged-price rows, and optionally remove inactive rows.
+                var analyzed = dedupRows
+                    .Where(x => !(x.OldPrice.HasValue && x.NewPrice.HasValue && x.OldPrice.Value == x.NewPrice.Value))
+                    .Where(x => includeInactive || x.HasSalesWindow)
+                    .ToList();
+
+                var analyzedRows = analyzed.Count;
+
+                var analyzedSharePercent = deduplicatedRows == 0
+                    ? 0m
+                    : Math.Round(((decimal)analyzedRows / deduplicatedRows) * 100m, 2);
+
+                // Advanced metrics (best-effort, non-fatal).
+                var globalWarnings = new List<string>();
+
+                try
+                {
+                    var warning = await MapRollingAndMomentumToNivelacijaArticlesAsync(
+                        analyzed,
+                        connection,
+                        eventDateOnly,
+                        ct);
+                    if (!string.IsNullOrWhiteSpace(warning))
+                        globalWarnings.Add(warning);
+                }
+                catch
+                {
+                    globalWarnings.Add("Metrics mapping failed");
+                }
+
+                try
+                {
+                    var warning = await MapOosAndDidToNivelacijaArticlesAsync(analyzed, connection, ct);
+                    if (!string.IsNullOrWhiteSpace(warning))
+                        globalWarnings.Add(warning);
+                }
+                catch
+                {
+                    globalWarnings.Add("OOS/DiD mapping failed");
+                }
+
+                MapElasticityAndLostSalesToNivelacijaArticles(analyzed);
+                MapMetricReasons(analyzed, globalWarnings);
+
+                // Totals
+                var totalPreQty = analyzed.Sum(x => x.PreQty);
+                var totalPostQty = analyzed.Sum(x => x.PostQty);
+                var totalPreRevenue = analyzed.Sum(x => x.PreRevenue);
+                var totalPostRevenue = analyzed.Sum(x => x.PostRevenue);
+                var totalChangeQty = analyzed.Sum(x => x.ChangeQty);
+                var totalChangeRevenue = analyzed.Sum(x => x.ChangeRevenue);
+
+                static decimal Pct(decimal pre, decimal post)
+                {
+                    if (pre == 0m) return post > 0m ? 100m : 0m;
+                    return Math.Round(((post - pre) / pre) * 100m, 2);
+                }
+
+                var vendorsCount = analyzed.Select(x => x.VendorId).Distinct().Count();
+                var articlesCount = analyzed.Select(x => x.Sku).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.Ordinal).Count();
+                var activeArticlesCount = analyzed.Count(x => x.HasSalesWindow);
+
+                var avgRevenuePerArticlePre = activeArticlesCount == 0 ? 0m : Math.Round(totalPreRevenue / activeArticlesCount, 2);
+                var avgRevenuePerArticlePost = activeArticlesCount == 0 ? 0m : Math.Round(totalPostRevenue / activeArticlesCount, 2);
+
+                var avgPriceChangePercent = analyzed
+                    .Where(x => x.PriceChangePercent.HasValue)
+                    .Select(x => x.PriceChangePercent!.Value)
+                    .DefaultIfEmpty()
+                    .Average();
+
+                var totals = new VendorSalesNivelacijaTotalsDto
+                {
+                    PreQty = totalPreQty,
+                    PreRevenue = totalPreRevenue,
+                    PostQty = totalPostQty,
+                    PostRevenue = totalPostRevenue,
+                    ChangeQty = totalChangeQty,
+                    ChangeRevenue = totalChangeRevenue,
+                    ChangePercent = Pct(totalPreRevenue, totalPostRevenue),
+                    VendorsCount = vendorsCount,
+                    ArticlesCount = articlesCount,
+                    ActiveArticlesCount = activeArticlesCount,
+                    AvgRevenuePerArticlePre = avgRevenuePerArticlePre,
+                    AvgRevenuePerArticlePost = avgRevenuePerArticlePost,
+                    AvgPriceChangePercent = Math.Round(avgPriceChangePercent, 2)
+                };
+
+                // Vendor stats
+                var vendorStats = analyzed
+                    .GroupBy(x => new { x.VendorId, x.VendorName })
+                    .Select(g =>
+                    {
+                        var preRev = g.Sum(x => x.PreRevenue);
+                        var postRev = g.Sum(x => x.PostRevenue);
+                        var increased = g.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value > 0m);
+                        var decreased = g.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value < 0m);
+                        return new VendorSalesNivelacijaVendorStatDto
+                        {
+                            VendorId = g.Key.VendorId,
+                            VendorName = g.Key.VendorName,
+                            PreQty = g.Sum(x => x.PreQty),
+                            PreRevenue = preRev,
+                            PostQty = g.Sum(x => x.PostQty),
+                            PostRevenue = postRev,
+                            ChangeQty = g.Sum(x => x.ChangeQty),
+                            ChangeRevenue = g.Sum(x => x.ChangeRevenue),
+                            ChangePercent = Pct(preRev, postRev),
+                            ArticleCount = g.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
+                            ActiveArticlesCount = g.Count(x => x.HasSalesWindow),
+                            IncreasedPriceArticlesCount = increased,
+                            DecreasedPriceArticlesCount = decreased
+                        };
+                    })
+                    .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
+                    .ToList();
+
+                // Category stats (top 50)
+                var categoryStats = analyzed
+                    .GroupBy(x => x.Category ?? "N/A")
+                    .Select(g =>
+                    {
+                        var preRev = g.Sum(x => x.PreRevenue);
+                        var postRev = g.Sum(x => x.PostRevenue);
+                        return new VendorSalesNivelacijaCategoryStatDto
+                        {
+                            Category = g.Key,
+                            ArticlesCount = g.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
+                            VendorsCount = g.Select(x => x.VendorId).Distinct().Count(),
+                            PreQty = g.Sum(x => x.PreQty),
+                            PreRevenue = preRev,
+                            PostQty = g.Sum(x => x.PostQty),
+                            PostRevenue = postRev,
+                            ChangeQty = g.Sum(x => x.ChangeQty),
+                            ChangeRevenue = g.Sum(x => x.ChangeRevenue),
+                            ChangePercent = Pct(preRev, postRev)
+                        };
+                    })
+                    .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
+                    .ToList();
+
+                // Price direction stats
+                string SegmentFor(VendorSalesNivelacijaArticleStatDto x)
+                {
+                    if (!x.PriceChangePercent.HasValue) return "Cena N/A";
+                    if (x.PriceChangePercent.Value > 0m) return "Cena ↑";
+                    if (x.PriceChangePercent.Value < 0m) return "Cena ↓";
+                    return "Cena =";
+                }
+
+                var priceDirectionStats = analyzed
+                    .GroupBy(SegmentFor)
+                    .Select(g =>
+                    {
+                        var preRev = g.Sum(x => x.PreRevenue);
+                        var postRev = g.Sum(x => x.PostRevenue);
+                        var avgPct = g.Where(x => x.PriceChangePercent.HasValue).Select(x => x.PriceChangePercent!.Value).DefaultIfEmpty().Average();
+                        return new VendorSalesNivelacijaPriceDirectionStatDto
+                        {
+                            Segment = g.Key,
+                            ArticlesCount = g.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
+                            VendorsCount = g.Select(x => x.VendorId).Distinct().Count(),
+                            AvgPriceChangePercent = Math.Round(avgPct, 2),
+                            ChangeRevenue = g.Sum(x => x.ChangeRevenue),
+                            ChangePercent = Pct(preRev, postRev)
+                        };
+                    })
+                    .OrderByDescending(x => x.ArticlesCount)
+                    .ToList();
+
+                // Insights (minimal, stable)
+                var insights = new List<VendorSalesNivelacijaInsightDto>();
+                if (totals.ArticlesCount > 0)
+                {
+                    insights.Add(new VendorSalesNivelacijaInsightDto
+                    {
+                        Title = "Ukupan obuhvat",
+                        Value = $"{totals.VendorsCount} dobavljaca / {totals.ArticlesCount} artikala",
+                        Details = $"Aktivni artikli: {totals.ActiveArticlesCount}.",
+                        Tone = "neutral"
+                    });
+
+                    var bestVendor = vendorStats.OrderByDescending(x => x.ChangeRevenue).FirstOrDefault();
+                    if (bestVendor != null)
+                    {
+                        insights.Add(new VendorSalesNivelacijaInsightDto
+                        {
+                            Title = "Najveci rast (dobavljac)",
+                            Value = $"{bestVendor.VendorName}",
+                            Details = $"{bestVendor.ChangeRevenue:N2} RSD ({bestVendor.ChangePercent:N2}%)",
+                            Tone = bestVendor.ChangeRevenue >= 0 ? "positive" : "warning"
+                        });
+                    }
+
+                    var worstVendor = vendorStats.OrderBy(x => x.ChangeRevenue).FirstOrDefault();
+                    if (worstVendor != null && worstVendor.ChangeRevenue < 0)
+                    {
+                        insights.Add(new VendorSalesNivelacijaInsightDto
+                        {
+                            Title = "Najveci pad (dobavljac)",
+                            Value = $"{worstVendor.VendorName}",
+                            Details = $"{worstVendor.ChangeRevenue:N2} RSD ({worstVendor.ChangePercent:N2}%)",
+                            Tone = "negative"
+                        });
+                    }
+                }
+
+                static decimal? AverageOrNull(IEnumerable<decimal?> values)
+                {
+                    decimal sum = 0m;
+                    var count = 0;
+                    foreach (var value in values)
+                    {
+                        if (!value.HasValue) continue;
+                        sum += value.Value;
+                        count++;
+                    }
+
+                    return count == 0 ? null : sum / count;
+                }
+
+                var avgMomentumRevenue = AverageOrNull(analyzed.Select(x => x.MomentumRevenue));
+                var avgElasticity = AverageOrNull(analyzed.Select(x => x.PriceElasticity));
+                var avgDidRevenue = AverageOrNull(analyzed.Select(x => x.DidRevenue));
+                var avgLostSalesOos = AverageOrNull(analyzed.Select(x => x.LostSalesOOS));
+                var avgOosRate = AverageOrNull(analyzed.Select(x => x.OOSRate));
+
+                var response = new VendorSalesNivelacijaResponseDto
+                {
+                    GeneratedAt = DateTime.UtcNow,
+                    WindowDays = 30,
+                    VendorId = vendorId,
+                    EventDate = eventDateOnly,
+                    From = from,
+                    To = to,
+                    Category = categoryTrimmed,
+                    IncludeInactive = includeInactive,
+                    Categories = categories,
+                    VendorStats = vendorStats,
+                    ArticleStats = analyzed,
+                    Totals = totals,
+                    DataQuality = new VendorSalesNivelacijaDataQualityDto
+                    {
+                        RawRows = rawRows,
+                        DeduplicatedRows = deduplicatedRows,
+                        DuplicateRowsRemoved = Math.Max(0, rawRows - deduplicatedRows),
+                        InactiveRows = inactiveRows,
+                        UnchangedPriceRows = unchangedPriceRows,
+                        AnalyzedRows = analyzedRows,
+                        AnalyzedSharePercent = analyzedSharePercent
+                    },
+                    CategoryStats = categoryStats,
+                    PriceDirectionStats = priceDirectionStats,
+                    Insights = insights,
+                    AvgMomentumRevenue = avgMomentumRevenue,
+                    AvgElasticity = avgElasticity,
+                    AvgDidRevenue = avgDidRevenue,
+                    AvgLostSalesOOS = avgLostSalesOos,
+                    OOSRate = avgOosRate,
+                    MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal))
+                };
+
+                return Results.Ok(response);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            {
+                return Results.Problem(
+                    title: "Nivelacija view schema mismatch",
+                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql, 014_FixNivelacijaViewsFromDnevnik.sql, 016_AnalyticsNivelacijaEnhancements.sql and 017_CreateNightlyAnalyticsMaterializedViews.sql, then restart the backend.",
+                    statusCode: 500);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to load pre/post nivelacija analytics",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
         })
         .WithName("GetVendorSalesNivelacija")
         .WithTags("Analytics")
@@ -2741,7 +3236,7 @@ public static class AllEndpoints
     private static async Task<string?> MapRollingAndMomentumToNivelacijaArticlesAsync(
         List<VendorSalesNivelacijaArticleStatDto> articles,
         NpgsqlConnection connection,
-        DateTime eventDate,
+        DateTime? eventDate,
         CancellationToken ct)
     {
         if (articles.Count == 0) return null;
@@ -2752,48 +3247,73 @@ public static class AllEndpoints
         var rollingMap = new Dictionary<string, (decimal? pre, decimal? post)>(StringComparer.Ordinal);
         var momentumMap = new Dictionary<string, decimal?>(StringComparer.Ordinal);
 
-        try
+        var skuKeys = articles
+            .Select(x => SkuKey(x.Sku))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (eventDate.HasValue)
         {
-            const string rollingSql = """
-                SELECT
-                    UPPER(TRIM(COALESCE(a."PLU", ''))) AS sku_key,
-                    AVG(r.ma7_revenue) FILTER (WHERE r.day < @eventDate) AS pre,
-                    AVG(r.ma7_revenue) FILTER (WHERE r.day >= @eventDate) AS post
-                FROM vw_sales_rolling_7d r
-                JOIN "Artikli" a ON a."Id" = r.article_id
-                GROUP BY UPPER(TRIM(COALESCE(a."PLU", '')));
-                """;
-            await using var cmd = new NpgsqlCommand(rollingSql, connection);
-            cmd.Parameters.AddWithValue("eventDate", eventDate.Date);
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-            while (await reader.ReadAsync(ct))
+            try
             {
-                var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
-                if (string.IsNullOrWhiteSpace(key)) continue;
-                rollingMap[key] = (
-                    reader.IsDBNull(1) ? null : reader.GetDecimal(1),
-                    reader.IsDBNull(2) ? null : reader.GetDecimal(2));
+                const string rollingSql = """
+                    SELECT
+                        UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text))) AS sku_key,
+                        AVG(r.ma7_revenue) FILTER (
+                            WHERE r.day >= @eventDate - INTERVAL '30 days'
+                              AND r.day <  @eventDate
+                        ) AS pre,
+                        AVG(r.ma7_revenue) FILTER (
+                            WHERE r.day >= @eventDate
+                              AND r.day <  @eventDate + INTERVAL '30 days'
+                        ) AS post
+                    FROM vw_sales_rolling_7d r
+                    JOIN "Artikli" a ON a."Id" = r.article_id
+                    WHERE UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text))) = ANY(@skuKeys)
+                      AND r.day >= @eventDate - INTERVAL '30 days'
+                      AND r.day <  @eventDate + INTERVAL '30 days'
+                    GROUP BY UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text)));
+                    """;
+                await using var cmd = new NpgsqlCommand(rollingSql, connection);
+                cmd.Parameters.AddWithValue("eventDate", eventDate.Value.Date);
+                cmd.Parameters.AddWithValue("skuKeys", skuKeys);
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
+                {
+                    var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+                    if (string.IsNullOrWhiteSpace(key)) continue;
+                    rollingMap[key] = (
+                        reader.IsDBNull(1) ? null : reader.GetDecimal(1),
+                        reader.IsDBNull(2) ? null : reader.GetDecimal(2));
+                }
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            {
+                warnings.Add("No rolling data (view missing)");
+            }
+            catch (Exception)
+            {
+                warnings.Add("Rolling lookup failed");
             }
         }
-        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        else
         {
-            warnings.Add("No rolling data (view missing)");
-        }
-        catch (Exception)
-        {
-            warnings.Add("Rolling lookup failed");
+            warnings.Add("Rolling pre/post unavailable (no eventDate filter)");
         }
 
         try
         {
             const string momentumSql = """
                 SELECT
-                    UPPER(TRIM(COALESCE(a."PLU", ''))) AS sku_key,
+                    UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text))) AS sku_key,
                     m.momentum_revenue
                 FROM vw_sales_momentum m
-                JOIN "Artikli" a ON a."Id" = m.article_id;
+                JOIN "Artikli" a ON a."Id" = m.article_id
+                WHERE UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text))) = ANY(@skuKeys);
                 """;
             await using var cmd = new NpgsqlCommand(momentumSql, connection);
+            cmd.Parameters.AddWithValue("skuKeys", skuKeys);
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
@@ -2841,6 +3361,12 @@ public static class AllEndpoints
         var oosMap = new Dictionary<string, decimal?>(StringComparer.Ordinal);
         var didMap = new Dictionary<string, (decimal? didRevenue, decimal? didQty)>(StringComparer.Ordinal);
 
+        var skuKeys = articles
+            .Select(x => SkuKey(x.Sku))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
         try
         {
             const string oosSql = """
@@ -2848,9 +3374,11 @@ public static class AllEndpoints
                     UPPER(TRIM(COALESCE(sku, ''))) AS sku_key,
                     AVG(is_oos::numeric) AS oos_rate
                 FROM vw_stock_red_zone
+                WHERE UPPER(TRIM(COALESCE(sku, ''))) = ANY(@skuKeys)
                 GROUP BY UPPER(TRIM(COALESCE(sku, '')));
                 """;
             await using var cmd = new NpgsqlCommand(oosSql, connection);
+            cmd.Parameters.AddWithValue("skuKeys", skuKeys);
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
@@ -2876,9 +3404,11 @@ public static class AllEndpoints
                     AVG(did_revenue) AS did_revenue,
                     AVG(did_qty) AS did_qty
                 FROM vw_nivelacija_did
+                WHERE UPPER(TRIM(COALESCE(sku, ''))) = ANY(@skuKeys)
                 GROUP BY UPPER(TRIM(COALESCE(sku, '')));
                 """;
             await using var cmd = new NpgsqlCommand(didSql, connection);
+            cmd.Parameters.AddWithValue("skuKeys", skuKeys);
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {

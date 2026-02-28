@@ -170,6 +170,10 @@ SELECT
     pre.vendor_name,
     pre.article_id,
     pre.sku,
+    pre.article_name,
+    pre.category,
+    pre.old_price,
+    pre.new_price,
 
     pre.pre_qty::NUMERIC,
     post.post_qty::NUMERIC,
