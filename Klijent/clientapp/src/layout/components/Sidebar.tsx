@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ChevronDown, X } from "lucide-react";
 import { NAV_GROUPS } from "../navConfig";
@@ -8,16 +8,47 @@ type SidebarProps = {
   onCloseMobile: () => void;
 };
 
+function isRouteMatch(pathname: string, route: string): boolean {
+  if (route === "/") return pathname === "/";
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
+
+function findCurrentGroupId(pathname: string): string {
+  let selectedGroupId = "core";
+  let longestMatch = 0;
+
+  for (const group of NAV_GROUPS) {
+    for (const item of group.items) {
+      if (!isRouteMatch(pathname, item.to)) continue;
+      if (item.to.length < longestMatch) continue;
+      longestMatch = item.to.length;
+      selectedGroupId = group.id;
+    }
+  }
+
+  return selectedGroupId;
+}
+
 export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const location = useLocation();
   const defaultOpenGroups = useMemo(() => {
-    const current = NAV_GROUPS.find((group) =>
-      group.items.some((item) => location.pathname.startsWith(item.to))
-    );
-    return new Set<string>([current?.id ?? "core"]);
+    return new Set<string>([findCurrentGroupId(location.pathname)]);
   }, [location.pathname]);
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(defaultOpenGroups);
+
+  useEffect(() => {
+    const currentGroupId = findCurrentGroupId(location.pathname);
+
+    if (!currentGroupId) return;
+
+    setOpenGroups((prev) => {
+      if (prev.has(currentGroupId)) return prev;
+      const next = new Set(prev);
+      next.add(currentGroupId);
+      return next;
+    });
+  }, [location.pathname]);
 
   const toggleGroup = (groupId: string) => {
     setOpenGroups((prev) => {

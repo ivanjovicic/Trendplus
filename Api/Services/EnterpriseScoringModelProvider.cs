@@ -16,7 +16,8 @@ public sealed record EnterpriseScoringDbParameters(
     IReadOnlyDictionary<string, double> FeatureStdDevs,
     double Bias,
     double CalibrationA,
-    double CalibrationB);
+    double CalibrationB,
+    RuntimeScoringTuningOptions? RuntimeTuning);
 
 public interface IEnterpriseScoringModelProvider
 {
@@ -79,7 +80,8 @@ public sealed class EnterpriseScoringModelProvider : IEnterpriseScoringModelProv
                     m.Version,
                     m.FeatureImportanceJson,
                     m.MetricsJson,
-                    m.CalibrationJson
+                    m.CalibrationJson,
+                    m.RuntimeTuningJson
                 })
                 .FirstOrDefaultAsync(ct);
 
@@ -93,7 +95,9 @@ public sealed class EnterpriseScoringModelProvider : IEnterpriseScoringModelProv
                     model.FeatureImportanceJson,
                     model.MetricsJson,
                     model.CalibrationJson,
+                    model.RuntimeTuningJson,
                     enterpriseOptions,
+                    _options.CurrentValue.Tuning,
                     out var parsed))
             {
                 _logger.LogWarning(
@@ -114,7 +118,8 @@ public sealed class EnterpriseScoringModelProvider : IEnterpriseScoringModelProv
                 FeatureStdDevs: parsed.FeatureStdDevs,
                 Bias: parsed.Bias,
                 CalibrationA: parsed.CalibrationA,
-                CalibrationB: parsed.CalibrationB);
+                CalibrationB: parsed.CalibrationB,
+                RuntimeTuning: parsed.RuntimeTuning);
 
             _cache = new CacheEntry(parameters, now.Add(refreshInterval));
             return parameters;
@@ -136,13 +141,16 @@ public sealed class EnterpriseScoringModelProvider : IEnterpriseScoringModelProv
         IReadOnlyDictionary<string, double> FeatureStdDevs,
         double Bias,
         double CalibrationA,
-        double CalibrationB);
+        double CalibrationB,
+        RuntimeScoringTuningOptions? RuntimeTuning);
 
     private static bool TryParseParameters(
         string? featureImportanceJson,
         string? metricsJson,
         string? calibrationJson,
+        string? runtimeTuningJson,
         EnterpriseScoringOptions defaults,
+        RuntimeScoringTuningOptions runtimeTuningDefaults,
         out ParsedParameters parsed)
     {
         parsed = default!;
@@ -154,7 +162,8 @@ public sealed class EnterpriseScoringModelProvider : IEnterpriseScoringModelProv
         var calibrationB = defaults.CalibrationB;
         TryParseCalibration(calibrationJson, ref calibrationA, ref calibrationB);
 
-        parsed = new ParsedParameters(weights, means, stds, bias, calibrationA, calibrationB);
+        var runtimeTuning = TryParseRuntimeTuning(runtimeTuningJson, runtimeTuningDefaults);
+        parsed = new ParsedParameters(weights, means, stds, bias, calibrationA, calibrationB, runtimeTuning);
         return true;
     }
 
@@ -382,6 +391,172 @@ public sealed class EnterpriseScoringModelProvider : IEnterpriseScoringModelProv
             return true;
 
         value = 0d;
+        return false;
+    }
+
+    private static RuntimeScoringTuningOptions? TryParseRuntimeTuning(
+        string? runtimeTuningJson,
+        RuntimeScoringTuningOptions defaults)
+    {
+        if (string.IsNullOrWhiteSpace(runtimeTuningJson))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(runtimeTuningJson);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return null;
+
+            var tuning = CloneTuning(defaults);
+            var hasAny = false;
+
+            if (TryReadIntIgnoreCase(root, out var marketplaceItemsPerUnit, "MarketplaceCoverageItemsPerUnit"))
+            {
+                tuning.MarketplaceCoverageItemsPerUnit = marketplaceItemsPerUnit;
+                hasAny = true;
+            }
+
+            if (TryReadIntIgnoreCase(root, out var marketplaceMaxUnits, "MarketplaceCoverageMaxUnits"))
+            {
+                tuning.MarketplaceCoverageMaxUnits = marketplaceMaxUnits;
+                hasAny = true;
+            }
+
+            if (TryReadIntIgnoreCase(root, out var sourceCoverageNormalizationMaxUnits, "SourceCoverageNormalizationMaxUnits"))
+            {
+                tuning.SourceCoverageNormalizationMaxUnits = sourceCoverageNormalizationMaxUnits;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var priceFitExponentialDecay, "PriceFitExponentialDecay"))
+            {
+                tuning.PriceFitExponentialDecay = priceFitExponentialDecay;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var dealTanhMultiplier, "DealTanhMultiplier"))
+            {
+                tuning.DealTanhMultiplier = dealTanhMultiplier;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var confidenceBase, "ConfidenceBase"))
+            {
+                tuning.ConfidenceBase = confidenceBase;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var confidenceTrainingBonus, "ConfidenceTrainingBonus"))
+            {
+                tuning.ConfidenceTrainingBonus = confidenceTrainingBonus;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var confidencePerSource, "ConfidencePerSource"))
+            {
+                tuning.ConfidencePerSource = confidencePerSource;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var confidenceSourceCap, "ConfidenceSourceCap"))
+            {
+                tuning.ConfidenceSourceCap = confidenceSourceCap;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var confidenceImageDivisor, "ConfidenceImageDivisor"))
+            {
+                tuning.ConfidenceImageDivisor = confidenceImageDivisor;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var confidenceImageCap, "ConfidenceImageCap"))
+            {
+                tuning.ConfidenceImageCap = confidenceImageCap;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var confidenceBaselineBonus, "ConfidenceBaselineBonus"))
+            {
+                tuning.ConfidenceBaselineBonus = confidenceBaselineBonus;
+                hasAny = true;
+            }
+
+            if (TryReadDoubleIgnoreCase(root, out var confidenceCap, "ConfidenceCap"))
+            {
+                tuning.ConfidenceCap = confidenceCap;
+                hasAny = true;
+            }
+
+            return hasAny ? tuning : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static RuntimeScoringTuningOptions CloneTuning(RuntimeScoringTuningOptions source)
+        => new()
+        {
+            MarketplaceCoverageItemsPerUnit = source.MarketplaceCoverageItemsPerUnit,
+            MarketplaceCoverageMaxUnits = source.MarketplaceCoverageMaxUnits,
+            SourceCoverageNormalizationMaxUnits = source.SourceCoverageNormalizationMaxUnits,
+            PriceFitExponentialDecay = source.PriceFitExponentialDecay,
+            DealTanhMultiplier = source.DealTanhMultiplier,
+            ConfidenceBase = source.ConfidenceBase,
+            ConfidenceTrainingBonus = source.ConfidenceTrainingBonus,
+            ConfidencePerSource = source.ConfidencePerSource,
+            ConfidenceSourceCap = source.ConfidenceSourceCap,
+            ConfidenceImageDivisor = source.ConfidenceImageDivisor,
+            ConfidenceImageCap = source.ConfidenceImageCap,
+            ConfidenceBaselineBonus = source.ConfidenceBaselineBonus,
+            ConfidenceCap = source.ConfidenceCap
+        };
+
+    private static bool TryReadDoubleIgnoreCase(JsonElement root, out double value, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (!TryGetPropertyIgnoreCase(root, name, out var element))
+                continue;
+
+            if (TryReadNumber(element, out value))
+                return true;
+        }
+
+        value = 0d;
+        return false;
+    }
+
+    private static bool TryReadIntIgnoreCase(JsonElement root, out int value, params string[] names)
+    {
+        if (TryReadDoubleIgnoreCase(root, out var number, names))
+        {
+            value = Convert.ToInt32(Math.Round(number, MidpointRounding.AwayFromZero), CultureInfo.InvariantCulture);
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
+    private static bool TryGetPropertyIgnoreCase(JsonElement root, string name, out JsonElement value)
+    {
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var prop in root.EnumerateObject())
+            {
+                if (string.Equals(prop.Name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = prop.Value;
+                    return true;
+                }
+            }
+        }
+
+        value = default;
         return false;
     }
 

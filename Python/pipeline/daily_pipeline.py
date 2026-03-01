@@ -34,6 +34,16 @@ logging.basicConfig(
 logger = logging.getLogger("pipeline.daily")
 
 
+# Helper function to log step summaries
+def log_step_summary(step_name: str, summary: Dict[str, Any], logger: logging.Logger) -> None:
+    step_summary = summary.get("steps", {}).get(step_name, {})
+    logger.info(f"Step {step_name}: {step_summary}")
+
+# Helper function to handle dry-run logic
+def handle_dry_run(dry_run: bool, action: str, logger: logging.Logger) -> None:
+    if dry_run:
+        logger.info(f"  (dry_run: skipping {action})")
+
 async def run_daily_pipeline(
     run_date: Optional[date] = None,
     top_n: int = 500,
@@ -54,7 +64,7 @@ async def run_daily_pipeline(
     from scraper import scrape_all_markets
     scraped_items: List[Dict[str, Any]] = await scrape_all_markets(pages=scrape_pages)
     summary["steps"]["scrape"] = {"items": len(scraped_items)}
-    logger.info(f"  → {len(scraped_items)} raw items collected")
+    log_step_summary("scrape", summary, logger)
 
     if not scraped_items:
         logger.error("No items scraped — aborting pipeline")
@@ -65,7 +75,7 @@ async def run_daily_pipeline(
     from scorer import compute_topN
     groups = compute_topN(scraped_items, top_n=top_n)
     summary["steps"]["scoring"] = {"groups": len(groups)}
-    logger.info(f"  → {len(groups)} product groups scored")
+    log_step_summary("scoring", summary, logger)
 
     # ── 3. Save snapshots ─────────────────────────────────────────────────────
     logger.info("Step 3: Saving trend snapshots …")
@@ -78,9 +88,9 @@ async def run_daily_pipeline(
         n_snap = await save_trend_snapshot(today, groups)
     else:
         n_snap = len(groups)
-        logger.info("  (dry_run: skipping DB write)")
+        handle_dry_run(dry_run, "DB write", logger)
     summary["steps"]["snapshots"] = {"rows": n_snap}
-    logger.info(f"  → {n_snap} snapshot rows saved")
+    log_step_summary("snapshots", summary, logger)
 
     # ── 4. Compute momentum ───────────────────────────────────────────────────
     logger.info("Step 4: Computing momentum (today vs yesterday) …")
@@ -88,8 +98,9 @@ async def run_daily_pipeline(
         n_mom = await compute_all_momentums(today)
     else:
         n_mom = 0
+        handle_dry_run(dry_run, "momentum computation", logger)
     summary["steps"]["momentum"] = {"rows": n_mom}
-    logger.info(f"  → {n_mom} momentum rows saved")
+    log_step_summary("momentum", summary, logger)
 
     # Fetch momentum map so later steps can enrich groups
     momentum_map: Dict[str, Any] = {}
@@ -110,8 +121,9 @@ async def run_daily_pipeline(
     else:
         from analytics.trendplus_index import _build_scope_rows
         n_idx = len(_build_scope_rows(today, groups, momentum_map))
+        handle_dry_run(dry_run, "index computation", logger)
     summary["steps"]["index"] = {"scope_rows": n_idx}
-    logger.info(f"  → {n_idx} index scope rows saved")
+    log_step_summary("index", summary, logger)
 
     # ── 6. Inventory recommendations ─────────────────────────────────────────
     logger.info("Step 6: Computing inventory recommendations …")
@@ -120,8 +132,9 @@ async def run_daily_pipeline(
         recs = await compute_inventory_recommendations(today)
     else:
         recs = []
+        handle_dry_run(dry_run, "inventory recommendations", logger)
     summary["steps"]["inventory"] = {"recommendations": len(recs)}
-    logger.info(f"  → {len(recs)} order recommendations generated")
+    log_step_summary("inventory", summary, logger)
 
     # ── Done ──────────────────────────────────────────────────────────────────
     logger.info(f"=== Pipeline complete for {today} ===")

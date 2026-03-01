@@ -1,12 +1,15 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Api.Config;
 using Api.Validators;
 using FluentValidation;
+using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using Infrastructure.OpenProductTraining.V2;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace Api.Controllers;
@@ -20,17 +23,100 @@ public sealed class TrainingController : ControllerBase
     private readonly ILogger<TrainingController> _logger;
     private readonly IValidator<StartTrainingRunRequestDto> _startValidator;
     private readonly IValidator<RecomputeSellProbabilityLabelsRequestDto> _labelsValidator;
+    private readonly RuntimeScoringOptions _runtimeScoringOptions;
+    private readonly OpenTrainingModelTrainingOptions _trainingOptions;
 
     public TrainingController(
         OpenProductTrainingDbContext db,
         ILogger<TrainingController> logger,
         IValidator<StartTrainingRunRequestDto> startValidator,
-        IValidator<RecomputeSellProbabilityLabelsRequestDto> labelsValidator)
+        IValidator<RecomputeSellProbabilityLabelsRequestDto> labelsValidator,
+        IOptionsSnapshot<RuntimeScoringOptions> runtimeScoringOptions,
+        IOptionsSnapshot<OpenTrainingModelTrainingOptions> trainingOptions)
     {
         _db = db;
         _logger = logger;
         _startValidator = startValidator;
         _labelsValidator = labelsValidator;
+        _runtimeScoringOptions = runtimeScoringOptions.Value;
+        _trainingOptions = trainingOptions.Value;
+    }
+
+    private const string DefaultModelType = "sell_probability_rs";
+    private const string DefaultLabelType = "popularity_prior";
+
+    [HttpGet("model-types")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetModelTypes()
+    {
+        var t = _runtimeScoringOptions.Tuning;
+
+        return Ok(new
+        {
+            modelTypes = new object[]
+            {
+                new
+                {
+                    modelType = OpenTrainingModelCatalog.SellProbabilityRsModelType,
+                    description = "LightGBM regressioni model za SellProbabilityRS.",
+                    defaultFeatureView = OpenTrainingModelCatalog.DefaultFeatureViewName,
+                    defaultScriptPath = _trainingOptions.TrainingScriptPath,
+                    supportsRuntimeTuningOverride = false
+                },
+                new
+                {
+                    modelType = OpenTrainingModelCatalog.EnterpriseScoringModelType,
+                    description = "Enterprise logistic + Platt (runtime canonical features).",
+                    defaultFeatureView = OpenTrainingModelCatalog.EnterpriseDefaultFeatureViewName,
+                    defaultScriptPath = OpenTrainingModelCatalog.EnterpriseTrainingScriptPath,
+                    defaultTargetColumn = OpenTrainingModelCatalog.EnterpriseDefaultTargetColumn,
+                    defaultFeatureColumns = OpenTrainingModelCatalog.EnterpriseDefaultFeatureColumns,
+                    supportsRuntimeTuningOverride = true
+                },
+                new
+                {
+                    modelType = OpenTrainingModelCatalog.EnterpriseLogitModelType,
+                    description = "Alias enterprise model tipa (isti pipeline kao enterprise_scoring).",
+                    defaultFeatureView = OpenTrainingModelCatalog.EnterpriseDefaultFeatureViewName,
+                    defaultScriptPath = OpenTrainingModelCatalog.EnterpriseTrainingScriptPath,
+                    defaultTargetColumn = OpenTrainingModelCatalog.EnterpriseDefaultTargetColumn,
+                    defaultFeatureColumns = OpenTrainingModelCatalog.EnterpriseDefaultFeatureColumns,
+                    supportsRuntimeTuningOverride = true
+                }
+            },
+            exampleEnterpriseRunPayload = new
+            {
+                modelType = OpenTrainingModelCatalog.EnterpriseScoringModelType,
+                featureViewName = OpenTrainingModelCatalog.EnterpriseDefaultFeatureViewName,
+                datasetName = (string?)null,
+                @params = new
+                {
+                    test_size = 0.2,
+                    random_state = 42,
+                    pca_variance = 0.95,
+                    use_pca = true,
+                    max_iter = 500,
+                    class_weight_balanced = true,
+                    runtime_tuning = new
+                    {
+                        t.MarketplaceCoverageItemsPerUnit,
+                        t.MarketplaceCoverageMaxUnits,
+                        t.SourceCoverageNormalizationMaxUnits,
+                        t.PriceFitExponentialDecay,
+                        t.DealTanhMultiplier,
+                        t.ConfidenceBase,
+                        t.ConfidenceTrainingBonus,
+                        t.ConfidencePerSource,
+                        t.ConfidenceSourceCap,
+                        t.ConfidenceImageDivisor,
+                        t.ConfidenceImageCap,
+                        t.ConfidenceBaselineBonus,
+                        t.ConfidenceCap
+                    }
+                },
+                notes = "Enterprise retraining with runtime tuning override"
+            }
+        });
     }
 
     [HttpPost("run")]
@@ -41,7 +127,10 @@ public sealed class TrainingController : ControllerBase
     {
         var validation = await _startValidator.ValidateAsync(request, ct);
         if (!validation.IsValid)
+        {
+            _logger.LogWarning("Validation failed for StartRun: {Errors}", validation.Errors);
             return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+        }
 
         int? datasetId = request.DatasetId;
         if (datasetId is null && !string.IsNullOrWhiteSpace(request.DatasetName))
@@ -49,17 +138,25 @@ public sealed class TrainingController : ControllerBase
             var datasetName = request.DatasetName.Trim();
             datasetId = await _db.Datasets
                 .AsNoTracking()
-                .Where(d => d.Name.ToLower() == datasetName.ToLower())
+                .Where(d => EF.Functions.ILike(d.Name, datasetName))
                 .Select(d => (int?)d.Id)
                 .FirstOrDefaultAsync(ct);
         }
 
+        if (datasetId is null)
+        {
+            _logger.LogError("Dataset not found for name: {DatasetName}", request.DatasetName);
+            return Problem(title: "Dataset not found", detail: "The specified dataset could not be located.", statusCode: 404);
+        }
+
+        var modelType = NormalizeModelType(request.ModelType);
+        var featureViewName = NormalizeFeatureViewName(modelType, request.FeatureViewName);
         var now = DateTime.UtcNow;
         var run = new TrainingRun
         {
-            ModelType = request.ModelType.Trim(),
+            ModelType = modelType,
             DatasetId = datasetId,
-            FeatureViewName = request.FeatureViewName.Trim(),
+            FeatureViewName = featureViewName,
             Status = "queued",
             CodeVersion = request.CodeVersion?.Trim(),
             ParamsJson = request.Params?.ValueKind is not null ? request.Params.Value.GetRawText() : null,
@@ -74,6 +171,24 @@ public sealed class TrainingController : ControllerBase
         return Ok(run);
     }
 
+    private static string NormalizeModelType(string modelType)
+        => OpenTrainingModelCatalog.NormalizeModelType(modelType);
+
+    private static string NormalizeFeatureViewName(string modelType, string featureViewName)
+    {
+        var resolved = string.IsNullOrWhiteSpace(featureViewName)
+            ? OpenTrainingModelCatalog.DefaultFeatureViewName
+            : featureViewName.Trim();
+
+        if (OpenTrainingModelCatalog.IsEnterpriseModelType(modelType) &&
+            string.Equals(resolved, OpenTrainingModelCatalog.DefaultFeatureViewName, StringComparison.OrdinalIgnoreCase))
+        {
+            return OpenTrainingModelCatalog.EnterpriseDefaultFeatureViewName;
+        }
+
+        return resolved;
+    }
+
     [HttpPost("recompute-labels")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> RecomputeLabels(
@@ -82,11 +197,17 @@ public sealed class TrainingController : ControllerBase
     {
         var validation = await _labelsValidator.ValidateAsync(request, ct);
         if (!validation.IsValid)
+        {
+            _logger.LogWarning("Validation failed for RecomputeLabels: {Errors}", validation.Errors);
             return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+        }
 
         var connectionString = _db.Database.GetConnectionString();
         if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            _logger.LogError("Database connection string is missing.");
             return Problem(title: "Missing database connection", detail: "OpenProductTraining connection string is missing.", statusCode: 500);
+        }
 
         var datasetNames = request.DatasetNames?
             .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -182,7 +303,10 @@ public sealed class TrainingController : ControllerBase
     {
         var connectionString = _db.Database.GetConnectionString();
         if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            _logger.LogError("Database connection string is missing.");
             return Problem(title: "Missing database connection", detail: "OpenProductTraining connection string is missing.", statusCode: 500);
+        }
 
         take = Math.Clamp(take, 1, 50_000);
 

@@ -304,6 +304,14 @@ try
     builder.Services.AddScoped<IAccessImportService, AccessImportService>();
     builder.Services.AddScoped<IBatchLogService, BatchLogService>();
     builder.Services.AddScoped<IPreNivelacijaScoringService, PreNivelacijaScoringService>();
+    builder.Services.AddScoped<IShopifyImportService, ShopifyImportService>();
+
+    // Named HttpClient for Shopify public storefront API
+    builder.Services.AddHttpClient("Shopify", client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
+        client.DefaultRequestHeaders.Add("Accept", "application/json");
+    });
 
     // Typed HttpClient services for external product APIs
     var serpTimeout = builder.Configuration.GetValue<int>("SerpApi:TimeoutSeconds", 20);
@@ -456,8 +464,10 @@ try
     app.MapPreNivelacijaPriorityEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();
+    app.MapShopifyEndpoints();
     app.MapAccessImportEndpoints();
     app.MapRedisEndpoints();
+    app.MapOutboxEndpoints();
     
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");

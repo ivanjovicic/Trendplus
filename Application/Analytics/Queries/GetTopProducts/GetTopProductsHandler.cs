@@ -29,17 +29,14 @@ public class GetTopProductsHandler : IRequestHandler<GetTopProductsQuery, TopPro
             // 1. Filter SalesFacts first (KEEP BOTH: date filters commented out for debugging)
             var salesQuery = _db.SalesFacts.AsNoTracking();
             
-            // TEMPORARY: Date filters disabled for debugging
-            // if (request.FromDate.HasValue)
-            // {
-            //     salesQuery = salesQuery.Where(s => s.SaleTimestampUtc >= request.FromDate.Value);
-            // }
-            // if (request.ToDate.HasValue)
-            // {
-            //     salesQuery = salesQuery.Where(s => s.SaleTimestampUtc <= request.ToDate.Value);
-            // }
-            
-            _logger.LogWarning("⚠️ Date filters DISABLED for debugging!");
+            if (request.FromDate.HasValue)
+            {
+                salesQuery = salesQuery.Where(s => s.SaleTimestampUtc >= request.FromDate.Value);
+            }
+            if (request.ToDate.HasValue)
+            {
+                salesQuery = salesQuery.Where(s => s.SaleTimestampUtc <= request.ToDate.Value);
+            }
             
             if (request.StoreId.HasValue)
             {

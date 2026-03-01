@@ -42,12 +42,14 @@ import ProdajaPrePostNivelacijePage from "./pages/ProdajaPrePostNivelacijePage";
 import InsightStudioPage from "./pages/InsightStudioPage";
 import PreNivelacijaPriorityPage from "./pages/PreNivelacijaPriorityPage";
 import SupplierFootwearAnalyticsPage from "./pages/SupplierFootwearAnalyticsPage";
+import UnosHubPage from "./pages/UnosHubPage";
 
 function AppShell() {
     return (
         <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/zalando" element={<ZalandoProducts />} />
+            <Route path="/unos" element={<UnosHubPage />} />
             <Route path="/artikli" element={<ArtikliPage />} />
             <Route path="/artikli/lista" element={<ArtikliListPage />} />
             <Route path="/artikli/:id/edit" element={<ArtikalEditPage />} />

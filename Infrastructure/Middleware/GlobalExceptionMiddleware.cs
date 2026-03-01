@@ -1,8 +1,11 @@
 ﻿using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
+using Application.Common.Interfaces;
 using Domain.Exceptions;
+using Domain.Model;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Polly.CircuitBreaker;
 
@@ -44,6 +47,7 @@ public class GlobalExceptionMiddleware
     {
         var response = context.Response;
         response.ContentType = "application/json";
+        await PersistErrorRecordAsync(context, exception, correlationId);
 
         var problemDetails = new ProblemDetails
         {
@@ -207,6 +211,54 @@ public class GlobalExceptionMiddleware
         });
 
         await response.WriteAsync(json);
+    }
+
+    private async Task PersistErrorRecordAsync(HttpContext context, Exception exception, string correlationId)
+    {
+        var errorStore = context.RequestServices.GetService<IErrorStore>();
+        if (errorStore is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var record = new ErrorRecord
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = ResolveErrorLevel(exception),
+                Message = exception.Message,
+                ExceptionType = exception.GetType().FullName ?? exception.GetType().Name,
+                StackTrace = exception.StackTrace,
+                Path = context.Request.Path,
+                UserName = context.User?.Identity?.Name ?? "anonymous",
+                ClientApp = context.Request.Headers.UserAgent.ToString(),
+                CorrelationId = correlationId
+            };
+
+            await errorStore.SaveAsync(record);
+        }
+        catch (Exception storeEx)
+        {
+            _logger.LogWarning(storeEx, "Failed to persist ErrorRecord. CorrelationId: {CorrelationId}", correlationId);
+        }
+    }
+
+    private static string ResolveErrorLevel(Exception exception)
+    {
+        return exception switch
+        {
+            ValidationException => "Warning",
+            EntityNotFoundException => "Warning",
+            BusinessRuleException => "Warning",
+            InsufficientStockException => "Warning",
+            DuplicateEntityException => "Warning",
+            UnauthorizedAccessException => "Warning",
+            OperationCanceledException => "Warning",
+            BrokenCircuitException => "Warning",
+            ExternalServiceException => "Error",
+            _ => "Error"
+        };
     }
 }
 

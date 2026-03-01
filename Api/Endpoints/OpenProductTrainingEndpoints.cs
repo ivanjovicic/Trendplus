@@ -1,5 +1,7 @@
 using Api.Services;
 using Infrastructure.DbContexts;
+using Domain.Model.OpenProductTraining;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -7,9 +9,14 @@ namespace Trendplus2.Endpoints
 {
     public static class OpenProductTrainingEndpoints
     {
+        private const string DefaultLabelType = "popularity_prior";
+        private const string DefaultRateLimitPolicy = "writes";
+        private const int MaxTakeLimit = 200;
+        private const int DefaultMinProductsPerGroup = 10;
+
         private sealed record RecomputeLabelsRequest(
             string[]? DatasetNames,
-            int MinProductsPerGroup = 10);
+            int MinProductsPerGroup = DefaultMinProductsPerGroup);
 
         private sealed record SyncProductsRequest(
             string[]? DatasetNames);
@@ -79,25 +86,19 @@ namespace Trendplus2.Endpoints
 
             group.MapGet("/labels/top", async (
                 OpenProductTrainingDbContext db,
-                string labelType = PopularityAndDealScoringService.PopularityPriorLabelType,
+                string labelType = DefaultLabelType,
                 int take = 20,
                 string? shoeType = null,
                 string? brand = null,
                 CancellationToken ct = default) =>
             {
-                take = Math.Clamp(take, 1, 200);
+                take = Math.Clamp(take, 1, MaxTakeLimit);
 
                 var query = db.TrainingLabels
                     .AsNoTracking()
                     .Where(l => l.LabelType == labelType && l.ValueNumeric != null);
 
-                if (!string.IsNullOrWhiteSpace(shoeType))
-                    query = query.Where(l => l.Product.ShoeType != null &&
-                        l.Product.ShoeType.ToLower() == shoeType.Trim().ToLower());
-
-                if (!string.IsNullOrWhiteSpace(brand))
-                    query = query.Where(l => l.Product.Brand != null &&
-                        l.Product.Brand.Name.ToLower() == brand.Trim().ToLower());
+                query = ApplyFilters(query, shoeType, brand);
 
                 var rows = await query
                     .OrderByDescending(l => l.ValueNumeric)
@@ -147,7 +148,7 @@ namespace Trendplus2.Endpoints
                 var query = db.Products.AsNoTracking().Where(p => p.BrandId != null && p.Brand != null);
 
                 if (!string.IsNullOrWhiteSpace(shoeType))
-                    query = query.Where(p => p.ShoeType != null && p.ShoeType.ToLower() == shoeType.Trim().ToLower());
+                    query = query.Where(p => p.ShoeType != null && p.ShoeType.ToLower(CultureInfo.InvariantCulture) == shoeType.Trim().ToLower(CultureInfo.InvariantCulture));
 
                 var rows = await query
                     .GroupBy(p => p.Brand!.Name)
@@ -255,7 +256,7 @@ namespace Trendplus2.Endpoints
                 var syncResult = await syncService.SyncFromAnalyticsAsync(datasetNames, ct);
                 return Results.Ok(syncResult);
             })
-            .RequireRateLimiting("writes")
+            .RequireRateLimiting(DefaultRateLimitPolicy)
             .WithName("SyncOpenProductTrainingProducts")
             .WithDescription("Imports and updates open_product_training.product rows from analytics source tables.");
 
@@ -277,7 +278,7 @@ namespace Trendplus2.Endpoints
                 }
 
                 var syncResult = await syncService.SyncFromAnalyticsAsync(datasetNames, ct);
-                var minProductsPerGroup = request?.MinProductsPerGroup ?? 10;
+                var minProductsPerGroup = request?.MinProductsPerGroup ?? DefaultMinProductsPerGroup;
                 var result = await scoringService.ComputeAndPersistAsync(datasetNames, minProductsPerGroup, ct);
                 cache.Remove(OpenProductTrainingSignalProvider.RuntimeGroupSignalsCacheKey);
 
@@ -293,7 +294,7 @@ namespace Trendplus2.Endpoints
                     Sync = syncResult
                 });
             })
-            .RequireRateLimiting("writes")
+            .RequireRateLimiting(DefaultRateLimitPolicy)
             .WithName("RecomputeOpenProductTrainingLabels")
             .WithDescription("Syncs source products and recomputes popularity_prior and deal_score labels.");
         }
@@ -316,6 +317,40 @@ namespace Trendplus2.Endpoints
                 .Select(x => x.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
+        }
+
+        private static IQueryable<TrainingProduct> ApplyFilters(IQueryable<TrainingProduct> query, string? shoeType, string? brand)
+        {
+            if (!string.IsNullOrWhiteSpace(shoeType))
+            {
+                query = query.Where(p => p.ShoeType != null &&
+                    p.ShoeType.ToLower(CultureInfo.InvariantCulture) == shoeType.Trim().ToLower(CultureInfo.InvariantCulture));
+            }
+
+            if (!string.IsNullOrWhiteSpace(brand))
+            {
+                query = query.Where(p => p.Brand != null &&
+                    p.Brand.Name.ToLower(CultureInfo.InvariantCulture) == brand.Trim().ToLower(CultureInfo.InvariantCulture));
+            }
+
+            return query;
+        }
+
+        private static IQueryable<TrainingLabel> ApplyFilters(IQueryable<TrainingLabel> query, string? shoeType, string? brand)
+        {
+            if (!string.IsNullOrWhiteSpace(shoeType))
+            {
+                query = query.Where(l => l.Product != null && l.Product.ShoeType != null &&
+                    l.Product.ShoeType.ToLower(CultureInfo.InvariantCulture) == shoeType.Trim().ToLower(CultureInfo.InvariantCulture));
+            }
+
+            if (!string.IsNullOrWhiteSpace(brand))
+            {
+                query = query.Where(l => l.Product != null && l.Product.Brand != null &&
+                    l.Product.Brand.Name.ToLower(CultureInfo.InvariantCulture) == brand.Trim().ToLower(CultureInfo.InvariantCulture));
+            }
+
+            return query;
         }
 
         private static double Percentile(List<decimal> sorted, double p)

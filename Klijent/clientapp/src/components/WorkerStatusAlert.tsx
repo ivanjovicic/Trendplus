@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { usePingControl } from "../context/PingControlContext";
+import { apiUrl } from "../utils/apiUrl";
 
 interface WorkerStatus {
   workerName: string;
@@ -23,7 +24,6 @@ interface WorkerHealthSummary {
   workers: WorkerStatus[];
 }
 
-const API = import.meta.env.VITE_API_BASE_URL || "";
 const WORKER_HEALTH_POLL_INTERVAL_MS = import.meta.env.DEV ? 30000 : 120000;
 
 export default function WorkerStatusAlert() {
@@ -35,21 +35,21 @@ export default function WorkerStatusAlert() {
 
   const fetchHealth = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/workers/health`);
-      if (res.ok) {
-        const data = await res.json();
-        setHealth(data);
-        setError(null);
-
-        // Auto-dismiss if everything is healthy
-        if (!data.hasCriticalIssues && data.errorWorkers === 0 && data.staleWorkers === 0) {
-          // Keep showing for a bit after recovery
+      const res = await fetch(apiUrl("/api/workers/health"));
+      if (!res.ok) {
+        if (res.status === 404) {
+          setError("Worker health endpoint nije dostupan.");
+        } else {
+          setError(`Neuspešno čitanje worker statusa (HTTP ${res.status})`);
         }
-      } else {
-        setError("Failed to fetch worker status");
+        return;
       }
+
+      const data = (await res.json()) as WorkerHealthSummary;
+      setHealth(data);
+      setError(null);
     } catch {
-      setError("Cannot connect to backend");
+      setError("Nije moguće povezivanje sa backend-om.");
     }
   }, []);
 
@@ -59,49 +59,23 @@ export default function WorkerStatusAlert() {
     }
 
     void fetchHealth();
-
-    // Poll less frequently in production to reduce backend/db load.
     const interval = setInterval(fetchHealth, WORKER_HEALTH_POLL_INTERVAL_MS);
-
     return () => clearInterval(interval);
   }, [fetchHealth, apiPingEnabled]);
 
-  // Don't show anything if dismissed or no issues
   if (!apiPingEnabled) return null;
   if (dismissed) return null;
-  if (!health) return null;
-  if (!health.hasCriticalIssues && health.errorWorkers === 0 && health.staleWorkers === 0 && !error) return null;
+  if (!health && !error) return null;
+  if (health && !health.hasCriticalIssues && health.errorWorkers === 0 && health.staleWorkers === 0 && !error) {
+    return null;
+  }
 
-  const getAlertStyle = () => {
-    if (error) {
-      return {
-        background: "#fef2f2",
-        borderColor: "#dc2626",
-        color: "#991b1b",
-      };
-    }
-    if (health?.errorWorkers && health.errorWorkers > 0) {
-      return {
-        background: "#fef2f2",
-        borderColor: "#dc2626",
-        color: "#991b1b",
-      };
-    }
-    if (health?.staleWorkers && health.staleWorkers > 0) {
-      return {
-        background: "#fffbeb",
-        borderColor: "#f59e0b",
-        color: "#92400e",
-      };
-    }
-    return {
-      background: "#f0fdf4",
-      borderColor: "#059669",
-      color: "#065f46",
-    };
-  };
-
-  const style = getAlertStyle();
+  const style = (() => {
+    if (error) return { background: "#fef2f2", borderColor: "#dc2626", color: "#991b1b" };
+    if ((health?.errorWorkers ?? 0) > 0) return { background: "#fef2f2", borderColor: "#dc2626", color: "#991b1b" };
+    if ((health?.staleWorkers ?? 0) > 0) return { background: "#fffbeb", borderColor: "#f59e0b", color: "#92400e" };
+    return { background: "#f0fdf4", borderColor: "#059669", color: "#065f46" };
+  })();
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -120,7 +94,7 @@ export default function WorkerStatusAlert() {
       case "Stopped":
         return "⏹️";
       default:
-        return "❓";
+        return "❔";
     }
   };
 
@@ -130,7 +104,7 @@ export default function WorkerStatusAlert() {
         position: "fixed",
         bottom: 20,
         right: 20,
-        maxWidth: 400,
+        maxWidth: 420,
         zIndex: 9999,
         background: style.background,
         border: `2px solid ${style.borderColor}`,
@@ -150,26 +124,29 @@ export default function WorkerStatusAlert() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 20 }}>
-            {error ? "🔴" : health?.errorWorkers ? "❌" : health?.staleWorkers ? "⚠️" : "✅"}
+            {error ? "🔴" : (health?.errorWorkers ?? 0) > 0 ? "❌" : (health?.staleWorkers ?? 0) > 0 ? "⚠️" : "✅"}
           </span>
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: style.color }}>
               {error
-                ? "Backend nedostupan"
-                : health?.errorWorkers
-                ? `${health.errorWorkers} worker ima grešku`
-                : health?.staleWorkers
-                ? `${health.staleWorkers} worker ne reaguje`
-                : "Svi workeri zdravi"}
+                ? "Monitoring workera nedostupan"
+                : (health?.errorWorkers ?? 0) > 0
+                ? `${health?.errorWorkers} worker ima grešku`
+                : (health?.staleWorkers ?? 0) > 0
+                ? `${health?.staleWorkers} worker ne šalje heartbeat`
+                : "Svi workeri su zdravi"}
             </div>
             {!expanded && health && !error && (
-              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>{health.totalWorkers} workera • Klikni za detalje</div>
+              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
+                {health.totalWorkers} workera • Klikni za detalje
+              </div>
             )}
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
           <button
+            type="button"
             onClick={() => setExpanded(!expanded)}
             style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 16, padding: 4 }}
             title={expanded ? "Smanji" : "Proširi"}
@@ -177,6 +154,7 @@ export default function WorkerStatusAlert() {
             {expanded ? "🔼" : "🔽"}
           </button>
           <button
+            type="button"
             onClick={() => setDismissed(true)}
             style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 16, padding: 4 }}
             title="Zatvori"
@@ -204,16 +182,20 @@ export default function WorkerStatusAlert() {
               <div style={{ fontSize: 11, opacity: 0.7 }}>Zdravi</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: health.errorWorkers > 0 ? "#dc2626" : undefined }}>{health.errorWorkers}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: health.errorWorkers > 0 ? "#dc2626" : undefined }}>
+                {health.errorWorkers}
+              </div>
               <div style={{ fontSize: 11, opacity: 0.7 }}>Greške</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: health.staleWorkers > 0 ? "#f59e0b" : undefined }}>{health.staleWorkers}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: health.staleWorkers > 0 ? "#f59e0b" : undefined }}>
+                {health.staleWorkers}
+              </div>
               <div style={{ fontSize: 11, opacity: 0.7 }}>Stale</div>
             </div>
           </div>
 
-          <div style={{ maxHeight: 200, overflowY: "auto" }}>
+          <div style={{ maxHeight: 220, overflowY: "auto" }}>
             {health.workers.map((worker, idx) => (
               <div
                 key={idx}
@@ -244,7 +226,7 @@ export default function WorkerStatusAlert() {
 
                 {worker.isStale && (
                   <div style={{ marginTop: 4, color: "#f59e0b", fontSize: 11, fontWeight: 600 }}>
-                    ⚠️ Worker nije poslao heartbeat više od 10 minuta
+                    ⚠️ Worker nije poslao heartbeat duže od 10 minuta
                   </div>
                 )}
               </div>
@@ -252,6 +234,7 @@ export default function WorkerStatusAlert() {
           </div>
 
           <button
+            type="button"
             onClick={() => void fetchHealth()}
             style={{
               marginTop: 8,
@@ -275,6 +258,7 @@ export default function WorkerStatusAlert() {
         <div style={{ marginTop: 8, fontSize: 12 }}>
           <div style={{ opacity: 0.8, marginBottom: 8 }}>{error}</div>
           <button
+            type="button"
             onClick={() => void fetchHealth()}
             style={{
               width: "100%",
@@ -295,4 +279,3 @@ export default function WorkerStatusAlert() {
     </div>
   );
 }
-

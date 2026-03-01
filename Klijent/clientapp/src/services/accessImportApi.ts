@@ -4,9 +4,16 @@ export interface AccessImportTablePreview {
     key: string;
     tableName: string | null;
     rowCount: number;
+    matchStrategy: string;
     accessColumns: string[];
     fieldMappings: AccessImportFieldMappingPreview[];
+    matchedMappings: number;
+    totalMappings: number;
+    mappingCoveragePercent: number;
+    requiredFieldsMissing: string[];
+    unmappedAccessColumns: string[];
     found: boolean;
+    hasRows: boolean;
 }
 
 export interface AccessImportFieldMappingPreview {
@@ -20,6 +27,14 @@ export interface AccessImportPreviewResponse {
     sourceFileName: string;
     tables: AccessImportTablePreview[];
     availableTables: string[];
+    totalAccessTables: number;
+    accessTablesWithRows: number;
+    mappedAccessTables: number;
+    mappedAccessTablesWithRows: number;
+    totalAccessRows: number;
+    mappedAccessRows: number;
+    rowCoveragePercent: number;
+    unmappedAccessTablesWithRows: string[];
     warnings: string[];
 }
 
@@ -55,6 +70,8 @@ export interface AccessImportRunResponse {
     salesLineFactsInserted: number;
     storesInserted: number;
     storesUpdated: number;
+    sourceRowsByTable: Record<string, number>;
+    importedRowsByTable: Record<string, number>;
     warnings: string[];
 }
 

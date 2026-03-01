@@ -53,11 +53,11 @@ export default function WorkerControlFlag() {
   }, [error, health]);
 
   const statusText = useMemo(() => {
-    if (loading) return "DB ping: ucitavanje...";
-    if (error) return "DB ping: status nedostupan";
-    if (!health) return "DB ping: nema podataka";
-    if (!health.workersEnabled) return "DB ping: iskljucen";
-    return `DB ping: ukljucen (${health.runningWorkers}/${health.totalWorkers})`;
+    if (loading) return "Workeri: učitavanje...";
+    if (error) return "Workeri: status nedostupan";
+    if (!health) return "Workeri: nema podataka";
+    if (!health.workersEnabled) return "Workeri: isključeni";
+    return `Workeri: uključeni (${health.runningWorkers}/${health.totalWorkers})`;
   }, [error, health, loading]);
 
   const onToggle = useCallback(async () => {
@@ -78,7 +78,7 @@ export default function WorkerControlFlag() {
     }
   }, [busy, health, load]);
 
-  const buttonLabel = health?.workersEnabled ? "Stop DB" : "Start DB";
+  const buttonLabel = health?.workersEnabled ? "Stop workers" : "Start workers";
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -3,6 +3,7 @@ import {
   Activity,
   BarChart3,
   Boxes,
+  ClipboardList,
   CalendarDays,
   Gauge,
   Globe2,
@@ -55,6 +56,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Unos i prodaja",
     icon: ShoppingCart,
     items: [
+      { to: "/unos", label: "Centar unosa", icon: ClipboardList },
       { to: "/prodaja", label: "Prodaja", icon: ShoppingCart },
       { to: "/unos-robe", label: "Unos robe", icon: PackagePlus },
       { to: "/povracaj", label: "Povraćaj robe", icon: Undo2 },

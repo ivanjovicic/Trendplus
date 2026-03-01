@@ -56,13 +56,13 @@ public sealed class AccessImportService : IAccessImportService
             ["artikli"] =
             [
                 new FieldAlias("Id", "id", "idartikal", "productid"),
-                new FieldAlias("Naziv", "naziv", "nazivartikal", "artikal", "name", "productname"),
-                new FieldAlias("PLU", "plu", "sku", "sifra", "barcode", "barkod"),
-                new FieldAlias("IDTipObuce", "idtipobuce", "tipobuceid"),
-                new FieldAlias("IDDobavljac", "iddobavljac", "dobavljacid"),
+                new FieldAlias("Naziv", "naziv", "nazivartikal", "nazivarticle", "nazivproizvoda", "opis", "opisartikal", "opisproizvoda", "description", "proizvod", "name", "productname", "articlename", "itemname", "ime", "artikal", "article", "item", "roba"),
+                new FieldAlias("PLU", "plu", "sku", "sifra", "sifraartikla", "barcode", "barkod", "kod", "code"),
+                new FieldAlias("IDTipObuce", "idtipobuce", "tipobuceid", "footweartypeid"),
+                new FieldAlias("IDDobavljac", "iddobavljac", "dobavljacid", "supplierid"),
                 new FieldAlias("NabavnaCena", "nabavnacena", "purchaseprice", "cost"),
                 new FieldAlias("ProdajnaCena", "prodajnacena", "saleprice", "price"),
-                new FieldAlias("Kolicina", "kolicina", "qty", "quantity"),
+                new FieldAlias("Kolicina", "kolicina", "kol", "qty", "quantity", "stock", "stanje", "lager", "zaliha", "stockqty"),
                 new FieldAlias("IDSezona", "idsezona", "seasonid")
             ],
             ["dobavljaci"] =
@@ -70,7 +70,7 @@ public sealed class AccessImportService : IAccessImportService
                 new FieldAlias("Id", "id", "iddobavljac", "supplierid"),
                 new FieldAlias("Naziv", "naziv", "dobavljac", "supplier", "name"),
                 new FieldAlias("Adresa", "adresa", "address"),
-                new FieldAlias("Telefon", "telefon", "phone")
+                new FieldAlias("Telefon", "telefon", "phone", "brteldob", "brteldobav", "tel", "br_tel", "mobilni", "mobile")
             ],
             ["sezone"] =
             [
@@ -97,7 +97,8 @@ public sealed class AccessImportService : IAccessImportService
             ["dnevnik_promena"] =
             [
                 new FieldAlias("Id", "id", "iddnevnik", "iddnevnikpromene", "iddnevnikpromena", "idlog", "logid", "seqno"),
-                new FieldAlias("TipPromene", "tippromene", "vrstapromene", "tip", "type"),
+                new FieldAlias("TipPromene", "tippromene", "vrstapromene", "tip", "type", "eventtype", "tipprocene", "promena",
+                         "vrstaknjizenjem", "vrstaknjiz", "document", "doctype", "Unos"),
                 new FieldAlias("Datum", "datum", "datumizmene", "eventdate"),
                 new FieldAlias("Iznos", "iznospromene", "iznos", "amount", "total"),
                 new FieldAlias("BrojRacuna/BrojKalkulacije", "brojkalkulacije", "brojracuna", "invoice", "documentno"),
@@ -114,7 +115,7 @@ public sealed class AccessImportService : IAccessImportService
                 new FieldAlias("Id", "id", "idpovracaj", "returnid"),
                 new FieldAlias("IDDobavljac", "iddobavljac", "dobavljacid", "supplierid"),
                 new FieldAlias("DatumPovracaja", "datumazapisnika", "datumpovracaja", "datum", "date"),
-                new FieldAlias("BrojZapisnika", "brozapisnika", "broj", "recordnumber", "returnno"),
+                new FieldAlias("BrojZapisnika", "brojzapisnika", "brozapisnika", "broj", "recordnumber", "returnno"),
                 new FieldAlias("UkupanIznos", "ukupaniznos", "total", "iznos")
             ],
             ["povracaj_stavke"] =
@@ -210,41 +211,45 @@ public sealed class AccessImportService : IAccessImportService
                 using var conn = CreateOdbcConnection(snapshot.FilePath);
                 conn.Open();
                 var tables = GetUserTables(conn, includeTemporaryTables);
+                var tableRowCounts = tables.ToDictionary(t => t, t => RowCount(conn, t), StringComparer.OrdinalIgnoreCase);
 
-                var map = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                var map = new Dictionary<string, TableMatch>(StringComparer.OrdinalIgnoreCase)
                 {
-                    ["tipovi_obuce"]    = FindTable(conn, tables, TipoviCandidates),
-                    ["dobavljaci"]      = FindTable(conn, tables, DobavljaciCandidates),
-                    ["sezone"]         = FindTable(conn, tables, SezoneCandidates,
+                    ["tipovi_obuce"]    = FindTableDetailed(conn, tables, TipoviCandidates),
+                    ["dobavljaci"]      = FindTableDetailed(conn, tables, DobavljaciCandidates),
+                    ["sezone"]         = FindTableDetailed(conn, tables, SezoneCandidates,
                                              sigRequired: ["idsezona", "naziv"]),
-                    ["artikli"]        = FindTable(conn, tables, ArtikliCandidates,
+                    ["artikli"]        = FindTableDetailed(conn, tables, ArtikliCandidates,
                                              sigRequired: ["idartikal", "naziv"],
                                              sigBonus:    ["nabavnacena", "prodajnacena", "plu"]),
-                    ["prodaja_zaglavlje"] = FindTable(conn, tables, ProdajaCandidates),
-                    ["prodaja_stavke"]  = FindTable(conn, tables, ProdajaStavkeCandidates),
-                    ["dnevnik_promena"] = FindTable(conn, tables, DnevnikPromenaCandidates,
+                    ["prodaja_zaglavlje"] = FindTableDetailed(conn, tables, ProdajaCandidates),
+                    ["prodaja_stavke"]  = FindTableDetailed(conn, tables, ProdajaStavkeCandidates),
+                    ["dnevnik_promena"] = FindTableDetailed(conn, tables, DnevnikPromenaCandidates,
                                              sigRequired: ["iddnevnik", "datum"]),
-                    ["povracaj_zaglavlje"] = FindTable(conn, tables, PovracajCandidates),
-                    ["povracaj_stavke"] = FindTable(conn, tables, PovracajStavkeCandidates2),
-                    ["nivelacije"]      = FindTable(conn, tables, NivelacijeCandidates,
+                    ["povracaj_zaglavlje"] = FindTableDetailed(conn, tables, PovracajCandidates),
+                    ["povracaj_stavke"] = FindTableDetailed(conn, tables, PovracajStavkeCandidates2),
+                    ["nivelacije"]      = FindTableDetailed(conn, tables, NivelacijeCandidates,
                                              sigRequired: ["idartikal", "novacena"]),
-                    ["unos_robe"]       = FindTable(conn, tables, UnosRobeCandidates,
+                    ["unos_robe"]       = FindTableDetailed(conn, tables, UnosRobeCandidates,
                                              sigRequired: ["idartikal", "kolicina", "iddobavljac"]),
-                    ["povratnice"]      = FindTable(conn, tables, PovratniceCandidates,
+                    ["povratnice"]      = FindTableDetailed(conn, tables, PovratniceCandidates,
                                              sigRequired: ["idartikal", "kolicina"],
                                              sigBonus:    ["razlog", "idpovratnice"]),
-                    ["prenos_robe"]     = FindTable(conn, tables, PrenosRobeCandidates,
+                    ["prenos_robe"]     = FindTableDetailed(conn, tables, PrenosRobeCandidates,
                                              sigRequired: ["idartikal", "kolicina"],
                                              sigBonus:    ["idobjekatiz", "idobjekatulaz", "idobjekat"]),
-                    ["objekti"]         = FindTable(conn, tables, ObjekatCandidates,
+                    ["objekti"]         = FindTableDetailed(conn, tables, ObjekatCandidates,
                                              sigRequired: ["idobjekat", "nazivobjekta"]),
                 };
 
                 var response = new AccessImportPreviewResponse
                 {
                     SourceFileName = Path.GetFileName(accessFilePath),
-                    CanImport = map["artikli"] is not null,
+                    CanImport = map["artikli"].TableName is not null,
                     AvailableTables = tables.OrderBy(x => x).ToList(),
+                    TotalAccessTables = tables.Count,
+                    AccessTablesWithRows = tableRowCounts.Values.Count(x => x > 0),
+                    TotalAccessRows = tableRowCounts.Values.Sum(),
                     Tables = new List<AccessImportTablePreview>()
                 };
                 if (!string.IsNullOrWhiteSpace(snapshot.Warning))
@@ -252,7 +257,7 @@ public sealed class AccessImportService : IAccessImportService
 
                 foreach (var entry in map)
                 {
-                    var tablePreview = BuildTablePreview(conn, entry.Key, entry.Value);
+                    var tablePreview = BuildTablePreview(conn, entry.Key, entry.Value, tableRowCounts);
                     response.Tables.Add(tablePreview);
 
                     if (entry.Key.Equals("prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase)
@@ -276,6 +281,7 @@ public sealed class AccessImportService : IAccessImportService
                         continue;
 
                     var missing = FindMissingPreviewFields(tablePreview, req.Value);
+                    tablePreview.RequiredFieldsMissing = missing;
                     if (missing.Count > 0)
                     {
                         response.Warnings.Add($"Tabela '{tablePreview.TableName}' ({tablePreview.Key}) nema obavezna polja: {string.Join(", ", missing)}.");
@@ -289,15 +295,49 @@ public sealed class AccessImportService : IAccessImportService
                     TryAddSampleDataWarnings(conn, tablePreview, req.Value, response.Warnings);
                 }
 
-                if (map["prodaja_zaglavlje"] is null && map["dnevnik_promena"] is not null)
+                foreach (var tablePreview in response.Tables.Where(t => t.Found && t.HasRows))
+                {
+                    if (tablePreview.TotalMappings > 0 && tablePreview.MatchedMappings == 0)
+                    {
+                        response.Warnings.Add($"Tabela '{tablePreview.TableName}' ima podatke ({tablePreview.RowCount} redova), ali nijedno kljucno polje nije mapirano za '{tablePreview.Key}'.");
+                    }
+                }
+
+                response.MappedAccessTables = response.Tables.Count(t => t.Found);
+                response.MappedAccessTablesWithRows = response.Tables.Count(t => t.Found && t.HasRows);
+                response.MappedAccessRows = response.Tables.Where(t => t.Found).Sum(t => t.RowCount);
+                response.RowCoveragePercent = response.TotalAccessRows == 0
+                    ? 100d
+                    : Math.Round(response.MappedAccessRows * 100d / response.TotalAccessRows, 2);
+
+                var mappedTableKeys = map.Values
+                    .Where(x => !string.IsNullOrWhiteSpace(x.TableName))
+                    .Select(x => Normalize(x.TableName))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                response.UnmappedAccessTablesWithRows = tables
+                    .Where(t => !mappedTableKeys.Contains(Normalize(t)))
+                    .Where(t => tableRowCounts.TryGetValue(t, out var rowCount) && rowCount > 0)
+                    .OrderByDescending(t => tableRowCounts[t])
+                    .ToList();
+
+                if (response.UnmappedAccessTablesWithRows.Count > 0)
+                {
+                    var sample = string.Join(", ", response.UnmappedAccessTablesWithRows.Take(10));
+                    var hidden = response.UnmappedAccessTablesWithRows.Count - Math.Min(10, response.UnmappedAccessTablesWithRows.Count);
+                    var suffix = hidden > 0 ? $" (+{hidden} dodatnih)" : string.Empty;
+                    response.Warnings.Add($"Postoje Access tabele sa podacima koje nisu mapirane: {sample}{suffix}. Proveri da li ih treba ukljuciti u import.");
+                }
+
+                if (map["prodaja_zaglavlje"].TableName is null && map["dnevnik_promena"].TableName is not null)
                     response.Warnings.Add("Nije pronađena tabela prodaje — prodaja će biti sintetizovana iz DnevnikPromena (tip='Prodaja').");
 
-                if (map["prodaja_stavke"] is null && map["prodaja_zaglavlje"] is not null)
+                if (map["prodaja_stavke"].TableName is null && map["prodaja_zaglavlje"].TableName is not null)
                     response.Warnings.Add("Nije pronađena tabela stavki prodaje — zaglavlja bez stavki biće uvezena bez linija.");
 
                 var foundMovements = new[] { "nivelacije", "unos_robe", "povratnice", "prenos_robe" }
-                    .Where(k => map.ContainsKey(k) && map[k] is not null)
-                    .Select(k => map[k]!)
+                    .Where(k => map.ContainsKey(k) && map[k].TableName is not null)
+                    .Select(k => map[k].TableName!)
                     .ToList();
                 if (foundMovements.Count > 0)
                     response.Warnings.Add($"Pronađene tabele kretanja zaliha: {string.Join(", ", foundMovements)}.");
@@ -312,13 +352,21 @@ public sealed class AccessImportService : IAccessImportService
         }, ct);
     }
 
-    private static AccessImportTablePreview BuildTablePreview(OdbcConnection conn, string key, string? tableName)
+    private static AccessImportTablePreview BuildTablePreview(
+        OdbcConnection conn,
+        string key,
+        TableMatch tableMatch,
+        IReadOnlyDictionary<string, int> tableRowCounts)
     {
+        var tableName = tableMatch.TableName;
         var preview = new AccessImportTablePreview
         {
             Key = key,
             TableName = tableName,
-            RowCount = tableName is null ? 0 : RowCount(conn, tableName)
+            MatchStrategy = tableMatch.Strategy,
+            RowCount = tableName is null
+                ? 0
+                : (tableRowCounts.TryGetValue(tableName, out var rowCount) ? rowCount : RowCount(conn, tableName))
         };
 
         if (string.IsNullOrWhiteSpace(tableName))
@@ -326,6 +374,25 @@ public sealed class AccessImportService : IAccessImportService
 
         preview.AccessColumns = ReadColumnNames(conn, tableName);
         preview.FieldMappings = BuildFieldMappingsPreview(key, preview.AccessColumns);
+        preview.TotalMappings = preview.FieldMappings.Count;
+        preview.MatchedMappings = preview.FieldMappings.Count(m =>
+            !string.IsNullOrWhiteSpace(m.SourceColumn) &&
+            m.Status.Equals("matched", StringComparison.OrdinalIgnoreCase));
+        preview.MappingCoveragePercent = preview.TotalMappings == 0
+            ? 100d
+            : Math.Round(preview.MatchedMappings * 100d / preview.TotalMappings, 2);
+
+        var mappedSourceColumns = preview.FieldMappings
+            .Where(m => !string.IsNullOrWhiteSpace(m.SourceColumn))
+            .Select(m => Normalize(m.SourceColumn))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        preview.UnmappedAccessColumns = preview.AccessColumns
+            .Where(column => !mappedSourceColumns.Contains(Normalize(column)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         return preview;
     }
 
@@ -506,6 +573,8 @@ public sealed class AccessImportService : IAccessImportService
         }
     }
 
+    private sealed record TableMatch(string? TableName, string Strategy);
+
     public async Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
@@ -653,6 +722,29 @@ public sealed class AccessImportService : IAccessImportService
         var povratnice    = FindTable(conn, tables, PovratniceCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["razlog", "idpovratnice"]);
         var prenosRobe    = FindTable(conn, tables, PrenosRobeCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["idobjekatiz", "idobjekatulaz", "idobjekat"]);
         var objekti       = FindTable(conn, tables, ObjekatCandidates,     sigRequired: ["idobjekat", "nazivobjekta"]);
+        var sourceRowsByTable = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        void AddSourceRowCount(string key, string? tableName)
+        {
+            if (string.IsNullOrWhiteSpace(tableName))
+                return;
+            sourceRowsByTable[key] = RowCount(conn, tableName);
+        }
+
+        AddSourceRowCount("tipovi_obuce", tipovi);
+        AddSourceRowCount("dobavljaci", dobavljaci);
+        AddSourceRowCount("sezone", sezone);
+        AddSourceRowCount("objekti", objekti);
+        AddSourceRowCount("artikli", artikli);
+        AddSourceRowCount("dnevnik_promena", dnevnik);
+        AddSourceRowCount("prodaja_zaglavlje", prodaja);
+        AddSourceRowCount("prodaja_stavke", prodajaStavke);
+        AddSourceRowCount("povracaj_zaglavlje", povracaj);
+        AddSourceRowCount("povracaj_stavke", povracajStavke);
+        AddSourceRowCount("nivelacije", nivelacije);
+        AddSourceRowCount("unos_robe", unosRobe);
+        AddSourceRowCount("povratnice", povratnice);
+        AddSourceRowCount("prenos_robe", prenosRobe);
 
         if (artikli is null)
             throw new InvalidOperationException("Nije pronađena tabela za artikle u ACCDB fajlu.");
@@ -690,6 +782,36 @@ public sealed class AccessImportService : IAccessImportService
         // synthesize ProdajaZaglavlje + ProdajaStavke from "Prodaja" type journal entries.
         if (prodaja is null && dnevnik is not null && !importedProdajaFromLineTable)
             SynthesizeProdajaFromDnevnik(overwriteExisting, result);
+
+        var importedRowsByTable = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["tipovi_obuce"] = result.TipoviInserted + result.TipoviUpdated,
+            ["dobavljaci"] = result.DobavljaciInserted + result.DobavljaciUpdated,
+            ["sezone"] = result.SezoneInserted + result.SezoneUpdated,
+            ["objekti"] = result.ObjekatInserted + result.ObjekatUpdated,
+            ["artikli"] = result.ArtikliInserted + result.ArtikliUpdated,
+            ["dnevnik_promena"] = result.DnevnikInserted + result.DnevnikUpdated,
+            ["prodaja_zaglavlje"] = result.ProdajaInserted + result.ProdajaUpdated,
+            ["prodaja_stavke"] = result.ProdajaStavkeInserted + result.ProdajaStavkeUpdated,
+            ["povracaj_zaglavlje"] = result.PovracajInserted + result.PovracajUpdated,
+            ["povracaj_stavke"] = result.PovracajStavkeInserted + result.PovracajStavkeUpdated,
+            ["nivelacije"] = result.NivelacijeInserted,
+            ["unos_robe"] = result.UnosRobeInserted,
+            ["povratnice"] = result.PovratnicaInserted,
+            ["prenos_robe"] = result.PrenosRobeInserted,
+        };
+
+        result.SourceRowsByTable = sourceRowsByTable;
+        result.ImportedRowsByTable = importedRowsByTable;
+
+        foreach (var (key, sourceRows) in sourceRowsByTable.Where(x => x.Value > 0))
+        {
+            importedRowsByTable.TryGetValue(key, out var importedRows);
+            if (importedRows == 0)
+            {
+                result.Warnings.Add($"[coverage] Tabela '{key}' ima {sourceRows} redova u Access bazi, ali 0 upisanih/azuriranih redova. Proveri mapiranje i quality podataka.");
+            }
+        }
     }
 
     private void ImportTipovi(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
@@ -979,6 +1101,9 @@ public sealed class AccessImportService : IAccessImportService
     private void ImportProdajaFromLineTable(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
         var existingZaglavlja = _trendDb.ProdajaZaglavlja.ToDictionary(x => x.Id);
+        var existingBrojevi = _trendDb.ProdajaZaglavlja
+            .Where(x => x.BrojRacuna != null)
+            .ToDictionary(x => x.BrojRacuna!, StringComparer.OrdinalIgnoreCase);
         var dnevnikById = _trendDb.DnevnikPromena.Local
             .GroupBy(x => x.Id)
             .ToDictionary(g => g.Key, g => g.First());
@@ -1038,6 +1163,8 @@ public sealed class AccessImportService : IAccessImportService
                 };
                 _trendDb.ProdajaZaglavlja.Add(zaglavlje);
                 existingZaglavlja[zaglavlje.Id] = zaglavlje;
+                if (zaglavlje.BrojRacuna != null)
+                    existingBrojevi[zaglavlje.BrojRacuna] = zaglavlje;
                 result.ProdajaInserted++;
             }
             else if (overwriteExisting)
@@ -1967,11 +2094,11 @@ public sealed class AccessImportService : IAccessImportService
     {
         var schema = conn.GetSchema("Tables");
         return schema.Rows.Cast<DataRow>()
-            .Where(r => string.Equals(Convert.ToString(r["TABLE_TYPE"]), "TABLE", StringComparison.OrdinalIgnoreCase))
-            .Select(r => Convert.ToString(r["TABLE_NAME"]) ?? string.Empty)
+            .Where(r => string.Equals(Convert.ToString(r["TABLE_TYPE"], CultureInfo.InvariantCulture), "TABLE", StringComparison.OrdinalIgnoreCase))
+            .Select(r => Convert.ToString(r["TABLE_NAME"], CultureInfo.InvariantCulture) ?? string.Empty)
             .Where(x => !string.IsNullOrWhiteSpace(x)
-                     && !x.StartsWith("MSys", StringComparison.OrdinalIgnoreCase)
-                     && (includeTemporaryTables || !Normalize(x).Contains("privremena", StringComparison.Ordinal)))
+             && !x.StartsWith("MSys", StringComparison.OrdinalIgnoreCase)
+             && (includeTemporaryTables || !Normalize(x).Contains("privremena", StringComparison.Ordinal)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -2006,6 +2133,14 @@ public sealed class AccessImportService : IAccessImportService
     }
 
     private static string? FindTable(OdbcConnection conn, IReadOnlyList<string> tables, string[] candidates, string[]? sigRequired = null, string[]? sigBonus = null)
+        => FindTableDetailed(conn, tables, candidates, sigRequired, sigBonus).TableName;
+
+    private static TableMatch FindTableDetailed(
+        OdbcConnection conn,
+        IReadOnlyList<string> tables,
+        string[] candidates,
+        string[]? sigRequired = null,
+        string[]? sigBonus = null)
     {
         var normalized = tables.Select(t => new { Original = t, Key = Normalize(t) }).ToList();
 
@@ -2015,7 +2150,7 @@ public sealed class AccessImportService : IAccessImportService
             var key = Normalize(candidate);
             var exact = normalized.FirstOrDefault(x => x.Key == key);
             if (exact is not null)
-                return exact.Original;
+                return new TableMatch(exact.Original, "exact");
         }
 
         // 2. Contains match (normalized)
@@ -2024,7 +2159,7 @@ public sealed class AccessImportService : IAccessImportService
             var key = Normalize(candidate);
             var contains = normalized.FirstOrDefault(x => x.Key.Contains(key, StringComparison.Ordinal));
             if (contains is not null)
-                return contains.Original;
+                return new TableMatch(contains.Original, "contains");
         }
 
         // 3. Column-signature fallback (required + best bonus score)
@@ -2050,10 +2185,10 @@ public sealed class AccessImportService : IAccessImportService
             }
 
             if (bestTable is not null)
-                return bestTable;
+                return new TableMatch(bestTable, "signature");
         }
 
-        return null;
+        return new TableMatch(null, "none");
     }
 
     private static HashSet<string> ReadColumnNamesNormalized(OdbcConnection conn, string table)

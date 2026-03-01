@@ -103,40 +103,34 @@ def apply_inventory_rules(
 
 INVENTORY_QUERY = """
 SELECT
-    p.product_id,
-    p.brand,
-    p.category,
-    COALESCE(sv.sales_velocity, 0)   AS sales_velocity,
-    COALESCE(st.stock_on_hand, 0)    AS stock_on_hand,
-    COALESCE(st.lead_time_days, 10)  AS lead_time_days,
-    COALESCE(t.score, 0)             AS trend_score,
-    COALESCE(m.momentum_score, 0)    AS momentum_score
-FROM products_dim p
+    p."ProductId"                        AS product_id,
+    p."Brand"                            AS brand,
+    p."Category"                         AS category,
+    COALESCE(sv.sales_velocity, 0)       AS sales_velocity,
+    COALESCE(p."Kolicina", 0)            AS stock_on_hand,
+    10                                   AS lead_time_days,
+    COALESCE(t.score, 0)                 AS trend_score,
+    COALESCE(m.momentum_score, 0)        AS momentum_score
+FROM "ProductsDim" p
 LEFT JOIN (
-    SELECT product_id,
-           AVG(quantity) / NULLIF(COUNT(DISTINCT sale_date), 0) AS sales_velocity
-    FROM sales_line_facts
-    WHERE sale_date >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY product_id
-) sv ON p.product_id = sv.product_id
-LEFT JOIN (
-    SELECT product_id,
-           SUM(CASE WHEN movement_type = 'in'  THEN quantity ELSE 0 END)
-         - SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END) AS stock_on_hand,
-           MAX(lead_time_days) AS lead_time_days
-    FROM inventory_movement_facts
-    GROUP BY product_id
-) st ON p.product_id = st.product_id
+    SELECT slf."ProductId"               AS product_id,
+           SUM(slf."Qty")::decimal
+             / NULLIF(COUNT(DISTINCT sf."SaleTimestampUtc"::date), 0) AS sales_velocity
+    FROM "SalesLineFacts" slf
+    JOIN "SalesFacts" sf ON sf."SaleId" = slf."SaleId"
+    WHERE sf."SaleTimestampUtc" >= CURRENT_DATE - INTERVAL '30 days'
+    GROUP BY slf."ProductId"
+) sv ON p."ProductId" = sv.product_id
 LEFT JOIN (
     SELECT canonical_key, score
     FROM trend_product_snapshots
     WHERE snapshot_date = $1
-) t ON p.canonical_key = t.canonical_key
+) t ON LOWER(p."Brand" || '|' || p."ProductName") = t.canonical_key
 LEFT JOIN (
     SELECT canonical_key, momentum_score
     FROM trend_product_momentum
     WHERE snapshot_date = $1
-) m ON p.canonical_key = m.canonical_key
+) m ON LOWER(p."Brand" || '|' || p."ProductName") = m.canonical_key
 """
 
 

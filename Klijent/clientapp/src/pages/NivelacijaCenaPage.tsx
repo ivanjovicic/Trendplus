@@ -18,6 +18,16 @@ export default function NivelacijaCenaPage() {
 
     const [isSaving, setIsSaving] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
+    const hasPriceChanged = selected ? Number(novaProdajnaCena) !== Number(selected.prodajnaCena ?? 0) : false;
+    const canSave = !!selected && Number(novaProdajnaCena) > 0 && hasPriceChanged && !isSaving;
+
+    const applyPercentAdjustment = (percent: number) => {
+        if (!selected) return;
+        const base = Number(selected.prodajnaCena ?? 0);
+        if (base <= 0) return;
+        const next = base * (1 + percent / 100);
+        setNovaProdajnaCena(Number(next.toFixed(2)));
+    };
 
     useEffect(() => {
         const load = async () => {
@@ -35,6 +45,18 @@ export default function NivelacijaCenaPage() {
 
         load();
     }, []);
+
+    useEffect(() => {
+        const onWindowKeyDown = (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && canSave) {
+                event.preventDefault();
+                void save();
+            }
+        };
+
+        window.addEventListener("keydown", onWindowKeyDown);
+        return () => window.removeEventListener("keydown", onWindowKeyDown);
+    }, [canSave, save]);
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -54,8 +76,12 @@ export default function NivelacijaCenaPage() {
         setError(null);
     };
 
-    const save = async () => {
+    async function save() {
         if (!selected) return;
+        if (!canSave) {
+            setError("Unesite novu prodajnu cenu (vecu od 0) i promenite vrednost.");
+            return;
+        }
 
         setIsSaving(true);
         setError(null);
@@ -94,7 +120,7 @@ export default function NivelacijaCenaPage() {
         } finally {
             setIsSaving(false);
         }
-    };
+    }
 
     return (
         <InventoryPageShell
@@ -196,6 +222,18 @@ export default function NivelacijaCenaPage() {
                                     value={novaProdajnaCena}
                                     onChange={e => setNovaProdajnaCena(Number(e.target.value))}
                                 />
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {[-10, -5, 5, 10].map((percent) => (
+                                        <button
+                                            key={percent}
+                                            type="button"
+                                            onClick={() => applyPercentAdjustment(percent)}
+                                            className="rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-1 text-xs text-[#c7d6ef] hover:border-[#4f8cff]"
+                                        >
+                                            {percent > 0 ? "+" : ""}{percent}%
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div>
@@ -229,10 +267,10 @@ export default function NivelacijaCenaPage() {
 
                         <button
                             className="mt-4 rounded-xl border border-[#3760b7] bg-[#2d4f95] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7] disabled:opacity-60"
-                            disabled={isSaving}
+                            disabled={!canSave}
                             onClick={save}
                         >
-                            {isSaving ? "Snima se..." : "Sacuvaj cenu"}
+                            {isSaving ? "Snima se..." : hasPriceChanged ? "Sacuvaj cenu" : "Promenite cenu za snimanje"}
                         </button>
                     </div>
                 )}

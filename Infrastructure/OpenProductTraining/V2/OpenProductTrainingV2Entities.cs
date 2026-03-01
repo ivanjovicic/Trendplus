@@ -67,6 +67,7 @@ public sealed class ModelVersion
     public string? CalibrationJson { get; set; }
     public string? ShapSummaryJson { get; set; }
     public string? FeatureImportanceJson { get; set; }
+    public string? RuntimeTuningJson { get; set; }
     public string? MinFeatureValues { get; set; }
     public string? MaxFeatureValues { get; set; }
     public string? Notes { get; set; }
@@ -211,4 +212,3 @@ public sealed class ProductFeatureVectorPriceHistory
     public Vector? Vector32 { get; set; }
     public string? Details { get; set; }
 }
-

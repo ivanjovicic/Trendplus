@@ -23,7 +23,7 @@ function fmtDate(value: string | null): string {
 }
 
 function matchedCount(t: AccessImportTablePreview): number {
-    return t.fieldMappings.filter((m) => m.status.toLowerCase() === "matched").length;
+    return t.matchedMappings ?? t.fieldMappings.filter((m) => m.status.toLowerCase() === "matched").length;
 }
 
 function ResultLine({ entity, inserted, updated }: { entity: string; inserted: number; updated: number }) {
@@ -143,6 +143,31 @@ export default function AccessImportPage() {
     const busy = loadingPreview || loadingImport;
     const sourceSelected = useRootFile || !!file;
     const previewBlocksImport = preview !== null && !preview.canImport;
+    const previewCoverageTone = preview && preview.rowCoveragePercent < 80
+        ? "danger"
+        : preview && preview.rowCoveragePercent < 95
+            ? "warning"
+            : "positive";
+
+    const runCoverageRows = useMemo(() => {
+        if (!runResult?.sourceRowsByTable) return [];
+
+        const source = runResult.sourceRowsByTable;
+        const imported = runResult.importedRowsByTable ?? {};
+        return Object.keys(source)
+            .sort((a, b) => a.localeCompare(b, "sr-Latn"))
+            .map((key) => {
+                const sourceRows = Number(source[key] ?? 0);
+                const importedRows = Number(imported[key] ?? 0);
+                const coverage = sourceRows <= 0 ? 100 : (importedRows / sourceRows) * 100;
+                return {
+                    key,
+                    sourceRows,
+                    importedRows,
+                    coverage: Number.isFinite(coverage) ? coverage : 0,
+                };
+            });
+    }, [runResult]);
 
     // --- render ---
 
@@ -157,7 +182,11 @@ export default function AccessImportPage() {
                     { label: "Batch zapisi", value: `${batches.length}` },
                     { label: "Aktivni tab", value: activeTab },
                     { label: "Status", value: busy ? "U toku" : "Idle", tone: busy ? "warning" : "positive" },
-                    { label: "Filter", value: batchStatusFilter },
+                    {
+                        label: "Coverage",
+                        value: preview ? `${preview.rowCoveragePercent.toFixed(1)}%` : "-",
+                        tone: preview ? previewCoverageTone : "neutral",
+                    },
                 ]}
             />
 
@@ -290,7 +319,9 @@ export default function AccessImportPage() {
                             <div className={preview.canImport ? "accimport-success" : "accimport-warning"} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                                 <span>
                                     Analiza seme: <strong>{preview.canImport ? "OK" : "BLOKIRANO"}</strong> • Tabele:{" "}
-                                    <strong>{preview.tables.filter((t) => t.found).length}/{preview.tables.length}</strong>
+                                    <strong>{preview.mappedAccessTables}/{preview.totalAccessTables}</strong> • Redovi coverage:{" "}
+                                    <strong>{preview.rowCoveragePercent.toFixed(1)}%</strong> • Nemapirano tabela sa podacima:{" "}
+                                    <strong>{preview.unmappedAccessTablesWithRows.length}</strong>
                                 </span>
                                 <button
                                     type="button"
@@ -383,32 +414,68 @@ export default function AccessImportPage() {
                             <div className="accimport-kpis">
                                 <div className="accimport-kpi">
                                     <div className="accimport-kpi-label">Pronadjene tabele</div>
-                                    <div className="accimport-kpi-value">{preview.tables.filter((t) => t.found).length} / {preview.tables.length}</div>
+                                    <div className="accimport-kpi-value">{preview.mappedAccessTables} / {preview.totalAccessTables}</div>
                                 </div>
                                 <div className="accimport-kpi">
-                                    <div className="accimport-kpi-label">Ukupno redova</div>
-                                    <div className="accimport-kpi-value">{preview.tables.reduce((s, t) => s + t.rowCount, 0).toLocaleString("sr-RS")}</div>
+                                    <div className="accimport-kpi-label">Redovi u Access-u</div>
+                                    <div className="accimport-kpi-value">{preview.totalAccessRows.toLocaleString("sr-RS")}</div>
                                 </div>
                                 <div className="accimport-kpi">
-                                    <div className="accimport-kpi-label">Access tabele u fajlu</div>
+                                    <div className="accimport-kpi-label">Mapirani redovi</div>
+                                    <div className="accimport-kpi-value">{preview.mappedAccessRows.toLocaleString("sr-RS")}</div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Coverage redova</div>
+                                    <div className="accimport-kpi-value">{preview.rowCoveragePercent.toFixed(1)}%</div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Nemapirane tabele sa podacima</div>
+                                    <div className="accimport-kpi-value">{preview.unmappedAccessTablesWithRows.length}</div>
+                                </div>
+                                <div className="accimport-kpi">
+                                    <div className="accimport-kpi-label">Ukupno Access tabela</div>
                                     <div className="accimport-kpi-value">{preview.availableTables.length}</div>
                                 </div>
                             </div>
+
+                            {preview.unmappedAccessTablesWithRows.length > 0 && (
+                                <div className="accimport-warning">
+                                    <div className="accimport-label" style={{ marginBottom: 6 }}>Tabele sa podacima koje nisu mapirane</div>
+                                    <div className="accimport-col-chips">
+                                        {preview.unmappedAccessTablesWithRows.map((table) => (
+                                            <span key={table} className="accimport-col-chip">{table}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {preview.unmappedAccessTablesWithRows.length === 0 &&
+                                preview.tables.every((t) => !t.hasRows || t.requiredFieldsMissing.length === 0) && (
+                                <div className="accimport-success">
+                                    Coverage check: sve Access tabele sa podacima su mapirane i obavezna polja su prisutna.
+                                </div>
+                            )}
 
                             {/* Schema details */}
                             <div style={{ display: "grid", gap: 8 }}>
                                 {preview.tables.map((t) => {
                                     const hits = matchedCount(t);
-                                    const total = t.fieldMappings.length;
+                                    const total = t.totalMappings ?? t.fieldMappings.length;
+                                    const coverage = total > 0 ? (hits / total) * 100 : 100;
                                     return (
                                         <details key={t.key} className="accimport-schema-details">
                                             <summary className="accimport-schema-summary">
                                                 <strong>{t.key}</strong>
                                                 <span style={{ color: t.found ? "#e5e7eb" : "#6b7280" }}>{t.tableName ?? "—"}</span>
                                                 <span style={{ fontSize: 12, color: "#6b7280" }}>rows: {t.rowCount}</span>
+                                                {t.found && (
+                                                    <span style={{ fontSize: 12, color: "#6b7280" }}>
+                                                        match: {t.matchStrategy}
+                                                    </span>
+                                                )}
                                                 {total > 0 && (
                                                     <span className={`accimport-schema-badge ${hits === total ? "all-matched" : "partial"}`}>
-                                                        mapirano {hits}/{total}
+                                                        mapirano {hits}/{total} ({coverage.toFixed(0)}%)
                                                     </span>
                                                 )}
                                             </summary>
@@ -419,6 +486,34 @@ export default function AccessImportPage() {
                                                     <div className="accimport-col-chips">
                                                         {t.accessColumns.map((c) => (
                                                             <span key={`${t.key}-${c}`} className="accimport-col-chip">{c}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {t.requiredFieldsMissing.length > 0 && (
+                                                <div style={{ marginTop: 8 }}>
+                                                    <div className="accimport-label" style={{ marginBottom: 4 }}>Nedostaju obavezna polja</div>
+                                                    <div className="accimport-col-chips">
+                                                        {t.requiredFieldsMissing.map((field) => (
+                                                            <span key={`${t.key}-missing-${field}`} className="accimport-col-chip" style={{ borderColor: "#7f1d1d", color: "#fecaca" }}>
+                                                                {field}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {t.unmappedAccessColumns.length > 0 && (
+                                                <div style={{ marginTop: 8 }}>
+                                                    <div className="accimport-label" style={{ marginBottom: 4 }}>
+                                                        Access kolone bez mapiranja ({t.unmappedAccessColumns.length})
+                                                    </div>
+                                                    <div className="accimport-col-chips">
+                                                        {t.unmappedAccessColumns.map((column) => (
+                                                            <span key={`${t.key}-unmapped-${column}`} className="accimport-col-chip">
+                                                                {column}
+                                                            </span>
                                                         ))}
                                                     </div>
                                                 </div>
@@ -512,6 +607,39 @@ export default function AccessImportPage() {
                                     <ResultLine entity="Stavke povracaja" inserted={runResult.povracajStavkeInserted} updated={runResult.povracajStavkeUpdated} />
                                 </div>
                             </div>
+
+                            {runCoverageRows.length > 0 && (
+                                <div className="accimport-card">
+                                    <h3 className="accimport-card-title">Kontrola pokrivenosti (Access vs import)</h3>
+                                    <div className="accimport-scroll" style={{ maxHeight: 320 }}>
+                                        <table className="accimport-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tabela kljuc</th>
+                                                    <th className="align-right">Source rows</th>
+                                                    <th className="align-right">Imported/Updated</th>
+                                                    <th className="align-right">Coverage</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {runCoverageRows.map((row) => {
+                                                    const tone = row.coverage >= 95 ? "#6ee7b7" : row.coverage >= 70 ? "#fcd34d" : "#fca5a5";
+                                                    return (
+                                                        <tr key={row.key}>
+                                                            <td>{row.key}</td>
+                                                            <td className="align-right">{row.sourceRows.toLocaleString("sr-RS")}</td>
+                                                            <td className="align-right">{row.importedRows.toLocaleString("sr-RS")}</td>
+                                                            <td className="align-right" style={{ color: tone, fontWeight: 700 }}>
+                                                                {row.coverage.toFixed(1)}%
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
 
                             {runResult.includeAnalytics && (
                                 <div className="accimport-card">

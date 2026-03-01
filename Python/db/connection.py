@@ -55,6 +55,7 @@ async def get_pool(
             command_timeout=command_timeout,
         )
         logger.info("Pool ready.")
+        log_pool_status(_pool, logger)
     return _pool
 
 
@@ -62,8 +63,10 @@ async def close_pool() -> None:
     """Gracefully close the pool. Call on shutdown."""
     global _pool
     if _pool:
+        logger.info("Closing asyncpg pool ...")
         await _pool.close()
         _pool = None
+        logger.info("Pool closed.")
 
 
 @asynccontextmanager
@@ -103,6 +106,16 @@ async def executemany(query: str, args: List[tuple]) -> None:
             await conn.executemany(query, args)
 
 
+# Helper function to log pool status
+def log_pool_status(pool: asyncpg.Pool, logger: logging.Logger) -> None:
+    logger.info(
+        "Pool status: min_size=%d, max_size=%d, current_size=%d",
+        pool._minsize,  # Accessing protected members for logging purposes
+        pool._maxsize,
+        len(pool._queue),
+    )
+
+# Improved bulk_insert with error handling
 async def bulk_insert(table: str, rows: List[dict]) -> int:
     """
     Generic bulk insert via COPY (fastest path).
@@ -110,20 +123,26 @@ async def bulk_insert(table: str, rows: List[dict]) -> int:
     Returns the number of rows inserted.
     """
     if not rows:
+        logger.warning("No rows provided for bulk insert into table '%s'.", table)
         return 0
 
     columns = list(rows[0].keys())
     records = [tuple(r[c] for c in columns) for r in rows]
 
     pool = await get_pool()
-    async with pool.acquire() as conn:
-        result = await conn.copy_records_to_table(
-            table,
-            records=records,
-            columns=columns,
-        )
-    # result is like "COPY N"
     try:
-        return int(str(result).split()[-1])
-    except Exception:
-        return len(records)
+        async with pool.acquire() as conn:
+            result = await conn.copy_records_to_table(
+                table,
+                records=records,
+                columns=columns,
+            )
+        # result is like "COPY N"
+        try:
+            return int(str(result).split()[-1])
+        except ValueError:
+            logger.warning("Failed to parse COPY result: %s", result)
+            return len(records)
+    except Exception as ex:
+        logger.error("Bulk insert failed for table '%s': %s", table, ex)
+        raise

@@ -163,7 +163,8 @@ public sealed class ScoringV2Controller : ControllerBase
             featureSchema = TryParseJson(model.FeatureSchemaJson),
             metrics = TryParseJson(model.MetricsJson),
             calibration = TryParseJson(model.CalibrationJson),
-            featureImportance = TryParseJson(model.FeatureImportanceJson)
+            featureImportance = TryParseJson(model.FeatureImportanceJson),
+            runtimeTuning = TryParseJson(model.RuntimeTuningJson)
         });
     }
 

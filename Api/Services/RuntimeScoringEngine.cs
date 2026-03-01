@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -90,6 +91,7 @@ namespace Api.Services
             var training = await _trainingSignals.ResolveAsync(brand, category, input.TargetPrice, ct);
             var scraped = await LoadScraperSignalsAsync(brandLike, categoryLike, market, ct);
             var marketplace = await LoadMarketplaceFallbackAsync(brandLike, categoryLike, ct);
+            var shopify = await LoadShopifySignalsAsync(brandLike, categoryLike, input.TargetPrice, ct);
 
             float[]? embedding = null;
             List<SimilarProduct> similarProducts = new();
@@ -110,13 +112,19 @@ namespace Api.Services
                 }
             }
 
+            var enterpriseRuntimeModel = _options.Enterprise.Enabled
+                ? await ResolveEnterpriseRuntimeModelAsync(ct)
+                : (Model: (EnterpriseScoringLinearModel?)null, Version: (int?)null, ModelType: (string?)null, FromDatabase: false, Tuning: (RuntimeScoringTuningOptions?)null);
+            var activeTuning = enterpriseRuntimeModel.Tuning ?? _options.Tuning;
+
             var imageSimilarityScore = ComputeImageSimilarity(similarProducts);
-            var coverageItemsPerUnit = Math.Max(1, _options.Tuning.MarketplaceCoverageItemsPerUnit);
-            var coverageMaxUnits = Math.Max(0, _options.Tuning.MarketplaceCoverageMaxUnits);
+            var coverageItemsPerUnit = Math.Max(1, activeTuning.MarketplaceCoverageItemsPerUnit);
+            var coverageMaxUnits = Math.Max(0, activeTuning.MarketplaceCoverageMaxUnits);
             var marketplaceCoverageUnits = Math.Min(marketplace.SourceCount / coverageItemsPerUnit, coverageMaxUnits);
-            var sourceCoverageCount = scraped.SourceCount + marketplaceCoverageUnits;
+            var shopifyCoverageUnits = Math.Min(shopify.MatchCount / coverageItemsPerUnit, coverageMaxUnits);
+            var sourceCoverageCount = scraped.SourceCount + marketplaceCoverageUnits + shopifyCoverageUnits;
             // capped coverage buckets: scraper sources + marketplace depth buckets
-            var coverageNormalizationUnits = Math.Max(1, _options.Tuning.SourceCoverageNormalizationMaxUnits);
+            var coverageNormalizationUnits = Math.Max(1, activeTuning.SourceCoverageNormalizationMaxUnits);
             var sourceCoverageScore = ClampScore((Math.Min(sourceCoverageCount, coverageNormalizationUnits) / (double)coverageNormalizationUnits) * 100d);
 
             // ── Local-data signals (from own sales / seasonal DB) ──────────────────
@@ -126,22 +134,29 @@ namespace Api.Services
             var sizeColorScore = await ComputeSizeColorScoreAsync(input.Velicina, input.Boja);
             var materialScore  = ComputeMaterialScore(input.Materijal);
 
-            var baselinePrice = Median(new[] { scraped.MedianPrice, marketplace.AvgPrice, training.TypicalPrice }
+            var baselinePrice = Median(new[] { scraped.MedianPrice, marketplace.AvgPrice, training.TypicalPrice, shopify.MedianPrice }
                 .Where(x => x.HasValue)
                 .Select(x => x!.Value));
 
-            var priceFitScore = ComputePriceFit(input.TargetPrice, baselinePrice);
+            var priceFitScore = ComputePriceFit(input.TargetPrice, baselinePrice, activeTuning);
             var marginScore = ComputeMargin(input.Cost, input.TargetPrice);
 
             var scrapedFinalScore = NormalizeScraperScore(scraped.AvgFinalScore);
             var marketplaceTrendScore = NormalizeMarketplaceTrendScore(marketplace.AvgTrendScore);
             var trainingPopularity = ClampScore((double)training.PopularityPriorScore);
 
+            // Shopify cross-market price intelligence
+            var shopifyPriceSignalScore = shopify.HasSignal
+                ? ComputePriceFit(input.TargetPrice, shopify.MedianPrice, activeTuning)
+                : 0d;
+
             // Popularity should gracefully degrade when training signals are missing.
-            // Blend training prior with scraper, otherwise use scraper + marketplace as proxy.
+            // Blend training prior with scraper; boost with Shopify breadth when available.
             var popularityScore = trainingPopularity > 0
-                ? NormalizeScore(0.70 * trainingPopularity + 0.30 * scrapedFinalScore)
-                : NormalizeScore(0.60 * scrapedFinalScore + 0.40 * marketplaceTrendScore);
+                ? NormalizeScore(0.65 * trainingPopularity + 0.25 * scrapedFinalScore + 0.10 * (shopify.HasSignal ? shopifyPriceSignalScore : scrapedFinalScore))
+                : shopify.HasSignal
+                    ? NormalizeScore(0.50 * scrapedFinalScore + 0.30 * marketplaceTrendScore + 0.20 * shopifyPriceSignalScore)
+                    : NormalizeScore(0.60 * scrapedFinalScore + 0.40 * marketplaceTrendScore);
 
             // Trend momentum: prefer scraper momentum; fallback to marketplace trend.
             var scrapedMomentumScore = NormalizeMomentum(scraped.AvgMomentum);
@@ -151,7 +166,7 @@ namespace Api.Services
 
             // Deal: scenario-specific (target vs baseline) with optional training prior.
             var dealFromBaseline = input.TargetPrice.HasValue && baselinePrice.HasValue
-                ? ComputeDeal(input.TargetPrice.Value, baselinePrice.Value)
+                ? ComputeDeal(input.TargetPrice.Value, baselinePrice.Value, activeTuning)
                 : 0d;
             var dealFromTraining = ClampScore((double)training.DealScore);
             var dealScore = dealFromBaseline > 0 && dealFromTraining > 0
@@ -196,9 +211,6 @@ namespace Api.Services
                 dealScore,
                 supplierScore,
                 seasonalScore);
-            var enterpriseRuntimeModel = _options.Enterprise.Enabled
-                ? await ResolveEnterpriseRuntimeModelAsync(ct)
-                : (Model: (EnterpriseScoringLinearModel?)null, Version: (int?)null, ModelType: (string?)null, FromDatabase: false);
             var enterprise = enterpriseRuntimeModel.Model?.Compute(canonicalFeatures);
 
             var pythonPayload = new
@@ -298,7 +310,7 @@ namespace Api.Services
 
             var (verdict, verdictColor) = GetVerdict(finalScore);
             var scoreLabel   = GetScoreLabel(finalScore);
-            var confidence   = ComputeConfidence(training.HasTrainingSignal, sourceCoverageCount, imageSimilarityScore, baselinePrice.HasValue);
+            var confidence   = ComputeConfidence(training.HasTrainingSignal, sourceCoverageCount, imageSimilarityScore, baselinePrice.HasValue, activeTuning);
             var insights     = BuildInsights(
                 effPriceFit, effPopularity, effDeal, effMargin, effTrend,
                 imageSimilarityScore, sourceCoverageCount, training.HasTrainingSignal, pricePos);
@@ -324,6 +336,10 @@ namespace Api.Services
                 MaterialScore   = Round2(materialScore),
                 LocalDemandScore = Round2(normalizedLocalDemandScore),
                 HasTrainingSignal = training.HasTrainingSignal,
+                ShopifyPriceSignalScore = Round2(shopifyPriceSignalScore),
+                ShopifyMatchCount = shopify.MatchCount,
+                ShopifyMedianPrice = shopify.MedianPrice,
+                HasShopifySignal = shopify.HasSignal,
                 UsedPythonModel = python.Used,
                 UsedOnnxModel = onnx is not null,
                 OnnxModelType = onnx?.ModelType,
@@ -689,6 +705,67 @@ namespace Api.Services
             }
         }
 
+        // ── Shopify cross-market intelligence ─────────────────────────────────
+        /// <summary>
+        /// Queries Shopify-sourced training products by brand/category to provide
+        /// additional cross-market price signals and product availability depth.
+        /// This enriches baseline price, source coverage, and popularity scoring.
+        /// </summary>
+        private async Task<(decimal? MedianPrice, int MatchCount, bool HasSignal)> LoadShopifySignalsAsync(
+            string? brandLike,
+            string? categoryLike,
+            decimal? targetPrice,
+            CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(brandLike) && string.IsNullOrWhiteSpace(categoryLike))
+                return default;
+
+            try
+            {
+                // Shopify datasets have SourceType = 'shopify'
+                var shopifyDatasetIds = await _openTrainingDb.Datasets
+                    .AsNoTracking()
+                    .Where(d => d.SourceType == "shopify")
+                    .Select(d => d.Id)
+                    .ToListAsync(ct);
+
+                if (shopifyDatasetIds.Count == 0)
+                    return default;
+
+                var q = _openTrainingDb.Products
+                    .AsNoTracking()
+                    .Where(p => shopifyDatasetIds.Contains(p.DatasetId) && p.Price.HasValue && p.Price > 0);
+
+                if (!string.IsNullOrWhiteSpace(brandLike))
+                    q = q.Where(p => p.Brand != null && EF.Functions.ILike(p.Brand.Name, brandLike));
+
+                if (!string.IsNullOrWhiteSpace(categoryLike))
+                    q = q.Where(p => p.Category != null && EF.Functions.ILike(p.Category.Name, categoryLike));
+
+                var prices = await q
+                    .OrderByDescending(p => p.UpdatedAt)
+                    .Select(p => p.Price!.Value)
+                    .Take(500)
+                    .ToListAsync(ct);
+
+                if (prices.Count == 0)
+                    return default;
+
+                var sorted = prices.OrderBy(x => x).ToList();
+                var mid = sorted.Count / 2;
+                var medianPrice = sorted.Count % 2 == 0
+                    ? Math.Round((sorted[mid - 1] + sorted[mid]) / 2m, 2)
+                    : sorted[mid];
+
+                return (medianPrice, prices.Count, true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Shopify signals loading failed; scoring continues without Shopify data.");
+                return default;
+            }
+        }
+
         private async Task<int?> ResolveLocalProductIdAsync(RuntimeScoringEngineInput input, CancellationToken ct)
         {
             if (input.ArtikalId.HasValue)
@@ -990,27 +1067,27 @@ namespace Api.Services
             }
         }
 
-        private async Task<(EnterpriseScoringLinearModel? Model, int? Version, string? ModelType, bool FromDatabase)> ResolveEnterpriseRuntimeModelAsync(CancellationToken ct)
+        private async Task<(EnterpriseScoringLinearModel? Model, int? Version, string? ModelType, bool FromDatabase, RuntimeScoringTuningOptions? Tuning)> ResolveEnterpriseRuntimeModelAsync(CancellationToken ct)
         {
             if (!_options.Enterprise.Enabled)
-                return (null, null, null, false);
+                return (null, null, null, false, null);
 
             if (!_options.Enterprise.PreferModelVersionParameters)
-                return (_enterpriseFallbackModel, null, _options.Enterprise.ModelType, false);
+                return (_enterpriseFallbackModel, null, _options.Enterprise.ModelType, false, null);
 
             try
             {
                 var dbModel = await _enterpriseModelProvider.TryGetActiveAsync(ct);
                 if (dbModel is null || dbModel.FeatureWeights.Count == 0)
-                    return (_enterpriseFallbackModel, null, _options.Enterprise.ModelType, false);
+                    return (_enterpriseFallbackModel, null, _options.Enterprise.ModelType, false, null);
 
                 var model = new EnterpriseScoringLinearModel(_options.Enterprise, dbModel);
-                return (model, dbModel.Version, dbModel.ModelType, true);
+                return (model, dbModel.Version, dbModel.ModelType, true, dbModel.RuntimeTuning);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed loading enterprise model_version parameters; using config fallback.");
-                return (_enterpriseFallbackModel, null, _options.Enterprise.ModelType, false);
+                return (_enterpriseFallbackModel, null, _options.Enterprise.ModelType, false, null);
             }
         }
 
@@ -1252,7 +1329,7 @@ namespace Api.Services
             return $"{currency} {low:F2} - {high:F2}";
         }
 
-        private double ComputePriceFit(decimal? target, decimal? baseline)
+        private static double ComputePriceFit(decimal? target, decimal? baseline, RuntimeScoringTuningOptions tuning)
         {
             if (!target.HasValue || target.Value <= 0) return 50; // Fallback to average value
             if (!baseline.HasValue || baseline.Value <= 0) return 50;
@@ -1260,7 +1337,7 @@ namespace Api.Services
             var deviation = Math.Abs((double)((target.Value - baseline.Value) / baseline.Value));
 
             // Smooth exponential decay avoids sudden drops for small deviations.
-            var decay = Math.Clamp(_options.Tuning.PriceFitExponentialDecay, 0.05, 50d);
+            var decay = Math.Clamp(tuning.PriceFitExponentialDecay, 0.05, 50d);
             var score = 100d * Math.Exp(-decay * deviation);
             return ClampScore(score);
         }
@@ -1278,14 +1355,14 @@ namespace Api.Services
             return ClampScore((margin / optimalMargin) * 100d);
         }
 
-        private double ComputeDeal(decimal current, decimal baseline)
+        private static double ComputeDeal(decimal current, decimal baseline, RuntimeScoringTuningOptions tuning)
         {
             if (baseline <= 0) return 50; // Fallback to average value
             var rel = (double)((baseline - current) / baseline);
             if (rel <= 0) return 0;
 
             // Smooth saturation without hard threshold.
-            var multiplier = Math.Clamp(_options.Tuning.DealTanhMultiplier, 0.1, 100d);
+            var multiplier = Math.Clamp(tuning.DealTanhMultiplier, 0.1, 100d);
             return ClampScore(100d * Math.Tanh(rel * multiplier));
         }
 
@@ -1347,10 +1424,9 @@ namespace Api.Services
             _ => "Loše"
         };
 
-        private double ComputeConfidence(
-            bool hasTraining, int sourceCoverage, double imageSim, bool hasBaseline)
+        private static double ComputeConfidence(
+            bool hasTraining, int sourceCoverage, double imageSim, bool hasBaseline, RuntimeScoringTuningOptions tuning)
         {
-            var tuning = _options.Tuning;
             var baseConfidence = Math.Clamp(tuning.ConfidenceBase, 0d, 100d);
             var trainingBonus = Math.Max(0d, tuning.ConfidenceTrainingBonus);
             var perSource = Math.Max(0d, tuning.ConfidencePerSource);
@@ -1427,7 +1503,7 @@ namespace Api.Services
             if (sourceCoverage == 0)
                 list.Add("⚠️ Nema tržišnih podataka — rezultati su orijentacioni");
             else if (sourceCoverage >= 4)
-                list.Add($"📊 Procena potvrdjena sa {sourceCoverage} tržišnih izvora");
+                list.Add($"📊 Procena potvrđena sa {sourceCoverage} tržišnih izvora (uključujući Shopify)");
 
             // Image similarity
             if (imageSim >= 70)
@@ -1445,80 +1521,5 @@ namespace Api.Services
         private static double Clamp01(double value) => value < 0 ? 0 : (value > 1 ? 1 : value);
         private static double Round2(double value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
         private static double Round4(double value) => Math.Round(value, 4, MidpointRounding.AwayFromZero);
-    }
-
-    public class ShopifyImporter
-    {
-        private readonly HttpClient _http;
-        private readonly OpenProductTrainingDbContext _db;
-        private readonly ILogger<ShopifyImporter> _log;
-
-        public ShopifyImporter(HttpClient http, OpenProductTrainingDbContext db, ILogger<ShopifyImporter> log)
-        {
-            _http = http;
-            _db = db;
-            _log = log;
-        }
-
-        public async Task ImportAsync(string shopDomain, int datasetId, CancellationToken ct = default)
-        {
-            var url = $"https://{shopDomain}/products.json?limit=250";
-
-            _log.LogInformation("Importing Shopify products from {domain}", shopDomain);
-
-            var json = await _http.GetStringAsync(url, ct);
-            var root = JsonDocument.Parse(json).RootElement;
-
-            if (!root.TryGetProperty("products", out var arr))
-            {
-                _log.LogWarning("No products found in {domain}", shopDomain);
-                return;
-            }
-
-            var incoming = new List<(string ExternalId, string RawPayload)>();
-            foreach (var p in arr.EnumerateArray())
-            {
-                var externalId = p.GetProperty("id").GetInt64().ToString(CultureInfo.InvariantCulture);
-                incoming.Add((externalId, p.GetRawText()));
-            }
-
-            if (incoming.Count == 0)
-            {
-                _log.LogInformation("No importable products in {Domain}", shopDomain);
-                return;
-            }
-
-            var incomingIds = incoming.Select(x => x.ExternalId).Distinct(StringComparer.Ordinal).ToArray();
-            var existingIds = await _db.RawProducts
-                .AsNoTracking()
-                .Where(x => x.DatasetId == datasetId && incomingIds.Contains(x.ExternalId))
-                .Select(x => x.ExternalId)
-                .ToListAsync(ct);
-
-            var existingSet = new HashSet<string>(existingIds, StringComparer.Ordinal);
-
-            int count = 0;
-            foreach (var item in incoming)
-            {
-                if (existingSet.Contains(item.ExternalId))
-                    continue;
-
-                var raw = new RawTrainingProduct
-                {
-                    DatasetId = datasetId,
-                    ExternalId = item.ExternalId,
-                    RawPayload = item.RawPayload,
-                    ImportedAt = DateTime.UtcNow
-                };
-
-                await _db.RawProducts.AddAsync(raw, ct);
-                existingSet.Add(item.ExternalId);
-                count++;
-            }
-
-            await _db.SaveChangesAsync(ct);
-
-            _log.LogInformation("Imported {count} products from {domain}", count, shopDomain);
-        }
     }
 }

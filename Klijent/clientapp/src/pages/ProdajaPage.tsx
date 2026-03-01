@@ -22,6 +22,7 @@ function toOption(x: ProdajaArtikalLookupDto): ProdajaArtikalOption {
 export default function ProdajaPage() {
     const [loadingArtikli, setLoadingArtikli] = React.useState(true);
     const [artikli, setArtikli] = React.useState<ProdajaArtikalOption[]>([]);
+    const [catalogError, setCatalogError] = React.useState<string | null>(null);
     const API = import.meta.env.VITE_API_BASE_URL;
 
     React.useEffect(() => {
@@ -32,11 +33,15 @@ export default function ProdajaPage() {
                 const data = await fetchProdajaArtikliLookup("", 150, false);
                 if (!aborted) {
                     setArtikli((data ?? []).map(toOption));
+                    setCatalogError(null);
                     setLoadingArtikli(false);
                 }
             } catch (e: unknown) {
                 console.error("Error fetching artikli lookup:", e);
-                if (!aborted) setLoadingArtikli(false);
+                if (!aborted) {
+                    setCatalogError("Neuspesno ucitavanje kataloga artikala.");
+                    setLoadingArtikli(false);
+                }
             }
         };
 
@@ -96,7 +101,7 @@ export default function ProdajaPage() {
             <InventoryKpiRow
                 items={[
                     { label: "Artikli ucitani", value: `${artikli.length}` },
-                    { label: "Status kataloga", value: loadingArtikli ? "Ucitavanje" : "Spremno", tone: loadingArtikli ? "warning" : "positive" },
+                    { label: "Status kataloga", value: loadingArtikli ? "Ucitavanje" : catalogError ? "Greska" : "Spremno", tone: loadingArtikli ? "warning" : catalogError ? "danger" : "positive" },
                     { label: "Pretraga", value: "Lookup API" },
                     { label: "Tok", value: "Cart + Submit" },
                 ]}
@@ -104,7 +109,8 @@ export default function ProdajaPage() {
 
             <InventoryPanel>
                 {loadingArtikli && <InventoryState message="Ucitavanje artikala..." tone="warning" />}
-                {!loadingArtikli && artikli.length === 0 && (
+                {!loadingArtikli && catalogError && <InventoryState message={catalogError} tone="danger" />}
+                {!loadingArtikli && !catalogError && artikli.length === 0 && (
                     <InventoryState
                         message="Nema dostupnih artikala. Kreirajte artikle pre prodaje."
                         tone="danger"

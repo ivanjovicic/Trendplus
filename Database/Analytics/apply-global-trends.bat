@@ -6,12 +6,12 @@ echo Global Trends Tables Setup
 echo ========================================
 echo.
 
-REM Configuration
-set PGHOST=ep-still-unit-agkg41eh-pooler.c-2.eu-central-1.aws.neon.tech
-set PGPORT=5432
-set PGDATABASE=analytics
-set PGUSER=neondb_owner
-set PGPASSWORD=npg_7hUftT3sXHgR
+REM Configuration — set these via environment variables or .env file
+if "%PGHOST%"=="" set PGHOST=localhost
+if "%PGPORT%"=="" set PGPORT=5434
+if "%PGDATABASE%"=="" set PGDATABASE=analytics
+if "%PGUSER%"=="" set PGUSER=postgres
+if "%PGPASSWORD%"=="" set PGPASSWORD=postgres
 
 echo [INFO] Connecting to Analytics database...
 echo   Host: %PGHOST%

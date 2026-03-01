@@ -22,6 +22,22 @@ function mergeArtikli(base: ArtikalOption[], incoming: ArtikalOption[]) {
     return Array.from(map.values()).sort((a, b) => a.naziv.localeCompare(b.naziv, "sr-Latn", { sensitivity: "base" }));
 }
 
+function normalizeRacun(value: string): string {
+    return value.trim();
+}
+
+function buildNextRacunSuggestion(value: string): string | null {
+    const trimmed = normalizeRacun(value);
+    if (!trimmed) return null;
+
+    const match = trimmed.match(/^(.*?)(\d+)(\D*)$/);
+    if (!match) return null;
+
+    const [, prefix, digits, suffix] = match;
+    const next = (Number(digits) + 1).toString().padStart(digits.length, "0");
+    return `${prefix}${next}${suffix}`;
+}
+
 export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }: CreateProdajaFormProps) {
     const toast = useToast();
 
@@ -206,13 +222,24 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
     const handleSubmit = async () => {
         setError(null);
 
+        const normalizedRacun = normalizeRacun(brojRacuna);
+        if (normalizedRacun.length < 3) {
+            setError("Broj racuna mora imati najmanje 3 karaktera.");
+            return;
+        }
+
         if (!stavke.length) {
             setError("Dodajte bar jednu stavku.");
             return;
         }
 
+        if (invalidStavkeCount > 0) {
+            setError("Proverite stavke: kolicina mora biti > 0 i cena ne moze biti negativna.");
+            return;
+        }
+
         const payload: KreirajProdajuDto = {
-            brojRacuna,
+            brojRacuna: normalizedRacun,
             idObjekat: 1,
             nacinPlacanja: "Gotovina",
             stavke: stavke.map((s) => ({
@@ -242,17 +269,76 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
         return stavke.reduce((sum, s) => sum + safeNumber(s.kolicina, 0) * safeNumber(s.cena, 0), 0);
     }, [stavke]);
 
+    const invalidStavkeCount = useMemo(() => {
+        return stavke.filter((s) => safeNumber(s.kolicina, 0) <= 0 || safeNumber(s.cena, 0) < 0 || s.idArtikal <= 0).length;
+    }, [stavke]);
+
+    const racunSuggestions = useMemo(() => {
+        const suggestions = new Set<string>();
+        const next = buildNextRacunSuggestion(brojRacuna);
+        if (next) suggestions.add(next);
+        if (!normalizeRacun(brojRacuna)) {
+            suggestions.add(`POS-${new Date().getFullYear()}-001`);
+        }
+        return Array.from(suggestions).slice(0, 4);
+    }, [brojRacuna]);
+
+    const canSubmit =
+        normalizeRacun(brojRacuna).length >= 3 &&
+        stavke.length > 0 &&
+        invalidStavkeCount === 0 &&
+        !isSubmitting;
+
+    useEffect(() => {
+        const onWindowKeyDown = (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && canSubmit) {
+                event.preventDefault();
+                void handleSubmit();
+            }
+        };
+
+        window.addEventListener("keydown", onWindowKeyDown);
+        return () => window.removeEventListener("keydown", onWindowKeyDown);
+    }, [canSubmit, handleSubmit]);
+
     return (
         <div className="space-y-4">
             <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
                 <h2 className="mb-4 text-xl font-semibold text-[#f3f6ff]">Nova prodaja</h2>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj racuna</label>
+                <div className="mb-3 grid gap-2 md:grid-cols-3">
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${normalizeRacun(brojRacuna).length >= 3 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-[#2f323b] bg-[#1a1b1f] text-[#9aabc7]"}`}>
+                        Broj racuna
+                    </div>
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${stavke.length > 0 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-[#2f323b] bg-[#1a1b1f] text-[#9aabc7]"}`}>
+                        Stavke: {stavke.length}
+                    </div>
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${invalidStavkeCount === 0 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-amber-700 bg-amber-950/20 text-amber-300"}`}>
+                        Validacija: {invalidStavkeCount === 0 ? "OK" : `${invalidStavkeCount} problema`}
+                    </div>
+                </div>
+
+                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj racuna *</label>
                 <input
                     placeholder="Broj racuna"
                     value={brojRacuna}
                     onChange={(e) => setBrojRacuna(e.target.value)}
                     className="w-full rounded-xl border border-[#2f323b] bg-[#1a1b1f] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
                 />
+                {racunSuggestions.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        {racunSuggestions.map((suggestion) => (
+                            <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => setBrojRacuna(suggestion)}
+                                className="rounded-full border border-[#2f323b] bg-[#1a1b1f] px-2.5 py-1 text-[11px] text-[#a8b8d5] hover:border-[#4f8cff] hover:text-[#dbe6fb]"
+                            >
+                                {suggestion}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <p className="mt-2 text-xs text-[#7f8ea9]">Tip: `Ctrl+Enter` cuva prodaju kada je forma validna.</p>
             </section>
 
             <section className="relative rounded-xl border border-[#2f323b] bg-[#14161d] p-4" ref={searchRef}>
@@ -311,7 +397,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
 
                 <div className="space-y-3">
                     {stavke.map((s, i) => (
-                        <div key={i} className="grid gap-2 rounded-lg border border-[#2a2f3b] bg-[#1a1b1f] p-3 lg:grid-cols-[1.8fr_0.7fr_0.8fr_auto]">
+                        <div key={i} className="grid gap-2 rounded-lg border border-[#2a2f3b] bg-[#1a1b1f] p-3 lg:grid-cols-[1.7fr_0.7fr_0.8fr_0.8fr_auto]">
                             <div>
                                 <label className="mb-1 block text-xs text-[#8ea0bd]">Artikal</label>
                                 <select
@@ -349,6 +435,13 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                                 />
                             </div>
 
+                            <div>
+                                <label className="mb-1 block text-xs text-[#8ea0bd]">Iznos</label>
+                                <div className="rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm font-semibold text-emerald-300">
+                                    {(safeNumber(s.kolicina, 0) * safeNumber(s.cena, 0)).toFixed(2)} RSD
+                                </div>
+                            </div>
+
                             <div className="flex items-end">
                                 <button
                                     type="button"
@@ -368,7 +461,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                 <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={isSubmitting}
+                    disabled={!canSubmit}
                     className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7] disabled:opacity-60"
                 >
                     {isSubmitting ? "Kreiram..." : "Sacuvaj prodaju"}

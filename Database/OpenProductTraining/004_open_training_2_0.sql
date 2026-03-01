@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS model_version (
     calibration_json        JSONB       NULL,              -- platt params, bins, etc
     shap_summary_json       JSONB       NULL,              -- global shap summary
     feature_importance_json JSONB       NULL,              -- global feature importance
+    runtime_tuning_json     JSONB       NULL,              -- runtime scoring heuristic tuning snapshot
     min_feature_values      JSONB       NULL,
     max_feature_values      JSONB       NULL,
     notes                   TEXT        NULL
@@ -225,4 +226,3 @@ CREATE INDEX IF NOT EXISTS idx_pfvph_product
 
 CREATE INDEX IF NOT EXISTS idx_pfvph_computed_at
     ON product_feature_vector_price_history (computed_at DESC);
-

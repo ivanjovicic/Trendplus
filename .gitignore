@@ -373,6 +373,9 @@ Logs/
 .env.production
 .env.*.local
 
+# Scripts with hardcoded credentials
+Database/Analytics/apply-global-trends.bat
+
 # Docker volumes
 rabbitmq_data/
 rabbitmq_logs/

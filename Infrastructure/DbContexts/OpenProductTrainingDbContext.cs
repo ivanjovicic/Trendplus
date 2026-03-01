@@ -12,10 +12,14 @@ namespace Infrastructure.DbContexts
         {
         }
 
+        // Grouped DbSets logically
+        // Core entities
         public DbSet<TrainingDataset> Datasets => Set<TrainingDataset>();
         public DbSet<RawTrainingProduct> RawProducts => Set<RawTrainingProduct>();
         public DbSet<TrainingBrand> Brands => Set<TrainingBrand>();
         public DbSet<TrainingCategory> Categories => Set<TrainingCategory>();
+
+        // Product-related entities
         public DbSet<TrainingProduct> Products => Set<TrainingProduct>();
         public DbSet<TrainingProductImage> ProductImages => Set<TrainingProductImage>();
         public DbSet<TrainingProductAttribute> ProductAttributes => Set<TrainingProductAttribute>();
@@ -25,7 +29,7 @@ namespace Infrastructure.DbContexts
         public DbSet<TrainingProductSplit> ProductSplits => Set<TrainingProductSplit>();
         public DbSet<TrainingProductFeatureVector> ProductFeatureVectors => Set<TrainingProductFeatureVector>();
 
-        // Open Product Training 2.0 (ML infra)
+        // ML-related entities
         public DbSet<TrainingRun> TrainingRuns => Set<TrainingRun>();
         public DbSet<ModelVersion> ModelVersions => Set<ModelVersion>();
         public DbSet<ProductFeatureVectorText> ProductFeatureVectorTexts => Set<ProductFeatureVectorText>();
@@ -36,9 +40,35 @@ namespace Infrastructure.DbContexts
         public DbSet<CategoryNormalized> CategoryNormalized => Set<CategoryNormalized>();
         public DbSet<ProductQualityFlag> ProductQualityFlags => Set<ProductQualityFlag>();
 
+        // Utility method to apply common configurations
+        private void ApplyCommonConfigurations(ModelBuilder modelBuilder)
+        {
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                foreach (var property in entityType.GetProperties().Where(p => p.ClrType == typeof(DateTime)))
+                {
+                    property.SetColumnType("timestamp with time zone");
+                    property.SetValueConverter(new ValueConverter<DateTime, DateTime>(
+                        write => write.ToUniversalTime(),
+                        read => DateTime.SpecifyKind(read, DateTimeKind.Utc)));
+                }
+
+                foreach (var property in entityType.GetProperties().Where(p => p.ClrType == typeof(DateTime?)))
+                {
+                    property.SetColumnType("timestamp with time zone");
+                    property.SetValueConverter(new ValueConverter<DateTime?, DateTime?>(
+                        write => write.HasValue ? write.Value.ToUniversalTime() : write,
+                        read => read.HasValue ? DateTime.SpecifyKind(read.Value, DateTimeKind.Utc) : read));
+                }
+            }
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.HasPostgresExtension("vector");
+
+            // Apply common configurations
+            ApplyCommonConfigurations(modelBuilder);
 
             modelBuilder.Entity<TrainingDataset>(entity =>
             {
@@ -301,6 +331,7 @@ namespace Infrastructure.DbContexts
                 entity.Property(x => x.CalibrationJson).HasColumnName("calibration_json").HasColumnType("jsonb");
                 entity.Property(x => x.ShapSummaryJson).HasColumnName("shap_summary_json").HasColumnType("jsonb");
                 entity.Property(x => x.FeatureImportanceJson).HasColumnName("feature_importance_json").HasColumnType("jsonb");
+                entity.Property(x => x.RuntimeTuningJson).HasColumnName("runtime_tuning_json").HasColumnType("jsonb");
                 entity.Property(x => x.MinFeatureValues).HasColumnName("min_feature_values").HasColumnType("jsonb");
                 entity.Property(x => x.MaxFeatureValues).HasColumnName("max_feature_values").HasColumnType("jsonb");
                 entity.Property(x => x.Notes).HasColumnName("notes");
@@ -450,6 +481,24 @@ namespace Infrastructure.DbContexts
             }
 
             base.OnModelCreating(modelBuilder);
+        }
+
+        // Seed initial data for development
+        public void SeedInitialData()
+        {
+            if (!Datasets.Any())
+            {
+                Datasets.Add(new TrainingDataset
+                {
+                    Name = "Default Dataset",
+                    CreatedAt = DateTime.UtcNow,
+                    SourceType = "Manual",
+                    Description = "Initial dataset for development purposes",
+                    License = "MIT",
+                    RawLocation = "N/A"
+                });
+                SaveChanges();
+            }
         }
     }
 }

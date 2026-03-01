@@ -65,97 +65,135 @@ public static class DatabaseInitializer
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
 
-        // WORKAROUND: Mark problematic migration as applied before running EF migrations
-        // This is needed because columns were already added via manual SQL scripts
-        try
-        {
-            var connection = context.Database.GetDbConnection();
-            if (connection.State != System.Data.ConnectionState.Open)
-            {
-                await connection.OpenAsync();
-            }
+        var connectionString = GetValidatedConnectionString(configuration, "DefaultConnection", logger);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = @"
-                INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
-                VALUES ('20260112000000_AddArtikliKategorije', '8.0.0')
-                ON CONFLICT (""MigrationId"") DO NOTHING;
-            ";
-            
-            await command.ExecuteNonQueryAsync();
-            logger.LogInformation("? Marked migration 20260112000000_AddArtikliKategorije as applied");
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to mark migration as applied (table might not exist yet)");
-        }
+        // Mark problematic migration as applied
+        await ExecuteSqlCommandAsync(connectionString, @"
+            INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+            VALUES ('20260112000000_AddArtikliKategorije', '8.0.0')
+            ON CONFLICT (""MigrationId"") DO NOTHING;
+        ", logger);
 
-        // Run EF migrations. If this fails, continue with minimal schema self-heal.
+        // Apply EF migrations
         try
         {
             await context.Database.MigrateAsync();
-            logger.LogInformation("? Trendplus DB migrations applied");
+            logger.LogInformation("? Trendplus DB migrations applied.");
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Trendplus DB migrations failed; continuing with core schema self-heal.");
         }
 
-        await EnsureTrendplusCoreSchemaAsync(
-            configuration.GetConnectionString("DefaultConnection")!,
-            logger);
+        // Ensure core schema and aggregation tables
+        await EnsureTrendplusCoreSchemaAsync(connectionString, logger);
+        await EnsureTrendplusAggregationTablesAsync(connectionString, logger);
 
-        // Ensure analytics aggregation support tables/indexes in Trendplus DB (idempotent).
-        await EnsureTrendplusAggregationTablesAsync(
-            configuration.GetConnectionString("DefaultConnection")!,
-            logger);
-
-        // Nightly analytics materialized views (daily facts + rolling + momentum) (idempotent)
-        // Keep this early so it still gets applied even if later nivelacija scripts fail.
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("DefaultConnection")!,
+        // Execute additional SQL files
+        var sqlFiles = new[]
+        {
             "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql",
-            logger);
-
-        // Access-import support patch (idempotent)
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("DefaultConnection")!,
             "Database/Migrations/012_AddAccessImportSupport.sql",
-            logger);
-
-        // Pre/Post nivelacija reporting views (idempotent)
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("DefaultConnection")!,
             "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql",
-            logger);
-
-        // Fix nivelacija views to read from DnevnikPromena directly
-        // and switch from ILIKE to exact IN-list for index use (idempotent)
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("DefaultConnection")!,
             "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql",
-            logger);
-
-        // Additional nivelacija analytics views (rolling, momentum, OOS, DiD)
-        // used by pre/post analytics metrics (idempotent)
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("DefaultConnection")!,
             "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql",
-            logger);
+            "Database/Migrations/005_CreateArtikliAndTestData.sql"
+        };
 
-        // Check if we need to seed data
+        foreach (var sqlFile in sqlFiles)
+        {
+            await ExecuteSqlFileAsync(connectionString, sqlFile, logger);
+        }
+
+        // Check if data seeding is required
         if (!await context.Artikli.AnyAsync())
         {
             logger.LogInformation("No Artikli found, running seed script...");
-            await ExecuteSqlFileAsync(
-                configuration.GetConnectionString("DefaultConnection")!,
-                "Database/Migrations/005_CreateArtikliAndTestData.sql",
-                logger);
+            await ExecuteSqlFileAsync(connectionString, "Database/Migrations/005_CreateArtikliAndTestData.sql", logger);
         }
         else
         {
-            logger.LogInformation("? Trendplus DB already has data");
+            logger.LogInformation("? Trendplus DB already has data.");
         }
+    }
+
+    private static string GetValidatedConnectionString(IConfiguration configuration, string key, ILogger logger)
+    {
+        var connectionString = configuration.GetConnectionString(key);
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            logger.LogError("Connection string '{Key}' is missing or empty.", key);
+            throw new InvalidOperationException($"Connection string '{key}' is required.");
+        }
+        return connectionString;
+    }
+
+    private static async Task ExecuteSqlCommandAsync(string connectionString, string sql, ILogger logger)
+    {
+        try
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.CommandTimeout = 300; // 5 minutes
+            await command.ExecuteNonQueryAsync();
+
+            logger.LogInformation("? Executed SQL command successfully.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to execute SQL command.");
+            throw;
+        }
+    }
+
+    private static async Task EnsureTrendplusCoreSchemaAsync(
+        string connectionString,
+        ILogger logger)
+    {
+        const string sql = @"
+            -- Core Artikli columns used by workers/services (idempotent).
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Kolicina"" integer;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""MinimalnaKolicina"" integer;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""IDObjekat"" integer;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""IDSezona"" integer;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Kategorija"" text;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Pol"" text;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Velicina"" text;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Boja"" text;
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Materijal"" character varying(100);
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""ImagePath"" character varying(500);
+            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
+
+            CREATE INDEX IF NOT EXISTS ""IX_Artikli_ImagePath"" ON ""Artikli"" (""ImagePath"");
+
+            -- DnevnikPromena operational columns used by SyncWorker and import pipeline
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""IDObjekat"" integer;
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""RedniBroj"" integer;
+            CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
+
+            -- Prodaja operational columns
+            ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS ""korisnik_ime"" character varying(200);
+            ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS ""nabavna_cena"" decimal(18,2);
+
+            -- Access import batch compatibility columns (migration 015)
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DurationSeconds"" integer;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalImported"" integer NOT NULL DEFAULT 0;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalUpdated"" integer NOT NULL DEFAULT 0;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalErrors"" integer NOT NULL DEFAULT 0;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'access';
+        ";
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = 120;
+        await command.ExecuteNonQueryAsync();
+
+        logger.LogInformation("? Ensured Trendplus core schema for Artikli/DnevnikPromena/Prodaja columns");
     }
 
     private static async Task EnsureTrendplusAggregationTablesAsync(
@@ -282,54 +320,6 @@ public static class DatabaseInitializer
         logger.LogInformation("? Ensured Trendplus analytics aggregation tables/indexes");
     }
 
-    private static async Task EnsureTrendplusCoreSchemaAsync(
-        string connectionString,
-        ILogger logger)
-    {
-        const string sql = @"
-            -- Core Artikli columns used by workers/services (idempotent).
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Kolicina"" integer;
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""MinimalnaKolicina"" integer;
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""IDObjekat"" integer;
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""IDSezona"" integer;
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Kategorija"" text;
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Pol"" text;
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Velicina"" text;
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Boja"" text;
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Materijal"" character varying(100);
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""ImagePath"" character varying(500);
-            ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
-
-            CREATE INDEX IF NOT EXISTS ""IX_Artikli_ImagePath"" ON ""Artikli"" (""ImagePath"");
-
-            -- DnevnikPromena operational columns used by SyncWorker and import pipeline
-            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""IDObjekat"" integer;
-            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""RedniBroj"" integer;
-            CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
-
-            -- Prodaja operational columns
-            ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS ""korisnik_ime"" character varying(200);
-            ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS ""nabavna_cena"" decimal(18,2);
-
-            -- Access import batch compatibility columns (migration 015)
-            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DurationSeconds"" integer;
-            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalImported"" integer NOT NULL DEFAULT 0;
-            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalUpdated"" integer NOT NULL DEFAULT 0;
-            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalErrors"" integer NOT NULL DEFAULT 0;
-            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'access';
-        ";
-
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-
-        await using var command = new NpgsqlCommand(sql, connection);
-        command.CommandTimeout = 120;
-        await command.ExecuteNonQueryAsync();
-
-        logger.LogInformation("? Ensured core Trendplus schema for Artikli/DnevnikPromena/Prodaja columns");
-    }
-
     private static async Task InitializeAnalyticsDbAsync(
         IServiceProvider services,
         IConfiguration configuration,
@@ -340,54 +330,34 @@ public static class DatabaseInitializer
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
         var trendDb = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+        var connectionString = GetValidatedConnectionString(configuration, "AnalyticsConnection", logger);
 
-        // Run EF migrations. If this fails (e.g. optional extension not available),
-        // continue with core table self-heal so workers can still function.
         try
         {
             await context.Database.MigrateAsync();
-            logger.LogInformation("? Analytics DB migrations applied");
+            logger.LogInformation("? Analytics DB migrations applied.");
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Analytics DB migrations failed; continuing with core analytics table self-heal.");
         }
 
-        // Self-heal core analytics dimensions used by workers. This covers scenarios where
-        // migration history is out of sync and quoted mixed-case tables are missing.
-        await EnsureCoreAnalyticsDimensionTablesAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            logger);
+        await EnsureCoreAnalyticsDimensionTablesAsync(connectionString, logger);
 
         // Check if we need to create tables
-        if (!await TableExistsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "SalesFacts",
-            logger))
+        if (!await TableExistsAsync(connectionString, "SalesFacts", logger))
         {
             logger.LogInformation("SalesFacts table not found, creating...");
-            await ExecuteSqlFileAsync(
-                configuration.GetConnectionString("AnalyticsConnection")!,
-                "Database/Analytics/001_CreateSalesFactTables.sql",
-                logger);
+            await ExecuteSqlFileAsync(connectionString, "Database/Analytics/001_CreateSalesFactTables.sql", logger);
         }
 
-        if (!await TableExistsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "items",
-            logger))
+        if (!await TableExistsAsync(connectionString, "items", logger))
         {
             logger.LogInformation("Scraper scoring tables not found, creating...");
-            await ExecuteSqlFileAsync(
-                configuration.GetConnectionString("AnalyticsConnection")!,
-                "Database/Analytics/004_AddScraperScoringTables.sql",
-                logger);
+            await ExecuteSqlFileAsync(connectionString, "Database/Analytics/004_AddScraperScoringTables.sql", logger);
         }
 
-        if (!await TableExistsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "PerformanceLogs",
-            logger))
+        if (!await TableExistsAsync(connectionString, "PerformanceLogs", logger))
         {
             logger.LogInformation("PerformanceLogs table not found, creating...");
             await context.Database.ExecuteSqlRawAsync(@"
@@ -410,99 +380,53 @@ public static class DatabaseInitializer
         }
 
         // External shopping/trends tables (idempotent SQL scripts)
-        if (!await TableExistsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "amazon_shoe_products",
-            logger))
+        if (!await TableExistsAsync(connectionString, "amazon_shoe_products", logger))
         {
             logger.LogInformation("amazon_shoe_products table not found, creating...");
-            await ExecuteSqlFileAsync(
-                configuration.GetConnectionString("AnalyticsConnection")!,
-                "Database/Analytics/006_AddAmazonShoesTable.sql",
-                logger);
+            await ExecuteSqlFileAsync(connectionString, "Database/Analytics/006_AddAmazonShoesTable.sql", logger);
         }
 
-        if (!await TableExistsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "ebay_shoe_products",
-            logger))
+        if (!await TableExistsAsync(connectionString, "ebay_shoe_products", logger))
         {
             logger.LogInformation("ebay_shoe_products table not found, creating...");
-            await ExecuteSqlFileAsync(
-                configuration.GetConnectionString("AnalyticsConnection")!,
-                "Database/Analytics/007_AddEbayShoesTable.sql",
-                logger);
+            await ExecuteSqlFileAsync(connectionString, "Database/Analytics/007_AddEbayShoesTable.sql", logger);
         }
 
-        if (!await TableExistsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "google_shopping_products",
-            logger))
+        if (!await TableExistsAsync(connectionString, "google_shopping_products", logger))
         {
             logger.LogInformation("google_shopping_products table not found, creating...");
-            await ExecuteSqlFileAsync(
-                configuration.GetConnectionString("AnalyticsConnection")!,
-                "Database/Analytics/010_AddGoogleShoppingTable.sql",
-                logger);
+            await ExecuteSqlFileAsync(connectionString, "Database/Analytics/010_AddGoogleShoppingTable.sql", logger);
         }
 
         // Access-import origin support patch (idempotent)
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "Database/Analytics/011_AddDataOriginColumns.sql",
-            logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/011_AddDataOriginColumns.sql", logger);
 
         // Open product training schema (stored in analytics DB by default)
-        if (!await TableExistsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "dataset",
-            logger))
+        if (!await TableExistsAsync(connectionString, "dataset", logger))
         {
             logger.LogInformation("open_product_training schema not found, creating base tables...");
-            await ExecuteSqlFileAsync(
-                configuration.GetConnectionString("AnalyticsConnection")!,
-                "Database/OpenProductTraining/001_create_schema.sql",
-                logger);
+            await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/001_create_schema.sql", logger);
         }
 
-        if (!await TableExistsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "product_split",
-            logger))
+        if (!await TableExistsAsync(connectionString, "product_split", logger))
         {
             logger.LogInformation("open_product_training split table not found, applying split enum/table patch...");
-            await ExecuteSqlFileAsync(
-                configuration.GetConnectionString("AnalyticsConnection")!,
-                "Database/OpenProductTraining/002_fix_enum.sql",
-                logger);
+            await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/002_fix_enum.sql", logger);
         }
 
         // Views are idempotent (CREATE OR REPLACE) and can be safely re-applied on startup.
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "Database/OpenProductTraining/003_add_ml_export_views.sql",
-            logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/003_add_ml_export_views.sql", logger);
 
         // Open Product Training 2.0 schema extensions + feature-store views (idempotent).
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "Database/OpenProductTraining/004_open_training_2_0.sql",
-            logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/004_open_training_2_0.sql", logger);
 
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "Database/OpenProductTraining/005_open_training_2_0_views.sql",
-            logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/005_open_training_2_0_views.sql", logger);
 
-        await ExecuteSqlFileAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            "Database/OpenProductTraining/006_runtime_priors_materialized.sql",
-            logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/006_runtime_priors_materialized.sql", logger);
 
-        await EnsureOpenProductTrainingDatasetsAsync(
-            configuration.GetConnectionString("AnalyticsConnection")!,
-            configuration,
-            logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/007_model_version_runtime_tuning.sql", logger);
+
+        await EnsureOpenProductTrainingDatasetsAsync(connectionString, configuration, logger);
 
         // Backward-compatible schema patch for older eBay table script versions.
         await context.Database.ExecuteSqlRawAsync(@"

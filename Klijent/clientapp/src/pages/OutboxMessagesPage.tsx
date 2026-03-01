@@ -57,7 +57,7 @@ export default function OutboxMessagesPage() {
         setActionBusy(true);
         try {
             await retryOutboxMessage(id);
-            toast.success("Poruka je ozna?ena za ponovno slanje!");
+            toast.success("Poruka je označena za ponovno slanje!");
             await fetchMessages();
         } catch (err) {
             toast.error(`Greška: ${(err as Error).message}`);
@@ -92,7 +92,7 @@ export default function OutboxMessagesPage() {
 
     return (
         <div className="card" style={{ maxWidth: "1400px" }}>
-            <h2 className="text-2xl font-semibold mb-6">?? Outbox Messages</h2>
+            <h2 className="text-2xl font-semibold mb-6">Outbox poruke</h2>
 
             {/* Filters */}
             <div
@@ -297,7 +297,7 @@ export default function OutboxMessagesPage() {
 
                             <details>
                                 <summary style={{ cursor: "pointer", fontSize: "0.875rem", fontWeight: 800, marginBottom: "0.5rem" }}>
-                                    ?? Payload
+                                    Payload
                                 </summary>
                                 <pre style={{
                                     background: "#f9fafb",
@@ -332,7 +332,7 @@ export default function OutboxMessagesPage() {
                         className="button-big button-secondary"
                         style={{ padding: "8px 16px", marginBottom: 0, width: "auto" }}
                     >
-                        ? Previous
+                        ← Prethodna
                     </button>
 
                     <span style={{ fontSize: "0.875rem", color: "#6b7280", fontWeight: 800 }}>
@@ -346,7 +346,7 @@ export default function OutboxMessagesPage() {
                         className="button-big button-secondary"
                         style={{ padding: "8px 16px", marginBottom: 0, width: "auto" }}
                     >
-                        Next ?
+                        Sledeća →
                     </button>
                 </div>
             )}

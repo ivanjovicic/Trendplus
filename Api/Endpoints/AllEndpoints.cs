@@ -86,14 +86,16 @@ public static class AllEndpoints
             });
         })
         .WithName("WorkerHealthCheck")
-        .WithTags("System");
+        .WithTags("System")
+        .RequireRateLimiting("fixed");
 
         app.MapGet("/api/workers/control", (WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
         {
             return Results.Ok(workerControl.GetState(env.EnvironmentName));
         })
         .WithName("WorkerControlState")
-        .WithTags("System");
+        .WithTags("System")
+        .RequireRateLimiting("fixed");
 
         app.MapPost("/api/workers/control/enable", (WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
         {
@@ -108,7 +110,8 @@ public static class AllEndpoints
             });
         })
         .WithName("EnableWorkers")
-        .WithTags("System");
+        .WithTags("System")
+        .RequireRateLimiting("strict");
 
         app.MapPost("/api/workers/control/disable", (WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
         {
@@ -123,7 +126,8 @@ public static class AllEndpoints
             });
         })
         .WithName("DisableWorkers")
-        .WithTags("System");
+        .WithTags("System")
+        .RequireRateLimiting("strict");
 
         // Circuit Breaker Status
         app.MapGet("/api/circuit-breaker/status", (IMessageBroker broker) =>
@@ -230,7 +234,8 @@ public static class AllEndpoints
             }
         })
         .WithName("GetLogs")
-        .WithTags("System");
+        .WithTags("System")
+        .RequireRateLimiting("db-heavy");
 
         // ============ PERFORMANCE ============
         
@@ -256,7 +261,8 @@ public static class AllEndpoints
             return Results.Ok(result);
         })
         .WithName("GetPerformance")
-        .WithTags("System");
+        .WithTags("System")
+        .RequireRateLimiting("db-heavy");
 
         // ============ ADMIN - RUN ANALYTICS OPTIMIZATION ============
         

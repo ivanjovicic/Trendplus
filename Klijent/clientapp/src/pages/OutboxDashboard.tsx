@@ -51,7 +51,7 @@ export default function OutboxDashboard() {
             setError(null);
         } catch (err) {
             console.error("Error fetching outbox stats:", err);
-            setError((err as Error)?.message ?? "Greška pri u?itavanju outbox statistike");
+            setError((err as Error)?.message ?? "Greška pri učitavanju outbox statistike");
         } finally {
             setLoading(false);
         }
@@ -72,7 +72,7 @@ export default function OutboxDashboard() {
         setActionBusy(true);
         try {
             await retryOutboxMessage(id);
-            toast.success("Poruka je ozna?ena za ponovno slanje!");
+            toast.success("Poruka je označena za ponovno slanje!");
             await fetchStats();
         } catch (err) {
             toast.error(`Greška: ${(err as Error).message}`);
@@ -146,7 +146,7 @@ export default function OutboxDashboard() {
                 }}
             >
                 <h2 className="text-2xl font-semibold" style={{ margin: 0 }}>
-                    ?? Outbox Dashboard
+                    Outbox nadzor
                 </h2>
 
                 <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
@@ -160,7 +160,7 @@ export default function OutboxDashboard() {
                             textDecoration: "none",
                         }}
                     >
-                        ?? All Messages
+                        Sve poruke
                     </Link>
 
                     <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
@@ -179,7 +179,7 @@ export default function OutboxDashboard() {
                         onClick={fetchStats}
                         style={{ padding: "8px 16px", marginBottom: 0 }}
                     >
-                        ?? Refresh
+                        Osveži
                     </button>
                 </div>
             </div>
@@ -203,7 +203,7 @@ export default function OutboxDashboard() {
                         onClick={() => setConfirmRetryAll(true)}
                         style={{ padding: "8px 16px", marginBottom: 0 }}
                     >
-                        ?? Retry All Failed ({stats.failed})
+                        Ponovi sve neuspele ({stats.failed})
                     </button>
 
                     <button
@@ -212,7 +212,7 @@ export default function OutboxDashboard() {
                         onClick={() => setPurgeModalOpen(true)}
                         style={{ padding: "8px 16px", marginBottom: 0 }}
                     >
-                        ?? Purge Processed
+                        Obriši obrađene
                     </button>
                 </div>
             )}
@@ -267,7 +267,7 @@ export default function OutboxDashboard() {
             {eventTypeStats.length > 0 && (
                 <div style={{ marginBottom: "2rem" }}>
                     <h3 className="text-lg font-semibold" style={{ marginBottom: "1rem" }}>
-                        ?? Event Type Statistics
+                        Statistika po tipu događaja
                     </h3>
                     <div style={{ overflowX: "auto" }}>
                         <table className="table">
@@ -305,7 +305,7 @@ export default function OutboxDashboard() {
             {!loading && !error && recentMessages.length > 0 && (
                 <>
                     <h3 className="text-lg font-semibold" style={{ marginBottom: "1rem" }}>
-                        ?? Poslednje poruke
+                        Poslednje poruke
                     </h3>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -424,7 +424,7 @@ export default function OutboxDashboard() {
 
                                 <details>
                                     <summary style={{ cursor: "pointer", fontSize: "0.875rem", fontWeight: 800, marginBottom: "0.5rem" }}>
-                                        ?? Payload
+                                    Payload
                                     </summary>
                                     <pre
                                         style={{
@@ -483,10 +483,10 @@ export default function OutboxDashboard() {
             <PromptNumberModal
                 isOpen={purgeModalOpen}
                 title="Purge processed poruka"
-                label="Obriši obra?ene poruke starije od (dana)"
+                label="Obriši obrađene poruke starije od (dana)"
                 description={
                     <>
-                        Bi?e obrisane samo poruke koje su ozna?ene kao <strong>Processed</strong> i starije od izabranog broja dana.
+                        Biće obrisane samo poruke koje su označene kao <strong>Processed</strong> i starije od izabranog broja dana.
                     </>
                 }
                 defaultValue={purgeDays}

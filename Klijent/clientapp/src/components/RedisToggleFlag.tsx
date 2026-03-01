@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePingControl } from "../context/PingControlContext";
+import { apiUrl } from "../utils/apiUrl";
 
-const API = import.meta.env.VITE_API_BASE_URL as string;
 const POLL_MS = import.meta.env.DEV ? 20000 : 60000;
 
 interface RedisStatus {
@@ -14,15 +14,23 @@ export default function RedisToggleFlag() {
   const [status, setStatus] = useState<RedisStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [endpointMissing, setEndpointMissing] = useState(false);
 
   const load = useCallback(async (force = false) => {
     if (!apiPingEnabled && !force) return;
     try {
-      const res = await fetch(`${API}/api/redis/status`);
+      const res = await fetch(apiUrl("/api/redis/status"));
+      if (res.status === 404) {
+        setEndpointMissing(true);
+        setStatus(null);
+        setError(null);
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as RedisStatus;
       setStatus(data);
       setError(null);
+      setEndpointMissing(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Greska");
     }
@@ -43,10 +51,15 @@ export default function RedisToggleFlag() {
     try {
       setBusy(true);
       setError(null);
-      const res = await fetch(`${API}/api/redis/toggle`, { method: "POST" });
+      const res = await fetch(apiUrl("/api/redis/toggle"), { method: "POST" });
+      if (res.status === 404) {
+        setEndpointMissing(true);
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as RedisStatus;
       setStatus(data);
+      setEndpointMissing(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Greska pri toglovanju Redis-a.");
     } finally {
@@ -66,6 +79,8 @@ export default function RedisToggleFlag() {
 
   const label = error
     ? "Redis: greska"
+    : endpointMissing
+    ? "Redis: endpoint nije aktivan"
     : !status
     ? "Redis: ucitavanje..."
     : status.enabled
@@ -99,7 +114,7 @@ export default function RedisToggleFlag() {
       <button
         type="button"
         onClick={() => void onToggle()}
-        disabled={busy || !status}
+        disabled={busy || !status || endpointMissing}
         style={{
           padding: "5px 10px",
           borderRadius: 8,
@@ -108,8 +123,8 @@ export default function RedisToggleFlag() {
           color: "white",
           fontSize: 12,
           fontWeight: 600,
-          cursor: busy || !status ? "not-allowed" : "pointer",
-          opacity: busy || !status ? 0.6 : 1,
+          cursor: busy || !status || endpointMissing ? "not-allowed" : "pointer",
+          opacity: busy || !status || endpointMissing ? 0.6 : 1,
         }}
       >
         {busy ? "..." : buttonLabel}

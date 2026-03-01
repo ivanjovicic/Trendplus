@@ -12,9 +12,16 @@ namespace Api.Models
         public string Key { get; set; } = string.Empty;
         public string? TableName { get; set; }
         public int RowCount { get; set; }
+        public string MatchStrategy { get; set; } = "none";
         public List<string> AccessColumns { get; set; } = new();
         public List<AccessImportFieldMappingPreview> FieldMappings { get; set; } = new();
+        public int MatchedMappings { get; set; }
+        public int TotalMappings { get; set; }
+        public double MappingCoveragePercent { get; set; }
+        public List<string> RequiredFieldsMissing { get; set; } = new();
+        public List<string> UnmappedAccessColumns { get; set; } = new();
         public bool Found => !string.IsNullOrWhiteSpace(TableName);
+        public bool HasRows => RowCount > 0;
     }
 
     public sealed class AccessImportPreviewResponse
@@ -23,6 +30,14 @@ namespace Api.Models
         public string SourceFileName { get; set; } = string.Empty;
         public List<AccessImportTablePreview> Tables { get; set; } = new();
         public List<string> AvailableTables { get; set; } = new();
+        public int TotalAccessTables { get; set; }
+        public int AccessTablesWithRows { get; set; }
+        public int MappedAccessTables { get; set; }
+        public int MappedAccessTablesWithRows { get; set; }
+        public int TotalAccessRows { get; set; }
+        public int MappedAccessRows { get; set; }
+        public double RowCoveragePercent { get; set; }
+        public List<string> UnmappedAccessTablesWithRows { get; set; } = new();
         public List<string> Warnings { get; set; } = new();
     }
 
@@ -69,6 +84,8 @@ namespace Api.Models
         public int SalesLineFactsInserted { get; set; }
         public int StoresInserted { get; set; }
         public int StoresUpdated { get; set; }
+        public Dictionary<string, int> SourceRowsByTable { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, int> ImportedRowsByTable { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
         public List<string> Warnings { get; set; } = new();
     }

@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API_BASE_URL || "";
+import { apiUrl } from "../utils/apiUrl";
 
 export interface WorkerStatusItem {
   workerName: string;
@@ -33,25 +33,39 @@ export interface WorkerControlState {
   lastChangedBy: string;
 }
 
+async function ensureOk(res: Response, message: string): Promise<void> {
+  if (res.ok) return;
+
+  let detail = "";
+  try {
+    const body = await res.json();
+    detail = body?.detail || body?.message || "";
+  } catch {
+    // no-op
+  }
+
+  const suffix = detail ? `: ${detail}` : "";
+  throw new Error(`${message} (HTTP ${res.status}${suffix})`);
+}
+
 export async function getWorkersHealth(): Promise<WorkerHealthWithControl> {
-  const res = await fetch(`${API}/api/workers/health`);
-  if (!res.ok) throw new Error("Neuspesno citanje worker health statusa.");
+  const res = await fetch(apiUrl("/api/workers/health"));
+  await ensureOk(res, "Neuspešno čitanje worker health statusa");
   return res.json();
 }
 
 export async function getWorkersControl(): Promise<WorkerControlState> {
-  const res = await fetch(`${API}/api/workers/control`);
-  if (!res.ok) throw new Error("Neuspesno citanje worker control statusa.");
+  const res = await fetch(apiUrl("/api/workers/control"));
+  await ensureOk(res, "Neuspešno čitanje worker control statusa");
   return res.json();
 }
 
 export async function enableWorkers(): Promise<void> {
-  const res = await fetch(`${API}/api/workers/control/enable`, { method: "POST" });
-  if (!res.ok) throw new Error("Neuspesno ukljucivanje workera.");
+  const res = await fetch(apiUrl("/api/workers/control/enable"), { method: "POST" });
+  await ensureOk(res, "Neuspešno uključivanje workera");
 }
 
 export async function disableWorkers(): Promise<void> {
-  const res = await fetch(`${API}/api/workers/control/disable`, { method: "POST" });
-  if (!res.ok) throw new Error("Neuspesno iskljucivanje workera.");
+  const res = await fetch(apiUrl("/api/workers/control/disable"), { method: "POST" });
+  await ensureOk(res, "Neuspešno isključivanje workera");
 }
-

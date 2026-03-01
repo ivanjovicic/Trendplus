@@ -3,6 +3,7 @@ CREATE OR REPLACE VIEW "ProductsDim" AS
 SELECT
   productkey AS "ProductKey",
   productid AS "ProductId",
+  plu AS "PLU",
   productname AS "ProductName",
   category AS "Category",
   subcategory AS "SubCategory",
@@ -17,6 +18,9 @@ SELECT
   isactive AS "IsActive",
   timestamp AS "Timestamp",
   kolicina AS "Kolicina",
+  minimalnakolicina AS "MinimalnaKolicina",
   boja AS "Boja",
-  velicina AS "Velicina"
+  velicina AS "Velicina",
+  materijal AS "Materijal",
+  dataorigin AS "DataOrigin"
 FROM productsdim;

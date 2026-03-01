@@ -49,6 +49,13 @@ namespace Api.Models
         public double LocalDemandScore { get; set; }
 
         public bool HasTrainingSignal { get; set; }
+
+        // Shopify cross-market signals
+        public double ShopifyPriceSignalScore { get; set; }
+        public int ShopifyMatchCount { get; set; }
+        public decimal? ShopifyMedianPrice { get; set; }
+        public bool HasShopifySignal { get; set; }
+
         public bool UsedPythonModel { get; set; }
         public bool UsedOnnxModel { get; set; }
         public string? OnnxModelType { get; set; }
