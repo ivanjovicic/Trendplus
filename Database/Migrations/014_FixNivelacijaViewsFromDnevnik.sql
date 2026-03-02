@@ -93,7 +93,16 @@ sales_daily AS (
     GROUP BY ps."id_artikal", pz."datum_prodaje"::date
 )
 SELECT
-    e.*,
+    e.price_event_id,
+    e.event_date,
+    e.article_id,
+    e.sku,
+    e.article_name,
+    e.category,
+    e.vendor_id,
+    e.vendor_name,
+    e.old_price,
+    e.new_price,
     COALESCE(SUM(s.units),0) AS pre_qty,
     COALESCE(SUM(s.revenue),0) AS pre_revenue,
     LEAST(

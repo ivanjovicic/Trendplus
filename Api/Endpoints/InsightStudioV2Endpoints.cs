@@ -101,16 +101,40 @@ public static class InsightStudioV2Endpoints
                     ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
                     : DateTime.UtcNow;
 
-                // Get multi-item transactions only
-                var basketItems = await (
-                    from ps in db.ProdajaStavke
-                    join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
-                    join a in db.Artikli on ps.IdArtikal equals a.Id
-                    where p.DatumProdaje >= fromUtc && p.DatumProdaje <= to
-                    group a by ps.IdProdaja into g
-                    where g.Count() >= 2
-                    select g.Select(x => x.Kategorija ?? "Ostalo").Distinct().ToList()
-                ).ToListAsync(ct);
+                // Get multi-item transactions: aggregate distinct categories per sale
+                var basketItems = new List<List<string>>();
+                var dbContext = db as DbContext;
+                if (dbContext == null)
+                    return Results.Problem(detail: "Database context unavailable", statusCode: 500);
+
+                var conn = dbContext.Database.GetDbConnection();
+                await using (conn)
+                {
+                    if (conn.State != System.Data.ConnectionState.Open)
+                        await conn.OpenAsync(ct);
+
+                    await using var cmd = conn.CreateCommand();
+                          cmd.CommandText = @"
+                           SELECT ps.id_prodaja,
+                               array_agg(DISTINCT COALESCE(a.""Kategorija"", 'Ostalo')) AS categories
+                           FROM prodaja_stavke ps
+                           JOIN prodaja_zaglavlje pz ON ps.id_prodaja = pz.id
+                           LEFT JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
+                           WHERE pz.datum_prodaje >= @from AND pz.datum_prodaje <= @to
+                           GROUP BY ps.id_prodaja
+                           HAVING COUNT(*) >= 2;";
+
+                    var pFrom = cmd.CreateParameter(); pFrom.ParameterName = "from"; pFrom.Value = fromUtc; cmd.Parameters.Add(pFrom);
+                    var pTo = cmd.CreateParameter(); pTo.ParameterName = "to"; pTo.Value = to; cmd.Parameters.Add(pTo);
+
+                    await using var reader = await cmd.ExecuteReaderAsync(ct);
+                    while (await reader.ReadAsync(ct))
+                    {
+                        // categories is a PostgreSQL text[] mapped to string[] by Npgsql
+                        var categories = reader.IsDBNull(1) ? Array.Empty<string>() : (string[])reader.GetValue(1);
+                        basketItems.Add(categories.Distinct().ToList());
+                    }
+                }
 
                 if (basketItems.Count == 0)
                     return Results.Ok(new { pairs = new List<object>(), totalMultiItemTransactions = 0 });

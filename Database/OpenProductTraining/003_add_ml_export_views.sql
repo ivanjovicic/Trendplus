@@ -3,7 +3,8 @@
 -- =============================================================
 
 -- Latest numeric labels per product (one row per product).
-CREATE OR REPLACE VIEW vw_product_latest_labels AS
+DROP VIEW IF EXISTS vw_product_latest_labels CASCADE;
+CREATE VIEW vw_product_latest_labels AS
 WITH ranked AS (
     SELECT
         tl.product_id,
@@ -30,7 +31,8 @@ COMMENT ON VIEW vw_product_latest_labels IS
 'Latest popularity_prior and deal_score labels per product.';
 
 -- Flat export view for Python/XGBoost training.
-CREATE OR REPLACE VIEW vw_product_training_export AS
+DROP VIEW IF EXISTS vw_product_training_export CASCADE;
+CREATE VIEW vw_product_training_export AS
 SELECT
     p.id AS product_id,
     d.id AS dataset_id,
@@ -66,7 +68,8 @@ COMMENT ON VIEW vw_product_training_export IS
 'Flattened product + latest labels view intended for ML export (Python/XGBoost).';
 
 -- Runtime aggregation by (brand, shoe_type) used by live trend scoring.
-CREATE OR REPLACE VIEW vw_brand_shoe_runtime_priors AS
+DROP VIEW IF EXISTS vw_brand_shoe_runtime_priors CASCADE;
+CREATE VIEW vw_brand_shoe_runtime_priors AS
 SELECT
     LOWER(TRIM(COALESCE(b.name, ''))) AS brand_key,
     LOWER(TRIM(COALESCE(p.shoe_type, ''))) AS shoe_type_key,

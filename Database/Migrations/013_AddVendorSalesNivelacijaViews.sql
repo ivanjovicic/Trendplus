@@ -70,6 +70,16 @@ ON price_history (article_id, effective_from DESC);
 CREATE INDEX IF NOT EXISTS idx_price_history_vendor_date
 ON price_history (vendor_id, effective_from DESC);
 
+-- 3️⃣ Ensure UNIQUE constraint on source_dnevnik_id (needed for ON CONFLICT)
+DO $ensure_unique$
+BEGIN
+    ALTER TABLE price_history
+        ADD CONSTRAINT price_history_source_dnevnik_id_key UNIQUE (source_dnevnik_id);
+EXCEPTION WHEN duplicate_table OR duplicate_object THEN
+    NULL; -- constraint already exists, nothing to do
+END
+$ensure_unique$;
+
 -- 3️⃣ Backfill price_history table
 INSERT INTO price_history (
     article_id,
@@ -96,6 +106,9 @@ WHERE d."ArtikalId" IS NOT NULL
 ON CONFLICT (source_dnevnik_id) DO NOTHING;
 
 -- 4️⃣ Create pre nivelacija view
+DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;
+DROP VIEW IF EXISTS vw_sales_post_nivelacija CASCADE;
+DROP VIEW IF EXISTS vw_sales_pre_nivelacija CASCADE;
 CREATE OR REPLACE VIEW vw_sales_pre_nivelacija AS
 WITH sales_daily AS (
     SELECT
@@ -142,6 +155,7 @@ GROUP BY
     ph.old_price, ph.new_price;
 
 -- 5️⃣ Create post nivelacija view
+DROP VIEW IF EXISTS vw_sales_post_nivelacija CASCADE;
 CREATE OR REPLACE VIEW vw_sales_post_nivelacija AS
 WITH sales_daily AS (
     SELECT
@@ -188,6 +202,7 @@ GROUP BY
     ph.old_price, ph.new_price;
 
 -- 6️⃣ Create consolidated vendor sales nivelacija view
+DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;
 CREATE OR REPLACE VIEW vw_vendor_sales_nivelacija AS
 SELECT
     pre.price_event_id,

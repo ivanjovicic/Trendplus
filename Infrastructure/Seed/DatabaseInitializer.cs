@@ -10,6 +10,8 @@ namespace Infrastructure.Seed;
 
 public static class DatabaseInitializer
 {
+    private const long AdvisoryLockKey = 987654321L;
+
     public static async Task InitializeDatabasesAsync(
         IServiceProvider services,
         IConfiguration configuration,
@@ -17,42 +19,92 @@ public static class DatabaseInitializer
     {
         logger.LogInformation("=== DATABASE INITIALIZATION START ===");
 
+        var defaultConnection = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(defaultConnection))
+        {
+            logger.LogCritical("Connection string 'DefaultConnection' is missing or empty.");
+            throw new InvalidOperationException("Connection string 'DefaultConnection' is required.");
+        }
+
+        await using var connection = new NpgsqlConnection(defaultConnection);
+        await connection.OpenAsync();
+
+        // Global advisory lock da samo jedna instanca radi init (ali ne blokira druge konekcije)
+        await using var lockCmd = new NpgsqlCommand("SELECT pg_advisory_lock(@key);", connection);
+        lockCmd.Parameters.AddWithValue("key", AdvisoryLockKey);
+        await lockCmd.ExecuteNonQueryAsync();
+        logger.LogInformation("Acquired advisory startup lock with key {Key}.", AdvisoryLockKey);
+
         var trendplusInitialized = false;
         var analyticsInitialized = false;
 
         try
         {
-            // 1. Initialize Trendplus DB
-            await InitializeTrendplusDbAsync(services, configuration, logger);
-            trendplusInitialized = true;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Trendplus DB initialization failed");
-        }
+            try
+            {
+                await InitializeTrendplusDbAsync(services, configuration, logger);
+                trendplusInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Trendplus DB initialization failed.");
+            }
 
-        try
-        {
-            // 2. Initialize Analytics DB
-            await InitializeAnalyticsDbAsync(services, configuration, logger);
-            analyticsInitialized = true;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Analytics DB initialization failed");
-        }
+            try
+            {
+                await InitializeAnalyticsDbAsync(services, configuration, logger);
+                analyticsInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Analytics DB initialization failed.");
+            }
 
-        if (trendplusInitialized || analyticsInitialized)
-        {
-            logger.LogInformation(
-                "=== DATABASE INITIALIZATION COMPLETE (trendplus={TrendplusOk}, analytics={AnalyticsOk}) ===",
-                trendplusInitialized,
-                analyticsInitialized);
+            if (!trendplusInitialized || !analyticsInitialized)
+            {
+                var failFast = configuration.GetValue<bool>("DatabaseInitialization:FailFast");
+                if (failFast)
+                {
+                    logger.LogCritical(
+                        "Database initialization failed in strict mode. Trendplus={TrendplusOk}, Analytics={AnalyticsOk}",
+                        trendplusInitialized, analyticsInitialized);
+
+                    throw new InvalidOperationException("Database initialization failed.");
+                }
+
+                logger.LogWarning(
+                    "Database initialization completed with errors (non-strict mode). Trendplus={TrendplusOk}, Analytics={AnalyticsOk}",
+                    trendplusInitialized, analyticsInitialized);
+            }
+            else
+            {
+                logger.LogInformation("=== DATABASE INITIALIZATION COMPLETED SUCCESSFULLY ===");
+            }
         }
-        else
+        finally
         {
-            logger.LogError("=== DATABASE INITIALIZATION FAILED (no database initialized) ===");
+            await using var unlockCmd = new NpgsqlCommand("SELECT pg_advisory_unlock(@key);", connection);
+            unlockCmd.Parameters.AddWithValue("key", AdvisoryLockKey);
+            await unlockCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("Released advisory startup lock with key {Key}.", AdvisoryLockKey);
         }
+    }
+
+    private static string? ResolveSqlFilePath(string sqlFilePath)
+    {
+        if (File.Exists(sqlFilePath))
+            return sqlFilePath;
+
+        var relative = sqlFilePath
+            .Replace('\\', Path.DirectorySeparatorChar)
+            .Replace('/', Path.DirectorySeparatorChar);
+
+        var candidate = Path.Combine(AppContext.BaseDirectory, relative);
+
+        if (File.Exists(candidate))
+            return candidate;
+
+        return null;
     }
 
     private static async Task InitializeTrendplusDbAsync(
@@ -67,6 +119,20 @@ public static class DatabaseInitializer
 
         var connectionString = GetValidatedConnectionString(configuration, "DefaultConnection", logger);
 
+        // FIRST: Ensure core tables exist (self-heal before EF migrations)
+        // This allows workers to function even if EF migrations fail
+        await EnsureTrendplusCoreSchemaAsync(connectionString, logger);
+        await EnsureTrendplusAggregationTablesAsync(connectionString, logger);
+        await EnsureTrendplusOutboxSchemaAsync(connectionString, logger);
+
+        // Ensure migrations history table exists
+        await ExecuteSqlCommandAsync(connectionString, @"
+            CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+                ""MigrationId"" character varying(150) NOT NULL PRIMARY KEY,
+                ""ProductVersion"" character varying(32) NOT NULL
+            );
+        ", logger);
+
         // Mark problematic migration as applied
         await ExecuteSqlCommandAsync(connectionString, @"
             INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
@@ -78,16 +144,12 @@ public static class DatabaseInitializer
         try
         {
             await context.Database.MigrateAsync();
-            logger.LogInformation("? Trendplus DB migrations applied.");
+            logger.LogInformation("✔ Trendplus DB migrations applied.");
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Trendplus DB migrations failed; continuing with core schema self-heal.");
+            logger.LogWarning(ex, "Trendplus DB migrations failed; core schema was already self-healed.");
         }
-
-        // Ensure core schema and aggregation tables
-        await EnsureTrendplusCoreSchemaAsync(connectionString, logger);
-        await EnsureTrendplusAggregationTablesAsync(connectionString, logger);
 
         // Execute additional SQL files
         var sqlFiles = new[]
@@ -113,7 +175,7 @@ public static class DatabaseInitializer
         }
         else
         {
-            logger.LogInformation("? Trendplus DB already has data.");
+            logger.LogInformation("✔ Trendplus DB already has Artikli data.");
         }
     }
 
@@ -139,7 +201,14 @@ public static class DatabaseInitializer
             command.CommandTimeout = 300; // 5 minutes
             await command.ExecuteNonQueryAsync();
 
-            logger.LogInformation("? Executed SQL command successfully.");
+            logger.LogInformation("✔ Executed SQL command successfully.");
+        }
+        catch (PostgresException pgEx)
+        {
+            logger.LogError(pgEx,
+                "Postgres error while executing SQL command. SqlState={SqlState}, Detail={Detail}",
+                pgEx.SqlState, pgEx.Detail);
+            throw;
         }
         catch (Exception ex)
         {
@@ -153,6 +222,32 @@ public static class DatabaseInitializer
         ILogger logger)
     {
         const string sql = @"
+            -- Create Artikli table if it doesn't exist (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""Artikli"" (
+                ""Id"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""PLU"" character varying(100),
+                ""Naziv"" character varying(500) NOT NULL DEFAULT '',
+                ""Komentar"" text,
+                ""NabavnaCena"" numeric(18,2),
+                ""NabavnaCenaDin"" numeric(18,2),
+                ""PrvaProdajnaCena"" numeric(18,2),
+                ""ProdajnaCena"" numeric(18,2),
+                ""IDDobavljac"" integer,
+                ""IDTipObuce"" integer,
+                ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                ""Kolicina"" integer,
+                ""MinimalnaKolicina"" integer,
+                ""IDObjekat"" integer,
+                ""IDSezona"" integer,
+                ""Kategorija"" text,
+                ""Pol"" text,
+                ""Velicina"" text,
+                ""Boja"" text,
+                ""Materijal"" character varying(100),
+                ""ImagePath"" character varying(500),
+                ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing'
+            );
+
             -- Core Artikli columns used by workers/services (idempotent).
             ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
             ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Kolicina"" integer;
@@ -169,21 +264,193 @@ public static class DatabaseInitializer
 
             CREATE INDEX IF NOT EXISTS ""IX_Artikli_ImagePath"" ON ""Artikli"" (""ImagePath"");
 
+            -- Create prodaja_zaglavlje table if it doesn't exist (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS prodaja_zaglavlje (
+                id              integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                broj_racuna     character varying(100),
+                datum_prodaje   timestamp with time zone NOT NULL,
+                nacin_placanja  character varying(100),
+                id_objekat      integer,
+                korisnik_ime    character varying(200),
+                data_origin     character varying(32) NOT NULL DEFAULT 'existing'
+            );
+
+            -- Create prodaja_stavke table if it doesn't exist (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS prodaja_stavke (
+                id              integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                id_prodaja      integer NOT NULL REFERENCES prodaja_zaglavlje(id) ON DELETE CASCADE,
+                id_artikal      integer NOT NULL,
+                kolicina        integer NOT NULL,
+                cena            decimal(18,2) NOT NULL,
+                nabavna_cena    decimal(18,2)
+            );
+            CREATE INDEX IF NOT EXISTS IX_prodaja_stavke_id_prodaja ON prodaja_stavke (id_prodaja);
+
+            -- Prodaja operational columns (idempotent)
+            ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS korisnik_ime character varying(200);
+            ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS nabavna_cena decimal(18,2);
+
+            -- Create DnevnikPromena table if it doesn't exist (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""DnevnikPromena"" (
+                ""Id""                integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""TipPromene""        character varying(100) NOT NULL,
+                ""Datum""             timestamp with time zone NOT NULL,
+                ""Iznos""             decimal(18,2) NOT NULL,
+                ""BrojRacuna""        character varying(100),
+                ""DobavljacId""       integer,
+                ""ArtikalId""         integer,
+                ""StaraProdajnaCena"" decimal(18,2),
+                ""NovaProdajnaCena""  decimal(18,2),
+                ""Kolicina""          integer,
+                ""IDObjekat""         integer,
+                ""RedniBroj""         integer,
+                ""Komentar""          character varying(500),
+                ""KorisnikIme""       character varying(200),
+                ""DataOrigin""        character varying(32) NOT NULL DEFAULT 'existing'
+            );
+
             -- DnevnikPromena operational columns used by SyncWorker and import pipeline
             ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""IDObjekat"" integer;
             ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""RedniBroj"" integer;
+            CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_DataOrigin"" ON ""DnevnikPromena"" (""DataOrigin"");
             CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
 
-            -- Prodaja operational columns
-            ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS ""korisnik_ime"" character varying(200);
-            ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS ""nabavna_cena"" decimal(18,2);
+            -- Create DataImportBatches table if it doesn't exist (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""DataImportBatches"" (
+                ""Id""              bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""SourceSystem""    character varying(64)   NOT NULL,
+                ""SourceFileName""  character varying(300)  NOT NULL,
+                ""StartedAtUtc""    timestamp with time zone NOT NULL,
+                ""CompletedAtUtc""  timestamp with time zone,
+                ""Status""          character varying(32)   NOT NULL,
+                ""SummaryJson""     text,
+                ""ErrorMessage""    character varying(4000),
+                ""DurationSeconds"" integer,
+                ""TotalImported""   integer NOT NULL DEFAULT 0,
+                ""TotalUpdated""    integer NOT NULL DEFAULT 0,
+                ""TotalErrors""     integer NOT NULL DEFAULT 0,
+                ""DataOrigin""      character varying(32) NOT NULL DEFAULT 'access'
+            );
+            CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_StartedAtUtc"" ON ""DataImportBatches"" (""StartedAtUtc"");
+            CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_Status"" ON ""DataImportBatches"" (""Status"");
 
-            -- Access import batch compatibility columns (migration 015)
+            -- Access import batch compatibility columns (migration 015, idempotent)
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DurationSeconds"" integer;
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalImported"" integer NOT NULL DEFAULT 0;
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalUpdated"" integer NOT NULL DEFAULT 0;
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalErrors"" integer NOT NULL DEFAULT 0;
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'access';
+
+            -- TipoviObuce (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""TipoviObuce"" (
+                ""Id""          integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""Naziv""       text NOT NULL DEFAULT '',
+                ""DataOrigin""  character varying(32) NOT NULL DEFAULT 'existing'
+            );
+
+            -- Dobavljaci (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""Dobavljaci"" (
+                ""Id""          integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""Naziv""       text,
+                ""Adresa""      text,
+                ""Telefon""     text,
+                ""Napomena""    text,
+                ""DataOrigin""  character varying(32) NOT NULL DEFAULT 'existing'
+            );
+
+            -- Sezone (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""Sezone"" (
+                ""Id""          integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""Naziv""       character varying(100) NOT NULL,
+                ""DatumOd""     timestamp with time zone NOT NULL,
+                ""DatumDo""     timestamp with time zone NOT NULL,
+                ""DataOrigin""  character varying(32) NOT NULL DEFAULT 'existing'
+            );
+
+            -- ErrorRecords (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""ErrorRecords"" (
+                ""Id""              integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""Timestamp""       timestamp with time zone NOT NULL,
+                ""Level""           text NOT NULL DEFAULT 'Error',
+                ""Message""         character varying(2000) NOT NULL DEFAULT '',
+                ""ExceptionType""   character varying(500) NOT NULL DEFAULT '',
+                ""StackTrace""      character varying(4000),
+                ""Path""            character varying(1000),
+                ""UserName""        character varying(200),
+                ""ClientApp""       character varying(1000),
+                ""CorrelationId""   text NOT NULL DEFAULT ''
+            );
+
+            -- ProductImages (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""ProductImages"" (
+                ""Id""          uuid PRIMARY KEY,
+                ""ProductId""   integer NOT NULL,
+                ""FileName""    character varying(500) NOT NULL,
+                ""CreatedAt""   timestamp with time zone NOT NULL,
+                ""IsPrimary""   boolean NOT NULL DEFAULT false
+            );
+            CREATE INDEX IF NOT EXISTS ""IX_ProductImages_ProductId"" ON ""ProductImages"" (""ProductId"");
+            CREATE INDEX IF NOT EXISTS ""IX_ProductImages_CreatedAt"" ON ""ProductImages"" (""CreatedAt"");
+
+            -- CrossPlatformProducts (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""CrossPlatformProducts"" (
+                ""Id""              integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""Brand""           text NOT NULL DEFAULT '',
+                ""NormalizedName""  text NOT NULL DEFAULT '',
+                ""ZalandoUrl""      text NOT NULL DEFAULT '',
+                ""DeichmannUrl""    text NOT NULL DEFAULT '',
+                ""PriceZalando""    numeric NOT NULL DEFAULT 0,
+                ""PriceDeichmann""  numeric NOT NULL DEFAULT 0,
+                ""CreatedAt""       timestamp with time zone NOT NULL,
+                ""UpdatedAt""       timestamp with time zone NOT NULL
+            );
+
+            -- povracaj_zaglavlje (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS povracaj_zaglavlje (
+                id                 integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                broj_zapisnika     character varying(100) NOT NULL,
+                datum_povracaja    timestamp with time zone NOT NULL,
+                id_dobavljac       integer NOT NULL,
+                razlog_povracaja   text,
+                status             character varying(50) NOT NULL DEFAULT 'Kreiran',
+                ukupan_iznos       numeric(18,2),
+                komentar           text,
+                kreirao_korisnik   character varying(200),
+                odobrio_korisnik   character varying(200),
+                datum_kreiranja    timestamp with time zone NOT NULL,
+                datum_odobrenja    timestamp with time zone,
+                data_origin        character varying(32) NOT NULL DEFAULT 'existing'
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_povracaj_zaglavlje_broj_zapisnika"" ON povracaj_zaglavlje (broj_zapisnika);
+            CREATE INDEX IF NOT EXISTS ""IX_povracaj_zaglavlje_id_dobavljac"" ON povracaj_zaglavlje (id_dobavljac);
+            CREATE INDEX IF NOT EXISTS ""IX_povracaj_zaglavlje_datum_povracaja"" ON povracaj_zaglavlje (datum_povracaja);
+
+            -- povracaj_stavke (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS povracaj_stavke (
+                id              integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                id_povracaj     integer NOT NULL REFERENCES povracaj_zaglavlje(id) ON DELETE CASCADE,
+                id_artikal      integer NOT NULL,
+                kolicina        integer NOT NULL,
+                cena            numeric(18,2) NOT NULL,
+                razlog          text,
+                stanje_artikla  character varying(100)
+            );
+            CREATE INDEX IF NOT EXISTS ""IX_povracaj_stavke_id_artikal"" ON povracaj_stavke (id_artikal);
+
+            -- AccessImportLog (idempotent bootstrap)
+            CREATE TABLE IF NOT EXISTS ""AccessImportLog"" (
+                ""Id""            bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""BatchId""       bigint NOT NULL,
+                ""TableName""     character varying(128) NOT NULL,
+                ""RowIndex""      integer NOT NULL DEFAULT 0,
+                ""Severity""      character varying(16) NOT NULL DEFAULT 'info',
+                ""Message""       character varying(2000) NOT NULL,
+                ""SourceRowJson"" text,
+                ""CreatedAtUtc""  timestamp with time zone NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS ""IX_AccessImportLog_BatchId"" ON ""AccessImportLog"" (""BatchId"");
+            CREATE INDEX IF NOT EXISTS ""IX_AccessImportLog_Severity"" ON ""AccessImportLog"" (""Severity"");
+            CREATE INDEX IF NOT EXISTS ""IX_AccessImportLog_BatchId_TableName"" ON ""AccessImportLog"" (""BatchId"", ""TableName"");
         ";
 
         await using var connection = new NpgsqlConnection(connectionString);
@@ -193,7 +460,7 @@ public static class DatabaseInitializer
         command.CommandTimeout = 120;
         await command.ExecuteNonQueryAsync();
 
-        logger.LogInformation("? Ensured Trendplus core schema for Artikli/DnevnikPromena/Prodaja columns");
+        logger.LogInformation("✔ Ensured Trendplus core schema for Artikli/DnevnikPromena/Prodaja columns.");
     }
 
     private static async Task EnsureTrendplusAggregationTablesAsync(
@@ -317,7 +584,58 @@ public static class DatabaseInitializer
         command.CommandTimeout = 120;
         await command.ExecuteNonQueryAsync();
 
-        logger.LogInformation("? Ensured Trendplus analytics aggregation tables/indexes");
+        logger.LogInformation("✔ Ensured Trendplus analytics aggregation tables/indexes.");
+    }
+
+    // Outbox table koja ti trenutno fali (42P01: relation "OutboxMessages" does not exist)
+    private static async Task EnsureTrendplusOutboxSchemaAsync(
+        string connectionString,
+        ILogger logger)
+    {
+        const string sql = @"
+            CREATE TABLE IF NOT EXISTS ""OutboxMessages"" (
+                ""Id"" bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""CorrelationId"" character varying(100) NULL,
+                ""EventType"" character varying(200) NOT NULL,
+                ""Payload"" text NOT NULL,
+                ""IsProcessed"" boolean NOT NULL DEFAULT false,
+                ""RetryCount"" integer NOT NULL DEFAULT 0,
+                ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT NOW(),
+                ""ProcessedAt"" timestamp with time zone NULL,
+                ""ErrorMessage"" character varying(2000) NULL
+            );
+
+            -- Fix existing installations where CorrelationId was created as uuid
+            DO $fix_outbox$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'OutboxMessages'
+                      AND column_name = 'CorrelationId'
+                      AND data_type = 'uuid'
+                ) THEN
+                    ALTER TABLE ""OutboxMessages""
+                        ALTER COLUMN ""CorrelationId"" TYPE character varying(100)
+                        USING ""CorrelationId""::text;
+                END IF;
+            END $fix_outbox$;
+
+            CREATE INDEX IF NOT EXISTS ""IX_OutboxMessages_IsProcessed_RetryCount_CreatedAt""
+                ON ""OutboxMessages"" (""IsProcessed"", ""RetryCount"", ""CreatedAt"");
+            CREATE INDEX IF NOT EXISTS ""IX_OutboxMessages_CreatedAt""
+                ON ""OutboxMessages"" (""CreatedAt"");
+            CREATE INDEX IF NOT EXISTS ""IX_OutboxMessages_IsProcessed""
+                ON ""OutboxMessages"" (""IsProcessed"");
+        ";
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = 60;
+        await command.ExecuteNonQueryAsync();
+
+        logger.LogInformation("✔ Ensured OutboxMessages table exists.");
     }
 
     private static async Task InitializeAnalyticsDbAsync(
@@ -561,7 +879,7 @@ public static class DatabaseInitializer
         command.CommandTimeout = 120;
         await command.ExecuteNonQueryAsync();
 
-        logger.LogInformation("? Ensured core analytics dimension tables (ProductsDim, StoresDim)");
+        logger.LogInformation("✔ Ensured core analytics dimension tables (ProductsDim, StoresDim, etc.).");
     }
 
     private static async Task BackfillSalesFactsAsync(
@@ -569,58 +887,39 @@ public static class DatabaseInitializer
         AnalyticsDbContext analyticsDb,
         ILogger logger)
     {
-        try
+        var lastId = await analyticsDb.SalesFacts
+            .OrderByDescending(x => x.SaleId)
+            .Select(x => x.SaleId)
+            .FirstOrDefaultAsync();
+
+        const int batchSize = 500;
+
+        while (true)
         {
-            var startedAt = DateTime.UtcNow;
-            var existingSaleIds = await analyticsDb.SalesFacts
-                .AsNoTracking()
-                .Select(x => x.SaleId)
-                .ToListAsync();
-
-            var existingSet = new HashSet<int>(existingSaleIds);
-
-            var sales = await trendDb.ProdajaZaglavlja
-                .Include(p => p.Stavke)
+            var batch = await trendDb.ProdajaZaglavlja
+                .Where(x => x.Id > lastId)
+                .OrderBy(x => x.Id)
+                .Take(batchSize)
+                .Include(x => x.Stavke)
                 .AsNoTracking()
                 .ToListAsync();
 
-            logger.LogInformation(
-                "SalesFacts backfill check: sourceSales={SourceSales}, existingFacts={ExistingFacts}",
-                sales.Count,
-                existingSaleIds.Count);
+            if (batch.Count == 0)
+                break;
 
-            if (sales.Count == 0)
+            foreach (var sale in batch)
             {
-                logger.LogInformation("No source sales found for SalesFacts backfill.");
-                return;
-            }
-
-            var factsToInsert = new List<SalesFact>();
-            var linesToInsert = new List<SalesLineFact>();
-
-            foreach (var sale in sales)
-            {
-                if (existingSet.Contains(sale.Id))
-                    continue;
-
-                var totalAmount = sale.Stavke.Sum(s => s.Kolicina * s.Cena);
-                var totalUnits = sale.Stavke.Sum(s => s.Kolicina);
-
-                factsToInsert.Add(new SalesFact
+                analyticsDb.SalesFacts.Add(new SalesFact
                 {
                     SaleId = sale.Id,
-                    BrojRacuna = sale.BrojRacuna ?? string.Empty,
                     SaleTimestampUtc = DateTime.SpecifyKind(sale.DatumProdaje, DateTimeKind.Utc),
-                    StoreId = sale.IDObjekat ?? 1,
-                    PaymentType = sale.NacinPlacanja ?? string.Empty,
-                    TotalAmount = totalAmount,
-                    TotalUnits = totalUnits,
-                    TotalLines = sale.Stavke.Count
+                    TotalAmount = sale.Stavke.Sum(s => s.Kolicina * s.Cena),
+                    TotalUnits = sale.Stavke.Sum(s => s.Kolicina)
                 });
 
                 foreach (var line in sale.Stavke)
                 {
-                    linesToInsert.Add(new SalesLineFact
+                    analyticsDb.SalesLineFacts.Add(new SalesLineFact
                     {
                         SaleId = sale.Id,
                         ProductId = line.IdArtikal,
@@ -631,139 +930,53 @@ public static class DatabaseInitializer
                 }
             }
 
-            if (factsToInsert.Count == 0)
-            {
-                logger.LogInformation(
-                    "SalesFacts backfill skipped: analytics already synced. sourceSales={SourceSales}, existingFacts={ExistingFacts}, durationMs={DurationMs}",
-                    sales.Count,
-                    existingSaleIds.Count,
-                    (DateTime.UtcNow - startedAt).TotalMilliseconds);
-                return;
-            }
-
-            await analyticsDb.SalesFacts.AddRangeAsync(factsToInsert);
-            await analyticsDb.SalesLineFacts.AddRangeAsync(linesToInsert);
             await analyticsDb.SaveChangesAsync();
 
-            logger.LogInformation(
-                "SalesFacts backfill completed: insertedSales={InsertedSales}, insertedLines={InsertedLines}, skippedSales={SkippedSales}, totalSourceSales={TotalSourceSales}, existingBefore={ExistingBefore}, totalFactsAfter={TotalFactsAfter}, durationMs={DurationMs}",
-                factsToInsert.Count,
-                linesToInsert.Count,
-                sales.Count - factsToInsert.Count,
-                sales.Count,
-                existingSaleIds.Count,
-                existingSaleIds.Count + factsToInsert.Count,
-                (DateTime.UtcNow - startedAt).TotalMilliseconds);
+            lastId = batch.Last().Id;
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to backfill SalesFacts during startup.");
-        }
+
+        logger.LogInformation("✔ SalesFacts incremental backfill complete.");
     }
 
-    private static async Task EnsureOpenProductTrainingDatasetsAsync(
+    private static async Task ExecuteSqlFileAsync(
         string connectionString,
-        IConfiguration configuration,
+        string sqlFilePath,
         ILogger logger)
     {
+        var resolvedPath = ResolveSqlFilePath(sqlFilePath);
+        if (resolvedPath == null)
+        {
+            logger.LogWarning("SQL file not found: {FilePath}", sqlFilePath);
+            return;
+        }
+
+        var sql = await File.ReadAllTextAsync(resolvedPath);
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var tx = await connection.BeginTransactionAsync();
         try
         {
-            if (!await TableExistsAsync(connectionString, "dataset", logger))
-            {
-                logger.LogInformation("Skipping open_product_training dataset seed because table dataset does not exist.");
-                return;
-            }
-
-            var configuredDatasets = configuration
-                .GetSection("OpenProductTraining:DefaultDatasets")
-                .Get<string[]>()?
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(x => x.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            var datasetNames = (configuredDatasets is { Length: > 0 }
-                ? configuredDatasets
-                : new[] { "kaggle_shoe_dataset", "amazon_clothing_shoes", "ebay_shoes", "google_shopping_shoes" });
-
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
-
-            var existingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            await using (var selectCmd = new NpgsqlCommand("SELECT name FROM dataset;", connection))
-            await using (var reader = await selectCmd.ExecuteReaderAsync())
-            {
-                while (await reader.ReadAsync())
-                {
-                    var name = reader.GetString(0);
-                    existingNames.Add(name);
-                }
-            }
-
-            var inserted = 0;
-            foreach (var name in datasetNames)
-            {
-                if (existingNames.Contains(name))
-                    continue;
-
-                await using var insertCmd = new NpgsqlCommand(@"
-                    INSERT INTO dataset (name, source_type, description, license)
-                    VALUES (@name, @source_type, @description, @license);", connection);
-
-                insertCmd.Parameters.AddWithValue("name", name);
-                insertCmd.Parameters.AddWithValue("source_type", InferSourceType(name));
-                insertCmd.Parameters.AddWithValue("description", GetDefaultDescription(name));
-                insertCmd.Parameters.AddWithValue("license", "Unknown");
-
-                inserted += await insertCmd.ExecuteNonQueryAsync();
-                existingNames.Add(name);
-            }
-
-            if (inserted > 0)
-            {
-                logger.LogInformation(
-                    "Seeded {InsertedCount} dataset rows in open_product_training.dataset.",
-                    inserted);
-            }
-            else
-            {
-                logger.LogInformation(
-                    "open_product_training.dataset already contains configured dataset names.");
-            }
+            await using var command = new NpgsqlCommand(sql, connection, tx);
+            command.CommandTimeout = 300;
+            await command.ExecuteNonQueryAsync();
+            await tx.CommitAsync();
+        }
+        catch (PostgresException pgEx)
+        {
+            await tx.RollbackAsync();
+            logger.LogError(pgEx,
+                "Postgres error while executing SQL file {FilePath}. SqlState={SqlState}, Detail={Detail}",
+                resolvedPath, pgEx.SqlState, pgEx.Detail);
+            throw;
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to seed open_product_training.dataset.");
+            await tx.RollbackAsync();
+            logger.LogError(ex, "Failed to execute SQL file: {FilePath}", resolvedPath);
+            throw;
         }
-    }
-
-    private static string InferSourceType(string datasetName)
-    {
-        if (datasetName.Contains("amazon", StringComparison.OrdinalIgnoreCase))
-            return "amazon";
-        if (datasetName.Contains("ebay", StringComparison.OrdinalIgnoreCase))
-            return "ebay";
-        if (datasetName.Contains("google", StringComparison.OrdinalIgnoreCase) ||
-            datasetName.Contains("shopping", StringComparison.OrdinalIgnoreCase))
-            return "google";
-        if (datasetName.Contains("kaggle", StringComparison.OrdinalIgnoreCase))
-            return "kaggle";
-        if (datasetName.Contains("zappos", StringComparison.OrdinalIgnoreCase))
-            return "zappos";
-        return "custom";
-    }
-
-    private static string GetDefaultDescription(string datasetName)
-    {
-        if (datasetName.Equals("kaggle_shoe_dataset", StringComparison.OrdinalIgnoreCase))
-            return "Kaggle shoe dataset used for open product training.";
-        if (datasetName.Equals("amazon_clothing_shoes", StringComparison.OrdinalIgnoreCase))
-            return "Amazon clothing/shoes metadata dataset used for training.";
-        if (datasetName.Equals("ebay_shoes", StringComparison.OrdinalIgnoreCase))
-            return "eBay shoes dataset used for open product training.";
-        if (datasetName.Equals("google_shopping_shoes", StringComparison.OrdinalIgnoreCase))
-            return "Google Shopping shoes dataset used for open product training.";
-        return $"Open product training dataset: {datasetName}";
     }
 
     private static async Task<bool> TableExistsAsync(
@@ -776,7 +989,7 @@ public static class DatabaseInitializer
             await using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
 
-            var sql = @"
+            const string sql = @"
                 SELECT EXISTS (
                     SELECT 1 
                     FROM information_schema.tables 
@@ -792,56 +1005,73 @@ public static class DatabaseInitializer
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Error checking if table {TableName} exists", tableName);
-            return false;
+            logger.LogError(ex, "Failed to check table existence for {TableName}. Initialization cannot continue safely.", tableName);
+            throw;
         }
     }
 
-    private static async Task ExecuteSqlFileAsync(
+    private static async Task EnsureOpenProductTrainingDatasetsAsync(
         string connectionString,
-        string sqlFilePath,
+        IConfiguration configuration,
         ILogger logger)
     {
-        try
-        {
-            var resolvedPath = sqlFilePath;
-            if (!File.Exists(resolvedPath))
-            {
-                var relative = sqlFilePath
-                    .Replace('\\', Path.DirectorySeparatorChar)
-                    .Replace('/', Path.DirectorySeparatorChar);
-                var candidate = Path.Combine(AppContext.BaseDirectory, relative);
-                if (File.Exists(candidate))
-                {
-                    resolvedPath = candidate;
-                }
-            }
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
 
-            // Check if file exists
-            if (!File.Exists(resolvedPath))
+        const string checkSql = @"SELECT to_regclass('public.dataset') IS NOT NULL;";
+        await using (var checkCmd = new NpgsqlCommand(checkSql, connection))
+        {
+            var exists = (bool?)await checkCmd.ExecuteScalarAsync();
+            if (exists != true)
             {
-                logger.LogWarning("SQL file not found: {FilePath}", sqlFilePath);
+                logger.LogInformation("Dataset table does not exist. Skipping dataset seed.");
                 return;
             }
-
-            // Read SQL file
-            var sql = await File.ReadAllTextAsync(resolvedPath);
-
-            // Execute SQL
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
-
-            await using var command = new NpgsqlCommand(sql, connection);
-            command.CommandTimeout = 300; // 5 minutes
-
-            await command.ExecuteNonQueryAsync();
-
-            logger.LogInformation("? Executed SQL file: {FilePath}", resolvedPath);
         }
-        catch (Exception ex)
+
+        // Ensure UNIQUE constraint on name so ON CONFLICT works
+        await using (var idxCmd = new NpgsqlCommand(
+            @"CREATE UNIQUE INDEX IF NOT EXISTS uq_dataset_name ON dataset (name);", connection))
         {
-            logger.LogError(ex, "Failed to execute SQL file: {FilePath}", sqlFilePath);
-            throw;
+            await idxCmd.ExecuteNonQueryAsync();
         }
+
+        var defaultDatasets = new[]
+        {
+            "kaggle_shoe_dataset",
+            "amazon_clothing_shoes",
+            "ebay_shoes",
+            "google_shopping_shoes"
+        };
+
+        foreach (var name in defaultDatasets)
+        {
+            await using var cmd = new NpgsqlCommand(@"
+                INSERT INTO dataset (name, source_type, description, license)
+                VALUES (@name, @type, @desc, 'Unknown')
+                ON CONFLICT (name) DO NOTHING;", connection);
+
+            cmd.Parameters.AddWithValue("name", name);
+            cmd.Parameters.AddWithValue("type", InferSourceType(name));
+            cmd.Parameters.AddWithValue("desc", $"Open product training dataset: {name}");
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        logger.LogInformation("✔ Ensured open_product_training dataset seed.");
+    }
+
+    private static string InferSourceType(string datasetName)
+    {
+        if (datasetName.Contains("kaggle", StringComparison.OrdinalIgnoreCase))
+            return "kaggle";
+        if (datasetName.Contains("amazon", StringComparison.OrdinalIgnoreCase))
+            return "amazon";
+        if (datasetName.Contains("ebay", StringComparison.OrdinalIgnoreCase))
+            return "ebay";
+        if (datasetName.Contains("google", StringComparison.OrdinalIgnoreCase))
+            return "google";
+
+        return "custom";
     }
 }
