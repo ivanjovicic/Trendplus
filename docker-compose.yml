@@ -34,7 +34,8 @@ services:
       retries: 5
 
   postgres:
-    image: postgres:16
+    # use official pgvector image which bundles the vector extension
+    image: pgvector/pgvector:pg16                      # postgres 16 + pgvector
     container_name: trendplus-postgres
     restart: unless-stopped
     environment:
