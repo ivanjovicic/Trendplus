@@ -477,7 +477,7 @@ public static class AllEndpoints
                     REFRESH MATERIALIZED VIEW CONCURRENTLY ProductsSummaryMV;
                     REFRESH MATERIALIZED VIEW CONCURRENTLY SalesSummaryMV;
                 ");
-                
+
                 return Results.Ok(new { message = "Materialized views refreshed" });
             }
             catch (Exception ex)
@@ -2951,7 +2951,7 @@ public static class AllEndpoints
                     .FirstOrDefaultAsync(p => p.Id == id, ct);
 
                 if (povracaj == null)
-                    return Results.NotFound(new { message = "Povracaj nije pronadjen" });
+                    return Results.NotFound(new { message = "Povracaj nije pronađen" });
 
                 var dobavljac = await db.Dobavljaci.FindAsync(new object[] { povracaj.IDDobavljac }, ct);
 
@@ -3413,11 +3413,11 @@ public static class AllEndpoints
         {
             const string momentumSql = """
                 SELECT
-                    UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text))) AS sku_key,
+                    UPPER(TRIM(COALESCE(sku, ''))) AS sku_key,
                     m.momentum_revenue
                 FROM vw_sales_momentum m
                 JOIN "Artikli" a ON a."Id" = m.article_id
-                WHERE UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text))) = ANY(@skuKeys);
+                WHERE UPPER(TRIM(COALESCE(sku, ''))) = ANY(@skuKeys);
                 """;
             await using var cmd = new NpgsqlCommand(momentumSql, connection);
             cmd.Parameters.AddWithValue("skuKeys", skuKeys);
