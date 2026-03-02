@@ -1,9 +1,5 @@
 -- =============================================================
--- Open Product Training 2.0 schema extensions
--- PostgreSQL 16 + pgvector 0.6+
--- Created: 2026-02-28
--- Idempotent: safe to re-run
--- =============================================================
+-- OVA SKRIPTA JE NAMENJENA ZA BAZU: trendplus
 
 -- pgvector extension (required for vector(...) columns + HNSW indexes)
 CREATE EXTENSION IF NOT EXISTS vector;
