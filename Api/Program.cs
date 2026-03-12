@@ -462,6 +462,7 @@ try
     app.MapInsightStudioEndpoints();
     app.MapInsightStudioV2Endpoints();
     app.MapPreNivelacijaPriorityEndpoints();
+    app.MapSupplierDecisionHubEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();
     app.MapShopifyEndpoints();

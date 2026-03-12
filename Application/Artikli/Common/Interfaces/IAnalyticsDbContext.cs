@@ -1,6 +1,7 @@
 ﻿using Domain.Model;
 using Domain.Model.Analytics;
 using Microsoft.EntityFrameworkCore;
+using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,6 +18,7 @@ namespace Application.Artikli.Common.Interfaces
         public DbSet<SeasonsDim> SeasonsDim { get; }
         public DbSet<FootwearTypesDim> FootwearTypesDim { get; }
         public DbSet<InventoryMovementFact> InventoryMovementFacts { get; }
+        public DbSet<ReturnFact> ReturnFacts { get; }
 
         // Trend Engine tables
         public DbSet<TrendProductSnapshot> TrendProductSnapshots { get; }
@@ -24,6 +26,7 @@ namespace Application.Artikli.Common.Interfaces
         public DbSet<TrendplusIndexRecord> TrendplusIndexRecords { get; }
         public DbSet<InventoryRecommendation> InventoryRecommendations { get; }
 
+        DbConnection GetDbConnection();
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }

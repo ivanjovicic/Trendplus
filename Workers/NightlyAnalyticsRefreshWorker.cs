@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Npgsql;
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Workers;
@@ -189,6 +190,14 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 sourceLabel: "trendplus",
                 ct: ct);
 
+            await RefreshAnalyticsMaterializedViewsAsync(
+                scope.ServiceProvider,
+                trendplusConnectionString: connectionString,
+                trendplusConnection: connection,
+                warnings: warnings,
+                errors: errors,
+                ct: ct);
+
             await RefreshOpenTrainingMaterializedViewsAsync(
                 scope.ServiceProvider,
                 trendplusConnectionString: connectionString,
@@ -255,6 +264,19 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         }
 
         _lastSuccessUtc = DateTime.UtcNow;
+
+        if (_options.QueueSupplierRankingTraining)
+        {
+            try
+            {
+                await QueueSupplierRankingTrainingAsync(scope.ServiceProvider, warnings, ct);
+            }
+            catch (Exception ex)
+            {
+                warnings.Add($"Supplier ranking training queue failed: {ex.Message}");
+                _logger.LogWarning(ex, "ðŸŒ™ Failed to queue supplier ranking training run after nightly refresh.");
+            }
+        }
 
         var okMessage = $"Nightly refresh OK. Duration: {sw.Elapsed.TotalSeconds:0}s"
                         + (warnings.Count > 0 ? $" | Warnings: {string.Join("; ", warnings.Distinct())}" : string.Empty);
@@ -332,6 +354,63 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         }
     }
 
+    private async Task RefreshAnalyticsMaterializedViewsAsync(
+        IServiceProvider serviceProvider,
+        string trendplusConnectionString,
+        NpgsqlConnection trendplusConnection,
+        List<string> warnings,
+        List<string> errors,
+        CancellationToken ct)
+    {
+        var analyticsDb = serviceProvider.GetRequiredService<AnalyticsDbContext>();
+        var analyticsConnectionString = analyticsDb.Database.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(analyticsConnectionString))
+        {
+            warnings.Add("Analytics connection string missing; skipping analytics MV refresh.");
+            return;
+        }
+
+        if (string.Equals(
+            trendplusConnectionString.Trim(),
+            analyticsConnectionString.Trim(),
+            StringComparison.OrdinalIgnoreCase))
+        {
+            await RefreshMaterializedViewsAsync(
+                trendplusConnection,
+                _options.MaterializedViewsToRefresh,
+                warnings,
+                errors,
+                sourceLabel: "analytics",
+                ct: ct);
+            return;
+        }
+
+        await using var analyticsConnection = new NpgsqlConnection(analyticsConnectionString);
+        await analyticsConnection.OpenAsync(ct);
+
+        var acquired = await TryAcquireLockAsync(analyticsConnection, ct);
+        if (!acquired)
+        {
+            warnings.Add("Skipped analytics MV refresh because another instance holds advisory lock.");
+            return;
+        }
+
+        try
+        {
+            await RefreshMaterializedViewsAsync(
+                analyticsConnection,
+                _options.MaterializedViewsToRefresh,
+                warnings,
+                errors,
+                sourceLabel: "analytics",
+                ct: ct);
+        }
+        finally
+        {
+            await ReleaseLockAsync(analyticsConnection, ct);
+        }
+    }
+
     private async Task RefreshMaterializedViewsAsync(
         NpgsqlConnection connection,
         IReadOnlyCollection<string> materializedViews,
@@ -392,6 +471,66 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 _logger.LogError(ex, "ðŸŒ™ Refresh failed ({Scope}) for {Relation}", sourceLabel, $"{schema}.{rel}");
             }
         }
+    }
+
+    private static async Task QueueSupplierRankingTrainingAsync(
+        IServiceProvider serviceProvider,
+        List<string> warnings,
+        CancellationToken ct)
+    {
+        var openTrainingDb = serviceProvider.GetRequiredService<OpenProductTrainingDbContext>();
+        var connectionString = openTrainingDb.Database.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            warnings.Add("OpenTraining connection string missing; supplier ranking training not queued.");
+            return;
+        }
+
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync(ct);
+
+        const string existsSql = """
+            SELECT COUNT(*)
+            FROM training_run
+            WHERE model_type = @modelType
+              AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'UTC')
+              AND status IN ('queued', 'running', 'succeeded');
+            """;
+
+        await using (var exists = new NpgsqlCommand(existsSql, conn))
+        {
+            exists.Parameters.AddWithValue("modelType", OpenTrainingModelCatalog.SupplierRankingModelType);
+            var count = Convert.ToInt32(await exists.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
+            if (count > 0)
+                return;
+        }
+
+        const string insertSql = """
+            INSERT INTO training_run (
+                model_type,
+                feature_view_name,
+                status,
+                params_json,
+                notes
+            )
+            VALUES (
+                @modelType,
+                @featureViewName,
+                'queued',
+                @params::jsonb,
+                @notes
+            );
+            """;
+
+        await using var insert = new NpgsqlCommand(insertSql, conn);
+        insert.Parameters.AddWithValue("modelType", OpenTrainingModelCatalog.SupplierRankingModelType);
+        insert.Parameters.AddWithValue("featureViewName", OpenTrainingModelCatalog.SupplierRankingFeatureViewName);
+        insert.Parameters.AddWithValue("params", JsonSerializer.Serialize(new
+        {
+            prediction_view = "vw_supplier_ranking_inference_v1"
+        }));
+        insert.Parameters.AddWithValue("notes", $"Queued by {WorkerName} after nightly analytics refresh.");
+        await insert.ExecuteNonQueryAsync(ct);
     }
 
     private static TimeSpan ParseRunAtUtc(string value)

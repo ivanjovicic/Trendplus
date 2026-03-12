@@ -42,6 +42,7 @@ import ProdajaPrePostNivelacijePage from "./pages/ProdajaPrePostNivelacijePage";
 import InsightStudioPage from "./pages/InsightStudioPage";
 import PreNivelacijaPriorityPage from "./pages/PreNivelacijaPriorityPage";
 import SupplierFootwearAnalyticsPage from "./pages/SupplierFootwearAnalyticsPage";
+import SupplierDecisionHubPage from "./pages/SupplierDecisionHubPage";
 import UnosHubPage from "./pages/UnosHubPage";
 
 function AppShell() {
@@ -63,6 +64,7 @@ function AppShell() {
             <Route path="/analytics/insight-studio" element={<InsightStudioPage />} />
             <Route path="/analytics/pre-nivelacija-prioriteti" element={<PreNivelacijaPriorityPage />} />
             <Route path="/analytics/dobavljaci-tipovi-obuce" element={<SupplierFootwearAnalyticsPage />} />
+            <Route path="/analytics/supplier-decision-hub" element={<SupplierDecisionHubPage />} />
             <Route path="/analytics-details" element={<AnalyticsDetails />} />
             <Route path="/outbox" element={<OutboxDashboard />} />
             <Route path="/outbox/messages" element={<OutboxMessagesPage />} />

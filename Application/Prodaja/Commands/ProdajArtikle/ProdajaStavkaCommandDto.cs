@@ -9,7 +9,8 @@ namespace Application.Prodaja.Commands.ProdajArtikle
     public record ProdajaStavkaCommandDto(
      int IdArtikal,
      int Kolicina,
-     decimal Cena
+     decimal Cena,
+     decimal? NabavnaCena = null
  );
 
 }

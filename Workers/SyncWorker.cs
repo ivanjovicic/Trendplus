@@ -23,6 +23,8 @@ namespace Workers
         private readonly WorkerRuntimeControlService _controlService;
         
         private const string WorkerName = "SyncWorker";
+        private static readonly TimeSpan InventoryMovementReplayWindow = TimeSpan.FromDays(14);
+        private static readonly TimeSpan ReturnFactsReplayWindow = TimeSpan.FromDays(90);
 
         public SyncWorker(
             ILogger<SyncWorker> logger, 
@@ -153,6 +155,7 @@ namespace Workers
                         try { await SyncSeasonsDim(td, ad, stoppingToken); }       catch (Exception ex) { _logger.LogWarning(ex, "SyncSeasonsDim failed."); }
                         try { await SyncFootwearTypesDim(td, ad, stoppingToken); } catch (Exception ex) { _logger.LogWarning(ex, "SyncFootwearTypesDim failed."); }
                         try { await SyncInventoryMovements(td, ad, stoppingToken); } catch (Exception ex) { _logger.LogWarning(ex, "SyncInventoryMovements failed."); }
+                        try { await SyncReturnFacts(td, ad, stoppingToken); }      catch (Exception ex) { _logger.LogWarning(ex, "SyncReturnFacts failed."); }
                     }
 
                     await Task.Delay(delayInterval, stoppingToken);
@@ -372,44 +375,160 @@ namespace Workers
 
         private async Task SyncInventoryMovements(TrendplusDbContext trendplusDb, AnalyticsDbContext analyticsDb, CancellationToken ct)
         {
-            // Watermark: sync movements newer than the latest already in analytics
+            // Replay a recent window and upsert by SourceId so late-arriving
+            // corrections do not get stuck behind a pure append-only watermark.
             var lastSynced = await analyticsDb.InventoryMovementFacts
                 .AsNoTracking()
                 .MaxAsync(x => (DateTime?)x.Datum, ct) ?? DateTime.MinValue;
 
+            var replayFrom = lastSynced == DateTime.MinValue
+                ? DateTime.MinValue
+                : lastSynced.Add(-InventoryMovementReplayWindow);
+
             var movements = await trendplusDb.DnevnikPromena
                 .AsNoTracking()
-                .Where(x => x.Datum > lastSynced)
+                .Where(x => x.Datum >= replayFrom)
+                .OrderBy(x => x.Datum)
                 .ToListAsync(ct);
 
             if (movements.Count == 0)
             {
-                _logger.LogInformation("InventoryMovementFacts sync: no new movements since {LastSynced:o}", lastSynced);
+                _logger.LogInformation("InventoryMovementFacts sync: no movements found in replay window starting {ReplayFrom:o}", replayFrom);
                 return;
             }
 
+            var sourceIds = movements.Select(x => x.Id).ToArray();
+            var existing = await analyticsDb.InventoryMovementFacts
+                .Where(x => sourceIds.Contains(x.SourceId))
+                .ToDictionaryAsync(x => x.SourceId, ct);
+
+            var inserts = 0;
+            var updates = 0;
+
             foreach (var m in movements)
             {
-                analyticsDb.InventoryMovementFacts.Add(new Domain.Model.InventoryMovementFact
+                if (!existing.TryGetValue(m.Id, out var fact))
                 {
-                    SourceId = m.Id,
-                    TipPromene = m.TipPromene,
-                    Datum = DateTime.SpecifyKind(m.Datum, DateTimeKind.Utc),
-                    ArtikalId = m.ArtikalId,
-                    Kolicina = m.Kolicina,
-                    StaraProdajnaCena = m.StaraProdajnaCena,
-                    NovaProdajnaCena = m.NovaProdajnaCena,
-                    Iznos = m.Iznos,
-                    StoreId = m.IDObjekat,
-                    DobavljacId = m.DobavljacId,
-                    BrojDokumenta = m.BrojRacuna,
-                    KorisnikIme = m.KorisnikIme,
-                    DataOrigin = m.DataOrigin
-                });
+                    fact = new Domain.Model.InventoryMovementFact();
+                    analyticsDb.InventoryMovementFacts.Add(fact);
+                    inserts++;
+                }
+                else
+                {
+                    updates++;
+                }
+
+                MapInventoryMovement(m, fact);
             }
 
             await analyticsDb.SaveChangesAsync(ct);
-            _logger.LogInformation("InventoryMovementFacts sync: inserted {Count} new movements since {LastSynced:o}", movements.Count, lastSynced);
+            _logger.LogInformation(
+                "InventoryMovementFacts sync: replayFrom={ReplayFrom:o}, scanned={Scanned}, inserts={Inserts}, updates={Updates}",
+                replayFrom,
+                movements.Count,
+                inserts,
+                updates);
+        }
+
+        private async Task SyncReturnFacts(TrendplusDbContext trendplusDb, AnalyticsDbContext analyticsDb, CancellationToken ct)
+        {
+            var lastSourceLineId = await analyticsDb.ReturnFacts
+                .AsNoTracking()
+                .MaxAsync(x => (int?)x.SourceLineId, ct) ?? 0;
+
+            var lastReturnTimestamp = await analyticsDb.ReturnFacts
+                .AsNoTracking()
+                .MaxAsync(x => (DateTime?)x.ReturnTimestampUtc, ct) ?? DateTime.MinValue;
+
+            var replayFrom = lastReturnTimestamp == DateTime.MinValue
+                ? DateTime.MinValue
+                : lastReturnTimestamp.Add(-ReturnFactsReplayWindow);
+
+            var lines = await trendplusDb.PovracajStavke
+                .AsNoTracking()
+                .Where(x => x.Id > lastSourceLineId || x.Povracaj.DatumPovracaja >= replayFrom)
+                .OrderBy(x => x.Id)
+                .Include(x => x.Povracaj)
+                .ToListAsync(ct);
+
+            if (lines.Count == 0)
+            {
+                _logger.LogInformation(
+                    "ReturnFacts sync: no rows found for SourceLineId>{LastSourceLineId} or replay window starting {ReplayFrom:o}",
+                    lastSourceLineId,
+                    replayFrom);
+                return;
+            }
+
+            var sourceLineIds = lines.Select(x => x.Id).ToArray();
+            var existing = await analyticsDb.ReturnFacts
+                .Where(x => sourceLineIds.Contains(x.SourceLineId))
+                .ToDictionaryAsync(x => x.SourceLineId, ct);
+
+            var inserts = 0;
+            var updates = 0;
+
+            foreach (var line in lines)
+            {
+                if (line.Povracaj is null)
+                    continue;
+
+                if (!existing.TryGetValue(line.Id, out var fact))
+                {
+                    fact = new Domain.Model.ReturnFact();
+                    analyticsDb.ReturnFacts.Add(fact);
+                    inserts++;
+                }
+                else
+                {
+                    updates++;
+                }
+
+                MapReturnFact(line, fact);
+            }
+
+            await analyticsDb.SaveChangesAsync(ct);
+            _logger.LogInformation(
+                "ReturnFacts sync: replayFrom={ReplayFrom:o}, scanned={Scanned}, inserts={Inserts}, updates={Updates}",
+                replayFrom,
+                lines.Count,
+                inserts,
+                updates);
+        }
+
+        private static void MapInventoryMovement(Domain.Model.DnevnikPromena movement, Domain.Model.InventoryMovementFact fact)
+        {
+            fact.SourceId = movement.Id;
+            fact.TipPromene = movement.TipPromene;
+            fact.Datum = DateTime.SpecifyKind(movement.Datum, DateTimeKind.Utc);
+            fact.ArtikalId = movement.ArtikalId;
+            fact.Kolicina = movement.Kolicina;
+            fact.StaraProdajnaCena = movement.StaraProdajnaCena;
+            fact.NovaProdajnaCena = movement.NovaProdajnaCena;
+            fact.Iznos = movement.Iznos;
+            fact.StoreId = movement.IDObjekat;
+            fact.DobavljacId = movement.DobavljacId;
+            fact.BrojDokumenta = movement.BrojRacuna;
+            fact.KorisnikIme = movement.KorisnikIme;
+            fact.DataOrigin = movement.DataOrigin;
+        }
+
+        private static void MapReturnFact(Domain.Model.Povracaj.PovracajStavka line, Domain.Model.ReturnFact fact)
+        {
+            fact.SourceLineId = line.Id;
+            fact.ReturnId = line.IdPovracaj;
+            fact.ProductId = line.IdArtikal;
+            fact.SupplierId = line.Povracaj.IDDobavljac;
+            fact.Qty = line.Kolicina;
+            fact.UnitCost = line.Cena;
+            fact.LineAmount = line.Kolicina * line.Cena;
+            fact.ReturnTimestampUtc = DateTime.SpecifyKind(line.Povracaj.DatumPovracaja, DateTimeKind.Utc);
+            fact.Status = line.Povracaj.Status ?? string.Empty;
+            fact.HeaderReason = line.Povracaj.RazlogPovracaja;
+            fact.LineReason = line.Razlog;
+            fact.ItemCondition = line.StanjeArtikla;
+            fact.BrojZapisnika = line.Povracaj.BrojZapisnika;
+            fact.DataOrigin = line.Povracaj.DataOrigin;
         }
     }
 }

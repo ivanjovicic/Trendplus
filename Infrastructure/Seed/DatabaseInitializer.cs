@@ -146,6 +146,17 @@ public static class DatabaseInitializer
             await context.Database.MigrateAsync();
             logger.LogInformation("✔ Trendplus DB migrations applied.");
         }
+        catch (PostgresException pgEx) when (pgEx.SqlState == "42P07")
+        {
+            // Duplicate-object errors (relation already exists) may occur when
+            // core schema was bootstrapped earlier. Log a concise warning and continue.
+            logger.LogWarning("Trendplus DB migrations encountered duplicate-relation error (42P07): {Message}", pgEx.MessageText);
+        }
+        catch (PostgresException pgEx)
+        {
+            // Other Postgres errors: log details but continue (initializer is tolerant by design).
+            logger.LogWarning(pgEx, "Trendplus DB migrations failed with Postgres error: SqlState={SqlState}", pgEx.SqlState);
+        }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Trendplus DB migrations failed; core schema was already self-healed.");
@@ -159,6 +170,7 @@ public static class DatabaseInitializer
             "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql",
             "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql",
             "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql",
+            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
             "Database/Migrations/005_CreateArtikliAndTestData.sql"
         };
 
@@ -716,6 +728,8 @@ public static class DatabaseInitializer
             await ExecuteSqlFileAsync(connectionString, "Database/Analytics/010_AddGoogleShoppingTable.sql", logger);
         }
 
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql", logger);
+
         // Access-import origin support patch (idempotent)
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/011_AddDataOriginColumns.sql", logger);
 
@@ -757,8 +771,16 @@ public static class DatabaseInitializer
 
         logger.LogInformation("? Analytics DB initialized");
 
-        // Backfill historical sales into analytics facts (idempotent).
+        // Backfill historical sales / returns before deriving supplier-decision analytics views.
         await BackfillSalesFactsAsync(trendDb, context, logger);
+        await BackfillReturnFactsAsync(trendDb, context, logger);
+
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/003_AddGlobalTrendsTables.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/018_AddSupplierDecisionHubViews.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/015_AddSupplierMlRanking.sql", logger);
     }
 
     private static async Task EnsureCoreAnalyticsDimensionTablesAsync(
@@ -912,9 +934,14 @@ public static class DatabaseInitializer
                 analyticsDb.SalesFacts.Add(new SalesFact
                 {
                     SaleId = sale.Id,
+                    BrojRacuna = sale.BrojRacuna ?? string.Empty,
                     SaleTimestampUtc = DateTime.SpecifyKind(sale.DatumProdaje, DateTimeKind.Utc),
+                    StoreId = sale.IDObjekat ?? 0,
+                    PaymentType = sale.NacinPlacanja ?? string.Empty,
                     TotalAmount = sale.Stavke.Sum(s => s.Kolicina * s.Cena),
-                    TotalUnits = sale.Stavke.Sum(s => s.Kolicina)
+                    TotalUnits = sale.Stavke.Sum(s => s.Kolicina),
+                    TotalLines = sale.Stavke.Count,
+                    DataOrigin = sale.DataOrigin
                 });
 
                 foreach (var line in sale.Stavke)
@@ -925,7 +952,9 @@ public static class DatabaseInitializer
                         ProductId = line.IdArtikal,
                         Qty = line.Kolicina,
                         UnitPrice = line.Cena,
-                        LineTotal = line.Kolicina * line.Cena
+                        LineTotal = line.Kolicina * line.Cena,
+                        NabavnaCena = line.NabavnaCena,
+                        DataOrigin = sale.DataOrigin
                     });
                 }
             }
@@ -936,6 +965,63 @@ public static class DatabaseInitializer
         }
 
         logger.LogInformation("✔ SalesFacts incremental backfill complete.");
+    }
+
+    private static async Task BackfillReturnFactsAsync(
+        TrendplusDbContext trendDb,
+        AnalyticsDbContext analyticsDb,
+        ILogger logger)
+    {
+        var lastSourceLineId = await analyticsDb.ReturnFacts
+            .OrderByDescending(x => x.SourceLineId)
+            .Select(x => x.SourceLineId)
+            .FirstOrDefaultAsync();
+
+        const int batchSize = 500;
+
+        while (true)
+        {
+            var batch = await trendDb.PovracajStavke
+                .Where(x => x.Id > lastSourceLineId)
+                .OrderBy(x => x.Id)
+                .Take(batchSize)
+                .Include(x => x.Povracaj)
+                .AsNoTracking()
+                .ToListAsync();
+
+            if (batch.Count == 0)
+                break;
+
+            foreach (var line in batch)
+            {
+                if (line.Povracaj is null)
+                    continue;
+
+                analyticsDb.ReturnFacts.Add(new ReturnFact
+                {
+                    SourceLineId = line.Id,
+                    ReturnId = line.IdPovracaj,
+                    ProductId = line.IdArtikal,
+                    SupplierId = line.Povracaj.IDDobavljac,
+                    Qty = line.Kolicina,
+                    UnitCost = line.Cena,
+                    LineAmount = line.Kolicina * line.Cena,
+                    ReturnTimestampUtc = DateTime.SpecifyKind(line.Povracaj.DatumPovracaja, DateTimeKind.Utc),
+                    Status = line.Povracaj.Status ?? string.Empty,
+                    HeaderReason = line.Povracaj.RazlogPovracaja,
+                    LineReason = line.Razlog,
+                    ItemCondition = line.StanjeArtikla,
+                    BrojZapisnika = line.Povracaj.BrojZapisnika,
+                    DataOrigin = line.Povracaj.DataOrigin
+                });
+            }
+
+            await analyticsDb.SaveChangesAsync();
+
+            lastSourceLineId = batch.Last().Id;
+        }
+
+        logger.LogInformation("âœ” ReturnFacts incremental backfill complete.");
     }
 
     private static async Task ExecuteSqlFileAsync(
@@ -966,6 +1052,17 @@ public static class DatabaseInitializer
         catch (PostgresException pgEx)
         {
             await tx.RollbackAsync();
+
+            // Treat 'relation already exists' errors as non-fatal during initialization
+            // so the initializer can continue even if a prior run created the same objects.
+            if (pgEx.SqlState == "42P07" || (pgEx.Detail != null && pgEx.Detail.Contains("already exists", StringComparison.OrdinalIgnoreCase)))
+            {
+                logger.LogWarning(pgEx,
+                    "Non-fatal Postgres error while executing SQL file {FilePath} (object already exists). SqlState={SqlState}, Detail={Detail}",
+                    resolvedPath, pgEx.SqlState, pgEx.Detail);
+                return;
+            }
+
             logger.LogError(pgEx,
                 "Postgres error while executing SQL file {FilePath}. SqlState={SqlState}, Detail={Detail}",
                 resolvedPath, pgEx.SqlState, pgEx.Detail);

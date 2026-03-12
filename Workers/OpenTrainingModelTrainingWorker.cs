@@ -17,6 +17,11 @@ namespace Workers;
 public sealed class OpenTrainingModelTrainingWorker : BackgroundService
 {
     private const string WorkerName = "OpenTrainingModelTrainingWorker";
+    private static readonly string[] SupplierDecisionMaterializedViews =
+    [
+        "mv_supplier_decision_score_cache",
+        "mv_supplier_recommendations_cache"
+    ];
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OpenTrainingModelTrainingWorker> _logger;
@@ -123,6 +128,7 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<OpenProductTrainingDbContext>();
+        var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
         var connectionString = db.Database.GetConnectionString();
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -185,11 +191,14 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
 
         var modelType = NormalizeModelType(job.Value.ModelType);
         var isEnterpriseRun = IsEnterpriseModelType(modelType);
+        var isSupplierRankingRun = IsSupplierRankingModelType(modelType);
         var featureView = ResolveFeatureViewName(modelType, job.Value.FeatureViewName);
         var scriptPath = ResolveScriptPath(
             isEnterpriseRun
                 ? OpenTrainingModelCatalog.EnterpriseTrainingScriptPath
-                : _options.TrainingScriptPath);
+                : isSupplierRankingRun
+                    ? OpenTrainingModelCatalog.SupplierRankingTrainingScriptPath
+                    : _options.TrainingScriptPath);
         var runtimeTuningJson = ExtractRuntimeTuningJson(job.Value.ParamsJson);
         if (isEnterpriseRun && string.IsNullOrWhiteSpace(runtimeTuningJson))
             runtimeTuningJson = BuildDefaultRuntimeTuningJson();
@@ -203,9 +212,13 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
 
         var outputDir = Path.GetFullPath(_options.OutputDir);
         Directory.CreateDirectory(outputDir);
+        long? persistedModelId = null;
 
         try
         {
+            if (isSupplierRankingRun)
+                await RefreshSupplierTrainingDatasetAsync(analyticsDb, ct);
+
             var pythonResult = isEnterpriseRun
                 ? await RunEnterpriseTrainingAsync(
                     pythonExe: _options.PythonExe,
@@ -226,7 +239,7 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
                     take: Math.Max(1, _options.Take),
                     ct: ct);
 
-            await PersistModelVersionAsync(
+            persistedModelId = await PersistModelVersionAsync(
                 conn,
                 job.Value.RunId,
                 modelType,
@@ -234,9 +247,21 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
                 runtimeTuningJson,
                 activate: _options.ActivateOnSuccess,
                 ct: ct);
+
+            if (isSupplierRankingRun)
+            {
+                await PersistSupplierPredictionsAsync(
+                    analyticsDb,
+                    pythonResult,
+                    persistedModelId.Value,
+                    ct);
+                await RefreshSupplierDecisionCachesAsync(analyticsDb, ct);
+            }
         }
         catch (Exception ex)
         {
+            if (persistedModelId.HasValue)
+                await CleanupFailedModelVersionAsync(conn, persistedModelId.Value, ct);
             await MarkFailedAsync(conn, job.Value.RunId, ex, ct);
             _logger.LogError(ex, "❌ Training run {RunId} failed", job.Value.RunId);
             _healthService.ReportError(WorkerName, ex);
@@ -263,11 +288,24 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
     private static bool IsEnterpriseModelType(string modelType)
         => OpenTrainingModelCatalog.IsEnterpriseModelType(modelType);
 
+    private static bool IsSupplierRankingModelType(string modelType)
+        => string.Equals(
+            NormalizeModelType(modelType),
+            OpenTrainingModelCatalog.SupplierRankingModelType,
+            StringComparison.OrdinalIgnoreCase);
+
     private static string ResolveFeatureViewName(string modelType, string? featureViewName)
     {
         var resolved = string.IsNullOrWhiteSpace(featureViewName)
             ? OpenTrainingModelCatalog.DefaultFeatureViewName
             : featureViewName.Trim();
+
+        if (IsSupplierRankingModelType(modelType) &&
+            (string.IsNullOrWhiteSpace(featureViewName) ||
+             string.Equals(resolved, OpenTrainingModelCatalog.DefaultFeatureViewName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return OpenTrainingModelCatalog.SupplierRankingFeatureViewName;
+        }
 
         if (IsEnterpriseModelType(modelType) &&
             (string.IsNullOrWhiteSpace(featureViewName) ||
@@ -421,7 +459,8 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
         string FeatureImportanceJson,
         string? ShapSummaryJson,
         string MinFeatureValuesJson,
-        string MaxFeatureValuesJson);
+        string MaxFeatureValuesJson,
+        string? PredictionsPath);
 
     private static async Task<PythonTrainResult> RunPythonTrainingAsync(
         string pythonExe,
@@ -869,6 +908,9 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
         var shapPath = artifacts.TryGetProperty("shap_summary_path", out var sp) && sp.ValueKind == JsonValueKind.String
             ? sp.GetString()
             : null;
+        var predictionsPath = artifacts.TryGetProperty("predictions_path", out var pp) && pp.ValueKind == JsonValueKind.String
+            ? pp.GetString()
+            : null;
 
         return new PythonTrainResult(
             ModelOnnxPath: Path.GetFullPath(onnxPath),
@@ -879,11 +921,12 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
             FeatureImportanceJson: ReadText(fiPath),
             ShapSummaryJson: !string.IsNullOrWhiteSpace(shapPath) && File.Exists(shapPath) ? ReadText(shapPath) : null,
             MinFeatureValuesJson: ReadText(minPath),
-            MaxFeatureValuesJson: ReadText(maxPath)
+            MaxFeatureValuesJson: ReadText(maxPath),
+            PredictionsPath: !string.IsNullOrWhiteSpace(predictionsPath) ? Path.GetFullPath(predictionsPath) : null
         );
     }
 
-    private static async Task PersistModelVersionAsync(
+    private static async Task<long> PersistModelVersionAsync(
         NpgsqlConnection conn,
         long runId,
         string modelType,
@@ -992,6 +1035,188 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
         }
 
         await tx.CommitAsync(ct);
+        return modelId;
+    }
+
+    private static async Task RefreshSupplierTrainingDatasetAsync(AnalyticsDbContext analyticsDb, CancellationToken ct)
+    {
+        var connectionString = analyticsDb.Database.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("Analytics connection string missing for supplier ranking refresh.");
+
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync(ct);
+
+        try
+        {
+            await ExecuteNonQueryAsync(
+                conn,
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY supplier_training_dataset_v1;",
+                1800,
+                ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "0A000")
+        {
+            await ExecuteNonQueryAsync(
+                conn,
+                "REFRESH MATERIALIZED VIEW supplier_training_dataset_v1;",
+                1800,
+                ct);
+        }
+    }
+
+    private static async Task PersistSupplierPredictionsAsync(
+        AnalyticsDbContext analyticsDb,
+        PythonTrainResult result,
+        long modelVersionId,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(result.PredictionsPath) || !File.Exists(result.PredictionsPath))
+            throw new InvalidOperationException("Supplier ranking training completed without predictions.json artifact.");
+
+        var payload = await File.ReadAllTextAsync(result.PredictionsPath, Encoding.UTF8, ct);
+        using var doc = JsonDocument.Parse(payload);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            throw new InvalidOperationException("Supplier predictions artifact must be a JSON array.");
+
+        var connectionString = analyticsDb.Database.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("Analytics connection string missing for supplier predictions persistence.");
+
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        const string sql = """
+            INSERT INTO supplier_ml_predictions (
+                supplier_id,
+                snapshot_date,
+                model_type,
+                model_version_id,
+                ml_supplier_score,
+                predicted_supplier_success_score,
+                predicted_revenue_next_30d,
+                predicted_margin_next_30d,
+                predicted_sellthrough_next_30d,
+                success_probability,
+                top_feature_1,
+                top_feature_2,
+                top_feature_3,
+                explanation_text
+            )
+            VALUES (
+                @supplierId,
+                @snapshotDate,
+                @modelType,
+                @modelVersionId,
+                @mlSupplierScore,
+                @predictedSupplierSuccessScore,
+                @predictedRevenueNext30d,
+                @predictedMarginNext30d,
+                @predictedSellthroughNext30d,
+                @successProbability,
+                @topFeature1,
+                @topFeature2,
+                @topFeature3,
+                @explanationText
+            )
+            ON CONFLICT (supplier_id, snapshot_date, model_type)
+            DO UPDATE SET
+                model_version_id = EXCLUDED.model_version_id,
+                ml_supplier_score = EXCLUDED.ml_supplier_score,
+                predicted_supplier_success_score = EXCLUDED.predicted_supplier_success_score,
+                predicted_revenue_next_30d = EXCLUDED.predicted_revenue_next_30d,
+                predicted_margin_next_30d = EXCLUDED.predicted_margin_next_30d,
+                predicted_sellthrough_next_30d = EXCLUDED.predicted_sellthrough_next_30d,
+                success_probability = EXCLUDED.success_probability,
+                top_feature_1 = EXCLUDED.top_feature_1,
+                top_feature_2 = EXCLUDED.top_feature_2,
+                top_feature_3 = EXCLUDED.top_feature_3,
+                explanation_text = EXCLUDED.explanation_text,
+                created_at = NOW();
+            """;
+
+        foreach (var row in doc.RootElement.EnumerateArray())
+        {
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("supplierId", row.GetProperty("supplier_id").GetInt32());
+            cmd.Parameters.AddWithValue("snapshotDate", DateOnly.Parse(row.GetProperty("snapshot_date").GetString() ?? string.Empty, CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("modelType", OpenTrainingModelCatalog.SupplierRankingModelType);
+            cmd.Parameters.AddWithValue("modelVersionId", modelVersionId);
+            cmd.Parameters.AddWithValue("mlSupplierScore", Convert.ToDecimal(row.GetProperty("ml_supplier_score").GetDouble(), CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("predictedSupplierSuccessScore", Convert.ToDecimal(row.GetProperty("predicted_supplier_success_score").GetDouble(), CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("predictedRevenueNext30d", Convert.ToDecimal(row.GetProperty("predicted_revenue_next_30d").GetDouble(), CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("predictedMarginNext30d", Convert.ToDecimal(row.GetProperty("predicted_margin_next_30d").GetDouble(), CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("predictedSellthroughNext30d", Convert.ToDecimal(row.GetProperty("predicted_sellthrough_next_30d").GetDouble(), CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("successProbability", Convert.ToDecimal(row.GetProperty("success_probability").GetDouble(), CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("topFeature1", (object?)(row.TryGetProperty("top_feature_1", out var top1) ? top1.GetString() : null) ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("topFeature2", (object?)(row.TryGetProperty("top_feature_2", out var top2) ? top2.GetString() : null) ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("topFeature3", (object?)(row.TryGetProperty("top_feature_3", out var top3) ? top3.GetString() : null) ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("explanationText", (object?)(row.TryGetProperty("explanation_text", out var explanation) ? explanation.GetString() : null) ?? DBNull.Value);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+
+        await tx.CommitAsync(ct);
+    }
+
+    private static async Task RefreshSupplierDecisionCachesAsync(AnalyticsDbContext analyticsDb, CancellationToken ct)
+    {
+        var connectionString = analyticsDb.Database.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("Analytics connection string missing for supplier decision cache refresh.");
+
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync(ct);
+
+        foreach (var relation in SupplierDecisionMaterializedViews)
+        {
+            try
+            {
+                await ExecuteNonQueryAsync(
+                    conn,
+                    $"REFRESH MATERIALIZED VIEW CONCURRENTLY {relation};",
+                    1800,
+                    ct);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "0A000")
+            {
+                await ExecuteNonQueryAsync(
+                    conn,
+                    $"REFRESH MATERIALIZED VIEW {relation};",
+                    1800,
+                    ct);
+            }
+        }
+    }
+
+    private static async Task CleanupFailedModelVersionAsync(
+        NpgsqlConnection conn,
+        long modelVersionId,
+        CancellationToken ct)
+    {
+        const string sql = """
+            UPDATE model_version
+            SET is_active = FALSE,
+                notes = COALESCE(notes, '') || ' | deactivated after supplier prediction persistence failure'
+            WHERE id = @id;
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", modelVersionId);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    private static async Task ExecuteNonQueryAsync(
+        NpgsqlConnection conn,
+        string sql,
+        int timeoutSeconds,
+        CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand(sql, conn)
+        {
+            CommandTimeout = timeoutSeconds
+        };
+        await cmd.ExecuteNonQueryAsync(ct);
     }
 
     private static async Task MarkFailedAsync(NpgsqlConnection conn, long runId, Exception ex, CancellationToken ct)

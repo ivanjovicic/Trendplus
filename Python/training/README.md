@@ -19,6 +19,13 @@ It also contains an **Enterprise Logistic + Platt** pipeline:
 - reports AUC / LogLoss / Brier
 - exports JSON artifacts for C# runtime and ONNX model
 
+It also contains a **Supplier Ranking LightGBM** pipeline:
+
+- reads supplier-level snapshots from `supplier_training_dataset_v1`
+- trains a classifier for `success_label`
+- trains regressors for `label_revenue_next_30d`, `label_margin_next_30d`, `label_sellthrough_next_30d`
+- writes per-supplier batch predictions for `vw_supplier_decision_score`
+
 ## Install (separate from scraper deps)
 
 Use a dedicated venv (recommended):
@@ -62,6 +69,16 @@ python Python/training/train_enterprise_scoring.py ^
   --output-dir out/models/enterprise_scoring
 ```
 
+Supplier ranking training:
+
+```bash
+python Python/training/train_supplier_ranking.py ^
+  --ado-net-connection-string "Host=...;Database=...;Username=...;Password=...;" ^
+  --feature-view supplier_training_dataset_v1 ^
+  --prediction-view vw_supplier_ranking_inference_v1 ^
+  --output-dir out/models/supplier_ranking
+```
+
 When run through `OpenTrainingModelTrainingWorker`, enterprise model types use an auto-generated SQL query over `vw_feature_store` that maps signals to canonical features:
 `price_fit, margin, popularity, trend_momentum, source_coverage, local_demand, image_similarity, deal_score, supplier_score, season_score` with target `sold`.
 
@@ -73,3 +90,4 @@ When run through `OpenTrainingModelTrainingWorker`, enterprise model types use a
 - Worker routing:
   - `model_type=sell_probability_rs` -> `train_sell_probability_rs.py`
   - `model_type=enterprise_scoring` or `model_type=enterprise_logit_v1` -> `train_enterprise_scoring.py` (automatic, no script-path switch needed)
+  - `model_type=supplier_ranking_v1` -> `train_supplier_ranking.py`

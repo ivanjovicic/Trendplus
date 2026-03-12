@@ -46,7 +46,11 @@ public sealed class NightlyAnalyticsRefreshOptions
     {
         "mv_daily_sales_facts",
         "mv_sales_rolling_7d",
-        "mv_sales_momentum"
+        "mv_sales_momentum",
+        "supplier_training_dataset_v1",
+        "mv_supplier_markdown_dependency_cache",
+        "mv_supplier_decision_score_cache",
+        "mv_supplier_recommendations_cache"
     };
 
     public List<string> VacuumAnalyzeTargets { get; set; } = new()
@@ -64,4 +68,9 @@ public sealed class NightlyAnalyticsRefreshOptions
     {
         "mv_brand_shoe_runtime_priors"
     };
+
+    /// <summary>
+    /// If true, queue a supplier ranking training job after a successful nightly refresh.
+    /// </summary>
+    public bool QueueSupplierRankingTraining { get; set; } = true;
 }
