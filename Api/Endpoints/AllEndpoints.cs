@@ -1431,6 +1431,8 @@ public static class AllEndpoints
             Results.Redirect($"/api/analytics/cached/dashboard/advanced{ctx.Request.QueryString}", permanent: false));
         app.MapGet("/api/analytics/sales/top-products-advanced", (HttpContext ctx) =>
             Results.Redirect($"/api/analytics/cached/sales/top-products-advanced{ctx.Request.QueryString}", permanent: false));
+        app.MapGet("/api/analytics/filters/stores", (HttpContext ctx) =>
+            Results.Redirect($"/api/analytics/cached/filters/stores{ctx.Request.QueryString}", permanent: false));
         app.MapGet("/api/analytics/validation/completeness", (HttpContext ctx) =>
             Results.Redirect($"/api/analytics/cached/validation/completeness{ctx.Request.QueryString}", permanent: false));
         app.MapGet("/api/analytics/validation/freshness", (HttpContext ctx) =>

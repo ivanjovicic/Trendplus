@@ -166,6 +166,7 @@ public static class DatabaseInitializer
         var sqlFiles = new[]
         {
             "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql",
+            "Database/Migrations/019_AddAnalyticsDashboardIndexes.sql",
             "Database/Migrations/012_AddAccessImportSupport.sql",
             "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql",
             "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql",

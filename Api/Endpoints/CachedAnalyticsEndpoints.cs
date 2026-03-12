@@ -40,6 +40,7 @@ public static class CachedAnalyticsEndpoints
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -48,17 +49,28 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.SalesSummary(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId);
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
+                    if (!storeId.HasValue && !supplierId.HasValue)
+                    {
+                        var aggregated = await TryGetSalesSummaryFromAggregatesAsync(trendDb, fromDate, toDate, ct);
+                        if (aggregated is not null)
+                        {
+                            return aggregated;
+                        }
+                    }
+
                     var baseQuery = from p in trendDb.ProdajaZaglavlja.AsNoTracking()
                                     join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                                    join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                                     where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
                                           (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                                          (!storeId.HasValue || p.IDObjekat == storeId.Value)
+                                          (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                          (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                                     group ps by p.Id into g
                                     select new
                                     {
@@ -92,6 +104,7 @@ public static class CachedAnalyticsEndpoints
             DateTime? toDate = null,
             int top = 20,
             int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -100,18 +113,28 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.TopProducts(top, fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.TopProducts(top, fromDate, toDate, storeId, supplierId);
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
+                    if (!storeId.HasValue && !supplierId.HasValue)
+                    {
+                        var aggregated = await TryGetTopProductsFromAggregatesAsync(trendDb, top, fromDate, toDate, ct);
+                        if (aggregated is not null)
+                        {
+                            return aggregated;
+                        }
+                    }
+
                     var baseQuery = from ps in trendDb.ProdajaStavke.AsNoTracking()
                                     join p in trendDb.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
                                     join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                                     where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
                                           (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                                          (!storeId.HasValue || p.IDObjekat == storeId.Value)
+                                          (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                          (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                                     group new { ps, a } by new { ps.IdArtikal, a.Naziv, a.Velicina, a.Boja } into g
                                     orderby g.Sum(x => x.ps.Kolicina * x.ps.Cena) descending
                                     select new TopProductDto(
@@ -123,7 +146,10 @@ public static class CachedAnalyticsEndpoints
                                         g.Key.Boja
                                     );
 
-                    return await baseQuery.Take(top).ToListAsync(ct);
+                    var all = await baseQuery.ToListAsync(ct);
+                    return new TopProductsResult(
+                        all.OrderByDescending(x => x.TotalRevenue).Take(top).ToList(),
+                        all.OrderByDescending(x => x.TotalUnits).Take(top).ToList());
                 },
                 CacheExpiration.Medium,
                 ct);
@@ -138,6 +164,8 @@ public static class CachedAnalyticsEndpoints
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int top = 10,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -145,29 +173,10 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.TopProductsAdvanced(top, fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.TopProductsAdvanced(top, fromDate, toDate, storeId, supplierId);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () =>
-                {
-                    var baseQuery = from ps in db.ProdajaStavke.AsNoTracking()
-                                    join p in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
-                                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                                    where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                          (!toDate.HasValue || p.DatumProdaje <= toDate.Value)
-                                    group new { ps, a } by new { ps.IdArtikal, a.Naziv, a.Velicina, a.Boja } into g
-                                    orderby g.Sum(x => x.ps.Kolicina * x.ps.Cena) descending
-                                    select new TopProductDto(
-                                        g.Key.IdArtikal,
-                                        g.Key.Naziv,
-                                        g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                                        g.Sum(x => x.ps.Kolicina),
-                                        g.Key.Velicina,
-                                        g.Key.Boja
-                                    );
-
-                    return await baseQuery.Take(top).ToListAsync(ct);
-                },
+                async () => await GetTopProductsAdvancedSnapshotAsync(db, top, fromDate, toDate, storeId, supplierId, ct),
                 CacheExpiration.Short,
                 ct);
 
@@ -226,6 +235,8 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext trendDb,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -234,74 +245,87 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.DailySales(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId);
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var aggregatedDaily = await TryGetDailySalesFromAggregatesAsync(trendDb, fromDate, toDate, ct);
-                    if (aggregatedDaily is not null && aggregatedDaily.Count > 0)
+                    if (!storeId.HasValue && !supplierId.HasValue)
                     {
-                        return aggregatedDaily;
+                        var aggregatedDaily = await TryGetDailySalesFromAggregatesAsync(trendDb, fromDate, toDate, ct);
+                        if (aggregatedDaily is not null && aggregatedDaily.Count > 0)
+                        {
+                            return aggregatedDaily;
+                        }
                     }
 
                     try
                     {
-                        var query = db.SalesFacts.AsNoTracking();
-
-                        if (fromDate.HasValue)
-                            query = query.Where(s => s.SaleTimestampUtc >= fromDate.Value);
-
-                        if (toDate.HasValue)
-                            query = query.Where(s => s.SaleTimestampUtc <= toDate.Value);
-
-                        var dailySalesRaw = await query
-                            .GroupBy(s => s.SaleTimestampUtc.Date)
-                            .Select(g => new
-                            {
-                                Date = g.Key,
-                                TotalRevenue = g.Sum(s => s.TotalAmount),
-                                TransactionCount = g.Count(),
-                                TotalUnits = g.Sum(s => s.TotalUnits)
-                            })
-                            .OrderBy(x => x.Date)
-                            .ToListAsync(ct);
-
-                        return dailySalesRaw.Select(x => new DailySaleDto
+                        if (!supplierId.HasValue)
                         {
-                            Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                            TotalRevenue = x.TotalRevenue,
-                            TransactionCount = x.TransactionCount,
-                            TotalUnits = x.TotalUnits
-                        }).ToList();
+                            var query = db.SalesFacts.AsNoTracking();
+
+                            if (fromDate.HasValue)
+                                query = query.Where(s => s.SaleTimestampUtc >= fromDate.Value);
+
+                            if (toDate.HasValue)
+                                query = query.Where(s => s.SaleTimestampUtc <= toDate.Value);
+
+                            if (storeId.HasValue)
+                                query = query.Where(s => s.StoreId == storeId.Value);
+
+                            var dailySalesRaw = await query
+                                .GroupBy(s => s.SaleTimestampUtc.Date)
+                                .Select(g => new
+                                {
+                                    Date = g.Key,
+                                    TotalRevenue = g.Sum(s => s.TotalAmount),
+                                    TransactionCount = g.Count(),
+                                    TotalUnits = g.Sum(s => s.TotalUnits)
+                                })
+                                .OrderBy(x => x.Date)
+                                .ToListAsync(ct);
+
+                            return dailySalesRaw.Select(x => new DailySaleDto
+                            {
+                                Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                                TotalRevenue = x.TotalRevenue,
+                                TransactionCount = x.TransactionCount,
+                                TotalUnits = x.TotalUnits
+                            }).ToList();
+                        }
                     }
                     catch (Exception ex) when (IsMissingRelation(ex))
                     {
-                        var fallbackRaw = await (
-                                            from p in trendDb.ProdajaZaglavlja.AsNoTracking()
-                                            join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-                                            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value)
-                                            group new { p, ps } by p.DatumProdaje.Date into g
-                                            select new
-                                            {
-                                                Date = g.Key,
-                                                TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                                                TransactionCount = g.Select(x => x.p.Id).Distinct().Count(),
-                                                TotalUnits = g.Sum(x => x.ps.Kolicina)
-                                            })
-                            .OrderBy(x => x.Date)
-                            .ToListAsync(ct);
-
-                        return fallbackRaw.Select(x => new DailySaleDto
-                        {
-                            Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                            TotalRevenue = x.TotalRevenue,
-                            TransactionCount = x.TransactionCount,
-                            TotalUnits = x.TotalUnits
-                        }).ToList();
                     }
+
+                    var fallbackRaw = await (
+                                        from p in trendDb.ProdajaZaglavlja.AsNoTracking()
+                                        join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                                        join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                                        group new { p, ps } by p.DatumProdaje.Date into g
+                                        select new
+                                        {
+                                            Date = g.Key,
+                                            TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                                            TransactionCount = g.Select(x => x.p.Id).Distinct().Count(),
+                                            TotalUnits = g.Sum(x => x.ps.Kolicina)
+                                        })
+                        .OrderBy(x => x.Date)
+                        .ToListAsync(ct);
+
+                    return fallbackRaw.Select(x => new DailySaleDto
+                    {
+                        Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        TotalRevenue = x.TotalRevenue,
+                        TransactionCount = x.TransactionCount,
+                        TotalUnits = x.TotalUnits
+                    }).ToList();
                 },
                 CacheExpiration.Medium,
                 ct);
@@ -315,6 +339,8 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -323,23 +349,28 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.CategoryData(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.CategoryData(fromDate, toDate, storeId, supplierId);
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var aggregatedCategory = await TryGetCategoryDataFromAggregatesAsync(db, fromDate, toDate, ct);
-                    if (aggregatedCategory is not null && aggregatedCategory.Count > 0)
+                    if (!storeId.HasValue && !supplierId.HasValue)
                     {
-                        return aggregatedCategory;
+                        var aggregatedCategory = await TryGetCategoryDataFromAggregatesAsync(db, fromDate, toDate, ct);
+                        if (aggregatedCategory is not null && aggregatedCategory.Count > 0)
+                        {
+                            return aggregatedCategory;
+                        }
                     }
 
                     var query = from ps in db.ProdajaStavke
                                 join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
                                 join a in db.Artikli on ps.IdArtikal equals a.Id
                                 where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value)
+                                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                                      (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                      (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                                 group ps by new { a.Kategorija, a.Pol } into g
                                 select new CategoryDataDto
                                 {
@@ -364,6 +395,8 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -372,23 +405,28 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.GenderData(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.GenderData(fromDate, toDate, storeId, supplierId);
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var aggregatedGender = await TryGetGenderDataFromAggregatesAsync(db, fromDate, toDate, ct);
-                    if (aggregatedGender is not null && aggregatedGender.Count > 0)
+                    if (!storeId.HasValue && !supplierId.HasValue)
                     {
-                        return aggregatedGender;
+                        var aggregatedGender = await TryGetGenderDataFromAggregatesAsync(db, fromDate, toDate, ct);
+                        if (aggregatedGender is not null && aggregatedGender.Count > 0)
+                        {
+                            return aggregatedGender;
+                        }
                     }
 
                     var query = from ps in db.ProdajaStavke
                                 join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
                                 join a in db.Artikli on ps.IdArtikal equals a.Id
                                 where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value)
+                                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                                      (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                      (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                                 group ps by a.Pol into g
                                 select new GenderDataDto
                                 {
@@ -411,6 +449,8 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -419,16 +459,19 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.SupplierData(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.SupplierData(fromDate, toDate, storeId, supplierId);
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var aggregatedSupplier = await TryGetSupplierDataFromAggregatesAsync(db, fromDate, toDate, ct);
-                    if (aggregatedSupplier is not null && aggregatedSupplier.Count > 0)
+                    if (!storeId.HasValue && !supplierId.HasValue)
                     {
-                        return aggregatedSupplier;
+                        var aggregatedSupplier = await TryGetSupplierDataFromAggregatesAsync(db, fromDate, toDate, ct);
+                        if (aggregatedSupplier is not null && aggregatedSupplier.Count > 0)
+                        {
+                            return aggregatedSupplier;
+                        }
                     }
 
                     var query = from ps in db.ProdajaStavke
@@ -437,7 +480,9 @@ public static class CachedAnalyticsEndpoints
                                 join d in db.Dobavljaci on a.IDDobavljac equals d.Id into dobavljacJoin
                                 from d in dobavljacJoin.DefaultIfEmpty()
                                 where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value)
+                                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                                      (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                      (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                                 group ps by new { DobavljacId = d != null ? d.Id : (int?)null, DobavljacNaziv = d != null ? d.Naziv : "Nepoznato" } into g
                                 select new SupplierDataDto
                                 {
@@ -462,6 +507,8 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -470,73 +517,67 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.QuickInsights(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.QuickInsights(fromDate, toDate, storeId, supplierId);
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var prodajeQuery = db.ProdajaZaglavlja.AsNoTracking().AsQueryable();
+                    var salesLines = from p in db.ProdajaZaglavlja.AsNoTracking()
+                                     join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                                     where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                                           (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                                           (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                           (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                                     select new
+                                     {
+                                         p.Id,
+                                         p.DatumProdaje,
+                                         ps.IdArtikal,
+                                         ps.Kolicina,
+                                         ps.Cena,
+                                         ProductName = a.Naziv
+                                     };
 
-                    if (fromDate.HasValue)
-                        prodajeQuery = prodajeQuery.Where(p => p.DatumProdaje >= fromDate.Value);
-                    if (toDate.HasValue)
-                        prodajeQuery = prodajeQuery.Where(p => p.DatumProdaje <= toDate.Value);
-
-                    var prodaje = await prodajeQuery.ToListAsync(ct);
-
-                    // Best day calculation
-                    var bestDay = prodaje
-                        .GroupBy(p => p.DatumProdaje.DayOfWeek)
+                    var bestDay = await salesLines
+                        .GroupBy(x => x.DatumProdaje.DayOfWeek)
                         .Select(g => new
                         {
-                            dayName = SerbianDayNames[(int)g.Key],
-                            prodajeIds = g.Select(p => p.Id).ToList()
+                            DayOfWeek = (int)g.Key,
+                            TotalRevenue = g.Sum(x => x.Kolicina * x.Cena)
                         })
-                        .ToList();
-
-                    string? bestDayName = null;
-                    decimal bestDayRevenue = 0;
-
-                    foreach (var day in bestDay)
-                    {
-                        var revenue = await db.ProdajaStavke
-                            .Where(ps => day.prodajeIds.Contains(ps.IdProdaja))
-                            .SumAsync(ps => ps.Kolicina * ps.Cena, ct);
-                        
-                        if (revenue > bestDayRevenue)
-                        {
-                            bestDayRevenue = revenue;
-                            bestDayName = day.dayName;
-                        }
-                    }
-
-                    // Top product
-                    var prodajeIds = prodaje.Select(p => p.Id).ToList();
-                    var topProductData = await db.ProdajaStavke
-                        .Where(ps => prodajeIds.Contains(ps.IdProdaja))
-                        .GroupBy(ps => ps.IdArtikal)
-                        .Select(g => new { artikalId = g.Key, totalRevenue = g.Sum(x => x.Kolicina * x.Cena) })
-                        .OrderByDescending(x => x.totalRevenue)
+                        .OrderByDescending(x => x.TotalRevenue)
+                        .ThenBy(x => x.DayOfWeek)
                         .FirstOrDefaultAsync(ct);
 
-                    string? topProductName = null;
-                    if (topProductData != null)
-                    {
-                        var artikal = await db.Artikli.FindAsync(new object[] { topProductData.artikalId }, ct);
-                        topProductName = artikal?.Naziv;
-                    }
+                    var topProduct = await salesLines
+                        .GroupBy(x => new { x.IdArtikal, x.ProductName })
+                        .Select(g => new
+                        {
+                            ProductName = g.Key.ProductName,
+                            TotalRevenue = g.Sum(x => x.Kolicina * x.Cena)
+                        })
+                        .OrderByDescending(x => x.TotalRevenue)
+                        .ThenBy(x => x.ProductName)
+                        .FirstOrDefaultAsync(ct);
 
-                    // Low stock count
-                    var lowStockCount = await db.Artikli
-                        .Where(a => a.Kolicina <= a.MinimalnaKolicina || a.Kolicina == 0)
-                        .CountAsync(ct);
+                    var lowStockQuery = db.Artikli.AsNoTracking()
+                        .Where(a => a.Kolicina <= a.MinimalnaKolicina || a.Kolicina == 0);
+
+                    if (storeId.HasValue)
+                        lowStockQuery = lowStockQuery.Where(a => a.IDObjekat == storeId.Value);
+
+                    if (supplierId.HasValue)
+                        lowStockQuery = lowStockQuery.Where(a => a.IDDobavljac == supplierId.Value);
+
+                    var lowStockCount = await lowStockQuery.CountAsync(ct);
 
                     return new QuickInsightsDto
                     {
-                        BestDay = bestDayName,
-                        BestDayRevenue = bestDayRevenue,
-                        TopProduct = topProductName,
+                        BestDay = bestDay is null ? null : SerbianDayNames[bestDay.DayOfWeek],
+                        BestDayRevenue = bestDay?.TotalRevenue ?? 0,
+                        TopProduct = topProduct?.ProductName,
                         LowStockAlert = lowStockCount
                     };
                 },
@@ -552,50 +593,44 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                 fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
-            var cacheKey = AnalyticsCacheKeys.TransactionStats(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.TransactionStats(fromDate, toDate, storeId, supplierId);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var query = db.ProdajaZaglavlja.AsNoTracking().AsQueryable();
-                    if (fromDate.HasValue)
-                        query = query.Where(p => p.DatumProdaje >= fromDate.Value);
-                    if (toDate.HasValue)
-                        query = query.Where(p => p.DatumProdaje <= toDate.Value);
-                    var prodajeIds = await query.Select(p => p.Id).ToListAsync(ct);
-                    if (prodajeIds.Count == 0)
-                    {
-                        return new
+                    var perTransaction = await (
+                        from p in db.ProdajaZaglavlja.AsNoTracking()
+                        join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                        join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                        group ps by p.Id into g
+                        select new
                         {
-                            avgItemsPerTransaction = 0.0,
-                            avgTransactionValue = 0.0m,
-                            totalTransactions = 0
-                        };
-                    }
-                    var stavke = await db.ProdajaStavke
-                        .Where(ps => prodajeIds.Contains(ps.IdProdaja))
-                        .GroupBy(ps => ps.IdProdaja)
-                        .Select(g => new
-                        {
-                            IdProdaja = g.Key,
                             ItemCount = g.Count(),
                             TotalValue = g.Sum(x => x.Kolicina * x.Cena)
-                        })
-                        .ToListAsync(ct);
-                    var hasStavke = stavke.Count > 0;
-                    var avgItems = hasStavke ? stavke.Average(x => x.ItemCount) : 0.0;
-                    var avgValue = hasStavke ? stavke.Average(x => x.TotalValue) : 0.0m;
-                    return new
+                        }).ToListAsync(ct);
+
+                    if (perTransaction.Count == 0)
                     {
-                        avgItemsPerTransaction = avgItems,
-                        avgTransactionValue = avgValue,
-                        totalTransactions = prodajeIds.Count
+                        return new TransactionStatsDto();
+                    }
+
+                    return new TransactionStatsDto
+                    {
+                        AvgItemsPerTransaction = Math.Round(perTransaction.Average(x => (decimal)x.ItemCount), 2),
+                        AvgTransactionValue = Math.Round(perTransaction.Average(x => x.TotalValue), 2),
+                        TotalTransactions = perTransaction.Count
                     };
                 },
                 CacheExpiration.Medium,
@@ -609,47 +644,35 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                 fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
-            var cacheKey = AnalyticsCacheKeys.ByPayment(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.ByPayment(fromDate, toDate, storeId, supplierId);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var query = from p in db.ProdajaZaglavlja
-                                where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value)
-                                group p by p.NacinPlacanja into g
-                                select new
-                                {
-                                    nacinPlacanja = g.Key ?? "Nepoznato",
-                                    transactionCount = g.Count()
-                                };
-                    var prodajeByPayment = await query.ToListAsync(ct);
-                    var result = new List<object>();
-                    foreach (var item in prodajeByPayment)
-                    {
-                        var prodajeIds = await db.ProdajaZaglavlja
-                            .Where(p => p.NacinPlacanja == (item.nacinPlacanja == "Nepoznato" ? null : item.nacinPlacanja))
-                            .Where(p => (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                        (!toDate.HasValue || p.DatumProdaje <= toDate.Value))
-                            .Select(p => p.Id)
-                            .ToListAsync(ct);
-                        var totalRevenue = await db.ProdajaStavke
-                            .Where(ps => prodajeIds.Contains(ps.IdProdaja))
-                            .SumAsync(ps => ps.Kolicina * ps.Cena, ct);
-                        result.Add(new
+                    return await (
+                        from p in db.ProdajaZaglavlja.AsNoTracking()
+                        join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                        join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                        group new { p, ps } by p.NacinPlacanja into g
+                        orderby g.Sum(x => x.ps.Kolicina * x.ps.Cena) descending
+                        select new PaymentDataDto
                         {
-                            item.nacinPlacanja,
-                            totalRevenue,
-                            item.transactionCount
-                        });
-                    }
-                    return result;
+                            NacinPlacanja = g.Key ?? "Nepoznato",
+                            TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                            TransactionCount = g.Select(x => x.p.Id).Distinct().Count()
+                        }).ToListAsync(ct);
                 },
                 CacheExpiration.Medium,
                 ct);
@@ -662,48 +685,38 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                 fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
-            var cacheKey = AnalyticsCacheKeys.ByWeekday(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.ByWeekday(fromDate, toDate, storeId, supplierId);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var query = db.ProdajaZaglavlja.AsNoTracking().AsQueryable();
-                    if (fromDate.HasValue)
-                        query = query.Where(p => p.DatumProdaje >= fromDate.Value);
-                    if (toDate.HasValue)
-                        query = query.Where(p => p.DatumProdaje <= toDate.Value);
-                    var prodaje = await query.ToListAsync(ct);
-                    var grouped = prodaje
-                        .GroupBy(p => p.DatumProdaje.DayOfWeek)
-                        .Select(g => new
+                    var rows = await (
+                        from p in db.ProdajaZaglavlja.AsNoTracking()
+                        join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                        join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                        group new { p, ps } by p.DatumProdaje.DayOfWeek into g
+                        orderby g.Key
+                        select new WeekdayDataDto
                         {
-                            dayOfWeek = ((int)g.Key).ToString(CultureInfo.InvariantCulture),
-                            dayName = SerbianDayNames[(int)g.Key],
-                            transactionCount = g.Count(),
-                            prodajeIds = g.Select(p => p.Id).ToList()
-                        })
-                        .ToList();
-                    var result = new List<object>();
-                    foreach (var day in grouped)
-                    {
-                        var totalRevenue = await db.ProdajaStavke
-                            .Where(ps => day.prodajeIds.Contains(ps.IdProdaja))
-                            .SumAsync(ps => ps.Kolicina * ps.Cena, ct);
-                        result.Add(new
-                        {
-                            day.dayOfWeek,
-                            day.dayName,
-                            totalRevenue,
-                            day.transactionCount
-                        });
-                    }
-                    return result.OrderBy(x => int.Parse(((dynamic)x).dayOfWeek));
+                            DayOfWeek = (int)g.Key,
+                            DayName = SerbianDayNames[(int)g.Key],
+                            TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                            TransactionCount = g.Select(x => x.p.Id).Distinct().Count()
+                        }).ToListAsync(ct);
+
+                    return rows;
                 },
                 CacheExpiration.Medium,
                 ct);
@@ -716,46 +729,35 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                 fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
-            var cacheKey = AnalyticsCacheKeys.ByHour(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.ByHour(fromDate, toDate, storeId, supplierId);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var query = db.ProdajaZaglavlja.AsNoTracking().AsQueryable();
-                    if (fromDate.HasValue)
-                        query = query.Where(p => p.DatumProdaje >= fromDate.Value);
-                    if (toDate.HasValue)
-                        query = query.Where(p => p.DatumProdaje <= toDate.Value);
-                    var prodaje = await query.ToListAsync(ct);
-                    var grouped = prodaje
-                        .GroupBy(p => p.DatumProdaje.Hour)
-                        .Select(g => new
+                    return await (
+                        from p in db.ProdajaZaglavlja.AsNoTracking()
+                        join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                        join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                        group new { p, ps } by p.DatumProdaje.Hour into g
+                        orderby g.Key
+                        select new HourDataDto
                         {
-                            hour = g.Key,
-                            transactionCount = g.Count(),
-                            prodajeIds = g.Select(p => p.Id).ToList()
-                        })
-                        .ToList();
-                    var result = new List<object>();
-                    foreach (var hour in grouped)
-                    {
-                        var totalRevenue = await db.ProdajaStavke
-                            .Where(ps => hour.prodajeIds.Contains(ps.IdProdaja))
-                            .SumAsync(ps => ps.Kolicina * ps.Cena, ct);
-                        result.Add(new
-                        {
-                            hour = hour.hour,
-                            totalRevenue,
-                            transactionCount = hour.transactionCount
-                        });
-                    }
-                    return result.OrderBy(x => ((dynamic)x).hour);
+                            Hour = g.Key,
+                            TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                            TransactionCount = g.Select(x => x.p.Id).Distinct().Count()
+                        }).ToListAsync(ct);
                 },
                 CacheExpiration.Medium,
                 ct);
@@ -766,15 +768,17 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/reorder-suggestions", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
-            var cacheKey = AnalyticsCacheKeys.ReorderSuggestions;
+            var cacheKey = AnalyticsCacheKeys.ReorderSuggestions(supplierId);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
                     var artikli = await db.Artikli
                         .Where(a => a.Kolicina <= a.MinimalnaKolicina || a.Kolicina == 0)
+                        .Where(a => !supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                         .OrderBy(a => a.Kolicina)
                         .Select(a => new
                         {
@@ -799,57 +803,46 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                 fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
-            var cacheKey = AnalyticsCacheKeys.CategoryTrends(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.CategoryTrends(fromDate, toDate, storeId, supplierId);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
-                    var prodajeQuery = db.ProdajaZaglavlja.AsNoTracking().AsQueryable();
-                    if (fromDate.HasValue)
-                        prodajeQuery = prodajeQuery.Where(p => p.DatumProdaje >= fromDate.Value);
-                    if (toDate.HasValue)
-                        prodajeQuery = prodajeQuery.Where(p => p.DatumProdaje <= toDate.Value);
-                    var prodaje = await prodajeQuery.ToListAsync(ct);
-                    var prodajeIds = prodaje.Select(p => p.Id).ToList();
-                    var stavke = await db.ProdajaStavke
-                        .Where(ps => prodajeIds.Contains(ps.IdProdaja))
-                        .ToListAsync(ct);
-                    var artikalIds = stavke.Select(s => s.IdArtikal).Distinct().ToList();
-                    var artikli = await db.Artikli
-                        .Where(a => artikalIds.Contains(a.Id))
-                        .ToDictionaryAsync(a => a.Id, a => a.Kategorija ?? "Ostalo", ct);
-                    var grouped = prodaje
-                        .GroupBy(p => p.DatumProdaje.Date)
-                        .Select(dateGroup => new
+                    var compactRows = await (
+                        from p in db.ProdajaZaglavlja.AsNoTracking()
+                        join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                        join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                        group ps by new { Date = p.DatumProdaje.Date, Category = a.Kategorija ?? "Ostalo" } into g
+                        orderby g.Key.Date, g.Key.Category
+                        select new
                         {
-                            date = dateGroup.Key,
-                            prodajeIds = dateGroup.Select(p => p.Id).ToList()
-                        })
-                        .OrderBy(x => x.date)
-                        .ToList();
+                            g.Key.Date,
+                            g.Key.Category,
+                            TotalRevenue = g.Sum(x => x.Kolicina * x.Cena)
+                        }).ToListAsync(ct);
+
                     var result = new List<Dictionary<string, object>>();
-                    foreach (var dateEntry in grouped)
+                    foreach (var dateEntry in compactRows.GroupBy(x => x.Date).OrderBy(x => x.Key))
                     {
-                        var dateStavke = stavke.Where(s => dateEntry.prodajeIds.Contains(s.IdProdaja)).ToList();
-                        var categoryRevenues = dateStavke
-                            .GroupBy(s => artikli.TryGetValue(s.IdArtikal, out var kategorija) ? kategorija : "Ostalo")
-                            .ToDictionary(
-                                g => g.Key,
-                                g => g.Sum(x => x.Kolicina * x.Cena)
-                            );
                         var row = new Dictionary<string, object>
                         {
-                            ["date"] = dateEntry.date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                            ["date"] = dateEntry.Key.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
                         };
-                        foreach (var cat in categoryRevenues)
+                        foreach (var cat in dateEntry)
                         {
-                            row[cat.Key] = cat.Value;
+                            row[cat.Category] = cat.TotalRevenue;
                         }
                         result.Add(row);
                     }
@@ -866,6 +859,8 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
             CancellationToken ct = default) =>
         {
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -873,11 +868,35 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.DashboardAdvanced(fromDate, toDate);
+            var cacheKey = AnalyticsCacheKeys.DashboardAdvanced(fromDate, toDate, storeId, supplierId);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await BuildAdvancedDashboardSnapshotAsync(db, fromDate, toDate, ct),
+                async () => await BuildAdvancedDashboardSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
                 CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        group.MapGet("/filters/stores", async (
+            IAnalyticsCacheService cache,
+            IAnalyticsDbContext analyticsDb,
+            CancellationToken ct = default) =>
+        {
+            var result = await cache.GetOrSetAsync(
+                AnalyticsCacheKeys.Stores,
+                async () => await analyticsDb.StoresDim
+                    .AsNoTracking()
+                    .OrderBy(x => x.StoreName)
+                    .Select(x => new StoreFilterOptionDto
+                    {
+                        StoreId = x.StoreId,
+                        StoreName = x.StoreName,
+                        City = x.City,
+                        Region = x.Region
+                    })
+                    .ToListAsync(ct),
+                CacheExpiration.Long,
                 ct);
 
             return Results.Ok(result);
@@ -1410,31 +1429,36 @@ public static class CachedAnalyticsEndpoints
 
     private static async Task<(int oosSkuCount, decimal lostSalesEstimate)> GetLostSalesSnapshotAsync(
         ITrendplusDbContext db,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? storeId = null,
+        int? supplierId = null)
     {
         await using var conn = await OpenTrendplusConnectionAsync(db, ct);
         if (conn is null) return (0, 0m);
 
-        try
+        if (!storeId.HasValue && !supplierId.HasValue)
         {
-            const string viewSql = """
-                SELECT
-                    COALESCE(SUM(is_oos), 0)::int AS oos_sku_count,
-                    COALESCE(SUM(lost_sales_estimate), 0) AS lost_sales_estimate
-                FROM vw_analytics_oos_lost_sales;
-                """;
-            await using var cmd = new NpgsqlCommand(viewSql, conn);
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-            if (await reader.ReadAsync(ct))
+            try
             {
-                var oosCount = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
-                var lostSales = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
-                return (oosCount, Math.Round(lostSales, 2));
+                const string viewSql = """
+                    SELECT
+                        COALESCE(SUM(is_oos), 0)::int AS oos_sku_count,
+                        COALESCE(SUM(lost_sales_estimate), 0) AS lost_sales_estimate
+                    FROM vw_analytics_oos_lost_sales;
+                    """;
+                await using var cmd = new NpgsqlCommand(viewSql, conn);
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
+                if (await reader.ReadAsync(ct))
+                {
+                    var oosCount = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+                    var lostSales = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
+                    return (oosCount, Math.Round(lostSales, 2));
+                }
             }
-        }
-        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
-        {
-            // fallback below
+            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            {
+                // fallback below
+            }
         }
 
         const string fallbackSql = """
@@ -1457,9 +1481,13 @@ public static class CachedAnalyticsEndpoints
                 END
               ), 0) AS lost_sales_estimate
             FROM "Artikli" a
-            LEFT JOIN recent r ON r.article_id = a."Id";
+            LEFT JOIN recent r ON r.article_id = a."Id"
+            WHERE (@storeId IS NULL OR a."IDObjekat" = @storeId)
+              AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId);
             """;
         await using var fallbackCmd = new NpgsqlCommand(fallbackSql, conn);
+        fallbackCmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
+        fallbackCmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
         await using var fallbackReader = await fallbackCmd.ExecuteReaderAsync(ct);
         if (await fallbackReader.ReadAsync(ct))
         {
@@ -1514,6 +1542,8 @@ public static class CachedAnalyticsEndpoints
         ITrendplusDbContext db,
         DateTime? fromDate,
         DateTime? toDate,
+        int? storeId,
+        int? supplierId,
         CancellationToken ct)
     {
         await using var conn = await OpenTrendplusConnectionAsync(db, ct);
@@ -1530,6 +1560,8 @@ public static class CachedAnalyticsEndpoints
               JOIN "Artikli" a ON a."Id" = ps."id_artikal"
               WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
                 AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
+                AND (@storeId IS NULL OR p."id_objekat" = @storeId)
+                AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId)
               GROUP BY COALESCE(a."PLU", a."Id"::text), DATE(p."datum_prodaje")
             ),
             agg AS (
@@ -1548,6 +1580,8 @@ public static class CachedAnalyticsEndpoints
         await using var cmd = new NpgsqlCommand(velocitySql, conn);
         cmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
         cmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
         decimal avgVelocity = 0m;
         decimal topVelocity = 0m;
         string topSku = "N/A";
@@ -1565,12 +1599,29 @@ public static class CachedAnalyticsEndpoints
         try
         {
             const string trendSql = """
+                WITH line_daily AS (
+                  SELECT
+                    DATE(p."datum_prodaje") AS sale_day,
+                    SUM(ps."kolicina")::decimal AS total_units
+                  FROM "prodaja_stavke" ps
+                  JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
+                  JOIN "Artikli" a ON a."Id" = ps."id_artikal"
+                  WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
+                    AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
+                    AND (@storeId IS NULL OR p."id_objekat" = @storeId)
+                    AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId)
+                  GROUP BY DATE(p."datum_prodaje")
+                )
                 SELECT
-                  COALESCE(SUM("TotalUnits") FILTER (WHERE "Date" >= CURRENT_DATE - INTERVAL '6 days'), 0) AS last7,
-                  COALESCE(SUM("TotalUnits") FILTER (WHERE "Date" BETWEEN CURRENT_DATE - INTERVAL '13 days' AND CURRENT_DATE - INTERVAL '7 days'), 0) AS prev7
-                FROM "AnalyticsDailySummary";
+                  COALESCE(SUM(total_units) FILTER (WHERE sale_day >= CURRENT_DATE - INTERVAL '6 days'), 0) AS last7,
+                  COALESCE(SUM(total_units) FILTER (WHERE sale_day BETWEEN CURRENT_DATE - INTERVAL '13 days' AND CURRENT_DATE - INTERVAL '7 days'), 0) AS prev7
+                FROM line_daily;
                 """;
             await using var trendCmd = new NpgsqlCommand(trendSql, conn);
+            trendCmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
+            trendCmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
+            trendCmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
+            trendCmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
             await using var trendReader = await trendCmd.ExecuteReaderAsync(ct);
             if (await trendReader.ReadAsync(ct))
             {
@@ -1591,44 +1642,53 @@ public static class CachedAnalyticsEndpoints
 
     private static async Task<(decimal top20Share, decimal top50Share)> GetParetoSnapshotAsync(
         ITrendplusDbContext db,
+        int? storeId,
+        int? supplierId,
         CancellationToken ct)
     {
         await using var conn = await OpenTrendplusConnectionAsync(db, ct);
         if (conn is null) return (0m, 0m);
 
-        try
+        if (!storeId.HasValue && !supplierId.HasValue)
         {
-            const string paretoSql = """
-                WITH ranked AS (
-                  SELECT
-                    revenue,
-                    cumulative_share,
-                    ROW_NUMBER() OVER (ORDER BY revenue DESC, article_id) AS rn
-                  FROM vw_analytics_pareto
-                )
-                SELECT
-                  COALESCE(MAX(cumulative_share) FILTER (WHERE rn <= 20), 0),
-                  COALESCE(MAX(cumulative_share) FILTER (WHERE rn <= 50), 0)
-                FROM ranked;
-                """;
-            await using var cmd = new NpgsqlCommand(paretoSql, conn);
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-            if (await reader.ReadAsync(ct))
+            try
             {
-                var top20 = reader.IsDBNull(0) ? 0m : reader.GetDecimal(0);
-                var top50 = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
-                return (Math.Round(top20, 4), Math.Round(top50, 4));
+                const string paretoSql = """
+                    WITH ranked AS (
+                      SELECT
+                        revenue,
+                        cumulative_share,
+                        ROW_NUMBER() OVER (ORDER BY revenue DESC, article_id) AS rn
+                      FROM vw_analytics_pareto
+                    )
+                    SELECT
+                      COALESCE(MAX(cumulative_share) FILTER (WHERE rn <= 20), 0),
+                      COALESCE(MAX(cumulative_share) FILTER (WHERE rn <= 50), 0)
+                    FROM ranked;
+                    """;
+                await using var cmd = new NpgsqlCommand(paretoSql, conn);
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
+                if (await reader.ReadAsync(ct))
+                {
+                    var top20 = reader.IsDBNull(0) ? 0m : reader.GetDecimal(0);
+                    var top50 = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
+                    return (Math.Round(top20, 4), Math.Round(top50, 4));
+                }
             }
-        }
-        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
-        {
-            // fallback below
+            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            {
+                // fallback below
+            }
         }
 
         const string fallbackSql = """
             WITH ranked AS (
               SELECT SUM(ps."kolicina" * ps."cena") AS revenue
               FROM "prodaja_stavke" ps
+              JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
+              JOIN "Artikli" a ON a."Id" = ps."id_artikal"
+              WHERE (@storeId IS NULL OR p."id_objekat" = @storeId)
+                AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId)
               GROUP BY ps."id_artikal"
             ),
             ordered AS (
@@ -1648,6 +1708,8 @@ public static class CachedAnalyticsEndpoints
             FROM ordered;
             """;
         await using var fallbackCmd = new NpgsqlCommand(fallbackSql, conn);
+        fallbackCmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
+        fallbackCmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
         await using var fallbackReader = await fallbackCmd.ExecuteReaderAsync(ct);
         if (await fallbackReader.ReadAsync(ct))
         {
@@ -1664,6 +1726,8 @@ public static class CachedAnalyticsEndpoints
         int top,
         DateTime? fromDate,
         DateTime? toDate,
+        int? storeId,
+        int? supplierId,
         CancellationToken ct)
     {
         await using var conn = await OpenTrendplusConnectionAsync(db, ct);
@@ -1706,6 +1770,8 @@ public static class CachedAnalyticsEndpoints
               JOIN "Artikli" a ON a."Id" = ps."id_artikal"
               WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
                 AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
+                AND (@storeId IS NULL OR p."id_objekat" = @storeId)
+                AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId)
               GROUP BY ps."id_artikal"
             ),
             previous_period AS (
@@ -1714,9 +1780,12 @@ public static class CachedAnalyticsEndpoints
                 SUM(ps."kolicina")::decimal AS prev_units
               FROM "prodaja_stavke" ps
               JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
+              JOIN "Artikli" a ON a."Id" = ps."id_artikal"
               CROSS JOIN period_size s
               WHERE p."datum_prodaje" >= (s.from_date - (s.days_count * INTERVAL '1 day'))
                 AND p."datum_prodaje" < s.from_date
+                AND (@storeId IS NULL OR p."id_objekat" = @storeId)
+                AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId)
               GROUP BY ps."id_artikal"
             )
             SELECT
@@ -1747,6 +1816,8 @@ public static class CachedAnalyticsEndpoints
             await using var cmd = new NpgsqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
             cmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
 
             var all = new List<TopProductAdvancedItemDto>();
             await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -1793,12 +1864,14 @@ public static class CachedAnalyticsEndpoints
         ITrendplusDbContext db,
         DateTime? fromDate,
         DateTime? toDate,
+        int? storeId,
+        int? supplierId,
         CancellationToken ct)
     {
         var (score, totalSku, missingSku, lastImport, freshnessHours) = await GetCompletenessAndFreshnessAsync(db, ct);
-        var (oosSkuCount, lostSalesEstimate) = await GetLostSalesSnapshotAsync(db, ct);
-        var (avgVelocity, topVelocity, topSku, velocityTrend) = await GetVelocitySnapshotAsync(db, fromDate, toDate, ct);
-        var (top20Share, top50Share) = await GetParetoSnapshotAsync(db, ct);
+        var (oosSkuCount, lostSalesEstimate) = await GetLostSalesSnapshotAsync(db, ct, storeId, supplierId);
+        var (avgVelocity, topVelocity, topSku, velocityTrend) = await GetVelocitySnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct);
+        var (top20Share, top50Share) = await GetParetoSnapshotAsync(db, storeId, supplierId, ct);
 
         var completenessStatus = score >= 0.98m ? "good" : score >= 0.90m ? "warning" : "critical";
         var freshnessStatus = freshnessHours <= 6m ? "good" : freshnessHours <= 24m ? "warning" : "critical";
@@ -2012,12 +2085,49 @@ public class SupplierDataDto
     public int TransactionCount { get; set; }
 }
 
+public class PaymentDataDto
+{
+    public string NacinPlacanja { get; set; } = "";
+    public decimal TotalRevenue { get; set; }
+    public int TransactionCount { get; set; }
+}
+
+public class WeekdayDataDto
+{
+    public int DayOfWeek { get; set; }
+    public string DayName { get; set; } = "";
+    public decimal TotalRevenue { get; set; }
+    public int TransactionCount { get; set; }
+}
+
+public class HourDataDto
+{
+    public int Hour { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public int TransactionCount { get; set; }
+}
+
 public class QuickInsightsDto
 {
     public string? BestDay { get; set; }
     public decimal BestDayRevenue { get; set; }
     public string? TopProduct { get; set; }
     public int LowStockAlert { get; set; }
+}
+
+public class TransactionStatsDto
+{
+    public decimal AvgItemsPerTransaction { get; set; }
+    public decimal AvgTransactionValue { get; set; }
+    public int TotalTransactions { get; set; }
+}
+
+public class StoreFilterOptionDto
+{
+    public int StoreId { get; set; }
+    public string StoreName { get; set; } = "";
+    public string? City { get; set; }
+    public string? Region { get; set; }
 }
 
 public class TopProductAdvancedItemDto
