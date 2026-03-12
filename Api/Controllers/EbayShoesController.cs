@@ -177,18 +177,27 @@ namespace Api.Controllers
 
             try
             {
-                var result = await _db.EbayShoeProducts
+                // Build simple aggregates that EF Core can translate, then map to DTOs in-memory.
+                var grouped = await _db.EbayShoeProducts
                     .GroupBy(x => x.Category)
-                    .Select(g => new EbayCategorySummary(
-                        g.Key,
-                        g.Count(),
-                        (float)g.Average(x => x.Rating),
-                        g.Any(x => x.Price != null)
-                            ? (double?)g.Where(x => x.Price != null).Average(x => (double)x.Price!)
-                            : null,
-                        g.Max(x => x.LastSynced)))
+                    .Select(g => new
+                    {
+                        Category = g.Key,
+                        Count = g.Count(),
+                        AvgRating = g.Average(x => (double?)x.Rating),
+                        AvgPrice = g.Average(x => x.Price), // decimal? produced by EF
+                        LastSynced = g.Max(x => x.LastSynced)
+                    })
                     .OrderByDescending(x => x.Count)
                     .ToListAsync(ct);
+
+                var result = grouped.Select(g => new EbayCategorySummary(
+                    g.Category,
+                    g.Count,
+                    (float)(g.AvgRating ?? 0.0),
+                    g.AvgPrice.HasValue ? (double?)Convert.ToDouble(g.AvgPrice.Value) : null,
+                    g.LastSynced
+                )).ToList();
 
                 _cache.Set(CacheCats, result, TimeSpan.FromMinutes(5));
                 return Ok(result);

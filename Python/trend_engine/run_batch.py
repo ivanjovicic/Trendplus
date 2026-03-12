@@ -27,6 +27,7 @@ from trend_engine.core import (
     apply_social_boost,
     serialize_trend_groups,
 )
+from scraper.schema import ScrapedItem  # type: ignore
 
 logger = logging.getLogger("trend_engine.run_batch")
 
@@ -81,18 +82,43 @@ async def _scrape_all(
 
     for source in sources:
         for market in markets:
-            tasks.append(_scrape_source_market(source, market))
+            # schedule tasks explicitly to avoid passing raw coroutines to asyncio.wait
+            tasks.append(asyncio.create_task(_scrape_source_market(source, market)))
 
-    completed, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+    # gather will raise only if return_exceptions=False; we collect exceptions per-task
+    completed = await asyncio.gather(*tasks, return_exceptions=True)
 
-    for task in completed:
-        try:
-            results.append(task.result())
-        except Exception as e:
-            logger.error(f"Scraping failed for a task: {e}")
+    # Convert and flatten returned scraper payloads into a flat list of ScrapedItem
+    for res in completed:
+        if isinstance(res, Exception):
+            logger.error(f"Scraping failed for a task: {res}")
+            continue
 
-    if pending:
-        logger.warning(f"Some scraping tasks did not complete: {len(pending)} tasks pending.")
+        # If scraper returned a dict with 'data' key (common pattern), extract it
+        payloads = []
+        if isinstance(res, dict) and "data" in res:
+            payloads = res.get("data") or []
+        elif isinstance(res, list):
+            payloads = res
+        else:
+            # single item (dict or ScrapedItem)
+            payloads = [res]
+
+        for p in payloads:
+            # If already a ScrapedItem, keep; if a dict, construct ScrapedItem where possible
+            try:
+                if isinstance(p, ScrapedItem):
+                    results.append(p)
+                elif isinstance(p, dict):
+                    try:
+                        results.append(ScrapedItem(**p))
+                    except Exception:
+                        # If dict doesn't match ScrapedItem signature, skip with debug
+                        logger.debug(f"Skipping unparsable scraped dict: {p}")
+                else:
+                    logger.debug(f"Unknown payload type from scraper: {type(p)}")
+            except Exception as e:
+                logger.error(f"Error processing scraper payload: {e}")
 
     return results
 

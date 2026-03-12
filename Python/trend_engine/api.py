@@ -57,7 +57,10 @@ async def generate_trends(
 
     try:
         results = await generate_trend_results(pages=pages, markets=markets)
-        return JSONResponse(content=results)
+        # Wrap results in an envelope expected by the C# worker:
+        # { "count": <int>, "items": [ ... ] }
+        envelope = {"count": len(results), "items": results}
+        return JSONResponse(content=envelope)
     except Exception as e:
         logger.error(f"Error generating trends: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while generating trends.")

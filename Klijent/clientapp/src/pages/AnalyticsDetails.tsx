@@ -103,10 +103,14 @@ function std(values: number[]): number {
 
 function topRows(data: TopProductsAdvancedResult | null, tab: TopTab): TopProductAdvancedItem[] {
   if (!data) return [];
-  if (tab === "revenue") return data.byRevenue;
-  if (tab === "units") return data.byUnits;
-  if (tab === "velocity") return data.byVelocity;
-  return data.byMarginImpact;
+  const rev = Array.isArray((data as any).byRevenue) ? (data as any).byRevenue : [];
+  const units = Array.isArray((data as any).byUnits) ? (data as any).byUnits : [];
+  const vel = Array.isArray((data as any).byVelocity) ? (data as any).byVelocity : [];
+  const margin = Array.isArray((data as any).byMarginImpact) ? (data as any).byMarginImpact : [];
+  if (tab === "revenue") return rev;
+  if (tab === "units") return units;
+  if (tab === "velocity") return vel;
+  return margin;
 }
 
 export default function AnalyticsDetails() {

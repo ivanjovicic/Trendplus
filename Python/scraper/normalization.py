@@ -16,7 +16,8 @@ def parse_price(value: Optional[str], market: str) -> Tuple[Optional[float], Opt
     elif market == "RO":
         currency = "RON"
 
-    value = re.sub(r"[^0-9,."]", "", value)
+    # Keep only digits, comma and dot characters
+    value = re.sub(r'[^0-9,\.]', '', value)
 
     if "," in value and "." in value:
         value = value.replace(".", "").replace(",", ".")

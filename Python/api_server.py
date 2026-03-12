@@ -659,7 +659,13 @@ async def api_aboutyou(filters: AboutYouFilters):
         raise HTTPException(status_code=500, detail="AboutYou scraper is unavailable")
 
     try:
-        items = await scrape_aboutyou_filtered(**filters.model_dump())
+        # Map incoming filter DTO to the aboutyou scraper signature
+        f = filters.model_dump()
+        country = (f.get("country") or "DE").upper()
+        sort = f.get("sort") or "popularity"
+        max_pages = f.get("pages") or 1
+
+        items = await scrape_aboutyou_filtered(country=country, sort=sort, max_pages=max_pages)
         return {"status": "ok", "count": len(items), "items": items}
     except Exception as e:
         logging.exception("AboutYou scraper failed: %s", e)

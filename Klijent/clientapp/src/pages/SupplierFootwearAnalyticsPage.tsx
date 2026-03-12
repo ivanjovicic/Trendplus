@@ -189,14 +189,19 @@ function InfoHint({ text }: { text: string }) {
 function Sparkline({ values }: { values: number[] }) {
     const width = 120;
     const height = 36;
-    const clean = values.length > 1 ? values : [0, ...values];
+    // Coerce invalid values to 0 to prevent NaN in SVG coordinates
+    const coerced = values.map((v) => (Number.isFinite(v) ? v : 0));
+    const clean = coerced.length > 1 ? coerced : [0, ...coerced];
     const min = Math.min(...clean);
     const max = Math.max(...clean);
+    const len = clean.length;
     const points = clean
         .map((v, i) => {
-            const x = (i / (clean.length - 1)) * width;
+            const denom = len - 1 || 1;
+            const x = (i / denom) * width;
             const y = height - 4 - normalize01(v, min, max) * (height - 8);
-            return `${x},${y}`;
+            // Ensure numeric strings only
+            return `${Number.isFinite(x) ? x : 0},${Number.isFinite(y) ? y : 0}`;
         })
         .join(" ");
 

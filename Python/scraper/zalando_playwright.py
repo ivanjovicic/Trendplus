@@ -540,7 +540,9 @@ async def _scrape_zalando_page(
             pass
 
 
-async def _extract_zalando_sku(url: str) -> Optional[str]:
+def _extract_zalando_sku(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
     import re
     match = re.search(r"-([a-z0-9]+-[a-z0-9]+)\.html", url)
     return match.group(1) if match else None

@@ -1103,7 +1103,9 @@ public sealed class AccessImportService : IAccessImportService
         var existingZaglavlja = _trendDb.ProdajaZaglavlja.ToDictionary(x => x.Id);
         var existingBrojevi = _trendDb.ProdajaZaglavlja
             .Where(x => x.BrojRacuna != null)
-            .ToDictionary(x => x.BrojRacuna!, StringComparer.OrdinalIgnoreCase);
+            .AsEnumerable()
+            .GroupBy(x => x.BrojRacuna!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var dnevnikById = _trendDb.DnevnikPromena.Local
             .GroupBy(x => x.Id)
             .ToDictionary(g => g.Key, g => g.First());

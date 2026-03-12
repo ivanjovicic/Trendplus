@@ -91,6 +91,13 @@ export default function GlobalTrendsPage() {
         }
     };
 
+    function safeFixed(value: any, digits: number) {
+        if (value == null) return "N/A";
+        const n = Number(value);
+        if (!Number.isFinite(n)) return "N/A";
+        return n.toFixed(digits);
+    }
+
     const fetchProductsForSource = async (source: string) => {
         try {
             const resp = await fetch(`${API_URL}/api/products?source=${encodeURIComponent(source)}`);
@@ -410,7 +417,7 @@ export default function GlobalTrendsPage() {
                                             fontWeight: 700,
                                             boxShadow: "0 2px 8px rgba(59,130,246,0.15)"
                                         }}>
-                                            €{trend.priceEur.toFixed(2)}
+                                            €{safeFixed(trend.priceEur, 2)}
                                         </div>
                                         {/* Trend level badge */}
                                         <div style={{
@@ -452,7 +459,7 @@ export default function GlobalTrendsPage() {
                                                 color: "#3b82f6",
                                                 marginTop: "0.5rem"
                                             }}>
-                                                €{trend.priceEur.toFixed(2)}
+                                                €{safeFixed(trend.priceEur, 2)}
                                             </div>
                                         </div>
 
@@ -469,19 +476,19 @@ export default function GlobalTrendsPage() {
                                             <div style={{ textAlign: "center" }}>
                                                 <div style={{ fontSize: "0.75rem", color: "#8A95B0" }}>Trend skor</div>
                                                 <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#c9d3e4" }}>
-                                                    {trend.finalTrendScore.toFixed(1)}
+                                                    {safeFixed(trend.finalTrendScore, 1)}
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: "center" }}>
                                                 <div style={{ fontSize: "0.75rem", color: "#8A95B0" }}>TikTok</div>
                                                 <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#dc2626" }}>
-                                                    {trend.tiktokScore.toFixed(1)}
+                                                    {safeFixed(trend.tiktokScore, 1)}
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: "center" }}>
                                                 <div style={{ fontSize: "0.75rem", color: "#8A95B0" }}>Instagram</div>
                                                 <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#c026d3" }}>
-                                                    {trend.instagramScore.toFixed(1)}
+                                                    {safeFixed(trend.instagramScore, 1)}
                                                 </div>
                                             </div>
                                         </div>
@@ -497,7 +504,7 @@ export default function GlobalTrendsPage() {
                                                 Ključne karakteristike:
                                             </div>
                                             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                                                {trend.keyFeatures.map((feature, idx) => (
+                                                {(Array.isArray(trend.keyFeatures) ? trend.keyFeatures : []).map((feature, idx) => (
                                                     <span 
                                                         key={idx}
                                                         style={{
@@ -526,7 +533,7 @@ export default function GlobalTrendsPage() {
                                                 Popularne boje:
                                             </div>
                                             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                                                {trend.popularColors.map((color, idx) => (
+                                                {(Array.isArray(trend.popularColors) ? trend.popularColors : []).map((color, idx) => (
                                                     <span 
                                                         key={idx}
                                                         style={{
@@ -551,8 +558,8 @@ export default function GlobalTrendsPage() {
                                             borderTop: "1px solid #2A3045",
                                             paddingTop: "1rem"
                                         }}>
-                                            <div>📱 TikTok: {(trend.tiktokViews / 1000000000).toFixed(1)}B views</div>
-                                            <div>📸 Instagram: {(trend.instagramPosts / 1000000).toFixed(1)}M posts</div>
+                                            <div>📱 TikTok: {safeFixed(Number(trend.tiktokViews) / 1000000000, 1)}B views</div>
+                                            <div>📸 Instagram: {safeFixed(Number(trend.instagramPosts) / 1000000, 1)}M posts</div>
                                         </div>
                                     </div>
                                 </div>

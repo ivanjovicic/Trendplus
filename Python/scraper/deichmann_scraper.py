@@ -303,6 +303,12 @@ def _to_scraped_item_deichmann(d: Dict[str, Any]) -> ScrapedItem:
     )
 
 async def scrape_deichmann_filtered(**filters: Any) -> List[ScrapedItem]:
-    raw_results = await _scrape_deichmann_pages(filters)
-    items = [_to_scraped_item_deichmann(r) for r in raw_results]
+    # Orchestrate multiple pages if caller provided 'pages' or 'max_pages'
+    pages = int(filters.get("pages") or filters.get("max_pages") or 1)
+    all_raw: List[Dict[str, Any]] = []
+    for p in range(1, pages + 1):
+        page_raw = await _scrape_deichmann_page(p, filters)
+        all_raw.extend(page_raw or [])
+
+    items = [_to_scraped_item_deichmann(r) for r in all_raw]
     return items

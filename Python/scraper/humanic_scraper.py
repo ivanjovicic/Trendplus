@@ -302,11 +302,12 @@ async def _scrape_humanic_infinite_scroll(
             start_time = datetime.utcnow()
 
             while True:
-                tiles = await page.query_selector_all("li.productcell")
+                        tiles = await page.query_selector_all("li.productcell")
                 before_count = len(all_items)
 
-                for tile in tiles:
-                    item = await self._tile_to_item(tile)
+                        for tile in tiles:
+                            # tile processing helper is module-level: call directly
+                            item = await _tile_to_item(tile)
                     if not item:
                         continue
                     key = item.get("url") or f"{item.get('brand')}|{item.get('name')}|{item.get('price')}"
@@ -371,6 +372,16 @@ def _to_scraped_item_humanic(d: Dict[str, Any]) -> ScrapedItem:
 
 
 async def scrape_humanic_filtered(**filters: Any) -> List[ScrapedItem]:
-    raw_results = await _scrape_humanic_infinite_scroll(filters)
+    # Normalize incoming filters and call the infinite-scroll scraper with named args
+    url = filters.get("url")
+    category = filters.get("category")
+    sort = filters.get("sort")
+    upper_materials = filters.get("upperMaterials")
+    brand = filters.get("brand")
+    pages = int(filters.get("pages") or filters.get("max_pages") or 1)
+
+    base_url = _normalize_humanic_url(url=url, category=category, sort=sort, upper_materials=_split_csv(upper_materials) if isinstance(upper_materials, str) else (upper_materials or []), brand=brand)
+
+    raw_results = await _scrape_humanic_infinite_scroll(base_url=base_url, max_pages=pages, auto_pages=(pages <= 0))
     items = [_to_scraped_item_humanic(r) for r in raw_results]
     return items

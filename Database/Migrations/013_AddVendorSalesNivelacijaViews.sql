@@ -92,7 +92,8 @@ INSERT INTO price_history (
 )
 SELECT
     d."ArtikalId",
-    COALESCE(d."DobavljacId", a."IDDobavljac"),
+    -- Only set vendor_id when the referenced vendor exists; otherwise NULL to avoid FK violations
+    (SELECT v."Id" FROM "Dobavljaci" v WHERE v."Id" = COALESCE(d."DobavljacId", a."IDDobavljac")) AS vendor_id,
     d."StaraProdajnaCena"::NUMERIC(18,4),
     d."NovaProdajnaCena"::NUMERIC(18,4),
     d."Datum",
