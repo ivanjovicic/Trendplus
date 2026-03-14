@@ -1,0 +1,21 @@
+Using launch settings from C:\Users\Ivan\source\repos\Trendplus2\Api\Properties\launchSettings.json...
+Starting application...
+Builder created successfully
+Serilog configured
+Configuration loaded
+Configured to listen on port 8080
+DbContext registered
+⚠️ Using MOCK embedding service (no AI)
+Background workers startup state: ENABLED
+Caching: Redis disabled (using In-Memory cache only).
+[09:20:27 INF] === DATABASE INITIALIZATION START ===
+[09:20:27 INF] Acquired advisory startup lock with key 987654321.
+[09:20:27 INF] Initializing Trendplus database...
+[09:20:27 INF] ✔ Executed SQL command successfully.
+[09:20:27 INF] Trendplus core schema already present. Skipping bootstrap.
+[09:20:27 INF] ✔ Ensured Trendplus analytics aggregation tables/indexes.
+[09:20:27 INF] ✔ Ensured OutboxMessages table exists.
+[09:20:27 INF] ✔ Executed SQL command successfully.
+[09:20:27 INF] Ensured Trendplus EF migration history is aligned with bootstrap schema.
+[09:20:28 WRN] Sensitive data logging is enabled. Log entries and exception messages may include sensitive application data; this mode should only be enabled during development.
+[09:20:28 INF] ✔ Trendplus DB migrations applied.

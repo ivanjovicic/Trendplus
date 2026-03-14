@@ -15,6 +15,7 @@ using Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using NpgsqlTypes;
 using Infrastructure.DbContexts;
 using Application.Analytics.Queries.GetTopProducts;
 using System.Linq;
@@ -780,12 +781,10 @@ public static class AllEndpoints
                         """;
 
                 await using var command = new NpgsqlCommand(sql, connection);
-                command.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
-                command.Parameters.AddWithValue("category", (object?)category ?? DBNull.Value);
-                command.Parameters.AddWithValue("categoryPattern", string.IsNullOrWhiteSpace(category)
-                    ? DBNull.Value
-                    : $"%{category.Trim()}%");
-                command.Parameters.AddWithValue("take", take);
+                command.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlDbType.Integer) { Value = (object?)vendorId ?? DBNull.Value });
+                command.Parameters.Add(new NpgsqlParameter("category", NpgsqlDbType.Text) { Value = (object?)category ?? DBNull.Value });
+                command.Parameters.Add(new NpgsqlParameter("categoryPattern", NpgsqlDbType.Text) { Value = (object?)(string.IsNullOrWhiteSpace(category) ? null : $"%{category.Trim()}%") ?? DBNull.Value });
+                command.Parameters.Add(new NpgsqlParameter("take", NpgsqlDbType.Integer) { Value = take });
 
                 await using var reader = await command.ExecuteReaderAsync(ct);
                 while (await reader.ReadAsync(ct))
@@ -884,12 +883,12 @@ public static class AllEndpoints
                 var rawRows = 0;
                 await using (var cmd = new NpgsqlCommand(rawCountSql, connection))
                 {
-                    cmd.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("eventDate", (object?)eventDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("fromDate", (object?)fromDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("toDate", (object?)toDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("category", (object?)categoryTrimmed ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("categoryPattern", (object?)categoryPattern ?? DBNull.Value);
+                    cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlDbType.Integer) { Value = (object?)vendorId ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("eventDate", NpgsqlDbType.Date) { Value = (object?)eventDateOnly ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("fromDate", NpgsqlDbType.Date) { Value = (object?)fromDateOnly ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("toDate", NpgsqlDbType.Date) { Value = (object?)toDateOnly ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("category", NpgsqlDbType.Text) { Value = (object?)categoryTrimmed ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("categoryPattern", NpgsqlDbType.Text) { Value = (object?)categoryPattern ?? DBNull.Value });
                     rawRows = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
                 }
 
@@ -906,10 +905,10 @@ public static class AllEndpoints
 
                 await using (var cmd = new NpgsqlCommand(categoriesSql, connection))
                 {
-                    cmd.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("eventDate", (object?)eventDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("fromDate", (object?)fromDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("toDate", (object?)toDateOnly ?? DBNull.Value);
+                    cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlDbType.Integer) { Value = (object?)vendorId ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("eventDate", NpgsqlDbType.Date) { Value = (object?)eventDateOnly ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("fromDate", NpgsqlDbType.Date) { Value = (object?)fromDateOnly ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("toDate", NpgsqlDbType.Date) { Value = (object?)toDateOnly ?? DBNull.Value });
                     await using var reader = await cmd.ExecuteReaderAsync(ct);
                     while (await reader.ReadAsync(ct))
                     {
@@ -1042,12 +1041,12 @@ public static class AllEndpoints
 
                 await using (var cmd = new NpgsqlCommand(rowsSql, connection))
                 {
-                    cmd.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("eventDate", (object?)eventDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("fromDate", (object?)fromDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("toDate", (object?)toDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("category", (object?)categoryTrimmed ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("categoryPattern", (object?)categoryPattern ?? DBNull.Value);
+                    cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlDbType.Integer) { Value = (object?)vendorId ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("eventDate", NpgsqlDbType.Date) { Value = (object?)eventDateOnly ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("fromDate", NpgsqlDbType.Date) { Value = (object?)fromDateOnly ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("toDate", NpgsqlDbType.Date) { Value = (object?)toDateOnly ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("category", NpgsqlDbType.Text) { Value = (object?)categoryTrimmed ?? DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("categoryPattern", NpgsqlDbType.Text) { Value = (object?)categoryPattern ?? DBNull.Value });
 
                     await using var reader = await cmd.ExecuteReaderAsync(ct);
                     while (await reader.ReadAsync(ct))

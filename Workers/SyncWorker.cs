@@ -224,6 +224,8 @@ namespace Workers
                 products = await trendplusDb.Artikli
                     .AsNoTracking()
                     .Where(p => p.UpdatedAt > lastSynced)
+                    .OrderBy(p => p.UpdatedAt)
+                    .ThenBy(p => p.Id)
                     .ToListAsync(ct);
             }
             catch (PostgresException ex) when (ex.SqlState == "42703")

@@ -1486,8 +1486,8 @@ public static class CachedAnalyticsEndpoints
               AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId);
             """;
         await using var fallbackCmd = new NpgsqlCommand(fallbackSql, conn);
-        fallbackCmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
-        fallbackCmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
+        fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("storeId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)storeId ?? DBNull.Value });
+        fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("supplierId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)supplierId ?? DBNull.Value });
         await using var fallbackReader = await fallbackCmd.ExecuteReaderAsync(ct);
         if (await fallbackReader.ReadAsync(ct))
         {
@@ -1520,8 +1520,8 @@ public static class CachedAnalyticsEndpoints
         try
         {
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("fromDate", NpgsqlTypes.NpgsqlDbType.TimestampTz) { Value = (object?)fromDate ?? DBNull.Value });
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("toDate", NpgsqlTypes.NpgsqlDbType.TimestampTz) { Value = (object?)toDate ?? DBNull.Value });
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             if (await reader.ReadAsync(ct))
             {
@@ -1578,10 +1578,10 @@ public static class CachedAnalyticsEndpoints
             FROM agg;
             """;
         await using var cmd = new NpgsqlCommand(velocitySql, conn);
-        cmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("fromDate", NpgsqlTypes.NpgsqlDbType.TimestampTz) { Value = (object?)fromDate ?? DBNull.Value });
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("toDate", NpgsqlTypes.NpgsqlDbType.TimestampTz) { Value = (object?)toDate ?? DBNull.Value });
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("storeId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)storeId ?? DBNull.Value });
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("supplierId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)supplierId ?? DBNull.Value });
         decimal avgVelocity = 0m;
         decimal topVelocity = 0m;
         string topSku = "N/A";
@@ -1618,10 +1618,10 @@ public static class CachedAnalyticsEndpoints
                 FROM line_daily;
                 """;
             await using var trendCmd = new NpgsqlCommand(trendSql, conn);
-            trendCmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
-            trendCmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
-            trendCmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
-            trendCmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
+            trendCmd.Parameters.Add(new Npgsql.NpgsqlParameter("fromDate", NpgsqlTypes.NpgsqlDbType.TimestampTz) { Value = (object?)fromDate ?? DBNull.Value });
+            trendCmd.Parameters.Add(new Npgsql.NpgsqlParameter("toDate", NpgsqlTypes.NpgsqlDbType.TimestampTz) { Value = (object?)toDate ?? DBNull.Value });
+            trendCmd.Parameters.Add(new Npgsql.NpgsqlParameter("storeId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)storeId ?? DBNull.Value });
+            trendCmd.Parameters.Add(new Npgsql.NpgsqlParameter("supplierId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)supplierId ?? DBNull.Value });
             await using var trendReader = await trendCmd.ExecuteReaderAsync(ct);
             if (await trendReader.ReadAsync(ct))
             {
@@ -1708,8 +1708,8 @@ public static class CachedAnalyticsEndpoints
             FROM ordered;
             """;
         await using var fallbackCmd = new NpgsqlCommand(fallbackSql, conn);
-        fallbackCmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
-        fallbackCmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
+        fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("storeId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)storeId ?? DBNull.Value });
+        fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("supplierId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)supplierId ?? DBNull.Value });
         await using var fallbackReader = await fallbackCmd.ExecuteReaderAsync(ct);
         if (await fallbackReader.ReadAsync(ct))
         {
@@ -1814,10 +1814,10 @@ public static class CachedAnalyticsEndpoints
         try
         {
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("toDate", (object?)toDate ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("storeId", (object?)storeId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("supplierId", (object?)supplierId ?? DBNull.Value);
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("fromDate", NpgsqlTypes.NpgsqlDbType.TimestampTz) { Value = (object?)fromDate ?? DBNull.Value });
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("toDate", NpgsqlTypes.NpgsqlDbType.TimestampTz) { Value = (object?)toDate ?? DBNull.Value });
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("storeId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)storeId ?? DBNull.Value });
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("supplierId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)supplierId ?? DBNull.Value });
 
             var all = new List<TopProductAdvancedItemDto>();
             await using var reader = await cmd.ExecuteReaderAsync(ct);

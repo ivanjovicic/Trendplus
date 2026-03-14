@@ -82,7 +82,7 @@ netstat -ano | findstr /R /C:":8080 .*LISTENING" >nul
 if %errorlevel% equ 0 (
     echo [OK] .NET API already running on localhost:8080
 ) else (
-    start "NET API" /D "%ROOT%Api" cmd /k "dotnet run --urls http://localhost:8080"
+    start "NET API" /D "%ROOT%Api" cmd /k "dotnet run --urls http://127.0.0.1:8080"
     timeout /t 5 /nobreak >nul
 )
 echo.

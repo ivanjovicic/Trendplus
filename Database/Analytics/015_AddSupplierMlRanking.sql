@@ -9,51 +9,43 @@
 --   supplier_quality_index / recommendation_code / confidence_score
 -- ==========================================================
 
+-- Step 1: Create table for ML predictions
 CREATE TABLE IF NOT EXISTS supplier_ml_predictions (
-    id                                BIGSERIAL PRIMARY KEY,
-    supplier_id                       integer      NOT NULL,
-    snapshot_date                     date         NOT NULL,
-    model_type                        text         NOT NULL DEFAULT 'supplier_ranking_v1',
-    model_version_id                  bigint       NULL REFERENCES model_version(id) ON DELETE SET NULL,
-    ml_supplier_score                 numeric(8,2) NOT NULL,
-    predicted_supplier_success_score  numeric(8,2) NOT NULL,
-    predicted_revenue_next_30d        numeric(18,2) NULL,
-    predicted_margin_next_30d         numeric(18,2) NULL,
-    predicted_sellthrough_next_30d    numeric(18,4) NULL,
-    success_probability               numeric(10,6) NOT NULL,
-    top_feature_1                     text         NULL,
-    top_feature_2                     text         NULL,
-    top_feature_3                     text         NULL,
-    explanation_text                  text         NULL,
-    created_at                        timestamptz  NOT NULL DEFAULT NOW()
+    id BIGSERIAL PRIMARY KEY,
+    supplier_id integer NOT NULL,
+    snapshot_date date NOT NULL,
+    model_type text NOT NULL DEFAULT 'supplier_ranking_v1',
+    model_version_id bigint NULL REFERENCES model_version(id) ON DELETE SET NULL,
+    ml_supplier_score numeric(8,2) NOT NULL,
+    predicted_supplier_success_score numeric(8,2) NOT NULL,
+    predicted_revenue_next_30d numeric(18,2) NULL,
+    predicted_margin_next_30d numeric(18,2) NULL,
+    predicted_sellthrough_next_30d numeric(18,4) NULL,
+    success_probability numeric(10,6) NOT NULL,
+    top_feature_1 text NULL,
+    top_feature_2 text NULL,
+    top_feature_3 text NULL,
+    explanation_text text NULL,
+    created_at timestamptz NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_supplier_ml_predictions_supplier_snapshot_model
+-- Step 2: Add indexes with CONCURRENTLY
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS ux_supplier_ml_predictions_supplier_snapshot_model
     ON supplier_ml_predictions (supplier_id, snapshot_date, model_type);
 
-CREATE INDEX IF NOT EXISTS idx_supplier_ml_predictions_supplier
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_supplier_ml_predictions_supplier
     ON supplier_ml_predictions (supplier_id, snapshot_date DESC);
 
-CREATE INDEX IF NOT EXISTS idx_supplier_ml_predictions_model_supplier_snapshot
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_supplier_ml_predictions_model_supplier_snapshot
     ON supplier_ml_predictions (model_type, supplier_id, snapshot_date DESC, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_supplier_ml_predictions_model_version
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_supplier_ml_predictions_model_version
     ON supplier_ml_predictions (model_version_id);
 
-COMMENT ON TABLE supplier_ml_predictions IS
-'Batch ML predictions for supplier ranking. One row per supplier, snapshot date and model type.';
-
-COMMENT ON COLUMN supplier_ml_predictions.ml_supplier_score IS
-'Final AI score on a 0-100 scale used as the ML component inside supplier decision scoring.';
-
-DROP VIEW IF EXISTS vw_supplier_ranking_inference_v1;
-DROP MATERIALIZED VIEW IF EXISTS supplier_training_dataset_v1;
-
-CREATE MATERIALIZED VIEW supplier_training_dataset_v1 AS
+-- Step 3: Create materialized view for training dataset
+CREATE MATERIALIZED VIEW CONCURRENTLY supplier_training_dataset_v1 AS
 WITH snapshot_calendar AS (
-    -- Use the last observed sales day in each month as the training snapshot anchor.
-    SELECT
-        MAX(day)::date AS snapshot_date
+    SELECT MAX(day)::date AS snapshot_date
     FROM mv_daily_sales_facts
     GROUP BY date_trunc('month', day)
 ),
@@ -381,17 +373,19 @@ LEFT JOIN benchmarks b
        ON b.snapshot_date = a.snapshot_date
       AND b.primary_category = a.primary_category;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_training_dataset_v1_pk
+-- Step 4: Add indexes for materialized view
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_supplier_training_dataset_v1_pk
     ON supplier_training_dataset_v1 (supplier_id, snapshot_date);
 
-CREATE INDEX IF NOT EXISTS idx_supplier_training_dataset_v1_snapshot
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_supplier_training_dataset_v1_snapshot
     ON supplier_training_dataset_v1 (snapshot_date DESC);
 
-CREATE INDEX IF NOT EXISTS idx_supplier_training_dataset_v1_success
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_supplier_training_dataset_v1_success
     ON supplier_training_dataset_v1 (success_label);
 
+-- Step 5: Add comments for clarity
 COMMENT ON MATERIALIZED VIEW supplier_training_dataset_v1 IS
-'Monthly supplier ML dataset with trailing supplier signals and forward 30-day labels.';
+'Optimized monthly supplier ML dataset with trailing signals and forward labels.';
 
 COMMENT ON COLUMN supplier_training_dataset_v1.fullprice_sellthrough IS
 'Trailing supplier sell-through before markdown, derived from first-markdown signal windows.';

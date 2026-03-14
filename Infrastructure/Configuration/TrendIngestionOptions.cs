@@ -8,8 +8,8 @@ public sealed class TrendIngestionOptions
 {
     public const string Section = "TrendIngestion";
 
-    /// <summary>Base URL of the Python trend_engine FastAPI (default: http://localhost:8001).</summary>
-    public string PythonApiBaseUrl { get; set; } = "http://localhost:8001";
+    /// <summary>Base URL of the consolidated Python API service (default: http://localhost:8000).</summary>
+    public string PythonApiBaseUrl { get; set; } = "http://localhost:8000";
 
     /// <summary>Number of pages to scrape per source (passed to Python API).</summary>
     public int Pages { get; set; } = 5;

@@ -9,14 +9,13 @@
 -- - expose supplier-level recommendation signals for dashboards
 -- ==========================================================
 
--- Recreate in dependency order.
-DROP MATERIALIZED VIEW IF EXISTS mv_supplier_recommendations_cache;
-DROP MATERIALIZED VIEW IF EXISTS mv_supplier_decision_score_cache;
-DROP MATERIALIZED VIEW IF EXISTS mv_supplier_markdown_dependency_cache;
-DROP VIEW IF EXISTS vw_supplier_recommendations;
-DROP VIEW IF EXISTS vw_supplier_decision_score;
-DROP VIEW IF EXISTS vw_supplier_markdown_dependency;
-DROP VIEW IF EXISTS vw_supplier_fullprice_signals;
+-- Views are recreated via CREATE OR REPLACE (idempotent).
+-- Materialized views are created only if they do not exist (IF NOT EXISTS).
+-- DO NOT drop materialized views here - that forces expensive recreation on every startup.
+-- To force recreation of a materialized view manually, run:
+--   DROP MATERIALIZED VIEW IF EXISTS mv_supplier_recommendations_cache CASCADE;
+--   DROP MATERIALIZED VIEW IF EXISTS mv_supplier_decision_score_cache CASCADE;
+--   DROP MATERIALIZED VIEW IF EXISTS mv_supplier_markdown_dependency_cache CASCADE;
 
 -- ==========================================================
 -- 1) Supplier performance before the first markdown event
@@ -883,6 +882,8 @@ COMMENT ON VIEW vw_supplier_recommendations IS
 COMMENT ON COLUMN vw_supplier_recommendations.recommendation_reason IS
 'Human-readable reason string explaining the SQL-generated supplier recommendation.';
 
+-- SQL_BATCH_BREAK
+
 -- ==========================================================
 -- 5) Materialized cache for default overview reads
 -- ==========================================================
@@ -896,12 +897,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_supplier_markdown_dependency_cache_pk
 CREATE INDEX IF NOT EXISTS idx_mv_supplier_markdown_dependency_cache_supplier
     ON mv_supplier_markdown_dependency_cache (supplier_id);
 
+-- SQL_BATCH_BREAK
+
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_decision_score_cache AS
 SELECT *
 FROM vw_supplier_decision_score;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_supplier_decision_score_cache_pk
     ON mv_supplier_decision_score_cache (supplier_id);
+
+-- SQL_BATCH_BREAK
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_recommendations_cache AS
 SELECT *

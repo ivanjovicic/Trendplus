@@ -85,12 +85,12 @@ echo.
 echo [3/4] Starting React Frontend...
 
 REM Check if frontend is already running
-netstat -ano | findstr :5173 >nul
+netstat -ano | findstr :5174 >nul
 if %errorlevel% equ 0 (
-    echo Frontend is already running on port 5173
+    echo Frontend is already running on port 5174
 ) else (
     start "Trendplus Frontend" cmd /k "cd Klijent\clientapp && npm run dev"
-    echo ✅ Frontend starting at http://localhost:5173
+    echo ✅ Frontend starting at http://localhost:5174
     timeout /t 5 /nobreak >nul
 )
 
@@ -101,7 +101,7 @@ echo ========================================
 echo.
 echo Python API:   http://localhost:8000
 echo Backend API:  http://localhost:8080
-echo Frontend:     http://localhost:5173
+echo Frontend:     http://localhost:5174
 echo Postgres:     localhost:5434
 echo Swagger UI:   http://localhost:8080/swagger
 echo.

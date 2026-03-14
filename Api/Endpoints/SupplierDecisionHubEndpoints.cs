@@ -1,5 +1,4 @@
-using Application.Artikli.Common.Interfaces;
-using Infrastructure.Services.Caching;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 using System.Data;
 using System.Globalization;
@@ -18,12 +17,10 @@ public static class SupplierDecisionHubEndpoints
     public static void MapSupplierDecisionHubEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/analytics/suppliers/decision-hub")
-            .WithTags("Supplier Decision Hub")
-            .RequireRateLimiting("db-heavy");
+            .WithTags("Supplier Decision Hub");
 
         group.MapGet("/summary", async (
-            IAnalyticsDbContext db,
-            IAnalyticsCacheService cache,
+            IConfiguration configuration,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -51,14 +48,13 @@ public static class SupplierDecisionHubEndpoints
                 return Results.ValidationProblem(validationError!);
             }
 
-            var rows = await GetSupplierRowsCachedAsync(cache, db, filters!, ct);
+            var rows = await QuerySupplierRowsAsync(GetAnalyticsConnectionString(configuration), filters!, ct);
             var response = BuildSummaryResponse(rows, filters!);
             return Results.Ok(response);
         });
 
         group.MapGet("/quadrant", async (
-            IAnalyticsDbContext db,
-            IAnalyticsCacheService cache,
+            IConfiguration configuration,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -86,7 +82,7 @@ public static class SupplierDecisionHubEndpoints
                 return Results.ValidationProblem(validationError!);
             }
 
-            var rows = await GetSupplierRowsCachedAsync(cache, db, filters!, ct);
+            var rows = await QuerySupplierRowsAsync(GetAnalyticsConnectionString(configuration), filters!, ct);
             var response = new QuadrantResponse(
                 rows
                     .OrderByDescending(x => x.Revenue)
@@ -106,8 +102,7 @@ public static class SupplierDecisionHubEndpoints
         });
 
         group.MapGet("/ranking", async (
-            IAnalyticsDbContext db,
-            IAnalyticsCacheService cache,
+            IConfiguration configuration,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -142,7 +137,7 @@ public static class SupplierDecisionHubEndpoints
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
 
-            var rows = await GetSupplierRowsCachedAsync(cache, db, filters!, ct);
+            var rows = await QuerySupplierRowsAsync(GetAnalyticsConnectionString(configuration), filters!, ct);
             var ordered = ApplyRankingSort(rows, sortBy, sortDir).ToList();
             var paged = ordered
                 .Skip((page - 1) * pageSize)
@@ -170,8 +165,7 @@ public static class SupplierDecisionHubEndpoints
 
         group.MapGet("/{supplierId:int}/details", async (
             int supplierId,
-            IAnalyticsDbContext db,
-            IAnalyticsCacheService cache,
+            IConfiguration configuration,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -198,19 +192,15 @@ public static class SupplierDecisionHubEndpoints
                 return Results.ValidationProblem(validationError!);
             }
 
-            var rows = await GetSupplierRowsCachedAsync(cache, db, filters!, ct);
+            var analyticsConnectionString = GetAnalyticsConnectionString(configuration);
+            var rows = await QuerySupplierRowsAsync(analyticsConnectionString, filters!, ct);
             var supplier = rows.FirstOrDefault();
             if (supplier is null)
             {
                 return Results.NotFound(new { message = $"Supplier {supplierId} not found for the selected filter set." });
             }
 
-            var cacheKey = BuildDetailsCacheKey(filters!);
-            var response = await cache.GetOrSetAsync(
-                cacheKey,
-                async () => await BuildDetailsResponseAsync(db, filters!, supplier, ct),
-                CacheExpiration.Short,
-                ct);
+            var response = await BuildDetailsResponseAsync(analyticsConnectionString, filters!, supplier, ct);
 
             return Results.Ok(response);
         });
@@ -460,41 +450,53 @@ public static class SupplierDecisionHubEndpoints
     private static decimal Round2(decimal value) => decimal.Round(value, 2);
     private static decimal Round4(decimal value) => decimal.Round(value, 4);
 
-    private static async Task<List<SupplierScoreRow>> GetSupplierRowsCachedAsync(
-        IAnalyticsCacheService cache,
-        IAnalyticsDbContext db,
+    private static async Task<List<SupplierScoreRow>> QuerySupplierRowsAsync(
+        string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
         CancellationToken ct)
     {
-        var cacheKey = BuildSupplierRowsCacheKey(filters);
-        return await cache.GetOrSetAsync(
-            cacheKey,
-            async () => await QuerySupplierRowsAsync(db, filters, ct),
-            CacheExpiration.Medium,
-            ct);
+        if (CanUsePrecomputedSupplierRows(filters))
+        {
+            var capabilities = await GetPrecomputedQueryCapabilitiesAsync(analyticsConnectionString, ct);
+            if (!capabilities.HasDecisionScoreCache)
+            {
+                // Supplier caches are still building in the background.
+                return [];
+            }
+
+            var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(filters, capabilities);
+            try
+            {
+                return await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, precomputedSql, precomputedParameters, ct);
+            }
+            catch (PostgresException ex) when (IsMissingPrecomputedDependency(ex))
+            {
+                // Startup recreates supplier decision objects in multiple batches.
+                // If a request lands mid-build, prefer an empty payload over a multi-minute live fallback.
+                return [];
+            }
+        }
+
+        var (sql, parameters) = BuildSupplierRowsSql(filters);
+        try
+        {
+            return await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sql, parameters, ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01")
+        {
+            // Base supplier decision views are not ready yet.
+            // Return empty results until the first 018 batches complete.
+            return [];
+        }
     }
 
-    private static string BuildSupplierRowsCacheKey(SupplierDecisionHubFilters filters) =>
-        FormattableString.Invariant(
-            $"{AnalyticsCacheKeys.Prefix}supplier-decision-hub:rows:{filters.FromDate:yyyyMMdd}:{filters.ToDate:yyyyMMdd}:{NormalizeKeyPart(filters.Category)}:{NormalizeKeyPart(filters.Gender)}:{filters.SeasonId?.ToString(CultureInfo.InvariantCulture) ?? "all"}:{filters.MinRevenue?.ToString("0.##", CultureInfo.InvariantCulture) ?? "all"}:{(filters.OnlyHighConfidence ? "high" : "all")}:{(filters.ExcludeOosBeforeMarkdown ? "exclude-oos" : "keep-oos")}:{filters.SupplierId?.ToString(CultureInfo.InvariantCulture) ?? "all"}");
-
-    private static string BuildDetailsCacheKey(SupplierDecisionHubFilters filters) =>
-        $"{BuildSupplierRowsCacheKey(filters)}:details";
-
-    private static string NormalizeKeyPart(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? "all"
-            : value.Trim().ToLowerInvariant().Replace(' ', '-');
-
-    private static async Task<List<SupplierScoreRow>> QuerySupplierRowsAsync(
-        IAnalyticsDbContext db,
-        SupplierDecisionHubFilters filters,
+    private static async Task<List<SupplierScoreRow>> ExecuteSupplierRowsQueryAsync(
+        string analyticsConnectionString,
+        string sql,
+        List<NpgsqlParameter> parameters,
         CancellationToken ct)
     {
-        var (sql, parameters) = CanUsePrecomputedSupplierRows(filters)
-            ? BuildPrecomputedSupplierRowsSql(filters)
-            : BuildSupplierRowsSql(filters);
-        var connection = await OpenConnectionAsync(db, ct);
+        await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
 
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddRange(parameters.ToArray());
@@ -541,11 +543,95 @@ public static class SupplierDecisionHubEndpoints
         && !filters.SeasonId.HasValue
         && !filters.ExcludeOosBeforeMarkdown;
 
+    private sealed record PrecomputedQueryCapabilities(
+        bool HasDecisionScoreCache,
+        bool HasMarkdownDependencyCache,
+        bool HasMlLatestPredictionsView,
+        bool DecisionScoreCacheHasMlSupplierScore);
+
+    private static bool IsMissingPrecomputedDependency(PostgresException ex) =>
+        ex.SqlState is "42P01" or "42703";
+
+    private static async Task<PrecomputedQueryCapabilities> GetPrecomputedQueryCapabilitiesAsync(
+        string analyticsConnectionString,
+        CancellationToken ct)
+    {
+        const string sql = """
+SELECT
+    to_regclass('public.mv_supplier_decision_score_cache') IS NOT NULL AS has_decision_score_cache,
+    to_regclass('public.mv_supplier_markdown_dependency_cache') IS NOT NULL AS has_markdown_dependency_cache,
+    to_regclass('public.vw_supplier_ml_latest_predictions') IS NOT NULL AS has_ml_latest_predictions_view,
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'mv_supplier_decision_score_cache'
+          AND column_name = 'ml_supplier_score'
+    ) AS decision_score_cache_has_ml_supplier_score;
+""";
+
+        await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+
+        if (!await reader.ReadAsync(ct))
+        {
+            return new PrecomputedQueryCapabilities(false, false, false, false);
+        }
+
+        return new PrecomputedQueryCapabilities(
+            GetBoolean(reader, "has_decision_score_cache"),
+            GetBoolean(reader, "has_markdown_dependency_cache"),
+            GetBoolean(reader, "has_ml_latest_predictions_view"),
+            GetBoolean(reader, "decision_score_cache_has_ml_supplier_score"));
+    }
+
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildPrecomputedSupplierRowsSql(
-        SupplierDecisionHubFilters filters)
+        SupplierDecisionHubFilters filters,
+        PrecomputedQueryCapabilities capabilities)
     {
         var parameters = new List<NpgsqlParameter>();
         var where = new StringBuilder("WHERE 1 = 1");
+        var markdownSelect = capabilities.HasMarkdownDependencyCache
+            ? """
+    COALESCE(md.markdown_revenue_share, 0) AS markdown_revenue_share,
+    COALESCE(md.dead_stock_rate, 0) AS dead_stock_rate,
+    COALESCE(md.unsold_stock_value, 0)::numeric(18,2) AS unsold_stock_value,
+"""
+            : """
+    0::numeric AS markdown_revenue_share,
+    0::numeric AS dead_stock_rate,
+    0::numeric(18,2) AS unsold_stock_value,
+""";
+        var markdownJoin = capabilities.HasMarkdownDependencyCache
+            ? """
+LEFT JOIN mv_supplier_markdown_dependency_cache md
+       ON md.supplier_id = ds.supplier_id
+      AND md.category IS NULL
+"""
+            : string.Empty;
+        var mlSupplierScore = capabilities.DecisionScoreCacheHasMlSupplierScore
+            ? "COALESCE(ds.ml_supplier_score, ds.supplier_quality_index)"
+            : "ds.supplier_quality_index";
+        var mlSelect = capabilities.HasMlLatestPredictionsView
+            ? """
+    COALESCE(NULLIF(ml.explanation_text, ''), '') AS ai_explanation,
+    COALESCE(NULLIF(ml.top_feature_1, ''), '') AS top_feature_1,
+    COALESCE(NULLIF(ml.top_feature_2, ''), '') AS top_feature_2,
+    COALESCE(NULLIF(ml.top_feature_3, ''), '') AS top_feature_3,
+"""
+            : """
+    '' AS ai_explanation,
+    '' AS top_feature_1,
+    '' AS top_feature_2,
+    '' AS top_feature_3,
+""";
+        var mlJoin = capabilities.HasMlLatestPredictionsView
+            ? """
+LEFT JOIN vw_supplier_ml_latest_predictions ml
+       ON ml.supplier_id = ds.supplier_id
+"""
+            : string.Empty;
 
         if (filters.SupplierId.HasValue)
         {
@@ -575,29 +661,20 @@ SELECT
     ds.units,
     ds.fullprice_revenue_share,
     ds.fullprice_sellthrough,
-    COALESCE(md.markdown_revenue_share, 0) AS markdown_revenue_share,
+{markdownSelect}
     ds.pre_markdown_margin_pct,
-    COALESCE(md.dead_stock_rate, 0) AS dead_stock_rate,
-    COALESCE(md.unsold_stock_value, 0)::numeric(18,2) AS unsold_stock_value,
     ds.repeat_winner_rate,
     ds.markdown_dependency_score,
     ds.stock_risk_score,
     ds.return_rate,
     ds.category_focus_score,
-    COALESCE(ds.ml_supplier_score, ds.supplier_quality_index) AS ml_supplier_score,
-    COALESCE(NULLIF(ml.explanation_text, ''), '') AS ai_explanation,
-    COALESCE(NULLIF(ml.top_feature_1, ''), '') AS top_feature_1,
-    COALESCE(NULLIF(ml.top_feature_2, ''), '') AS top_feature_2,
-    COALESCE(NULLIF(ml.top_feature_3, ''), '') AS top_feature_3,
+    {mlSupplierScore} AS ml_supplier_score,
+{mlSelect}
     ds.supplier_quality_index,
     ds.recommendation_code,
     ROUND(ds.confidence_score * 100, 2) AS confidence_score
 FROM mv_supplier_decision_score_cache ds
-LEFT JOIN mv_supplier_markdown_dependency_cache md
-       ON md.supplier_id = ds.supplier_id
-      AND md.category IS NULL
-LEFT JOIN vw_supplier_ml_latest_predictions ml
-       ON ml.supplier_id = ds.supplier_id
+{markdownJoin}{mlJoin}
 {where}
 ORDER BY ds.supplier_quality_index DESC, ds.revenue DESC, ds.supplier_name;
 """;
@@ -1043,16 +1120,16 @@ FROM final_suppliers;
     }
 
     private static async Task<SupplierDecisionDetailsResponse> BuildDetailsResponseAsync(
-        IAnalyticsDbContext db,
+        string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
         SupplierScoreRow supplier,
         CancellationToken ct)
     {
-        var categoryBreakdown = await QueryCategoryBreakdownAsync(db, filters, ct);
-        var winningArticles = await QueryArticleDecisionsAsync(db, filters, "winning", ct);
-        var markdownDependentArticles = await QueryArticleDecisionsAsync(db, filters, "markdown", ct);
-        var blockedByOosArticles = await QueryArticleDecisionsAsync(db, filters, "oos", ct);
-        var recommendationHistory = await QueryRecommendationHistoryAsync(db, filters, ct);
+        var categoryBreakdown = await QueryCategoryBreakdownAsync(analyticsConnectionString, filters, ct);
+        var winningArticles = await QueryArticleDecisionsAsync(analyticsConnectionString, filters, "winning", ct);
+        var markdownDependentArticles = await QueryArticleDecisionsAsync(analyticsConnectionString, filters, "markdown", ct);
+        var blockedByOosArticles = await QueryArticleDecisionsAsync(analyticsConnectionString, filters, "oos", ct);
+        var recommendationHistory = await QueryRecommendationHistoryAsync(analyticsConnectionString, filters, ct);
 
         return new SupplierDecisionDetailsResponse(
             new SupplierHeaderDto(
@@ -1087,12 +1164,12 @@ FROM final_suppliers;
     }
 
     private static async Task<List<CategoryBreakdownItem>> QueryCategoryBreakdownAsync(
-        IAnalyticsDbContext db,
+        string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
         CancellationToken ct)
     {
         var (sql, parameters) = BuildCategoryBreakdownSql(filters);
-        var connection = await OpenConnectionAsync(db, ct);
+        await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddRange(parameters.ToArray());
 
@@ -1116,13 +1193,13 @@ FROM final_suppliers;
     }
 
     private static async Task<List<ArticleDecisionItem>> QueryArticleDecisionsAsync(
-        IAnalyticsDbContext db,
+        string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
         string mode,
         CancellationToken ct)
     {
         var (sql, parameters) = BuildArticleDecisionSql(filters, mode);
-        var connection = await OpenConnectionAsync(db, ct);
+        await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddRange(parameters.ToArray());
 
@@ -1151,12 +1228,12 @@ FROM final_suppliers;
     }
 
     private static async Task<List<RecommendationHistoryItem>> QueryRecommendationHistoryAsync(
-        IAnalyticsDbContext db,
+        string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
         CancellationToken ct)
     {
         var (sql, parameters) = BuildRecommendationHistorySql(filters);
-        var connection = await OpenConnectionAsync(db, ct);
+        await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddRange(parameters.ToArray());
 
@@ -1299,14 +1376,10 @@ WITH filtered_signals AS (
         fs.pre_sellthrough_30d,
         fs.stock_before_markdown,
         fs.stockout_before_markdown_flag,
+        fs.had_sales_before_markdown_flag,
         fs.signal_quality_flag,
         fs.signal_quality_reason,
-        COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d,
-        ROUND(
-            COALESCE(vn.post_revenue, 0)::numeric
-            / NULLIF(COALESCE(fs.pre_revenue_30d, 0) + COALESCE(vn.post_revenue, 0), 0),
-            4
-        ) AS markdown_revenue_share
+        COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d
     FROM vw_supplier_fullprice_signals fs
     LEFT JOIN LATERAL (
         SELECT v.post_revenue
@@ -1441,12 +1514,15 @@ LIMIT 6;
             _ => "Signali su mešoviti, pa je najbezbednije zadržati trenutni nivo saradnje."
         };
 
-    private static async Task<NpgsqlConnection> OpenConnectionAsync(IAnalyticsDbContext db, CancellationToken ct)
-    {
-        var connection = (NpgsqlConnection)db.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
-            await connection.OpenAsync(ct);
+    private static string GetAnalyticsConnectionString(IConfiguration configuration) =>
+        configuration.GetConnectionString("AnalyticsConnection")
+        ?? configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("AnalyticsConnection or DefaultConnection must be configured.");
 
+    private static async Task<NpgsqlConnection> OpenConnectionAsync(string analyticsConnectionString, CancellationToken ct)
+    {
+        var connection = new NpgsqlConnection(analyticsConnectionString);
+        await connection.OpenAsync(ct);
         return connection;
     }
 

@@ -92,16 +92,24 @@ try
     builder.Services.Configure<Infrastructure.Configuration.TrendIngestionOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.TrendIngestionOptions.Section));
 
+    var dbCommandTimeoutSeconds =
+        builder.Configuration.GetValue<int?>("Database:CommandTimeoutSeconds")
+        ?? 300;
+
     // DbContext
     builder.Services.AddDbContext<TrendplusDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+        options.UseNpgsql(
+                builder.Configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.CommandTimeout(dbCommandTimeoutSeconds))
                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
     builder.Services.AddScoped<ITrendplusDbContext>(sp =>
         sp.GetRequiredService<TrendplusDbContext>());
 
     builder.Services.AddDbContext<AnalyticsDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("AnalyticsConnection"))
+        options.UseNpgsql(
+                builder.Configuration.GetConnectionString("AnalyticsConnection"),
+                npgsql => npgsql.CommandTimeout(dbCommandTimeoutSeconds))
                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
     builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
@@ -112,7 +120,13 @@ try
         ?? builder.Configuration.GetConnectionString("AnalyticsConnection");
 
     builder.Services.AddDbContext<OpenProductTrainingDbContext>(options =>
-        options.UseNpgsql(openProductTrainingConnection, o => o.UseVector())
+        options.UseNpgsql(
+                openProductTrainingConnection,
+                o =>
+                {
+                    o.UseVector();
+                    o.CommandTimeout(dbCommandTimeoutSeconds);
+                })
                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
     Console.WriteLine("DbContext registered");
@@ -188,8 +202,8 @@ try
         client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pythonModelTimeout));
     });
 
-    // Named HttpClient for trend_engine FastAPI (port 8001)
-    var trendEngineBase = builder.Configuration["TrendIngestion:PythonApiBaseUrl"] ?? "http://localhost:8001";
+    // Named HttpClient for the consolidated Python API (/generate-trends on port 8000 by default)
+    var trendEngineBase = builder.Configuration["TrendIngestion:PythonApiBaseUrl"] ?? "http://localhost:8000";
     var trendEngineTimeout = builder.Configuration.GetValue<int?>("TrendIngestion:PythonCallTimeoutSeconds") ?? 300;
     builder.Services.AddHttpClient("TrendEngine", client =>
     {
@@ -493,9 +507,6 @@ catch (Exception ex)
     }
     
     Log.Fatal(ex, "Application terminated unexpectedly");
-    
-    Console.WriteLine("\nPress any key to exit...");
-    Console.ReadKey();
     
     Environment.Exit(1);
 }

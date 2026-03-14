@@ -47,10 +47,29 @@ export default function SupplierDecisionQuadrant({
   loading = false,
   onSelectSupplier,
 }: SupplierDecisionQuadrantProps) {
-  const data: QuadrantPoint[] = items.map((item) => ({
-    ...item,
-    fill: quadrantColor(item.recommendationCode),
-  }));
+  const data: QuadrantPoint[] = items.flatMap((item) => {
+    const markdownDependency = Number(item.markdownDependency);
+    const fullPriceSellthrough = Number(item.fullPriceSellthrough);
+    const revenue = Number(item.revenue);
+
+    if (
+      !Number.isFinite(markdownDependency) ||
+      !Number.isFinite(fullPriceSellthrough) ||
+      !Number.isFinite(revenue)
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        ...item,
+        markdownDependency,
+        fullPriceSellthrough,
+        revenue,
+        fill: quadrantColor(item.recommendationCode),
+      },
+    ];
+  });
 
   return (
     <div className="supplier-decision-panel">

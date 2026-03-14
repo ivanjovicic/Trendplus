@@ -7,9 +7,33 @@
 -- - Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql
 -- ==========================================================
 
-DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;
-DROP VIEW IF EXISTS vw_sales_post_nivelacija CASCADE;
-DROP VIEW IF EXISTS vw_sales_pre_nivelacija CASCADE;
+-- Safety: CREATE OR REPLACE VIEW cannot remove/reorder columns from an existing
+-- view (Postgres 42P16). If the column structure changed since the last run we
+-- must drop the old views first.  CASCADE removes dependents (vw_nivelacija_did,
+-- supplier hub views); those are recreated by 016 and 018 scripts that run after.
+DO $$
+DECLARE
+    _actual  text[];
+    _expect  text[] := ARRAY[
+        'price_event_id','event_date','article_id','sku','article_name',
+        'category','vendor_id','vendor_name','old_price','new_price',
+        'pre_qty','pre_revenue','coverage_pre30','valid_days_pre30','is_low_signal'
+    ];
+BEGIN
+    SELECT array_agg(c.column_name::text ORDER BY c.ordinal_position)
+      INTO _actual
+      FROM information_schema.columns c
+     WHERE c.table_schema = current_schema()
+       AND c.table_name   = 'vw_sales_pre_nivelacija';
+
+    -- View doesn't exist yet or columns match → nothing to drop.
+    IF _actual IS NOT NULL AND _actual IS DISTINCT FROM _expect THEN
+        RAISE NOTICE '014: vw_sales_pre_nivelacija column structure changed – dropping cascade';
+        DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;
+        DROP VIEW IF EXISTS vw_sales_post_nivelacija CASCADE;
+        DROP VIEW IF EXISTS vw_sales_pre_nivelacija CASCADE;
+    END IF;
+END$$;
 
 CREATE OR REPLACE VIEW vw_sales_pre_nivelacija AS
 WITH nivelacija_events AS (
@@ -27,11 +51,10 @@ WITH nivelacija_events AS (
             d."StaraProdajnaCena"::numeric(18,4) AS old_price,
             d."NovaProdajnaCena"::numeric(18,4) AS new_price,
             ROW_NUMBER() OVER (
-                PARTITION BY
-                    a."Id",
-                    COALESCE(src."Datum", d."Datum"),
-                    d."StaraProdajnaCena",
-                    d."NovaProdajnaCena"
+                PARTITION BY a."Id",
+                             COALESCE(src."Datum", d."Datum"),
+                             d."StaraProdajnaCena",
+                             d."NovaProdajnaCena"
                 ORDER BY d."Id" DESC
             ) AS rn
         FROM "DnevnikPromena" d
@@ -97,6 +120,14 @@ GROUP BY
     e.old_price,
     e.new_price;
 
+-- prodaja_stavke nema datum_prodaje kolonu; koristi join preko prodaja_zaglavlje.
+-- Zato ovde ide standardni join-support index umesto nevalidnog partial indexa.
+CREATE INDEX IF NOT EXISTS "IX_prodaja_stavke_artikal_prodaja"
+ON prodaja_stavke (id_artikal, id_prodaja);
+
+CREATE INDEX IF NOT EXISTS "IX_prodaja_zaglavlje_id_datum"
+ON prodaja_zaglavlje (id, datum_prodaje);
+
 CREATE OR REPLACE VIEW vw_sales_post_nivelacija AS
 WITH nivelacija_events AS (
     SELECT * FROM vw_sales_pre_nivelacija
@@ -143,6 +174,31 @@ GROUP BY
     e.category,
     e.old_price,
     e.new_price;
+
+-- Safety: check vw_vendor_sales_nivelacija columns before replace.
+DO $$
+DECLARE
+    _actual  text[];
+    _expect  text[] := ARRAY[
+        'price_event_id','event_date','vendor_id','vendor_name',
+        'article_id','sku','article_name','category','old_price','new_price',
+        'pre_qty','post_qty','pre_revenue','post_revenue',
+        'coverage_pre30','coverage_post30',
+        'change_qty','change_revenue','change_percent_qty','change_percent_revenue',
+        'is_low_signal'
+    ];
+BEGIN
+    SELECT array_agg(c.column_name::text ORDER BY c.ordinal_position)
+      INTO _actual
+      FROM information_schema.columns c
+     WHERE c.table_schema = current_schema()
+       AND c.table_name   = 'vw_vendor_sales_nivelacija';
+
+    IF _actual IS NOT NULL AND _actual IS DISTINCT FROM _expect THEN
+        RAISE NOTICE '014: vw_vendor_sales_nivelacija column structure changed – dropping cascade';
+        DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;
+    END IF;
+END$$;
 
 CREATE OR REPLACE VIEW vw_vendor_sales_nivelacija AS
 SELECT

@@ -31,6 +31,9 @@ CREATE INDEX IF NOT EXISTS idx_artikli_supplier_category_gender
 CREATE INDEX IF NOT EXISTS idx_artikli_objekat_supplier
     ON "Artikli" ("IDObjekat", "IDDobavljac");
 
+CREATE INDEX IF NOT EXISTS idx_artikli_updated_at
+    ON "Artikli" ("UpdatedAt" DESC);
+
 CREATE INDEX IF NOT EXISTS idx_analytics_daily_summary_updated_at
     ON "AnalyticsDailySummary" ("UpdatedAt" DESC);
 

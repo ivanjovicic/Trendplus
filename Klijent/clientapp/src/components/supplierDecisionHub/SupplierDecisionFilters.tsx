@@ -60,11 +60,13 @@ export default function SupplierDecisionFilters({
           <input
             type="date"
             value={value.fromDate}
+            max={value.toDate || undefined}
             onChange={(event) => updateField("fromDate", event.target.value)}
           />
           <input
             type="date"
             value={value.toDate}
+            min={value.fromDate || undefined}
             onChange={(event) => updateField("toDate", event.target.value)}
           />
         </div>

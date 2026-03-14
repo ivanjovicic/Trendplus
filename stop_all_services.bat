@@ -21,11 +21,11 @@ echo [OK] Terminal windows closed (if they existed).
 echo.
 
 echo [2/5] Stopping repo service processes...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$root = [IO.Path]::GetFullPath($env:TP_ROOT).TrimEnd('\'); $targets = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and ( $_.CommandLine -like ('*' + $root + '*Api.csproj*') -or $_.CommandLine -like ('*' + $root + '*Api.dll*') -or $_.CommandLine -like ('*' + $root + '*Python*api_server.py*') -or ( $_.CommandLine -like ('*' + $root + '*Klijent\\clientapp*') -and ( $_.CommandLine -like '*vite*' -or $_.CommandLine -like '*npm*run*dev*' ) ) -or $_.CommandLine -like '*cmd* /k npm run dev*' ) }; if (-not $targets) { Write-Host '[INFO] No matching repo processes found.'; exit 0 }; foreach ($p in $targets) { try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop; Write-Host ('[OK] Stopped PID ' + $p.ProcessId) } catch { Write-Host ('[WARN] Could not stop PID ' + $p.ProcessId + ': ' + $_.Exception.Message) } }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$root = [IO.Path]::GetFullPath($env:TP_ROOT).TrimEnd('\'); $targets = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and ( $_.CommandLine -like ('*' + $root + '*Api.csproj*') -or $_.CommandLine -like ('*' + $root + '*Api.dll*') -or $_.CommandLine -like ('*' + $root + '*Python*api_server.py*') -or $_.CommandLine -like ('*' + $root + '*trend_engine.api*') -or ( $_.CommandLine -like ('*' + $root + '*Klijent\\clientapp*') -and ( $_.CommandLine -like '*vite*' -or $_.CommandLine -like '*npm*run*dev*' ) ) -or $_.CommandLine -like '*cmd* /k npm run dev*' ) }; if (-not $targets) { Write-Host '[INFO] No matching repo processes found.'; exit 0 }; foreach ($p in $targets) { try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop; Write-Host ('[OK] Stopped PID ' + $p.ProcessId) } catch { Write-Host ('[WARN] Could not stop PID ' + $p.ProcessId + ': ' + $_.Exception.Message) } }"
 echo.
 
-echo [3/5] Releasing common dev ports (8000, 8080, 5173, 5174, 4173)...
-for %%P in (8000 8080 5173 5174 4173) do (
+echo [3/5] Releasing common dev ports (8000, 8001, 8080, 5173, 5174, 4173)...
+for %%P in (8000 8001 8080 5173 5174 4173) do (
     for /f "tokens=5" %%I in ('netstat -ano ^| findstr /R /C:":%%P .*LISTENING"') do (
         taskkill /PID %%I /F >nul 2>&1
     )

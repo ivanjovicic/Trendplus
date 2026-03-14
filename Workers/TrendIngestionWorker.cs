@@ -163,14 +163,41 @@ public sealed class TrendIngestionWorker : BackgroundService
         try
         {
             var response = await client.GetAsync(url, cts.Token);
-            response.EnsureSuccessStatusCode();
+            var payload = await response.Content.ReadAsStringAsync();
 
-            var envelope = await response.Content.ReadFromJsonAsync<TrendEnvelopeDto>(_jsonOpts, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var bodyPreview = string.IsNullOrWhiteSpace(payload)
+                    ? "<empty>"
+                    : payload[..Math.Min(payload.Length, 512)];
+
+                _logger.LogWarning(
+                    "📈 {Worker} — Python API returned HTTP {StatusCode} at {Url}. Body: {Body}",
+                    WorkerName,
+                    (int)response.StatusCode,
+                    _options.PythonApiBaseUrl + url,
+                    bodyPreview);
+                return [];
+            }
+
+            var trimmedPayload = payload.TrimStart();
+            if (trimmedPayload.StartsWith("[", StringComparison.Ordinal))
+            {
+                var items = JsonSerializer.Deserialize<List<TrendItemDto>>(payload, _jsonOpts);
+                return items ?? [];
+            }
+
+            var envelope = JsonSerializer.Deserialize<TrendEnvelopeDto>(payload, _jsonOpts);
             return envelope?.Items ?? [];
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "📈 {Worker} — Python API unreachable at {Url}; skipping run.", WorkerName, _options.PythonApiBaseUrl + url);
+            return [];
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "📈 {Worker} — Python API returned invalid JSON at {Url}; skipping run.", WorkerName, _options.PythonApiBaseUrl + url);
             return [];
         }
         catch (TaskCanceledException)

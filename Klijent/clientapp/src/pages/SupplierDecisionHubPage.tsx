@@ -70,6 +70,7 @@ export default function SupplierDecisionHubPage() {
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [rankingError, setRankingError] = useState<string | null>(null);
   const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] =
@@ -212,6 +213,11 @@ export default function SupplierDecisionHubPage() {
   );
 
   const handleApplyFilters = () => {
+    if (formState.fromDate && formState.toDate && formState.fromDate > formState.toDate) {
+      setDateError("Datum 'od' mora biti pre ili jednak datumu 'do'.");
+      return;
+    }
+    setDateError(null);
     setPage(1);
     setAppliedFilters(normalizeFilters(formState));
   };
@@ -222,6 +228,7 @@ export default function SupplierDecisionHubPage() {
     setPage(1);
     setSortBy("supplierQualityIndex");
     setSortDir("desc");
+    setDateError(null);
     setAppliedFilters(normalizeFilters(defaults));
   };
 
@@ -267,6 +274,7 @@ export default function SupplierDecisionHubPage() {
         />
       </section>
 
+      {dateError ? <div className="supplier-decision-error">{dateError}</div> : null}
       {overviewError ? <div className="supplier-decision-error">{overviewError}</div> : null}
       {rankingError ? <div className="supplier-decision-error">{rankingError}</div> : null}
 

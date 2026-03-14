@@ -44,6 +44,18 @@ CREATE INDEX IF NOT EXISTS "IX_ReturnFacts_ReturnTimestampUtc"
 CREATE INDEX IF NOT EXISTS "IX_ReturnFacts_SupplierId_ReturnTimestampUtc"
     ON "ReturnFacts" ("SupplierId", "ReturnTimestampUtc");
 
+-- Dodavanje validacija
+ALTER TABLE "ReturnFacts"
+ADD CONSTRAINT "CHK_Status" CHECK ("Status" IN ('Pending', 'Approved', 'Rejected'));
+
+ALTER TABLE "ReturnFacts"
+ADD CONSTRAINT "CHK_DataOrigin" CHECK ("DataOrigin" IN ('existing', 'new'));
+
+-- Dodavanje partial index-a
+CREATE INDEX IF NOT EXISTS "IX_ReturnFacts_Timestamp_Supplier"
+ON "ReturnFacts" ("ReturnTimestampUtc", "SupplierId")
+WHERE "ReturnTimestampUtc" >= '2026-01-01';
+
 CREATE OR REPLACE VIEW "Artikli" AS
 WITH latest_products AS (
     SELECT DISTINCT ON ("ProductId")
@@ -130,7 +142,8 @@ SELECT
     imf."DataOrigin" AS "DataOrigin"
 FROM "InventoryMovementFacts" imf;
 
-CREATE OR REPLACE VIEW povracaj_zaglavlje AS
+-- Materialized view za povracaj_zaglavlje
+CREATE MATERIALIZED VIEW povracaj_zaglavlje_mv AS
 SELECT
     rf."ReturnId" AS id,
     COALESCE(MAX(rf."BrojZapisnika"), rf."ReturnId"::text) AS broj_zapisnika,
