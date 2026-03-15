@@ -758,8 +758,8 @@ public static class AllEndpoints
                                     ORDER BY price_event_id DESC
                                 ) AS rn
                             FROM "vw_vendor_sales_nivelacija"
-                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
-                              AND (@category IS NULL OR category ILIKE @categoryPattern)
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern::text)
                         )
                         SELECT
                             event_date,
@@ -776,16 +776,36 @@ public static class AllEndpoints
                         WHERE rn = 1
                         GROUP BY event_date
                         ORDER BY event_date DESC
-                        LIMIT @take;
+                        LIMIT @take::int;
                         """;
 
                 await using var command = new NpgsqlCommand(sql, connection);
-                command.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
-                command.Parameters.AddWithValue("category", (object?)category ?? DBNull.Value);
-                command.Parameters.AddWithValue("categoryPattern", string.IsNullOrWhiteSpace(category)
-                    ? DBNull.Value
-                    : $"%{category.Trim()}%");
-                command.Parameters.AddWithValue("take", take);
+
+                var vendorIdParam = new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
+                {
+                    Value = (object?)vendorId ?? DBNull.Value
+                };
+                command.Parameters.Add(vendorIdParam);
+
+                var categoryParam = new NpgsqlParameter("category", NpgsqlTypes.NpgsqlDbType.Text)
+                {
+                    Value = (object?)category ?? DBNull.Value
+                };
+                command.Parameters.Add(categoryParam);
+
+                var categoryPatternParam = new NpgsqlParameter("categoryPattern", NpgsqlTypes.NpgsqlDbType.Text)
+                {
+                    Value = string.IsNullOrWhiteSpace(category)
+                        ? DBNull.Value
+                        : $"%{category.Trim()}%"
+                };
+                command.Parameters.Add(categoryPatternParam);
+
+                var takeParam = new NpgsqlParameter("take", NpgsqlTypes.NpgsqlDbType.Integer)
+                {
+                    Value = take
+                };
+                command.Parameters.Add(takeParam);
 
                 await using var reader = await command.ExecuteReaderAsync(ct);
                 while (await reader.ReadAsync(ct))
@@ -874,22 +894,46 @@ public static class AllEndpoints
                 const string rawCountSql = """
                     SELECT COUNT(*)::INT
                     FROM "vw_vendor_sales_nivelacija"
-                    WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
-                      AND (@eventDate IS NULL OR event_date::date = @eventDate)
-                      AND (@fromDate IS NULL OR event_date::date >= @fromDate)
-                      AND (@toDate IS NULL OR event_date::date <= @toDate)
-                      AND (@category IS NULL OR category ILIKE @categoryPattern);
+                    WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                      AND (@eventDate IS NULL OR event_date::date = @eventDate::date)
+                      AND (@fromDate IS NULL OR event_date::date >= @fromDate::date)
+                      AND (@toDate IS NULL OR event_date::date <= @toDate::date)
+                      AND (@category IS NULL OR category ILIKE @categoryPattern::text);
                     """;
 
                 var rawRows = 0;
                 await using (var cmd = new NpgsqlCommand(rawCountSql, connection))
                 {
-                    cmd.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("eventDate", (object?)eventDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("fromDate", (object?)fromDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("toDate", (object?)toDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("category", (object?)categoryTrimmed ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("categoryPattern", (object?)categoryPattern ?? DBNull.Value);
+                    cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
+                    {
+                        Value = (object?)vendorId ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("eventDate", NpgsqlTypes.NpgsqlDbType.Date)
+                    {
+                        Value = (object?)eventDateOnly ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("fromDate", NpgsqlTypes.NpgsqlDbType.Date)
+                    {
+                        Value = (object?)fromDateOnly ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("toDate", NpgsqlTypes.NpgsqlDbType.Date)
+                    {
+                        Value = (object?)toDateOnly ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("category", NpgsqlTypes.NpgsqlDbType.Text)
+                    {
+                        Value = (object?)categoryTrimmed ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("categoryPattern", NpgsqlTypes.NpgsqlDbType.Text)
+                    {
+                        Value = (object?)categoryPattern ?? DBNull.Value
+                    });
+
                     rawRows = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
                 }
 
@@ -906,10 +950,26 @@ public static class AllEndpoints
 
                 await using (var cmd = new NpgsqlCommand(categoriesSql, connection))
                 {
-                    cmd.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("eventDate", (object?)eventDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("fromDate", (object?)fromDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("toDate", (object?)toDateOnly ?? DBNull.Value);
+                    cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
+                    {
+                        Value = (object?)vendorId ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("eventDate", NpgsqlTypes.NpgsqlDbType.Date)
+                    {
+                        Value = (object?)eventDateOnly ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("fromDate", NpgsqlTypes.NpgsqlDbType.Date)
+                    {
+                        Value = (object?)fromDateOnly ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("toDate", NpgsqlTypes.NpgsqlDbType.Date)
+                    {
+                        Value = (object?)toDateOnly ?? DBNull.Value
+                    });
+
                     await using var reader = await cmd.ExecuteReaderAsync(ct);
                     while (await reader.ReadAsync(ct))
                     {
@@ -950,11 +1010,11 @@ public static class AllEndpoints
                                     ORDER BY price_event_id DESC
                                 ) AS rn
                             FROM "vw_vendor_sales_nivelacija"
-                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
-                              AND (@eventDate IS NULL OR event_date::date = @eventDate)
-                              AND (@fromDate IS NULL OR event_date::date >= @fromDate)
-                              AND (@toDate IS NULL OR event_date::date <= @toDate)
-                              AND (@category IS NULL OR category ILIKE @categoryPattern)
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                              AND (@eventDate IS NULL OR event_date::date = @eventDate::date)
+                              AND (@fromDate IS NULL OR event_date::date >= @fromDate::date)
+                              AND (@toDate IS NULL OR event_date::date <= @toDate::date)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern::text)
                         )
                         SELECT
                             price_event_id,
@@ -1006,11 +1066,11 @@ public static class AllEndpoints
                                     ORDER BY price_event_id DESC
                                 ) AS rn
                             FROM "vw_vendor_sales_nivelacija"
-                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
-                              AND (@eventDate IS NULL OR event_date::date = @eventDate)
-                              AND (@fromDate IS NULL OR event_date::date >= @fromDate)
-                              AND (@toDate IS NULL OR event_date::date <= @toDate)
-                              AND (@category IS NULL OR category ILIKE @categoryPattern)
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                              AND (@eventDate IS NULL OR event_date::date = @eventDate::date)
+                              AND (@fromDate IS NULL OR event_date::date >= @fromDate::date)
+                              AND (@toDate IS NULL OR event_date::date <= @toDate::date)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern::text)
                         )
                         SELECT
                             price_event_id,
@@ -1042,12 +1102,35 @@ public static class AllEndpoints
 
                 await using (var cmd = new NpgsqlCommand(rowsSql, connection))
                 {
-                    cmd.Parameters.AddWithValue("vendorId", (object?)vendorId ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("eventDate", (object?)eventDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("fromDate", (object?)fromDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("toDate", (object?)toDateOnly ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("category", (object?)categoryTrimmed ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("categoryPattern", (object?)categoryPattern ?? DBNull.Value);
+                    cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
+                    {
+                        Value = (object?)vendorId ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("eventDate", NpgsqlTypes.NpgsqlDbType.Date)
+                    {
+                        Value = (object?)eventDateOnly ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("fromDate", NpgsqlTypes.NpgsqlDbType.Date)
+                    {
+                        Value = (object?)fromDateOnly ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("toDate", NpgsqlTypes.NpgsqlDbType.Date)
+                    {
+                        Value = (object?)toDateOnly ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("category", NpgsqlTypes.NpgsqlDbType.Text)
+                    {
+                        Value = (object?)categoryTrimmed ?? DBNull.Value
+                    });
+
+                    cmd.Parameters.Add(new NpgsqlParameter("categoryPattern", NpgsqlTypes.NpgsqlDbType.Text)
+                    {
+                        Value = (object?)categoryPattern ?? DBNull.Value
+                    });
 
                     await using var reader = await cmd.ExecuteReaderAsync(ct);
                     while (await reader.ReadAsync(ct))

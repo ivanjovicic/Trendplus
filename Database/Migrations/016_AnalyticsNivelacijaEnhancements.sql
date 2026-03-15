@@ -10,7 +10,8 @@
 -- ==========================================================
 
 -- 1) Control group: articles without any recorded price event in price_history.
-CREATE OR REPLACE VIEW vw_nivelacija_kontrolna_grupa AS
+DROP VIEW IF EXISTS vw_nivelacija_kontrolna_grupa CASCADE;
+CREATE VIEW vw_nivelacija_kontrolna_grupa AS
 SELECT
     a."Id" AS article_id,
     a."Naziv" AS article_name,
@@ -27,7 +28,8 @@ WHERE NOT EXISTS (
 );
 
 -- 2) DiD: test (price-change articles) vs best-matching control (same vendor + category).
-CREATE OR REPLACE VIEW vw_nivelacija_did AS
+DROP VIEW IF EXISTS vw_nivelacija_did CASCADE;
+CREATE VIEW vw_nivelacija_did AS
 WITH test AS (
     SELECT
         t.price_event_id,

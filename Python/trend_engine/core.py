@@ -403,13 +403,27 @@ def apply_social_boost(
     Adjusted social boost formula to ensure smoother application and alignment with constraints.
     """
     for g in groups:
-        brand_key = g.brand.lower().strip()
+        # Support both TrendGroupResult objects and dicts (fallback for older code paths)
+        if isinstance(g, dict):
+            brand = g.get("brand")
+        else:
+            brand = getattr(g, "brand", None)
+
+        if not brand:
+            continue
+
+        brand_key = str(brand).lower().strip()
         s = social_scores_by_brand.get(brand_key)
         if s is None:
             continue
+
         social_norm = max(0.0, min(1.0, s / 100.0))
         boost_factor = 1.0 + social_weight * social_norm
-        g.final_score = round(g.final_score * boost_factor, 6)
+
+        if isinstance(g, dict):
+            g["final_score"] = round(float(g.get("final_score", 0.0)) * boost_factor, 6)
+        else:
+            g.final_score = round(g.final_score * boost_factor, 6)
 
     groups.sort(key=lambda r: r.final_score, reverse=True)
     return groups
