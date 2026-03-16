@@ -198,6 +198,14 @@ PublishScripts/
 # NuGet Symbol Packages
 *.snupkg
 # The packages folder can be ignored because of Package Restore
+
+# Custom ignores for local artifacts and large binaries
+Python/chrome_profile/
+.tmp_build_api/
+.tmp/
+*.accdb
+.vscode/
+.venv/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/

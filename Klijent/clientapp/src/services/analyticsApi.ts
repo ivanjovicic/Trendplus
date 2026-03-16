@@ -1,4 +1,5 @@
 import type {
+  AnalyticsDashboardBootstrap,
   CategoryData,
   CategoryTrendPoint,
   DailySale,
@@ -12,6 +13,7 @@ import type {
   ReorderSuggestion,
   SalesSummary,
   StoreOption,
+  SupplierFilterOption,
   SupplierData,
   TopProductsAdvancedResult,
   TopProductsResult,
@@ -20,6 +22,9 @@ import type {
 } from "../types/analytics";
 
 const API = import.meta.env.VITE_API_BASE_URL;
+const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
+const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
 
 export function makeUrl(path: string, params?: URLSearchParams) {
   return params ? `${API}${path}?${params.toString()}` : `${API}${path}`;
@@ -39,12 +44,77 @@ function appendFilterParams(
 }
 
 async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage?: string): Promise<T> {
-  const res = await fetch(makeUrl(path, params));
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(errorMessage ?? text);
+  const url = makeUrl(path, params);
+  const cacheTtlMs = resolveClientCacheTtl(path);
+
+  if (cacheTtlMs > 0) {
+    const cached = responseCache.get(url);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value as T;
+    }
+
+    const existingRequest = inFlightRequests.get(url);
+    if (existingRequest) {
+      return existingRequest as Promise<T>;
+    }
   }
-  return res.json() as Promise<T>;
+
+  const request = (async () => {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(await parseApiError(res, errorMessage));
+    }
+
+    const data = (await res.json()) as T;
+    if (cacheTtlMs > 0) {
+      responseCache.set(url, { expiresAt: Date.now() + cacheTtlMs, value: data });
+    }
+
+    return data;
+  })();
+
+  if (cacheTtlMs > 0) {
+    inFlightRequests.set(url, request as Promise<unknown>);
+  }
+
+  try {
+    return await request;
+  } finally {
+    if (cacheTtlMs > 0) {
+      inFlightRequests.delete(url);
+    }
+  }
+}
+
+function resolveClientCacheTtl(path: string): number {
+  if (path.includes("/api/analytics/cached/filters/stores")) return 5 * 60_000;
+  if (path.includes("/api/analytics/cached/filters/suppliers")) return 60_000;
+  if (path.includes("/api/analytics/cached/dashboard/bootstrap")) return 30_000;
+  if (path.includes("/api/analytics/cached/")) return DEFAULT_CLIENT_CACHE_TTL_MS;
+  return 0;
+}
+
+async function parseApiError(res: Response, fallbackMessage?: string): Promise<string> {
+  const contentType = res.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const payload = (await res.json().catch(() => null)) as
+      | { detail?: string; title?: string; message?: string }
+      | null;
+    const detail = payload?.detail ?? payload?.message ?? payload?.title;
+    if (detail && fallbackMessage) {
+      return detail.startsWith(fallbackMessage) ? detail : `${fallbackMessage}: ${detail}`;
+    }
+    if (detail) return detail;
+  }
+
+  const text = (await res.text()).trim();
+  if (text && fallbackMessage) {
+    return text.startsWith(fallbackMessage) ? text : `${fallbackMessage}: ${text}`;
+  }
+
+  if (text) return text;
+  return fallbackMessage ?? `HTTP ${res.status}`;
 }
 
 export async function checkAnalyticsHealth(): Promise<{
@@ -322,11 +392,46 @@ export async function getDashboardAdvanced(
   );
 }
 
+export async function getDashboardBootstrap(
+  fromDate?: string,
+  toDate?: string,
+  _useCached = true,
+  storeId?: number | null,
+  supplierId?: number | null
+): Promise<AnalyticsDashboardBootstrap> {
+  const params = new URLSearchParams();
+  appendFilterParams(params, fromDate, toDate, storeId, supplierId);
+
+  return fetchJson(
+    "/api/analytics/cached/dashboard/bootstrap",
+    params,
+    "Greska pri ucitavanju analytics dashboard bootstrapa"
+  );
+}
+
 export async function getStores(useCached = true): Promise<StoreOption[]> {
   return fetchJson(
     useCached ? "/api/analytics/cached/filters/stores" : "/api/analytics/filters/stores",
     undefined,
     "Greska pri ucitavanju prodavnica"
+  );
+}
+
+export async function getSupplierFilters(
+  fromDate?: string,
+  toDate?: string,
+  _useCached = true,
+  storeId?: number | null
+): Promise<SupplierFilterOption[]> {
+  const params = new URLSearchParams();
+  if (fromDate) params.append("fromDate", fromDate);
+  if (toDate) params.append("toDate", toDate);
+  if (storeId != null) params.append("storeId", String(storeId));
+
+  return fetchJson(
+    "/api/analytics/cached/filters/suppliers",
+    params,
+    "Greska pri ucitavanju filtera dobavljaca"
   );
 }
 

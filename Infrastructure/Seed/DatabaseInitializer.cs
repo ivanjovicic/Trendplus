@@ -322,6 +322,13 @@ public static class DatabaseInitializer
             await ExecuteSqlFileAsync(connectionString, sqlFile, logger);
         }
 
+        await ExecuteSqlFileAsync(
+            connectionString,
+            "Database/Migrations/020_AddRuntimeScoringSearchIndexes.sql",
+            logger,
+            commandTimeoutSeconds: 0,
+            useTransaction: false);
+
         // Fire-and-forget: startup now builds only the core supplier decision views from 018.
         // The heavy supplier materialized caches are intentionally deferred so API startup can
         // complete promptly and endpoints can fall back to live views on first run.
@@ -1137,6 +1144,13 @@ public static class DatabaseInitializer
         await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/004_open_training_2_0.sql", logger);
 
         await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/005_open_training_2_0_views.sql", logger);
+
+        await ExecuteSqlFileAsync(
+            connectionString,
+            "Database/Analytics/016_AddScraperScoringSearchIndexes.sql",
+            logger,
+            commandTimeoutSeconds: 0,
+            useTransaction: false);
 
         await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/006_runtime_priors_materialized.sql", logger);
 

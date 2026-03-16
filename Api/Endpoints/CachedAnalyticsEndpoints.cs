@@ -878,6 +878,213 @@ public static class CachedAnalyticsEndpoints
             return Results.Ok(result);
         });
 
+        group.MapGet("/dashboard/bootstrap", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            IMediator mediator,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
+            CancellationToken ct = default) =>
+        {
+            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+
+            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            var cacheKey = AnalyticsCacheKeys.DashboardBootstrap(fromDate, toDate, storeId, supplierId);
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+                    var response = new AnalyticsDashboardBootstrapDto();
+
+                    response.Summary = await TrySectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildSalesSummarySnapshotAsync(db, mediator, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Sazetak prodaje nije dostupan.");
+
+                    response.Inventory = await TrySectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.Inventory(2),
+                            async () => await BuildInventoryStatusSnapshotAsync(db, mediator, 2, ct),
+                            CacheExpiration.Short,
+                            ct),
+                        response.Errors,
+                        "Status zaliha nije dostupan.");
+
+                    response.DailySales = await TryListSectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildDailySalesSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Dnevni trend prodaje nije dostupan.");
+
+                    response.CategoryData = await TryListSectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.CategoryData(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildCategoryDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Prodaja po kategorijama nije dostupna.");
+
+                    response.GenderData = await TryListSectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.GenderData(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildGenderDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Prodaja po polu nije dostupna.");
+
+                    response.SupplierData = await TryListSectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.SupplierData(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildSupplierDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Prodaja po dobavljacima nije dostupna.");
+
+                    response.SupplierOptions = await TryListSectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.SupplierFilters(fromDate, toDate, storeId),
+                            async () => await BuildSupplierFilterOptionsAsync(db, fromDate, toDate, storeId, ct),
+                            CacheExpiration.Long,
+                            ct),
+                        response.Errors,
+                        "Lista dobavljaca za filter nije dostupna.");
+
+                    response.WeekdayData = await TryListSectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.ByWeekday(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildWeekdayDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Prodaja po danima nije dostupna.");
+
+                    response.HourData = await TryListSectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.ByHour(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildHourDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Prodaja po satima nije dostupna.");
+
+                    response.PaymentData = await TryListSectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.ByPayment(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildPaymentDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Prodaja po nacinu placanja nije dostupna.");
+
+                    response.QuickInsights = await TrySectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.QuickInsights(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildQuickInsightsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Brzi uvidi nisu dostupni.");
+
+                    response.TransactionStats = await TrySectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.TransactionStats(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildTransactionStatsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Medium,
+                            ct),
+                        response.Errors,
+                        "Statistika transakcija nije dostupna.");
+
+                    response.Advanced = await TrySectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.DashboardAdvanced(fromDate, toDate, storeId, supplierId),
+                            async () => await BuildAdvancedDashboardSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Short,
+                            ct),
+                        response.Errors,
+                        "Napredne metrike nisu dostupne.");
+
+                    response.TopAdvanced = await TrySectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.TopProductsAdvanced(10, fromDate, toDate, storeId, supplierId),
+                            async () => await GetTopProductsAdvancedSnapshotAsync(db, 10, fromDate, toDate, storeId, supplierId, ct),
+                            CacheExpiration.Short,
+                            ct),
+                        response.Errors,
+                        "Napredna tabela top proizvoda nije dostupna.");
+
+                    response.ValidationCompleteness = await TrySectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.ValidationCompleteness,
+                            async () => await BuildCompletenessValidationAsync(db, ct),
+                            CacheExpiration.Short,
+                            ct),
+                        response.Errors,
+                        "Completeness validacija nije dostupna.");
+
+                    response.ValidationFreshness = await TrySectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.ValidationFreshness,
+                            async () => await BuildFreshnessValidationAsync(db, ct),
+                            CacheExpiration.Short,
+                            ct),
+                        response.Errors,
+                        "Freshness validacija nije dostupna.");
+
+                    response.ValidationLostSales = await TrySectionAsync(
+                        async () => await cache.GetOrSetAsync(
+                            AnalyticsCacheKeys.ValidationLostSales,
+                            async () => await BuildLostSalesValidationAsync(db, ct),
+                            CacheExpiration.Short,
+                            ct),
+                        response.Errors,
+                        "Lost-sales validacija nije dostupna.");
+
+                    return response;
+                },
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        group.MapGet("/filters/suppliers", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? storeId = null,
+            CancellationToken ct = default) =>
+        {
+            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+
+            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            var result = await cache.GetOrSetAsync(
+                AnalyticsCacheKeys.SupplierFilters(fromDate, toDate, storeId),
+                async () => await BuildSupplierFilterOptionsAsync(db, fromDate, toDate, storeId, ct),
+                CacheExpiration.Long,
+                ct);
+
+            return Results.Ok(result);
+        });
+
         group.MapGet("/filters/stores", async (
             IAnalyticsCacheService cache,
             IAnalyticsDbContext analyticsDb,
@@ -2046,6 +2253,567 @@ public static class CachedAnalyticsEndpoints
         return snapshot;
     }
 
+    private static async Task<T?> TrySectionAsync<T>(
+        Func<Task<T>> factory,
+        List<string> errors,
+        string fallbackMessage) where T : class
+    {
+        try
+        {
+            return await factory();
+        }
+        catch (Exception ex)
+        {
+            errors.Add(GetErrorMessage(ex, fallbackMessage));
+            return null;
+        }
+    }
+
+    private static async Task<List<T>> TryListSectionAsync<T>(
+        Func<Task<List<T>>> factory,
+        List<string> errors,
+        string fallbackMessage)
+    {
+        try
+        {
+            return await factory();
+        }
+        catch (Exception ex)
+        {
+            errors.Add(GetErrorMessage(ex, fallbackMessage));
+            return [];
+        }
+    }
+
+    private static async Task<SalesSummaryDto> BuildSalesSummarySnapshotAsync(
+        ITrendplusDbContext trendDb,
+        IMediator mediator,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        if (!storeId.HasValue && !supplierId.HasValue)
+        {
+            var aggregated = await TryGetSalesSummaryFromAggregatesAsync(trendDb, fromDate, toDate, ct);
+            if (aggregated is not null)
+            {
+                return aggregated;
+            }
+        }
+
+        var baseQuery = from p in trendDb.ProdajaZaglavlja.AsNoTracking()
+                        join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                        join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                        group ps by p.Id into g
+                        select new
+                        {
+                            TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
+                            TotalUnits = g.Sum(x => x.Kolicina),
+                            TransactionCount = g.Key
+                        };
+
+        var aggregatedResult = await baseQuery.ToListAsync(ct);
+        var totalRevenue = aggregatedResult.Sum(x => x.TotalRevenue);
+        var totalUnits = aggregatedResult.Sum(x => x.TotalUnits);
+        var totalTransactions = aggregatedResult.Count;
+        var avgBasket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0m;
+        var avgItem = totalUnits > 0 ? totalRevenue / totalUnits : 0m;
+
+        return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, avgBasket, avgItem);
+    }
+
+    private static async Task<InventoryStatusDto> BuildInventoryStatusSnapshotAsync(
+        ITrendplusDbContext trendDb,
+        IMediator mediator,
+        int lowStockThreshold,
+        CancellationToken ct)
+    {
+        try
+        {
+            return await mediator.Send(new GetInventoryStatusQuery(lowStockThreshold), ct);
+        }
+        catch (Exception ex) when (IsMissingRelation(ex))
+        {
+            var inventoryData = await trendDb.Artikli.AsNoTracking()
+                .GroupBy(a => 1)
+                .Select(g => new
+                {
+                    TotalSku = g.Count(),
+                    TotalOnHand = g.Sum(x => (int?)x.Kolicina) ?? 0,
+                    OutOfStock = g.Count(x => (x.Kolicina ?? 0) == 0),
+                    LowStock = g.Count(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= lowStockThreshold)
+                })
+                .FirstOrDefaultAsync(ct);
+
+            return new InventoryStatusDto(
+                inventoryData?.TotalSku ?? 0,
+                inventoryData?.TotalOnHand ?? 0,
+                inventoryData?.LowStock ?? 0,
+                inventoryData?.OutOfStock ?? 0
+            );
+        }
+    }
+
+    private static async Task<List<DailySaleDto>> BuildDailySalesSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        if (!storeId.HasValue && !supplierId.HasValue)
+        {
+            var aggregatedDaily = await TryGetDailySalesFromAggregatesAsync(db, fromDate, toDate, ct);
+            if (aggregatedDaily is not null && aggregatedDaily.Count > 0)
+            {
+                return aggregatedDaily;
+            }
+        }
+
+        var fallbackRaw = await (
+            from p in db.ProdajaZaglavlja.AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+            group ps by p.DatumProdaje.Date into g
+            orderby g.Key
+            select new
+            {
+                Date = g.Key,
+                TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
+                TransactionCount = g.Select(x => x.IdProdaja).Distinct().Count(),
+                TotalUnits = g.Sum(x => x.Kolicina)
+            }).ToListAsync(ct);
+
+        return fallbackRaw.Select(x => new DailySaleDto
+        {
+            Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            TotalRevenue = x.TotalRevenue,
+            TransactionCount = x.TransactionCount,
+            TotalUnits = x.TotalUnits
+        }).ToList();
+    }
+
+    private static async Task<List<CategoryDataDto>> BuildCategoryDataSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        if (!storeId.HasValue && !supplierId.HasValue)
+        {
+            var aggregatedCategory = await TryGetCategoryDataFromAggregatesAsync(db, fromDate, toDate, ct);
+            if (aggregatedCategory is not null && aggregatedCategory.Count > 0)
+            {
+                return aggregatedCategory;
+            }
+        }
+
+        var query = from ps in db.ProdajaStavke.AsNoTracking()
+                    join p in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
+                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                          (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                          (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                          (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                    group ps by new { a.Kategorija, a.Pol } into g
+                    select new CategoryDataDto
+                    {
+                        Kategorija = g.Key.Kategorija ?? "Ostalo",
+                        Pol = g.Key.Pol ?? "Neodređeno",
+                        TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
+                        TotalUnits = g.Sum(x => x.Kolicina),
+                        TransactionCount = g.Select(x => x.IdProdaja).Distinct().Count()
+                    };
+
+        return await query.OrderByDescending(x => x.TotalRevenue).ToListAsync(ct);
+    }
+
+    private static async Task<List<GenderDataDto>> BuildGenderDataSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        if (!storeId.HasValue && !supplierId.HasValue)
+        {
+            var aggregatedGender = await TryGetGenderDataFromAggregatesAsync(db, fromDate, toDate, ct);
+            if (aggregatedGender is not null && aggregatedGender.Count > 0)
+            {
+                return aggregatedGender;
+            }
+        }
+
+        var query = from ps in db.ProdajaStavke.AsNoTracking()
+                    join p in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
+                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                          (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                          (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                          (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                    group ps by a.Pol into g
+                    select new GenderDataDto
+                    {
+                        Pol = g.Key ?? "Neodređeno",
+                        TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
+                        TotalUnits = g.Sum(x => x.Kolicina)
+                    };
+
+        return await query.OrderByDescending(x => x.TotalRevenue).ToListAsync(ct);
+    }
+
+    private static async Task<List<SupplierDataDto>> BuildSupplierDataSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        if (!storeId.HasValue && !supplierId.HasValue)
+        {
+            var aggregatedSupplier = await TryGetSupplierDataFromAggregatesAsync(db, fromDate, toDate, ct);
+            if (aggregatedSupplier is not null && aggregatedSupplier.Count > 0)
+            {
+                return aggregatedSupplier;
+            }
+        }
+
+        var query = from ps in db.ProdajaStavke.AsNoTracking()
+                    join p in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
+                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    join d in db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dobavljacJoin
+                    from d in dobavljacJoin.DefaultIfEmpty()
+                    where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                          (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                          (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                          (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                    group ps by new { DobavljacId = d != null ? d.Id : (int?)null, DobavljacNaziv = d != null ? d.Naziv : "Nepoznato" } into g
+                    select new SupplierDataDto
+                    {
+                        DobavljacId = g.Key.DobavljacId,
+                        DobavljacNaziv = g.Key.DobavljacNaziv ?? "Nepoznato",
+                        TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
+                        TotalUnits = g.Sum(x => x.Kolicina),
+                        TransactionCount = g.Select(x => x.IdProdaja).Distinct().Count()
+                    };
+
+        return await query.OrderByDescending(x => x.TotalRevenue).ToListAsync(ct);
+    }
+
+    private static async Task<List<SupplierFilterOptionDto>> BuildSupplierFilterOptionsAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        CancellationToken ct)
+    {
+        if (!storeId.HasValue)
+        {
+            var aggregatedSupplier = await TryGetSupplierDataFromAggregatesAsync(db, fromDate, toDate, ct);
+            if (aggregatedSupplier is not null && aggregatedSupplier.Count > 0)
+            {
+                return aggregatedSupplier
+                    .Where(x => x.DobavljacId.HasValue)
+                    .Select(x => new SupplierFilterOptionDto
+                    {
+                        SupplierId = x.DobavljacId!.Value,
+                        SupplierName = x.DobavljacNaziv
+                    })
+                    .DistinctBy(x => x.SupplierId)
+                    .OrderBy(x => x.SupplierName)
+                    .ToList();
+            }
+        }
+
+        return await (
+            from p in db.ProdajaZaglavlja.AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            join d in db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dobavljacJoin
+            from d in dobavljacJoin.DefaultIfEmpty()
+            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                  d != null
+            group d by new { d.Id, d.Naziv } into g
+            orderby g.Key.Naziv
+            select new SupplierFilterOptionDto
+            {
+                SupplierId = g.Key.Id,
+                SupplierName = g.Key.Naziv
+            }).ToListAsync(ct);
+    }
+
+    private static async Task<QuickInsightsDto> BuildQuickInsightsSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        var salesLines = from p in db.ProdajaZaglavlja.AsNoTracking()
+                         join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                         where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                               (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                               (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                               (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                         select new
+                         {
+                             p.Id,
+                             p.DatumProdaje,
+                             ps.IdArtikal,
+                             ps.Kolicina,
+                             ps.Cena,
+                             ProductName = a.Naziv
+                         };
+
+        var bestDay = await salesLines
+            .GroupBy(x => x.DatumProdaje.DayOfWeek)
+            .Select(g => new
+            {
+                DayOfWeek = (int)g.Key,
+                TotalRevenue = g.Sum(x => x.Kolicina * x.Cena)
+            })
+            .OrderByDescending(x => x.TotalRevenue)
+            .ThenBy(x => x.DayOfWeek)
+            .FirstOrDefaultAsync(ct);
+
+        var topProduct = await salesLines
+            .GroupBy(x => new { x.IdArtikal, x.ProductName })
+            .Select(g => new
+            {
+                ProductName = g.Key.ProductName,
+                TotalRevenue = g.Sum(x => x.Kolicina * x.Cena)
+            })
+            .OrderByDescending(x => x.TotalRevenue)
+            .ThenBy(x => x.ProductName)
+            .FirstOrDefaultAsync(ct);
+
+        var lowStockQuery = db.Artikli.AsNoTracking()
+            .Where(a => a.Kolicina <= a.MinimalnaKolicina || a.Kolicina == 0);
+
+        if (storeId.HasValue)
+            lowStockQuery = lowStockQuery.Where(a => a.IDObjekat == storeId.Value);
+
+        if (supplierId.HasValue)
+            lowStockQuery = lowStockQuery.Where(a => a.IDDobavljac == supplierId.Value);
+
+        var lowStockCount = await lowStockQuery.CountAsync(ct);
+
+        return new QuickInsightsDto
+        {
+            BestDay = bestDay is null ? null : SerbianDayNames[bestDay.DayOfWeek],
+            BestDayRevenue = bestDay?.TotalRevenue ?? 0,
+            TopProduct = topProduct?.ProductName,
+            LowStockAlert = lowStockCount
+        };
+    }
+
+    private static async Task<TransactionStatsDto> BuildTransactionStatsSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        var perTransaction = await (
+            from p in db.ProdajaZaglavlja.AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+            group ps by p.Id into g
+            select new
+            {
+                ItemCount = g.Count(),
+                TotalValue = g.Sum(x => x.Kolicina * x.Cena)
+            }).ToListAsync(ct);
+
+        if (perTransaction.Count == 0)
+        {
+            return new TransactionStatsDto();
+        }
+
+        return new TransactionStatsDto
+        {
+            AvgItemsPerTransaction = Math.Round(perTransaction.Average(x => (decimal)x.ItemCount), 2),
+            AvgTransactionValue = Math.Round(perTransaction.Average(x => x.TotalValue), 2),
+            TotalTransactions = perTransaction.Count
+        };
+    }
+
+    private static async Task<List<PaymentDataDto>> BuildPaymentDataSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        return await (
+            from p in db.ProdajaZaglavlja.AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+            group new { p, ps } by p.NacinPlacanja into g
+            orderby g.Sum(x => x.ps.Kolicina * x.ps.Cena) descending
+            select new PaymentDataDto
+            {
+                NacinPlacanja = g.Key ?? "Nepoznato",
+                TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                TransactionCount = g.Select(x => x.p.Id).Distinct().Count()
+            }).ToListAsync(ct);
+    }
+
+    private static async Task<List<WeekdayDataDto>> BuildWeekdayDataSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        return await (
+            from p in db.ProdajaZaglavlja.AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+            group new { p, ps } by p.DatumProdaje.DayOfWeek into g
+            orderby g.Key
+            select new WeekdayDataDto
+            {
+                DayOfWeek = (int)g.Key,
+                DayName = SerbianDayNames[(int)g.Key],
+                TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                TransactionCount = g.Select(x => x.p.Id).Distinct().Count()
+            }).ToListAsync(ct);
+    }
+
+    private static async Task<List<HourDataDto>> BuildHourDataSnapshotAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        CancellationToken ct)
+    {
+        return await (
+            from p in db.ProdajaZaglavlja.AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+            group new { p, ps } by p.DatumProdaje.Hour into g
+            orderby g.Key
+            select new HourDataDto
+            {
+                Hour = g.Key,
+                TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                TransactionCount = g.Select(x => x.p.Id).Distinct().Count()
+            }).ToListAsync(ct);
+    }
+
+    private static async Task<DashboardValidationEndpointDto> BuildCompletenessValidationAsync(
+        ITrendplusDbContext db,
+        CancellationToken ct)
+    {
+        var (score, totalSku, missingSku, _, _) = await GetCompletenessAndFreshnessAsync(db, ct);
+        var status = score >= 0.98m ? "good" : score >= 0.90m ? "warning" : "critical";
+        var message = status switch
+        {
+            "good" => "Completeness je stabilan.",
+            "warning" => "Nedostaju bitna polja za deo artikala.",
+            _ => "Nizak completeness: validacija podataka je prioritet."
+        };
+
+        return new DashboardValidationEndpointDto
+        {
+            Status = status,
+            Message = message,
+            Score = score,
+            TotalSku = totalSku,
+            AffectedSku = missingSku
+        };
+    }
+
+    private static async Task<DashboardValidationEndpointDto> BuildFreshnessValidationAsync(
+        ITrendplusDbContext db,
+        CancellationToken ct)
+    {
+        var (_, _, _, lastImport, freshnessHours) = await GetCompletenessAndFreshnessAsync(db, ct);
+        var status = freshnessHours <= 6m ? "good" : freshnessHours <= 24m ? "warning" : "critical";
+        var message = status switch
+        {
+            "good" => "Podaci su svezi.",
+            "warning" => "Osvezavanje kasni, proverite import pipeline.",
+            _ => "Podaci su zastareli: osvezite import i agregate."
+        };
+
+        return new DashboardValidationEndpointDto
+        {
+            Status = status,
+            Message = message,
+            LastImport = lastImport,
+            FreshnessHours = freshnessHours
+        };
+    }
+
+    private static async Task<DashboardValidationEndpointDto> BuildLostSalesValidationAsync(
+        ITrendplusDbContext db,
+        CancellationToken ct)
+    {
+        var (oosSkuCount, lostSalesEstimate) = await GetLostSalesSnapshotAsync(db, ct);
+        var status = lostSalesEstimate <= 0m ? "good" : lostSalesEstimate < 50000m ? "warning" : "critical";
+        var message = status switch
+        {
+            "good" => "Nema znacajnog gubitka prodaje zbog OOS.",
+            "warning" => "Postoji procenjen gubitak prodaje zbog OOS.",
+            _ => "Kritican OOS gubitak: replenishment je prioritet."
+        };
+
+        return new DashboardValidationEndpointDto
+        {
+            Status = status,
+            Message = message,
+            AffectedSku = oosSkuCount,
+            LostSalesEstimate = lostSalesEstimate
+        };
+    }
+
+    private static string GetErrorMessage(Exception ex, string fallbackMessage)
+    {
+        var message = ex.Message?.Trim();
+        return string.IsNullOrWhiteSpace(message) ? fallbackMessage : $"{fallbackMessage} ({message})";
+    }
+
     private static bool IsMissingRelation(Exception ex) =>
         ex is PostgresException pg && pg.SqlState == "42P01"
         || ex.InnerException is PostgresException innerPg && innerPg.SqlState == "42P01";
@@ -2130,6 +2898,12 @@ public class StoreFilterOptionDto
     public string? Region { get; set; }
 }
 
+public class SupplierFilterOptionDto
+{
+    public int SupplierId { get; set; }
+    public string SupplierName { get; set; } = "";
+}
+
 public class TopProductAdvancedItemDto
 {
     public int ProductId { get; set; }
@@ -2205,4 +2979,26 @@ public class DashboardAdvancedSnapshotDto
     public List<DashboardInsightDto> Insights { get; set; } = [];
     public List<DashboardActionDto> Actions { get; set; } = [];
     public List<DashboardValidationDto> Validations { get; set; } = [];
+}
+
+public class AnalyticsDashboardBootstrapDto
+{
+    public SalesSummaryDto? Summary { get; set; }
+    public InventoryStatusDto? Inventory { get; set; }
+    public List<DailySaleDto> DailySales { get; set; } = [];
+    public List<CategoryDataDto> CategoryData { get; set; } = [];
+    public List<GenderDataDto> GenderData { get; set; } = [];
+    public List<SupplierDataDto> SupplierData { get; set; } = [];
+    public List<SupplierFilterOptionDto> SupplierOptions { get; set; } = [];
+    public List<PaymentDataDto> PaymentData { get; set; } = [];
+    public List<WeekdayDataDto> WeekdayData { get; set; } = [];
+    public List<HourDataDto> HourData { get; set; } = [];
+    public QuickInsightsDto? QuickInsights { get; set; }
+    public TransactionStatsDto? TransactionStats { get; set; }
+    public DashboardAdvancedSnapshotDto? Advanced { get; set; }
+    public TopProductsAdvancedResultDto? TopAdvanced { get; set; }
+    public DashboardValidationEndpointDto? ValidationCompleteness { get; set; }
+    public DashboardValidationEndpointDto? ValidationFreshness { get; set; }
+    public DashboardValidationEndpointDto? ValidationLostSales { get; set; }
+    public List<string> Errors { get; set; } = [];
 }

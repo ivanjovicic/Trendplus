@@ -18,23 +18,8 @@ import {
 } from "recharts";
 import {
   checkAnalyticsHealth,
-  getByCategory,
-  getByGender,
-  getByHour,
-  getByPayment,
-  getBySupplier,
-  getByWeekday,
-  getDailySales,
-  getDashboardAdvanced,
-  getInventoryStatus,
-  getQuickInsights,
-  getSalesSummary,
+  getDashboardBootstrap,
   getStores,
-  getTopProductsAdvanced,
-  getTransactionStats,
-  getValidationCompleteness,
-  getValidationFreshness,
-  getValidationLostSales,
 } from "../services/analyticsApi";
 import type {
   CategoryData,
@@ -50,6 +35,7 @@ import type {
   SalesSummary,
   StoreOption,
   SupplierData,
+  SupplierFilterOption,
   TopProductAdvancedItem,
   TopProductsAdvancedResult,
   TransactionStats,
@@ -168,6 +154,12 @@ function downloadCsv(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
+function getErrorText(reason: unknown, fallback: string): string {
+  if (reason instanceof Error && reason.message.trim()) return reason.message;
+  if (typeof reason === "string" && reason.trim()) return reason;
+  return fallback;
+}
+
 function InfoTip({ text }: { text: string }) {
   return (
     <span className="info-tip" role="note" tabIndex={0} aria-label={text}>
@@ -196,7 +188,7 @@ export default function AnalyticsDashboard() {
   const [selectedStore, setSelectedStore] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState("");
   const [stores, setStores] = useState<StoreOption[]>([]);
-  const [supplierOptions, setSupplierOptions] = useState<SupplierData[]>([]);
+  const [supplierOptions, setSupplierOptions] = useState<SupplierFilterOption[]>([]);
   const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [inventory, setInventory] = useState<InventoryStatus | null>(null);
   const [dailySales, setDailySales] = useState<DailySale[]>([]);
@@ -253,45 +245,10 @@ export default function AnalyticsDashboard() {
 
     const responses = await Promise.allSettled([
       checkAnalyticsHealth(),
-      getSalesSummary(fromDate, toDate, true, storeId, supplierId),
-      getInventoryStatus(2, true),
-      getDailySales(fromDate, toDate, true, storeId, supplierId),
-      getByCategory(fromDate, toDate, true, storeId, supplierId),
-      getByGender(fromDate, toDate, true, storeId, supplierId),
-      getBySupplier(fromDate, toDate, true, storeId, supplierId),
-      getBySupplier(fromDate, toDate, true, storeId, undefined),
-      getByWeekday(fromDate, toDate, true, storeId, supplierId),
-      getByHour(fromDate, toDate, true, storeId, supplierId),
-      getByPayment(fromDate, toDate, true, storeId, supplierId),
-      getQuickInsights(fromDate, toDate, true, storeId, supplierId),
-      getTransactionStats(fromDate, toDate, true, storeId, supplierId),
-      getDashboardAdvanced(fromDate, toDate, true, storeId, supplierId),
-      getTopProductsAdvanced(10, fromDate, toDate, true, storeId, supplierId),
-      getValidationCompleteness(true),
-      getValidationFreshness(true),
-      getValidationLostSales(true),
+      getDashboardBootstrap(fromDate, toDate, true, storeId, supplierId),
     ]);
 
-    const [
-      healthR,
-      summaryR,
-      inventoryR,
-      dailyR,
-      categoryR,
-      genderR,
-      supplierR,
-      supplierOptionsR,
-      weekdayR,
-      hourR,
-      paymentR,
-      quickR,
-      transactionR,
-      advancedR,
-      topAdvancedR,
-      compR,
-      freshR,
-      lostR,
-    ] = responses;
+    const [healthR, bootstrapR] = responses;
 
     const nextErrors: string[] = [];
     if (healthR.status === "fulfilled") {
@@ -300,34 +257,51 @@ export default function AnalyticsDashboard() {
       );
     } else {
       setHealthText("");
-      nextErrors.push("Provera zdravstvenog stanja podataka nije dostupna.");
+      nextErrors.push(getErrorText(healthR.reason, "Provera zdravstvenog stanja podataka nije dostupna."));
     }
 
-    setSummary(summaryR.status === "fulfilled" ? summaryR.value : null);
-    setInventory(inventoryR.status === "fulfilled" ? inventoryR.value : null);
-    setDailySales(dailyR.status === "fulfilled" ? dailyR.value : []);
-    setCategoryData(categoryR.status === "fulfilled" ? categoryR.value : []);
-    setGenderData(genderR.status === "fulfilled" ? genderR.value : []);
-    setSupplierData(supplierR.status === "fulfilled" ? supplierR.value : []);
-    setSupplierOptions(
-      supplierOptionsR.status === "fulfilled"
-        ? supplierOptionsR.value.filter((item) => item.dobavljacId != null).slice(0, 20)
-        : []
-    );
-    setWeekdayData(weekdayR.status === "fulfilled" ? weekdayR.value : []);
-    setHourData(hourR.status === "fulfilled" ? hourR.value : []);
-    setPaymentData(paymentR.status === "fulfilled" ? paymentR.value : []);
-    setQuickInsights(quickR.status === "fulfilled" ? quickR.value : null);
-    setTransactionStats(transactionR.status === "fulfilled" ? transactionR.value : null);
-    setAdvanced(advancedR.status === "fulfilled" ? advancedR.value : null);
-    setTopAdvanced(topAdvancedR.status === "fulfilled" ? topAdvancedR.value : null);
-    setValidCompleteness(compR.status === "fulfilled" ? compR.value : null);
-    setValidFreshness(freshR.status === "fulfilled" ? freshR.value : null);
-    setValidLostSales(lostR.status === "fulfilled" ? lostR.value : null);
-
-    if (summaryR.status !== "fulfilled") nextErrors.push("Sazetak prodaje nije ucitan.");
-    if (dailyR.status !== "fulfilled") nextErrors.push("Dnevni trend prodaje nije ucitan.");
-    if (topAdvancedR.status !== "fulfilled") nextErrors.push("Napredna tabela top proizvoda nije ucitana.");
+    if (bootstrapR.status === "fulfilled") {
+      setSummary(bootstrapR.value.summary);
+      setInventory(bootstrapR.value.inventory);
+      setDailySales(bootstrapR.value.dailySales);
+      setCategoryData(bootstrapR.value.categoryData);
+      setGenderData(bootstrapR.value.genderData);
+      setSupplierData(bootstrapR.value.supplierData);
+      setSupplierOptions(bootstrapR.value.supplierOptions);
+      setWeekdayData(bootstrapR.value.weekdayData);
+      setHourData(bootstrapR.value.hourData);
+      setPaymentData(bootstrapR.value.paymentData);
+      setQuickInsights(bootstrapR.value.quickInsights);
+      setTransactionStats(bootstrapR.value.transactionStats);
+      setAdvanced(bootstrapR.value.advanced);
+      setTopAdvanced(bootstrapR.value.topAdvanced);
+      setValidCompleteness(bootstrapR.value.validationCompleteness);
+      setValidFreshness(bootstrapR.value.validationFreshness);
+      setValidLostSales(bootstrapR.value.validationLostSales);
+      nextErrors.push(...bootstrapR.value.errors);
+      if (!bootstrapR.value.summary) nextErrors.push("Sazetak prodaje nije ucitan.");
+      if (bootstrapR.value.dailySales.length === 0) nextErrors.push("Dnevni trend prodaje nije ucitan.");
+      if (!bootstrapR.value.topAdvanced) nextErrors.push("Napredna tabela top proizvoda nije ucitana.");
+    } else {
+      setSummary(null);
+      setInventory(null);
+      setDailySales([]);
+      setCategoryData([]);
+      setGenderData([]);
+      setSupplierData([]);
+      setSupplierOptions([]);
+      setWeekdayData([]);
+      setHourData([]);
+      setPaymentData([]);
+      setQuickInsights(null);
+      setTransactionStats(null);
+      setAdvanced(null);
+      setTopAdvanced(null);
+      setValidCompleteness(null);
+      setValidFreshness(null);
+      setValidLostSales(null);
+      nextErrors.push(getErrorText(bootstrapR.reason, "Analytics dashboard bootstrap nije ucitan."));
+    }
 
     setErrors(nextErrors);
     setLoading(false);
@@ -340,6 +314,12 @@ export default function AnalyticsDashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!selectedSupplier || supplierOptions.length === 0) return;
+    if (supplierOptions.some((item) => item.supplierId === supplierId)) return;
+    setSelectedSupplier("");
+  }, [selectedSupplier, supplierId, supplierOptions]);
 
   const movingStats = useMemo(() => {
     if (dailySales.length === 0) return { ma7Revenue: 0, momentumPct: null as number | null, elasticity: null as number | null };
@@ -508,8 +488,8 @@ export default function AnalyticsDashboard() {
             <select value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)}>
               <option value="">Svi dobavljaci</option>
               {supplierOptions.map((supplier) => (
-                <option key={supplier.dobavljacId ?? supplier.dobavljacNaziv} value={supplier.dobavljacId ?? ""}>
-                  {supplier.dobavljacNaziv}
+                <option key={supplier.supplierId} value={supplier.supplierId}>
+                  {supplier.supplierName}
                 </option>
               ))}
             </select>
@@ -518,7 +498,7 @@ export default function AnalyticsDashboard() {
         <div className="filter-chip-row">
           <span className="filter-chip">Opseg: {selectedDays} dana</span>
           <span className="filter-chip">Prodavnica: {storeId == null ? "Sve" : buildStoreLabel(stores.find((item) => item.storeId === storeId) ?? { storeId, storeName: `Prodavnica ${storeId}` })}</span>
-          <span className="filter-chip">Dobavljac: {selectedSupplier ? supplierOptions.find((item) => item.dobavljacId === supplierId)?.dobavljacNaziv ?? `ID ${supplierId}` : "Svi"}</span>
+          <span className="filter-chip">Dobavljac: {selectedSupplier ? supplierOptions.find((item) => item.supplierId === supplierId)?.supplierName ?? `ID ${supplierId}` : "Svi"}</span>
         </div>
       </section>
 

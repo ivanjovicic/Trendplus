@@ -109,6 +109,11 @@ export interface StoreOption {
   region?: string | null;
 }
 
+export interface SupplierFilterOption {
+  supplierId: number;
+  supplierName: string;
+}
+
 export interface DashboardMetricCard {
   key: string;
   label: string;
@@ -176,4 +181,25 @@ export interface TopProductsAdvancedResult {
   byMarginImpact: TopProductAdvancedItem[];
   marginAvailable: boolean;
   marginMessage?: string | null;
+}
+
+export interface AnalyticsDashboardBootstrap {
+  summary: SalesSummary | null;
+  inventory: InventoryStatus | null;
+  dailySales: DailySale[];
+  categoryData: CategoryData[];
+  genderData: GenderData[];
+  supplierData: SupplierData[];
+  supplierOptions: SupplierFilterOption[];
+  paymentData: PaymentData[];
+  weekdayData: WeekdayData[];
+  hourData: HourData[];
+  quickInsights: QuickInsights | null;
+  transactionStats: TransactionStats | null;
+  advanced: DashboardAdvancedSnapshot | null;
+  topAdvanced: TopProductsAdvancedResult | null;
+  validationCompleteness: DashboardValidationEndpoint | null;
+  validationFreshness: DashboardValidationEndpoint | null;
+  validationLostSales: DashboardValidationEndpoint | null;
+  errors: string[];
 }

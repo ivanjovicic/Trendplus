@@ -88,10 +88,17 @@ namespace Api.Services
             var brandLike = ToLike(brand);
             var categoryLike = ToLike(category);
 
-            var training = await _trainingSignals.ResolveAsync(brand, category, input.TargetPrice, ct);
-            var scraped = await LoadScraperSignalsAsync(brandLike, categoryLike, market, ct);
-            var marketplace = await LoadMarketplaceFallbackAsync(brandLike, categoryLike, ct);
-            var shopify = await LoadShopifySignalsAsync(brandLike, categoryLike, input.TargetPrice, ct);
+            var trainingTask = _trainingSignals.ResolveAsync(brand, category, input.TargetPrice, ct);
+            var scrapedTask = LoadScraperSignalsAsync(brandLike, categoryLike, market, ct);
+            var marketplaceTask = LoadMarketplaceFallbackAsync(brandLike, categoryLike, ct);
+            var shopifyTask = LoadShopifySignalsAsync(brandLike, categoryLike, input.TargetPrice, ct);
+
+            await Task.WhenAll(trainingTask, scrapedTask, marketplaceTask, shopifyTask);
+
+            var training = await trainingTask;
+            var scraped = await scrapedTask;
+            var marketplace = await marketplaceTask;
+            var shopify = await shopifyTask;
 
             float[]? embedding = null;
             List<SimilarProduct> similarProducts = new();

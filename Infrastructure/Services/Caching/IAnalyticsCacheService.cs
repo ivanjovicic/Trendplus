@@ -133,7 +133,13 @@ public static class AnalyticsCacheKeys
     public static string TopProductsAdvanced(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) =>
         $"{Prefix}top-advanced:{top}:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
 
+    public static string SupplierFilters(DateTime? from, DateTime? to, int? storeId = null) =>
+        $"{Prefix}filters:suppliers:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}";
+
     public const string Stores = $"{Prefix}filters:stores";
+
+    public static string DashboardBootstrap(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) =>
+        $"{Prefix}dashboard-bootstrap:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
 
     // Validation endpoints
     public const string ValidationCompleteness = $"{Prefix}validation:completeness";
