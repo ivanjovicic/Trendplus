@@ -135,10 +135,17 @@ namespace Api.Services
             var sourceCoverageScore = ClampScore((Math.Min(sourceCoverageCount, coverageNormalizationUnits) / (double)coverageNormalizationUnits) * 100d);
 
             // ── Local-data signals (from own sales / seasonal DB) ──────────────────
-            var supplierScore  = await ComputeSupplierScoreAsync(input.DobavljacId);
-            var shoeTypeScore  = await ComputeShoeTypeScoreAsync(input.TipObuceId);
-            var seasonalScore  = await ComputeSeasonalScoreAsync(input.SezonaId);
-            var sizeColorScore = await ComputeSizeColorScoreAsync(input.Velicina, input.Boja);
+            var supplierTask  = ComputeSupplierScoreAsync(input.DobavljacId);
+            var shoeTypeTask  = ComputeShoeTypeScoreAsync(input.TipObuceId);
+            var seasonalTask  = ComputeSeasonalScoreAsync(input.SezonaId);
+            var sizeColorTask = ComputeSizeColorScoreAsync(input.Velicina, input.Boja);
+            
+            await Task.WhenAll(supplierTask, shoeTypeTask, seasonalTask, sizeColorTask);
+
+            var supplierScore  = await supplierTask;
+            var shoeTypeScore  = await shoeTypeTask;
+            var seasonalScore  = await seasonalTask;
+            var sizeColorScore = await sizeColorTask;
             var materialScore  = ComputeMaterialScore(input.Materijal);
 
             var baselinePrice = Median(new[] { scraped.MedianPrice, marketplace.AvgPrice, training.TypicalPrice, shopify.MedianPrice }
@@ -397,31 +404,31 @@ namespace Api.Services
             if (!dobavljacId.HasValue) return 0d;
             try
             {
-                // Units sold for this supplier
-                var supplierSold = await _trendDb.ProdajaStavke
-                    .Join(_trendDb.Artikli,
-                          ps => ps.IdArtikal,
-                          a  => a.Id,
-                          (ps, a) => new { ps.Kolicina, a.IDDobavljac })
-                    .Where(x => x.IDDobavljac == dobavljacId.Value)
-                    .SumAsync(x => (double)x.Kolicina);
-
-                if (supplierSold <= 0) return 30d; // supplier exists but no purchases yet
-
-                // Average supplier sold (across all suppliers that have sales)
-                var avgSold = await _trendDb.ProdajaStavke
+                // Single query to get both supplier-specific units and average across all active suppliers
+                var stats = await _trendDb.ProdajaStavke
                     .Join(_trendDb.Artikli,
                           ps => ps.IdArtikal,
                           a  => a.Id,
                           (ps, a) => new { ps.Kolicina, a.IDDobavljac })
                     .Where(x => x.IDDobavljac.HasValue)
-                    .GroupBy(x => x.IDDobavljac)
-                    .Select(g => g.Sum(x => (double)x.Kolicina))
-                    .AverageAsync();
+                    .GroupBy(x => 1) // Global aggregate
+                    .Select(g => new
+                    {
+                        SupplierSold = g.Where(x => x.IDDobavljac == dobavljacId.Value).Sum(x => (double)x.Kolicina),
+                        AvgSold = g.GroupBy(x => x.IDDobavljac)
+                                   .Select(sub => sub.Sum(x => (double)x.Kolicina))
+                                   .Average()
+                    })
+                    .FirstOrDefaultAsync();
 
+                if (stats == null) return 0d;
+
+                var supplierSold = stats.SupplierSold;
+                if (supplierSold <= 0) return 30d;
+
+                var avgSold = stats.AvgSold;
                 if (avgSold <= 0) return 50d;
 
-                // Normalise: avg → 50, 2× avg → 90, 0.5× avg → 30
                 var ratio = supplierSold / avgSold;
                 var score = 50d + 40d * Math.Tanh(ratio - 1d);
                 return ClampScore(score);
@@ -439,26 +446,28 @@ namespace Api.Services
             if (!tipObuceId.HasValue) return 0d;
             try
             {
-                var typeSold = await _trendDb.ProdajaStavke
-                    .Join(_trendDb.Artikli,
-                          ps => ps.IdArtikal,
-                          a  => a.Id,
-                          (ps, a) => new { ps.Kolicina, a.IDTipObuce })
-                    .Where(x => x.IDTipObuce == tipObuceId.Value)
-                    .SumAsync(x => (double)x.Kolicina);
-
-                if (typeSold <= 0) return 30d;
-
-                var avgTypeSold = await _trendDb.ProdajaStavke
+                var stats = await _trendDb.ProdajaStavke
                     .Join(_trendDb.Artikli,
                           ps => ps.IdArtikal,
                           a  => a.Id,
                           (ps, a) => new { ps.Kolicina, a.IDTipObuce })
                     .Where(x => x.IDTipObuce.HasValue)
-                    .GroupBy(x => x.IDTipObuce)
-                    .Select(g => g.Sum(x => (double)x.Kolicina))
-                    .AverageAsync();
+                    .GroupBy(x => 1)
+                    .Select(g => new
+                    {
+                        TypeSold = g.Where(x => x.IDTipObuce == tipObuceId.Value).Sum(x => (double)x.Kolicina),
+                        AvgTypeSold = g.GroupBy(x => x.IDTipObuce)
+                                       .Select(sub => sub.Sum(x => (double)x.Kolicina))
+                                       .Average()
+                    })
+                    .FirstOrDefaultAsync();
 
+                if (stats == null) return 0d;
+
+                var typeSold = stats.TypeSold;
+                if (typeSold <= 0) return 30d;
+
+                var avgTypeSold = stats.AvgTypeSold;
                 if (avgTypeSold <= 0) return 50d;
 
                 var ratio = typeSold / avgTypeSold;
@@ -641,13 +650,20 @@ namespace Api.Services
                 var q = _analyticsDb.AmazonShoeProducts.AsNoTracking();
                 if (!string.IsNullOrWhiteSpace(brandLike)) q = q.Where(x => x.Brand != null && EF.Functions.ILike(x.Brand, brandLike));
                 if (!string.IsNullOrWhiteSpace(categoryLike)) q = q.Where(x => x.Category != null && EF.Functions.ILike(x.Category, categoryLike));
-                var rows = await q
-                    .OrderByDescending(x => x.LastSynced)
-                    .Select(x => new { x.TrendScore, x.Price, x.Currency })
-                    .Take(1000)
-                    .ToListAsync(ct);
-                if (rows.Count == 0) return default;
-                return (rows.Count, rows.Average(x => (double)x.TrendScore), rows.Where(x => x.Price.HasValue).Select(x => x.Price!.Value).DefaultIfEmpty().Average(), rows.Where(x => !string.IsNullOrWhiteSpace(x.Currency)).Select(x => x.Currency).FirstOrDefault());
+                
+                var stats = await q
+                    .GroupBy(x => 1)
+                    .Select(g => new 
+                    { 
+                        Count = g.Count(), 
+                        AvgTrend = g.Average(x => (double)x.TrendScore), 
+                        AvgPrice = g.Average(x => x.Price),
+                        Currency = g.Select(x => x.Currency).FirstOrDefault()
+                    })
+                    .FirstOrDefaultAsync(ct);
+
+                if (stats == null) return default;
+                return (stats.Count, stats.AvgTrend, stats.AvgPrice, stats.Currency);
             }
 
             async Task<(int Count, double AvgTrend, decimal? AvgPrice, string? Currency)> AggregateEbay()
@@ -655,13 +671,20 @@ namespace Api.Services
                 var q = _analyticsDb.EbayShoeProducts.AsNoTracking();
                 if (!string.IsNullOrWhiteSpace(brandLike)) q = q.Where(x => x.Brand != null && EF.Functions.ILike(x.Brand, brandLike));
                 if (!string.IsNullOrWhiteSpace(categoryLike)) q = q.Where(x => x.Category != null && EF.Functions.ILike(x.Category, categoryLike));
-                var rows = await q
-                    .OrderByDescending(x => x.LastSynced)
-                    .Select(x => new { x.TrendScore, x.Price, x.Currency })
-                    .Take(1000)
-                    .ToListAsync(ct);
-                if (rows.Count == 0) return default;
-                return (rows.Count, rows.Average(x => (double)x.TrendScore), rows.Where(x => x.Price.HasValue).Select(x => x.Price!.Value).DefaultIfEmpty().Average(), rows.Where(x => !string.IsNullOrWhiteSpace(x.Currency)).Select(x => x.Currency).FirstOrDefault());
+                
+                var stats = await q
+                    .GroupBy(x => 1)
+                    .Select(g => new 
+                    { 
+                        Count = g.Count(), 
+                        AvgTrend = g.Average(x => (double)x.TrendScore), 
+                        AvgPrice = g.Average(x => x.Price),
+                        Currency = g.Select(x => x.Currency).FirstOrDefault()
+                    })
+                    .FirstOrDefaultAsync(ct);
+
+                if (stats == null) return default;
+                return (stats.Count, stats.AvgTrend, stats.AvgPrice, stats.Currency);
             }
 
             async Task<(int Count, double AvgTrend, decimal? AvgPrice, string? Currency)> AggregateGoogle()
@@ -669,13 +692,20 @@ namespace Api.Services
                 var q = _analyticsDb.GoogleShoppingProducts.AsNoTracking();
                 if (!string.IsNullOrWhiteSpace(brandLike)) q = q.Where(x => x.Brand != null && EF.Functions.ILike(x.Brand, brandLike));
                 if (!string.IsNullOrWhiteSpace(categoryLike)) q = q.Where(x => x.Category != null && EF.Functions.ILike(x.Category, categoryLike));
-                var rows = await q
-                    .OrderByDescending(x => x.LastSynced)
-                    .Select(x => new { x.TrendScore, x.Price, x.Currency })
-                    .Take(1000)
-                    .ToListAsync(ct);
-                if (rows.Count == 0) return default;
-                return (rows.Count, rows.Average(x => (double)x.TrendScore), rows.Where(x => x.Price.HasValue).Select(x => x.Price!.Value).DefaultIfEmpty().Average(), rows.Where(x => !string.IsNullOrWhiteSpace(x.Currency)).Select(x => x.Currency).FirstOrDefault());
+                
+                var stats = await q
+                    .GroupBy(x => 1)
+                    .Select(g => new 
+                    { 
+                        Count = g.Count(), 
+                        AvgTrend = g.Average(x => (double)x.TrendScore), 
+                        AvgPrice = g.Average(x => x.Price),
+                        Currency = g.Select(x => x.Currency).FirstOrDefault()
+                    })
+                    .FirstOrDefaultAsync(ct);
+
+                if (stats == null) return default;
+                return (stats.Count, stats.AvgTrend, stats.AvgPrice, stats.Currency);
             }
 
             try
@@ -758,13 +788,19 @@ namespace Api.Services
                 if (prices.Count == 0)
                     return default;
 
-                var sorted = prices.OrderBy(x => x).ToList();
-                var mid = sorted.Count / 2;
-                var medianPrice = sorted.Count % 2 == 0
-                    ? Math.Round((sorted[mid - 1] + sorted[mid]) / 2m, 2)
-                    : sorted[mid];
+                // Use PostgreSQL aggregate for median to avoid pulling 500 rows
+                var medianStats = await q
+                    .GroupBy(_ => 1)
+                    .Select(g => new
+                    {
+                        Median = g.OrderBy(x => x.Price).Skip(g.Count() / 2).Select(x => x.Price).FirstOrDefault(),
+                        Count = g.Count()
+                    })
+                    .FirstOrDefaultAsync(ct);
 
-                return (medianPrice, prices.Count, true);
+                if (medianStats == null) return default;
+
+                return (medianStats.Median, medianStats.Count, true);
             }
             catch (Exception ex)
             {

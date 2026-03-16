@@ -100,8 +100,8 @@ namespace Api.Services
 
             await using var countCommand = new NpgsqlCommand(countSql, connection);
             AddItemsFilters(countCommand, brandLike, categoryLike, colorLike, normalizedSearch);
-            var totalRaw = await countCommand.ExecuteScalarAsync(ct);
-            var total = totalRaw is null || totalRaw == DBNull.Value ? 0L : Convert.ToInt64(totalRaw, CultureInfo.InvariantCulture);
+            // var totalRaw = await countCommand.ExecuteScalarAsync(ct);
+            // var total = totalRaw is null || totalRaw == DBNull.Value ? 0L : Convert.ToInt64(totalRaw, CultureInfo.InvariantCulture);
 
             const string dataSql = @"
                 SELECT
@@ -111,7 +111,8 @@ namespace Api.Services
                     i.color,
                     i.category,
                     irs.final_score AS latest_score,
-                    img.image_url
+                    img.image_url,
+                    COUNT(*) OVER() AS total_count
                 FROM items i
                 LEFT JOIN item_run_stats irs
                     ON irs.item_id = i.item_id
@@ -141,9 +142,11 @@ namespace Api.Services
             dataCommand.Parameters.AddWithValue("offset", offset);
 
             var items = new List<CanonicalItemDto>(normalizedPageSize);
+            long total = 0;
             await using var reader = await dataCommand.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
+                if (total == 0) total = reader.GetInt64(7);
                 items.Add(new CanonicalItemDto
                 {
                     ItemId = reader.GetInt64(0),

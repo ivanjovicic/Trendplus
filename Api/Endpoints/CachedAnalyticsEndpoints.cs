@@ -146,10 +146,17 @@ public static class CachedAnalyticsEndpoints
                                         g.Key.Boja
                                     );
 
-                    var all = await baseQuery.ToListAsync(ct);
-                    return new TopProductsResult(
-                        all.OrderByDescending(x => x.TotalRevenue).Take(top).ToList(),
-                        all.OrderByDescending(x => x.TotalUnits).Take(top).ToList());
+                    var topRevenue = await baseQuery
+                        .OrderByDescending(x => x.TotalRevenue)
+                        .Take(top)
+                        .ToListAsync(ct);
+
+                    var topUnits = await baseQuery
+                        .OrderByDescending(x => x.TotalUnits)
+                        .Take(top)
+                        .ToListAsync(ct);
+
+                    return new TopProductsResult(topRevenue, topUnits);
                 },
                 CacheExpiration.Medium,
                 ct);
@@ -901,159 +908,213 @@ public static class CachedAnalyticsEndpoints
                 {
                     var response = new AnalyticsDashboardBootstrapDto();
 
-                    response.Summary = await TrySectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildSalesSummarySnapshotAsync(db, mediator, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Sazetak prodaje nije dostupan.");
+                    var tasks = new List<Task>();
 
-                    response.Inventory = await TrySectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.Inventory(2),
-                            async () => await BuildInventoryStatusSnapshotAsync(db, mediator, 2, ct),
-                            CacheExpiration.Short,
-                            ct),
-                        response.Errors,
-                        "Status zaliha nije dostupan.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.Summary = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildSalesSummarySnapshotAsync(db, mediator, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Sazetak prodaje nije dostupan.");
+                    }));
 
-                    response.DailySales = await TryListSectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildDailySalesSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Dnevni trend prodaje nije dostupan.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.Inventory = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.Inventory(2),
+                                async () => await BuildInventoryStatusSnapshotAsync(db, mediator, 2, ct),
+                                CacheExpiration.Short,
+                                ct),
+                            response.Errors,
+                            "Status zaliha nije dostupan.");
+                    }));
 
-                    response.CategoryData = await TryListSectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.CategoryData(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildCategoryDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Prodaja po kategorijama nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.DailySales = await TryListSectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildDailySalesSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Dnevni trend prodaje nije dostupan.");
+                    }));
 
-                    response.GenderData = await TryListSectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.GenderData(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildGenderDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Prodaja po polu nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.CategoryData = await TryListSectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.CategoryData(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildCategoryDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Prodaja po kategorijama nije dostupna.");
+                    }));
 
-                    response.SupplierData = await TryListSectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.SupplierData(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildSupplierDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Prodaja po dobavljacima nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.GenderData = await TryListSectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.GenderData(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildGenderDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Prodaja po polu nije dostupna.");
+                    }));
 
-                    response.SupplierOptions = await TryListSectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.SupplierFilters(fromDate, toDate, storeId),
-                            async () => await BuildSupplierFilterOptionsAsync(db, fromDate, toDate, storeId, ct),
-                            CacheExpiration.Long,
-                            ct),
-                        response.Errors,
-                        "Lista dobavljaca za filter nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.SupplierData = await TryListSectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.SupplierData(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildSupplierDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Prodaja po dobavljacima nije dostupna.");
+                    }));
 
-                    response.WeekdayData = await TryListSectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.ByWeekday(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildWeekdayDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Prodaja po danima nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.SupplierOptions = await TryListSectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.SupplierFilters(fromDate, toDate, storeId),
+                                async () => await BuildSupplierFilterOptionsAsync(db, fromDate, toDate, storeId, ct),
+                                CacheExpiration.Long,
+                                ct),
+                            response.Errors,
+                            "Lista dobavljaca za filter nije dostupna.");
+                    }));
 
-                    response.HourData = await TryListSectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.ByHour(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildHourDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Prodaja po satima nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.WeekdayData = await TryListSectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.ByWeekday(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildWeekdayDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Prodaja po danima nije dostupna.");
+                    }));
 
-                    response.PaymentData = await TryListSectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.ByPayment(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildPaymentDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Prodaja po nacinu placanja nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.HourData = await TryListSectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.ByHour(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildHourDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Prodaja po satima nije dostupna.");
+                    }));
 
-                    response.QuickInsights = await TrySectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.QuickInsights(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildQuickInsightsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Brzi uvidi nisu dostupni.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.PaymentData = await TryListSectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.ByPayment(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildPaymentDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Prodaja po nacinu placanja nije dostupna.");
+                    }));
 
-                    response.TransactionStats = await TrySectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.TransactionStats(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildTransactionStatsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Medium,
-                            ct),
-                        response.Errors,
-                        "Statistika transakcija nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.QuickInsights = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.QuickInsights(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildQuickInsightsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Brzi uvidi nisu dostupni.");
+                    }));
 
-                    response.Advanced = await TrySectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.DashboardAdvanced(fromDate, toDate, storeId, supplierId),
-                            async () => await BuildAdvancedDashboardSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Short,
-                            ct),
-                        response.Errors,
-                        "Napredne metrike nisu dostupne.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.TransactionStats = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.TransactionStats(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildTransactionStatsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Medium,
+                                ct),
+                            response.Errors,
+                            "Statistika transakcija nije dostupna.");
+                    }));
 
-                    response.TopAdvanced = await TrySectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.TopProductsAdvanced(10, fromDate, toDate, storeId, supplierId),
-                            async () => await GetTopProductsAdvancedSnapshotAsync(db, 10, fromDate, toDate, storeId, supplierId, ct),
-                            CacheExpiration.Short,
-                            ct),
-                        response.Errors,
-                        "Napredna tabela top proizvoda nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.Advanced = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.DashboardAdvanced(fromDate, toDate, storeId, supplierId),
+                                async () => await BuildAdvancedDashboardSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Short,
+                                ct),
+                            response.Errors,
+                            "Napredne metrike nisu dostupne.");
+                    }));
 
-                    response.ValidationCompleteness = await TrySectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.ValidationCompleteness,
-                            async () => await BuildCompletenessValidationAsync(db, ct),
-                            CacheExpiration.Short,
-                            ct),
-                        response.Errors,
-                        "Completeness validacija nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.TopAdvanced = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.TopProductsAdvanced(10, fromDate, toDate, storeId, supplierId),
+                                async () => await GetTopProductsAdvancedSnapshotAsync(db, 10, fromDate, toDate, storeId, supplierId, ct),
+                                CacheExpiration.Short,
+                                ct),
+                            response.Errors,
+                            "Napredna tabela top proizvoda nije dostupna.");
+                    }));
 
-                    response.ValidationFreshness = await TrySectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.ValidationFreshness,
-                            async () => await BuildFreshnessValidationAsync(db, ct),
-                            CacheExpiration.Short,
-                            ct),
-                        response.Errors,
-                        "Freshness validacija nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.ValidationCompleteness = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.ValidationCompleteness,
+                                async () => await BuildCompletenessValidationAsync(db, ct),
+                                CacheExpiration.Short,
+                                ct),
+                            response.Errors,
+                            "Completeness validacija nije dostupna.");
+                    }));
 
-                    response.ValidationLostSales = await TrySectionAsync(
-                        async () => await cache.GetOrSetAsync(
-                            AnalyticsCacheKeys.ValidationLostSales,
-                            async () => await BuildLostSalesValidationAsync(db, ct),
-                            CacheExpiration.Short,
-                            ct),
-                        response.Errors,
-                        "Lost-sales validacija nije dostupna.");
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.ValidationFreshness = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.ValidationFreshness,
+                                async () => await BuildFreshnessValidationAsync(db, ct),
+                                CacheExpiration.Short,
+                                ct),
+                            response.Errors,
+                            "Freshness validacija nije dostupna.");
+                    }));
 
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        response.ValidationLostSales = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.ValidationLostSales,
+                                async () => await BuildLostSalesValidationAsync(db, ct),
+                                CacheExpiration.Short,
+                                ct),
+                            response.Errors,
+                            "Lost-sales validacija nije dostupna.");
+                    }));
+
+                    await Task.WhenAll(tasks);
                     return response;
                 },
                 CacheExpiration.Short,
