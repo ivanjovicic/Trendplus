@@ -53,6 +53,19 @@ public sealed class NightlyAnalyticsRefreshOptions
         "mv_supplier_recommendations_cache"
     };
 
+    /// <summary>
+    /// Intelligence-layer materialized views refreshed after core analytics MVs.
+    /// Order matters because downstream dashboards expect demand, inventory,
+    /// price and trend caches in that sequence.
+    /// </summary>
+    public List<string> IntelligenceMaterializedViewsToRefresh { get; set; } = new()
+    {
+        "analytics_intel.mv_product_demand_signals_v1_cache",
+        "analytics_intel.mv_inventory_risk_signals_v1_cache",
+        "analytics_intel.mv_price_intelligence_v1_cache",
+        "analytics_intel.mv_trend_momentum_v1_cache"
+    };
+
     public List<string> VacuumAnalyzeTargets { get; set; } = new()
     {
         "prodaja_stavke",

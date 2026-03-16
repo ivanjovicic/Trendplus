@@ -382,6 +382,14 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 errors,
                 sourceLabel: "analytics",
                 ct: ct);
+
+            await RefreshMaterializedViewsAsync(
+                trendplusConnection,
+                _options.IntelligenceMaterializedViewsToRefresh,
+                warnings,
+                errors,
+                sourceLabel: "analytics_intel",
+                ct: ct);
             return;
         }
 
@@ -403,6 +411,14 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 warnings,
                 errors,
                 sourceLabel: "analytics",
+                ct: ct);
+
+            await RefreshMaterializedViewsAsync(
+                analyticsConnection,
+                _options.IntelligenceMaterializedViewsToRefresh,
+                warnings,
+                errors,
+                sourceLabel: "analytics_intel",
                 ct: ct);
         }
         finally

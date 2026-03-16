@@ -13,6 +13,7 @@ public static class DatabaseInitializer
 {
     private const long AdvisoryLockKey = 987654321L;
     private const long SupplierDecisionHubBuildLockKey = 987654322L;
+    private const long AnalyticsIntelligenceBuildLockKey = 987654323L;
     private const int AdvisoryLockCommandTimeoutSeconds = 10;
     private const int AdvisoryLockRetryDelaySeconds = 2;
     private const int AdvisoryLockMaxWaitSeconds = 120;
@@ -210,6 +211,27 @@ public static class DatabaseInitializer
 
         await using var command = new NpgsqlCommand(sql, connection);
         command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
+    }
+
+    private static async Task<bool> AreRelationsReadyAsync(string connectionString, params string[] relationNames)
+    {
+        if (relationNames.Length == 0)
+        {
+            return true;
+        }
+
+        const string sql = """
+            SELECT COALESCE(BOOL_AND(to_regclass(relation_name) IS NOT NULL), TRUE)
+            FROM unnest(@relationNames) AS relation_name;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("relationNames", relationNames);
         return (bool?)await command.ExecuteScalarAsync() ?? false;
     }
 
@@ -1149,11 +1171,86 @@ public static class DatabaseInitializer
             await ExecuteSqlFileAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql", logger);
         }
         await ExecuteSqlFileAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/Intelligence/020_create_intelligence_schema.sql", logger);
         // 018_AddSupplierDecisionHubViews.sql is NOT run on the analytics DB — it references
         // trendplus-specific tables and is executed asynchronously on the trendplus DB.
         // 015_AddSupplierMlRanking.sql is also deferred: it depends on vw_supplier_fullprice_signals
         // which 018 creates. Both are run sequentially in the 018 background task in
         // InitializeTrendplusDbAsync (only when analytics and trendplus share the same DB).
+
+        var analyticsIntelligenceScripts = new (string SqlFilePath, string[] RequiredRelations)[]
+        {
+            (
+                "Database/Analytics/Intelligence/021_product_demand_signals_v1.sql",
+                ["analytics_intel.vw_product_demand_signals_v1", "analytics_intel.mv_product_demand_signals_v1_cache"]
+            ),
+            (
+                "Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql",
+                ["analytics_intel.vw_inventory_risk_signals_v1", "analytics_intel.mv_inventory_risk_signals_v1_cache"]
+            ),
+            (
+                "Database/Analytics/Intelligence/023_price_intelligence_v1.sql",
+                ["analytics_intel.vw_price_intelligence_v1", "analytics_intel.mv_price_intelligence_v1_cache"]
+            ),
+            (
+                "Database/Analytics/Intelligence/024_trend_momentum_v1.sql",
+                ["analytics_intel.vw_trend_momentum_v1", "analytics_intel.mv_trend_momentum_v1_cache"]
+            )
+        };
+
+        var bgAnalyticsIntelligenceConnectionString = connectionString;
+        var bgAnalyticsIntelligenceLogger = logger;
+        _ = Task.Run(async () =>
+        {
+            await using var lockConnection = new NpgsqlConnection(bgAnalyticsIntelligenceConnectionString);
+            try
+            {
+                await lockConnection.OpenAsync();
+
+                if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey))
+                {
+                    bgAnalyticsIntelligenceLogger.LogInformation("[BG] Skipping analytics intelligence SQL build because another instance already holds the build lock.");
+                    return;
+                }
+
+                foreach (var script in analyticsIntelligenceScripts)
+                {
+                    var relationsReady = await AreRelationsReadyAsync(
+                        bgAnalyticsIntelligenceConnectionString,
+                        script.RequiredRelations);
+
+                    if (!relationsReady)
+                    {
+                        bgAnalyticsIntelligenceLogger.LogInformation(
+                            "[BG] Analytics intelligence relations missing for {SqlFile}. Forcing re-execution.",
+                            script.SqlFilePath);
+                        await DeleteAppliedStartupSqlHistoryAsync(
+                            bgAnalyticsIntelligenceConnectionString,
+                            script.SqlFilePath);
+                    }
+
+                    await ExecuteSqlFileAsync(
+                        bgAnalyticsIntelligenceConnectionString,
+                        script.SqlFilePath,
+                        bgAnalyticsIntelligenceLogger,
+                        commandTimeoutSeconds: 0,
+                        useTransaction: false);
+                }
+
+                bgAnalyticsIntelligenceLogger.LogInformation("[BG] Analytics intelligence SQL build completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                bgAnalyticsIntelligenceLogger.LogWarning(ex, "[BG] Analytics intelligence SQL build failed. Intelligence views may be partially unavailable until next startup.");
+            }
+            finally
+            {
+                if (lockConnection.State == System.Data.ConnectionState.Open)
+                {
+                    await ReleaseSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey);
+                }
+            }
+        });
     }
 
     private static async Task EnsureCoreAnalyticsDimensionTablesAsync(

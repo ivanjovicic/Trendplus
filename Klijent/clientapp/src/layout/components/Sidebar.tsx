@@ -29,6 +29,19 @@ function findCurrentGroupId(pathname: string): string {
   return selectedGroupId;
 }
 
+function findBestMatchForGroup(pathname: string, group: { id: string; items: { to: string }[] }) {
+  let best: string | null = null;
+  let bestLen = -1;
+  for (const item of group.items) {
+    if (!isRouteMatch(pathname, item.to)) continue;
+    if (item.to.length > bestLen) {
+      bestLen = item.to.length;
+      best = item.to;
+    }
+  }
+  return best;
+}
+
 export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const location = useLocation();
   const defaultOpenGroups = useMemo(() => {
@@ -81,6 +94,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           {NAV_GROUPS.map((group) => {
             const GroupIcon = group.icon;
             const isOpen = openGroups.has(group.id);
+            const activeItemTo = findBestMatchForGroup(location.pathname, group);
             return (
               <div key={group.id} className="rounded-xl border border-[#23242b] bg-[#181920]">
                 <button
@@ -104,17 +118,17 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                       const ItemIcon = item.icon;
                       return (
                         <li key={item.to}>
-                          <NavLink
-                            to={item.to}
-                            onClick={onCloseMobile}
-                            className={({ isActive }) =>
-                              `group flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition ${
-                                isActive
-                                  ? "bg-[#1f2940] text-[#d8e5ff] ring-1 ring-[#32579e]"
-                                  : "text-[#9eabc4] hover:bg-[#20222a] hover:text-white"
-                              }`
-                            }
-                          >
+                          {
+                            // Determine active per-group using best-match logic so only one item
+                            // in a group is highlighted when routes overlap (e.g. /analytics and /analytics/...)
+                          }
+                          <NavLink to={item.to} onClick={onCloseMobile} className={
+                            `group flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition ${
+                              item.to === activeItemTo
+                                ? "bg-[#1f2940] text-[#d8e5ff] ring-1 ring-[#32579e]"
+                                : "text-[#9eabc4] hover:bg-[#20222a] hover:text-white"
+                            }`
+                          }>
                             <ItemIcon size={15} className="shrink-0 text-[#86a7ff] group-hover:text-[#9dc0ff]" />
                             <span className="truncate">{item.label}</span>
                           </NavLink>

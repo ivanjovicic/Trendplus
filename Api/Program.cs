@@ -473,6 +473,7 @@ try
     // Map all other endpoints from AllEndpoints.cs
     app.MapAllEndpoints();
     app.MapCachedAnalyticsEndpoints();
+    app.MapAnalyticsIntelligenceEndpoints();
     app.MapInsightStudioEndpoints();
     app.MapInsightStudioV2Endpoints();
     app.MapPreNivelacijaPriorityEndpoints();

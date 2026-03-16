@@ -60,6 +60,29 @@ import {
   type SmartReorderResult,
   type PriceSensitivity,
 } from "../services/insightStudioV2Api";
+import IntelligenceSnapshotPanel from "../components/dashboard/IntelligenceSnapshotPanel";
+import {
+  getDemandSignals,
+  getDemandSignalsSample,
+  getInventoryRiskSignals,
+  getInventoryRiskSignalsSample,
+  getPriceIntelligence,
+  getPriceIntelligenceSample,
+  getTrendMomentum,
+  getTrendMomentumSample,
+  type DemandSignalItem,
+  type InventoryRiskSignalItem,
+  type PriceIntelligenceItem,
+  type TrendMomentumItem,
+} from "../services/analyticsIntelligenceApi";
+import {
+  buildLegacyReorderFallbackFromSignals,
+  mergeAgingAsPrimary,
+  mergeCategorySignalsAsPrimary,
+  mergeDepletionAsPrimary,
+  mergePriceSensitivityAsPrimary,
+  mergeSmartReorderAsPrimary,
+} from "../services/analyticsIntelligenceDerived";
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -271,11 +294,25 @@ function OverviewTab({
   changelog,
   marginAlerts,
   loading,
+  intelligenceDemand,
+  intelligenceInventory,
+  intelligencePrice,
+  intelligenceTrend,
+  intelligenceAsOfDate,
+  intelligenceLoading,
+  intelligenceError,
 }: {
   kpi: KpiSnapshot | null;
   changelog: WeeklyChangelog | null;
   marginAlerts: MarginAlertResult | null;
   loading: boolean;
+  intelligenceDemand: DemandSignalItem[];
+  intelligenceInventory: InventoryRiskSignalItem[];
+  intelligencePrice: PriceIntelligenceItem[];
+  intelligenceTrend: TrendMomentumItem[];
+  intelligenceAsOfDate: string | null;
+  intelligenceLoading: boolean;
+  intelligenceError: string | null;
 }) {
   if (loading) return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}</div>;
 
@@ -369,6 +406,16 @@ function OverviewTab({
           </div>
         </div>
       )}
+
+      <IntelligenceSnapshotPanel
+        demand={intelligenceDemand}
+        inventory={intelligenceInventory}
+        price={intelligencePrice}
+        trend={intelligenceTrend}
+        asOfDate={intelligenceAsOfDate}
+        loading={intelligenceLoading}
+        error={intelligenceError}
+      />
 
       {/* Quick Recommended Actions */}
       <div className="rounded-xl border border-[#2A3045] bg-[#161A23] p-5">
@@ -602,6 +649,10 @@ function CategoryTab({
   return (
     <div className="space-y-5">
       <SectionHeader title="Kategorije & Segmentacija" subtitle="Prihodi, marže, velocity i cross-sell analitika" />
+      <div className="rounded-xl border border-[#4F8EF7]/20 bg-[#4F8EF7]/5 px-4 py-3 text-xs text-[#8A95B0]">
+        Primarni read model za cenovne i category signale sada dolazi iz <span className="font-semibold text-[#7ea5ff]">analytics_intel</span>.
+        Basket afinitet i raspodela po polu ostaju na legacy advanced sloju kao dopuna.
+      </div>
       <div className="flex gap-2 flex-wrap">
         {subTabs.map(t => (
           <button key={t.key} onClick={() => setSubTab(t.key)}
@@ -895,6 +946,9 @@ function DailyTab({
   return (
     <div className="space-y-5">
       <SectionHeader title="Analiza Dana & Tjedna Potražnja" subtitle="Z-score detekcija anomalija i heatmap nedeljne aktivnosti" />
+      <div className="rounded-xl border border-[#E05C5C]/20 bg-[#E05C5C]/5 px-4 py-3 text-xs text-[#8A95B0]">
+        Primarni prikaz koristi intelligence inventory signal layer. Legacy depletion forecast ostaje fallback ako signal cache nije spreman.
+      </div>
       <div className="flex gap-2">
         <button onClick={() => setSubView("analiza")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "analiza" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>📊 Dnevna Analiza</button>
         <button onClick={() => setSubView("heatmap")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "heatmap" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>🔥 Heatmap</button>
@@ -1321,6 +1375,10 @@ function ReorderTab2({
     <div className="space-y-5">
       <SectionHeader title="Nabavka 2.0 — Smart Reorder Engine" subtitle="Prioritizacija nabavke sa ROI projekcijom, verovatnoćom reordera i margin forecast-om" />
 
+      <div className="rounded-xl border border-[#4CAF82]/20 bg-[#4CAF82]/5 px-4 py-3 text-xs text-[#8A95B0]">
+        Reorder prioriteti sada se prvenstveno izvode iz demand, inventory, price i trend intelligence signala, a legacy plan ostaje rezervni fallback.
+      </div>
+
       {/* Summary KPIs */}
       {summary && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
@@ -1512,6 +1570,13 @@ export default function InsightStudioPage() {
   const [changelogLoading, setChangelogLoading] = useState(false);
   const [marginAlerts, setMarginAlerts] = useState<MarginAlertResult | null>(null);
   const [marginAlertsLoading, setMarginAlertsLoading] = useState(false);
+  const [intelligenceDemand, setIntelligenceDemand] = useState<DemandSignalItem[]>([]);
+  const [intelligenceInventory, setIntelligenceInventory] = useState<InventoryRiskSignalItem[]>([]);
+  const [intelligencePrice, setIntelligencePrice] = useState<PriceIntelligenceItem[]>([]);
+  const [intelligenceTrend, setIntelligenceTrend] = useState<TrendMomentumItem[]>([]);
+  const [intelligenceAsOfDate, setIntelligenceAsOfDate] = useState<string | null>(null);
+  const [intelligenceLoading, setIntelligenceLoading] = useState(false);
+  const [intelligenceError, setIntelligenceError] = useState<string | null>(null);
   const [supplierV2, setSupplierV2] = useState<SupplierScoreV2[]>([]);
   const [supplierV2Loading, setSupplierV2Loading] = useState(false);
   const [heatmap, setHeatmap] = useState<WeeklyHeatmap | null>(null);
@@ -1553,8 +1618,44 @@ export default function InsightStudioPage() {
     if (tab === "pregled") {
       setChangelogLoading(true);
       setMarginAlertsLoading(true);
+      setIntelligenceLoading(true);
+      setIntelligenceError(null);
       getWeeklyChangelog().then(d => setChangelog(d)).catch(() => {}).finally(() => setChangelogLoading(false));
       getMarginAlerts(fromDate, toDate).then(d => setMarginAlerts(d)).catch(() => {}).finally(() => setMarginAlertsLoading(false));
+      Promise.allSettled([
+        getDemandSignals({ date: toDate, historyDays: 7, page: 1, pageSize: 5, sortBy: "demandAcceleration", sortDir: "desc" }),
+        getInventoryRiskSignals({ date: toDate, historyDays: 1, page: 1, pageSize: 5, onlyAtRisk: true, sortBy: "deadStockRisk", sortDir: "desc" }),
+        getPriceIntelligence({ page: 1, pageSize: 5, sortBy: "marginPct", sortDir: "desc" }),
+        getTrendMomentum({ page: 1, pageSize: 5, sortBy: "externalTrendScore", sortDir: "desc" }),
+      ])
+        .then(([demandResult, inventoryResult, priceResult, trendResult]) => {
+          setIntelligenceDemand(demandResult.status === "fulfilled" ? demandResult.value.items : []);
+          setIntelligenceInventory(inventoryResult.status === "fulfilled" ? inventoryResult.value.items : []);
+          setIntelligencePrice(priceResult.status === "fulfilled" ? priceResult.value.items : []);
+          setIntelligenceTrend(trendResult.status === "fulfilled" ? trendResult.value.items : []);
+
+          const snapshotDate =
+            (demandResult.status === "fulfilled" ? demandResult.value.asOfDate : null)
+            ?? (inventoryResult.status === "fulfilled" ? inventoryResult.value.asOfDate : null)
+            ?? (priceResult.status === "fulfilled" ? priceResult.value.asOfDate : null)
+            ?? (trendResult.status === "fulfilled" ? trendResult.value.asOfDate : null)
+            ?? null;
+
+          setIntelligenceAsOfDate(snapshotDate);
+
+          const failedCount = [demandResult, inventoryResult, priceResult, trendResult]
+            .filter(result => result.status === "rejected")
+            .length;
+
+          if (failedCount === 4) {
+            setIntelligenceError("Nijedan intelligence signal nije trenutno dostupan.");
+          } else if (failedCount > 0) {
+            setIntelligenceError("Deo intelligence signala nije mogao da se ucita, prikazujem dostupne snapshot podatke.");
+          } else {
+            setIntelligenceError(null);
+          }
+        })
+        .finally(() => setIntelligenceLoading(false));
     }
     if (tab === "dobavljaci") {
       setSupplierV2Loading(true);
@@ -1564,9 +1665,26 @@ export default function InsightStudioPage() {
     }
     if (tab === "kategorije") {
       setCatLoading(true);
-      getCategoryIntelligence(fromDate, toDate).then(d => setCatData(d)).catch(() => {}).finally(() => setCatLoading(false));
-      getPriceSensitivity().then(d => setPriceSensitivity(d)).catch(() => {});
-      getBasketAffinity(fromDate, toDate).then(d => setBasketAffinity(d)).catch(() => {});
+      Promise.allSettled([
+        getCategoryIntelligence(fromDate, toDate),
+        getPriceSensitivity(),
+        getBasketAffinity(fromDate, toDate),
+        getPriceIntelligenceSample({ sortBy: "priceDate", sortDir: "desc" }),
+        getInventoryRiskSignalsSample({ date: toDate, historyDays: 1, sortBy: "deadStockRisk", sortDir: "desc" }),
+        getDemandSignalsSample({ date: toDate, historyDays: 1, sortBy: "salesVelocity", sortDir: "desc" }),
+      ])
+        .then(([legacyCategoryResult, legacyPriceResult, basketResult, priceResult, inventoryResult, demandResult]) => {
+          const legacyCategory = legacyCategoryResult.status === "fulfilled" ? legacyCategoryResult.value : null;
+          const legacyPrice = legacyPriceResult.status === "fulfilled" ? legacyPriceResult.value : null;
+          const priceItems = priceResult.status === "fulfilled" ? priceResult.value.items : [];
+          const inventoryItems = inventoryResult.status === "fulfilled" ? inventoryResult.value.items : [];
+          const demandItems = demandResult.status === "fulfilled" ? demandResult.value.items : [];
+
+          setCatData(mergeCategorySignalsAsPrimary(legacyCategory, priceItems, inventoryItems, demandItems));
+          setPriceSensitivity(mergePriceSensitivityAsPrimary(legacyPrice, priceItems, inventoryItems));
+          setBasketAffinity(basketResult.status === "fulfilled" ? basketResult.value : null);
+        })
+        .finally(() => setCatLoading(false));
     }
     if (tab === "matrica") {
       setMatrixLoading(true);
@@ -1587,14 +1705,65 @@ export default function InsightStudioPage() {
     if (tab === "zalihe") {
       setAgingLoading(true);
       setDepletionLoading(true);
-      getAgingStock().then(d => { setAgingItems(d.items); setAgingSummary(d.summary); }).catch(() => {}).finally(() => setAgingLoading(false));
-      getStockDepletionForecast(fromDate, toDate).then(d => setDepletion(d)).catch(() => {}).finally(() => setDepletionLoading(false));
+      Promise.allSettled([
+        getAgingStock(),
+        getStockDepletionForecast(fromDate, toDate),
+        getInventoryRiskSignalsSample({ date: toDate, historyDays: 1, sortBy: "deadStockRisk", sortDir: "desc" }),
+        getInventoryRiskSignalsSample({ date: toDate, historyDays: 1, sortBy: "daysOfCover", sortDir: "asc" }),
+        getDemandSignalsSample({ date: toDate, historyDays: 1, sortBy: "daysSinceLastSale", sortDir: "desc" }),
+        getPriceIntelligenceSample({ sortBy: "priceDate", sortDir: "desc" }),
+      ])
+        .then(([legacyAgingResult, legacyDepletionResult, agingInventoryResult, depletionInventoryResult, demandResult, priceResult]) => {
+          const legacyAging = legacyAgingResult.status === "fulfilled" ? legacyAgingResult.value : null;
+          const legacyDepletion = legacyDepletionResult.status === "fulfilled" ? legacyDepletionResult.value : null;
+          const agingInventoryItems = agingInventoryResult.status === "fulfilled" ? agingInventoryResult.value.items : [];
+          const depletionInventoryItems = depletionInventoryResult.status === "fulfilled" ? depletionInventoryResult.value.items : [];
+          const demandItems = demandResult.status === "fulfilled" ? demandResult.value.items : [];
+          const priceItems = priceResult.status === "fulfilled" ? priceResult.value.items : [];
+          const asOfDate = depletionInventoryResult.status === "fulfilled" ? depletionInventoryResult.value.asOfDate : null;
+
+          const mergedAging = mergeAgingAsPrimary(legacyAging, agingInventoryItems, demandItems, priceItems);
+          const mergedDepletion = mergeDepletionAsPrimary(legacyDepletion, depletionInventoryItems, priceItems, asOfDate);
+
+          setAgingItems(mergedAging?.items ?? []);
+          setAgingSummary(mergedAging?.summary);
+          setDepletion(mergedDepletion);
+        })
+        .finally(() => {
+          setAgingLoading(false);
+          setDepletionLoading(false);
+        });
     }
     if (tab === "nabavka") {
       setSmartReorderLoading(true);
       setReorderLoading(true);
-      getSmartReorder(fromDate, toDate).then(d => setSmartReorder(d)).catch(() => {}).finally(() => setSmartReorderLoading(false));
-      getReorderPlan(fromDate, toDate).then(d => { setReorderItems(d.items); setReorderSummary(d.summary); }).catch(() => {}).finally(() => setReorderLoading(false));
+      Promise.allSettled([
+        getSmartReorder(fromDate, toDate),
+        getReorderPlan(fromDate, toDate),
+        getInventoryRiskSignalsSample({ date: toDate, historyDays: 1, sortBy: "daysOfCover", sortDir: "asc" }),
+        getDemandSignalsSample({ date: toDate, historyDays: 1, sortBy: "salesVelocity", sortDir: "desc" }),
+        getPriceIntelligenceSample({ sortBy: "priceDate", sortDir: "desc" }),
+        getTrendMomentumSample({ sortBy: "externalTrendScore", sortDir: "desc" }),
+      ])
+        .then(([legacySmartResult, legacyPlanResult, inventoryResult, demandResult, priceResult, trendResult]) => {
+          const legacySmart = legacySmartResult.status === "fulfilled" ? legacySmartResult.value : null;
+          const legacyPlan = legacyPlanResult.status === "fulfilled" ? legacyPlanResult.value : null;
+          const inventoryItems = inventoryResult.status === "fulfilled" ? inventoryResult.value.items : [];
+          const demandItems = demandResult.status === "fulfilled" ? demandResult.value.items : [];
+          const priceItems = priceResult.status === "fulfilled" ? priceResult.value.items : [];
+          const trendItems = trendResult.status === "fulfilled" ? trendResult.value.items : [];
+
+          const mergedSmart = mergeSmartReorderAsPrimary(legacySmart, inventoryItems, demandItems, priceItems, trendItems);
+          const fallbackPlan = buildLegacyReorderFallbackFromSignals(mergedSmart);
+
+          setSmartReorder(mergedSmart);
+          setReorderItems(fallbackPlan?.items ?? legacyPlan?.items ?? []);
+          setReorderSummary(fallbackPlan?.summary ?? legacyPlan?.summary);
+        })
+        .finally(() => {
+          setSmartReorderLoading(false);
+          setReorderLoading(false);
+        });
     }
   }, [fromDate, toDate, dailyDate, loadedTabs]);
 
@@ -1676,7 +1845,19 @@ export default function InsightStudioPage() {
       {/* ── Tab Content ──────────────────────────────────────────── */}
       <div className="rounded-xl border border-[#2A3045] bg-[#0D0F14] p-5">
         {activeTab === "pregled" && (
-          <OverviewTab kpi={kpi} changelog={changelog} marginAlerts={marginAlerts} loading={changelogLoading || marginAlertsLoading} />
+          <OverviewTab
+            kpi={kpi}
+            changelog={changelog}
+            marginAlerts={marginAlerts}
+            loading={changelogLoading || marginAlertsLoading}
+            intelligenceDemand={intelligenceDemand}
+            intelligenceInventory={intelligenceInventory}
+            intelligencePrice={intelligencePrice}
+            intelligenceTrend={intelligenceTrend}
+            intelligenceAsOfDate={intelligenceAsOfDate}
+            intelligenceLoading={intelligenceLoading}
+            intelligenceError={intelligenceError}
+          />
         )}
         {activeTab === "dobavljaci" && (
           <SupplierTab v2Data={supplierV2} v1Data={suppliers} loading={supplierV2Loading && supplierLoading} />
