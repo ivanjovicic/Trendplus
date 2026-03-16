@@ -130,8 +130,37 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
             return false;
         }
 
-        await using var conn = new NpgsqlConnection(connectionString);
-        await conn.OpenAsync(ct);
+        var csb = new NpgsqlConnectionStringBuilder(connectionString);
+        if (csb.Timeout <= 0)
+            csb.Timeout = 15;
+
+        _logger.LogInformation(
+            "{WorkerName} connecting to Postgres Host={Host} Port={Port} Db={Database} User={Username} Pooling={Pooling} MaxPool={MaxPool} Timeout={Timeout}s CommandTimeout={CommandTimeout}s",
+            WorkerName,
+            csb.Host,
+            csb.Port,
+            csb.Database,
+            csb.Username,
+            csb.Pooling,
+            csb.MaxPoolSize,
+            csb.Timeout,
+            csb.CommandTimeout);
+
+        await using var conn = new NpgsqlConnection(csb.ConnectionString);
+        try
+        {
+            await conn.OpenAsync(ct);
+        }
+        catch (TimeoutException tex)
+        {
+            _logger.LogError(tex, "{WorkerName} timed out while opening Postgres connection.", WorkerName);
+            throw;
+        }
+        catch (NpgsqlException npex)
+        {
+            _logger.LogError(npex, "{WorkerName} failed to open Postgres connection.", WorkerName);
+            throw;
+        }
 
         (long RunId, string ModelType, int? DatasetId, string FeatureViewName, string? ParamsJson)? job = null;
 
@@ -204,6 +233,25 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
         var outputDir = Path.GetFullPath(_options.OutputDir);
         Directory.CreateDirectory(outputDir);
 
+        // If training takes longer than the heartbeat threshold (10 min), we want to keep the
+        // worker marked as "running" so the health dashboard doesn't flag it as stale.
+        using var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var heartbeatTimer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+        var heartbeatTask = Task.Run(async () =>
+        {
+            try
+            {
+                while (await heartbeatTimer.WaitForNextTickAsync(heartbeatCts.Token))
+                {
+                    _healthService.ReportRunning(WorkerName, $"Training run #{job.Value.RunId} still running...");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // expected on cancellation
+            }
+        }, heartbeatCts.Token);
+
         try
         {
             var pythonResult = isEnterpriseRun
@@ -241,6 +289,18 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
             _logger.LogError(ex, "❌ Training run {RunId} failed", job.Value.RunId);
             _healthService.ReportError(WorkerName, ex);
             return true;
+        }
+        finally
+        {
+            heartbeatCts.Cancel();
+            try
+            {
+                await heartbeatTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // expected
+            }
         }
 
         _healthService.ReportHealthy(WorkerName, $"Completed training run #{job.Value.RunId}.");

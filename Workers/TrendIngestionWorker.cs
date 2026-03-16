@@ -163,10 +163,55 @@ public sealed class TrendIngestionWorker : BackgroundService
         try
         {
             var response = await client.GetAsync(url, cts.Token);
-            response.EnsureSuccessStatusCode();
 
-            var envelope = await response.Content.ReadFromJsonAsync<TrendEnvelopeDto>(_jsonOpts, ct);
-            return envelope?.Items ?? [];
+            var raw = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogInformation("📈 {Worker} — Trend API status: {StatusCode}, Content-Type: {ContentType}",
+                WorkerName,
+                response.StatusCode,
+                response.Content.Headers.ContentType?.ToString() ?? "<none>");
+            _logger.LogDebug("📈 {Worker} — Trend API raw response: {Raw}", WorkerName, raw);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    $"Trend API returned {(int)response.StatusCode} {response.StatusCode}. Body: {raw}");
+            }
+
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                throw new InvalidOperationException("Trend API returned empty response body.");
+            }
+
+            // Try standard envelope first (legacy)
+            try
+            {
+                var envelope = JsonSerializer.Deserialize<TrendEnvelopeDto>(raw, _jsonOpts);
+                if (envelope?.Items != null)
+                {
+                    return envelope.Items;
+                }
+            }
+            catch (JsonException)
+            {
+                // ignore and try other formats below
+            }
+
+            // Fallback: the API might return a raw list of items.
+            try
+            {
+                var list = JsonSerializer.Deserialize<List<TrendItemDto>>(raw, _jsonOpts);
+                if (list != null)
+                {
+                    return list;
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "📈 {Worker} — Failed to deserialize Trend API response as list: {Raw}", WorkerName, raw);
+                throw;
+            }
+
+            throw new InvalidOperationException($"Unexpected Trend API response format. Raw: {raw}");
         }
         catch (HttpRequestException ex)
         {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { getDnevnikPromena } from "../services/dnevnikPromenaApi";
 import type { DnevnikPromenaItem } from "../types/dnevnikPromena";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
@@ -100,8 +100,8 @@ export default function DnevnikPromenaPage() {
   };
 
   const renderSortIndicator = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
-    if (sortBy !== column) return null;
-    return sortDir === "asc" ? " ?" : " ?";
+    if (sortBy !== column) return <ArrowUpDown size={12} className="ml-1 inline opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp size={12} className="ml-1 inline text-[#4F8EF7]" /> : <ArrowDown size={12} className="ml-1 inline text-[#4F8EF7]" />;
   };
 
   const clearFilters = () => {
@@ -174,7 +174,7 @@ export default function DnevnikPromenaPage() {
             disabled={pageNumber <= 1}
             onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
           >
-            ?
+            <ChevronLeft size={14} />
           </button>
           <span className="text-sm text-[#9aabc7]">{pageNumber} / {totalPages}</span>
           <button
@@ -182,7 +182,7 @@ export default function DnevnikPromenaPage() {
             disabled={pageNumber >= totalPages}
             onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
           >
-            ?
+            <ChevronRight size={14} />
           </button>
           <span className="mx-1 text-[#57637a]">|</span>
           <span className="text-xs text-[#9aabc7]">Po strani</span>

@@ -22,6 +22,8 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
+from scraper.schema import ScrapedItem  # type: ignore
+
 from trend_engine.core import (
     compute_trend_groups,
     apply_social_boost,
@@ -72,22 +74,24 @@ async def _get_social_scores() -> Dict[str, float]:
 async def _scrape_all(
     sources: List[str],
     markets: List[str],
-) -> List[Dict[str, Any]]:
-    """
-    Scrape all sources and markets with fallback mechanisms.
-    """
-    results = []
-    tasks = []
+    pages: int,
+) -> List[ScrapedItem]:
+    """Scrape all sources and markets with fallback mechanisms."""
+    results: List[ScrapedItem] = []
 
-    for source in sources:
-        for market in markets:
-            tasks.append(_scrape_source_market(source, market))
+    tasks = [
+        asyncio.create_task(_scrape_source_market(source, market, pages))
+        for source in sources
+        for market in markets
+    ]
 
     completed, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
 
     for task in completed:
         try:
-            results.append(task.result())
+            items = task.result()
+            if items:
+                results.extend(items)
         except Exception as e:
             logger.error(f"Scraping failed for a task: {e}")
 
@@ -96,16 +100,34 @@ async def _scrape_all(
 
     return results
 
-async def _scrape_source_market(source: str, market: str) -> Dict[str, Any]:
-    """
-    Scrape a specific source and market with error handling.
-    """
+
+async def _scrape_source_market(source: str, market: str, pages: int) -> List[ScrapedItem]:
+    """Scrape a specific source and market with error handling."""
     try:
-        # Simulate scraping logic
-        return {"source": source, "market": market, "data": []}
+        # Placeholder scraping logic (returns dummy items).
+        # Replace with real scraper implementations (scraper/*.py) when available.
+        items: List[ScrapedItem] = []
+        for page in range(1, max(1, pages) + 1):
+            items.append(
+                ScrapedItem(
+                    source=source,
+                    market=market,
+                    brand=f"{source.capitalize()} Brand",
+                    name=f"{source.capitalize()} {market} Item {page}",
+                    priceValue=99.99,
+                    currency="EUR",
+                    url=f"https://{source}.example.com/{market}/item-{page}",
+                    imageUrl=f"https://{source}.example.com/{market}/item-{page}.jpg",
+                    rank=page,
+                    page=page,
+                    positionOnPage=1,
+                    sortMode="popularity",
+                )
+            )
+        return items
     except Exception as e:
         logger.error(f"Error scraping {source} for {market}: {e}")
-        return {"source": source, "market": market, "data": None}
+        return []
 
 
 # ─── Glavni entry point ────────────────────────────────────────────────────────
@@ -134,8 +156,13 @@ async def generate_trend_results(
                       base_score, final_score, rank,
                       source_counts, market_counts
     """
+    # Normalize inputs
+    if markets is None:
+        # Default markets used by the worker/original C# implementation.
+        markets = ["DE", "AT"]
+
     # 1) Scraping
-    scraped = await _scrape_all(sources=["tiktok", "instagram"], markets=markets)
+    scraped = await _scrape_all(sources=["tiktok", "instagram"], markets=markets, pages=pages)
     if not scraped:
         logger.warning("[batch] Nema scraped podataka!")
         return []

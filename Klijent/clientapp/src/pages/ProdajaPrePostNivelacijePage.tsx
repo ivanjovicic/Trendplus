@@ -136,6 +136,11 @@ function normalizeTooltipValue(value: number | string | readonly (number | strin
     return 0;
 }
 
+function safeNumber(value: number | string | null | undefined): number {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+}
+
 function sortMark(field: string, activeField: string, dir: SortDirection): string {
     if (field !== activeField) return "";
     return dir === "asc" ? " ▲" : " ▼";
@@ -373,8 +378,8 @@ export default function ProdajaPrePostNivelacijePage() {
         () =>
             sortedVendorStats.slice(0, 12).map((x) => ({
                 name: x.vendorName,
-                preValue: chartMetric === "revenue" ? Number(x.preRevenue) : x.preQty,
-                postValue: chartMetric === "revenue" ? Number(x.postRevenue) : x.postQty,
+                preValue: chartMetric === "revenue" ? safeNumber(x.preRevenue) : safeNumber(x.preQty),
+                postValue: chartMetric === "revenue" ? safeNumber(x.postRevenue) : safeNumber(x.postQty),
             })),
         [sortedVendorStats, chartMetric]
     );
@@ -383,8 +388,8 @@ export default function ProdajaPrePostNivelacijePage() {
         () =>
             sortedArticleStats.slice(0, 20).map((x) => ({
                 name: `${x.articleName} (${x.sku})`,
-                preValue: chartMetric === "revenue" ? Number(x.preRevenue) : x.preQty,
-                postValue: chartMetric === "revenue" ? Number(x.postRevenue) : x.postQty,
+                preValue: chartMetric === "revenue" ? safeNumber(x.preRevenue) : safeNumber(x.preQty),
+                postValue: chartMetric === "revenue" ? safeNumber(x.postRevenue) : safeNumber(x.postQty),
             })),
         [sortedArticleStats, chartMetric]
     );
@@ -874,7 +879,7 @@ export default function ProdajaPrePostNivelacijePage() {
             <div className="nivelacija-grid">
                 <div className="nivelacija-card">
                     <h3 className="nivelacija-card-title">Pre vs posle po dobavljacu</h3>
-                    <ResponsiveContainer width="100%" height={320}>
+                    <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={0}>
                         <BarChart data={vendorChartData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis dataKey="name" tick={{ fill: "#d1d5db", fontSize: 12 }} />
@@ -888,7 +893,7 @@ export default function ProdajaPrePostNivelacijePage() {
                 </div>
                 <div className="nivelacija-card">
                     <h3 className="nivelacija-card-title">Pre vs posle po artiklima (Top 20)</h3>
-                    <ResponsiveContainer width="100%" height={320}>
+                    <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={0}>
                         <LineChart data={articleChartData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis dataKey="name" tick={{ fill: "#d1d5db", fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={80} tickFormatter={(value: string) => (value.length > 24 ? `${value.slice(0, 24)}...` : value)} />
