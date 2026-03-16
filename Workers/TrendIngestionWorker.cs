@@ -163,7 +163,6 @@ public sealed class TrendIngestionWorker : BackgroundService
         try
         {
             var response = await client.GetAsync(url, cts.Token);
-
             var raw = await response.Content.ReadAsStringAsync(ct);
             _logger.LogInformation("📈 {Worker} — Trend API status: {StatusCode}, Content-Type: {ContentType}",
                 WorkerName,
@@ -173,49 +172,43 @@ public sealed class TrendIngestionWorker : BackgroundService
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new InvalidOperationException(
-                    $"Trend API returned {(int)response.StatusCode} {response.StatusCode}. Body: {raw}");
+                var bodyPreview = string.IsNullOrWhiteSpace(raw)
+                    ? "<empty>"
+                    : raw[..Math.Min(raw.Length, 512)];
+
+                _logger.LogWarning(
+                    "📈 {Worker} — Python API returned HTTP {StatusCode} at {Url}. Body: {Body}",
+                    WorkerName,
+                    (int)response.StatusCode,
+                    _options.PythonApiBaseUrl + url,
+                    bodyPreview);
+                return [];
             }
 
             if (string.IsNullOrWhiteSpace(raw))
             {
-                throw new InvalidOperationException("Trend API returned empty response body.");
+                _logger.LogWarning("📈 {Worker} — Python API returned empty response body at {Url}.", WorkerName, _options.PythonApiBaseUrl + url);
+                return [];
             }
 
-            // Try standard envelope first (legacy)
-            try
+            var trimmedPayload = raw.TrimStart();
+            if (trimmedPayload.StartsWith("[", StringComparison.Ordinal))
             {
-                var envelope = JsonSerializer.Deserialize<TrendEnvelopeDto>(raw, _jsonOpts);
-                if (envelope?.Items != null)
-                {
-                    return envelope.Items;
-                }
-            }
-            catch (JsonException)
-            {
-                // ignore and try other formats below
+                var items = JsonSerializer.Deserialize<List<TrendItemDto>>(raw, _jsonOpts);
+                return items ?? [];
             }
 
-            // Fallback: the API might return a raw list of items.
-            try
-            {
-                var list = JsonSerializer.Deserialize<List<TrendItemDto>>(raw, _jsonOpts);
-                if (list != null)
-                {
-                    return list;
-                }
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "📈 {Worker} — Failed to deserialize Trend API response as list: {Raw}", WorkerName, raw);
-                throw;
-            }
-
-            throw new InvalidOperationException($"Unexpected Trend API response format. Raw: {raw}");
+            var envelope = JsonSerializer.Deserialize<TrendEnvelopeDto>(raw, _jsonOpts);
+            return envelope?.Items ?? [];
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "📈 {Worker} — Python API unreachable at {Url}; skipping run.", WorkerName, _options.PythonApiBaseUrl + url);
+            return [];
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "📈 {Worker} — Python API returned invalid JSON at {Url}; skipping run.", WorkerName, _options.PythonApiBaseUrl + url);
             return [];
         }
         catch (TaskCanceledException)

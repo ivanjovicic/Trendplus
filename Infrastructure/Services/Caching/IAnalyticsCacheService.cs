@@ -58,38 +58,41 @@ public interface IAnalyticsCacheService
 public static class AnalyticsCacheKeys
 {
     public const string Prefix = "analytics:";
+
+    private static string FilterSuffix(int? storeId, int? supplierId) =>
+        $"store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}";
     
     // Sales Summary
-    public static string SalesSummary(DateTime? from, DateTime? to) => 
-        $"{Prefix}summary:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string SalesSummary(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}summary:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
     
     // Daily Sales
-    public static string DailySales(DateTime? from, DateTime? to) => 
-        $"{Prefix}daily:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string DailySales(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}daily:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
     
     // Top Products
-    public static string TopProducts(int top, DateTime? from, DateTime? to) => 
-        $"{Prefix}top:{top}:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string TopProducts(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}top:{top}:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
     
     // Category Data
-    public static string CategoryData(DateTime? from, DateTime? to) => 
-        $"{Prefix}category:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string CategoryData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}category:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
     
     // Gender Data
-    public static string GenderData(DateTime? from, DateTime? to) => 
-        $"{Prefix}gender:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string GenderData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}gender:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
     
     // Supplier Data
-    public static string SupplierData(DateTime? from, DateTime? to) => 
-        $"{Prefix}supplier:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string SupplierData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}supplier:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
     
     // Inventory
     public static string Inventory(int threshold) => 
         $"{Prefix}inventory:{threshold}";
     
     // Quick Insights
-    public static string QuickInsights(DateTime? from, DateTime? to) => 
-        $"{Prefix}insights:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string QuickInsights(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}insights:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
     
     // Comparison
     public static string Comparison(DateTime? from, DateTime? to) => 
@@ -99,35 +102,38 @@ public static class AnalyticsCacheKeys
     public const string Health = $"{Prefix}health";
 
     // Transaction Stats
-    public static string TransactionStats(DateTime? from, DateTime? to) => 
-        $"{Prefix}transaction-stats:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string TransactionStats(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}transaction-stats:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
 
     // By Payment
-    public static string ByPayment(DateTime? from, DateTime? to) => 
-        $"{Prefix}by-payment:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string ByPayment(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}by-payment:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
 
     // By Weekday
-    public static string ByWeekday(DateTime? from, DateTime? to) => 
-        $"{Prefix}by-weekday:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string ByWeekday(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}by-weekday:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
 
     // By Hour
-    public static string ByHour(DateTime? from, DateTime? to) => 
-        $"{Prefix}by-hour:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string ByHour(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}by-hour:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
 
     // Category Trends
-    public static string CategoryTrends(DateTime? from, DateTime? to) => 
-        $"{Prefix}category-trends:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string CategoryTrends(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
+        $"{Prefix}category-trends:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
 
     // Reorder Suggestions
-    public static string ReorderSuggestions => $"{Prefix}reorder-suggestions";
+    public static string ReorderSuggestions(int? supplierId = null) =>
+        $"{Prefix}reorder-suggestions:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}";
 
     // Dashboard Advanced Snapshot
-    public static string DashboardAdvanced(DateTime? from, DateTime? to) =>
-        $"{Prefix}dashboard-advanced:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string DashboardAdvanced(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) =>
+        $"{Prefix}dashboard-advanced:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
 
     // Top Products (advanced tabs)
-    public static string TopProductsAdvanced(int top, DateTime? from, DateTime? to) =>
-        $"{Prefix}top-advanced:{top}:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+    public static string TopProductsAdvanced(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) =>
+        $"{Prefix}top-advanced:{top}:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+
+    public const string Stores = $"{Prefix}filters:stores";
 
     // Validation endpoints
     public const string ValidationCompleteness = $"{Prefix}validation:completeness";

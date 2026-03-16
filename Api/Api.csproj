@@ -61,6 +61,9 @@
     <None Include="..\Database\Analytics\*.sql" Link="Database\Analytics\%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="..\Database\Analytics\Intelligence\*.sql" Link="Database\Analytics\Intelligence\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="..\Database\OpenProductTraining\*.sql" Link="Database\OpenProductTraining\%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

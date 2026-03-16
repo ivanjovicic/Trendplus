@@ -160,6 +160,52 @@
   margin-bottom: 14px;
 }
 
+.analytics-filter-bar {
+  margin-bottom: 14px;
+}
+
+.analytics-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.analytics-filter-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.analytics-filter-grid select,
+.analytics-filter-grid input {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(9, 17, 36, 0.92);
+  color: var(--text);
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.filter-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(138, 160, 214, 0.26);
+  background: rgba(8, 15, 31, 0.76);
+  color: #d6e3ff;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
 .analytics-custom-range label {
   display: grid;
   gap: 6px;
@@ -402,6 +448,13 @@
   min-height: 260px;
 }
 
+.analytics-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .stock-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
@@ -439,6 +492,31 @@
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 12px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.analytics-export-button {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(138, 160, 214, 0.3);
+  background: rgba(7, 14, 29, 0.78);
+  color: #dce6ff;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.analytics-export-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .top-tabs button {
@@ -597,6 +675,11 @@
     grid-template-columns: repeat(3, minmax(180px, 1fr));
   }
 
+  .analytics-filter-grid,
+  .analytics-chart-grid {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+
   .validation-grid {
     grid-template-columns: repeat(2, minmax(220px, 1fr));
   }
@@ -625,7 +708,9 @@
   }
 
   .analytics-panels-2,
-  .validation-grid {
+  .validation-grid,
+  .analytics-chart-grid,
+  .analytics-filter-grid {
     grid-template-columns: 1fr;
   }
 
@@ -636,5 +721,10 @@
   .analytics-skeleton-grid,
   .analytics-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

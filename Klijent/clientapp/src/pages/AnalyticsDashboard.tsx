@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
+  Legend,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -10,24 +18,42 @@ import {
 } from "recharts";
 import {
   checkAnalyticsHealth,
+  getByCategory,
+  getByGender,
+  getByHour,
+  getByPayment,
+  getBySupplier,
+  getByWeekday,
   getDailySales,
   getDashboardAdvanced,
   getInventoryStatus,
+  getQuickInsights,
   getSalesSummary,
+  getStores,
   getTopProductsAdvanced,
+  getTransactionStats,
   getValidationCompleteness,
   getValidationFreshness,
   getValidationLostSales,
 } from "../services/analyticsApi";
 import type {
+  CategoryData,
   DailySale,
   DashboardAdvancedSnapshot,
   DashboardMetricCard,
   DashboardValidationEndpoint,
+  GenderData,
+  HourData,
   InventoryStatus,
+  PaymentData,
+  QuickInsights,
   SalesSummary,
+  StoreOption,
+  SupplierData,
   TopProductAdvancedItem,
   TopProductsAdvancedResult,
+  TransactionStats,
+  WeekdayData,
 } from "../types/analytics";
 import "./AnalyticsDashboard.css";
 
@@ -51,6 +77,9 @@ const HELP: Record<string, string> = {
   margin: "Procenjeni uticaj na marzu (prodajna - nabavna cena).",
   trend: "Smer promene u odnosu na prethodni uporediv period.",
 };
+
+const CHART_COLORS = ["#3dd9a4", "#6ea8ff", "#ffbc57", "#ff7e67", "#a88cff", "#44d0ff", "#ff6c6c", "#75f0d1"];
+const DEFAULT_WEEKDAYS = ["Nedelja", "Ponedeljak", "Utorak", "Sreda", "Cetvrtak", "Petak", "Subota"];
 
 function formatInputDateTime(value: Date): string {
   const year = value.getFullYear();
@@ -83,17 +112,11 @@ function statusLabel(value?: string | null): string {
 }
 
 function formatCurrency(value: number): string {
-  return `${new Intl.NumberFormat("sr-RS", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value)} RSD`;
+  return `${new Intl.NumberFormat("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value)} RSD`;
 }
 
 function formatNumber(value: number, digits = 0): string {
-  return new Intl.NumberFormat("sr-RS", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(value);
+  return new Intl.NumberFormat("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 }
 
 function formatPercent(value?: number | null, digits = 1): string {
@@ -104,38 +127,6 @@ function formatPercent(value?: number | null, digits = 1): string {
 function trendLabel(value?: number | null): string {
   if (value == null) return "Nema trenda";
   return value >= 0 ? "Rast" : "Pad";
-}
-
-function trAdvancedLabel(key: string, fallback: string): string {
-  const map: Record<string, string> = {
-    velocity: "Brzina prodaje (velocity)",
-    oos: "Rasprodato (OOS)",
-    pareto: "Pareto koncentracija",
-    data_health: "Svezina podataka",
-    completeness: "Kompletnost podataka",
-  };
-  return map[key] ?? fallback;
-}
-
-function trDynamic(text: string): string {
-  return text
-    .replace("Top SKU:", "Top sifra:")
-    .replace("Lost sales estimate:", "Procena izgubljene prodaje:")
-    .replace("Top 50 share:", "Udeo top 50:")
-    .replace("Last import:", "Poslednji import:")
-    .replace("Missing:", "Nedostajuca polja:")
-    .replace("Completeness", "Kompletnost")
-    .replace("Freshness", "Svezina")
-    .replace("Lost Sales", "Izgubljena prodaja")
-    .replace("Replenishment", "Dopuna zaliha")
-    .replace("Data quality fix", "Ispravka kvaliteta podataka")
-    .replace("Refresh pipeline", "Osvezavanje pipeline-a")
-    .replace("Portfolio balance", "Balans asortimana")
-    .replace("Monitor", "Pracenje")
-    .replace("Lost sales estimate indicates stock-out pressure.", "Procena izgubljene prodaje ukazuje na pritisak rasprodatosti.")
-    .replace("Completeness validation is below target.", "Validacija kompletnosti je ispod cilja.")
-    .replace("Freshness validation indicates stale data.", "Validacija svezine pokazuje zastarele podatke.")
-    .replace("Pareto concentration is elevated.", "Pareto koncentracija je povecana.");
 }
 
 function buildPresetRange(preset: DatePreset): { from: string; to: string } | null {
@@ -162,6 +153,21 @@ function buildPresetRange(preset: DatePreset): { from: string; to: string } | nu
   return { from: formatInputDateTime(from), to: formatInputDateTime(to) };
 }
 
+function buildStoreLabel(store: StoreOption): string {
+  const extras = [store.city, store.region].filter(Boolean).join(", ");
+  return extras ? `${store.storeName} (${extras})` : store.storeName;
+}
+
+function downloadCsv(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function InfoTip({ text }: { text: string }) {
   return (
     <span className="info-tip" role="note" tabIndex={0} aria-label={text}>
@@ -171,12 +177,7 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
-function MetricCard(props: {
-  label: string;
-  value: string;
-  tone?: Tone;
-  infoTip?: string;
-}) {
+function MetricCard(props: { label: string; value: string; tone?: Tone; infoTip?: string }) {
   return (
     <article className={`metric-card ${props.tone ?? "neutral"}`}>
       <span className="metric-label">
@@ -190,17 +191,23 @@ function MetricCard(props: {
 
 export default function AnalyticsDashboard() {
   const [preset, setPreset] = useState<DatePreset>("30d");
-  const [fromDate, setFromDate] = useState<string>(() => {
-    const range = buildPresetRange("30d");
-    return range?.from ?? formatInputDateTime(new Date());
-  });
-  const [toDate, setToDate] = useState<string>(() => {
-    const range = buildPresetRange("30d");
-    return range?.to ?? formatInputDateTime(new Date());
-  });
+  const [fromDate, setFromDate] = useState<string>(() => buildPresetRange("30d")?.from ?? formatInputDateTime(new Date()));
+  const [toDate, setToDate] = useState<string>(() => buildPresetRange("30d")?.to ?? formatInputDateTime(new Date()));
+  const [selectedStore, setSelectedStore] = useState("");
+  const [selectedSupplier, setSelectedSupplier] = useState("");
+  const [stores, setStores] = useState<StoreOption[]>([]);
+  const [supplierOptions, setSupplierOptions] = useState<SupplierData[]>([]);
   const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [inventory, setInventory] = useState<InventoryStatus | null>(null);
   const [dailySales, setDailySales] = useState<DailySale[]>([]);
+  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
+  const [genderData, setGenderData] = useState<GenderData[]>([]);
+  const [supplierData, setSupplierData] = useState<SupplierData[]>([]);
+  const [weekdayData, setWeekdayData] = useState<WeekdayData[]>([]);
+  const [hourData, setHourData] = useState<HourData[]>([]);
+  const [paymentData, setPaymentData] = useState<PaymentData[]>([]);
+  const [quickInsights, setQuickInsights] = useState<QuickInsights | null>(null);
+  const [transactionStats, setTransactionStats] = useState<TransactionStats | null>(null);
   const [advanced, setAdvanced] = useState<DashboardAdvancedSnapshot | null>(null);
   const [topAdvanced, setTopAdvanced] = useState<TopProductsAdvancedResult | null>(null);
   const [validCompleteness, setValidCompleteness] = useState<DashboardValidationEndpoint | null>(null);
@@ -216,6 +223,8 @@ export default function AnalyticsDashboard() {
     const diff = parseInputDate(toDate).getTime() - parseInputDate(fromDate).getTime();
     return Math.max(Math.floor(diff / (24 * 60 * 60 * 1000)) + 1, 1);
   }, [fromDate, toDate]);
+  const storeId = useMemo(() => (selectedStore ? Number(selectedStore) : undefined), [selectedStore]);
+  const supplierId = useMemo(() => (selectedSupplier ? Number(selectedSupplier) : undefined), [selectedSupplier]);
 
   const applyPreset = useCallback((value: DatePreset) => {
     setPreset(value);
@@ -225,25 +234,64 @@ export default function AnalyticsDashboard() {
     setToDate(range.to);
   }, []);
 
+  const loadStores = useCallback(async () => {
+    try {
+      setStores(await getStores(true));
+    } catch {
+      setStores([]);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     if (isInvalidFilterRange) {
       setErrors(["Proverite filtere: datum od ne moze biti posle datuma do."]);
       return;
     }
+
     setLoading(true);
     setErrors([]);
-    const [healthR, summaryR, inventoryR, dailyR, advancedR, topAdvancedR, compR, freshR, lostR] =
-      await Promise.allSettled([
-        checkAnalyticsHealth(),
-        getSalesSummary(fromDate, toDate, true),
-        getInventoryStatus(2, true),
-        getDailySales(fromDate, toDate, true),
-        getDashboardAdvanced(fromDate, toDate, true),
-        getTopProductsAdvanced(10, fromDate, toDate, true),
-        getValidationCompleteness(true),
-        getValidationFreshness(true),
-        getValidationLostSales(true),
-      ]);
+
+    const responses = await Promise.allSettled([
+      checkAnalyticsHealth(),
+      getSalesSummary(fromDate, toDate, true, storeId, supplierId),
+      getInventoryStatus(2, true),
+      getDailySales(fromDate, toDate, true, storeId, supplierId),
+      getByCategory(fromDate, toDate, true, storeId, supplierId),
+      getByGender(fromDate, toDate, true, storeId, supplierId),
+      getBySupplier(fromDate, toDate, true, storeId, supplierId),
+      getBySupplier(fromDate, toDate, true, storeId, undefined),
+      getByWeekday(fromDate, toDate, true, storeId, supplierId),
+      getByHour(fromDate, toDate, true, storeId, supplierId),
+      getByPayment(fromDate, toDate, true, storeId, supplierId),
+      getQuickInsights(fromDate, toDate, true, storeId, supplierId),
+      getTransactionStats(fromDate, toDate, true, storeId, supplierId),
+      getDashboardAdvanced(fromDate, toDate, true, storeId, supplierId),
+      getTopProductsAdvanced(10, fromDate, toDate, true, storeId, supplierId),
+      getValidationCompleteness(true),
+      getValidationFreshness(true),
+      getValidationLostSales(true),
+    ]);
+
+    const [
+      healthR,
+      summaryR,
+      inventoryR,
+      dailyR,
+      categoryR,
+      genderR,
+      supplierR,
+      supplierOptionsR,
+      weekdayR,
+      hourR,
+      paymentR,
+      quickR,
+      transactionR,
+      advancedR,
+      topAdvancedR,
+      compR,
+      freshR,
+      lostR,
+    ] = responses;
 
     const nextErrors: string[] = [];
     if (healthR.status === "fulfilled") {
@@ -254,54 +302,60 @@ export default function AnalyticsDashboard() {
       setHealthText("");
       nextErrors.push("Provera zdravstvenog stanja podataka nije dostupna.");
     }
-    if (summaryR.status === "fulfilled") setSummary(summaryR.value);
-    else {
-      setSummary(null);
-      nextErrors.push("Sazetak prodaje nije ucitan.");
-    }
-    if (inventoryR.status === "fulfilled") setInventory(inventoryR.value);
-    else {
-      setInventory(null);
-      nextErrors.push("Status zaliha nije ucitan.");
-    }
-    if (dailyR.status === "fulfilled") setDailySales(dailyR.value);
-    else setDailySales([]);
-    if (advancedR.status === "fulfilled") setAdvanced(advancedR.value);
-    else setAdvanced(null);
-    if (topAdvancedR.status === "fulfilled") setTopAdvanced(topAdvancedR.value);
-    else setTopAdvanced(null);
+
+    setSummary(summaryR.status === "fulfilled" ? summaryR.value : null);
+    setInventory(inventoryR.status === "fulfilled" ? inventoryR.value : null);
+    setDailySales(dailyR.status === "fulfilled" ? dailyR.value : []);
+    setCategoryData(categoryR.status === "fulfilled" ? categoryR.value : []);
+    setGenderData(genderR.status === "fulfilled" ? genderR.value : []);
+    setSupplierData(supplierR.status === "fulfilled" ? supplierR.value : []);
+    setSupplierOptions(
+      supplierOptionsR.status === "fulfilled"
+        ? supplierOptionsR.value.filter((item) => item.dobavljacId != null).slice(0, 20)
+        : []
+    );
+    setWeekdayData(weekdayR.status === "fulfilled" ? weekdayR.value : []);
+    setHourData(hourR.status === "fulfilled" ? hourR.value : []);
+    setPaymentData(paymentR.status === "fulfilled" ? paymentR.value : []);
+    setQuickInsights(quickR.status === "fulfilled" ? quickR.value : null);
+    setTransactionStats(transactionR.status === "fulfilled" ? transactionR.value : null);
+    setAdvanced(advancedR.status === "fulfilled" ? advancedR.value : null);
+    setTopAdvanced(topAdvancedR.status === "fulfilled" ? topAdvancedR.value : null);
     setValidCompleteness(compR.status === "fulfilled" ? compR.value : null);
     setValidFreshness(freshR.status === "fulfilled" ? freshR.value : null);
     setValidLostSales(lostR.status === "fulfilled" ? lostR.value : null);
+
+    if (summaryR.status !== "fulfilled") nextErrors.push("Sazetak prodaje nije ucitan.");
+    if (dailyR.status !== "fulfilled") nextErrors.push("Dnevni trend prodaje nije ucitan.");
+    if (topAdvancedR.status !== "fulfilled") nextErrors.push("Napredna tabela top proizvoda nije ucitana.");
+
     setErrors(nextErrors);
     setLoading(false);
-  }, [fromDate, toDate, isInvalidFilterRange]);
+  }, [fromDate, isInvalidFilterRange, storeId, supplierId, toDate]);
+
+  useEffect(() => {
+    void loadStores();
+  }, [loadStores]);
 
   useEffect(() => {
     void load();
   }, [load]);
-
-  const advancedByKey = useMemo(() => {
-    const map = new Map<string, DashboardMetricCard>();
-    for (const c of advanced?.cards ?? []) map.set(c.key, c);
-    return map;
-  }, [advanced]);
 
   const movingStats = useMemo(() => {
     if (dailySales.length === 0) return { ma7Revenue: 0, momentumPct: null as number | null, elasticity: null as number | null };
     const sorted = [...dailySales].sort((a, b) => a.date.localeCompare(b.date));
     const last7 = sorted.slice(-7);
     const prev7 = sorted.slice(-14, -7);
-    const sumR = (x: DailySale[]) => x.reduce((acc, v) => acc + v.totalRevenue, 0);
-    const sumU = (x: DailySale[]) => x.reduce((acc, v) => acc + v.totalUnits, 0);
-    const lastRev = sumR(last7);
-    const prevRev = sumR(prev7);
-    const lastUnits = sumU(last7);
-    const prevUnits = sumU(prev7);
-    const ma7Revenue = last7.length > 0 ? lastRev / last7.length : 0;
-    const momentumPct = prevRev > 0 ? Number((((lastRev - prevRev) / prevRev) * 100).toFixed(2)) : null;
-    const lastPrice = lastUnits > 0 ? lastRev / lastUnits : 0;
-    const prevPrice = prevUnits > 0 ? prevRev / prevUnits : 0;
+    const sumRevenue = (items: DailySale[]) => items.reduce((acc, item) => acc + item.totalRevenue, 0);
+    const sumUnits = (items: DailySale[]) => items.reduce((acc, item) => acc + item.totalUnits, 0);
+    const lastRevenue = sumRevenue(last7);
+    const prevRevenue = sumRevenue(prev7);
+    const lastUnits = sumUnits(last7);
+    const prevUnits = sumUnits(prev7);
+    const ma7Revenue = last7.length > 0 ? lastRevenue / last7.length : 0;
+    const momentumPct = prevRevenue > 0 ? Number((((lastRevenue - prevRevenue) / prevRevenue) * 100).toFixed(2)) : null;
+    const lastPrice = lastUnits > 0 ? lastRevenue / lastUnits : 0;
+    const prevPrice = prevUnits > 0 ? prevRevenue / prevUnits : 0;
     const qtyChange = prevUnits > 0 ? (lastUnits - prevUnits) / prevUnits : 0;
     const priceChange = prevPrice > 0 ? (lastPrice - prevPrice) / prevPrice : 0;
     const elasticity = prevUnits > 0 && prevPrice > 0 && priceChange !== 0 ? Number((qtyChange / priceChange).toFixed(2)) : null;
@@ -317,10 +371,9 @@ export default function AnalyticsDashboard() {
       revenuePerDay: summary ? summary.totalRevenue / selectedDays : 0,
       transactionsPerDay: summary ? summary.totalTransactions / selectedDays : 0,
       availablePct: totalSku > 0 ? (available / totalSku) * 100 : null,
-      unavailablePct: totalSku > 0 ? (out / totalSku) * 100 : null,
       redZonePct: totalSku > 0 ? (low / totalSku) * 100 : null,
     };
-  }, [inventory, summary, selectedDays]);
+  }, [inventory, selectedDays, summary]);
 
   const topRows = useMemo(() => {
     if (!topAdvanced) return [] as TopProductAdvancedItem[];
@@ -336,9 +389,68 @@ export default function AnalyticsDashboard() {
         validCompleteness ? { name: "Kompletnost", ...validCompleteness } : null,
         validFreshness ? { name: "Svezina", ...validFreshness } : null,
         validLostSales ? { name: "Izgubljena prodaja", ...validLostSales } : null,
-      ].filter((x): x is { name: string } & DashboardValidationEndpoint => x !== null),
+      ].filter((item): item is { name: string } & DashboardValidationEndpoint => item !== null),
     [validCompleteness, validFreshness, validLostSales]
   );
+
+  const categoryPieData = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const item of categoryData) totals.set(item.kategorija, (totals.get(item.kategorija) ?? 0) + item.totalRevenue);
+    return Array.from(totals.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [categoryData]);
+
+  const genderPieData = useMemo(
+    () => genderData.map((item) => ({ name: item.pol || "Neodredjeno", value: item.totalRevenue })).sort((a, b) => b.value - a.value),
+    [genderData]
+  );
+
+  const supplierBarData = useMemo(
+    () => supplierData.slice().sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 10).map((item) => ({ name: item.dobavljacNaziv, totalRevenue: item.totalRevenue })),
+    [supplierData]
+  );
+
+  const weekdayChartData = useMemo(() => {
+    const byDay = new Map<number, WeekdayData>();
+    for (const item of weekdayData) byDay.set(item.dayOfWeek, item);
+    return DEFAULT_WEEKDAYS.map((dayName, dayOfWeek) => ({
+      dayOfWeek,
+      dayName: byDay.get(dayOfWeek)?.dayName ?? dayName,
+      totalRevenue: byDay.get(dayOfWeek)?.totalRevenue ?? 0,
+    }));
+  }, [weekdayData]);
+
+  const hourChartData = useMemo(() => {
+    const byHour = new Map<number, HourData>();
+    for (const item of hourData) byHour.set(item.hour, item);
+    return Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      label: `${String(hour).padStart(2, "0")}:00`,
+      totalRevenue: byHour.get(hour)?.totalRevenue ?? 0,
+    }));
+  }, [hourData]);
+
+  const paymentChartData = useMemo(
+    () => paymentData.slice().sort((a, b) => b.totalRevenue - a.totalRevenue).map((item) => ({ name: item.nacinPlacanja || "Nepoznato", totalRevenue: item.totalRevenue })),
+    [paymentData]
+  );
+
+  const exportTopRows = useCallback(() => {
+    if (topRows.length === 0) return;
+    const lines = [
+      ["SKU", "Artikal", "Promet", "Komadi", "Brzina prodaje", "Uticaj na marzu", "Trend", "Status zalihe"],
+      ...topRows.map((row) => [
+        row.sku,
+        row.productName,
+        row.revenue.toFixed(2),
+        row.units.toString(),
+        row.velocityUnitsPerDay.toFixed(2),
+        row.marginImpact == null ? "" : row.marginImpact.toFixed(2),
+        row.trendPct == null ? "" : row.trendPct.toFixed(2),
+        statusLabel(row.stockStatus),
+      ]),
+    ];
+    downloadCsv(`analytics-top-proizvodi-${topTab}.csv`, lines.map((line) => line.map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(",")).join("\n"));
+  }, [topRows, topTab]);
 
   return (
     <div className="analytics-dashboard">
@@ -346,39 +458,76 @@ export default function AnalyticsDashboard() {
         <div>
           <h1>Analitika - Pregled</h1>
           <p className="with-tip">
-            <span>Pregled KPI + detaljna analiza</span>
-            <InfoTip text="Gore su najvazniji brojevi za odluku, dole su detaljne analize i tabele." />
+            <span>Pregled KPI, chartova i prodajnih odluka</span>
+            <InfoTip text="Dashboard je fokusiran na promet, raspodelu prodaje i brze operativne odluke." />
           </p>
         </div>
         <div className="analytics-controls">
-          <select value={preset} onChange={(e) => applyPreset(e.target.value as DatePreset)}>
-            <option value="today">Danas</option>
-            <option value="yesterday">Juce</option>
-            <option value="7d">Poslednjih 7 dana</option>
-            <option value="30d">Poslednjih 30 dana</option>
-            <option value="90d">Poslednjih 90 dana</option>
-            <option value="thisMonth">Ovaj mesec</option>
-            <option value="lastMonth">Prosli mesec</option>
-            <option value="custom">Prilagodjeno</option>
-          </select>
-          <button onClick={() => void load()} disabled={loading}>Osvezi</button>
+          <button onClick={() => void load()} disabled={loading}>{loading ? "Ucitavanje..." : "Osvezi"}</button>
         </div>
       </header>
 
-      {preset === "custom" && (
-        <section className="analytics-panel analytics-custom-range">
-          <label>Od<input type="datetime-local" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
-          <label>Do<input type="datetime-local" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
-          <button onClick={() => void load()} disabled={loading}>Primeni</button>
-        </section>
-      )}
+      <section className="analytics-panel analytics-filter-bar">
+        <div className="analytics-filter-grid">
+          <label>
+            Period
+            <select value={preset} onChange={(e) => applyPreset(e.target.value as DatePreset)}>
+              <option value="today">Danas</option>
+              <option value="yesterday">Juce</option>
+              <option value="7d">Poslednjih 7 dana</option>
+              <option value="30d">Poslednjih 30 dana</option>
+              <option value="90d">Poslednjih 90 dana</option>
+              <option value="thisMonth">Ovaj mesec</option>
+              <option value="lastMonth">Prosli mesec</option>
+              <option value="custom">Prilagodjeno</option>
+            </select>
+          </label>
+          {preset === "custom" && (
+            <>
+              <label>
+                Datum od
+                <input type="datetime-local" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              </label>
+              <label>
+                Datum do
+                <input type="datetime-local" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              </label>
+            </>
+          )}
+          <label>
+            Prodavnica
+            <select value={selectedStore} onChange={(e) => setSelectedStore(e.target.value)}>
+              <option value="">Sve prodavnice</option>
+              {stores.map((store) => (
+                <option key={store.storeId} value={store.storeId}>{buildStoreLabel(store)}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Dobavljac
+            <select value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)}>
+              <option value="">Svi dobavljaci</option>
+              {supplierOptions.map((supplier) => (
+                <option key={supplier.dobavljacId ?? supplier.dobavljacNaziv} value={supplier.dobavljacId ?? ""}>
+                  {supplier.dobavljacNaziv}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="filter-chip-row">
+          <span className="filter-chip">Opseg: {selectedDays} dana</span>
+          <span className="filter-chip">Prodavnica: {storeId == null ? "Sve" : buildStoreLabel(stores.find((item) => item.storeId === storeId) ?? { storeId, storeName: `Prodavnica ${storeId}` })}</span>
+          <span className="filter-chip">Dobavljac: {selectedSupplier ? supplierOptions.find((item) => item.dobavljacId === supplierId)?.dobavljacNaziv ?? `ID ${supplierId}` : "Svi"}</span>
+        </div>
+      </section>
 
       {healthText && <div className="analytics-health">{healthText}</div>}
       {isInvalidFilterRange && <div className="analytics-empty warning">Proverite filtere: neispravan vremenski opseg.</div>}
       {errors.length > 0 && (
         <section className="analytics-panel analytics-errors">
           <h3>Validacione poruke</h3>
-          <ul>{errors.map((e, i) => <li key={`err-${i}`}>{e}</li>)}</ul>
+          <ul>{errors.map((error, index) => <li key={`err-${index}`}>{error}</li>)}</ul>
         </section>
       )}
 
@@ -387,68 +536,37 @@ export default function AnalyticsDashboard() {
         {loading && <div className="analytics-skeleton-grid">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="analytics-skeleton-card" />)}</div>}
         {!loading && summary && (
           <div className="analytics-card-grid">
-            <MetricCard
-              label="Ukupan promet"
-              value={formatCurrency(summary.totalRevenue)}
-              tone="good"
-              infoTip={HELP.promet}
-            />
-            <MetricCard
-              label="Transakcije"
-              value={formatNumber(summary.totalTransactions)}
-              infoTip={HELP.transakcije}
-            />
-            <MetricCard
-              label="Prodate jedinice"
-              value={formatNumber(summary.totalUnits)}
-              infoTip={HELP.jedinice}
-            />
-            <MetricCard
-              label="Promet po danu"
-              value={formatCurrency(derived.revenuePerDay)}
-            />
-            <MetricCard
-              label="Transakcije po danu"
-              value={formatNumber(derived.transactionsPerDay, 1)}
-            />
-            <MetricCard
-              label="Dostupnost SKU"
-              value={formatPercent(derived.availablePct)}
-              tone="good"
-              infoTip={HELP.sku}
-            />
-            <MetricCard
-              label="Crvena zona zaliha"
-              value={formatPercent(derived.redZonePct)}
-              tone="warning"
-              infoTip={HELP.oos}
-            />
-            <MetricCard
-              label="MA7 + Momentum"
-              value={formatCurrency(movingStats.ma7Revenue)}
-              tone="good"
-              infoTip={HELP.ma7}
-            />
-            <MetricCard
-              label="Elasticnost (aproks.)"
-              value={movingStats.elasticity == null ? "N/A" : formatNumber(movingStats.elasticity, 2)}
-              tone="neutral"
-              infoTip={HELP.elasticnost}
-            />
+            <MetricCard label="Ukupan promet" value={formatCurrency(summary.totalRevenue)} tone="good" infoTip={HELP.promet} />
+            <MetricCard label="Transakcije" value={formatNumber(summary.totalTransactions)} infoTip={HELP.transakcije} />
+            <MetricCard label="Prodate jedinice" value={formatNumber(summary.totalUnits)} infoTip={HELP.jedinice} />
+            <MetricCard label="Promet po danu" value={formatCurrency(derived.revenuePerDay)} />
+            <MetricCard label="Transakcije po danu" value={formatNumber(derived.transactionsPerDay, 1)} />
+            <MetricCard label="Dostupnost SKU" value={formatPercent(derived.availablePct)} tone="good" infoTip={HELP.sku} />
+            <MetricCard label="Crvena zona zaliha" value={formatPercent(derived.redZonePct)} tone="warning" infoTip={HELP.oos} />
+            <MetricCard label="MA7 + Momentum" value={formatCurrency(movingStats.ma7Revenue)} tone="good" infoTip={HELP.ma7} />
+            <MetricCard label="Elasticnost (aproks.)" value={movingStats.elasticity == null ? "N/A" : formatNumber(movingStats.elasticity, 2)} tone="neutral" infoTip={HELP.elasticnost} />
+            <MetricCard label="Prosecna korpa" value={formatCurrency(summary.avgBasketValue)} tone="neutral" infoTip="Prosecna vrednost jednog racuna." />
+          </div>
+        )}
+
+        {!loading && (quickInsights || transactionStats) && (
+          <div className="analytics-card-grid compact">
+            <MetricCard label="Najjaci dan" value={quickInsights?.bestDay ?? "N/A"} tone="good" infoTip="Dan u nedelji sa najvecim prometom." />
+            <MetricCard label="Promet najboljeg dana" value={formatCurrency(quickInsights?.bestDayRevenue ?? 0)} tone="good" />
+            <MetricCard label="Top proizvod" value={quickInsights?.topProduct ?? "N/A"} tone="neutral" />
+            <MetricCard label="Stavki po transakciji" value={transactionStats ? formatNumber(transactionStats.avgItemsPerTransaction, 2) : "N/A"} tone="neutral" />
+            <MetricCard label="Vrednost transakcije" value={transactionStats ? formatCurrency(transactionStats.avgTransactionValue) : "N/A"} tone="neutral" />
           </div>
         )}
 
         {!loading && advanced && (
           <div className="analytics-card-grid compact">
-            {advanced.cards.map((c) => (
-              <article key={c.key} className={`metric-card ${statusTone(c.status)}`}>
-                <span className="metric-label"><span>{trAdvancedLabel(c.key, c.label)}</span><InfoTip text={HELP[c.key] ?? "Napredna BI metrika."} /></span>
-                <strong>
-                  {formatNumber(c.value, c.unit === "%" ? 1 : 2)}{" "}
-                  {c.unit === "units/day" ? "kom/dan" : c.unit === "hours old" ? "sati od osvezavanja" : c.unit}
-                </strong>
-                <small>{c.trendPct != null ? `${trendLabel(c.trendPct)} ${formatPercent(c.trendPct)}` : statusLabel(c.status)}</small>
-                {c.subtitle && <small>{trDynamic(c.subtitle)}</small>}
+            {advanced.cards.map((card: DashboardMetricCard) => (
+              <article key={card.key} className={`metric-card ${statusTone(card.status)}`}>
+                <span className="metric-label"><span>{card.key === "velocity" ? "Brzina prodaje (velocity)" : card.key === "oos" ? "Rasprodato (OOS)" : card.key === "pareto" ? "Pareto koncentracija" : card.key === "data_health" ? "Svezina podataka" : card.key === "completeness" ? "Kompletnost podataka" : card.label}</span><InfoTip text={HELP[card.key] ?? "Napredna BI metrika."} /></span>
+                <strong>{formatNumber(card.value, card.unit === "%" ? 1 : 2)} {card.unit === "units/day" ? "kom/dan" : card.unit === "hours old" ? "sati od osvezavanja" : card.unit}</strong>
+                <small>{card.trendPct != null ? `${trendLabel(card.trendPct)} ${formatPercent(card.trendPct)}` : statusLabel(card.status)}</small>
+                {card.subtitle && <small>{card.subtitle.replace("Top SKU:", "Top sifra:").replace("Lost sales estimate:", "Procena izgubljene prodaje:").replace("Top 50 share:", "Udeo top 50:").replace("Last import:", "Poslednji import:").replace("Missing:", "Nedostajuca polja:")}</small>}
               </article>
             ))}
           </div>
@@ -460,10 +578,10 @@ export default function AnalyticsDashboard() {
               <h3 className="with-tip"><span>Uvidi</span><InfoTip text="Automatski izdvojeni najvazniji signali iz podataka." /></h3>
               <p className="section-note">Kratko objasnjenje sta se desava i zasto je vazno za posao.</p>
               {advanced.insights.length === 0 && <div className="analytics-empty">Nema podataka za panel uvida.</div>}
-              {advanced.insights.map((item, idx) => (
-                <div key={`ins-${idx}`} className={`insight-row ${item.color}`}>
+              {advanced.insights.map((item, index) => (
+                <div key={`ins-${index}`} className={`insight-row ${item.color}`}>
                   <span className="badge">{item.badge}</span>
-                  <p>{trDynamic(item.description)}</p>
+                  <p>{item.description.replace("Lost sales estimate indicates stock-out pressure.", "Procena izgubljene prodaje ukazuje na pritisak rasprodatosti.").replace("Pareto concentration is elevated.", "Pareto koncentracija je povecana.")}</p>
                 </div>
               ))}
             </section>
@@ -472,12 +590,12 @@ export default function AnalyticsDashboard() {
               <h3 className="with-tip"><span>Preporucene akcije</span><InfoTip text="Prakticni koraci koji pomazu rastu prometa ili smanjenju rizika." /></h3>
               <p className="section-note">P1 je najhitnije, P3 je redovno pracenje.</p>
               {advanced.actions.length === 0 && <div className="analytics-empty">Sve je u redu.</div>}
-              {advanced.actions.map((item, idx) => (
-                <div key={`act-${idx}`} className="action-row">
+              {advanced.actions.map((item, index) => (
+                <div key={`act-${index}`} className="action-row">
                   <span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span>
                   <div>
-                    <strong>{trDynamic(item.title)}</strong>
-                    <p>{trDynamic(item.recommendation)}</p>
+                    <strong>{item.title.replace("Replenishment", "Dopuna zaliha").replace("Portfolio balance", "Balans asortimana")}</strong>
+                    <p>{item.recommendation.replace("Refresh pipeline", "Osvezavanje pipeline-a").replace("Data quality fix", "Ispravka kvaliteta podataka").replace("Monitor", "Pracenje")}</p>
                   </div>
                 </div>
               ))}
@@ -489,16 +607,16 @@ export default function AnalyticsDashboard() {
           <section className="analytics-panel">
             <h3 className="with-tip"><span>Backend validacije</span><InfoTip text="Tehnicke kontrole kvaliteta podataka: kompletnost, svezina i procena izgubljene prodaje." /></h3>
             <div className="validation-grid">
-              {validationRows.map((v) => (
-                <article key={v.name} className={`validation-card ${statusTone(v.status)}`}>
-                  <div className="validation-head"><strong>{v.name}</strong><span>{statusLabel(v.status)}</span></div>
-                  <p>{trDynamic(v.message)}</p>
+              {validationRows.map((row) => (
+                <article key={row.name} className={`validation-card ${statusTone(row.status)}`}>
+                  <div className="validation-head"><strong>{row.name}</strong><span>{statusLabel(row.status)}</span></div>
+                  <p>{row.message}</p>
                 </article>
               ))}
-              {(advanced?.validations ?? []).map((v, idx) => (
-                <article key={`sv-${idx}`} className={`validation-card ${statusTone(v.severity)}`}>
-                  <div className="validation-head"><strong>Sistem</strong><span>{statusLabel(v.severity)}</span></div>
-                  <p>{trDynamic(v.message)}</p>
+              {(advanced?.validations ?? []).map((item, index) => (
+                <article key={`sv-${index}`} className={`validation-card ${statusTone(item.severity)}`}>
+                  <div className="validation-head"><strong>Sistem</strong><span>{statusLabel(item.severity)}</span></div>
+                  <p>{item.message}</p>
                 </article>
               ))}
             </div>
@@ -507,34 +625,142 @@ export default function AnalyticsDashboard() {
       </section>
 
       <section className="analytics-section">
-        <h2 className="with-tip"><span>Detaljna analiza</span><InfoTip text="Detaljniji pogled po trendu, zalihama i top proizvodima." /></h2>
-
+        <h2 className="with-tip"><span>Detaljna analiza</span><InfoTip text="Detaljniji pogled po trendu, raspodeli prodaje, zalihama i top proizvodima." /></h2>
         {!loading && dailySales.length > 0 && (
           <section className="analytics-panel">
             <h3 className="with-tip"><span>Dnevni trend prodaje</span><InfoTip text="Linijski grafikon pokazuje kretanje prometa i transakcija po danima." /></h3>
-            <p className="section-note">Koristite ovaj grafikon da brzo uocite dane pada/rasta i nestabilnosti.</p>
+            <p className="section-note">Koristite ovaj grafikon da brzo uocite dane pada, rasta i nestabilnosti.</p>
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height={320}>
                 <LineChart data={dailySales}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
                   <XAxis dataKey="date" tick={{ fill: "#9aa4c7", fontSize: 12 }} />
                   <YAxis tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                  <Tooltip
-                    contentStyle={{ background: "#131a31", border: "1px solid #2a3350", color: "#ecf1ff" }}
-                    formatter={(value: number | string | undefined, name?: string) => [
-                      name === "totalRevenue"
-                        ? formatCurrency(typeof value === "number" ? value : Number(value ?? 0))
-                        : formatNumber(typeof value === "number" ? value : Number(value ?? 0)),
-                      name === "totalRevenue" ? "Promet" : "Transakcije",
-                    ]}
-                  />
-                  <Line type="monotone" dataKey="totalRevenue" stroke="#3dd9a4" strokeWidth={2.5} dot={false} />
-                  <Line type="monotone" dataKey="transactionCount" stroke="#6ea8ff" strokeWidth={2} dot={false} />
+                  <Tooltip contentStyle={{ background: "#131a31", border: "1px solid #2a3350", color: "#ecf1ff" }} formatter={(value: number | string | undefined, name?: string) => [name === "totalRevenue" ? formatCurrency(typeof value === "number" ? value : Number(value ?? 0)) : formatNumber(typeof value === "number" ? value : Number(value ?? 0)), name === "totalRevenue" ? "Promet" : "Transakcije"]} />
+                  <Legend />
+                  <Line type="monotone" dataKey="totalRevenue" stroke="#3dd9a4" strokeWidth={2.5} dot={false} name="Promet" />
+                  <Line type="monotone" dataKey="transactionCount" stroke="#6ea8ff" strokeWidth={2} dot={false} name="Transakcije" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </section>
         )}
+
+        <div className="analytics-chart-grid">
+          <section className="analytics-panel">
+            <h3>Prodaja po kategorijama</h3>
+            <p className="section-note">Raspodela prihoda po kategorijama artikala.</p>
+            {categoryPieData.length === 0 ? <div className="analytics-empty">Nema podataka za kategorije.</div> : (
+              <div className="chart-wrap">
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie data={categoryPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={105} innerRadius={48}>
+                      {categoryPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+
+          <section className="analytics-panel">
+            <h3>Prodaja po polu</h3>
+            <p className="section-note">Donut prikaz pokazuje kome je prodaja najvise usmerena.</p>
+            {genderPieData.length === 0 ? <div className="analytics-empty">Nema podataka za pol.</div> : (
+              <div className="chart-wrap">
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie data={genderPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={102} innerRadius={58}>
+                      {genderPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+
+          <section className="analytics-panel">
+            <h3>Top dobavljaci po prometu</h3>
+            <p className="section-note">Horizontalni pregled top 10 dobavljaca po prihodu.</p>
+            {supplierBarData.length === 0 ? <div className="analytics-empty">Nema podataka za dobavljace.</div> : (
+              <div className="chart-wrap">
+                <ResponsiveContainer width="100%" height={340}>
+                  <BarChart data={supplierBarData} layout="vertical" margin={{ left: 12, right: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
+                    <XAxis type="number" tick={{ fill: "#9aa4c7", fontSize: 12 }} />
+                    <YAxis type="category" dataKey="name" width={150} tick={{ fill: "#9aa4c7", fontSize: 12 }} />
+                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
+                    <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="#6ea8ff" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+
+          <section className="analytics-panel">
+            <h3>Prodaja po danima u nedelji</h3>
+            <p className="section-note">Koji dan u nedelji pravi najvise prihoda.</p>
+            {weekdayChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po danima.</div> : (
+              <div className="chart-wrap">
+                <ResponsiveContainer width="100%" height={340}>
+                  <BarChart data={weekdayChartData} layout="vertical" margin={{ left: 12, right: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
+                    <XAxis type="number" tick={{ fill: "#9aa4c7", fontSize: 12 }} />
+                    <YAxis type="category" dataKey="dayName" width={110} tick={{ fill: "#9aa4c7", fontSize: 12 }} />
+                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
+                    <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="#3dd9a4" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+
+          <section className="analytics-panel">
+            <h3>Prodaja po satima</h3>
+            <p className="section-note">Prodajni ritam tokom dana od 00 do 23h.</p>
+            {hourChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po satima.</div> : (
+              <div className="chart-wrap">
+                <ResponsiveContainer width="100%" height={320}>
+                  <AreaChart data={hourChartData}>
+                    <defs>
+                      <linearGradient id="hourGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#44d0ff" stopOpacity={0.85} />
+                        <stop offset="95%" stopColor="#44d0ff" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
+                    <XAxis dataKey="label" tick={{ fill: "#9aa4c7", fontSize: 12 }} interval={1} />
+                    <YAxis tick={{ fill: "#9aa4c7", fontSize: 12 }} />
+                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
+                    <Area type="monotone" dataKey="totalRevenue" stroke="#44d0ff" fill="url(#hourGradient)" strokeWidth={2.2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+
+          <section className="analytics-panel">
+            <h3>Prodaja po nacinu placanja</h3>
+            <p className="section-note">Brz pregled gotovine, kartice i ostalih nacina placanja.</p>
+            {paymentChartData.length === 0 ? <div className="analytics-empty">Nema podataka po nacinu placanja.</div> : (
+              <div className="chart-wrap">
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={paymentChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
+                    <XAxis dataKey="name" tick={{ fill: "#9aa4c7", fontSize: 12 }} />
+                    <YAxis tick={{ fill: "#9aa4c7", fontSize: 12 }} />
+                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
+                    <Bar dataKey="totalRevenue" fill="#ffbc57" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+        </div>
 
         {!loading && inventory && (
           <section className="analytics-panel">
@@ -550,19 +776,21 @@ export default function AnalyticsDashboard() {
 
         {!loading && topAdvanced && (
           <section className="analytics-panel">
-            <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa vise pogleda: promet, komada, brzina prodaje i marza." /></h3>
-            <p className="section-note">Hover na red prikazuje sazetak trenda. Status zalihe je obojen radi brzeg skeniranja.</p>
-            <div className="top-tabs">
-              <button title="Rangiranje artikala po ukupnom prometu" className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Top po prometu</button>
-              <button title="Rangiranje po broju prodatih komada" className={topTab === "units" ? "active" : ""} onClick={() => setTopTab("units")}>Top po komadima</button>
-              <button title="Rangiranje po prosecno prodatim komadima dnevno" className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>Top po brzini prodaje</button>
-              <button title="Rangiranje po procenjenom uticaju na marzu" className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Top po marzi</button>
+            <div className="panel-head">
+              <div>
+                <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa vise pogleda: promet, komada, brzina prodaje i marza." /></h3>
+                <p className="section-note">Hover na red prikazuje sazetak trenda. Status zalihe je obojen radi brzeg skeniranja.</p>
+              </div>
+              <button className="analytics-export-button" onClick={exportTopRows} disabled={topRows.length === 0}>Izvezi CSV</button>
             </div>
-            {topTab === "margin" && !topAdvanced.marginAvailable && (
-              <div className="analytics-empty warning">Nema dovoljno podataka za prikaz uticaja na marzu.</div>
-            )}
-            {topRows.length === 0 && <div className="analytics-empty">Nema podataka.</div>}
-            {topRows.length > 0 && (
+            <div className="top-tabs">
+              <button className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Top po prometu</button>
+              <button className={topTab === "units" ? "active" : ""} onClick={() => setTopTab("units")}>Top po komadima</button>
+              <button className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>Top po brzini prodaje</button>
+              <button className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Top po marzi</button>
+            </div>
+            {topTab === "margin" && !topAdvanced.marginAvailable && <div className="analytics-empty warning">Nema dovoljno podataka za prikaz uticaja na marzu.</div>}
+            {topRows.length === 0 ? <div className="analytics-empty">Nema podataka.</div> : (
               <div className="top-table-wrap">
                 <table className="top-table">
                   <thead>
@@ -578,10 +806,7 @@ export default function AnalyticsDashboard() {
                   </thead>
                   <tbody>
                     {topRows.map((row) => (
-                      <tr
-                        key={`${topTab}-${row.productId}`}
-                        title={`Trend: ${formatPercent(row.trendPct)} | Promet: ${formatCurrency(row.revenue)} | Komada: ${formatNumber(row.units)}`}
-                      >
+                      <tr key={`${topTab}-${row.productId}`} title={`Trend: ${formatPercent(row.trendPct)} | Promet: ${formatCurrency(row.revenue)} | Komada: ${formatNumber(row.units)}`}>
                         <td><div className="sku-cell"><strong>{row.sku}</strong><span>{row.productName}</span></div></td>
                         <td>{formatCurrency(row.revenue)}</td>
                         <td>{formatNumber(row.units)}</td>

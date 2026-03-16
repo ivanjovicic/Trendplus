@@ -43,6 +43,7 @@ app = FastAPI(
     response_class=JSONResponse,
 )
 async def generate_trends(
+    top: Optional[int] = Query(default=None, ge=1, le=1000, description="Maksimalan broj rezultata u odgovoru."),
     pages: int = Query(default=5, ge=1, le=20, description="Broj stranica po izvoru/tržištu"),
     markets: Optional[List[str]] = Query(
         default=None,
@@ -56,8 +57,8 @@ async def generate_trends(
         raise HTTPException(status_code=400, detail="All markets must be strings.")
 
     try:
-        results = await generate_trend_results(pages=pages, markets=markets)
-        return JSONResponse(content=results)
+        results = await generate_trend_results(pages=pages, markets=markets, top_n=top)
+        return JSONResponse(content={"count": len(results), "items": results})
     except Exception as e:
         logger.error(f"Error generating trends: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while generating trends.")

@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using System.Collections.Generic;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
 using Domain.Model;
@@ -139,7 +140,7 @@ namespace Workers
                         message.CorrelationId);
 
                     // 1) Project to analytics DB (read model)
-                    await TryProjectToAnalyticsAsync(message, analyticsDb, ct);
+                    await TryProjectToAnalyticsAsync(message, db, analyticsDb, ct);
 
                     // 2) Publish to RabbitMQ if enabled
                     if (messageBroker.IsEnabled)
@@ -181,6 +182,7 @@ namespace Workers
 
         private static async Task TryProjectToAnalyticsAsync(
             OutboxMessage message,
+            ITrendplusDbContext trendplusDb,
             AnalyticsDbContext analyticsDb,
             CancellationToken ct)
         {
@@ -218,17 +220,68 @@ namespace Workers
 
             analyticsDb.SalesFacts.Add(fact);
 
+            var saleLineCosts = await trendplusDb.ProdajaStavke
+                .AsNoTracking()
+                .Where(x => x.IdProdaja == payload.ProdajaId)
+                .OrderBy(x => x.Id)
+                .Select(x => new { x.IdArtikal, x.NabavnaCena })
+                .ToListAsync(ct);
+
+            var costQueues = saleLineCosts
+                .GroupBy(x => x.IdArtikal)
+                .ToDictionary(
+                    x => x.Key,
+                    x => new Queue<decimal?>(x.Select(y => y.NabavnaCena)));
+
+            var productIds = payload.Stavke?
+                .Select(x => x.IdArtikal)
+                .Distinct()
+                .ToArray()
+                ?? Array.Empty<int>();
+
+            var fallbackCosts = productIds.Length == 0
+                ? new Dictionary<int, decimal?>()
+                : await analyticsDb.ProductsDim
+                    .AsNoTracking()
+                    .Where(x => productIds.Contains(x.ProductId))
+                    .GroupBy(x => x.ProductId)
+                    .Select(x => new
+                    {
+                        ProductId = x.Key,
+                        PurchasePrice = x
+                            .OrderByDescending(y => y.Timestamp)
+                            .Select(y => y.PurchasePrice)
+                            .FirstOrDefault()
+                    })
+                    .ToDictionaryAsync(x => x.ProductId, x => x.PurchasePrice, ct);
+
             if (payload.Stavke != null)
             {
                 foreach (var s in payload.Stavke)
                 {
+                    decimal? resolvedCost = s.NabavnaCena;
+
+                    if (!resolvedCost.HasValue
+                        && costQueues.TryGetValue(s.IdArtikal, out var queue)
+                        && queue.Count > 0)
+                    {
+                        resolvedCost = queue.Dequeue();
+                    }
+
+                    if (!resolvedCost.HasValue
+                        && fallbackCosts.TryGetValue(s.IdArtikal, out var purchasePrice))
+                    {
+                        resolvedCost = purchasePrice;
+                    }
+
                     analyticsDb.SalesLineFacts.Add(new SalesLineFact
                     {
                         SaleId = payload.ProdajaId,
                         ProductId = s.IdArtikal,
                         Qty = s.Kolicina,
                         UnitPrice = s.Cena,
-                        LineTotal = (decimal)s.Kolicina * s.Cena
+                        LineTotal = (decimal)s.Kolicina * s.Cena,
+                        NabavnaCena = resolvedCost
                     });
                 }
             }
@@ -251,6 +304,7 @@ namespace Workers
             public int IdArtikal { get; set; }
             public int Kolicina { get; set; }
             public decimal Cena { get; set; }
+            public decimal? NabavnaCena { get; set; }
         }
     }
 }

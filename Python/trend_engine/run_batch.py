@@ -20,10 +20,21 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from scraper.schema import ScrapedItem  # type: ignore
-
+from scraper import (
+    ABOUTYOU_MARKETS,
+    DEICHMANN_MARKETS,
+    HUMANIC_MARKETS,
+    MARKETS,
+    ZALANDO_MARKETS,
+    _scrape_aboutyou,
+    _scrape_deichmann,
+    _scrape_humanic,
+    _scrape_zalando,
+)
+from scraper.schema import ScrapedItem
 from trend_engine.core import (
     compute_trend_groups,
     apply_social_boost,
@@ -71,63 +82,136 @@ async def _get_social_scores() -> Dict[str, float]:
 
 # ─── Scraper wrapper ──────────────────────────────────────────────────────────
 
-async def _scrape_all(
-    sources: List[str],
-    markets: List[str],
-    pages: int,
-) -> List[ScrapedItem]:
-    """Scrape all sources and markets with fallback mechanisms."""
-    results: List[ScrapedItem] = []
+def _parse_optional_int(value: Any) -> Optional[int]:
+    if value in (None, ""):
+        return None
 
-    tasks = [
-        asyncio.create_task(_scrape_source_market(source, market, pages))
-        for source in sources
-        for market in markets
-    ]
-
-    completed, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
-
-    for task in completed:
-        try:
-            items = task.result()
-            if items:
-                results.extend(items)
-        except Exception as e:
-            logger.error(f"Scraping failed for a task: {e}")
-
-    if pending:
-        logger.warning(f"Some scraping tasks did not complete: {len(pending)} tasks pending.")
-
-    return results
-
-
-async def _scrape_source_market(source: str, market: str, pages: int) -> List[ScrapedItem]:
-    """Scrape a specific source and market with error handling."""
     try:
-        # Placeholder scraping logic (returns dummy items).
-        # Replace with real scraper implementations (scraper/*.py) when available.
-        items: List[ScrapedItem] = []
-        for page in range(1, max(1, pages) + 1):
-            items.append(
-                ScrapedItem(
-                    source=source,
-                    market=market,
-                    brand=f"{source.capitalize()} Brand",
-                    name=f"{source.capitalize()} {market} Item {page}",
-                    priceValue=99.99,
-                    currency="EUR",
-                    url=f"https://{source}.example.com/{market}/item-{page}",
-                    imageUrl=f"https://{source}.example.com/{market}/item-{page}.jpg",
-                    rank=page,
-                    page=page,
-                    positionOnPage=1,
-                    sortMode="popularity",
-                )
-            )
-        return items
-    except Exception as e:
-        logger.error(f"Error scraping {source} for {market}: {e}")
-        return []
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_optional_float(value: Any) -> Optional[float]:
+    if value in (None, ""):
+        return None
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_scraped_at(value: Any) -> Optional[datetime]:
+    if isinstance(value, datetime):
+        return value
+
+    if isinstance(value, str) and value:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    return None
+
+
+def _coerce_scraped_item(item: Any) -> Optional[ScrapedItem]:
+    if isinstance(item, ScrapedItem):
+        if asyncio.iscoroutine(item.sku):
+            item.sku = None
+        if asyncio.iscoroutine(item.productId):
+            item.productId = None
+        if asyncio.iscoroutine(item.url):
+            item.url = ""
+        return item
+
+    if not isinstance(item, dict):
+        return None
+
+    source = str(item.get("source") or "").strip()
+    market = str(item.get("market") or "").strip()
+    brand = str(item.get("brand") or "").strip()
+    name = str(item.get("name") or "").strip()
+
+    if not source or not market or not brand or not name:
+        logger.debug("[batch] Skipping malformed scraped item with missing core fields: %s", item)
+        return None
+
+    image_url = item.get("imageUrl")
+    rank = _parse_optional_int(item.get("rank")) or 1
+    page = _parse_optional_int(item.get("page")) or 1
+    position_on_page = _parse_optional_int(item.get("positionOnPage")) or rank
+    backend_rank = _parse_optional_int(item.get("backendRank"))
+    social_score = _parse_optional_float(item.get("socialScore"))
+    previous_social_score = _parse_optional_float(item.get("previousSocialScore"))
+    scraped_at = _parse_scraped_at(item.get("scrapedAt"))
+
+    return ScrapedItem(
+        source=source,
+        market=market,
+        brand=brand,
+        name=name,
+        priceValue=_parse_optional_float(item.get("priceValue")) or 0.0,
+        currency=str(item.get("currency") or "EUR"),
+        url=str(item.get("url") or ""),
+        imageUrl=image_url if image_url else None,
+        rank=rank,
+        page=page,
+        positionOnPage=position_on_page,
+        sortMode=str(item.get("sortMode") or "popularity"),
+        sku=item.get("sku"),
+        productId=item.get("productId"),
+        category=item.get("category"),
+        gender=item.get("gender"),
+        isNew=bool(item.get("isNew", False)),
+        isOnSale=bool(item.get("isOnSale", False)),
+        hasImage=bool(item.get("hasImage", bool(image_url))),
+        backend=item.get("backend"),
+        backendIndex=item.get("backendIndex"),
+        backendRank=backend_rank,
+        backendQueryId=item.get("backendQueryId"),
+        socialScore=social_score,
+        previousSocialScore=previous_social_score,
+        scrapedAt=scraped_at or datetime.utcnow(),
+        raw=item,
+    )
+
+
+async def _scrape_all(
+    pages: int,
+    markets: Optional[List[str]],
+) -> List[ScrapedItem]:
+    """
+    Scrape all configured sources and coerce results to ScrapedItem objects.
+    """
+    active_markets = markets or MARKETS
+    tasks: List[asyncio.Task[List[Any]]] = []
+
+    for market in active_markets:
+        if market in ZALANDO_MARKETS:
+            tasks.append(asyncio.create_task(_scrape_zalando(market, pages)))
+        if market in HUMANIC_MARKETS:
+            tasks.append(asyncio.create_task(_scrape_humanic(market, pages)))
+        if market in DEICHMANN_MARKETS:
+            tasks.append(asyncio.create_task(_scrape_deichmann(market, pages)))
+        if market in ABOUTYOU_MARKETS:
+            tasks.append(asyncio.create_task(_scrape_aboutyou(market, pages)))
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    items: List[ScrapedItem] = []
+
+    for result in results:
+        if isinstance(result, Exception):
+            logger.error("[batch] Scrape task failed: %s", result)
+            continue
+
+        for raw_item in result:
+            coerced = _coerce_scraped_item(raw_item)
+            if coerced is not None:
+                items.append(coerced)
+
+    logger.info("[batch] Collected %s scraped items after coercion", len(items))
+    return items
 
 
 # ─── Glavni entry point ────────────────────────────────────────────────────────
@@ -156,13 +240,8 @@ async def generate_trend_results(
                       base_score, final_score, rank,
                       source_counts, market_counts
     """
-    # Normalize inputs
-    if markets is None:
-        # Default markets used by the worker/original C# implementation.
-        markets = ["DE", "AT"]
-
     # 1) Scraping
-    scraped = await _scrape_all(sources=["tiktok", "instagram"], markets=markets, pages=pages)
+    scraped = await _scrape_all(pages=pages, markets=markets)
     if not scraped:
         logger.warning("[batch] Nema scraped podataka!")
         return []

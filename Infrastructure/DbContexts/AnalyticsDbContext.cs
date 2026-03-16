@@ -4,6 +4,7 @@ using Domain.Model.Analytics;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -159,6 +160,33 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => new { e.ArtikalId, e.Datum });
                 entity.HasIndex(e => new { e.StoreId, e.Datum });
                 entity.HasIndex(e => e.TipPromene);
+            });
+
+            modelBuilder.Entity<ReturnFact>(entity =>
+            {
+                entity.ToTable("ReturnFacts");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SourceLineId).IsRequired();
+                entity.Property(e => e.ReturnId).IsRequired();
+                entity.Property(e => e.ProductId).IsRequired();
+                entity.Property(e => e.SupplierId).IsRequired();
+                entity.Property(e => e.Qty).IsRequired();
+                entity.Property(e => e.UnitCost).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.LineAmount).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.ReturnTimestampUtc).IsRequired();
+                entity.Property(e => e.Status).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.HeaderReason).HasMaxLength(500);
+                entity.Property(e => e.LineReason).HasMaxLength(500);
+                entity.Property(e => e.ItemCondition).HasMaxLength(200);
+                entity.Property(e => e.BrojZapisnika).HasMaxLength(100);
+                entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
+
+                entity.HasIndex(e => e.SourceLineId).IsUnique();
+                entity.HasIndex(e => e.ReturnId);
+                entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => e.SupplierId);
+                entity.HasIndex(e => e.ReturnTimestampUtc);
+                entity.HasIndex(e => new { e.SupplierId, e.ReturnTimestampUtc });
             });
 
             // Global Trends Tables
@@ -317,6 +345,7 @@ namespace Infrastructure.DbContexts
         public DbSet<SeasonsDim> SeasonsDim => Set<SeasonsDim>();
         public DbSet<FootwearTypesDim> FootwearTypesDim => Set<FootwearTypesDim>();
         public DbSet<InventoryMovementFact> InventoryMovementFacts => Set<InventoryMovementFact>();
+        public DbSet<ReturnFact> ReturnFacts => Set<ReturnFact>();
         
         // Global Trends
         public DbSet<EuTrend> EuTrends => Set<EuTrend>();
@@ -341,6 +370,9 @@ namespace Infrastructure.DbContexts
 
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }
+
+        public DbConnection GetDbConnection()
+            => Database.GetDbConnection();
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
             => base.SaveChangesAsync(cancellationToken);

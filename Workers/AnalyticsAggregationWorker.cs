@@ -21,6 +21,7 @@ public class AnalyticsAggregationWorker : BackgroundService
     private readonly WorkerRuntimeControlService _controlService;
     
     private const string WorkerName = "AnalyticsAggregationWorker";
+    private const int CommandTimeoutSeconds = 300;
     
     // Configuration
     private readonly TimeSpan _refreshInterval = TimeSpan.FromMinutes(5);  // Refresh every 5 minutes
@@ -195,7 +196,8 @@ public class AnalyticsAggregationWorker : BackgroundService
                     NOW()
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
-                WHERE DATE(p.datum_prodaje) = @date::DATE
+                WHERE p.datum_prodaje >= @date_from
+                  AND p.datum_prodaje < @date_to
                 ON CONFLICT (""Date"") DO UPDATE SET
                     ""TotalRevenue"" = EXCLUDED.""TotalRevenue"",
                     ""TotalTransactions"" = EXCLUDED.""TotalTransactions"",
@@ -209,7 +211,10 @@ public class AnalyticsAggregationWorker : BackgroundService
                     ""UpdatedAt"" = NOW();";
 
             await using var cmd = new NpgsqlCommand(sql, connection);
-            cmd.Parameters.AddWithValue("date", date);
+            cmd.CommandTimeout = CommandTimeoutSeconds;
+            cmd.Parameters.AddWithValue("date", date.Date);
+            cmd.Parameters.AddWithValue("date_from", date.Date);
+            cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
             await cmd.ExecuteNonQueryAsync(ct);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01") // Table doesn't exist
@@ -226,6 +231,7 @@ public class AnalyticsAggregationWorker : BackgroundService
             var deleteSql = @"DELETE FROM ""AnalyticsCategorySummary"" WHERE ""Date"" = @date::DATE;";
             await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection))
             {
+                deleteCmd.CommandTimeout = CommandTimeoutSeconds;
                 deleteCmd.Parameters.AddWithValue("date", date);
                 await deleteCmd.ExecuteNonQueryAsync(ct);
             }
@@ -243,11 +249,15 @@ public class AnalyticsAggregationWorker : BackgroundService
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
                 JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
-                WHERE DATE(p.datum_prodaje) = @date::DATE
+                WHERE p.datum_prodaje >= @date_from
+                  AND p.datum_prodaje < @date_to
                 GROUP BY a.""Kategorija"";";
 
             await using var cmd = new NpgsqlCommand(insertSql, connection);
-            cmd.Parameters.AddWithValue("date", date);
+            cmd.CommandTimeout = CommandTimeoutSeconds;
+            cmd.Parameters.AddWithValue("date", date.Date);
+            cmd.Parameters.AddWithValue("date_from", date.Date);
+            cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
             await cmd.ExecuteNonQueryAsync(ct);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
@@ -264,6 +274,7 @@ public class AnalyticsAggregationWorker : BackgroundService
             var deleteSql = @"DELETE FROM ""AnalyticsSupplierSummary"" WHERE ""Date"" = @date::DATE;";
             await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection))
             {
+                deleteCmd.CommandTimeout = CommandTimeoutSeconds;
                 deleteCmd.Parameters.AddWithValue("date", date);
                 await deleteCmd.ExecuteNonQueryAsync(ct);
             }
@@ -283,11 +294,15 @@ public class AnalyticsAggregationWorker : BackgroundService
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
                 JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
                 LEFT JOIN ""Dobavljaci"" d ON a.""IDDobavljac"" = d.""Id""
-                WHERE DATE(p.datum_prodaje) = @date::DATE
+                WHERE p.datum_prodaje >= @date_from
+                  AND p.datum_prodaje < @date_to
                 GROUP BY d.""Id"", d.""Naziv"";";
 
             await using var cmd = new NpgsqlCommand(insertSql, connection);
-            cmd.Parameters.AddWithValue("date", date);
+            cmd.CommandTimeout = CommandTimeoutSeconds;
+            cmd.Parameters.AddWithValue("date", date.Date);
+            cmd.Parameters.AddWithValue("date_from", date.Date);
+            cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
             await cmd.ExecuteNonQueryAsync(ct);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
@@ -304,6 +319,7 @@ public class AnalyticsAggregationWorker : BackgroundService
             var deleteSql = @"DELETE FROM ""AnalyticsGenderSummary"" WHERE ""Date"" = @date::DATE;";
             await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection))
             {
+                deleteCmd.CommandTimeout = CommandTimeoutSeconds;
                 deleteCmd.Parameters.AddWithValue("date", date);
                 await deleteCmd.ExecuteNonQueryAsync(ct);
             }
@@ -320,11 +336,15 @@ public class AnalyticsAggregationWorker : BackgroundService
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
                 JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
-                WHERE DATE(p.datum_prodaje) = @date::DATE
+                WHERE p.datum_prodaje >= @date_from
+                  AND p.datum_prodaje < @date_to
                 GROUP BY a.""Pol"";";
 
             await using var cmd = new NpgsqlCommand(insertSql, connection);
-            cmd.Parameters.AddWithValue("date", date);
+            cmd.CommandTimeout = CommandTimeoutSeconds;
+            cmd.Parameters.AddWithValue("date", date.Date);
+            cmd.Parameters.AddWithValue("date_from", date.Date);
+            cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
             await cmd.ExecuteNonQueryAsync(ct);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
@@ -341,6 +361,7 @@ public class AnalyticsAggregationWorker : BackgroundService
             var deleteSql = @"DELETE FROM ""AnalyticsTopProducts"" WHERE ""Date"" = @date::DATE;";
             await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection))
             {
+                deleteCmd.CommandTimeout = CommandTimeoutSeconds;
                 deleteCmd.Parameters.AddWithValue("date", date);
                 await deleteCmd.ExecuteNonQueryAsync(ct);
             }
@@ -359,13 +380,17 @@ public class AnalyticsAggregationWorker : BackgroundService
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
                 JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
-                WHERE DATE(p.datum_prodaje) = @date::DATE
+                WHERE p.datum_prodaje >= @date_from
+                  AND p.datum_prodaje < @date_to
                 GROUP BY a.""Id"", a.""Naziv""
                 ORDER BY total_revenue DESC
                 LIMIT 50;";
 
             await using var cmd = new NpgsqlCommand(insertSql, connection);
-            cmd.Parameters.AddWithValue("date", date);
+            cmd.CommandTimeout = CommandTimeoutSeconds;
+            cmd.Parameters.AddWithValue("date", date.Date);
+            cmd.Parameters.AddWithValue("date_from", date.Date);
+            cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
             await cmd.ExecuteNonQueryAsync(ct);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")

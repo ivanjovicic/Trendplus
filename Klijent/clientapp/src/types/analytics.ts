@@ -11,8 +11,8 @@ export interface TopProduct {
   productName: string;
   totalRevenue: number;
   totalUnits: number;
-  velicina?: string | null;  // Veli?ina cipela
-  boja?: string | null;      // Boja cipela
+  velicina?: string | null;
+  boja?: string | null;
 }
 
 export interface TopProductsResult {
@@ -32,6 +32,81 @@ export interface DailySale {
   totalRevenue: number;
   transactionCount: number;
   totalUnits: number;
+}
+
+export interface CategoryData {
+  kategorija: string;
+  pol: string;
+  totalRevenue: number;
+  totalUnits: number;
+  transactionCount: number;
+}
+
+export interface GenderData {
+  pol: string;
+  totalRevenue: number;
+  totalUnits: number;
+}
+
+export interface SupplierData {
+  dobavljacId?: number | null;
+  dobavljacNaziv: string;
+  totalRevenue: number;
+  totalUnits: number;
+  transactionCount: number;
+}
+
+export interface PaymentData {
+  nacinPlacanja: string;
+  totalRevenue: number;
+  transactionCount: number;
+}
+
+export interface WeekdayData {
+  dayOfWeek: number;
+  dayName: string;
+  totalRevenue: number;
+  transactionCount: number;
+}
+
+export interface HourData {
+  hour: number;
+  totalRevenue: number;
+  transactionCount: number;
+}
+
+export interface QuickInsights {
+  bestDay?: string | null;
+  bestDayRevenue: number;
+  topProduct?: string | null;
+  lowStockAlert: number;
+}
+
+export interface TransactionStats {
+  avgItemsPerTransaction: number;
+  avgTransactionValue: number;
+  totalTransactions: number;
+}
+
+export interface CategoryTrendPoint {
+  date: string;
+  [key: string]: string | number;
+}
+
+export interface ReorderSuggestion {
+  id: number;
+  naziv: string;
+  kolicina?: number | null;
+  minimalnaKolicina?: number | null;
+  kategorija?: string | null;
+  nabavnaCena?: number | null;
+}
+
+export interface StoreOption {
+  storeId: number;
+  storeName: string;
+  city?: string | null;
+  region?: string | null;
 }
 
 export interface DashboardMetricCard {

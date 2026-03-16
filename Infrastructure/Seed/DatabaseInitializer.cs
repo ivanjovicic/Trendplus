@@ -5,12 +5,20 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using System.Security.Cryptography;
 
 namespace Infrastructure.Seed;
 
 public static class DatabaseInitializer
 {
     private const long AdvisoryLockKey = 987654321L;
+    private const long SupplierDecisionHubBuildLockKey = 987654322L;
+    private const long AnalyticsIntelligenceBuildLockKey = 987654323L;
+    private const int AdvisoryLockCommandTimeoutSeconds = 10;
+    private const int AdvisoryLockRetryDelaySeconds = 2;
+    private const int AdvisoryLockMaxWaitSeconds = 120;
+    private const int BootstrapCommandTimeoutSeconds = 600;
+    private const int StartupSqlLockTimeoutSeconds = 15;
 
     public static async Task InitializeDatabasesAsync(
         IServiceProvider services,
@@ -30,10 +38,20 @@ public static class DatabaseInitializer
         await connection.OpenAsync();
 
         // Global advisory lock da samo jedna instanca radi init (ali ne blokira druge konekcije)
-        await using var lockCmd = new NpgsqlCommand("SELECT pg_advisory_lock(@key);", connection);
-        lockCmd.Parameters.AddWithValue("key", AdvisoryLockKey);
-        await lockCmd.ExecuteNonQueryAsync();
-        logger.LogInformation("Acquired advisory startup lock with key {Key}.", AdvisoryLockKey);
+        var lockAcquired = await TryAcquireAdvisoryLockAsync(
+            connection,
+            logger,
+            AdvisoryLockKey,
+            TimeSpan.FromSeconds(AdvisoryLockMaxWaitSeconds),
+            TimeSpan.FromSeconds(AdvisoryLockRetryDelaySeconds));
+
+        if (!lockAcquired)
+        {
+            logger.LogWarning(
+                "Skipping database initialization because advisory startup lock {Key} is still held by another instance.",
+                AdvisoryLockKey);
+            return;
+        }
 
         var trendplusInitialized = false;
         var analyticsInitialized = false;
@@ -84,6 +102,7 @@ public static class DatabaseInitializer
         finally
         {
             await using var unlockCmd = new NpgsqlCommand("SELECT pg_advisory_unlock(@key);", connection);
+            unlockCmd.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
             unlockCmd.Parameters.AddWithValue("key", AdvisoryLockKey);
             await unlockCmd.ExecuteNonQueryAsync();
             logger.LogInformation("Released advisory startup lock with key {Key}.", AdvisoryLockKey);
@@ -105,6 +124,126 @@ public static class DatabaseInitializer
             return candidate;
 
         return null;
+    }
+
+    private static async Task<bool> TryAcquireAdvisoryLockAsync(
+        NpgsqlConnection connection,
+        ILogger logger,
+        long key,
+        TimeSpan maxWait,
+        TimeSpan retryDelay)
+    {
+        var startedAt = DateTime.UtcNow;
+
+        while (DateTime.UtcNow - startedAt < maxWait)
+        {
+            await using var lockCmd = new NpgsqlCommand("SELECT pg_try_advisory_lock(@key);", connection);
+            lockCmd.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+            lockCmd.Parameters.AddWithValue("key", key);
+
+            var acquired = (bool?)await lockCmd.ExecuteScalarAsync() ?? false;
+            if (acquired)
+            {
+                logger.LogInformation("Acquired advisory startup lock with key {Key}.", key);
+                return true;
+            }
+
+            logger.LogInformation(
+                "Advisory startup lock {Key} is held by another instance. Retrying in {DelaySeconds}s.",
+                key,
+                retryDelay.TotalSeconds);
+
+            await Task.Delay(retryDelay);
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> TryAcquireSingleRunAdvisoryLockAsync(
+        NpgsqlConnection connection,
+        long key)
+    {
+        await using var command = new NpgsqlCommand("SELECT pg_try_advisory_lock(@key);", connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("key", key);
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
+    }
+
+    private static async Task ReleaseSingleRunAdvisoryLockAsync(
+        NpgsqlConnection connection,
+        long key)
+    {
+        await using var command = new NpgsqlCommand("SELECT pg_advisory_unlock(@key);", connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("key", key);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<bool> AreSupplierDecisionHubCachesReadyAsync(string connectionString)
+    {
+        const string sql = """
+            SELECT
+                to_regclass('public.mv_supplier_markdown_dependency_cache') IS NOT NULL
+                AND to_regclass('public.mv_supplier_decision_score_cache') IS NOT NULL
+                AND to_regclass('public.mv_supplier_recommendations_cache') IS NOT NULL;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
+    }
+
+    private static async Task<bool> AreSupplierDecisionHubCoreViewsReadyAsync(string connectionString)
+    {
+        const string sql = """
+            SELECT
+                to_regclass('public.vw_supplier_fullprice_signals') IS NOT NULL
+                AND to_regclass('public.vw_supplier_markdown_dependency') IS NOT NULL
+                AND to_regclass('public.vw_supplier_decision_score') IS NOT NULL
+                AND to_regclass('public.vw_supplier_recommendations') IS NOT NULL;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
+    }
+
+    private static async Task<bool> AreRelationsReadyAsync(string connectionString, params string[] relationNames)
+    {
+        if (relationNames.Length == 0)
+        {
+            return true;
+        }
+
+        const string sql = """
+            SELECT COALESCE(BOOL_AND(to_regclass(relation_name) IS NOT NULL), TRUE)
+            FROM unnest(@relationNames) AS relation_name;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("relationNames", relationNames);
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
+    }
+
+    private static bool AreSameDatabase(string firstConnectionString, string secondConnectionString)
+    {
+        var first = new NpgsqlConnectionStringBuilder(firstConnectionString);
+        var second = new NpgsqlConnectionStringBuilder(secondConnectionString);
+
+        return string.Equals(first.Host, second.Host, StringComparison.OrdinalIgnoreCase)
+            && first.Port == second.Port
+            && string.Equals(first.Database, second.Database, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(first.Username, second.Username, StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task InitializeTrendplusDbAsync(
@@ -133,18 +272,24 @@ public static class DatabaseInitializer
             );
         ", logger);
 
-        // Mark problematic migration as applied
-        await ExecuteSqlCommandAsync(connectionString, @"
-            INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
-            VALUES ('20260112000000_AddArtikliKategorije', '8.0.0')
-            ON CONFLICT (""MigrationId"") DO NOTHING;
-        ", logger);
+        await EnsureTrendplusMigrationHistorySeededAsync(connectionString, logger);
 
         // Apply EF migrations
         try
         {
             await context.Database.MigrateAsync();
             logger.LogInformation("✔ Trendplus DB migrations applied.");
+        }
+        catch (PostgresException pgEx) when (pgEx.SqlState == "42P07")
+        {
+            // Duplicate-object errors (relation already exists) may occur when
+            // core schema was bootstrapped earlier. Log a concise warning and continue.
+            logger.LogWarning("Trendplus DB migrations encountered duplicate-relation error (42P07): {Message}", pgEx.MessageText);
+        }
+        catch (PostgresException pgEx)
+        {
+            // Other Postgres errors: log details but continue (initializer is tolerant by design).
+            logger.LogWarning(pgEx, "Trendplus DB migrations failed with Postgres error: SqlState={SqlState}", pgEx.SqlState);
         }
         catch (Exception ex)
         {
@@ -155,10 +300,20 @@ public static class DatabaseInitializer
         var sqlFiles = new[]
         {
             "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql",
+            "Database/Migrations/019_AddAnalyticsDashboardIndexes.sql",
             "Database/Migrations/012_AddAccessImportSupport.sql",
             "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql",
             "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql",
             "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql",
+            // 014 analytics creates vw_vendor_sales_nivelacija (analytics-native version).
+            // Runs here (synchronously, before 018 fires) so the view exists when 018
+            // builds vw_supplier_fullprice_signals which depends on it. Running it in
+            // the 018 bg task caused 55P03 lock timeouts because 018 already held
+            // read locks on the same tables via concurrent MV creation.
+            "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql",
+            // 018_AddSupplierDecisionHubViews.sql is intentionally excluded here.
+            // It creates expensive materialized views (can take 10-30 min on first run)
+            // and is fired asynchronously below so it does not block startup.
             "Database/Migrations/005_CreateArtikliAndTestData.sql"
         };
 
@@ -166,6 +321,86 @@ public static class DatabaseInitializer
         {
             await ExecuteSqlFileAsync(connectionString, sqlFile, logger);
         }
+
+        // Fire-and-forget: startup now builds only the core supplier decision views from 018.
+        // The heavy supplier materialized caches are intentionally deferred so API startup can
+        // complete promptly and endpoints can fall back to live views on first run.
+        // Each statement auto-commits so partial progress is preserved if the process is killed.
+        var bg018ConnectionString = connectionString;
+        var bg018Logger = logger;
+        _ = Task.Run(async () =>
+        {
+            await using var lockConnection = new NpgsqlConnection(bg018ConnectionString);
+            try
+            {
+                await lockConnection.OpenAsync();
+
+                if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey))
+                {
+                    bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because another instance is already building supplier decision hub views.");
+                    return;
+                }
+
+                // When analytics and trendplus share the same DB, 014 already runs
+                // synchronously in the trendplus init sqlFiles above, so 018 can safely
+                // reference vw_vendor_sales_nivelacija without any lock contention.
+
+                var coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
+                var cachesReady = coreViewsReady && await AreSupplierDecisionHubCachesReadyAsync(bg018ConnectionString);
+                if (!coreViewsReady)
+                {
+                    bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing. Forcing re-execution of the core-view batch...");
+                    await DeleteAppliedStartupSqlHistoryAsync(
+                        bg018ConnectionString,
+                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+
+                    bg018Logger.LogInformation("[BG] Starting async execution of 018_AddSupplierDecisionHubViews.sql core views (startup-safe mode)...");
+                    await ExecuteSqlFileAsync(
+                        bg018ConnectionString,
+                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+                        bg018Logger,
+                        commandTimeoutSeconds: 0,
+                        useTransaction: false,
+                        maxBatchCount: 1,
+                        historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+                    bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql core views completed successfully.");
+                }
+
+                if (!cachesReady)
+                {
+                    bg018Logger.LogInformation("[BG] Supplier decision hub materialized caches are missing. Forcing re-execution of the cache batches...");
+                    await DeleteAppliedStartupSqlHistoryAsync(
+                        bg018ConnectionString,
+                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+
+                    bg018Logger.LogInformation("[BG] Starting background materialized cache build for 018_AddSupplierDecisionHubViews.sql...");
+                    await ExecuteSqlFileAsync(
+                        bg018ConnectionString,
+                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+                        bg018Logger,
+                        commandTimeoutSeconds: 0,
+                        useTransaction: false,
+                        startBatchNumber: 2,
+                        historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+                    bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql materialized caches completed successfully.");
+                }
+                else
+                {
+                    bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because supplier decision hub materialized views already exist.");
+                }
+            }
+            catch (Exception ex)
+            {
+                bg018Logger.LogWarning(ex, "[BG] 018 supplier decision hub core-view build failed. Views may be unavailable until next startup.");
+            }
+            finally
+            {
+                if (lockConnection.State == System.Data.ConnectionState.Open)
+                {
+                    await ReleaseSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey);
+                }
+            }
+        });
 
         // Check if data seeding is required
         if (!await context.Artikli.AnyAsync())
@@ -217,10 +452,115 @@ public static class DatabaseInitializer
         }
     }
 
+    private static async Task<bool> IsTrendplusCoreSchemaReadyAsync(string connectionString)
+    {
+        const string sql = @"
+            SELECT
+                to_regclass('public.""Artikli""') IS NOT NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'Artikli' AND column_name = 'UpdatedAt'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'Artikli' AND column_name = 'DataOrigin'
+                )
+                AND to_regclass('public.prodaja_zaglavlje') IS NOT NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'prodaja_zaglavlje' AND column_name = 'data_origin'
+                )
+                AND to_regclass('public.prodaja_stavke') IS NOT NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'prodaja_stavke' AND column_name = 'nabavna_cena'
+                )
+                AND to_regclass('public.""DnevnikPromena""') IS NOT NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'DnevnikPromena' AND column_name = 'DataOrigin'
+                )
+                AND to_regclass('public.""DataImportBatches""') IS NOT NULL
+                AND to_regclass('public.""ErrorRecords""') IS NOT NULL
+                AND to_regclass('public.""AccessImportLog""') IS NOT NULL
+                AND to_regclass('public.povracaj_zaglavlje') IS NOT NULL
+                AND to_regclass('public.povracaj_stavke') IS NOT NULL;
+        ";
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
+    }
+
+    private static async Task EnsureTrendplusMigrationHistorySeededAsync(string connectionString, ILogger logger)
+    {
+        var migrationIds = new[]
+        {
+            "20251224163406_InitialPostgreSQL",
+            "20251228104227_AddCorrelationIdToErrorRecord",
+            "20251229125016_AddArtikliUpdatedAt",
+            "20251229143702_AddLevelToErrorRecord",
+            "20251229145610_AddPriceChangeFieldsToDnevnikPromena",
+            "20260102113822_AddSezoneTable",
+            "20260105110118_AddOutboxMessages",
+            "20260109125509_AddProdajaTables",
+            "20260109133240_FixProdajaColumnMapping",
+            "20260110134237_MigrateSalesToDnevnikPromena",
+            "20260110150211_AddPovracajTables",
+            "20260112000000_AddArtikliKategorije",
+            "20260125111606_AddImagePathToArtikli",
+            "20260223131749_AddDataOriginToImportEntities",
+            "20260223143834_AddKolicinaToDnevnikPromena",
+            "20260223162737_AddMaterijalToArtikli",
+            "20260224180000_AddIDObjektRedniBrojToDnevnikPromena",
+            "20260225100001_AddKorisnikImeNabavnaCenaToProdaja"
+        };
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        foreach (var migrationId in migrationIds)
+        {
+            const string sql = @"
+                INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+                VALUES (@migrationId, '8.0.0')
+                ON CONFLICT (""MigrationId"") DO NOTHING;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+            command.Parameters.AddWithValue("migrationId", migrationId);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        logger.LogInformation("Ensured Trendplus EF migration history is aligned with bootstrap schema.");
+    }
+
     private static async Task EnsureTrendplusCoreSchemaAsync(
         string connectionString,
         ILogger logger)
     {
+        await ExecuteSqlCommandAsync(connectionString, @"
+            CREATE TABLE IF NOT EXISTS ""CreatedIds"" (
+                ""Id"" integer NOT NULL
+            );
+        ", logger);
+
+        if (await IsTrendplusCoreSchemaReadyAsync(connectionString))
+        {
+            logger.LogInformation("Trendplus core schema already present. Skipping bootstrap.");
+            return;
+        }
+
         const string sql = @"
             -- Create Artikli table if it doesn't exist (idempotent bootstrap)
             CREATE TABLE IF NOT EXISTS ""Artikli"" (
@@ -248,6 +588,12 @@ public static class DatabaseInitializer
                 ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing'
             );
 
+            CREATE TABLE IF NOT EXISTS ""CreatedIds"" (
+                ""Id"" integer NOT NULL
+            );
+
+            -- BOOTSTRAP_BATCH_BREAK
+
             -- Core Artikli columns used by workers/services (idempotent).
             ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
             ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""Kolicina"" integer;
@@ -262,8 +608,12 @@ public static class DatabaseInitializer
             ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""ImagePath"" character varying(500);
             ALTER TABLE IF EXISTS ""Artikli"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
 
-            CREATE INDEX IF NOT EXISTS ""IX_Artikli_ImagePath"" ON ""Artikli"" (""ImagePath"");
+            -- BOOTSTRAP_BATCH_BREAK
 
+            CREATE INDEX IF NOT EXISTS ""IX_Artikli_ImagePath"" ON ""Artikli"" (""ImagePath"");
+            CREATE INDEX IF NOT EXISTS ""IX_Artikli_UpdatedAt"" ON ""Artikli"" (""UpdatedAt"" DESC);
+
+            -- BOOTSTRAP_BATCH_BREAK
             -- Create prodaja_zaglavlje table if it doesn't exist (idempotent bootstrap)
             CREATE TABLE IF NOT EXISTS prodaja_zaglavlje (
                 id              integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -290,6 +640,7 @@ public static class DatabaseInitializer
             ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS korisnik_ime character varying(200);
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS nabavna_cena decimal(18,2);
 
+            -- BOOTSTRAP_BATCH_BREAK
             -- Create DnevnikPromena table if it doesn't exist (idempotent bootstrap)
             CREATE TABLE IF NOT EXISTS ""DnevnikPromena"" (
                 ""Id""                integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -315,6 +666,7 @@ public static class DatabaseInitializer
             CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_DataOrigin"" ON ""DnevnikPromena"" (""DataOrigin"");
             CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
 
+            -- BOOTSTRAP_BATCH_BREAK
             -- Create DataImportBatches table if it doesn't exist (idempotent bootstrap)
             CREATE TABLE IF NOT EXISTS ""DataImportBatches"" (
                 ""Id""              bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -367,6 +719,7 @@ public static class DatabaseInitializer
                 ""DataOrigin""  character varying(32) NOT NULL DEFAULT 'existing'
             );
 
+            -- BOOTSTRAP_BATCH_BREAK
             -- ErrorRecords (idempotent bootstrap)
             CREATE TABLE IF NOT EXISTS ""ErrorRecords"" (
                 ""Id""              integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -405,6 +758,7 @@ public static class DatabaseInitializer
                 ""UpdatedAt""       timestamp with time zone NOT NULL
             );
 
+            -- BOOTSTRAP_BATCH_BREAK
             -- povracaj_zaglavlje (idempotent bootstrap)
             CREATE TABLE IF NOT EXISTS povracaj_zaglavlje (
                 id                 integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -453,12 +807,23 @@ public static class DatabaseInitializer
             CREATE INDEX IF NOT EXISTS ""IX_AccessImportLog_BatchId_TableName"" ON ""AccessImportLog"" (""BatchId"", ""TableName"");
         ";
 
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
+        var batches = sql
+            .Split("-- BOOTSTRAP_BATCH_BREAK", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        await using var command = new NpgsqlCommand(sql, connection);
-        command.CommandTimeout = 120;
-        await command.ExecuteNonQueryAsync();
+        for (var i = 0; i < batches.Length; i++)
+        {
+            logger.LogInformation(
+                "Executing Trendplus core bootstrap batch {BatchNumber}/{BatchCount}.",
+                i + 1,
+                batches.Length);
+
+            await ExecuteBootstrapBatchAsync(
+                connectionString,
+                logger,
+                $"trendplus-core-{i + 1}",
+                batches[i],
+                BootstrapCommandTimeoutSeconds);
+        }
 
         logger.LogInformation("✔ Ensured Trendplus core schema for Artikli/DnevnikPromena/Prodaja columns.");
     }
@@ -581,7 +946,7 @@ public static class DatabaseInitializer
         await connection.OpenAsync();
 
         await using var command = new NpgsqlCommand(sql, connection);
-        command.CommandTimeout = 120;
+        command.CommandTimeout = BootstrapCommandTimeoutSeconds;
         await command.ExecuteNonQueryAsync();
 
         logger.LogInformation("✔ Ensured Trendplus analytics aggregation tables/indexes.");
@@ -632,10 +997,30 @@ public static class DatabaseInitializer
         await connection.OpenAsync();
 
         await using var command = new NpgsqlCommand(sql, connection);
-        command.CommandTimeout = 60;
+        command.CommandTimeout = BootstrapCommandTimeoutSeconds;
         await command.ExecuteNonQueryAsync();
 
         logger.LogInformation("✔ Ensured OutboxMessages table exists.");
+    }
+
+    private static async Task ExecuteBootstrapBatchAsync(
+        string connectionString,
+        ILogger logger,
+        string batchName,
+        string sql,
+        int timeoutSeconds)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = timeoutSeconds;
+        await command.ExecuteNonQueryAsync();
+
+        stopwatch.Stop();
+        logger.LogInformation("Bootstrap batch {BatchName} completed in {ElapsedMs}ms.", batchName, stopwatch.ElapsedMilliseconds);
     }
 
     private static async Task InitializeAnalyticsDbAsync(
@@ -649,6 +1034,8 @@ public static class DatabaseInitializer
         var context = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
         var trendDb = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
         var connectionString = GetValidatedConnectionString(configuration, "AnalyticsConnection", logger);
+        var defaultConnectionString = GetValidatedConnectionString(configuration, "DefaultConnection", logger);
+        var unifiedDb = AreSameDatabase(defaultConnectionString, connectionString);
 
         try
         {
@@ -716,6 +1103,17 @@ public static class DatabaseInitializer
             await ExecuteSqlFileAsync(connectionString, "Database/Analytics/010_AddGoogleShoppingTable.sql", logger);
         }
 
+        // 013 creates compatibility views that shadow trendplus operational tables ("Artikli", "Dobavljaci", etc.).
+        // When analytics and trendplus share the same DB those views would conflict with existing tables, so skip.
+        if (!unifiedDb)
+        {
+            await ExecuteSqlFileAsync(connectionString, "Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql", logger);
+        }
+        else
+        {
+            logger.LogInformation("Skipping 013_AddSupplierDecisionCompatibilitySchema.sql: analytics and trendplus share the same database (compatibility views not needed).");
+        }
+
         // Access-import origin support patch (idempotent)
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/011_AddDataOriginColumns.sql", logger);
 
@@ -757,8 +1155,102 @@ public static class DatabaseInitializer
 
         logger.LogInformation("? Analytics DB initialized");
 
-        // Backfill historical sales into analytics facts (idempotent).
+        // Backfill historical sales / returns before deriving supplier-decision analytics views.
         await BackfillSalesFactsAsync(trendDb, context, logger);
+        await BackfillReturnFactsAsync(trendDb, context, logger);
+
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/003_AddGlobalTrendsTables.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql", logger);
+        // 014 creates nivelacija views (DROP ... CASCADE + CREATE OR REPLACE VIEW).
+        // When analytics and trendplus share the same DB the 018 background task is already
+        // running DDL on the same relations, causing a 55P03 lock timeout.
+        // In that case defer 014 to the start of the 018 bg task where it runs before
+        // any heavy MV work (the bg task handles the unified case explicitly).
+        if (!unifiedDb)
+        {
+            await ExecuteSqlFileAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql", logger);
+        }
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/Intelligence/020_create_intelligence_schema.sql", logger);
+        // 018_AddSupplierDecisionHubViews.sql is NOT run on the analytics DB — it references
+        // trendplus-specific tables and is executed asynchronously on the trendplus DB.
+        // 015_AddSupplierMlRanking.sql is also deferred: it depends on vw_supplier_fullprice_signals
+        // which 018 creates. Both are run sequentially in the 018 background task in
+        // InitializeTrendplusDbAsync (only when analytics and trendplus share the same DB).
+
+        var analyticsIntelligenceScripts = new (string SqlFilePath, string[] RequiredRelations)[]
+        {
+            (
+                "Database/Analytics/Intelligence/021_product_demand_signals_v1.sql",
+                ["analytics_intel.vw_product_demand_signals_v1", "analytics_intel.mv_product_demand_signals_v1_cache"]
+            ),
+            (
+                "Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql",
+                ["analytics_intel.vw_inventory_risk_signals_v1", "analytics_intel.mv_inventory_risk_signals_v1_cache"]
+            ),
+            (
+                "Database/Analytics/Intelligence/023_price_intelligence_v1.sql",
+                ["analytics_intel.vw_price_intelligence_v1", "analytics_intel.mv_price_intelligence_v1_cache"]
+            ),
+            (
+                "Database/Analytics/Intelligence/024_trend_momentum_v1.sql",
+                ["analytics_intel.vw_trend_momentum_v1", "analytics_intel.mv_trend_momentum_v1_cache"]
+            )
+        };
+
+        var bgAnalyticsIntelligenceConnectionString = connectionString;
+        var bgAnalyticsIntelligenceLogger = logger;
+        _ = Task.Run(async () =>
+        {
+            await using var lockConnection = new NpgsqlConnection(bgAnalyticsIntelligenceConnectionString);
+            try
+            {
+                await lockConnection.OpenAsync();
+
+                if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey))
+                {
+                    bgAnalyticsIntelligenceLogger.LogInformation("[BG] Skipping analytics intelligence SQL build because another instance already holds the build lock.");
+                    return;
+                }
+
+                foreach (var script in analyticsIntelligenceScripts)
+                {
+                    var relationsReady = await AreRelationsReadyAsync(
+                        bgAnalyticsIntelligenceConnectionString,
+                        script.RequiredRelations);
+
+                    if (!relationsReady)
+                    {
+                        bgAnalyticsIntelligenceLogger.LogInformation(
+                            "[BG] Analytics intelligence relations missing for {SqlFile}. Forcing re-execution.",
+                            script.SqlFilePath);
+                        await DeleteAppliedStartupSqlHistoryAsync(
+                            bgAnalyticsIntelligenceConnectionString,
+                            script.SqlFilePath);
+                    }
+
+                    await ExecuteSqlFileAsync(
+                        bgAnalyticsIntelligenceConnectionString,
+                        script.SqlFilePath,
+                        bgAnalyticsIntelligenceLogger,
+                        commandTimeoutSeconds: 0,
+                        useTransaction: false);
+                }
+
+                bgAnalyticsIntelligenceLogger.LogInformation("[BG] Analytics intelligence SQL build completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                bgAnalyticsIntelligenceLogger.LogWarning(ex, "[BG] Analytics intelligence SQL build failed. Intelligence views may be partially unavailable until next startup.");
+            }
+            finally
+            {
+                if (lockConnection.State == System.Data.ConnectionState.Open)
+                {
+                    await ReleaseSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey);
+                }
+            }
+        });
     }
 
     private static async Task EnsureCoreAnalyticsDimensionTablesAsync(
@@ -870,13 +1362,38 @@ public static class DatabaseInitializer
             CREATE INDEX IF NOT EXISTS ""IX_InventoryMovementFacts_ArtikalId"" ON ""InventoryMovementFacts"" (""ArtikalId"");
             CREATE INDEX IF NOT EXISTS ""IX_InventoryMovementFacts_TipPromene"" ON ""InventoryMovementFacts"" (""TipPromene"");
             CREATE UNIQUE INDEX IF NOT EXISTS ""IX_InventoryMovementFacts_SourceId"" ON ""InventoryMovementFacts"" (""SourceId"", ""DataOrigin"");
+
+            -- Return facts (created here to ensure availability regardless of 013 schema file execution)
+            CREATE TABLE IF NOT EXISTS ""ReturnFacts"" (
+                ""Id""                   bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                ""SourceLineId""         integer NOT NULL,
+                ""ReturnId""             integer NOT NULL,
+                ""ProductId""            integer NOT NULL,
+                ""SupplierId""           integer NOT NULL,
+                ""Qty""                  integer NOT NULL,
+                ""UnitCost""             numeric(18,2) NOT NULL DEFAULT 0,
+                ""LineAmount""           numeric(18,2) NOT NULL DEFAULT 0,
+                ""ReturnTimestampUtc""   timestamp with time zone NOT NULL,
+                ""Status""              character varying(100) NOT NULL DEFAULT '',
+                ""HeaderReason""         character varying(500),
+                ""LineReason""            character varying(500),
+                ""ItemCondition""        character varying(200),
+                ""BrojZapisnika""        character varying(100),
+                ""DataOrigin""           character varying(32) NOT NULL DEFAULT 'existing'
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_ReturnFacts_SourceLineId"" ON ""ReturnFacts"" (""SourceLineId"");
+            CREATE INDEX IF NOT EXISTS ""IX_ReturnFacts_ReturnId"" ON ""ReturnFacts"" (""ReturnId"");
+            CREATE INDEX IF NOT EXISTS ""IX_ReturnFacts_ProductId"" ON ""ReturnFacts"" (""ProductId"");
+            CREATE INDEX IF NOT EXISTS ""IX_ReturnFacts_SupplierId"" ON ""ReturnFacts"" (""SupplierId"");
+            CREATE INDEX IF NOT EXISTS ""IX_ReturnFacts_ReturnTimestampUtc"" ON ""ReturnFacts"" (""ReturnTimestampUtc"");
+            CREATE INDEX IF NOT EXISTS ""IX_ReturnFacts_SupplierId_ReturnTimestampUtc"" ON ""ReturnFacts"" (""SupplierId"", ""ReturnTimestampUtc"");
         ";
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
 
         await using var command = new NpgsqlCommand(sql, connection);
-        command.CommandTimeout = 120;
+        command.CommandTimeout = BootstrapCommandTimeoutSeconds;
         await command.ExecuteNonQueryAsync();
 
         logger.LogInformation("✔ Ensured core analytics dimension tables (ProductsDim, StoresDim, etc.).");
@@ -912,9 +1429,14 @@ public static class DatabaseInitializer
                 analyticsDb.SalesFacts.Add(new SalesFact
                 {
                     SaleId = sale.Id,
+                    BrojRacuna = sale.BrojRacuna ?? string.Empty,
                     SaleTimestampUtc = DateTime.SpecifyKind(sale.DatumProdaje, DateTimeKind.Utc),
+                    StoreId = sale.IDObjekat ?? 0,
+                    PaymentType = sale.NacinPlacanja ?? string.Empty,
                     TotalAmount = sale.Stavke.Sum(s => s.Kolicina * s.Cena),
-                    TotalUnits = sale.Stavke.Sum(s => s.Kolicina)
+                    TotalUnits = sale.Stavke.Sum(s => s.Kolicina),
+                    TotalLines = sale.Stavke.Count,
+                    DataOrigin = sale.DataOrigin
                 });
 
                 foreach (var line in sale.Stavke)
@@ -925,7 +1447,9 @@ public static class DatabaseInitializer
                         ProductId = line.IdArtikal,
                         Qty = line.Kolicina,
                         UnitPrice = line.Cena,
-                        LineTotal = line.Kolicina * line.Cena
+                        LineTotal = line.Kolicina * line.Cena,
+                        NabavnaCena = line.NabavnaCena,
+                        DataOrigin = sale.DataOrigin
                     });
                 }
             }
@@ -938,10 +1462,202 @@ public static class DatabaseInitializer
         logger.LogInformation("✔ SalesFacts incremental backfill complete.");
     }
 
+    private static async Task BackfillReturnFactsAsync(
+        TrendplusDbContext trendDb,
+        AnalyticsDbContext analyticsDb,
+        ILogger logger)
+    {
+        var lastSourceLineId = await analyticsDb.ReturnFacts
+            .OrderByDescending(x => x.SourceLineId)
+            .Select(x => x.SourceLineId)
+            .FirstOrDefaultAsync();
+
+        const int batchSize = 500;
+
+        while (true)
+        {
+            var batch = await trendDb.PovracajStavke
+                .Where(x => x.Id > lastSourceLineId)
+                .OrderBy(x => x.Id)
+                .Take(batchSize)
+                .Include(x => x.Povracaj)
+                .AsNoTracking()
+                .ToListAsync();
+
+            if (batch.Count == 0)
+                break;
+
+            foreach (var line in batch)
+            {
+                if (line.Povracaj is null)
+                    continue;
+
+                analyticsDb.ReturnFacts.Add(new ReturnFact
+                {
+                    SourceLineId = line.Id,
+                    ReturnId = line.IdPovracaj,
+                    ProductId = line.IdArtikal,
+                    SupplierId = line.Povracaj.IDDobavljac,
+                    Qty = line.Kolicina,
+                    UnitCost = line.Cena,
+                    LineAmount = line.Kolicina * line.Cena,
+                    ReturnTimestampUtc = DateTime.SpecifyKind(line.Povracaj.DatumPovracaja, DateTimeKind.Utc),
+                    Status = line.Povracaj.Status ?? string.Empty,
+                    HeaderReason = line.Povracaj.RazlogPovracaja,
+                    LineReason = line.Razlog,
+                    ItemCondition = line.StanjeArtikla,
+                    BrojZapisnika = line.Povracaj.BrojZapisnika,
+                    DataOrigin = line.Povracaj.DataOrigin
+                });
+            }
+
+            await analyticsDb.SaveChangesAsync();
+
+            lastSourceLineId = batch.Last().Id;
+        }
+
+        logger.LogInformation("âœ” ReturnFacts incremental backfill complete.");
+    }
+
+    private static string NormalizeSqlScriptIdentifier(string sqlFilePath) =>
+        sqlFilePath.Replace('\\', '/');
+
+    private static string ComputeSqlScriptHash(string sql)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sql);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash);
+    }
+
+    private static string[] SplitSqlBatches(string sql)
+    {
+        var batches = sql
+            .Split("-- SQL_BATCH_BREAK", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        return batches.Length == 0 ? [sql] : batches;
+    }
+
+    private static async Task EnsureStartupSqlHistoryTableAsync(string connectionString)
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS "__StartupSqlScriptHistory" (
+                "ScriptPath" character varying(512) PRIMARY KEY,
+                "ScriptHash" character varying(64) NOT NULL,
+                "AppliedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW(),
+                "DurationMs" bigint NULL
+            );
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<string?> GetAppliedStartupSqlHashAsync(string connectionString, string scriptPath)
+    {
+        const string sql = """
+            SELECT "ScriptHash"
+            FROM "__StartupSqlScriptHistory"
+            WHERE "ScriptPath" = @scriptPath;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("scriptPath", scriptPath);
+        return (string?)await command.ExecuteScalarAsync();
+    }
+
+    private static async Task DeleteAppliedStartupSqlHistoryAsync(string connectionString, string scriptPath)
+    {
+        const string sql = """
+            DELETE FROM "__StartupSqlScriptHistory"
+            WHERE "ScriptPath" = @scriptPath;
+            """;
+
+        await EnsureStartupSqlHistoryTableAsync(connectionString);
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("scriptPath", NormalizeSqlScriptIdentifier(scriptPath));
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task RecordAppliedStartupSqlAsync(
+        string connectionString,
+        string scriptPath,
+        string scriptHash,
+        long durationMs)
+    {
+        const string sql = """
+            INSERT INTO "__StartupSqlScriptHistory" ("ScriptPath", "ScriptHash", "AppliedAtUtc", "DurationMs")
+            VALUES (@scriptPath, @scriptHash, NOW(), @durationMs)
+            ON CONFLICT ("ScriptPath") DO UPDATE
+            SET "ScriptHash" = EXCLUDED."ScriptHash",
+                "AppliedAtUtc" = EXCLUDED."AppliedAtUtc",
+                "DurationMs" = EXCLUDED."DurationMs";
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("scriptPath", scriptPath);
+        command.Parameters.AddWithValue("scriptHash", scriptHash);
+        command.Parameters.AddWithValue("durationMs", durationMs);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task ExecuteSqlBatchesWithoutTransactionAsync(
+        NpgsqlConnection connection,
+        string scriptIdentifier,
+        IReadOnlyList<string> batches,
+        int commandTimeoutSeconds,
+        ILogger logger)
+    {
+        for (var i = 0; i < batches.Count; i++)
+        {
+            if (batches.Count > 1)
+            {
+                logger.LogInformation(
+                    "Executing startup SQL file {FilePath} batch {BatchNumber}/{BatchCount}.",
+                    scriptIdentifier,
+                    i + 1,
+                    batches.Count);
+            }
+
+            await using (var lockTimeoutCommand = new NpgsqlCommand(
+                $"SET lock_timeout = '{StartupSqlLockTimeoutSeconds}s';",
+                connection))
+            {
+                lockTimeoutCommand.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+                await lockTimeoutCommand.ExecuteNonQueryAsync();
+            }
+
+            await using var command = new NpgsqlCommand(batches[i], connection);
+            command.CommandTimeout = commandTimeoutSeconds;
+            await command.ExecuteNonQueryAsync();
+        }
+    }
+
     private static async Task ExecuteSqlFileAsync(
         string connectionString,
         string sqlFilePath,
-        ILogger logger)
+        ILogger logger,
+        int commandTimeoutSeconds = 300,
+        bool useTransaction = true,
+        int startBatchNumber = 1,
+        int? maxBatchCount = null,
+        string? historyIdentifier = null)
     {
         var resolvedPath = ResolveSqlFilePath(sqlFilePath);
         if (resolvedPath == null)
@@ -950,32 +1666,107 @@ public static class DatabaseInitializer
             return;
         }
 
+        var scriptDisplayIdentifier = NormalizeSqlScriptIdentifier(sqlFilePath);
+        var scriptHistoryIdentifier = NormalizeSqlScriptIdentifier(historyIdentifier ?? sqlFilePath);
         var sql = await File.ReadAllTextAsync(resolvedPath);
+        var batches = SplitSqlBatches(sql);
+        var normalizedStartBatchNumber = Math.Clamp(startBatchNumber, 1, batches.Length);
+        var selectedBatches = batches.Skip(normalizedStartBatchNumber - 1).ToArray();
+        var effectiveBatchCount = maxBatchCount.HasValue
+            ? Math.Clamp(maxBatchCount.Value, 1, selectedBatches.Length)
+            : selectedBatches.Length;
+        var effectiveBatches = (!useTransaction && effectiveBatchCount < selectedBatches.Length)
+            ? selectedBatches.Take(effectiveBatchCount).ToArray()
+            : selectedBatches;
+        var sqlForExecution = (!useTransaction && effectiveBatchCount < selectedBatches.Length)
+            ? string.Join(Environment.NewLine + "-- SQL_BATCH_BREAK" + Environment.NewLine, effectiveBatches)
+            : string.Join(Environment.NewLine + "-- SQL_BATCH_BREAK" + Environment.NewLine, effectiveBatches);
+        var scriptHash = ComputeSqlScriptHash(sqlForExecution);
+
+        await EnsureStartupSqlHistoryTableAsync(connectionString);
+
+        var appliedHash = await GetAppliedStartupSqlHashAsync(connectionString, scriptHistoryIdentifier);
+        if (string.Equals(appliedHash, scriptHash, StringComparison.Ordinal))
+        {
+            logger.LogInformation("Skipping startup SQL file {FilePath}; same hash already applied.", scriptDisplayIdentifier);
+            return;
+        }
+
+        logger.LogInformation(
+            appliedHash == null
+                ? "Executing startup SQL file {FilePath}."
+                : "Re-executing startup SQL file {FilePath} because the file hash changed.",
+            scriptDisplayIdentifier);
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
 
-        await using var tx = await connection.BeginTransactionAsync();
+        NpgsqlTransaction? tx = useTransaction ? await connection.BeginTransactionAsync() : null;
         try
         {
-            await using var command = new NpgsqlCommand(sql, connection, tx);
-            command.CommandTimeout = 300;
-            await command.ExecuteNonQueryAsync();
-            await tx.CommitAsync();
+            if (!useTransaction)
+            {
+                await ExecuteSqlBatchesWithoutTransactionAsync(connection, scriptDisplayIdentifier, effectiveBatches, commandTimeoutSeconds, logger);
+            }
+            else
+            {
+                await using var lockTimeoutCommand = new NpgsqlCommand(
+                    $"SET LOCAL lock_timeout = '{StartupSqlLockTimeoutSeconds}s';",
+                    connection,
+                    tx);
+                lockTimeoutCommand.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+                await lockTimeoutCommand.ExecuteNonQueryAsync();
+
+                await using var command = new NpgsqlCommand(sqlForExecution, connection, tx);
+                command.CommandTimeout = commandTimeoutSeconds;
+                await command.ExecuteNonQueryAsync();
+                await tx!.CommitAsync();
+            }
+
+            stopwatch.Stop();
+            logger.LogInformation("Completed startup SQL file {FilePath} in {ElapsedMs}ms.", scriptDisplayIdentifier, stopwatch.ElapsedMilliseconds);
+            await RecordAppliedStartupSqlAsync(connectionString, scriptHistoryIdentifier, scriptHash, stopwatch.ElapsedMilliseconds);
         }
         catch (PostgresException pgEx)
         {
-            await tx.RollbackAsync();
+            if (tx != null) await tx.RollbackAsync();
+
+            if (pgEx.SqlState == "55P03")
+            {
+                logger.LogWarning(
+                    pgEx,
+                    "Skipping startup SQL file {FilePath} because a required relation lock was not acquired within {LockTimeoutSeconds}s.",
+                    scriptDisplayIdentifier,
+                    StartupSqlLockTimeoutSeconds);
+                return;
+            }
+
+            // Treat 'relation already exists' errors as non-fatal during initialization
+            // so the initializer can continue even if a prior run created the same objects.
+            if (pgEx.SqlState == "42P07" || (pgEx.Detail != null && pgEx.Detail.Contains("already exists", StringComparison.OrdinalIgnoreCase)))
+            {
+                logger.LogWarning(pgEx,
+                    "Non-fatal Postgres error while executing SQL file {FilePath} (object already exists). SqlState={SqlState}, Detail={Detail}",
+                    scriptDisplayIdentifier, pgEx.SqlState, pgEx.Detail);
+                return;
+            }
+
             logger.LogError(pgEx,
                 "Postgres error while executing SQL file {FilePath}. SqlState={SqlState}, Detail={Detail}",
-                resolvedPath, pgEx.SqlState, pgEx.Detail);
+                scriptDisplayIdentifier, pgEx.SqlState, pgEx.Detail);
             throw;
         }
         catch (Exception ex)
         {
-            await tx.RollbackAsync();
-            logger.LogError(ex, "Failed to execute SQL file: {FilePath}", resolvedPath);
+            if (tx != null) await tx.RollbackAsync();
+            logger.LogError(ex, "Failed to execute SQL file: {FilePath}", scriptDisplayIdentifier);
             throw;
+        }
+        finally
+        {
+            if (tx != null) await tx.DisposeAsync();
         }
     }
 

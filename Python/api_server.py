@@ -26,7 +26,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -585,6 +585,26 @@ def root():
         "status": "running",
         "version": "1.1.0"
     }
+
+
+@app.get("/generate-trends")
+async def generate_trends(
+    pages: int = Query(default=5, ge=1, le=20, description="Broj stranica po izvoru/trzistu"),
+    top: Optional[int] = Query(default=None, ge=1, le=1000, description="Maksimalan broj rezultata u odgovoru."),
+    markets: Optional[List[str]] = Query(default=None, description="Trzista za scraping, npr. ?markets=DE&markets=AT."),
+):
+    try:
+        from trend_engine.run_batch import generate_trend_results
+    except Exception as e:
+        logging.exception("trend_engine import failed: %s", e)
+        raise HTTPException(status_code=500, detail="trend_engine module is unavailable")
+
+    try:
+        results = await generate_trend_results(pages=pages, markets=markets, top_n=top)
+        return {"count": len(results), "items": results}
+    except Exception as e:
+        logging.exception("/generate-trends failed: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error while generating trends.")
 
 
 # ============================================================

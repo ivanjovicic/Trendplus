@@ -46,7 +46,24 @@ public sealed class NightlyAnalyticsRefreshOptions
     {
         "mv_daily_sales_facts",
         "mv_sales_rolling_7d",
-        "mv_sales_momentum"
+        "mv_sales_momentum",
+        "supplier_training_dataset_v1",
+        "mv_supplier_markdown_dependency_cache",
+        "mv_supplier_decision_score_cache",
+        "mv_supplier_recommendations_cache"
+    };
+
+    /// <summary>
+    /// Intelligence-layer materialized views refreshed after core analytics MVs.
+    /// Order matters because downstream dashboards expect demand, inventory,
+    /// price and trend caches in that sequence.
+    /// </summary>
+    public List<string> IntelligenceMaterializedViewsToRefresh { get; set; } = new()
+    {
+        "analytics_intel.mv_product_demand_signals_v1_cache",
+        "analytics_intel.mv_inventory_risk_signals_v1_cache",
+        "analytics_intel.mv_price_intelligence_v1_cache",
+        "analytics_intel.mv_trend_momentum_v1_cache"
     };
 
     public List<string> VacuumAnalyzeTargets { get; set; } = new()
@@ -64,4 +81,9 @@ public sealed class NightlyAnalyticsRefreshOptions
     {
         "mv_brand_shoe_runtime_priors"
     };
+
+    /// <summary>
+    /// If true, queue a supplier ranking training job after a successful nightly refresh.
+    /// </summary>
+    public bool QueueSupplierRankingTraining { get; set; } = true;
 }

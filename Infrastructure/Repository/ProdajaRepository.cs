@@ -45,6 +45,38 @@ namespace Infrastructure.Repository
             var result = await cmd.ExecuteScalarAsync(ct);
             var prodajaId = Convert.ToInt32(result);
 
+            // Backfill purchase price on operational sale lines so both analytics
+            // backfill and outbox projection can read sale-time gross margin inputs.
+            await using var costCmd = conn.CreateCommand();
+            costCmd.CommandText = @"
+                WITH payload AS (
+                    SELECT
+                        ordinality,
+                        NULLIF(item->>'nabavnaCena', '')::numeric(18,2) AS nabavna_cena
+                    FROM jsonb_array_elements($2::jsonb) WITH ORDINALITY AS elements(item, ordinality)
+                ),
+                sale_lines AS (
+                    SELECT
+                        ps.id,
+                        ps.id_artikal,
+                        ROW_NUMBER() OVER (ORDER BY ps.id) AS ordinality
+                    FROM prodaja_stavke ps
+                    WHERE ps.id_prodaja = $1
+                )
+                UPDATE prodaja_stavke ps
+                SET nabavna_cena = COALESCE(payload.nabavna_cena, a.""NabavnaCena"")
+                FROM sale_lines sl
+                LEFT JOIN payload ON payload.ordinality = sl.ordinality
+                LEFT JOIN ""Artikli"" a ON a.""Id"" = sl.id_artikal
+                WHERE ps.id = sl.id
+                  AND (
+                      ps.nabavna_cena IS NULL
+                      OR payload.nabavna_cena IS NOT NULL
+                  );";
+            costCmd.Parameters.Add(new NpgsqlParameter { Value = prodajaId, NpgsqlDbType = NpgsqlDbType.Integer });
+            costCmd.Parameters.Add(new NpgsqlParameter { Value = stavkeJson, NpgsqlDbType = NpgsqlDbType.Jsonb });
+            await costCmd.ExecuteNonQueryAsync(ct);
+
             // Insert into DnevnikPromena for audit trail
             await using var logCmd = conn.CreateCommand();
             logCmd.CommandText = @"
