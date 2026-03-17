@@ -50,7 +50,7 @@ public sealed class AccessImportService : IAccessImportService
     private static readonly string[] PovratniceCandidates    = ["povratnice", "povratnica", "customerreturns", "vracajakupaca", "tblpovratnice", "tblpovratnica", "tblvracanjakupaca"];
     private static readonly string[] PrenosRobeCandidates    = ["prenosrobe", "prenos_robe", "transfer", "prebacivanje", "tblprenosrobe", "tblprenos", "medjuobjekatskirenos"];
     private static readonly string[] ObjekatCandidates       = ["objekti", "objekat", "stores", "poslovnice", "maloprodaja", "tblobjekat", "tblobjekti", "tblprodavnice", "organizacione"];
-    private static readonly IReadOnlyDictionary<string, IReadOnlyList<FieldAlias>> PreviewFieldMappings =
+    private static readonly Dictionary<string, IReadOnlyList<FieldAlias>> PreviewFieldMappings =
         new Dictionary<string, IReadOnlyList<FieldAlias>>(StringComparer.OrdinalIgnoreCase)
         {
             ["artikli"] =
@@ -169,7 +169,7 @@ public sealed class AccessImportService : IAccessImportService
 
     // Minimal required fields to consider a table "import-safe" (preview diagnostics only).
     // Import itself still validates and can fallback (e.g. synthesize sales from DnevnikPromena).
-    private static readonly IReadOnlyDictionary<string, string[]> PreviewRequiredFields =
+    private static readonly Dictionary<string, string[]> PreviewRequiredFields =
         new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
             ["artikli"] = ["Id", "Naziv"],
@@ -335,10 +335,12 @@ public sealed class AccessImportService : IAccessImportService
                 if (map["prodaja_stavke"].TableName is null && map["prodaja_zaglavlje"].TableName is not null)
                     response.Warnings.Add("Nije pronađena tabela stavki prodaje — zaglavlja bez stavki biće uvezena bez linija.");
 
-                var foundMovements = new[] { "nivelacije", "unos_robe", "povratnice", "prenos_robe" }
-                    .Where(k => map.ContainsKey(k) && map[k].TableName is not null)
-                    .Select(k => map[k].TableName!)
-                    .ToList();
+                var foundMovements = new List<string>();
+                foreach (var k in new[] { "nivelacije", "unos_robe", "povratnice", "prenos_robe" })
+                {
+                    if (map.TryGetValue(k, out var tm) && tm.TableName is not null)
+                        foundMovements.Add(tm.TableName!);
+                }
                 if (foundMovements.Count > 0)
                     response.Warnings.Add($"Pronađene tabele kretanja zaliha: {string.Join(", ", foundMovements)}.");
 
@@ -356,7 +358,7 @@ public sealed class AccessImportService : IAccessImportService
         OdbcConnection conn,
         string key,
         TableMatch tableMatch,
-        IReadOnlyDictionary<string, int> tableRowCounts)
+        Dictionary<string, int> tableRowCounts)
     {
         var tableName = tableMatch.TableName;
         var preview = new AccessImportTablePreview
@@ -446,9 +448,9 @@ public sealed class AccessImportService : IAccessImportService
         return output;
     }
 
-    private static List<string> FindMissingPreviewFields(AccessImportTablePreview tablePreview, IReadOnlyCollection<string> requiredTargets)
+    private static List<string> FindMissingPreviewFields(AccessImportTablePreview tablePreview, string[] requiredTargets)
     {
-        if (requiredTargets.Count == 0)
+        if (requiredTargets.Length == 0)
             return new List<string>();
 
         // If mappings couldn't be computed (ODBC preview failed), treat all required fields as missing.
@@ -1109,7 +1111,7 @@ public sealed class AccessImportService : IAccessImportService
             .ToDictionary(g => g.Key, g => g.First());
         foreach (var d in _trendDb.DnevnikPromena.AsNoTracking())
         {
-            if (!dnevnikById.ContainsKey(d.Id))
+            if (!dnevnikById.TryGetValue(d.Id, out _))
                 dnevnikById[d.Id] = d;
         }
 
@@ -1446,7 +1448,7 @@ public sealed class AccessImportService : IAccessImportService
             .ToDictionary(g => g.Key, g => g.First());
         foreach (var d in _trendDb.DnevnikPromena.AsNoTracking())
         {
-            if (!dnevnikById.ContainsKey(d.Id))
+            if (!dnevnikById.TryGetValue(d.Id, out _))
                 dnevnikById[d.Id] = d;
         }
 
@@ -1629,7 +1631,7 @@ public sealed class AccessImportService : IAccessImportService
         return assignedId;
     }
 
-    private static int? ResolveSupplierIdByName(string? supplierName, IReadOnlyDictionary<string, int> supplierByKey)
+    private static int? ResolveSupplierIdByName(string? supplierName, Dictionary<string, int> supplierByKey)
     {
         if (string.IsNullOrWhiteSpace(supplierName))
             return null;
@@ -1803,7 +1805,7 @@ public sealed class AccessImportService : IAccessImportService
         // Seed stores discovered by ImportObjekti (even if they have no sales yet)
         foreach (var (storeId, storeData) in _importedStores)
         {
-            if (!existingStores.ContainsKey(storeId))
+            if (!existingStores.TryGetValue(storeId, out var e))
             {
                 var newStore = new StoresDim
                 {
@@ -1819,7 +1821,6 @@ public sealed class AccessImportService : IAccessImportService
             }
             else
             {
-                var e = existingStores[storeId];
                 e.StoreName = storeData.Name    ?? e.StoreName;
                 e.City      = storeData.Address ?? e.City;
                 e.DataOrigin = "access";
@@ -1830,7 +1831,7 @@ public sealed class AccessImportService : IAccessImportService
         foreach (var s in importedSales)
         {
             var storeId = s.IDObjekat ?? 1;
-            if (!existingStores.ContainsKey(storeId))
+            if (!existingStores.TryGetValue(storeId, out var existingStore))
             {
                 _importedStores.TryGetValue(storeId, out var storeData);
                 var newStore = new StoresDim
@@ -1847,7 +1848,7 @@ public sealed class AccessImportService : IAccessImportService
             }
             else
             {
-                existingStores[storeId].DataOrigin = "access";
+                existingStore.DataOrigin = "access";
             }
 
             var total = s.Stavke.Sum(x => x.Kolicina * x.Cena);

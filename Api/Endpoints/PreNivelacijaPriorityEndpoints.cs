@@ -420,7 +420,7 @@ public static class PreNivelacijaPriorityEndpoints
         return "low";
     }
 
-    private static string ResolveSupplierName(int? supplierId, IReadOnlyDictionary<int, string> suppliers)
+    private static string ResolveSupplierName(int? supplierId, Dictionary<int, string> suppliers)
     {
         if (supplierId.HasValue && suppliers.TryGetValue(supplierId.Value, out var name) && !string.IsNullOrWhiteSpace(name))
             return name.Trim();
@@ -434,7 +434,7 @@ public static class PreNivelacijaPriorityEndpoints
         return "N/A";
     }
 
-    private static string ResolveFootwearType(int? typeId, IReadOnlyDictionary<int, string> tipovi)
+    private static string ResolveFootwearType(int? typeId, Dictionary<int, string> tipovi)
     {
         if (typeId.HasValue && tipovi.TryGetValue(typeId.Value, out var t) && !string.IsNullOrWhiteSpace(t))
             return t.Trim();

@@ -34,7 +34,7 @@ public sealed class TrainingController : ControllerBase
     }
 
     // Centralized validation method
-    private async Task<IActionResult> ValidateRequest<T>(IValidator<T> validator, T request, CancellationToken ct)
+    private async Task<IActionResult?> ValidateRequest<T>(IValidator<T> validator, T request, CancellationToken ct)
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
@@ -183,7 +183,7 @@ public sealed class TrainingController : ControllerBase
 
         var affected = await cmd.ExecuteNonQueryAsync(ct);
 
-        _logger.LogInformation("Recomputed labels for datasets: {DatasetNames}", datasetNames);
+        _logger.LogInformation("Recomputed labels for datasets: {DatasetNames}", (object?)(datasetNames ?? Array.Empty<string>()));
 
         return Ok(new
         {

@@ -23,6 +23,9 @@ public sealed class TrendIngestionOptions
     /// <summary>UTC hour at which the daily ingestion runs (0–23).</summary>
     public int RunAtHourUtc { get; set; } = 3;
 
+    /// <summary>Delay in minutes to wait after application start before the worker becomes active.</summary>
+    /// Useful for postponing heavy scrapes on startup (0 = no delay).
+    public int StartDelayMinutes { get; set; } = 0;
     /// <summary>Timeout in seconds for the HTTP call to the Python API.</summary>
     public int PythonCallTimeoutSeconds { get; set; } = 300;
 

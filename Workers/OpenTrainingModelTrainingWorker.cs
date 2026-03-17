@@ -140,17 +140,17 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
         if (csb.Timeout <= 0)
             csb.Timeout = 15;
 
-        _logger.LogInformation(
-            "{WorkerName} connecting to Postgres Host={Host} Port={Port} Db={Database} User={Username} Pooling={Pooling} MaxPool={MaxPool} Timeout={Timeout}s CommandTimeout={CommandTimeout}s",
-            WorkerName,
-            csb.Host,
-            csb.Port,
-            csb.Database,
-            csb.Username,
-            csb.Pooling,
-            csb.MaxPoolSize,
-            csb.Timeout,
-            csb.CommandTimeout);
+        _logger.LogInformation("{Worker} connecting to Postgres: {@Conn}", WorkerName, new
+        {
+            Host = csb.Host,
+            Port = csb.Port,
+            Database = csb.Database,
+            Username = csb.Username,
+            Pooling = csb.Pooling,
+            MaxPool = csb.MaxPoolSize,
+            TimeoutSeconds = csb.Timeout,
+            CommandTimeoutSeconds = csb.CommandTimeout
+        });
 
         await using var conn = new NpgsqlConnection(csb.ConnectionString);
         try
@@ -159,12 +159,12 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
         }
         catch (TimeoutException tex)
         {
-            _logger.LogError(tex, "{WorkerName} timed out while opening Postgres connection.", WorkerName);
+            _logger.LogError(tex, "Timed out while opening Postgres connection.");
             throw;
         }
         catch (NpgsqlException npex)
         {
-            _logger.LogError(npex, "{WorkerName} failed to open Postgres connection.", WorkerName);
+            _logger.LogError(npex, "Failed to open Postgres connection.");
             throw;
         }
 

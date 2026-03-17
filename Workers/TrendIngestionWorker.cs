@@ -65,6 +65,21 @@ public sealed class TrendIngestionWorker : BackgroundService
         // Give the app time to fully boot before first check
         await Task.Delay(TimeSpan.FromSeconds(45), stoppingToken);
 
+        // Optional configurable longer delay to postpone worker activity after application start
+        if (_options.StartDelayMinutes > 0)
+        {
+            _logger.LogInformation("📈 {Worker} configured to delay start for {Minutes} minutes.", WorkerName, _options.StartDelayMinutes);
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(_options.StartDelayMinutes), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("📈 {Worker} start delay cancelled.", WorkerName);
+                return;
+            }
+        }
+
         DateOnly? lastRunDate = null;
         var pauseCheckInterval = TimeSpan.FromSeconds(10);
 
