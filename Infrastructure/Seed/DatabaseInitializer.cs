@@ -1638,6 +1638,7 @@ public static class DatabaseInitializer
         int commandTimeoutSeconds,
         ILogger logger)
     {
+        const int maxAttempts = 5;
         for (var i = 0; i < batches.Count; i++)
         {
             if (batches.Count > 1)
@@ -1649,17 +1650,61 @@ public static class DatabaseInitializer
                     batches.Count);
             }
 
+            // Apply a per-session lock timeout to avoid waiting indefinitely for locks.
             await using (var lockTimeoutCommand = new NpgsqlCommand(
-                $"SET lock_timeout = '{StartupSqlLockTimeoutSeconds}s';",
+                $"SET LOCAL lock_timeout = '{StartupSqlLockTimeoutSeconds}s'; SET LOCAL statement_timeout = '0';",
                 connection))
             {
                 lockTimeoutCommand.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
                 await lockTimeoutCommand.ExecuteNonQueryAsync();
             }
 
-            await using var command = new NpgsqlCommand(batches[i], connection);
-            command.CommandTimeout = commandTimeoutSeconds;
-            await command.ExecuteNonQueryAsync();
+            var attempt = 0;
+            var lastEx = (Exception?)null;
+            while (attempt < maxAttempts)
+            {
+                attempt++;
+                try
+                {
+                    await using var command = new NpgsqlCommand(batches[i], connection);
+                    command.CommandTimeout = commandTimeoutSeconds;
+                    await command.ExecuteNonQueryAsync();
+                    // success
+                    lastEx = null;
+                    break;
+                }
+                catch (Npgsql.PostgresException pex) when (pex.SqlState == "55P03")
+                {
+                    // Lock timeout — log and retry with backoff
+                    lastEx = pex;
+                    logger.LogWarning(pex, "Lock timeout executing batch {Batch} of {Script}. Attempt {Attempt}/{MaxAttempts}", i + 1, scriptIdentifier, attempt, maxAttempts);
+                }
+                catch (Npgsql.NpgsqlException nex)
+                {
+                    // Transient network or lower-level error — capture and decide to retry
+                    lastEx = nex;
+                    logger.LogWarning(nex, "Transient error executing batch {Batch} of {Script}. Attempt {Attempt}/{MaxAttempts}", i + 1, scriptIdentifier, attempt, maxAttempts);
+                }
+                catch (Exception ex)
+                {
+                    // Non-transient — rethrow
+                    logger.LogError(ex, "Non-retriable error executing SQL batch {Batch} of {Script}", i + 1, scriptIdentifier);
+                    throw;
+                }
+
+                if (attempt < maxAttempts)
+                {
+                    var delayMs = (int)(Math.Pow(2, attempt - 1) * 1000);
+                    logger.LogInformation("Waiting {Delay}ms before retrying batch {Batch}", delayMs, i + 1);
+                    await Task.Delay(delayMs);
+                }
+            }
+
+            if (lastEx != null)
+            {
+                logger.LogError(lastEx, "Failed to execute batch {Batch} of {Script} after {Attempts} attempts", i + 1, scriptIdentifier, maxAttempts);
+                throw lastEx;
+            }
         }
     }
 
