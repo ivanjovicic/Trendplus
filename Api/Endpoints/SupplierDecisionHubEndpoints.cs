@@ -17,7 +17,8 @@ public static class SupplierDecisionHubEndpoints
     public static void MapSupplierDecisionHubEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/analytics/suppliers/decision-hub")
-            .WithTags("Supplier Decision Hub");
+            .WithTags("Supplier Decision Hub")
+            .RequireRateLimiting("analytics");
 
         group.MapGet("/summary", async (
             IConfiguration configuration,

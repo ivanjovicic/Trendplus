@@ -43,6 +43,9 @@ import InsightStudioPage from "./pages/InsightStudioPage";
 import PreNivelacijaPriorityPage from "./pages/PreNivelacijaPriorityPage";
 import SupplierFootwearAnalyticsPage from "./pages/SupplierFootwearAnalyticsPage";
 import SupplierDecisionHubPage from "./pages/SupplierDecisionHubPage";
+import SupplierSalesStatsPage from "./pages/SupplierSalesStatsPage";
+import ShoeTypeSalesStatsPage from "./pages/ShoeTypeSalesStatsPage";
+import ColorSalesStatsPage from "./pages/ColorSalesStatsPage";
 import UnosHubPage from "./pages/UnosHubPage";
 
 function AppShell() {
@@ -60,6 +63,9 @@ function AppShell() {
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/performance" element={<PerformanceDashboard />} />
             <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/analytics/supplier-sales-stats" element={<SupplierSalesStatsPage />} />
+            <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+            <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
             <Route path="/analytics/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
             <Route path="/analytics/insight-studio" element={<InsightStudioPage />} />
             <Route path="/analytics/pre-nivelacija-prioriteti" element={<PreNivelacijaPriorityPage />} />

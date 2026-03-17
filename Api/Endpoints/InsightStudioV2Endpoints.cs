@@ -697,7 +697,7 @@ public static class InsightStudioV2Endpoints
                         var unsoldStock = g.Select(x => new { x.ArtikalId, x.StockQty })
                             .DistinctBy(x => x.ArtikalId).Sum(x => x.StockQty);
 
-                        var returnUnits = g.Key.DobavljacId.HasValue && povracajData.TryGetValue(g.Key.DobavljacId, out var ru) ? ru : 0;
+                        var returnUnits = g.Key.DobavljacId.HasValue && povracajData.TryGetValue(g.Key.DobavljacId.Value, out var ru) ? ru : 0;
                         var returnRate = units > 0 ? returnUnits / (double)units * 100 : 0;
 
                         // Scores (0-100)

@@ -30,7 +30,8 @@ public static class CachedAnalyticsEndpoints
     public static void MapCachedAnalyticsEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/analytics/cached")
-            .WithTags("Analytics (Cached)");
+            .WithTags("Analytics (Cached)")
+            .RequireRateLimiting("analytics");
 
         // ========== SALES SUMMARY (CACHED) ==========
         group.MapGet("/sales/summary", async (

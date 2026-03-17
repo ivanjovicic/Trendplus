@@ -12,6 +12,7 @@ import {
   Logs,
   Package,
   PackagePlus,
+  Palette,
   Rocket,
   ScanLine,
   Settings2,
@@ -90,6 +91,9 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Analitika",
     icon: BarChart3,
     items: [
+      { to: "/analytics/supplier-sales-stats", label: "Prodaja po dobavljacima", icon: TrendingUp },
+      { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuce", icon: ShoppingBag },
+      { to: "/analytics/color-sales-stats", label: "Prodaja po boji artikla", icon: Palette },
       { to: "/analytics", label: "Pregled analitike", icon: BarChart3 },
       { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: TrendingUp },
       { to: "/analytics/pre-nivelacija-prioriteti", label: "Prioriteti nivelacije", icon: Sparkles },

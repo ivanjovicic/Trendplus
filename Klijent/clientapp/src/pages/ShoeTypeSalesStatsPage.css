@@ -1,0 +1,290 @@
+.shoetype-sales-page {
+  background: #0f172a;
+  color: #e5e7eb;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.shoetype-sales-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.shoetype-sales-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #f9fafb;
+}
+
+.shoetype-sales-subtitle {
+  margin: 0;
+  max-width: 880px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #9ca3af;
+}
+
+.shoetype-sales-generated {
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.shoetype-sales-filterbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.shoetype-sales-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shoetype-sales-label {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.shoetype-sales-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #374151;
+  background: #0b1220;
+  color: #e5e7eb;
+  font-size: 13px;
+}
+
+.shoetype-sales-input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
+}
+
+.shoetype-sales-actions {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.shoetype-sales-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shoetype-sales-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.shoetype-sales-btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.shoetype-sales-btn-secondary {
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+}
+
+.shoetype-sales-note,
+.shoetype-sales-loading,
+.shoetype-sales-error,
+.shoetype-sales-empty {
+  margin-top: 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.shoetype-sales-note {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #cbd5e1;
+}
+
+.shoetype-sales-loading {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  color: #bfdbfe;
+}
+
+.shoetype-sales-error {
+  background: rgba(127, 29, 29, 0.3);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+
+.shoetype-sales-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+.shoetype-sales-kpi,
+.shoetype-sales-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+}
+
+.shoetype-sales-kpi {
+  padding: 12px;
+}
+
+.shoetype-sales-kpi-label {
+  display: block;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.shoetype-sales-kpi-value {
+  display: block;
+  margin-top: 6px;
+  font-size: 21px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.shoetype-sales-kpi-meta {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.shoetype-sales-card {
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.shoetype-sales-section-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.shoetype-sales-table-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.shoetype-sales-table-meta {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.shoetype-sales-table-wrap {
+  max-height: 620px;
+  overflow: auto;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+}
+
+.shoetype-sales-table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+}
+
+.shoetype-sales-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #0b1220;
+  border-bottom: 1px solid #1f2937;
+  padding: 10px 12px;
+}
+
+.shoetype-sales-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #1f2937;
+  font-size: 13px;
+  color: #e5e7eb;
+}
+
+.shoetype-sales-table tbody tr:hover {
+  background: rgba(30, 41, 59, 0.65);
+}
+
+.shoetype-sales-sort-btn {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.shoetype-sales-sort-btn.align-right {
+  text-align: right;
+}
+
+.shoetype-sales-sort-btn.align-center {
+  text-align: center;
+}
+
+.align-right {
+  text-align: right;
+}
+
+.align-center {
+  text-align: center;
+}
+
+.tone-neutral {
+  color: #f8fafc;
+}
+
+.tone-positive {
+  color: #4ade80;
+}
+
+.tone-negative {
+  color: #f87171;
+}
+
+.shoetype-sales-empty-row {
+  text-align: center;
+  color: #94a3b8;
+}
+
+@media (max-width: 900px) {
+  .shoetype-sales-header,
+  .shoetype-sales-table-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .shoetype-sales-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

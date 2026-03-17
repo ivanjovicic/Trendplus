@@ -844,6 +844,698 @@ public static class AllEndpoints
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
 
+        app.MapGet("/api/analytics/supplier-sales-stats", async (
+            TrendplusDbContext db,
+            int? sezonaId = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? storeId = null,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                static DateTime? NormalizeUtc(DateTime? value)
+                {
+                    if (!value.HasValue) return null;
+                    var date = value.Value;
+                    return date.Kind == DateTimeKind.Unspecified
+                        ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
+                        : date.ToUniversalTime();
+                }
+
+                DateTime? fromUtc = NormalizeUtc(fromDate);
+                DateTime? toUtc = NormalizeUtc(toDate);
+
+                if (sezonaId.HasValue)
+                {
+                    var sezona = await db.Sezone.AsNoTracking()
+                        .Where(s => s.Id == sezonaId.Value)
+                        .Select(s => new { s.DatumOd, s.DatumDo, s.Naziv })
+                        .FirstOrDefaultAsync(ct);
+
+                    if (sezona is null)
+                    {
+                        return Results.NotFound(new { message = $"Sezona {sezonaId.Value} nije pronađena." });
+                    }
+
+                    fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
+                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                }
+
+                if (!fromUtc.HasValue && !toUtc.HasValue)
+                {
+                    var todayUtc = DateTime.UtcNow.Date;
+                    fromUtc = todayUtc.AddDays(-89);
+                    toUtc = todayUtc.AddDays(1).AddTicks(-1);
+                }
+
+                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        fromDate = fromUtc.Value,
+                        toDate = toUtc.Value
+                    });
+                }
+
+                var nivelacije = await db.DnevnikPromena.AsNoTracking()
+                    .Where(d =>
+                        (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
+                        d.ArtikalId.HasValue &&
+                        (!fromUtc.HasValue || d.Datum >= fromUtc.Value) &&
+                        (!toUtc.HasValue || d.Datum <= toUtc.Value))
+                    .Select(d => new
+                    {
+                        ArtikalId = d.ArtikalId!.Value,
+                        DatumNivelacije = d.Datum,
+                        d.StaraProdajnaCena,
+                        d.NovaProdajnaCena
+                    })
+                    .ToListAsync(ct);
+
+                var prvaNivelacijaPoArtiklu = nivelacije
+                    .GroupBy(n => n.ArtikalId)
+                    .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
+
+                var stavke = await (
+                    from ps in db.ProdajaStavke.AsNoTracking()
+                    join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    join d in db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
+                    from d in dj.DefaultIfEmpty()
+                    where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
+                       && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
+                       && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                    select new
+                    {
+                        DobavljacId = d != null ? d.Id : (int?)null,
+                        DobavljacNaziv = d != null ? d.Naziv : "Nepoznato",
+                        ArtikalId = a.Id,
+                        ps.Kolicina,
+                        ps.Cena,
+                        Prihod = ps.Kolicina * ps.Cena,
+                        NabavnaCena = ps.NabavnaCena ?? a.NabavnaCena,
+                        DatumProdaje = pz.DatumProdaje
+                    })
+                    .ToListAsync(ct);
+
+                var suppliers = stavke
+                    .GroupBy(s => new { s.DobavljacId, s.DobavljacNaziv })
+                    .Select(g =>
+                    {
+                        decimal preNivRevenue = 0m;
+                        decimal postNivRevenue = 0m;
+                        decimal totalRevenue = 0m;
+                        int preNivQty = 0;
+                        int postNivQty = 0;
+                        int totalQty = 0;
+                        decimal totalCost = 0m;
+                        decimal revenueWithCost = 0m;
+
+                        var articleIds = new HashSet<int>();
+                        var articleIdsWithNivelacija = new HashSet<int>();
+
+                        foreach (var s in g)
+                        {
+                            totalRevenue += s.Prihod;
+                            totalQty += s.Kolicina;
+                            articleIds.Add(s.ArtikalId);
+
+                            if (s.NabavnaCena.HasValue)
+                            {
+                                totalCost += s.Kolicina * s.NabavnaCena.Value;
+                                revenueWithCost += s.Prihod;
+                            }
+
+                            if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
+                            {
+                                continue;
+                            }
+
+                            articleIdsWithNivelacija.Add(s.ArtikalId);
+
+                            if (s.DatumProdaje < nivDatum)
+                            {
+                                preNivRevenue += s.Prihod;
+                                preNivQty += s.Kolicina;
+                            }
+                            else
+                            {
+                                postNivRevenue += s.Prihod;
+                                postNivQty += s.Kolicina;
+                            }
+                        }
+
+                        var marginPct = revenueWithCost > 0m
+                            ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
+                            : 0d;
+
+                        return new
+                        {
+                            dobavljacId = g.Key.DobavljacId,
+                            dobavljacNaziv = string.IsNullOrWhiteSpace(g.Key.DobavljacNaziv) ? "Nepoznato" : g.Key.DobavljacNaziv,
+                            preNivelacijePromet = Math.Round(preNivRevenue, 2),
+                            preNivelacijeKolicina = preNivQty,
+                            posleNivelacijePromet = Math.Round(postNivRevenue, 2),
+                            posleNivelacijeKolicina = postNivQty,
+                            ukupanPromet = Math.Round(totalRevenue, 2),
+                            ukupnaKolicina = totalQty,
+                            brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
+                            brojArtikalaUkupno = articleIds.Count,
+                            marginPct = Math.Round(marginPct, 2),
+                            promenaPrometa = preNivRevenue > 0m
+                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
+                                : (double?)null,
+                            promenaKolicine = preNivQty > 0
+                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
+                                : (double?)null
+                        };
+                    })
+                    .OrderByDescending(x => x.ukupanPromet)
+                    .ToList();
+
+                var sumPreRevenue = suppliers.Sum(r => r.preNivelacijePromet);
+                var sumPostRevenue = suppliers.Sum(r => r.posleNivelacijePromet);
+
+                var totals = new
+                {
+                    ukupanPromet = suppliers.Sum(r => r.ukupanPromet),
+                    prePromet = sumPreRevenue,
+                    poslePromet = sumPostRevenue,
+                    ukupnaKolicina = suppliers.Sum(r => r.ukupnaKolicina),
+                    preKolicina = suppliers.Sum(r => r.preNivelacijeKolicina),
+                    posleKolicina = suppliers.Sum(r => r.posleNivelacijeKolicina),
+                    brojDobavljaca = suppliers.Count,
+                    promenaPrometaPct = sumPreRevenue > 0m
+                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                        : (double?)null
+                };
+
+                var sezone = (await db.Sezone.AsNoTracking()
+                    .OrderByDescending(s => s.DatumOd)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.Naziv,
+                        s.DatumOd,
+                        s.DatumDo
+                    })
+                    .ToListAsync(ct))
+                    .Select(s => new
+                    {
+                        id = s.Id,
+                        naziv = s.Naziv,
+                        datumOd = DateTime.SpecifyKind(s.DatumOd.Date, DateTimeKind.Utc),
+                        datumDo = DateTime.SpecifyKind(s.DatumDo.Date, DateTimeKind.Utc)
+                    })
+                    .ToList();
+
+                return Results.Ok(new
+                {
+                    generatedAt = DateTime.UtcNow,
+                    fromDate = fromUtc,
+                    toDate = toUtc,
+                    sezonaId,
+                    storeId,
+                    suppliers,
+                    totals,
+                    sezone
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Greška pri učitavanju statistike prodaje po dobavljačima",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("GetSupplierSalesStats")
+        .WithTags("Analytics")
+        .RequireRateLimiting("analytics");
+
+        app.MapGet("/api/analytics/shoe-type-sales-stats", async (
+            TrendplusDbContext db,
+            int? sezonaId = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? storeId = null,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                static DateTime? NormalizeUtc(DateTime? value)
+                {
+                    if (!value.HasValue) return null;
+                    var date = value.Value;
+                    return date.Kind == DateTimeKind.Unspecified
+                        ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
+                        : date.ToUniversalTime();
+                }
+
+                DateTime? fromUtc = NormalizeUtc(fromDate);
+                DateTime? toUtc = NormalizeUtc(toDate);
+
+                if (sezonaId.HasValue)
+                {
+                    var sezona = await db.Sezone.AsNoTracking()
+                        .Where(s => s.Id == sezonaId.Value)
+                        .Select(s => new { s.DatumOd, s.DatumDo, s.Naziv })
+                        .FirstOrDefaultAsync(ct);
+
+                    if (sezona is null)
+                    {
+                        return Results.NotFound(new { message = $"Sezona {sezonaId.Value} nije pronadjena." });
+                    }
+
+                    fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
+                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                }
+
+                if (!fromUtc.HasValue && !toUtc.HasValue)
+                {
+                    var todayUtc = DateTime.UtcNow.Date;
+                    fromUtc = todayUtc.AddDays(-89);
+                    toUtc = todayUtc.AddDays(1).AddTicks(-1);
+                }
+
+                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        fromDate = fromUtc.Value,
+                        toDate = toUtc.Value
+                    });
+                }
+
+                var nivelacije = await db.DnevnikPromena.AsNoTracking()
+                    .Where(d =>
+                        (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
+                        d.ArtikalId.HasValue &&
+                        (!fromUtc.HasValue || d.Datum >= fromUtc.Value) &&
+                        (!toUtc.HasValue || d.Datum <= toUtc.Value))
+                    .Select(d => new
+                    {
+                        ArtikalId = d.ArtikalId!.Value,
+                        DatumNivelacije = d.Datum,
+                        d.StaraProdajnaCena,
+                        d.NovaProdajnaCena
+                    })
+                    .ToListAsync(ct);
+
+                var prvaNivelacijaPoArtiklu = nivelacije
+                    .GroupBy(n => n.ArtikalId)
+                    .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
+
+                var stavke = await (
+                    from ps in db.ProdajaStavke.AsNoTracking()
+                    join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    join t in db.TipoviObuce.AsNoTracking() on a.IDTipObuce equals t.Id into tj
+                    from t in tj.DefaultIfEmpty()
+                    where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
+                       && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
+                       && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                    select new
+                    {
+                        TipObuceId = t != null ? t.Id : (int?)null,
+                        TipObuceNaziv = t != null ? t.Naziv : "Nepoznato",
+                        ArtikalId = a.Id,
+                        ps.Kolicina,
+                        ps.Cena,
+                        Prihod = ps.Kolicina * ps.Cena,
+                        NabavnaCena = ps.NabavnaCena ?? a.NabavnaCena,
+                        DatumProdaje = pz.DatumProdaje
+                    })
+                    .ToListAsync(ct);
+
+                var shoeTypes = stavke
+                    .GroupBy(s => new { s.TipObuceId, s.TipObuceNaziv })
+                    .Select(g =>
+                    {
+                        decimal preNivRevenue = 0m;
+                        decimal postNivRevenue = 0m;
+                        decimal totalRevenue = 0m;
+                        int preNivQty = 0;
+                        int postNivQty = 0;
+                        int totalQty = 0;
+                        decimal totalCost = 0m;
+                        decimal revenueWithCost = 0m;
+
+                        var articleIds = new HashSet<int>();
+                        var articleIdsWithNivelacija = new HashSet<int>();
+
+                        foreach (var s in g)
+                        {
+                            totalRevenue += s.Prihod;
+                            totalQty += s.Kolicina;
+                            articleIds.Add(s.ArtikalId);
+
+                            if (s.NabavnaCena.HasValue)
+                            {
+                                totalCost += s.Kolicina * s.NabavnaCena.Value;
+                                revenueWithCost += s.Prihod;
+                            }
+
+                            if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
+                            {
+                                continue;
+                            }
+
+                            articleIdsWithNivelacija.Add(s.ArtikalId);
+
+                            if (s.DatumProdaje < nivDatum)
+                            {
+                                preNivRevenue += s.Prihod;
+                                preNivQty += s.Kolicina;
+                            }
+                            else
+                            {
+                                postNivRevenue += s.Prihod;
+                                postNivQty += s.Kolicina;
+                            }
+                        }
+
+                        var marginPct = revenueWithCost > 0m
+                            ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
+                            : 0d;
+
+                        return new
+                        {
+                            tipObuceId = g.Key.TipObuceId,
+                            tipObuceNaziv = string.IsNullOrWhiteSpace(g.Key.TipObuceNaziv) ? "Nepoznato" : g.Key.TipObuceNaziv,
+                            preNivelacijePromet = Math.Round(preNivRevenue, 2),
+                            preNivelacijeKolicina = preNivQty,
+                            posleNivelacijePromet = Math.Round(postNivRevenue, 2),
+                            posleNivelacijeKolicina = postNivQty,
+                            ukupanPromet = Math.Round(totalRevenue, 2),
+                            ukupnaKolicina = totalQty,
+                            brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
+                            brojArtikalaUkupno = articleIds.Count,
+                            marginPct = Math.Round(marginPct, 2),
+                            promenaPrometa = preNivRevenue > 0m
+                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
+                                : (double?)null,
+                            promenaKolicine = preNivQty > 0
+                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
+                                : (double?)null
+                        };
+                    })
+                    .OrderByDescending(x => x.ukupanPromet)
+                    .ToList();
+
+                var sumPreRevenue = shoeTypes.Sum(r => r.preNivelacijePromet);
+                var sumPostRevenue = shoeTypes.Sum(r => r.posleNivelacijePromet);
+
+                var totals = new
+                {
+                    ukupanPromet = shoeTypes.Sum(r => r.ukupanPromet),
+                    prePromet = sumPreRevenue,
+                    poslePromet = sumPostRevenue,
+                    ukupnaKolicina = shoeTypes.Sum(r => r.ukupnaKolicina),
+                    preKolicina = shoeTypes.Sum(r => r.preNivelacijeKolicina),
+                    posleKolicina = shoeTypes.Sum(r => r.posleNivelacijeKolicina),
+                    brojTipovaObuce = shoeTypes.Count,
+                    promenaPrometaPct = sumPreRevenue > 0m
+                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                        : (double?)null
+                };
+
+                var sezone = (await db.Sezone.AsNoTracking()
+                    .OrderByDescending(s => s.DatumOd)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.Naziv,
+                        s.DatumOd,
+                        s.DatumDo
+                    })
+                    .ToListAsync(ct))
+                    .Select(s => new
+                    {
+                        id = s.Id,
+                        naziv = s.Naziv,
+                        datumOd = DateTime.SpecifyKind(s.DatumOd.Date, DateTimeKind.Utc),
+                        datumDo = DateTime.SpecifyKind(s.DatumDo.Date, DateTimeKind.Utc)
+                    })
+                    .ToList();
+
+                return Results.Ok(new
+                {
+                    generatedAt = DateTime.UtcNow,
+                    fromDate = fromUtc,
+                    toDate = toUtc,
+                    sezonaId,
+                    storeId,
+                    shoeTypes,
+                    totals,
+                    sezone
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Greska pri ucitavanju statistike prodaje po tipu obuce",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("GetShoeTypeSalesStats")
+        .WithTags("Analytics")
+        .RequireRateLimiting("analytics");
+
+        app.MapGet("/api/analytics/color-sales-stats", async (
+            TrendplusDbContext db,
+            int? sezonaId = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? storeId = null,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                static DateTime? NormalizeUtc(DateTime? value)
+                {
+                    if (!value.HasValue) return null;
+                    var date = value.Value;
+                    return date.Kind == DateTimeKind.Unspecified
+                        ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
+                        : date.ToUniversalTime();
+                }
+
+                static string NormalizeColor(string? value) =>
+                    string.IsNullOrWhiteSpace(value) ? "Nepoznato" : value.Trim();
+
+                DateTime? fromUtc = NormalizeUtc(fromDate);
+                DateTime? toUtc = NormalizeUtc(toDate);
+
+                if (sezonaId.HasValue)
+                {
+                    var sezona = await db.Sezone.AsNoTracking()
+                        .Where(s => s.Id == sezonaId.Value)
+                        .Select(s => new { s.DatumOd, s.DatumDo, s.Naziv })
+                        .FirstOrDefaultAsync(ct);
+
+                    if (sezona is null)
+                    {
+                        return Results.NotFound(new { message = $"Sezona {sezonaId.Value} nije pronadjena." });
+                    }
+
+                    fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
+                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                }
+
+                if (!fromUtc.HasValue && !toUtc.HasValue)
+                {
+                    var todayUtc = DateTime.UtcNow.Date;
+                    fromUtc = todayUtc.AddDays(-89);
+                    toUtc = todayUtc.AddDays(1).AddTicks(-1);
+                }
+
+                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        fromDate = fromUtc.Value,
+                        toDate = toUtc.Value
+                    });
+                }
+
+                var nivelacije = await db.DnevnikPromena.AsNoTracking()
+                    .Where(d =>
+                        (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
+                        d.ArtikalId.HasValue &&
+                        (!fromUtc.HasValue || d.Datum >= fromUtc.Value) &&
+                        (!toUtc.HasValue || d.Datum <= toUtc.Value))
+                    .Select(d => new
+                    {
+                        ArtikalId = d.ArtikalId!.Value,
+                        DatumNivelacije = d.Datum,
+                        d.StaraProdajnaCena,
+                        d.NovaProdajnaCena
+                    })
+                    .ToListAsync(ct);
+
+                var prvaNivelacijaPoArtiklu = nivelacije
+                    .GroupBy(n => n.ArtikalId)
+                    .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
+
+                var stavke = await (
+                    from ps in db.ProdajaStavke.AsNoTracking()
+                    join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
+                       && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
+                       && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                    select new
+                    {
+                        Boja = a.Boja,
+                        ArtikalId = a.Id,
+                        ps.Kolicina,
+                        ps.Cena,
+                        Prihod = ps.Kolicina * ps.Cena,
+                        NabavnaCena = ps.NabavnaCena ?? a.NabavnaCena,
+                        DatumProdaje = pz.DatumProdaje
+                    })
+                    .ToListAsync(ct);
+
+                var colors = stavke
+                    .GroupBy(s => NormalizeColor(s.Boja))
+                    .Select(g =>
+                    {
+                        decimal preNivRevenue = 0m;
+                        decimal postNivRevenue = 0m;
+                        decimal totalRevenue = 0m;
+                        int preNivQty = 0;
+                        int postNivQty = 0;
+                        int totalQty = 0;
+                        decimal totalCost = 0m;
+                        decimal revenueWithCost = 0m;
+
+                        var articleIds = new HashSet<int>();
+                        var articleIdsWithNivelacija = new HashSet<int>();
+
+                        foreach (var s in g)
+                        {
+                            totalRevenue += s.Prihod;
+                            totalQty += s.Kolicina;
+                            articleIds.Add(s.ArtikalId);
+
+                            if (s.NabavnaCena.HasValue)
+                            {
+                                totalCost += s.Kolicina * s.NabavnaCena.Value;
+                                revenueWithCost += s.Prihod;
+                            }
+
+                            if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
+                            {
+                                continue;
+                            }
+
+                            articleIdsWithNivelacija.Add(s.ArtikalId);
+
+                            if (s.DatumProdaje < nivDatum)
+                            {
+                                preNivRevenue += s.Prihod;
+                                preNivQty += s.Kolicina;
+                            }
+                            else
+                            {
+                                postNivRevenue += s.Prihod;
+                                postNivQty += s.Kolicina;
+                            }
+                        }
+
+                        var marginPct = revenueWithCost > 0m
+                            ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
+                            : 0d;
+
+                        return new
+                        {
+                            boja = g.Key,
+                            preNivelacijePromet = Math.Round(preNivRevenue, 2),
+                            preNivelacijeKolicina = preNivQty,
+                            posleNivelacijePromet = Math.Round(postNivRevenue, 2),
+                            posleNivelacijeKolicina = postNivQty,
+                            ukupanPromet = Math.Round(totalRevenue, 2),
+                            ukupnaKolicina = totalQty,
+                            brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
+                            brojArtikalaUkupno = articleIds.Count,
+                            marginPct = Math.Round(marginPct, 2),
+                            promenaPrometa = preNivRevenue > 0m
+                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
+                                : (double?)null,
+                            promenaKolicine = preNivQty > 0
+                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
+                                : (double?)null
+                        };
+                    })
+                    .OrderByDescending(x => x.ukupanPromet)
+                    .ToList();
+
+                var sumPreRevenue = colors.Sum(r => r.preNivelacijePromet);
+                var sumPostRevenue = colors.Sum(r => r.posleNivelacijePromet);
+
+                var totals = new
+                {
+                    ukupanPromet = colors.Sum(r => r.ukupanPromet),
+                    prePromet = sumPreRevenue,
+                    poslePromet = sumPostRevenue,
+                    ukupnaKolicina = colors.Sum(r => r.ukupnaKolicina),
+                    preKolicina = colors.Sum(r => r.preNivelacijeKolicina),
+                    posleKolicina = colors.Sum(r => r.posleNivelacijeKolicina),
+                    brojBoja = colors.Count,
+                    promenaPrometaPct = sumPreRevenue > 0m
+                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                        : (double?)null
+                };
+
+                var sezone = (await db.Sezone.AsNoTracking()
+                    .OrderByDescending(s => s.DatumOd)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.Naziv,
+                        s.DatumOd,
+                        s.DatumDo
+                    })
+                    .ToListAsync(ct))
+                    .Select(s => new
+                    {
+                        id = s.Id,
+                        naziv = s.Naziv,
+                        datumOd = DateTime.SpecifyKind(s.DatumOd.Date, DateTimeKind.Utc),
+                        datumDo = DateTime.SpecifyKind(s.DatumDo.Date, DateTimeKind.Utc)
+                    })
+                    .ToList();
+
+                return Results.Ok(new
+                {
+                    generatedAt = DateTime.UtcNow,
+                    fromDate = fromUtc,
+                    toDate = toUtc,
+                    sezonaId,
+                    storeId,
+                    colors,
+                    totals,
+                    sezone
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Greska pri ucitavanju statistike prodaje po boji artikla",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("GetColorSalesStats")
+        .WithTags("Analytics")
+        .RequireRateLimiting("analytics");
+
         app.MapGet("/api/analytics/vendor-sales-nivelacija", async (
             TrendplusDbContext trendplusDb,
             int? vendorId = null,
@@ -1513,8 +2205,12 @@ public static class AllEndpoints
             Results.Redirect($"/api/analytics/cached/sales/category-trends{ctx.Request.QueryString}", permanent: false));
         app.MapGet("/api/analytics/dashboard/advanced", (HttpContext ctx) =>
             Results.Redirect($"/api/analytics/cached/dashboard/advanced{ctx.Request.QueryString}", permanent: false));
+        app.MapGet("/api/analytics/dashboard/bootstrap", (HttpContext ctx) =>
+            Results.Redirect($"/api/analytics/cached/dashboard/bootstrap{ctx.Request.QueryString}", permanent: false));
         app.MapGet("/api/analytics/sales/top-products-advanced", (HttpContext ctx) =>
             Results.Redirect($"/api/analytics/cached/sales/top-products-advanced{ctx.Request.QueryString}", permanent: false));
+        app.MapGet("/api/analytics/filters/suppliers", (HttpContext ctx) =>
+            Results.Redirect($"/api/analytics/cached/filters/suppliers{ctx.Request.QueryString}", permanent: false));
         app.MapGet("/api/analytics/filters/stores", (HttpContext ctx) =>
             Results.Redirect($"/api/analytics/cached/filters/stores{ctx.Request.QueryString}", permanent: false));
         app.MapGet("/api/analytics/validation/completeness", (HttpContext ctx) =>
