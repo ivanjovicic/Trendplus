@@ -82,29 +82,27 @@ $ensure_unique$;
 
 -- 3️⃣ Backfill price_history table
 INSERT INTO price_history (
-    article_id,
-    "ArticleId",
-    vendor_id,
-    old_price,
-    new_price,
-    effective_from,
-    changed_at,
-    source_dnevnik_id
+        article_id,
+        vendor_id,
+        old_price,
+        new_price,
+        effective_from,
+        changed_at,
+        source_dnevnik_id
 )
 SELECT
-    d."ArtikalId",
-    d."ArtikalId",
-    COALESCE(d."DobavljacId", a."IDDobavljac"),
-    d."StaraProdajnaCena"::NUMERIC(18,4),
-    d."NovaProdajnaCena"::NUMERIC(18,4),
-    d."Datum",
-    d."Datum",
-    d."Id"
+        d."ArtikalId",
+        COALESCE(d."DobavljacId", a."IDDobavljac"),
+        d."StaraProdajnaCena"::NUMERIC(18,4),
+        d."NovaProdajnaCena"::NUMERIC(18,4),
+        d."Datum",
+        d."Datum",
+        d."Id"
 FROM "DnevnikPromena" d
 LEFT JOIN "Artikli" a ON a."Id" = d."ArtikalId"
 WHERE d."ArtikalId" IS NOT NULL
-  AND d."Datum" IS NOT NULL
-  AND d."TipPromene" IN ('Nivelacija','Nivelacija cena')
+    AND d."Datum" IS NOT NULL
+    AND d."TipPromene" IN ('Nivelacija','Nivelacija cena')
 ON CONFLICT (source_dnevnik_id) DO NOTHING;
 
 -- 4️⃣ Create pre/post nivelacija views (supports both snake_case and PascalCase price_history schema)
