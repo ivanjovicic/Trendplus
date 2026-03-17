@@ -676,7 +676,9 @@ public static class InsightStudioV2Endpoints
                     where pz.DatumPovracaja >= fromUtc && pz.DatumPovracaja <= toUtc
                     group ps by a.IDDobavljac into g
                     select new { dobId = g.Key, returnUnits = g.Sum(x => x.Kolicina) }
-                ).ToDictionaryAsync(x => x.dobId, x => x.returnUnits, ct);
+                )
+                .Where(x => x.dobId.HasValue)
+                .ToDictionaryAsync(x => x.dobId!.Value, x => x.returnUnits, ct);
 
                 var result = stavke
                     .GroupBy(x => new { x.DobavljacId, x.DobavljacNaziv })

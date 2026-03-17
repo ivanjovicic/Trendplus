@@ -81,10 +81,10 @@ public sealed class ShopifyImportService : IShopifyImportService
     public async Task<ShopifyImportResult> ImportAsync(ShopifyImportRequest request, CancellationToken ct = default)
     {
         if (request.MaxPages <= 0 || request.MaxPages > MaxPagesLimit)
-            throw new ArgumentOutOfRangeException(nameof(request.MaxPages), $"MaxPages must be between 1 and {MaxPagesLimit}.");
+            throw new ArgumentOutOfRangeException(nameof(request), $"MaxPages must be between 1 and {MaxPagesLimit}.");
 
         if (request.PageSize <= 0 || request.PageSize > MaxPageSize)
-            throw new ArgumentOutOfRangeException(nameof(request.PageSize), $"PageSize must be between 1 and {MaxPageSize}.");
+            throw new ArgumentOutOfRangeException(nameof(request), $"PageSize must be between 1 and {MaxPageSize}.");
 
         ArgumentException.ThrowIfNullOrWhiteSpace(request.ShopDomain, nameof(request.ShopDomain));
 

@@ -90,7 +90,7 @@ namespace Api.Config
         /// Platt scaling parameters: p = sigmoid(A * z + B).
         /// </summary>
         public double CalibrationA { get; set; } = 1.0;
-        public double CalibrationB { get; set; } = 0.0;
+        public double CalibrationB { get; set; }
 
         /// <summary>
         /// Softmax temperature for ranking stabilization.

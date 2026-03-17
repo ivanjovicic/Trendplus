@@ -60,7 +60,7 @@ public sealed class TrainingController : ControllerBase
             var datasetName = request.DatasetName.Trim();
             datasetId = await _db.Datasets
                 .AsNoTracking()
-                .Where(d => d.Name.ToLower() == datasetName.ToLower())
+                .Where(d => d.Name.ToLowerInvariant() == datasetName.ToLowerInvariant())
                 .Select(d => (int?)d.Id)
                 .FirstOrDefaultAsync(ct);
         }

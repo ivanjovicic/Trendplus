@@ -22,7 +22,7 @@ namespace Api.Config
         /// When true uses sandbox endpoints (api.sandbox.ebay.com).
         /// Set false for production.
         /// </summary>
-        public bool   IsSandbox    { get; set; } = false;
+        public bool   IsSandbox    { get; set; }
 
         // ── Static token override (optional) ────────────────────────────────
         /// <summary>
