@@ -20,6 +20,30 @@
 -- ==========================================================
 -- 1) Supplier performance before the first markdown event
 -- ==========================================================
+
+-- Ensure `vw_nivelacija_did` exists as a minimal stub when running in an environment
+-- where the nivelacija views haven't been created yet. This avoids hard failures
+-- during DB bootstrap; the real view from migration 016 will replace this stub.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relkind IN ('v','r')
+          AND c.relname = 'vw_nivelacija_did'
+    ) THEN
+        EXECUTE $$
+        CREATE VIEW vw_nivelacija_did AS
+        SELECT
+            NULL::bigint AS price_event_id,
+            0::numeric AS did_revenue,
+            0::numeric AS did_qty
+        WHERE FALSE;
+        $$;
+    END IF;
+END
+$$;
+
 CREATE OR REPLACE VIEW vw_supplier_fullprice_signals AS
 WITH ranked_markdowns AS (
     -- Keep markdown events only and rank them so each article contributes
