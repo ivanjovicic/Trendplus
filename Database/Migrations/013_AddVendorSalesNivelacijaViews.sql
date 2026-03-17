@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS price_history (
         ON DELETE SET NULL
 );
 
+-- SQL_BATCH_BREAK
+
 -- 2️⃣ Reconcile schema: table may have been created with PascalCase columns (older schema)
 DO $reconcile$
 DECLARE
@@ -63,12 +65,16 @@ BEGIN
 END
 $reconcile$;
 
+-- SQL_BATCH_BREAK
+
 -- Create indexes for price_history
 CREATE INDEX IF NOT EXISTS idx_price_history_article_date
 ON price_history (article_id, effective_from DESC);
 
 CREATE INDEX IF NOT EXISTS idx_price_history_vendor_date
 ON price_history (vendor_id, effective_from DESC);
+
+-- SQL_BATCH_BREAK
 
 -- 3️⃣ Ensure UNIQUE constraint on source_dnevnik_id (needed for ON CONFLICT)
 DO $ensure_unique$
@@ -79,6 +85,8 @@ EXCEPTION WHEN duplicate_table OR duplicate_object THEN
     NULL; -- constraint already exists, nothing to do
 END
 $ensure_unique$;
+
+-- SQL_BATCH_BREAK
 
 -- 3️⃣ Backfill price_history table
 INSERT INTO price_history (
@@ -104,6 +112,8 @@ WHERE d."ArtikalId" IS NOT NULL
     AND d."Datum" IS NOT NULL
     AND d."TipPromene" IN ('Nivelacija','Nivelacija cena')
 ON CONFLICT (source_dnevnik_id) DO NOTHING;
+
+-- SQL_BATCH_BREAK
 
 -- 4️⃣ Create pre/post nivelacija views (supports both snake_case and PascalCase price_history schema)
 DO $create_views$
@@ -398,6 +408,8 @@ BEGIN
     END IF;
 END
 $create_views$;
+
+-- SQL_BATCH_BREAK
 
 -- 7️⃣ Additional indexes
 CREATE INDEX IF NOT EXISTS idx_prodaja_stavke_artikal_prodaja

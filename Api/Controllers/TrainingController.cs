@@ -34,14 +34,22 @@ public sealed class TrainingController : ControllerBase
     }
 
     // Centralized validation method
-    private async Task<IActionResult?> ValidateRequest<T>(IValidator<T> validator, T request, CancellationToken ct)
+    private async Task<ValidationProblemDetails?> ValidateRequest<T>(IValidator<T> validator, T request, CancellationToken ct)
     {
         var validation = await validator.ValidateAsync(request, ct);
         if (!validation.IsValid)
         {
-            _logger.LogWarning("Validation failed: {Errors}", validation.Errors);
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+            if (_logger.IsEnabled(LogLevel.Warning))
+            {
+                _logger.LogWarning(
+                    "Validation failed for {RequestType} with {ErrorCount} errors.",
+                    typeof(T).Name,
+                    validation.Errors.Count);
+            }
+
+            return new ValidationProblemDetails(validation.ToDictionary());
         }
+
         return null;
     }
 
@@ -51,8 +59,11 @@ public sealed class TrainingController : ControllerBase
         [FromBody] StartTrainingRunRequestDto request,
         CancellationToken ct = default)
     {
-        var validationResult = await ValidateRequest(_startValidator, request, ct);
-        if (validationResult != null) return validationResult;
+        var validationProblem = await ValidateRequest(_startValidator, request, ct);
+        if (validationProblem is not null)
+        {
+            return ValidationProblem(validationProblem);
+        }
 
         int? datasetId = request.DatasetId;
         if (datasetId is null && !string.IsNullOrWhiteSpace(request.DatasetName))
@@ -81,7 +92,11 @@ public sealed class TrainingController : ControllerBase
         _db.TrainingRuns.Add(run);
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Queued training run {RunId} for model_type={ModelType}", run.Id, run.ModelType);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Queued training run {RunId} for model_type={ModelType}", run.Id, run.ModelType);
+        }
+
         return Ok(run);
     }
 
@@ -156,8 +171,11 @@ public sealed class TrainingController : ControllerBase
         [FromBody] RecomputeSellProbabilityLabelsRequestDto request,
         CancellationToken ct = default)
     {
-        var validationResult = await ValidateRequest(_labelsValidator, request, ct);
-        if (validationResult != null) return validationResult;
+        var validationProblem = await ValidateRequest(_labelsValidator, request, ct);
+        if (validationProblem is not null)
+        {
+            return ValidationProblem(validationProblem);
+        }
 
         var connectionString = _db.Database.GetConnectionString();
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -183,7 +201,13 @@ public sealed class TrainingController : ControllerBase
 
         var affected = await cmd.ExecuteNonQueryAsync(ct);
 
-        _logger.LogInformation("Recomputed labels for datasets: {DatasetNames}", (object?)(datasetNames ?? Array.Empty<string>()));
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            var datasetNamesSummary = datasetNames is { Length: > 0 }
+                ? string.Join(", ", datasetNames)
+                : "(all datasets)";
+            _logger.LogInformation("Recomputed labels for datasets: {DatasetNames}", datasetNamesSummary);
+        }
 
         return Ok(new
         {
@@ -244,7 +268,11 @@ public sealed class TrainingController : ControllerBase
 
         var bytes = Encoding.UTF8.GetBytes(sb.ToString());
         var fileName = $"open_training_export_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
-        _logger.LogInformation("Exported training data to file: {FileName}", fileName);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Exported training data to file: {FileName}", fileName);
+        }
+
         return File(bytes, "text/csv; charset=utf-8", fileName);
     }
 

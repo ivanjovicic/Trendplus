@@ -319,6 +319,15 @@ public static class DatabaseInitializer
 
         foreach (var sqlFile in sqlFiles)
         {
+            if (string.Equals(sqlFile, "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql", StringComparison.Ordinal))
+            {
+                // 013 contains DDL + backfill + view rebuilds. Running it in one transaction
+                // holds relation locks longer than necessary and can hit 55P03 during startup.
+                // Execute it batch-by-batch so each section commits independently.
+                await ExecuteSqlFileAsync(connectionString, sqlFile, logger, useTransaction: false);
+                continue;
+            }
+
             await ExecuteSqlFileAsync(connectionString, sqlFile, logger);
         }
 
@@ -1762,7 +1771,7 @@ public static class DatabaseInitializer
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
 
-        NpgsqlTransaction? tx = useTransaction ? await connection.BeginTransactionAsync() : null;
+        NpgsqlTransaction? tx = null;
         try
         {
             if (!useTransaction)
@@ -1771,17 +1780,72 @@ public static class DatabaseInitializer
             }
             else
             {
-                await using var lockTimeoutCommand = new NpgsqlCommand(
-                    $"SET LOCAL lock_timeout = '{StartupSqlLockTimeoutSeconds}s';",
-                    connection,
-                    tx);
-                lockTimeoutCommand.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
-                await lockTimeoutCommand.ExecuteNonQueryAsync();
+                // Retry transactional execution on lock-timeout (55P03). Some DDL batches can
+                // contend with other sessions; retrying with an increased lock_timeout helps
+                // survive transient contention during startup.
+                const int maxAttempts = 3;
+                Exception? lastEx = null;
 
-                await using var command = new NpgsqlCommand(sqlForExecution, connection, tx);
-                command.CommandTimeout = commandTimeoutSeconds;
-                await command.ExecuteNonQueryAsync();
-                await tx!.CommitAsync();
+                for (var attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    try
+                    {
+                        tx = await connection.BeginTransactionAsync();
+
+                        // Increase lock_timeout on subsequent attempts (exponential).
+                        var lockTimeoutSeconds = StartupSqlLockTimeoutSeconds * (int)Math.Pow(2, attempt - 1);
+                        await using var lockTimeoutCommand = new NpgsqlCommand(
+                            $"SET LOCAL lock_timeout = '{lockTimeoutSeconds}s';",
+                            connection,
+                            tx);
+                        lockTimeoutCommand.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+                        await lockTimeoutCommand.ExecuteNonQueryAsync();
+
+                        await using var command = new NpgsqlCommand(sqlForExecution, connection, tx);
+                        command.CommandTimeout = commandTimeoutSeconds;
+                        await command.ExecuteNonQueryAsync();
+                        await tx.CommitAsync();
+
+                        // Success; clear last exception and break
+                        lastEx = null;
+                        break;
+                    }
+                    catch (PostgresException pgEx) when (pgEx.SqlState == "55P03")
+                    {
+                        // Lock timeout — rollback and retry with backoff
+                        lastEx = pgEx;
+                        try { if (tx != null) await tx.RollbackAsync(); } catch { }
+                        logger.LogWarning(pgEx, "Lock timeout executing startup SQL file {FilePath}. Attempt {Attempt}/{MaxAttempts}", scriptDisplayIdentifier, attempt, maxAttempts);
+                    }
+                    catch (PostgresException pgEx) when (pgEx.SqlState == "42P07" || (pgEx.Detail != null && pgEx.Detail.Contains("already exists", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // Non-fatal duplicate-object error during transactional execution — rollback and continue.
+                        try { if (tx != null) await tx.RollbackAsync(); } catch { }
+                        logger.LogWarning(pgEx,
+                            "Non-fatal Postgres error while executing SQL file {FilePath} (object already exists). SqlState={SqlState}, Detail={Detail}",
+                            scriptDisplayIdentifier, pgEx.SqlState, pgEx.Detail);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        try { if (tx != null) await tx.RollbackAsync(); } catch { }
+                        logger.LogError(ex, "Failed executing startup SQL file {FilePath} on attempt {Attempt}.", scriptDisplayIdentifier, attempt);
+                        throw;
+                    }
+
+                    if (attempt < maxAttempts)
+                    {
+                        var delayMs = (int)(Math.Pow(2, attempt - 1) * 1000);
+                        logger.LogInformation("Waiting {Delay}ms before retrying transactional execution of {FilePath}", delayMs, scriptDisplayIdentifier);
+                        await Task.Delay(delayMs);
+                    }
+                }
+
+                if (lastEx != null)
+                {
+                    logger.LogError(lastEx, "Failed to execute startup SQL file {FilePath} after {Attempts} attempts", scriptDisplayIdentifier, maxAttempts);
+                    throw lastEx;
+                }
             }
 
             stopwatch.Stop();

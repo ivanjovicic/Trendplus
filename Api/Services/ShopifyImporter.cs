@@ -92,7 +92,10 @@ public sealed class ShopifyImportService : IShopifyImportService
         var warnings = new List<string>();
         var domain = SanitizeDomain(request.ShopDomain);
 
-        _logger.LogInformation("Shopify import starting for {Domain}, datasetId={DatasetId}", domain, request.DatasetId);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Shopify import starting for {Domain}, datasetId={DatasetId}", domain, request.DatasetId);
+        }
 
         // ── Resolve or auto-create dataset ──
         var datasetId = request.DatasetId;
@@ -115,7 +118,10 @@ public sealed class ShopifyImportService : IShopifyImportService
         while (page <= request.MaxPages)
         {
             var url = BuildPageUrl(domain, request.PageSize, pageInfo);
-            _logger.LogDebug("Fetching page {Page}: {Url}", page, url);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Fetching page {Page}: {Url}", page, url);
+            }
 
             HttpResponseMessage response;
             try
@@ -168,8 +174,11 @@ public sealed class ShopifyImportService : IShopifyImportService
             page++;
         }
 
-        _logger.LogInformation("Shopify {Domain}: fetched {Count} products across {Pages} pages",
-            domain, allProducts.Count, page);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Shopify {Domain}: fetched {Count} products across {Pages} pages",
+                domain, allProducts.Count, page);
+        }
 
         if (allProducts.Count == 0)
         {
@@ -311,7 +320,11 @@ public sealed class ShopifyImportService : IShopifyImportService
         _db.Datasets.Add(dataset);
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Created new dataset: id={Id}, name={Name}", dataset.Id, dataset.Name);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Created new dataset: id={Id}, name={Name}", dataset.Id, dataset.Name);
+        }
+
         return dataset.Id;
     }
 

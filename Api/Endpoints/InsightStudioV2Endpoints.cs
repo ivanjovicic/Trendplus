@@ -678,7 +678,8 @@ public static class InsightStudioV2Endpoints
                     select new { dobId = g.Key, returnUnits = g.Sum(x => x.Kolicina) }
                 )
                 .Where(x => x.dobId.HasValue)
-                .ToDictionaryAsync(x => x.dobId!.Value, x => x.returnUnits, ct);
+                .Select(x => new { DobavljacId = x.dobId!.Value, x.returnUnits })
+                .ToDictionaryAsync(x => x.DobavljacId, x => x.returnUnits, ct);
 
                 var result = stavke
                     .GroupBy(x => new { x.DobavljacId, x.DobavljacNaziv })
