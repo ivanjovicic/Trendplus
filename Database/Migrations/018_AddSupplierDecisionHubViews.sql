@@ -32,14 +32,14 @@ BEGIN
         WHERE c.relkind IN ('v','r')
           AND c.relname = 'vw_nivelacija_did'
     ) THEN
-        EXECUTE $$
+        EXECUTE $create$
         CREATE VIEW vw_nivelacija_did AS
         SELECT
             NULL::bigint AS price_event_id,
             0::numeric AS did_revenue,
             0::numeric AS did_qty
         WHERE FALSE;
-        $$;
+        $create$;
     END IF;
 END
 $$;
