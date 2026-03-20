@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Archive, ArrowRightLeft, CheckCircle2, Clock3, Download, FileSpreadsheet, FileText, GitCompareArrows, Mail, Play, Printer, RefreshCw, Search, Tag, TrendingDown, TrendingUp, Truck, Warehouse, XCircle } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import Modal from "../components/Modal";
@@ -322,6 +322,15 @@ export default function InventoryPage() {
   const [sizeCurveSkuId, setSizeCurveSkuId] = useState<number | null>(null);
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
+  const previousLoadRef = useRef<{
+    pageNumber: number;
+    pageSize: number;
+    selectedStoreId: number | null;
+    selectedSupplierId: number | null;
+    sortBy: string;
+    trimmedSearch: string;
+    compareStoreIdsKey: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -361,50 +370,182 @@ export default function InventoryPage() {
   }, [selectedStoreId, selectedSupplierId]);
 
   useEffect(() => {
+    const currentLoad = {
+      pageNumber,
+      pageSize,
+      selectedStoreId,
+      selectedSupplierId,
+      sortBy,
+      trimmedSearch,
+      compareStoreIdsKey: compareStoreIds.join(","),
+    };
+    const previousLoad = previousLoadRef.current;
+    const isFirstLoad = previousLoad == null;
+    const shouldRefreshSignals = isFirstLoad
+      || previousLoad.selectedStoreId !== selectedStoreId
+      || previousLoad.selectedSupplierId !== selectedSupplierId;
+    const shouldRefreshOperations = isFirstLoad
+      || previousLoad.selectedStoreId !== selectedStoreId
+      || previousLoad.selectedSupplierId !== selectedSupplierId
+      || previousLoad.trimmedSearch !== trimmedSearch
+      || previousLoad.compareStoreIdsKey !== currentLoad.compareStoreIdsKey;
+
+    previousLoadRef.current = currentLoad;
+
     let cancelled = false;
+    const errorMessages: string[] = [];
     setLoading(true);
     setInsightsLoading(true);
     setError(null);
-    void Promise.all([
-      getInventoryBalance(true, selectedStoreId, selectedSupplierId),
-      getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy }),
-      getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy }),
-    ]).then(([nextBalance, nextPage, nextInsights]) => {
-      if (cancelled) return;
-      setBalance(nextBalance);
-      setPageData(nextPage);
-      setInsights(nextInsights);
-    }).catch((reason) => {
-      if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason));
-    }).finally(() => {
-      if (!cancelled) {
-        setLoading(false);
-        setInsightsLoading(false);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [pageNumber, pageSize, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setOperationsLoading(true);
-    void Promise.all([
-      getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined }),
-      getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined }),
-    ])
-      .then(([nextComparison, nextWorkflow]) => {
+    if (shouldRefreshOperations) {
+      setOperationsLoading(true);
+    }
+
+    if (shouldRefreshSignals) {
+      setForecastLoading(true);
+      setAlertsLoading(true);
+      setRebalanceLoading(true);
+      setForecastError(null);
+    }
+
+    const tasks = [
+      {
+        key: "balance" as const,
+        promise: getInventoryBalance(true, selectedStoreId, selectedSupplierId),
+      },
+      {
+        key: "list" as const,
+        promise: getInventoryList({
+          pageNumber,
+          pageSize,
+          search: trimmedSearch || undefined,
+          storeId: selectedStoreId,
+          supplierId: selectedSupplierId,
+          sortBy,
+        }),
+      },
+      {
+        key: "insights" as const,
+        promise: getInventoryInsights({
+          search: trimmedSearch || undefined,
+          storeId: selectedStoreId,
+          supplierId: selectedSupplierId,
+          sortBy,
+        }),
+      },
+      ...(shouldRefreshOperations
+        ? [
+            {
+              key: "storeComparison" as const,
+              promise: getInventoryStoreComparison({
+                compareStoreIds,
+                supplierId: selectedSupplierId,
+                search: trimmedSearch || undefined,
+              }),
+            },
+            {
+              key: "actionWorkflow" as const,
+              promise: getInventoryActionSuggestions({
+                storeId: selectedStoreId,
+                supplierId: selectedSupplierId,
+                search: trimmedSearch || undefined,
+              }),
+            },
+          ]
+        : []),
+      ...(shouldRefreshSignals
+        ? [
+            {
+              key: "forecast" as const,
+              promise: getForecast({
+                storeId: selectedStoreId,
+                supplierId: selectedSupplierId,
+                top: FORECAST_FETCH_LIMIT,
+              }),
+            },
+            {
+              key: "alerts" as const,
+              promise: getInventoryAlerts({
+                storeId: selectedStoreId,
+                supplierId: selectedSupplierId,
+              }),
+            },
+            {
+              key: "rebalance" as const,
+              promise: getRebalanceSuggestions({
+                supplierId: selectedSupplierId,
+                top: REBALANCE_FETCH_LIMIT,
+              }),
+            },
+          ]
+        : []),
+    ];
+
+    void Promise.allSettled(tasks.map((task) => task.promise))
+      .then((results) => {
         if (cancelled) return;
-        setStoreComparison(nextComparison);
-        setActionWorkflow(nextWorkflow);
-      })
-      .catch((reason) => {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason));
+
+        results.forEach((result, index) => {
+          const task = tasks[index];
+          if (result.status === "rejected") {
+            const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
+            if (task.key === "forecast") {
+              setForecastError(message);
+            } else {
+              errorMessages.push(message);
+            }
+            return;
+          }
+
+          switch (task.key) {
+            case "balance":
+              setBalance(result.value as InventoryBalance);
+              break;
+            case "list":
+              setPageData(result.value as InventoryPagedResponse);
+              break;
+            case "insights":
+              setInsights(result.value as InventoryInsights);
+              break;
+            case "storeComparison":
+              setStoreComparison(result.value as InventoryStoreComparison);
+              break;
+            case "actionWorkflow":
+              setActionWorkflow(result.value as InventoryActionWorkflow);
+              break;
+            case "forecast":
+              setForecast(result.value as ForecastDto);
+              break;
+            case "alerts":
+              setAlerts(result.value as InventoryAlertListDto);
+              break;
+            case "rebalance":
+              setRebalance(result.value as RebalanceListDto);
+              break;
+          }
+        });
+
+        if (errorMessages.length > 0) {
+          setError(errorMessages[0]);
+        }
       })
       .finally(() => {
-        if (!cancelled) setOperationsLoading(false);
+        if (cancelled) return;
+        setLoading(false);
+        setInsightsLoading(false);
+        if (shouldRefreshOperations) {
+          setOperationsLoading(false);
+        }
+        if (shouldRefreshSignals) {
+          setForecastLoading(false);
+          setAlertsLoading(false);
+          setRebalanceLoading(false);
+        }
       });
+
     return () => { cancelled = true; };
-  }, [compareStoreIds, selectedStoreId, selectedSupplierId, trimmedSearch]);
+  }, [compareStoreIds, pageNumber, pageSize, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
 
   useEffect(() => {
     if (!detailRow) {
@@ -435,32 +576,6 @@ export default function InventoryPage() {
   }, [detailRow]);
 
   // Forecast, alerts, rebalancing — refresh on store / supplier filter change
-  useEffect(() => {
-    let cancelled = false;
-    setForecastLoading(true);
-    setAlertsLoading(true);
-    setRebalanceLoading(true);
-    setForecastError(null);
-    void Promise.allSettled([
-      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT }),
-      getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId }),
-      getRebalanceSuggestions({ supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT }),
-    ]).then(([forecastResult, alertsResult, rebalanceResult]) => {
-      if (cancelled) return;
-      if (forecastResult.status === "fulfilled") {
-        setForecast(forecastResult.value);
-      } else {
-        setForecastError(forecastResult.reason instanceof Error ? forecastResult.reason.message : String(forecastResult.reason));
-      }
-      if (alertsResult.status === "fulfilled") setAlerts(alertsResult.value);
-      if (rebalanceResult.status === "fulfilled") setRebalance(rebalanceResult.value);
-      setForecastLoading(false);
-      setAlertsLoading(false);
-      setRebalanceLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [selectedStoreId, selectedSupplierId]);
-
   // Size curve — on-demand by SKU ID
   useEffect(() => {
     if (sizeCurveSkuId == null) { setSizeCurve(null); return; }
@@ -473,17 +588,38 @@ export default function InventoryPage() {
     return () => { cancelled = true; };
   }, [sizeCurveSkuId, selectedStoreId]);
 
-  const rows = (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers));
+  const rows = useMemo(
+    () => (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers)),
+    [pageData, stores, suppliers]
+  );
   const totalCount = pageData?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const totalValue = balance?.estimatedInventoryValue ?? rows.reduce((sum, row) => sum + row.estimatedValueAmount, 0);
-  const activeSkuShare = balance && balance.totalSku > 0 ? ((balance.totalSku - balance.outOfStockCount) / balance.totalSku) * 100 : 0;
-  const lowStockShare = balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 100 : 0;
-  const avgUnitsPerSku = balance && balance.totalSku > 0 ? balance.totalOnHand / balance.totalSku : 0;
-  const inventoryHealthScore = Math.max(0, Math.round(100 - (balance && balance.totalSku > 0 ? (balance.outOfStockCount / balance.totalSku) * 60 : 0) - (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 25 : 0)));
-  const chartData = buildSupplierChart(rows);
-  const topRiskRows = rows.slice().sort((a, b) => (a.stockState === b.stockState ? b.reorderGap - a.reorderGap : { critical: 0, warning: 1, healthy: 2 }[a.stockState] - { critical: 0, warning: 1, healthy: 2 }[b.stockState])).slice(0, TOP_RISK_ITEMS);
-  const highestValueRows = rows.slice().sort((a, b) => b.estimatedValueAmount - a.estimatedValueAmount).slice(0, TOP_VALUE_ITEMS);
+  const activeSkuShare = useMemo(
+    () => (balance && balance.totalSku > 0 ? ((balance.totalSku - balance.outOfStockCount) / balance.totalSku) * 100 : 0),
+    [balance]
+  );
+  const lowStockShare = useMemo(
+    () => (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 100 : 0),
+    [balance]
+  );
+  const avgUnitsPerSku = useMemo(
+    () => (balance && balance.totalSku > 0 ? balance.totalOnHand / balance.totalSku : 0),
+    [balance]
+  );
+  const inventoryHealthScore = useMemo(
+    () => Math.max(0, Math.round(100 - (balance && balance.totalSku > 0 ? (balance.outOfStockCount / balance.totalSku) * 60 : 0) - (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 25 : 0))),
+    [balance]
+  );
+  const chartData = useMemo(() => buildSupplierChart(rows), [rows]);
+  const topRiskRows = useMemo(
+    () => rows.slice().sort((a, b) => (a.stockState === b.stockState ? b.reorderGap - a.reorderGap : { critical: 0, warning: 1, healthy: 2 }[a.stockState] - { critical: 0, warning: 1, healthy: 2 }[b.stockState])).slice(0, TOP_RISK_ITEMS),
+    [rows]
+  );
+  const highestValueRows = useMemo(
+    () => rows.slice().sort((a, b) => b.estimatedValueAmount - a.estimatedValueAmount).slice(0, TOP_VALUE_ITEMS),
+    [rows]
+  );
   const agingBuckets = insights?.aging ?? [];
   const abcBuckets = insights?.abc ?? [];
   const agedItems = insights?.topAgedItems ?? [];
