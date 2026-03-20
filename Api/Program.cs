@@ -40,6 +40,7 @@ using Api.Config;
 using System.Threading.RateLimiting;
 using Application.Documents.Interfaces;
 using Infrastructure.Configuration;
+using Infrastructure.Services.Email;
 
 try
 {
@@ -95,6 +96,7 @@ try
     builder.Services.Configure<Infrastructure.Configuration.TrendIngestionOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.TrendIngestionOptions.Section));
     builder.Services.Configure<DocumentExportOptions>(builder.Configuration.GetSection(DocumentExportOptions.Section));
+    builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
     var documentOptions = builder.Configuration.GetSection(DocumentExportOptions.Section).Get<DocumentExportOptions>() ?? new DocumentExportOptions();
     var resolvedDocumentSigningKey = documentOptions.ResolveSigningKey();
     if (builder.Environment.IsProduction() && string.IsNullOrWhiteSpace(resolvedDocumentSigningKey))
@@ -172,6 +174,10 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IDocumentRenderer, HtmlDocumentRenderer>();
     builder.Services.AddSingleton<IDocumentDownloadTokenService, DocumentDownloadTokenService>();
     builder.Services.AddScoped<IDocumentUserContextAccessor, DocumentUserContextAccessor>();
+    builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+    builder.Services.AddScoped<IInventoryReportScheduleService, Infrastructure.Services.Inventory.InventoryReportScheduleService>();
+    builder.Services.AddScoped<IInventoryActionDecisionService, Infrastructure.Services.Inventory.InventoryActionDecisionService>();
+    builder.Services.AddScoped<Infrastructure.Services.Inventory.InventoryReportDeliveryService>();
     builder.Services.AddSingleton<WorkerHealthService>(); // Worker health monitoring
     builder.Services.AddSingleton(sp =>
         new WorkerRuntimeControlService(
@@ -247,6 +253,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddHostedService<Workers.OpenTrainingModelTrainingWorker>();
     builder.Services.AddHostedService<Workers.TrendIngestionWorker>();
     builder.Services.AddHostedService<Workers.DocumentGenerationWorker>();
+    builder.Services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
 
     builder.Services.AddControllers();

@@ -1,5 +1,9 @@
 ﻿using Application.Analytics.Queries.GetInventoryStatus;
 using Application.Analytics.Queries.GetSalesSummary;
+using Application.Analytics.Queries.GetInventoryForecast;
+using Application.Analytics.Queries.GetInventoryAlerts;
+using Application.Analytics.Queries.GetInventorySizeCurve;
+using Application.Analytics.Queries.GetRebalanceSuggestions;
 using Application.Analytics.Queries.GetTopProducts;
 using Application.Artikli.Common.Interfaces;
 using Infrastructure.Services.Caching;
@@ -332,6 +336,92 @@ public static class CachedAnalyticsEndpoints
                 ct);
 
             return Results.Ok(paged);
+        });
+
+        // ========== INVENTORY FORECAST (CACHED) ==========
+        group.MapGet("/inventory/forecast", async (
+            IAnalyticsCacheService cache,
+            IMediator mediator,
+            int? storeId = null,
+            int? supplierId = null,
+            int? skuId = null,
+            string? sizeCode = null,
+            int top = 200,
+            CancellationToken ct = default) =>
+        {
+            top = Math.Clamp(top, 1, 500);
+            var cacheKey = AnalyticsCacheKeys.InventoryForecast(storeId, supplierId, skuId, sizeCode, top);
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await mediator.Send(new GetInventoryForecastQuery(storeId, supplierId, skuId, sizeCode, top), ct),
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== INVENTORY SIZE CURVE (CACHED) ==========
+        group.MapGet("/inventory/size-curve", async (
+            IAnalyticsCacheService cache,
+            IMediator mediator,
+            int? storeId = null,
+            int? supplierId = null,
+            int? skuId = null,
+            int top = 200,
+            CancellationToken ct = default) =>
+        {
+            top = Math.Clamp(top, 1, 500);
+            var cacheKey = AnalyticsCacheKeys.InventorySizeCurve(storeId, supplierId, skuId, top);
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, top), ct),
+                CacheExpiration.Medium,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== REBALANCE SUGGESTIONS (CACHED) ==========
+        group.MapGet("/inventory/rebalance-suggestions", async (
+            IAnalyticsCacheService cache,
+            IMediator mediator,
+            int? fromStoreId = null,
+            int? toStoreId = null,
+            int? supplierId = null,
+            string? urgency = null,
+            int top = 100,
+            CancellationToken ct = default) =>
+        {
+            top = Math.Clamp(top, 1, 500);
+            var cacheKey = AnalyticsCacheKeys.RebalanceSuggestions(fromStoreId, toStoreId, supplierId, urgency, top);
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await mediator.Send(new GetRebalanceSuggestionsQuery(fromStoreId, toStoreId, supplierId, urgency, top), ct),
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== INVENTORY ALERTS (CACHED) ==========
+        group.MapGet("/inventory/alerts", async (
+            IAnalyticsCacheService cache,
+            IMediator mediator,
+            int? storeId = null,
+            int? supplierId = null,
+            string? severity = null,
+            int top = 100,
+            CancellationToken ct = default) =>
+        {
+            top = Math.Clamp(top, 1, 500);
+            var cacheKey = AnalyticsCacheKeys.InventoryAlerts(storeId, supplierId, severity, top);
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await mediator.Send(new GetInventoryAlertsQuery(storeId, supplierId, severity, top), ct),
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
         });
 
         // ========== DAILY SALES (CACHED) ==========

@@ -141,6 +141,18 @@ public static class AnalyticsCacheKeys
     public static string DashboardBootstrap(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) =>
         $"{Prefix}dashboard-bootstrap:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
 
+    public static string InventoryForecast(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200) =>
+        $"{Prefix}inventory-forecast:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode)}:top:{top}";
+
+    public static string InventorySizeCurve(int? storeId = null, int? supplierId = null, int? skuId = null, int top = 200) =>
+        $"{Prefix}inventory-size-curve:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:top:{top}";
+
+    public static string RebalanceSuggestions(int? fromStoreId = null, int? toStoreId = null, int? supplierId = null, string? urgency = null, int top = 100) =>
+        $"{Prefix}rebalance-suggestions:from:{(fromStoreId.HasValue ? fromStoreId.Value.ToString() : "all")}:to:{(toStoreId.HasValue ? toStoreId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:urgency:{(string.IsNullOrWhiteSpace(urgency) ? "all" : urgency)}:top:{top}";
+
+    public static string InventoryAlerts(int? storeId = null, int? supplierId = null, string? severity = null, int top = 100) =>
+        $"{Prefix}inventory-alerts:{FilterSuffix(storeId, supplierId)}:severity:{(string.IsNullOrWhiteSpace(severity) ? "all" : severity)}:top:{top}";
+
     // Validation endpoints
     public const string ValidationCompleteness = $"{Prefix}validation:completeness";
     public const string ValidationFreshness = $"{Prefix}validation:freshness";

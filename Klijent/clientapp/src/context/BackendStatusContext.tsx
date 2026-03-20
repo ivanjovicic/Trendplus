@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 import { usePingControl } from "./PingControlContext";
+import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
 export type BackendStatus = {
     online: boolean;
@@ -24,7 +25,7 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
                     ? "/health"  // Proxied to localhost:8080
                     : `${import.meta.env.VITE_API_BASE_URL}/health`;  // Direct to Render
                 
-                const res = await fetch(url);
+                const res = await fetchWithTimeout(url, undefined, 10_000);
                 setOnline(res.ok);
             } catch {
                 setOnline(false);

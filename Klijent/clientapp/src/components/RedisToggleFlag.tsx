@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePingControl } from "../context/PingControlContext";
 import { apiUrl } from "../utils/apiUrl";
+import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
 const POLL_MS = import.meta.env.DEV ? 20000 : 60000;
 
@@ -15,11 +16,13 @@ export default function RedisToggleFlag() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [endpointMissing, setEndpointMissing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async (force = false) => {
     if (!apiPingEnabled && !force) return;
     try {
-      const res = await fetch(apiUrl("/api/redis/status"));
+      setLoading(true);
+      const res = await fetchWithTimeout(apiUrl("/api/redis/status"), undefined, 10_000);
       if (res.status === 404) {
         setEndpointMissing(true);
         setStatus(null);
@@ -33,6 +36,8 @@ export default function RedisToggleFlag() {
       setEndpointMissing(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Greska");
+    } finally {
+      setLoading(false);
     }
   }, [apiPingEnabled]);
 
@@ -51,7 +56,7 @@ export default function RedisToggleFlag() {
     try {
       setBusy(true);
       setError(null);
-      const res = await fetch(apiUrl("/api/redis/toggle"), { method: "POST" });
+      const res = await fetchWithTimeout(apiUrl("/api/redis/toggle"), { method: "POST" }, 10_000);
       if (res.status === 404) {
         setEndpointMissing(true);
         return;
@@ -81,8 +86,10 @@ export default function RedisToggleFlag() {
     ? "Redis: greska"
     : endpointMissing
     ? "Redis: endpoint nije aktivan"
-    : !status
+    : loading && !status
     ? "Redis: ucitavanje..."
+    : !status
+    ? "Redis: status nedostupan"
     : status.enabled
     ? status.available
       ? "Redis: ukljucen"

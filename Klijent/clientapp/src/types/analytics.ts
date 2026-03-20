@@ -230,7 +230,7 @@ export interface DataQualityIssueListResult {
 }
 
 export interface InventoryBalance {
-  totalSkuCount: number;
+  totalSku: number;
   totalOnHand: number;
   lowStockCount: number;
   outOfStockCount: number;
@@ -238,13 +238,17 @@ export interface InventoryBalance {
 }
 
 export interface InventoryListItem {
-  artiklId: number;
+  id: number;
   naziv: string;
-  sku?: string | null;
-  dobavljacNaziv?: string | null;
-  kolicina: number;
+  plu?: string | null;
+  kolicina?: number | null;
+  minimalnaKolicina?: number | null;
   nabavnaCena?: number | null;
-  prodajnaCena?: number | null;
+  estimatedValue?: number | null;
+  idObjekat?: number | null;
+  idDobavljac?: number | null;
+  velicina?: string | null;
+  velicinaGroup?: string | null;
 }
 
 export interface InventoryPagedResponse {
@@ -252,4 +256,291 @@ export interface InventoryPagedResponse {
   totalCount: number;
   pageNumber: number;
   pageSize: number;
+}
+
+export interface InventoryHistoryItem {
+  movementId: number;
+  tipPromene: string;
+  datum: string;
+  kolicina?: number | null;
+  iznos: number;
+  brojDokumenta?: string | null;
+  korisnikIme?: string | null;
+  dataOrigin?: string | null;
+  storeId?: number | null;
+  storeName?: string | null;
+  supplierId?: number | null;
+  supplierName?: string | null;
+  staraCena?: number | null;
+  novaCena?: number | null;
+  komentar?: string | null;
+}
+
+export interface InventoryItemDetail {
+  id: number;
+  plu?: string | null;
+  naziv: string;
+  kolicina?: number | null;
+  minimalnaKolicina?: number | null;
+  nabavnaCena?: number | null;
+  estimatedValue: number;
+  storeId?: number | null;
+  storeName?: string | null;
+  supplierId?: number | null;
+  supplierName?: string | null;
+  kategorija?: string | null;
+  pol?: string | null;
+  materijal?: string | null;
+  updatedAt: string;
+  lastMovementAt?: string | null;
+  movementCount30d: number;
+  daysSinceMovement: number;
+  agingBucket: string;
+  agingLabel: string;
+  abcClass: string;
+  history: InventoryHistoryItem[];
+}
+
+export interface InventoryAgingBucket {
+  bucketKey: string;
+  label: string;
+  itemCount: number;
+  totalUnits: number;
+  estimatedValue: number;
+}
+
+export interface InventoryAbcBucket {
+  bucketKey: string;
+  label: string;
+  itemCount: number;
+  estimatedValue: number;
+  valueSharePct: number;
+}
+
+export interface InventoryInsightItem {
+  id: number;
+  plu?: string | null;
+  naziv: string;
+  supplierName?: string | null;
+  storeName?: string | null;
+  quantity: number;
+  minimum: number;
+  reorderGap: number;
+  estimatedValue: number;
+  daysSinceMovement: number;
+  agingBucket: string;
+  agingLabel: string;
+  abcClass: string;
+  stockState: string;
+}
+
+export interface InventoryInsights {
+  totalItems: number;
+  totalEstimatedValue: number;
+  aging: InventoryAgingBucket[];
+  abc: InventoryAbcBucket[];
+  topAgedItems: InventoryInsightItem[];
+  topCapitalLockedItems: InventoryInsightItem[];
+}
+
+// ── Inventory Forecast ────────────────────────────────────────────────────────
+
+export interface ForecastRowDto {
+  skuId: number;
+  storeId: number;
+  sizeCode: string;
+  forecast7d: number;
+  forecast14d: number;
+  forecast28d: number;
+  probabilityOfOOSIn7d: number;  // 0–1
+  overstockRisk: number;         // 0–1
+  confidenceScore: number;       // 0–1
+  explanation: string;
+}
+
+export interface ForecastDto {
+  generatedAtUtc: string;
+  totalCount: number;
+  snapshotAvailable: boolean;
+  warning?: string | null;
+  items: ForecastRowDto[];
+}
+
+// ── Size Curve ────────────────────────────────────────────────────────────────
+
+export interface SizeCurvePointDto {
+  skuId: number;
+  storeId: number;
+  sizeCode: string;
+  actualSizeShare: number;   // percentage 0–100
+  idealSizeShare: number;    // percentage 0–100
+  deviationPct: number;      // actualSizeShare - idealSizeShare
+  isCoreSizeMissing: boolean;
+  isDeadSize: boolean;
+  brokenRun: boolean;
+  curveConfidence: number;   // 0–1
+  reasonCodes: string[];
+}
+
+export interface SizeCurveDto {
+  generatedAtUtc: string;
+  totalCount: number;
+  snapshotAvailable: boolean;
+  warning?: string | null;
+  items: SizeCurvePointDto[];
+}
+
+// ── Rebalancing ───────────────────────────────────────────────────────────────
+
+export interface RebalanceSuggestionDto {
+  fromStoreId: number;
+  toStoreId: number;
+  skuId: number;
+  sizeCode: string;
+  recommendedQty: number;
+  urgency: string;              // 'urgent' | 'recommended' | 'optional'
+  confidence: number;           // 0–1
+  reason: string;
+  expectedSavedSales: number;   // RSD
+  expectedCapitalRelease: number;
+}
+
+export interface RebalanceListDto {
+  generatedAtUtc: string;
+  totalCount: number;
+  snapshotAvailable: boolean;
+  warning?: string | null;
+  items: RebalanceSuggestionDto[];
+}
+
+// ── Inventory Alerts ─────────────────────────────────────────────────────────
+
+export interface InventoryAlertDto {
+  alertType: string;
+  skuId: number;
+  storeId: number;
+  sizeCode?: string | null;
+  severity: string;   // 'critical' | 'warning' | 'info'
+  title: string;
+  message: string;
+  confidenceScore: number;
+}
+
+export interface InventoryAlertListDto {
+  generatedAtUtc: string;
+  totalCount: number;
+  snapshotAvailable: boolean;
+  warning?: string | null;
+  items: InventoryAlertDto[];
+}
+
+export interface InventoryStoreComparisonItem {
+  storeId: number;
+  storeName: string;
+  totalSku: number;
+  totalOnHand: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  criticalCount: number;
+  stale90PlusCount: number;
+  estimatedValue: number;
+  avgUnitsPerSku: number;
+  healthySharePct: number;
+}
+
+export interface InventoryStoreComparisonFocus {
+  skuKey: string;
+  label: string;
+  storeCoverage: number;
+  impactedStores: string[];
+}
+
+export interface InventoryStoreComparison {
+  generatedAtUtc: string;
+  stores: InventoryStoreComparisonItem[];
+  sharedRisks: InventoryStoreComparisonFocus[];
+  summary: string;
+}
+
+export interface InventoryActionSuggestion {
+  suggestionKey: string;
+  actionType: string;
+  priority: string;
+  label: string;
+  reason: string;
+  status: string;
+  artikalId: number;
+  plu?: string | null;
+  naziv: string;
+  fromStoreName?: string | null;
+  toStoreName?: string | null;
+  suggestedQty: number;
+  estimatedValue: number;
+  daysSinceMovement: number;
+  note?: string | null;
+  updatedAtUtc?: string | null;
+}
+
+export interface InventoryActionWorkflow {
+  generatedAtUtc: string;
+  pendingCount: number;
+  approvedCount: number;
+  deferredCount: number;
+  closedCount: number;
+  items: InventoryActionSuggestion[];
+}
+
+export interface InventoryActionDecisionInput {
+  actionType: string;
+  status: "pending" | "approved" | "deferred" | "closed";
+  note?: string;
+}
+
+export interface InventoryReportSchedule {
+  id: number;
+  name: string;
+  isEnabled: boolean;
+  frequency: "daily" | "weekly" | string;
+  dayOfWeek?: number | null;
+  runAtLocalTime: string;
+  timeZoneId: string;
+  format: "pdf" | "xlsx" | "csv" | string;
+  orientation: "portrait" | "landscape" | string;
+  includeFiltersAndMetadata: boolean;
+  recipientsCsv: string;
+  subject?: string | null;
+  search?: string | null;
+  storeId?: number | null;
+  supplierId?: number | null;
+  sortBy?: string | null;
+  lastRunAtUtc?: string | null;
+  lastRunStatus?: string | null;
+  lastError?: string | null;
+  lastDocumentId?: string | null;
+}
+
+export interface InventoryReportScheduleInput {
+  name: string;
+  isEnabled: boolean;
+  frequency: "daily" | "weekly";
+  dayOfWeek?: number | null;
+  runAtLocalTime: string;
+  timeZoneId: string;
+  format: "pdf" | "xlsx" | "csv";
+  orientation: "portrait" | "landscape";
+  includeFiltersAndMetadata: boolean;
+  recipientsCsv: string;
+  subject?: string;
+  search?: string;
+  storeId?: number | null;
+  supplierId?: number | null;
+  sortBy?: string | null;
+}
+
+export interface InventoryScheduleRunResponse {
+  success: boolean;
+  status: string;
+  message: string;
+  documentId?: string | null;
+  executedAtUtc: string;
 }

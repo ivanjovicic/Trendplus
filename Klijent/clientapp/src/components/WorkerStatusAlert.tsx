@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { usePingControl } from "../context/PingControlContext";
 import { apiUrl } from "../utils/apiUrl";
+import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
 interface WorkerStatus {
   workerName: string;
@@ -35,7 +36,7 @@ export default function WorkerStatusAlert() {
 
   const fetchHealth = useCallback(async () => {
     try {
-      const res = await fetch(apiUrl("/api/workers/health"));
+      const res = await fetchWithTimeout(apiUrl("/api/workers/health"), undefined, 10_000);
       if (!res.ok) {
         if (res.status === 404) {
           setError("Worker health endpoint nije dostupan.");

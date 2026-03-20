@@ -9,13 +9,25 @@ import type {
   DailySale,
   DashboardAdvancedSnapshot,
   DashboardValidationEndpoint,
+  ForecastDto,
   GenderData,
   HourData,
+  InventoryAlertListDto,
   InventoryStatus,
+  InventoryInsights,
+  InventoryItemDetail,
   PaymentData,
   QuickInsights,
+  RebalanceListDto,
   ReorderSuggestion,
+  InventoryStoreComparison,
+  InventoryActionWorkflow,
+  InventoryActionDecisionInput,
+  InventoryReportSchedule,
+  InventoryReportScheduleInput,
+  InventoryScheduleRunResponse,
   SalesSummary,
+  SizeCurveDto,
   StoreOption,
   SupplierFilterOption,
   SupplierData,
@@ -24,14 +36,19 @@ import type {
   TransactionStats,
   WeekdayData,
 } from "../types/analytics";
+import type { DocumentOperationResponse } from "./exportApi";
+import { apiUrl } from "../utils/apiUrl";
+import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
-const API = import.meta.env.VITE_API_BASE_URL;
 const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
 const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
 export function makeUrl(path: string, params?: URLSearchParams) {
-  return params ? `${API}${path}?${params.toString()}` : `${API}${path}`;
+  const baseUrl = apiUrl(path);
+  return params && Array.from(params.keys()).length > 0
+    ? `${baseUrl}?${params.toString()}`
+    : baseUrl;
 }
 
 function appendFilterParams(
@@ -64,7 +81,7 @@ async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage
   }
 
   const request = (async () => {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, undefined, 20_000);
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
@@ -90,10 +107,30 @@ async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage
   }
 }
 
+async function postJson<T>(path: string, body: unknown, errorMessage?: string): Promise<T> {
+  const response = await fetchWithTimeout(makeUrl(path), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  }, 60_000);
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, errorMessage));
+  }
+
+  return (await response.json()) as T;
+}
+
 function resolveClientCacheTtl(path: string): number {
   if (path.includes("/api/analytics/cached/filters/stores")) return 5 * 60_000;
   if (path.includes("/api/analytics/cached/filters/suppliers")) return 60_000;
   if (path.includes("/api/analytics/cached/dashboard/bootstrap")) return 30_000;
+  if (path.includes("/api/analytics/cached/inventory/forecast")) return 5 * 60_000;
+  if (path.includes("/api/analytics/cached/inventory/size-curve")) return 5 * 60_000;
+  if (path.includes("/api/analytics/cached/inventory/rebalance-suggestions")) return 2 * 60_000;
+  if (path.includes("/api/analytics/cached/inventory/alerts")) return 60_000;
   if (path.includes("/api/analytics/cached/")) return DEFAULT_CLIENT_CACHE_TTL_MS;
   return 0;
 }
@@ -525,20 +562,279 @@ export async function getInventoryBalance(
 }
 
 export async function getInventoryList(
-  pageNumber = 1,
-  pageSize = 50,
-  q?: string,
-  storeId?: number | null,
-  supplierId?: number | null
+  options?: {
+    pageNumber?: number;
+    pageSize?: number;
+    search?: string;
+    storeId?: number | null;
+    supplierId?: number | null;
+    sortBy?: string | null;
+  }
 ): Promise<import("../types/analytics").InventoryPagedResponse> {
-  const params = new URLSearchParams({ pageNumber: String(pageNumber), pageSize: String(pageSize) });
-  if (q) params.append("q", q);
-  if (storeId != null) params.append("storeId", String(storeId));
-  if (supplierId != null) params.append("supplierId", String(supplierId));
+  const pageNumber = options?.pageNumber ?? 1;
+  const pageSize = options?.pageSize ?? 50;
+  const params = new URLSearchParams({ page: String(pageNumber), pageSize: String(pageSize) });
+  if (options?.search) params.append("search", options.search);
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.sortBy) params.append("sortBy", options.sortBy);
 
   return fetchJson(
     "/api/analytics/cached/inventory/list",
     params,
     "Greska pri ucitavanju liste zaliha"
+  );
+}
+
+export async function getInventoryInsights(options?: {
+  search?: string;
+  storeId?: number | null;
+  supplierId?: number | null;
+  sortBy?: string | null;
+}): Promise<InventoryInsights> {
+  const params = new URLSearchParams();
+  if (options?.search) params.append("search", options.search);
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.sortBy) params.append("sortBy", options.sortBy);
+
+  return fetchJson(
+    "/api/analytics/inventory/insights",
+    params,
+    "Greska pri ucitavanju inventory uvida"
+  );
+}
+
+export async function getInventoryItemDetail(id: number): Promise<InventoryItemDetail> {
+  return fetchJson(
+    `/api/analytics/inventory/${id}/detail`,
+    undefined,
+    "Greska pri ucitavanju detalja artikla"
+  );
+}
+
+export async function exportInventoryReport(options: {
+  format: "pdf" | "xlsx" | "csv";
+  orientation?: "portrait" | "landscape";
+  includeFiltersAndMetadata?: boolean;
+  forceAsync?: boolean;
+  search?: string;
+  storeId?: number | null;
+  supplierId?: number | null;
+  sortBy?: string | null;
+}): Promise<DocumentOperationResponse> {
+  return postJson(
+    "/api/analytics/inventory/export",
+    {
+      format: options.format,
+      orientation: options.orientation ?? "landscape",
+      includeFiltersAndMetadata: options.includeFiltersAndMetadata ?? true,
+      forceAsync: options.forceAsync ?? false,
+      search: options.search,
+      storeId: options.storeId,
+      supplierId: options.supplierId,
+      sortBy: options.sortBy,
+    },
+    "Greska pri server-side eksportu bilansa"
+  );
+}
+
+export async function previewInventoryReport(options?: {
+  orientation?: "portrait" | "landscape";
+  includeFiltersAndMetadata?: boolean;
+  search?: string;
+  storeId?: number | null;
+  supplierId?: number | null;
+  sortBy?: string | null;
+}): Promise<DocumentOperationResponse> {
+  return postJson(
+    "/api/analytics/inventory/print-preview",
+    {
+      orientation: options?.orientation ?? "landscape",
+      includeFiltersAndMetadata: options?.includeFiltersAndMetadata ?? true,
+      search: options?.search,
+      storeId: options?.storeId,
+      supplierId: options?.supplierId,
+      sortBy: options?.sortBy,
+    },
+    "Greska pri pripremi print preview-a"
+  );
+}
+
+export async function getInventoryStoreComparison(options?: {
+  compareStoreIds?: number[];
+  supplierId?: number | null;
+  search?: string;
+}): Promise<InventoryStoreComparison> {
+  const params = new URLSearchParams();
+  for (const storeId of options?.compareStoreIds ?? []) {
+    params.append("compareStoreIds", String(storeId));
+  }
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.search) params.append("search", options.search);
+
+  return fetchJson(
+    "/api/analytics/inventory/store-comparison",
+    params,
+    "Greska pri ucitavanju poredenja prodavnica"
+  );
+}
+
+export async function getInventoryActionSuggestions(options?: {
+  storeId?: number | null;
+  supplierId?: number | null;
+  search?: string;
+}): Promise<InventoryActionWorkflow> {
+  const params = new URLSearchParams();
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.search) params.append("search", options.search);
+
+  return fetchJson(
+    "/api/analytics/inventory/action-suggestions",
+    params,
+    "Greska pri ucitavanju predloga akcije"
+  );
+}
+
+export async function saveInventoryActionDecision(
+  suggestionKey: string,
+  input: InventoryActionDecisionInput
+): Promise<{
+  suggestionKey: string;
+  actionType: string;
+  status: string;
+  note?: string | null;
+  updatedAtUtc: string;
+  updatedByUserName: string;
+}> {
+  return postJson(
+    `/api/analytics/inventory/action-suggestions/${encodeURIComponent(suggestionKey)}/decision`,
+    input,
+    "Greska pri cuvanju odluke za predlog akcije"
+  );
+}
+
+export async function getInventoryReportSchedules(): Promise<InventoryReportSchedule[]> {
+  return fetchJson(
+    "/api/analytics/inventory/report-schedules",
+    undefined,
+    "Greska pri ucitavanju rasporeda za mail izvestaje"
+  );
+}
+
+export async function createInventoryReportSchedule(input: InventoryReportScheduleInput): Promise<InventoryReportSchedule> {
+  return postJson(
+    "/api/analytics/inventory/report-schedules",
+    input,
+    "Greska pri kreiranju rasporeda izvestaja"
+  );
+}
+
+export async function updateInventoryReportSchedule(id: number, input: InventoryReportScheduleInput): Promise<InventoryReportSchedule> {
+  const response = await fetchWithTimeout(makeUrl(`/api/analytics/inventory/report-schedules/${id}`), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  }, 60_000);
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, "Greska pri azuriranju rasporeda izvestaja"));
+  }
+
+  return (await response.json()) as InventoryReportSchedule;
+}
+
+export async function runInventoryReportScheduleNow(id: number): Promise<InventoryScheduleRunResponse> {
+  return postJson(
+    `/api/analytics/inventory/report-schedules/${id}/run-now`,
+    {},
+    "Greska pri rucnom pokretanju rasporeda"
+  );
+}
+
+// ── Demand Forecasting ──────────────────────────────────────────────────────────
+
+export async function getForecast(options?: {
+  storeId?: number | null;
+  supplierId?: number | null;
+  skuId?: number | null;
+  sizeCode?: string;
+  top?: number;
+}): Promise<ForecastDto> {
+  const params = new URLSearchParams();
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.skuId != null) params.append("skuId", String(options.skuId));
+  if (options?.sizeCode) params.append("sizeCode", options.sizeCode);
+  if (options?.top != null) params.append("top", String(options.top));
+  return fetchJson(
+    "/api/analytics/cached/inventory/forecast",
+    params,
+    "Greska pri ucitavanju forecast podataka"
+  );
+}
+
+// ── Size Curve Intelligence ─────────────────────────────────────────────────
+
+export async function getSizeCurve(options?: {
+  storeId?: number | null;
+  supplierId?: number | null;
+  skuId?: number | null;
+  top?: number;
+}): Promise<SizeCurveDto> {
+  const params = new URLSearchParams();
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.skuId != null) params.append("skuId", String(options.skuId));
+  if (options?.top != null) params.append("top", String(options.top));
+  return fetchJson(
+    "/api/analytics/cached/inventory/size-curve",
+    params,
+    "Greska pri ucitavanju size curve"
+  );
+}
+
+// ── Smart Rebalancing ─────────────────────────────────────────────────────────────
+
+export async function getRebalanceSuggestions(options?: {
+  fromStoreId?: number | null;
+  toStoreId?: number | null;
+  supplierId?: number | null;
+  urgency?: string;
+  top?: number;
+}): Promise<RebalanceListDto> {
+  const params = new URLSearchParams();
+  if (options?.fromStoreId != null) params.append("fromStoreId", String(options.fromStoreId));
+  if (options?.toStoreId != null) params.append("toStoreId", String(options.toStoreId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.urgency) params.append("urgency", options.urgency);
+  if (options?.top != null) params.append("top", String(options.top));
+  return fetchJson(
+    "/api/analytics/cached/inventory/rebalance-suggestions",
+    params,
+    "Greska pri ucitavanju predloga za redistribuciju"
+  );
+}
+
+// ── Inventory Alerts ────────────────────────────────────────────────────────────
+
+export async function getInventoryAlerts(options?: {
+  storeId?: number | null;
+  supplierId?: number | null;
+  severity?: string;
+  top?: number;
+}): Promise<InventoryAlertListDto> {
+  const params = new URLSearchParams();
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.severity) params.append("severity", options.severity);
+  if (options?.top != null) params.append("top", String(options.top));
+  return fetchJson(
+    "/api/analytics/cached/inventory/alerts",
+    params,
+    "Greska pri ucitavanju inventory alertova"
   );
 }
