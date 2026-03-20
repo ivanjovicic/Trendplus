@@ -6,13 +6,19 @@
 app = 'trendplus'
 primary_region = 'fra'
 
+[env]
+  ASPNETCORE_URLS = "http://0.0.0.0:8080"
+
 [build]
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false
-  min_machines_running = 1
+  auto_stop_machines = true
+  auto_start_machines = true
+  # allow scaling down to zero when idle (reduces cost to near $0)
+  min_machines_running = 0
+  # enable machine stopping when idle and automatic start on request
   processes = ['app']
 
 [[vm]]

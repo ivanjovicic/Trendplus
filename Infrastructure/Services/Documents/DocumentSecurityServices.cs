@@ -10,6 +10,7 @@ using Infrastructure.DbContexts;
 using Infrastructure.Services.Documents.Internal;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 using Npgsql;
 
 namespace Infrastructure.Services.Documents;
@@ -95,13 +96,27 @@ public sealed class DocumentAccessControlService : IDocumentAccessControlService
 public sealed class DocumentDownloadTokenService : IDocumentDownloadTokenService
 {
     private readonly byte[] _signingKeyBytes;
+    private readonly ILogger<DocumentDownloadTokenService> _logger;
 
-    public DocumentDownloadTokenService(Microsoft.Extensions.Options.IOptions<DocumentExportOptions> options)
+    public DocumentDownloadTokenService(
+        Microsoft.Extensions.Options.IOptions<DocumentExportOptions> options,
+        IHostEnvironment env,
+        ILogger<DocumentDownloadTokenService> logger)
     {
+        _logger = logger;
         var signingKey = options.Value.ResolveSigningKey();
         if (string.IsNullOrWhiteSpace(signingKey))
         {
-            throw new InvalidOperationException("Document signing key is not configured.");
+            if (env.IsDevelopment())
+            {
+                // Generate an ephemeral signing key for local development to avoid startup failure.
+                signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+                _logger.LogWarning("Document signing key is not configured. Generated ephemeral signing key for development environment. Tokens will not be valid across restarts.");
+            }
+            else
+            {
+                throw new InvalidOperationException("Document signing key is not configured.");
+            }
         }
 
         _signingKeyBytes = Encoding.UTF8.GetBytes(signingKey);

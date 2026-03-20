@@ -1712,7 +1712,7 @@ public static class CachedAnalyticsEndpoints
                 const string viewSql = """
                     SELECT
                         COALESCE(SUM(is_oos), 0)::int AS oos_sku_count,
-                        COALESCE(SUM(lost_sales_estimate), 0) AS lost_sales_estimate
+                        COALESCE(SUM(lost_sales_estimate), 0)::numeric(18,2) AS lost_sales_estimate
                     FROM vw_analytics_oos_lost_sales;
                     """;
                 await using var cmd = new NpgsqlCommand(viewSql, conn);
@@ -1734,8 +1734,8 @@ public static class CachedAnalyticsEndpoints
             WITH recent AS (
               SELECT
                 ps."id_artikal" AS article_id,
-                AVG(ps."kolicina") AS avg_units_per_sale,
-                AVG(ps."cena") AS avg_price
+                                AVG(ps."kolicina")::numeric(18,2) AS avg_units_per_sale,
+                                AVG(ps."cena")::numeric(18,2) AS avg_price
               FROM "prodaja_stavke" ps
               JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
               WHERE p."datum_prodaje" >= NOW() - INTERVAL '30 days'
@@ -1743,12 +1743,12 @@ public static class CachedAnalyticsEndpoints
             )
             SELECT
               COUNT(*) FILTER (WHERE COALESCE(a."Kolicina", 0) <= 0)::int AS oos_sku_count,
-              COALESCE(SUM(
-                CASE WHEN COALESCE(a."Kolicina", 0) <= 0
-                     THEN COALESCE(r.avg_units_per_sale, 0) * COALESCE(r.avg_price, 0)
-                     ELSE 0
-                END
-              ), 0) AS lost_sales_estimate
+                            COALESCE(SUM(
+                                CASE WHEN COALESCE(a."Kolicina", 0) <= 0
+                                         THEN COALESCE(r.avg_units_per_sale, 0) * COALESCE(r.avg_price, 0)
+                                         ELSE 0
+                                END
+                            ), 0)::numeric(18,2) AS lost_sales_estimate
             FROM "Artikli" a
             LEFT JOIN recent r ON r.article_id = a."Id"
             WHERE (@storeId IS NULL OR a."IDObjekat" = @storeId)

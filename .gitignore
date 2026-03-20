@@ -398,6 +398,10 @@ Python/.venv/
 *.tsbuildinfo
 
 # Local scraper/debug artifacts
+
+# Local temp files created during debugging
+temp_request.py
+temp_out.txt
 Python/**/*debug*.html
 Python/**/debug_*.html
 Python/**/zalando_debug_*.html

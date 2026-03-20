@@ -230,7 +230,7 @@ WITH daily AS (
   SELECT
     ps."id_artikal" AS article_id,
     DATE(p."datum_prodaje") AS sale_day,
-    SUM(ps."kolicina")::decimal AS units_day
+    SUM(ps."kolicina")::numeric(18,2) AS units_day
   FROM "prodaja_stavke" ps
   JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
   WHERE p."datum_prodaje" >= NOW() - INTERVAL '30 days'
@@ -239,7 +239,7 @@ WITH daily AS (
 rates AS (
   SELECT
     article_id,
-    AVG(units_day) AS avg_units_per_day
+    AVG(units_day)::numeric(18,2) AS avg_units_per_day
   FROM daily
   GROUP BY article_id
 )
@@ -249,7 +249,7 @@ SELECT
   CASE WHEN COALESCE(a."Kolicina", 0) <= 0 THEN 1 ELSE 0 END AS is_oos,
   CASE WHEN COALESCE(a."Kolicina", 0) > 0 AND COALESCE(a."Kolicina", 0) <= COALESCE(a."MinimalnaKolicina", 1) THEN 1 ELSE 0 END AS is_low_stock,
   COALESCE(r.avg_units_per_day, 0) AS avg_units_per_day,
-  CASE WHEN COALESCE(a."Kolicina", 0) <= 0 THEN COALESCE(r.avg_units_per_day, 0) ELSE 0 END AS lost_sales_estimate
+  (CASE WHEN COALESCE(a."Kolicina", 0) <= 0 THEN COALESCE(r.avg_units_per_day, 0) ELSE 0 END)::numeric(18,2) AS lost_sales_estimate
 FROM "Artikli" a
 LEFT JOIN rates r ON r.article_id = a."Id";
 

@@ -499,6 +499,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     // Map all other endpoints from AllEndpoints.cs
     app.MapAllEndpoints();
     app.MapCachedAnalyticsEndpoints();
+    app.MapInventoryEndpoints();
     app.MapAnalyticsIntelligenceEndpoints();
     app.MapInsightStudioEndpoints();
     app.MapInsightStudioV2Endpoints();
