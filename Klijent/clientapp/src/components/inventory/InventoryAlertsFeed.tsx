@@ -9,6 +9,7 @@ type InventoryAlertsFeedProps = {
   onSeverityFilterChange: (value: "" | "critical" | "warning" | "info") => void;
   displayCount: number;
   onOpenSizeCurve: (skuId: number) => void;
+  onOpenDetail: (skuId: number, storeId: number, label?: string) => void;
 };
 
 export function InventoryAlertsFeed({
@@ -18,6 +19,7 @@ export function InventoryAlertsFeed({
   onSeverityFilterChange,
   displayCount,
   onOpenSizeCurve,
+  onOpenDetail,
 }: InventoryAlertsFeedProps) {
   const filteredAlerts = (alerts?.items ?? []).filter((alert) => !alertSeverityFilter || alert.severity === alertSeverityFilter);
 
@@ -58,7 +60,7 @@ export function InventoryAlertsFeed({
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {filteredAlerts.slice(0, displayCount).map((alert, index) => (
-            <article key={`${alert.alertType}-${alert.skuId}-${alert.sizeCode ?? "all"}-${index}`} className="rounded-2xl border border-[#243040] bg-[#10141b] p-4">
+            <article key={`${alert.alertType}-${alert.skuId}-${alert.sizeCode ?? "all"}-${index}`} onClick={() => onOpenDetail(alert.skuId, alert.storeId, alert.title)} className="cursor-pointer rounded-2xl border border-[#243040] bg-[#10141b] p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getAlertSeverityTone(alert.severity)}`}>
                   {alert.severity === "critical" ? "Kriticno" : alert.severity === "warning" ? "Upozorenje" : "Info"}
@@ -72,7 +74,10 @@ export function InventoryAlertsFeed({
               <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#7f8fa9]">
                 <span>Tip: {alert.alertType}</span>
                 {alert.sizeCode ? <span>Vel: {alert.sizeCode}</span> : null}
-                <button type="button" onClick={() => onOpenSizeCurve(alert.skuId)} className="text-[#44d0ff] transition hover:text-[#6de0ff]">
+                <button type="button" onClick={(event) => { event.stopPropagation(); onOpenDetail(alert.skuId, alert.storeId, alert.title); }} className="text-[#dbe6fb] transition hover:text-white">
+                  Detalj artikla -&gt;
+                </button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); onOpenSizeCurve(alert.skuId); }} className="text-[#44d0ff] transition hover:text-[#6de0ff]">
                   Size curve -&gt;
                 </button>
               </div>

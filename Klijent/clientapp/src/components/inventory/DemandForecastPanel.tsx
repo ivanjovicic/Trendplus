@@ -1,5 +1,5 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
-import type { ForecastDto, StoreOption } from "../../types/analytics";
+import type { ForecastDto, ForecastRowDto, StoreOption } from "../../types/analytics";
 import { TONE } from "./toneMap";
 import type { InventoryRow } from "./types";
 
@@ -13,6 +13,7 @@ type DemandForecastPanelProps = {
   overstockThreshold: number;
   oosDisplayCount: number;
   overstockDisplayCount: number;
+  onSuggestRestock: (item: ForecastRowDto) => void;
 };
 
 export function DemandForecastPanel({
@@ -25,6 +26,7 @@ export function DemandForecastPanel({
   overstockThreshold,
   oosDisplayCount,
   overstockDisplayCount,
+  onSuggestRestock,
 }: DemandForecastPanelProps) {
   const highOosItems = (forecast?.items ?? [])
     .filter((item) => item.probabilityOfOOSIn7d > oosThreshold)
@@ -83,6 +85,9 @@ export function DemandForecastPanel({
                         {Math.round(item.probabilityOfOOSIn7d * 100)}% OOS
                       </div>
                       <div className="mt-1 text-xs text-[#7f8fa9]">7d: {item.forecast7d.toFixed(1)}</div>
+                      <button type="button" onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border border-[#36543f] bg-[#17261d] px-2.5 py-1 text-[11px] font-semibold text-[#aef3bf] transition hover:border-[#4e7b5b]">
+                        Predlozi dopunu
+                      </button>
                     </div>
                   </div>
                 );

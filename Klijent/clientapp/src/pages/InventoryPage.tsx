@@ -31,6 +31,8 @@ const REBALANCE_FETCH_LIMIT = 20;
 const FORECAST_FETCH_LIMIT = 50;
 const OOS_RISK_THRESHOLD = 0.25;
 const OVERSTOCK_RISK_THRESHOLD = 0.5;
+const STORE_COMPARISON_SECTION_ID = "inventory-store-comparison";
+const ACTION_WORKFLOW_SECTION_ID = "inventory-action-workflow";
 
 type PreviousLoadState = { pageNumber: number; pageSize: number; selectedStoreId: number | null; selectedSupplierId: number | null; sortBy: string; trimmedSearch: string; compareStoreIdsKey: string };
 
@@ -56,9 +58,12 @@ export default function InventoryPage() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [detailRow, setDetailRow] = useState<InventoryRow | null>(null);
+  const [detailTab, setDetailTab] = useState<"overview" | "sizeCurve">("overview");
   const [detailData, setDetailData] = useState<InventoryItemDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailSizeCurve, setDetailSizeCurve] = useState<SizeCurveDto | null>(null);
+  const [detailSizeCurveLoading, setDetailSizeCurveLoading] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [workflowBusyKey, setWorkflowBusyKey] = useState<string | null>(null);
@@ -78,6 +83,7 @@ export default function InventoryPage() {
   const [sizeCurveSkuId, setSizeCurveSkuId] = useState<number | null>(null);
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
+  const serverSortBy = sortBy === "oosRisk" || sortBy === "overstockRisk" ? "kolicina" : sortBy;
   const previousLoadRef = useRef<PreviousLoadState | null>(null);
 
   useEffect(() => {
@@ -159,8 +165,8 @@ export default function InventoryPage() {
 
     const tasks = [
       { key: "balance" as const, promise: getInventoryBalance(true, selectedStoreId, selectedSupplierId) },
-      { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy }) },
-      { key: "insights" as const, promise: getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy }) },
+      { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy }) },
+      { key: "insights" as const, promise: getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy }) },
       ...(shouldRefreshOperations ? [
         { key: "storeComparison" as const, promise: getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined }) },
         { key: "actionWorkflow" as const, promise: getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined }) },
@@ -216,6 +222,8 @@ export default function InventoryPage() {
       setDetailData(null);
       setDetailError(null);
       setDetailLoading(false);
+      setDetailSizeCurve(null);
+      setDetailSizeCurveLoading(false);
       return;
     }
     let cancelled = false;
@@ -236,6 +244,25 @@ export default function InventoryPage() {
       });
     return () => { cancelled = true; };
   }, [detailRow]);
+
+  useEffect(() => {
+    if (!detailRow || detailTab !== "sizeCurve") {
+      setDetailSizeCurve(null);
+      setDetailSizeCurveLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setDetailSizeCurveLoading(true);
+    void getSizeCurve({ skuId: detailRow.id, storeId: detailRow.idObjekat ?? selectedStoreId ?? undefined })
+      .then((nextCurve) => {
+        if (!cancelled) setDetailSizeCurve(nextCurve);
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (!cancelled) setDetailSizeCurveLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [detailRow, detailTab, selectedStoreId]);
 
   useEffect(() => {
     if (sizeCurveSkuId == null) {
@@ -266,6 +293,23 @@ export default function InventoryPage() {
   const chartData = useMemo(() => buildSupplierChart(rows).sort((left, right) => right.totalValue - left.totalValue).slice(0, TOP_SUPPLIERS_CHART), [rows]);
   const topRiskRows = useMemo(() => rows.slice().sort((left, right) => (left.stockState === right.stockState ? right.reorderGap - left.reorderGap : { critical: 0, warning: 1, healthy: 2 }[left.stockState] - { critical: 0, warning: 1, healthy: 2 }[right.stockState])).slice(0, TOP_RISK_ITEMS), [rows]);
   const highestValueRows = useMemo(() => rows.slice().sort((left, right) => right.estimatedValueAmount - left.estimatedValueAmount).slice(0, TOP_VALUE_ITEMS), [rows]);
+  const forecastMetricsByRowKey = useMemo(() => new Map(rows.map((row) => {
+    const matching = (forecast?.items ?? []).filter((item) => item.skuId === row.id && (row.idObjekat == null || item.storeId === row.idObjekat));
+    return [`${row.id}:${row.idObjekat ?? 0}`, {
+      oosRisk: matching.reduce((max, item) => Math.max(max, item.probabilityOfOOSIn7d), 0),
+      overstockRisk: matching.reduce((max, item) => Math.max(max, item.overstockRisk), 0),
+    }];
+  })), [forecast, rows]);
+  const displayedRows = useMemo(() => {
+    if (sortBy !== "oosRisk" && sortBy !== "overstockRisk") return rows;
+    return rows.slice().sort((left, right) => {
+      const leftMetrics = forecastMetricsByRowKey.get(`${left.id}:${left.idObjekat ?? 0}`);
+      const rightMetrics = forecastMetricsByRowKey.get(`${right.id}:${right.idObjekat ?? 0}`);
+      return sortBy === "oosRisk"
+        ? (rightMetrics?.oosRisk ?? 0) - (leftMetrics?.oosRisk ?? 0)
+        : (rightMetrics?.overstockRisk ?? 0) - (leftMetrics?.overstockRisk ?? 0);
+    });
+  }, [forecastMetricsByRowKey, rows, sortBy]);
 
   const refreshSchedules = async () => setSchedules(await getInventoryReportSchedules());
   const refreshOperations = async () => {
@@ -283,12 +327,12 @@ export default function InventoryPage() {
       setExportBusy(true);
       setExportStatus(preview ? "Pripremam print preview na serveru..." : "Server priprema dokument za izvoz...");
       if (preview) {
-        const previewResult = await previewInventoryReport({ orientation: "landscape", includeFiltersAndMetadata: true, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy });
+        const previewResult = await previewInventoryReport({ orientation: "landscape", includeFiltersAndMetadata: true, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy });
         if (previewResult.printUrl) window.open(resolveApiUrl(previewResult.printUrl), "_blank", "noopener");
         setExportStatus("Print preview je otvoren u novom tabu.");
         return;
       }
-      const result = await exportInventoryReport({ format, orientation: "landscape", includeFiltersAndMetadata: true, forceAsync: totalCount > 5000, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy });
+      const result = await exportInventoryReport({ format, orientation: "landscape", includeFiltersAndMetadata: true, forceAsync: totalCount > 5000, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy });
       if (result.isAsync) {
         setExportStatus("Dokument je u redu cekanja. Cekam da eksport bude spreman...");
         const completed = await waitForExport(result.documentId);
@@ -368,8 +412,93 @@ export default function InventoryPage() {
   }
 
   function copyCurrentFiltersToSchedule() {
-    setScheduleDraft((current) => ({ ...current, search: trimmedSearch, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy }));
+    setScheduleDraft((current) => ({ ...current, search: trimmedSearch, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy }));
     setSchedulerMessage("Trenutni filteri su prepisani u scheduler formu.");
+  }
+
+  function scrollToSection(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function openDetail(row: InventoryRow, tab: "overview" | "sizeCurve" = "overview") {
+    setDetailRow(row);
+    setDetailTab(tab);
+  }
+
+  function openDetailBySku(skuId: number, storeId?: number, label?: string) {
+    const existingRow = rows.find((row) => row.id === skuId && (storeId == null || row.idObjekat === storeId)) ?? rows.find((row) => row.id === skuId);
+    if (existingRow) {
+      openDetail(existingRow);
+      return;
+    }
+    openDetail(buildInventoryRow({
+      id: skuId,
+      naziv: label ?? `SKU #${skuId}`,
+      plu: null,
+      kolicina: 0,
+      minimalnaKolicina: 0,
+      nabavnaCena: 0,
+      estimatedValue: 0,
+      idObjekat: storeId ?? null,
+      idDobavljac: null,
+    }, stores, suppliers));
+  }
+
+  function retryDetailFetch() {
+    if (!detailRow) return;
+    const currentRow = detailRow;
+    setDetailRow(null);
+    window.setTimeout(() => setDetailRow(currentRow), 0);
+  }
+
+  function queueForecastRestock(item: ForecastDto["items"][number]) {
+    const row = rows.find((entry) => entry.id === item.skuId && (entry.idObjekat == null || entry.idObjekat === item.storeId)) ?? buildInventoryRow({
+      id: item.skuId,
+      naziv: `SKU #${item.skuId}`,
+      plu: null,
+      kolicina: 0,
+      minimalnaKolicina: Math.ceil(item.forecast7d),
+      nabavnaCena: 0,
+      estimatedValue: 0,
+      idObjekat: item.storeId,
+      idDobavljac: null,
+      velicina: item.sizeCode,
+    }, stores, suppliers);
+    const suggestionKey = `forecast-${item.skuId}-${item.storeId}-${item.sizeCode}`;
+    setActionWorkflow((current) => {
+      const base = current ?? { generatedAtUtc: new Date().toISOString(), pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
+      if (base.items.some((entry) => entry.suggestionKey === suggestionKey)) return base;
+      return {
+        ...base,
+        generatedAtUtc: new Date().toISOString(),
+        pendingCount: base.pendingCount + 1,
+        items: [{
+          suggestionKey,
+          actionType: "dopuna",
+          priority: item.probabilityOfOOSIn7d > 0.7 ? "critical" : "high",
+          label: `Predlozena dopuna za ${row.naziv}`,
+          reason: `Forecast 7d je ${item.forecast7d.toFixed(1)} kom, a OOS rizik ${Math.round(item.probabilityOfOOSIn7d * 100)}%.`,
+          status: "pending",
+          artikalId: item.skuId,
+          plu: row.plu,
+          naziv: row.naziv,
+          fromStoreName: null,
+          toStoreName: stores.find((store) => store.storeId === item.storeId)?.storeName ?? row.storeName,
+          suggestedQty: Math.max(1, Math.ceil(item.forecast7d)),
+          estimatedValue: row.unitCost * Math.max(1, Math.ceil(item.forecast7d)),
+          daysSinceMovement: detailData?.daysSinceMovement ?? 0,
+          note: `Automatski dodat iz forecast sekcije za velicinu ${item.sizeCode}.`,
+          updatedAtUtc: new Date().toISOString(),
+        }, ...base.items],
+      };
+    });
+    setExportStatus("Forecast signal je dodat u workflow kao predlog dopune.");
+    scrollToSection(ACTION_WORKFLOW_SECTION_ID);
+  }
+
+  function compareStoresFromRebalance(fromStoreId: number, toStoreId: number) {
+    setCompareStoreIds(Array.from(new Set([fromStoreId, toStoreId])));
+    scrollToSection(STORE_COMPARISON_SECTION_ID);
   }
 
   if (loading && !pageData && !balance) return <div className="rounded-3xl border border-[#202430] bg-[#141821] p-8 text-center text-[#a5b4cf]">Ucitavanje bilansa stanja...</div>;
@@ -442,6 +571,8 @@ export default function InventoryPage() {
                 <option value="naziv">Naziv A-Z</option>
                 <option value="vrednost">Vrednost opadajuce</option>
                 <option value="azuriranje">Poslednje azuriranje</option>
+                <option value="oosRisk">OOS rizik opadajuce</option>
+                <option value="overstockRisk">Overstock rizik opadajuce</option>
               </select>
             </label>
             <label className="rounded-2xl border border-[#283042] bg-[#10141c] px-4 py-3 text-sm text-[#dbe6fb]">
@@ -461,18 +592,18 @@ export default function InventoryPage() {
       <MailSchedulerPanel scheduleDraft={scheduleDraft} setScheduleDraft={setScheduleDraft} schedules={schedules} schedulerBusy={schedulerBusy} schedulerMessage={schedulerMessage} onCopyCurrentFilters={copyCurrentFiltersToSchedule} onSaveSchedule={saveSchedule} onRunScheduleNow={(id) => void runScheduleNow(id)} />
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <StoreComparisonPanel stores={stores} compareStoreIds={compareStoreIds} comparison={storeComparison} operationsLoading={operationsLoading} onToggleStore={toggleCompareStore} />
-        <ActionWorkflowPanel actionWorkflow={actionWorkflow} operationsLoading={operationsLoading} workflowBusyKey={workflowBusyKey} onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)} />
+        <StoreComparisonPanel sectionId={STORE_COMPARISON_SECTION_ID} stores={stores} compareStoreIds={compareStoreIds} comparison={storeComparison} operationsLoading={operationsLoading} onToggleStore={toggleCompareStore} />
+        <ActionWorkflowPanel sectionId={ACTION_WORKFLOW_SECTION_ID} actionWorkflow={actionWorkflow} operationsLoading={operationsLoading} workflowBusyKey={workflowBusyKey} onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)} />
       </div>
 
-      <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={setDetailRow} />
-      <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={setDetailRow} />
-      <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} />
-      <DemandForecastPanel forecast={forecast} forecastLoading={forecastLoading} forecastError={forecastError} rows={rows} stores={stores} oosThreshold={OOS_RISK_THRESHOLD} overstockThreshold={OVERSTOCK_RISK_THRESHOLD} oosDisplayCount={FORECAST_OOS_DISPLAY} overstockDisplayCount={FORECAST_OVERSTOCK_DISPLAY} />
+      <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={openDetail} />
+      <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={openDetail} />
+      <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
+      <DemandForecastPanel forecast={forecast} forecastLoading={forecastLoading} forecastError={forecastError} rows={rows} stores={stores} oosThreshold={OOS_RISK_THRESHOLD} overstockThreshold={OVERSTOCK_RISK_THRESHOLD} oosDisplayCount={FORECAST_OOS_DISPLAY} overstockDisplayCount={FORECAST_OVERSTOCK_DISPLAY} onSuggestRestock={queueForecastRestock} />
       <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} onChangeSkuId={setSizeCurveSkuId} />
-      <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} />
-      <InventoryItemsTable rows={rows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={setDetailRow} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} />
-      <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} onClose={() => setDetailRow(null)} />
+      <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} onCompareStores={compareStoresFromRebalance} />
+      <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} />
+      <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} detailTab={detailTab} detailSizeCurve={detailSizeCurve} detailSizeCurveLoading={detailSizeCurveLoading} onRetry={retryDetailFetch} onTabChange={setDetailTab} onClose={() => setDetailRow(null)} />
     </div>
   );
 }

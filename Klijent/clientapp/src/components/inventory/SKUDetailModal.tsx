@@ -1,6 +1,7 @@
 import Modal from "../Modal";
-import type { InventoryItemDetail } from "../../types/analytics";
+import type { InventoryItemDetail, SizeCurveDto } from "../../types/analytics";
 import { formatCurrency, formatDateTime, formatNumber, getAgingTone, getHistoryDirection, getRecommendation, getStockState, getAbcTone } from "./inventoryUtils";
+import { SizeCurveVisualization } from "./SizeCurveVisualization";
 import type { InventoryRow } from "./types";
 
 type SKUDetailModalProps = {
@@ -8,7 +9,12 @@ type SKUDetailModalProps = {
   detailData: InventoryItemDetail | null;
   detailLoading: boolean;
   detailError: string | null;
+  detailTab: "overview" | "sizeCurve";
+  detailSizeCurve: SizeCurveDto | null;
+  detailSizeCurveLoading: boolean;
   onClose: () => void;
+  onRetry: () => void;
+  onTabChange: (tab: "overview" | "sizeCurve") => void;
 };
 
 export function SKUDetailModal({
@@ -16,12 +22,26 @@ export function SKUDetailModal({
   detailData,
   detailLoading,
   detailError,
+  detailTab,
+  detailSizeCurve,
+  detailSizeCurveLoading,
   onClose,
+  onRetry,
+  onTabChange,
 }: SKUDetailModalProps) {
   return (
     <Modal isOpen={detailRow != null} onClose={onClose} title={detailRow ? `Detalj artikla: ${detailRow.naziv}` : "Detalj artikla"} size="lg">
       {detailRow ? (
         <div className="space-y-5 text-[#0f172a]">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => onTabChange("overview")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "overview" ? "border-[#44d0ff] bg-[#102231] text-[#44d0ff]" : "border-[#cbd5e1] bg-white text-[#475569]"}`}>Pregled</button>
+            <button type="button" onClick={() => onTabChange("sizeCurve")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "sizeCurve" ? "border-[#44d0ff] bg-[#102231] text-[#44d0ff]" : "border-[#cbd5e1] bg-white text-[#475569]"}`}>Size Curve</button>
+          </div>
+
+          {detailTab === "sizeCurve" ? (
+            detailSizeCurveLoading ? <div className="rounded-2xl border border-[#dbe4f0] bg-[#f8fafc] px-4 py-8 text-center text-sm text-[#475569]">Ucitavam size curve za SKU #{detailRow.id}...</div> : !detailSizeCurve?.snapshotAvailable || (detailSizeCurve.items ?? []).length === 0 ? <div className="rounded-2xl border border-[#dbe4f0] bg-[#f8fafc] px-4 py-8 text-center text-sm text-[#475569]">Nema size curve podataka za ovaj artikal.</div> : <div className="rounded-2xl border border-[#e2e8f0] bg-[#0f1722] p-4"><SizeCurveVisualization items={detailSizeCurve.items} cardLimit={6} /></div>
+          ) : (
+            <>
           <div className={`rounded-2xl border border-[#e2e8f0] bg-gradient-to-br ${getStockState(detailRow.quantity, detailRow.minimum).panel} p-5 text-white`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -44,7 +64,7 @@ export function SKUDetailModal({
           </div>
 
           {detailLoading ? <div className="rounded-2xl border border-[#dbe4f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#475569]">Ucitavam istoriju kretanja i dodatne detalje artikla...</div> : null}
-          {detailError ? <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f2] px-4 py-3 text-sm text-[#9f1239]">{detailError}</div> : null}
+          {detailError ? <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f2] px-4 py-3 text-sm text-[#9f1239]"><div>{detailError}</div><button type="button" onClick={onRetry} className="mt-3 rounded-lg border border-[#9f1239] bg-white px-3 py-1.5 text-xs font-semibold text-[#9f1239]">Pokusaj ponovo</button></div> : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             {[
@@ -119,6 +139,8 @@ export function SKUDetailModal({
               )) : <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-4 py-8 text-center text-sm text-[#64748b]">Za ovaj artikal nema evidentiranih istorijskih kretanja.</div>}
             </div>
           </div>
+            </>
+          )}
         </div>
       ) : null}
     </Modal>

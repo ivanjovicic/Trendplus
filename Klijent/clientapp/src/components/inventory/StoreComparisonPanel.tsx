@@ -8,6 +8,7 @@ type StoreComparisonPanelProps = {
   comparison: InventoryStoreComparison | null;
   operationsLoading: boolean;
   onToggleStore: (storeId: number) => void;
+  sectionId?: string;
 };
 
 export function StoreComparisonPanel({
@@ -16,12 +17,13 @@ export function StoreComparisonPanel({
   comparison,
   operationsLoading,
   onToggleStore,
+  sectionId,
 }: StoreComparisonPanelProps) {
   const comparisonStores = comparison?.stores ?? [];
   const comparisonRisks = comparison?.sharedRisks ?? [];
 
   return (
-    <section className="rounded-[28px] border border-[#232935] bg-[#12161f] p-5">
+    <section id={sectionId} className="rounded-[28px] border border-[#232935] bg-[#12161f] p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-white">Drill-down po prodavnici</h2>

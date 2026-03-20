@@ -9,6 +9,7 @@ type RebalancingTableProps = {
   rows: InventoryRow[];
   stores: StoreOption[];
   displayCount: number;
+  onCompareStores: (fromStoreId: number, toStoreId: number) => void;
 };
 
 export function RebalancingTable({
@@ -17,6 +18,7 @@ export function RebalancingTable({
   rows,
   stores,
   displayCount,
+  onCompareStores,
 }: RebalancingTableProps) {
   return (
     <section className="rounded-[28px] border border-[#232935] bg-[#12161f] p-5">
@@ -57,6 +59,7 @@ export function RebalancingTable({
                   <th className="px-4 py-3 text-right">Qty</th>
                   <th className="px-4 py-3 text-right">Sacuvana prodaja</th>
                   <th className="px-4 py-3">Razlog</th>
+                  <th className="px-4 py-3 text-right">Akcija</th>
                 </tr>
               </thead>
               <tbody>
@@ -79,6 +82,11 @@ export function RebalancingTable({
                       <td className="px-4 py-3 text-right font-semibold text-white">{item.recommendedQty}</td>
                       <td className="px-4 py-3 text-right text-[#9ff0c7]">{formatCurrency(item.expectedSavedSales)}</td>
                       <td className="max-w-[220px] truncate px-4 py-3 text-[#90a0ba]">{item.reason}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button type="button" onClick={() => onCompareStores(item.fromStoreId, item.toStoreId)} className="rounded-lg border border-[#30516d] bg-[#102231] px-2.5 py-1 text-[11px] font-semibold text-[#8edbff] transition hover:border-[#3f6d95]">
+                          Uporedi lokacije
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}

@@ -7,6 +7,7 @@ type ActionWorkflowPanelProps = {
   operationsLoading: boolean;
   workflowBusyKey: string | null;
   onUpdateWorkflowStatus: (item: InventoryActionSuggestion, status: "approved" | "deferred" | "closed") => void;
+  sectionId?: string;
 };
 
 export function ActionWorkflowPanel({
@@ -14,11 +15,12 @@ export function ActionWorkflowPanel({
   operationsLoading,
   workflowBusyKey,
   onUpdateWorkflowStatus,
+  sectionId,
 }: ActionWorkflowPanelProps) {
   const workflowItems = actionWorkflow?.items ?? [];
 
   return (
-    <section className="rounded-[28px] border border-[#232935] bg-[#12161f] p-5">
+    <section id={sectionId} className="rounded-[28px] border border-[#232935] bg-[#12161f] p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-white">Predlog akcije workflow</h2>
