@@ -69,7 +69,7 @@ export function RebalancingTable({
                   const toStore = stores.find((store) => store.storeId === item.toStoreId)?.storeName ?? `#${item.toStoreId}`;
 
                   return (
-                    <tr key={`${item.skuId}-${item.fromStoreId}-${item.toStoreId}-${item.sizeCode}-${index}`} className="border-t border-[#1c2230] bg-[#11161d] text-[#dbe6fb] hover:bg-[#151c26]">
+                    <tr key={`${item.skuId}-${item.fromStoreId}-${item.toStoreId}-${item.sizeCode}-${index}`} className={`border-t border-[#1c2230] bg-[#11161d] text-[#dbe6fb] hover:bg-[#151c26] ${item.urgency === "urgent" ? "border-l-4 border-l-[#7d2940]" : ""}`}>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getRebalanceUrgencyTone(item.urgency)}`}>
                           {item.urgency === "urgent" ? "Hitno" : item.urgency === "recommended" ? "Preporuceno" : "Opciono"}

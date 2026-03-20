@@ -1,4 +1,4 @@
-import { Bar, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { SizeCurvePointDto } from "../../types/analytics";
 
 type SizeCurveVisualizationProps = {
@@ -10,6 +10,7 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
   const missingCoreCount = items.filter((item) => item.isCoreSizeMissing).length;
   const deadSizeCount = items.filter((item) => item.isDeadSize).length;
   const hasBrokenRun = items.some((item) => item.brokenRun);
+  const chartData = items.map((item) => ({ name: item.sizeCode, actual: +(item.actualSizeShare * 100).toFixed(1), ideal: +(item.idealSizeShare * 100).toFixed(1), deviation: +(item.deviationPct * 100).toFixed(1), isDeadSize: item.isDeadSize, isCoreSizeMissing: item.isCoreSizeMissing }));
 
   return (
     <div className="mt-4">
@@ -21,12 +22,22 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
 
       <div className="h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={items.map((item) => ({ name: item.sizeCode, actual: +(item.actualSizeShare * 100).toFixed(1), ideal: +(item.idealSizeShare * 100).toFixed(1) }))}>
+          <ComposedChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#233042" />
             <XAxis dataKey="name" tick={{ fill: "#92a4bf", fontSize: 12 }} />
             <YAxis tick={{ fill: "#92a4bf", fontSize: 12 }} unit="%" />
-            <Tooltip formatter={(value: number | string | undefined) => `${value ?? 0}%`} contentStyle={{ background: "#141c29", border: "1px solid #2b3a50", color: "#dde7f7" }} />
-            <Bar dataKey="actual" fill="#44d0ff" radius={[6, 6, 0, 0]} name="Stvarno" />
+            <Tooltip
+              contentStyle={{ background: "#141c29", border: "1px solid #2b3a50", color: "#dde7f7" }}
+              formatter={(value: number | string | undefined) => `${value ?? 0}%`}
+              labelFormatter={(label, payload) => {
+                const point = payload?.[0]?.payload as { actual?: number; ideal?: number; deviation?: number } | undefined;
+                return point ? `Vel. ${label} | stvarno ${point.actual ?? 0}% | idealno ${point.ideal ?? 0}% | odstupanje ${point.deviation ?? 0}pp` : `Vel. ${label}`;
+              }}
+            />
+            <Legend wrapperStyle={{ color: "#dbe6fb", fontSize: 12, paddingTop: 12 }} />
+            <Bar dataKey="actual" radius={[6, 6, 0, 0]} name="Stvarno">
+              {chartData.map((item) => <Cell key={item.name} fill={item.isDeadSize ? "#ffb4c2" : item.isCoreSizeMissing ? "#ffd590" : "#44d0ff"} />)}
+            </Bar>
             <Line type="monotone" dataKey="ideal" stroke="#ffd590" strokeWidth={2} dot={false} name="Idealno" />
             <ReferenceLine y={0} stroke="#334055" />
           </ComposedChart>

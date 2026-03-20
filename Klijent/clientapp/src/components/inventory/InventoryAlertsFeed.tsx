@@ -60,7 +60,7 @@ export function InventoryAlertsFeed({
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {filteredAlerts.slice(0, displayCount).map((alert, index) => (
-            <article key={`${alert.alertType}-${alert.skuId}-${alert.sizeCode ?? "all"}-${index}`} onClick={() => onOpenDetail(alert.skuId, alert.storeId, alert.title)} className="cursor-pointer rounded-2xl border border-[#243040] bg-[#10141b] p-4">
+            <article key={`${alert.alertType}-${alert.skuId}-${alert.sizeCode ?? "all"}-${index}`} onClick={() => onOpenDetail(alert.skuId, alert.storeId, alert.title)} className={`cursor-pointer rounded-2xl border border-[#243040] bg-[#10141b] p-4 ${alert.severity === "critical" ? "inventory-alert-critical" : ""}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getAlertSeverityTone(alert.severity)}`}>
                   {alert.severity === "critical" ? "Kriticno" : alert.severity === "warning" ? "Upozorenje" : "Info"}

@@ -55,8 +55,9 @@ export function InventoryItemsTable({
                 <tr><td colSpan={9} className="px-4 py-10 text-center text-[#8797b4]">Nema artikala za zadate filtere.</td></tr>
               ) : rows.map((row) => {
                 const stock = getStockState(row.quantity, row.minimum);
+                const stockBorder = row.stockState === "critical" ? "border-l-4 border-l-[#7d2940]" : row.stockState === "warning" ? "border-l-4 border-l-[#7c5822]" : "border-l-4 border-l-[#1f6c49]";
                 return (
-                  <tr key={row.id} className="cursor-pointer border-t border-[#1c2230] bg-[#11161d] text-[#dbe6fb] transition hover:bg-[#151c26]" onClick={() => onOpenDetail(row)}>
+                  <tr key={row.id} className={`cursor-pointer border-t border-[#1c2230] bg-[#11161d] text-[#dbe6fb] transition hover:bg-[#151c26] ${stockBorder}`} onClick={() => onOpenDetail(row)}>
                     <td className="px-4 py-3"><div className="flex flex-col"><span className="font-semibold text-white">{row.naziv}</span><span className="text-xs text-[#8fa1be]">{row.plu ?? "Bez PLU"} | {getCoverageText(row)}</span></div></td>
                     <td className="px-4 py-3"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${stock.badge}`}>{row.stockStateLabel}</span></td>
                     <td className="px-4 py-3 text-right font-semibold text-white">{formatNumber(row.quantity)}</td>

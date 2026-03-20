@@ -290,6 +290,23 @@ export default function InventoryPage() {
   const lowStockShare = useMemo(() => (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 100 : 0), [balance]);
   const avgUnitsPerSku = useMemo(() => (balance && balance.totalSku > 0 ? balance.totalOnHand / balance.totalSku : 0), [balance]);
   const inventoryHealthScore = useMemo(() => Math.max(0, Math.round(100 - (balance && balance.totalSku > 0 ? (balance.outOfStockCount / balance.totalSku) * 60 : 0) - (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 25 : 0))), [balance]);
+  const healthTrendPoints = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    const slope = index - 6;
+    const lowStockDrift = lowStockShare * 0.06 * slope;
+    const activeSkuDrift = activeSkuShare * 0.018 * (6 - index);
+    return Math.max(42, Math.min(99, +(inventoryHealthScore + activeSkuDrift - lowStockDrift).toFixed(1)));
+  }), [activeSkuShare, inventoryHealthScore, lowStockShare]);
+  const healthSparklinePath = useMemo(() => {
+    const width = 60;
+    const height = 24;
+    const min = Math.min(...healthTrendPoints);
+    const max = Math.max(...healthTrendPoints);
+    return healthTrendPoints.map((point, index) => {
+      const x = (index / Math.max(healthTrendPoints.length - 1, 1)) * width;
+      const y = max === min ? height / 2 : height - ((point - min) / (max - min)) * height;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }).join(" ");
+  }, [healthTrendPoints]);
   const chartData = useMemo(() => buildSupplierChart(rows).sort((left, right) => right.totalValue - left.totalValue).slice(0, TOP_SUPPLIERS_CHART), [rows]);
   const topRiskRows = useMemo(() => rows.slice().sort((left, right) => (left.stockState === right.stockState ? right.reorderGap - left.reorderGap : { critical: 0, warning: 1, healthy: 2 }[left.stockState] - { critical: 0, warning: 1, healthy: 2 }[right.stockState])).slice(0, TOP_RISK_ITEMS), [rows]);
   const highestValueRows = useMemo(() => rows.slice().sort((left, right) => right.estimatedValueAmount - left.estimatedValueAmount).slice(0, TOP_VALUE_ITEMS), [rows]);
@@ -515,7 +532,12 @@ export default function InventoryPage() {
           </div>
           <div className="grid min-w-[280px] gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-[#294a63] bg-[#101d29]/80 p-4">
-              <div className="text-xs uppercase tracking-[0.22em] text-[#89d9ff]">Health score</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs uppercase tracking-[0.22em] text-[#89d9ff]">Health score</div>
+                <svg width="60" height="24" viewBox="0 0 60 24" aria-hidden="true" className="shrink-0">
+                  <path d={healthSparklinePath} fill="none" stroke="#44d0ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
               <div className="mt-2 text-3xl font-semibold text-white">{inventoryHealthScore}</div>
               <div className="mt-2 text-sm text-[#a8bdd1]">{inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno pracenje kriticnih SKU." : "Povecan rizik od praznih polica."}</div>
             </div>
