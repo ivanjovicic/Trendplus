@@ -34,7 +34,7 @@ export function InventoryItemsTable({
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-[#242d3b]">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table aria-label="Lista artikala na stanju" className="min-w-full text-sm">
             <thead className="bg-[#0f131a] text-left text-[#90a0ba]">
               <tr>
                 <th className="px-4 py-3">Artikal</th>
@@ -78,8 +78,8 @@ export function InventoryItemsTable({
       <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="text-sm text-[#90a0ba]">Strana <span className="font-semibold text-white">{pageNumber}</span> od <span className="font-semibold text-white">{totalPages}</span></div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={onPreviousPage} disabled={pageNumber <= 1 || loading} className="rounded-xl border border-[#33405a] bg-[#182131] px-3 py-2 text-xs font-semibold text-[#dbe6fb] disabled:cursor-not-allowed disabled:opacity-50">Prethodna</button>
-          <button type="button" onClick={onNextPage} disabled={pageNumber >= totalPages || loading} className="rounded-xl border border-[#33405a] bg-[#182131] px-3 py-2 text-xs font-semibold text-[#dbe6fb] disabled:cursor-not-allowed disabled:opacity-50">Sledeca</button>
+          <button type="button" aria-label="Idi na prethodnu stranu tabele artikala" onClick={onPreviousPage} disabled={pageNumber <= 1 || loading} className="rounded-xl border border-[#33405a] bg-[#182131] px-3 py-2 text-xs font-semibold text-[#dbe6fb] disabled:cursor-not-allowed disabled:opacity-50">Prethodna</button>
+          <button type="button" aria-label="Idi na sledecu stranu tabele artikala" onClick={onNextPage} disabled={pageNumber >= totalPages || loading} className="rounded-xl border border-[#33405a] bg-[#182131] px-3 py-2 text-xs font-semibold text-[#dbe6fb] disabled:cursor-not-allowed disabled:opacity-50">Sledeca</button>
         </div>
       </div>
     </section>

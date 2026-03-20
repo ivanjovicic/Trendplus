@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { LoadingSkeleton } from "../LoadingSkeleton";
 import type { SizeCurveDto } from "../../types/analytics";
 import { SizeCurveVisualization } from "./SizeCurveVisualization";
 
@@ -29,6 +30,7 @@ export function SizeCurvePanel({
             <Search size={14} className="shrink-0 text-[#7ec6ff]" />
             <input
               type="number"
+              aria-label="Unos SKU ID za size curve"
               placeholder="ArtikelID"
               value={sizeCurveSkuId ?? ""}
               onChange={(event) => onChangeSkuId(event.target.value ? Number(event.target.value) : null)}
@@ -36,7 +38,7 @@ export function SizeCurvePanel({
             />
           </label>
           {sizeCurveSkuId != null ? (
-            <button type="button" onClick={() => onChangeSkuId(null)} className="rounded-xl border border-[#33405a] bg-[#182131] px-3 py-2 text-xs font-semibold text-[#dbe6fb]">
+            <button type="button" aria-label="Ponisti size curve izbor artikla" onClick={() => onChangeSkuId(null)} className="rounded-xl border border-[#33405a] bg-[#182131] px-3 py-2 text-xs font-semibold text-[#dbe6fb]">
               Ponisti
             </button>
           ) : null}
@@ -48,7 +50,7 @@ export function SizeCurvePanel({
           Upisi ID artikla u polje iznad da prikazes size curve analizu.
         </div>
       ) : sizeCurveLoading ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-[#2b3446] bg-[#10151d] px-4 py-8 text-center text-sm text-[#8797b4]">Ucitavam size curve za SKU #{sizeCurveSkuId}...</div>
+        <div className="mt-4 rounded-2xl border border-dashed border-[#2b3446] bg-[#10151d] p-4 text-center text-sm text-[#8797b4]"><div className="mb-4">Ucitavam size curve za SKU #{sizeCurveSkuId}...</div><LoadingSkeleton type="messages" count={1} /></div>
       ) : !sizeCurve?.snapshotAvailable || items.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[#2b3446] bg-[#10151d] px-4 py-8 text-center text-sm text-[#8797b4]">
           Nema size curve podataka za SKU #{sizeCurveSkuId}.

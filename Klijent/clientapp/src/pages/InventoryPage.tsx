@@ -5,6 +5,7 @@ import { downloadExport, resolveApiUrl, waitForExport } from "../services/export
 import type { ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import { ActionWorkflowPanel } from "../components/inventory/ActionWorkflowPanel";
 import { DemandForecastPanel } from "../components/inventory/DemandForecastPanel";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { InventoryAlertsFeed } from "../components/inventory/InventoryAlertsFeed";
 import { InventoryInsightPanels } from "../components/inventory/InventoryInsightPanels";
 import { InventoryItemsTable } from "../components/inventory/InventoryItemsTable";
@@ -522,7 +523,8 @@ export default function InventoryPage() {
   if (error && !pageData) return <div className="rounded-3xl border border-[#5b1f2c] bg-[#211116] p-8 text-center text-[#ffc3cf]">Greska: {error}</div>;
 
   return (
-    <div className="space-y-6">
+    <ErrorBoundary fallback={<div className="rounded-3xl border border-[#6a2334] bg-[#161117] p-8 text-center text-[#ffbdcb]">Bilans stanja trenutno nije mogao da se prikaze. Osvezi stranicu ili pokusaj ponovo za nekoliko trenutaka.</div>}>
+      <div className="space-y-6">
       <section className="overflow-hidden rounded-[30px] border border-[#273247] bg-[radial-gradient(circle_at_top_left,_rgba(68,208,255,0.24),_transparent_32%),linear-gradient(135deg,#121827_0%,#10131b_40%,#0f1722_100%)] p-6 shadow-[0_25px_80px_-45px_rgba(68,208,255,0.5)]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-[760px]">
@@ -558,37 +560,37 @@ export default function InventoryPage() {
               <p className="text-sm text-[#93a2bd]">Pretrazi bilans, suzi lokaciju i odmah pokreni report ili stampu.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => void runServerExport("pdf", true)} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#41516b] bg-[#1d2432] px-3 py-2 text-xs font-semibold text-[#d8e5f8] disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Print preview</button>
-              <button type="button" onClick={exportVisibleCsv} disabled={rows.length === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#345269] bg-[#152534] px-3 py-2 text-xs font-semibold text-[#9fe0ff] disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV ekran</button>
-              <button type="button" onClick={() => void runServerExport("csv")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#27485e] bg-[#11202d] px-3 py-2 text-xs font-semibold text-[#b7e7ff] disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV filtrirano</button>
-              <button type="button" onClick={() => void runServerExport("xlsx")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#36543f] bg-[#17261d] px-3 py-2 text-xs font-semibold text-[#aef3bf] disabled:cursor-not-allowed disabled:opacity-60"><FileSpreadsheet size={14} />Excel filtrirano</button>
-              <button type="button" onClick={() => void runServerExport("pdf")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#5f445e] bg-[#261827] px-3 py-2 text-xs font-semibold text-[#ffc8fb] disabled:cursor-not-allowed disabled:opacity-60"><FileText size={14} />PDF filtrirano</button>
-              <button type="button" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-xl border border-[#3b4558] bg-[#1f2532] px-3 py-2 text-xs font-semibold text-[#dbe6fb]"><RefreshCw size={14} />Osvezi</button>
+              <button type="button" aria-label="Otvori print preview filtriranog izvestaja" onClick={() => void runServerExport("pdf", true)} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#41516b] bg-[#1d2432] px-3 py-2 text-xs font-semibold text-[#d8e5f8] disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Print preview</button>
+              <button type="button" aria-label="Izvezi CSV za trenutni ekran" onClick={exportVisibleCsv} disabled={rows.length === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#345269] bg-[#152534] px-3 py-2 text-xs font-semibold text-[#9fe0ff] disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV ekran</button>
+              <button type="button" aria-label="Izvezi CSV filtrirano" onClick={() => void runServerExport("csv")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#27485e] bg-[#11202d] px-3 py-2 text-xs font-semibold text-[#b7e7ff] disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV filtrirano</button>
+              <button type="button" aria-label="Izvezi Excel filtrirano" onClick={() => void runServerExport("xlsx")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#36543f] bg-[#17261d] px-3 py-2 text-xs font-semibold text-[#aef3bf] disabled:cursor-not-allowed disabled:opacity-60"><FileSpreadsheet size={14} />Excel filtrirano</button>
+              <button type="button" aria-label="Izvezi PDF filtrirano" onClick={() => void runServerExport("pdf")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#5f445e] bg-[#261827] px-3 py-2 text-xs font-semibold text-[#ffc8fb] disabled:cursor-not-allowed disabled:opacity-60"><FileText size={14} />PDF filtrirano</button>
+              <button type="button" aria-label="Osvezi stranicu bilansa stanja" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-xl border border-[#3b4558] bg-[#1f2532] px-3 py-2 text-xs font-semibold text-[#dbe6fb]"><RefreshCw size={14} />Osvezi</button>
             </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))]">
             <label className="flex items-center gap-3 rounded-2xl border border-[#283042] bg-[#10141c] px-4 py-3">
               <Search size={16} className="text-[#7ec6ff]" />
-              <input value={searchInput} onChange={(event) => { setSearchInput(event.target.value); setPageNumber(1); }} placeholder="Pretraga po PLU ili nazivu artikla" className="w-full bg-transparent text-sm text-white outline-none placeholder:text-[#73809a]" />
+              <input role="searchbox" aria-label="Pretraga artikala" value={searchInput} onChange={(event) => { setSearchInput(event.target.value); setPageNumber(1); }} placeholder="Pretraga po PLU ili nazivu artikla" className="w-full bg-transparent text-sm text-white outline-none placeholder:text-[#73809a]" />
             </label>
             <label className="rounded-2xl border border-[#283042] bg-[#10141c] px-4 py-3 text-sm text-[#dbe6fb]">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-[#7f8fa9]">Prodavnica</span>
-              <select value={selectedStoreId ?? ""} onChange={(event) => { setSelectedStoreId(event.target.value ? Number(event.target.value) : null); setSelectedSupplierId(null); setPageNumber(1); }} className="w-full bg-transparent outline-none">
+              <select aria-label="Filter po prodavnici" value={selectedStoreId ?? ""} onChange={(event) => { setSelectedStoreId(event.target.value ? Number(event.target.value) : null); setSelectedSupplierId(null); setPageNumber(1); }} className="w-full bg-transparent outline-none">
                 <option value="">Sve prodavnice</option>
                 {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
               </select>
             </label>
             <label className="rounded-2xl border border-[#283042] bg-[#10141c] px-4 py-3 text-sm text-[#dbe6fb]">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-[#7f8fa9]">Dobavljac</span>
-              <select value={selectedSupplierId ?? ""} onChange={(event) => { setSelectedSupplierId(event.target.value ? Number(event.target.value) : null); setPageNumber(1); }} className="w-full bg-transparent outline-none" disabled={filtersLoading}>
+              <select aria-label="Filter po dobavljacu" value={selectedSupplierId ?? ""} onChange={(event) => { setSelectedSupplierId(event.target.value ? Number(event.target.value) : null); setPageNumber(1); }} className="w-full bg-transparent outline-none" disabled={filtersLoading}>
                 <option value="">Svi dobavljaci</option>
                 {suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierName}</option>)}
               </select>
             </label>
             <label className="rounded-2xl border border-[#283042] bg-[#10141c] px-4 py-3 text-sm text-[#dbe6fb]">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-[#7f8fa9]">Sortiranje</span>
-              <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPageNumber(1); }} className="w-full bg-transparent outline-none">
+              <select aria-label="Sortiranje tabele artikala" value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPageNumber(1); }} className="w-full bg-transparent outline-none">
                 <option value="kolicina">Kolicina opadajuce</option>
                 <option value="naziv">Naziv A-Z</option>
                 <option value="vrednost">Vrednost opadajuce</option>
@@ -599,7 +601,7 @@ export default function InventoryPage() {
             </label>
             <label className="rounded-2xl border border-[#283042] bg-[#10141c] px-4 py-3 text-sm text-[#dbe6fb]">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-[#7f8fa9]">Velicina strane</span>
-              <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPageNumber(1); }} className="w-full bg-transparent outline-none">
+              <select aria-label="Velicina strane tabele artikala" value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPageNumber(1); }} className="w-full bg-transparent outline-none">
                 {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} redova</option>)}
               </select>
             </label>
@@ -626,6 +628,7 @@ export default function InventoryPage() {
       <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} onCompareStores={compareStoresFromRebalance} />
       <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} />
       <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} detailTab={detailTab} detailSizeCurve={detailSizeCurve} detailSizeCurveLoading={detailSizeCurveLoading} onRetry={retryDetailFetch} onTabChange={setDetailTab} onClose={() => setDetailRow(null)} />
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

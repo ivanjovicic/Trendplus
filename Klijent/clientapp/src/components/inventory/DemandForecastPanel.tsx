@@ -88,7 +88,7 @@ export function DemandForecastPanel({
                         <div className="h-full rounded-full bg-[linear-gradient(90deg,#1f6c49_0%,#ffd590_55%,#7d2940_100%)]" style={{ width: `${Math.max(0, Math.min(100, item.probabilityOfOOSIn7d * 100))}%` }} />
                       </div>
                       <div className="mt-1 text-xs text-[#7f8fa9]">7d: {item.forecast7d.toFixed(1)}</div>
-                      <button type="button" onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border border-[#36543f] bg-[#17261d] px-2.5 py-1 text-[11px] font-semibold text-[#aef3bf] transition hover:border-[#4e7b5b]">
+                      <button type="button" aria-label={`Predlozi dopunu za SKU ${item.skuId} velicinu ${item.sizeCode}`} onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border border-[#36543f] bg-[#17261d] px-2.5 py-1 text-[11px] font-semibold text-[#aef3bf] transition hover:border-[#4e7b5b]">
                         Predlozi dopunu
                       </button>
                     </div>

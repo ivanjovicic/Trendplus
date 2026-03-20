@@ -40,6 +40,7 @@ export function InventoryAlertsFeed({
             <button
               key={severity || "all"}
               type="button"
+              aria-label={severity === "" ? "Prikazi sve inventory alertove" : `Filtriraj alertove po nivou ${severity}`}
               onClick={() => onSeverityFilterChange(severity)}
               className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${alertSeverityFilter === severity ? "border-[#44d0ff] bg-[#102231] text-[#44d0ff]" : "border-[#33405a] bg-[#182131] text-[#dbe6fb]"}`}
             >
@@ -74,10 +75,10 @@ export function InventoryAlertsFeed({
               <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#7f8fa9]">
                 <span>Tip: {alert.alertType}</span>
                 {alert.sizeCode ? <span>Vel: {alert.sizeCode}</span> : null}
-                <button type="button" onClick={(event) => { event.stopPropagation(); onOpenDetail(alert.skuId, alert.storeId, alert.title); }} className="text-[#dbe6fb] transition hover:text-white">
+                <button type="button" aria-label={`Otvori detalj artikla za alert ${alert.title}`} onClick={(event) => { event.stopPropagation(); onOpenDetail(alert.skuId, alert.storeId, alert.title); }} className="text-[#dbe6fb] transition hover:text-white">
                   Detalj artikla -&gt;
                 </button>
-                <button type="button" onClick={(event) => { event.stopPropagation(); onOpenSizeCurve(alert.skuId); }} className="text-[#44d0ff] transition hover:text-[#6de0ff]">
+                <button type="button" aria-label={`Otvori size curve za SKU ${alert.skuId}`} onClick={(event) => { event.stopPropagation(); onOpenSizeCurve(alert.skuId); }} className="text-[#44d0ff] transition hover:text-[#6de0ff]">
                   Size curve -&gt;
                 </button>
               </div>

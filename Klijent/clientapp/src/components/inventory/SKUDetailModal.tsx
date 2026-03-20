@@ -34,8 +34,8 @@ export function SKUDetailModal({
       {detailRow ? (
         <div className="space-y-5 text-[#0f172a]">
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => onTabChange("overview")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "overview" ? "border-[#44d0ff] bg-[#102231] text-[#44d0ff]" : "border-[#cbd5e1] bg-white text-[#475569]"}`}>Pregled</button>
-            <button type="button" onClick={() => onTabChange("sizeCurve")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "sizeCurve" ? "border-[#44d0ff] bg-[#102231] text-[#44d0ff]" : "border-[#cbd5e1] bg-white text-[#475569]"}`}>Size Curve</button>
+            <button type="button" aria-label="Prikazi pregled artikla" onClick={() => onTabChange("overview")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "overview" ? "border-[#44d0ff] bg-[#102231] text-[#44d0ff]" : "border-[#cbd5e1] bg-white text-[#475569]"}`}>Pregled</button>
+            <button type="button" aria-label="Prikazi size curve artikla" onClick={() => onTabChange("sizeCurve")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "sizeCurve" ? "border-[#44d0ff] bg-[#102231] text-[#44d0ff]" : "border-[#cbd5e1] bg-white text-[#475569]"}`}>Size Curve</button>
           </div>
 
           {detailTab === "sizeCurve" ? (
@@ -64,7 +64,7 @@ export function SKUDetailModal({
           </div>
 
           {detailLoading ? <div className="rounded-2xl border border-[#dbe4f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#475569]">Ucitavam istoriju kretanja i dodatne detalje artikla...</div> : null}
-          {detailError ? <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f2] px-4 py-3 text-sm text-[#9f1239]"><div>{detailError}</div><button type="button" onClick={onRetry} className="mt-3 rounded-lg border border-[#9f1239] bg-white px-3 py-1.5 text-xs font-semibold text-[#9f1239]">Pokusaj ponovo</button></div> : null}
+          {detailError ? <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f2] px-4 py-3 text-sm text-[#9f1239]"><div>{detailError}</div><button type="button" aria-label="Pokusaj ponovo ucitavanje detalja artikla" onClick={onRetry} className="mt-3 rounded-lg border border-[#9f1239] bg-white px-3 py-1.5 text-xs font-semibold text-[#9f1239]">Pokusaj ponovo</button></div> : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             {[
