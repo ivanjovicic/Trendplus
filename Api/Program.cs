@@ -15,6 +15,7 @@ using Infrastructure.Middleware;
 using Infrastructure.Repository;
 using Infrastructure.Resilience;
 using Infrastructure.Services;
+using Infrastructure.Services.Documents;
 using Infrastructure.Services.Caching;
 using Infrastructure.Seed;
 using MediatR;
@@ -37,6 +38,8 @@ using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
 using Api.Config;
 using System.Threading.RateLimiting;
+using Application.Documents.Interfaces;
+using Infrastructure.Configuration;
 
 try
 {
@@ -91,6 +94,13 @@ try
         builder.Configuration.GetSection(Infrastructure.Configuration.OpenTrainingModelTrainingOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.TrendIngestionOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.TrendIngestionOptions.Section));
+    builder.Services.Configure<DocumentExportOptions>(builder.Configuration.GetSection(DocumentExportOptions.Section));
+    var documentOptions = builder.Configuration.GetSection(DocumentExportOptions.Section).Get<DocumentExportOptions>() ?? new DocumentExportOptions();
+    var resolvedDocumentSigningKey = documentOptions.ResolveSigningKey();
+    if (builder.Environment.IsProduction() && string.IsNullOrWhiteSpace(resolvedDocumentSigningKey))
+    {
+        throw new InvalidOperationException("Documents signing key is required in production. Configure Documents:SigningKey or DOCUMENT_SIGNING_KEY.");
+    }
 
     var dbCommandTimeoutSeconds =
         builder.Configuration.GetValue<int?>("Database:CommandTimeoutSeconds")
@@ -137,6 +147,7 @@ try
 
     // Memory Cache - required by GetArtikliQueryHandler and other caching services
     builder.Services.AddMemoryCache();
+    builder.Services.AddHttpContextAccessor();
 
     // MediatR Pipeline Behaviors (order matters!)
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
@@ -146,7 +157,21 @@ try
     // Services
     builder.Services.AddScoped<IErrorStore, DbErrorStore>();
     builder.Services.AddScoped<IProdajaRepository, ProdajaRepository>();
-    builder.Services.AddScoped<IOutboxService, OutboxService>();
+builder.Services.AddScoped<IOutboxService, OutboxService>();
+builder.Services.AddScoped<IDnevnikPromenaReadService, DnevnikPromenaReadService>();
+builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadService>();
+builder.Services.AddScoped<IDocumentService, DocumentService>();
+    builder.Services.AddScoped<IDocumentQueueStore, DocumentQueueStore>();
+    builder.Services.AddScoped<IDocumentAuditService, DocumentAuditService>();
+    builder.Services.AddScoped<IDocumentAccessControlService, DocumentAccessControlService>();
+    builder.Services.AddScoped<IDocumentTemplateRenderer, DocumentTemplateRenderer>();
+    builder.Services.AddScoped<IDocumentStorage, LocalDocumentStorage>();
+    builder.Services.AddScoped<IDocumentRenderer, CsvDocumentRenderer>();
+    builder.Services.AddScoped<IDocumentRenderer, XlsxDocumentRenderer>();
+    builder.Services.AddScoped<IDocumentRenderer, PdfDocumentRenderer>();
+    builder.Services.AddScoped<IDocumentRenderer, HtmlDocumentRenderer>();
+    builder.Services.AddSingleton<IDocumentDownloadTokenService, DocumentDownloadTokenService>();
+    builder.Services.AddScoped<IDocumentUserContextAccessor, DocumentUserContextAccessor>();
     builder.Services.AddSingleton<WorkerHealthService>(); // Worker health monitoring
     builder.Services.AddSingleton(sp =>
         new WorkerRuntimeControlService(
@@ -221,6 +246,7 @@ try
     builder.Services.AddHostedService<Workers.NightlyAnalyticsRefreshWorker>();
     builder.Services.AddHostedService<Workers.OpenTrainingModelTrainingWorker>();
     builder.Services.AddHostedService<Workers.TrendIngestionWorker>();
+    builder.Services.AddHostedService<Workers.DocumentGenerationWorker>();
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
 
     builder.Services.AddControllers();
@@ -484,6 +510,9 @@ try
     app.MapAccessImportEndpoints();
     app.MapRedisEndpoints();
     app.MapOutboxEndpoints();
+    app.MapAnalyticsTableEndpoints();
+    app.MapDataQualityEndpoints();
+    app.MapDocumentEndpoints();
     
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");

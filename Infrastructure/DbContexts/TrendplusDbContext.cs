@@ -1,6 +1,7 @@
 ﻿using System.Data.Common;
 using Application.Artikli.Common.Interfaces;
 using Domain.Model;
+using Domain.Model.Documents;
 using Domain.Model.Prodaja;
 using Domain.Model.Povracaj;
 using Microsoft.EntityFrameworkCore;
@@ -131,6 +132,59 @@ namespace Infrastructure.DbContexts
 
                 eb.HasIndex(e => e.IsProcessed);
                 eb.HasIndex(e => e.CreatedAt);
+            });
+
+            modelBuilder.Entity<DocumentRecord>(eb =>
+            {
+                eb.ToTable("Documents");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.TemplateName).IsRequired().HasMaxLength(200);
+                eb.Property(e => e.DocumentType).IsRequired().HasMaxLength(100);
+                eb.Property(e => e.TableKey).IsRequired().HasMaxLength(200);
+                eb.Property(e => e.TableTitle).IsRequired().HasMaxLength(300);
+                eb.Property(e => e.Format).IsRequired().HasMaxLength(32);
+                eb.Property(e => e.Orientation).IsRequired().HasMaxLength(32);
+                eb.Property(e => e.Status).IsRequired().HasMaxLength(32);
+                eb.Property(e => e.RequestedByUserId).IsRequired().HasMaxLength(200);
+                eb.Property(e => e.RequestedByUserName).IsRequired().HasMaxLength(200);
+                eb.Property(e => e.RequestedByRoles).HasMaxLength(1000);
+                eb.Property(e => e.Locale).HasMaxLength(16);
+                eb.Property(e => e.MimeType).HasMaxLength(150);
+                eb.Property(e => e.FileName).HasMaxLength(260);
+                eb.Property(e => e.StoragePath).HasMaxLength(500);
+                eb.Property(e => e.FileUrl).HasMaxLength(1000);
+                eb.Property(e => e.Sha256).HasMaxLength(128);
+                eb.Property(e => e.ErrorMessage).HasMaxLength(4000);
+                eb.HasIndex(e => e.Status);
+                eb.HasIndex(e => e.CreatedAtUtc);
+                eb.HasIndex(e => new { e.Status, e.NextAttemptAtUtc });
+                eb.HasIndex(e => e.BatchId);
+                eb.HasIndex(e => e.RequestedByUserId);
+            });
+
+            modelBuilder.Entity<DocumentTemplate>(eb =>
+            {
+                eb.ToTable("DocumentTemplates");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.Name).IsRequired().HasMaxLength(200);
+                eb.Property(e => e.Type).IsRequired().HasMaxLength(100);
+                eb.Property(e => e.Locale).IsRequired().HasMaxLength(16);
+                eb.Property(e => e.CreatedByUserId).HasMaxLength(200);
+                eb.HasIndex(e => new { e.Name, e.Version }).IsUnique();
+                eb.HasIndex(e => new { e.Type, e.IsActive });
+            });
+
+            modelBuilder.Entity<DocumentAudit>(eb =>
+            {
+                eb.ToTable("DocumentAudits");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.Action).IsRequired().HasMaxLength(64);
+                eb.Property(e => e.UserId).IsRequired().HasMaxLength(200);
+                eb.Property(e => e.UserName).IsRequired().HasMaxLength(200);
+                eb.Property(e => e.Roles).HasMaxLength(1000);
+                eb.Property(e => e.IpAddress).HasMaxLength(128);
+                eb.Property(e => e.UserAgent).HasMaxLength(1024);
+                eb.HasIndex(e => new { e.DocumentId, e.CreatedAtUtc });
             });
 
             // Prodaja mapping
@@ -269,6 +323,9 @@ namespace Infrastructure.DbContexts
         public DbSet<DnevnikPromena> DnevnikPromena { get; set; } = null!;
         public DbSet<Sezona> Sezone { get; set; } = null!;
         public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
+        public DbSet<DocumentRecord> Documents { get; set; } = null!;
+        public DbSet<DocumentTemplate> DocumentTemplates { get; set; } = null!;
+        public DbSet<DocumentAudit> DocumentAudits { get; set; } = null!;
         public DbSet<ProdajaZaglavlje> ProdajaZaglavlja { get; set; } = null!;
         public DbSet<ProdajaStavka> ProdajaStavke { get; set; } = null!;
         public DbSet<PovracajZaglavlje> PovracajZaglavlja { get; set; } = null!;
@@ -290,6 +347,19 @@ namespace Infrastructure.DbContexts
                 if (entry.State is EntityState.Added or EntityState.Modified)
                 {
                     entry.Entity.UpdatedAt = now;
+                }
+            }
+
+            foreach (var entry in ChangeTracker.Entries<DocumentRecord>())
+            {
+                if (entry.State == EntityState.Added && entry.Entity.CreatedAtUtc == default)
+                {
+                    entry.Entity.CreatedAtUtc = now;
+                }
+
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                {
+                    entry.Entity.UpdatedAtUtc = now;
                 }
             }
 

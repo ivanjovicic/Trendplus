@@ -203,3 +203,28 @@ export interface AnalyticsDashboardBootstrap {
   validationLostSales: DashboardValidationEndpoint | null;
   errors: string[];
 }
+
+export type DataQualityIssueType = "missingSupplier" | "missingShoeType" | "invalidName";
+export type DataQualitySortBy = "sales30d" | "lastUpdated" | "stock" | "name";
+export type DataQualitySortDir = "asc" | "desc";
+
+export interface DataQualityIssueItem {
+  sku?: string | null;
+  productId: string;
+  name?: string | null;
+  supplierId?: string | null;
+  supplierName?: string | null;
+  shoeTypeId?: string | null;
+  shoeTypeName?: string | null;
+  issueType: DataQualityIssueType;
+  sales30d: number;
+  stock: number;
+  lastUpdated: string;
+}
+
+export interface DataQualityIssueListResult {
+  page: number;
+  pageSize: number;
+  total: number;
+  items: DataQualityIssueItem[];
+}

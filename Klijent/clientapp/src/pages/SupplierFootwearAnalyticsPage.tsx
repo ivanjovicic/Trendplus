@@ -1,5 +1,6 @@
 ﻿
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
     Bar,
     BarChart,
@@ -784,7 +785,10 @@ export default function SupplierFootwearAnalyticsPage() {
                 <div className="supplier-data-warning">
                     Nepoznat dobavljac je detektovan u {fmtNum(unknownSupplierSummary.unknownRows)} redova
                     ({fmtRsd(unknownSupplierSummary.postRevenue)} post prometa, {fmtPct(unknownSupplierSummary.postSharePct)} udela).
-                    Najčešći razlog je nedostajući `IDDobavljac` ili nepostojeći zapis u tabeli `Dobavljaci`.
+                    Najčešći razlog je nedostajući `IDDobavljac` ili nepostojeći zapis u tabeli `Dobavljaci`.{" "}
+                    <Link to="/analytics/data-quality?type=missingSupplier" className="text-[#fcd34d] underline underline-offset-2">
+                        Otvori data quality
+                    </Link>
                 </div>
             ) : null}
 

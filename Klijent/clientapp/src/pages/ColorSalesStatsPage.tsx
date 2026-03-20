@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -15,6 +16,9 @@ import {
   type ColorSalesStatsResponse,
   type SezonaOption,
 } from "../services/colorSalesStatsApi";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./ColorSalesStatsPage.css";
 
 type SortDir = "asc" | "desc";
@@ -41,6 +45,24 @@ const columns: Array<{ field: SortField; label: string; align?: "left" | "right"
   { field: "promenaPrometa", label: "Promena prometa %", align: "right" },
   { field: "marginPct", label: "Marza %", align: "right" },
   { field: "brojArtikalaSaNivelacijom", label: "Artikli sa/ukupno", align: "center" },
+];
+
+const analyticsColumns: AnalyticsTableColumn<ColorSalesStat>[] = [
+  { key: "boja", header: "Boja", dataType: "text" },
+  { key: "preNivelacijePromet", header: "Pre promet", dataType: "currency" },
+  { key: "preNivelacijeKolicina", header: "Pre kom", dataType: "number" },
+  { key: "posleNivelacijePromet", header: "Posle promet", dataType: "currency" },
+  { key: "posleNivelacijeKolicina", header: "Posle kom", dataType: "number" },
+  { key: "ukupanPromet", header: "Ukupan promet", dataType: "currency" },
+  { key: "ukupnaKolicina", header: "Ukupna kolicina", dataType: "number" },
+  { key: "promenaPrometa", header: "Promena prometa %", dataType: "percent" },
+  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  {
+    key: "artikliSaNivelacijom",
+    header: "Artikli sa/ukupno",
+    dataType: "text",
+    getValue: (row) => `${row.brojArtikalaSaNivelacijom} / ${row.brojArtikalaUkupno}`,
+  },
 ];
 
 function toDateInput(date: Date): string {
@@ -112,6 +134,8 @@ function SortButton(props: {
 }
 
 export default function ColorSalesStatsPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [data, setData] = useState<ColorSalesStatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +214,53 @@ export default function ColorSalesStatsPage() {
         })),
     [data?.colors]
   );
+
+  const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => {
+    if (sezonaId != null) {
+      return [{ key: "sezonaId", label: "Sezona", value: sezonaId }];
+    }
+
+    return [
+      { key: "fromDate", label: "Od", value: fromDate },
+      { key: "toDate", label: "Do", value: toDate },
+    ];
+  }, [fromDate, sezonaId, toDate]);
+
+  const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
+      { key: "brojBoja", label: "Boja", value: data?.totals.brojBoja ?? 0 },
+    ],
+    [data?.generatedAt, data?.totals.brojBoja]
+  );
+
+  const openColorDetail = (color: ColorSalesStat) => {
+    const recordId = encodeURIComponent(color.boja);
+    const params = new URLSearchParams();
+
+    if (sezonaId != null) {
+      params.set("sezonaId", String(sezonaId));
+    } else {
+      params.set("fromDate", `${fromDate}T00:00:00Z`);
+      params.set("toDate", `${toDate}T23:59:59Z`);
+    }
+
+    saveAnalyticsDetailSnapshot(
+      buildAnalyticsDetailSnapshot({
+        table: "color-sales-stats",
+        recordId,
+        title: color.boja,
+        subtitle: "Prodaja po boji",
+        columns: analyticsColumns,
+        row: color,
+        metadata: toolbarFilters,
+      })
+    );
+
+    navigate(`/analitika/color-sales-stats/${recordId}?${params.toString()}`, {
+      state: { backgroundLocation: location },
+    });
+  };
 
   const handleSort = (field: SortField) => {
     const textField = field === "boja";
@@ -371,10 +442,21 @@ export default function ColorSalesStatsPage() {
 
           <section className="color-sales-card">
             <div className="color-sales-table-head">
-              <h2 className="color-sales-section-title">Tabela po boji artikla</h2>
-              <span className="color-sales-table-meta">
-                Period: {toDateOnly(data.fromDate) || fromDate} - {toDateOnly(data.toDate) || toDate}
-              </span>
+              <div>
+                <h2 className="color-sales-section-title">Tabela po boji artikla</h2>
+                <span className="color-sales-table-meta">
+                  Period: {toDateOnly(data.fromDate) || fromDate} - {toDateOnly(data.toDate) || toDate}
+                </span>
+              </div>
+              <AnalyticsTableToolbar
+                tableKey="color-sales-stats"
+                tableTitle="Statistika prodaje po boji artikla"
+                columns={analyticsColumns}
+                rows={sortedColors}
+                filters={toolbarFilters}
+                metadata={toolbarMetadata}
+                defaultOrientation="landscape"
+              />
             </div>
 
             <div className="color-sales-table-wrap">
@@ -404,7 +486,19 @@ export default function ColorSalesStatsPage() {
                     </tr>
                   ) : (
                     sortedColors.map((color) => (
-                      <tr key={color.boja}>
+                      <tr
+                        key={color.boja}
+                        className="cursor-pointer"
+                        onClick={() => openColorDetail(color)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openColorDetail(color);
+                          }
+                        }}
+                        tabIndex={0}
+                        aria-label={`Otvori detalj boje ${color.boja}`}
+                      >
                         <td>{color.boja}</td>
                         <td className="align-right">{fmtRsd(color.preNivelacijePromet)}</td>
                         <td className="align-right">{fmtQty(color.preNivelacijeKolicina)}</td>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -15,6 +16,10 @@ import {
   type ShoeTypeSalesStat,
   type ShoeTypeSalesStatsResponse,
 } from "../services/shoeTypeSalesStatsApi";
+import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./ShoeTypeSalesStatsPage.css";
 
 type SortDir = "asc" | "desc";
@@ -41,6 +46,24 @@ const columns: Array<{ field: SortField; label: string; align?: "left" | "right"
   { field: "promenaPrometa", label: "Promena prometa %", align: "right" },
   { field: "marginPct", label: "Marza %", align: "right" },
   { field: "brojArtikalaSaNivelacijom", label: "Artikli sa/ukupno", align: "center" },
+];
+
+const analyticsColumns: AnalyticsTableColumn<ShoeTypeSalesStat>[] = [
+  { key: "tipObuceNaziv", header: "Tip obuce", dataType: "text" },
+  { key: "preNivelacijePromet", header: "Pre promet", dataType: "currency" },
+  { key: "preNivelacijeKolicina", header: "Pre kom", dataType: "number" },
+  { key: "posleNivelacijePromet", header: "Posle promet", dataType: "currency" },
+  { key: "posleNivelacijeKolicina", header: "Posle kom", dataType: "number" },
+  { key: "ukupanPromet", header: "Ukupan promet", dataType: "currency" },
+  { key: "ukupnaKolicina", header: "Ukupna kolicina", dataType: "number" },
+  { key: "promenaPrometa", header: "Promena prometa %", dataType: "percent" },
+  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  {
+    key: "artikliSaNivelacijom",
+    header: "Artikli sa/ukupno",
+    dataType: "text",
+    getValue: (row) => `${row.brojArtikalaSaNivelacijom} / ${row.brojArtikalaUkupno}`,
+  },
 ];
 
 function toDateInput(date: Date): string {
@@ -112,6 +135,8 @@ function SortButton(props: {
 }
 
 export default function ShoeTypeSalesStatsPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [data, setData] = useState<ShoeTypeSalesStatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +215,56 @@ export default function ShoeTypeSalesStatsPage() {
         })),
     [data?.shoeTypes]
   );
+
+  const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => {
+    if (sezonaId != null) {
+      return [{ key: "sezonaId", label: "Sezona", value: sezonaId }];
+    }
+
+    return [
+      { key: "fromDate", label: "Od", value: fromDate },
+      { key: "toDate", label: "Do", value: toDate },
+    ];
+  }, [fromDate, sezonaId, toDate]);
+
+  const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
+      { key: "brojTipova", label: "Tipova obuce", value: data?.totals.brojTipovaObuce ?? 0 },
+    ],
+    [data?.generatedAt, data?.totals.brojTipovaObuce]
+  );
+
+  const openShoeTypeDetail = (shoeType: ShoeTypeSalesStat) => {
+    console.info("Opened shoe type analytics detail", { id: shoeType.tipObuceId, shoeType: shoeType.tipObuceNaziv });
+    const recordId = shoeType.tipObuceId != null
+      ? String(shoeType.tipObuceId)
+      : `unknown-${encodeURIComponent(shoeType.tipObuceNaziv)}`;
+    const params = new URLSearchParams();
+
+    if (sezonaId != null) {
+      params.set("sezonaId", String(sezonaId));
+    } else {
+      params.set("fromDate", `${fromDate}T00:00:00Z`);
+      params.set("toDate", `${toDate}T23:59:59Z`);
+    }
+
+    saveAnalyticsDetailSnapshot(
+      buildAnalyticsDetailSnapshot({
+        table: "shoe-type-sales-stats",
+        recordId,
+        title: shoeType.tipObuceNaziv,
+        subtitle: "Prodaja po tipu obuce",
+        columns: analyticsColumns,
+        row: shoeType,
+        metadata: toolbarFilters,
+      })
+    );
+
+    navigate(`/analitika/shoe-type-sales-stats/${recordId}?${params.toString()}`, {
+      state: { backgroundLocation: location },
+    });
+  };
 
   const handleSort = (field: SortField) => {
     const textField = field === "tipObuceNaziv";
@@ -372,10 +447,21 @@ export default function ShoeTypeSalesStatsPage() {
 
           <section className="shoetype-sales-card">
             <div className="shoetype-sales-table-head">
-              <h2 className="shoetype-sales-section-title">Tabela po tipu obuce</h2>
-              <span className="shoetype-sales-table-meta">
-                Period: {toDateOnly(data.fromDate) || fromDate} - {toDateOnly(data.toDate) || toDate}
-              </span>
+              <div>
+                <h2 className="shoetype-sales-section-title">Tabela po tipu obuce</h2>
+                <span className="shoetype-sales-table-meta">
+                  Period: {toDateOnly(data.fromDate) || fromDate} - {toDateOnly(data.toDate) || toDate}
+                </span>
+              </div>
+              <AnalyticsTableToolbar
+                tableKey="shoe-type-sales-stats"
+                tableTitle="Statistika prodaje po tipu obuce"
+                columns={analyticsColumns}
+                rows={sortedShoeTypes}
+                filters={toolbarFilters}
+                metadata={toolbarMetadata}
+                defaultOrientation="landscape"
+              />
             </div>
 
             <div className="shoetype-sales-table-wrap">
@@ -405,8 +491,31 @@ export default function ShoeTypeSalesStatsPage() {
                     </tr>
                   ) : (
                     sortedShoeTypes.map((shoeType) => (
-                      <tr key={shoeType.tipObuceId ?? `unknown-${shoeType.tipObuceNaziv}`}>
-                        <td>{shoeType.tipObuceNaziv}</td>
+                      <tr
+                        key={shoeType.tipObuceId ?? `unknown-${shoeType.tipObuceNaziv}`}
+                        className="cursor-pointer"
+                        onClick={() => openShoeTypeDetail(shoeType)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openShoeTypeDetail(shoeType);
+                          }
+                        }}
+                        tabIndex={0}
+                        aria-label={`Otvori detalj tipa obuce ${shoeType.tipObuceNaziv}`}
+                      >
+                        <td>
+                          <AnalyticsUnknownLink
+                            value={shoeType.tipObuceNaziv}
+                            issueType="missingShoeType"
+                            context={{
+                              originTable: "shoe-type-sales-stats",
+                              fromDate,
+                              toDate,
+                              sezonaId,
+                            }}
+                          />
+                        </td>
                         <td className="align-right">{fmtRsd(shoeType.preNivelacijePromet)}</td>
                         <td className="align-right">{fmtQty(shoeType.preNivelacijeKolicina)}</td>
                         <td className="align-right">{fmtRsd(shoeType.posleNivelacijePromet)}</td>

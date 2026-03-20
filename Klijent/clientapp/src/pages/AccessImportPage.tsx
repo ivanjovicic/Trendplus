@@ -6,12 +6,16 @@ import {
     previewAccessImport,
     runAccessImport,
     type AccessImportBatchDto,
+    type AccessImportCoverageMetric,
     type AccessImportPreviewResponse,
     type AccessImportRunResponse,
     type AccessImportTablePreview,
     type DeleteBatchResult,
 } from "../services/accessImportApi";
+import { clearArtikliClientCaches } from "../services/artikliApi";
 import { InventoryKpiRow, InventoryPageShell } from "../components/inventory/InventoryPageShell";
+import { clearProdajaLookupCache } from "../services/prodajaApi";
+import { setDataScope } from "../utils/dataScope";
 import "./AccessImportPage.css";
 
 type Tab = "source" | "preview" | "lastImport" | "batches";
@@ -37,6 +41,14 @@ function ResultLine({ entity, inserted, updated }: { entity: string; inserted: n
             </span>
         </div>
     );
+}
+
+function describeTransformation(metric: AccessImportCoverageMetric): string {
+    if (metric.transformationType === "expanded")
+        return metric.expandedTargetRows > 0 ? `Prosirenje (+${metric.expandedTargetRows.toLocaleString("sr-RS")})` : "Prosirenje";
+    if (metric.transformationType === "grouped")
+        return metric.mergedRows > 0 ? `Grupisanje (-${metric.mergedRows.toLocaleString("sr-RS")})` : "Grupisanje";
+    return "1:1";
 }
 
 export default function AccessImportPage() {
@@ -107,6 +119,10 @@ export default function AccessImportPage() {
         setLoadingImport(true);
         try {
             const data = await runAccessImport(file, { useRootFile, includeAnalytics, overwriteExisting });
+            clearArtikliClientCaches();
+            clearProdajaLookupCache();
+            setDataScope("all");
+            window.dispatchEvent(new Event("trendplus:data-scope-changed"));
             setRunResult(data);
             setActiveTab("lastImport");
             await refreshBatches();
@@ -154,17 +170,25 @@ export default function AccessImportPage() {
 
         const source = runResult.sourceRowsByTable;
         const imported = runResult.importedRowsByTable ?? {};
+        const coverage = runResult.coverageByTable ?? {};
         return Object.keys(source)
             .sort((a, b) => a.localeCompare(b, "sr-Latn"))
             .map((key) => {
+                const metric = coverage[key];
                 const sourceRows = Number(source[key] ?? 0);
-                const importedRows = Number(imported[key] ?? 0);
-                const coverage = sourceRows <= 0 ? 100 : (importedRows / sourceRows) * 100;
+                const acceptedRows = Number(metric?.acceptedRows ?? imported[key] ?? 0);
+                const skippedRows = Number(metric?.skippedRows ?? Math.max(0, sourceRows - acceptedRows));
+                const targetWrites = Number(metric?.targetWrites ?? imported[key] ?? 0);
+                const coveragePercent = Number(metric?.coveragePercent ?? (sourceRows <= 0 ? 100 : (acceptedRows / sourceRows) * 100));
+                const transformation = metric ? describeTransformation(metric) : "1:1";
                 return {
                     key,
                     sourceRows,
-                    importedRows,
-                    coverage: Number.isFinite(coverage) ? coverage : 0,
+                    acceptedRows,
+                    skippedRows,
+                    targetWrites,
+                    transformation,
+                    coverage: Number.isFinite(coveragePercent) ? coveragePercent : 0,
                 };
             });
     }, [runResult]);
@@ -617,7 +641,10 @@ export default function AccessImportPage() {
                                                 <tr>
                                                     <th>Tabela kljuc</th>
                                                     <th className="align-right">Source rows</th>
-                                                    <th className="align-right">Imported/Updated</th>
+                                                    <th className="align-right">Accepted</th>
+                                                    <th className="align-right">Skipped</th>
+                                                    <th className="align-right">Target writes</th>
+                                                    <th>Transformacija</th>
                                                     <th className="align-right">Coverage</th>
                                                 </tr>
                                             </thead>
@@ -628,7 +655,10 @@ export default function AccessImportPage() {
                                                         <tr key={row.key}>
                                                             <td>{row.key}</td>
                                                             <td className="align-right">{row.sourceRows.toLocaleString("sr-RS")}</td>
-                                                            <td className="align-right">{row.importedRows.toLocaleString("sr-RS")}</td>
+                                                            <td className="align-right">{row.acceptedRows.toLocaleString("sr-RS")}</td>
+                                                            <td className="align-right">{row.skippedRows.toLocaleString("sr-RS")}</td>
+                                                            <td className="align-right">{row.targetWrites.toLocaleString("sr-RS")}</td>
+                                                            <td>{row.transformation}</td>
                                                             <td className="align-right" style={{ color: tone, fontWeight: 700 }}>
                                                                 {row.coverage.toFixed(1)}%
                                                             </td>

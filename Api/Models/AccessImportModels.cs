@@ -1,5 +1,17 @@
 namespace Api.Models
 {
+    public sealed class AccessImportCoverageMetric
+    {
+        public int SourceRows { get; set; }
+        public int AcceptedRows { get; set; }
+        public int SkippedRows { get; set; }
+        public int TargetWrites { get; set; }
+        public int MergedRows { get; set; }
+        public int ExpandedTargetRows { get; set; }
+        public double CoveragePercent { get; set; }
+        public string TransformationType { get; set; } = "direct";
+    }
+
     public sealed class AccessImportFieldMappingPreview
     {
         public string TargetField { get; set; } = string.Empty;
@@ -86,6 +98,7 @@ namespace Api.Models
         public int StoresUpdated { get; set; }
         public Dictionary<string, int> SourceRowsByTable { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> ImportedRowsByTable { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, AccessImportCoverageMetric> CoverageByTable { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
         public List<string> Warnings { get; set; } = new();
     }

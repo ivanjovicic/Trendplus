@@ -2,6 +2,10 @@ import type {
   AnalyticsDashboardBootstrap,
   CategoryData,
   CategoryTrendPoint,
+  DataQualityIssueListResult,
+  DataQualityIssueType,
+  DataQualitySortBy,
+  DataQualitySortDir,
   DailySale,
   DashboardAdvancedSnapshot,
   DashboardValidationEndpoint,
@@ -478,5 +482,28 @@ export async function getValidationNegativeQty(
     useCached ? "/api/analytics/cached/validation/negative-qty" : "/api/analytics/validation/negative-qty",
     params,
     "Greska pri ucitavanju negative-qty validacije"
+  );
+}
+
+export async function getDataQualityIssues(paramsInput: {
+  type: DataQualityIssueType;
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  sortBy?: DataQualitySortBy;
+  sortDir?: DataQualitySortDir;
+}): Promise<DataQualityIssueListResult> {
+  const params = new URLSearchParams();
+  params.set("type", paramsInput.type);
+  params.set("page", String(paramsInput.page ?? 1));
+  params.set("pageSize", String(paramsInput.pageSize ?? 25));
+  if (paramsInput.q?.trim()) params.set("q", paramsInput.q.trim());
+  if (paramsInput.sortBy) params.set("sortBy", paramsInput.sortBy);
+  if (paramsInput.sortDir) params.set("sortDir", paramsInput.sortDir);
+
+  return fetchJson(
+    "/api/analytics/data-quality/list",
+    params,
+    "Greska pri ucitavanju data quality problema"
   );
 }

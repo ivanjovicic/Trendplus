@@ -23,3 +23,20 @@ export interface DnevnikPromenaResponse {
   sortBy: string;
   sortDir: string;
 }
+
+export interface DnevnikPromenaDetail {
+  id: number;
+  tipPromene: string;
+  datum: string;
+  artikalId?: number | null;
+  nazivArtikla?: string | null;
+  kolicina?: number | null;
+  staraCena?: number | null;
+  novaCena?: number | null;
+  iznos: number;
+  brojRacuna?: string | null;
+  korisnikIme?: string | null;
+  komentar?: string | null;
+  dataOrigin?: string | null;
+  sourceId: number;
+}

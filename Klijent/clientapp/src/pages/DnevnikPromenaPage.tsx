@@ -1,28 +1,115 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ClipboardList, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { ClipboardList, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, ExternalLink } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import DnevnikPromenaDetail from "../components/DnevnikPromenaDetail";
+import Modal from "../components/Modal";
 import { getDnevnikPromena } from "../services/dnevnikPromenaApi";
 import type { DnevnikPromenaItem } from "../types/dnevnikPromena";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
 
+const TABLE_STATE_KEY = "dnevnik-promena:list-state:v1";
+
+type StoredTableState = {
+  pageNumber?: number;
+  pageSize?: number;
+  filterTipPromene?: string;
+  searchNaziv?: string;
+  searchBrojRacuna?: string;
+  filterFromDate?: string;
+  filterToDate?: string;
+  showFilters?: boolean;
+  sortBy?: "datum" | "tipPromene" | "iznos" | "naziv";
+  sortDir?: "asc" | "desc";
+};
+
+const analyticsColumns: AnalyticsTableColumn<DnevnikPromenaItem>[] = [
+  { key: "datum", header: "Datum", dataType: "datetime" },
+  { key: "tipPromene", header: "Tip", dataType: "text" },
+  { key: "artikalNaziv", header: "Artikal", dataType: "text" },
+  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
+  { key: "brojRacuna", header: "Racun", dataType: "text" },
+  { key: "iznos", header: "Iznos", dataType: "currency" },
+  { key: "staraProdajnaCena", header: "Stara cena", dataType: "currency" },
+  { key: "novaProdajnaCena", header: "Nova cena", dataType: "currency" },
+  { key: "komentar", header: "Komentar", dataType: "text" },
+  { key: "korisnikIme", header: "Korisnik", dataType: "text" },
+];
+
+function readStoredTableState(): StoredTableState {
+  try {
+    const raw = sessionStorage.getItem(TABLE_STATE_KEY);
+    if (!raw) return {};
+
+    const parsed = JSON.parse(raw) as StoredTableState;
+    return parsed ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function formatDate(dateStr: string) {
+  const date = new Date(dateStr);
+  return date.toLocaleString("sr-RS", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function DnevnikPromenaPage() {
+  const navigate = useNavigate();
+  const params = useParams<{ id?: string }>();
+  const initialState = React.useMemo(() => readStoredTableState(), []);
+
   const [promene, setPromene] = useState<DnevnikPromenaItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [tipoviPromena, setTipoviPromena] = useState<string[]>([]);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageNumber, setPageNumber] = useState(initialState.pageNumber ?? 1);
+  const [pageSize, setPageSize] = useState(initialState.pageSize ?? 50);
 
-  const [filterTipPromene, setFilterTipPromene] = useState<string | "">("");
-  const [searchNaziv, setSearchNaziv] = useState("");
-  const [searchBrojRacuna, setSearchBrojRacuna] = useState("");
-  const [filterFromDate, setFilterFromDate] = useState("");
-  const [filterToDate, setFilterToDate] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterTipPromene, setFilterTipPromene] = useState<string | "">(initialState.filterTipPromene ?? "");
+  const [searchNaziv, setSearchNaziv] = useState(initialState.searchNaziv ?? "");
+  const [searchBrojRacuna, setSearchBrojRacuna] = useState(initialState.searchBrojRacuna ?? "");
+  const [filterFromDate, setFilterFromDate] = useState(initialState.filterFromDate ?? "");
+  const [filterToDate, setFilterToDate] = useState(initialState.filterToDate ?? "");
+  const [showFilters, setShowFilters] = useState(initialState.showFilters ?? false);
 
-  const [sortBy, setSortBy] = useState<"datum" | "tipPromene" | "iznos" | "naziv">("datum");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<"datum" | "tipPromene" | "iznos" | "naziv">(initialState.sortBy ?? "datum");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(initialState.sortDir ?? "desc");
+
+  const detailId = useMemo(() => {
+    const parsed = Number(params.id);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [params.id]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        TABLE_STATE_KEY,
+        JSON.stringify({
+          pageNumber,
+          pageSize,
+          filterTipPromene,
+          searchNaziv,
+          searchBrojRacuna,
+          filterFromDate,
+          filterToDate,
+          showFilters,
+          sortBy,
+          sortDir,
+        } satisfies StoredTableState)
+      );
+    } catch {
+      // best-effort table state persistence
+    }
+  }, [pageNumber, pageSize, filterTipPromene, searchNaziv, searchBrojRacuna, filterFromDate, filterToDate, showFilters, sortBy, sortDir]);
 
   useEffect(() => {
     let aborted = false;
@@ -76,13 +163,13 @@ export default function DnevnikPromenaPage() {
       } catch (err: unknown) {
         if (aborted) return;
         console.error(err);
-        setError((err as Error)?.message ?? "Gre�ka pri ucitavanju dnevnika promena.");
+        setError((err as Error)?.message ?? "Greška pri učitavanju dnevnika promena.");
       } finally {
         if (!aborted) setLoading(false);
       }
     };
 
-    load();
+    void load();
 
     return () => {
       aborted = true;
@@ -101,7 +188,9 @@ export default function DnevnikPromenaPage() {
 
   const renderSortIndicator = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
     if (sortBy !== column) return <ArrowUpDown size={12} className="ml-1 inline opacity-40" />;
-    return sortDir === "asc" ? <ArrowUp size={12} className="ml-1 inline text-[#4F8EF7]" /> : <ArrowDown size={12} className="ml-1 inline text-[#4F8EF7]" />;
+    return sortDir === "asc"
+      ? <ArrowUp size={12} className="ml-1 inline text-[#4F8EF7]" />
+      : <ArrowDown size={12} className="ml-1 inline text-[#4F8EF7]" />;
   };
 
   const clearFilters = () => {
@@ -123,15 +212,27 @@ export default function DnevnikPromenaPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString("sr-RS", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => ([
+    { key: "tipPromene", label: "Tip promene", value: filterTipPromene || "" },
+    { key: "naziv", label: "Artikal", value: searchNaziv || "" },
+    { key: "brojRacuna", label: "Broj racuna", value: searchBrojRacuna || "" },
+    { key: "fromDate", label: "Datum od", value: filterFromDate || "" },
+    { key: "toDate", label: "Datum do", value: filterToDate || "" },
+  ]), [filterFromDate, filterTipPromene, filterToDate, searchBrojRacuna, searchNaziv]);
+
+  const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => ([
+    { key: "pageNumber", label: "Strana", value: pageNumber },
+    { key: "pageSize", label: "Po strani", value: pageSize },
+    { key: "totalCount", label: "Ukupno zapisa", value: totalCount },
+  ]), [pageNumber, pageSize, totalCount]);
+
+  const openDetail = (id: number) => {
+    console.info("Opened DnevnikPromena detail", { id });
+    navigate(`/dnevnik-promena/${id}`);
+  };
+
+  const closeDetail = () => {
+    navigate("/dnevnik-promena", { replace: true });
   };
 
   const getTipPromeneColor = (tip: string) => {
@@ -148,14 +249,25 @@ export default function DnevnikPromenaPage() {
     <InventoryPageShell
       icon={ClipboardList}
       title="Dnevnik promena"
-      subtitle="Audit pregled svih poslovnih promena po artiklima, racunima i korisnicima."
+      subtitle="Audit pregled svih poslovnih promena po artiklima, računima i korisnicima."
       actions={
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-3 py-2 text-xs font-semibold text-white"
-        >
-          {showFilters ? "Sakrij filtere" : `Filteri ${activeFiltersCount > 0 ? `(${activeFiltersCount})` : ""}`}
-        </button>
+        <>
+          <AnalyticsTableToolbar
+            tableKey="dnevnik-promena"
+            tableTitle="Dnevnik promena"
+            columns={analyticsColumns}
+            rows={promene}
+            filters={toolbarFilters}
+            metadata={toolbarMetadata}
+            defaultOrientation="landscape"
+          />
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-3 py-2 text-xs font-semibold text-white"
+          >
+            {showFilters ? "Sakrij filtere" : `Filteri ${activeFiltersCount > 0 ? `(${activeFiltersCount})` : ""}`}
+          </button>
+        </>
       }
     >
       <InventoryKpiRow
@@ -233,7 +345,7 @@ export default function DnevnikPromenaPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj racuna</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj računa</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
@@ -297,18 +409,31 @@ export default function DnevnikPromenaPage() {
                   <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("datum")}>Datum{renderSortIndicator("datum")}</th>
                   <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("tipPromene")}>Tip{renderSortIndicator("tipPromene")}</th>
                   <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("naziv")}>Artikal{renderSortIndicator("naziv")}</th>
-                  <th className="px-3 py-3 text-left">Dobavljac</th>
-                  <th className="px-3 py-3 text-left">Racun</th>
+                  <th className="px-3 py-3 text-left">Dobavljač</th>
+                  <th className="px-3 py-3 text-left">Račun</th>
                   <th className="cursor-pointer px-3 py-3 text-right" onClick={() => handleSort("iznos")}>Iznos{renderSortIndicator("iznos")}</th>
                   <th className="px-3 py-3 text-center">Stara</th>
                   <th className="px-3 py-3 text-center">Nova</th>
                   <th className="px-3 py-3 text-left">Komentar</th>
                   <th className="px-3 py-3 text-left">Korisnik</th>
+                  <th className="px-3 py-3 text-center">Detalji</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
                 {promene.map((item) => (
-                  <tr key={item.id} className="hover:bg-[#1f2330]">
+                  <tr
+                    key={item.id}
+                    className="cursor-pointer hover:bg-[#1f2330] focus-within:bg-[#1f2330]"
+                    onClick={() => openDetail(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openDetail(item.id);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-label={`Otvori detalje promene ${item.id}`}
+                  >
                     <td className="px-3 py-3 text-xs text-[#a4b3cd]">{formatDate(item.datum)}</td>
                     <td className="px-3 py-3">
                       <span className={`inline-block rounded-md px-2 py-1 text-xs font-semibold text-white ${getTipPromeneColor(item.tipPromene)}`}>
@@ -323,6 +448,19 @@ export default function DnevnikPromenaPage() {
                     <td className="px-3 py-3 text-center text-xs font-semibold text-emerald-300">{item.novaProdajnaCena != null ? `${item.novaProdajnaCena.toFixed(2)} RSD` : "-"}</td>
                     <td className="max-w-[220px] px-3 py-3 text-xs text-[#b1bfd7]">{item.komentar || "-"}</td>
                     <td className="px-3 py-3 text-xs text-[#b1bfd7]">{item.korisnikIme || "-"}</td>
+                    <td className="px-3 py-3 text-center">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-lg border border-[#3760b7] bg-[#2d4f95] px-2 py-1 text-xs font-semibold text-white"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDetail(item.id);
+                        }}
+                      >
+                        <ExternalLink size={12} />
+                        Detalji
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -330,6 +468,15 @@ export default function DnevnikPromenaPage() {
           </div>
         )}
       </InventoryPanel>
+
+      <Modal
+        isOpen={detailId !== null}
+        onClose={closeDetail}
+        title={detailId !== null ? `Dnevnik promena #${detailId}` : "Dnevnik promena"}
+        size="lg"
+      >
+        {detailId !== null ? <DnevnikPromenaDetail id={detailId} /> : null}
+      </Modal>
     </InventoryPageShell>
   );
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -41,6 +42,9 @@ import type {
   TransactionStats,
   WeekdayData,
 } from "../types/analytics";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./AnalyticsDashboard.css";
 
 type DatePreset = "today" | "yesterday" | "7d" | "30d" | "90d" | "thisMonth" | "lastMonth" | "custom";
@@ -66,6 +70,17 @@ const HELP: Record<string, string> = {
 
 const CHART_COLORS = ["#3dd9a4", "#6ea8ff", "#ffbc57", "#ff7e67", "#a88cff", "#44d0ff", "#ff6c6c", "#75f0d1"];
 const DEFAULT_WEEKDAYS = ["Nedelja", "Ponedeljak", "Utorak", "Sreda", "Cetvrtak", "Petak", "Subota"];
+
+const topProductColumns: AnalyticsTableColumn<TopProductAdvancedItem>[] = [
+  { key: "sku", header: "SKU", dataType: "text" },
+  { key: "productName", header: "Artikal", dataType: "text" },
+  { key: "revenue", header: "Promet", dataType: "currency" },
+  { key: "units", header: "Kom", dataType: "number" },
+  { key: "velocityUnitsPerDay", header: "Brzina prodaje", dataType: "number" },
+  { key: "marginImpact", header: "Uticaj na marzu", dataType: "currency" },
+  { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "stockStatus", header: "Status zalihe", dataType: "text" },
+];
 
 function formatInputDateTime(value: Date): string {
   const year = value.getFullYear();
@@ -182,6 +197,8 @@ function MetricCard(props: { label: string; value: string; tone?: Tone; infoTip?
 }
 
 export default function AnalyticsDashboard() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [preset, setPreset] = useState<DatePreset>("30d");
   const [fromDate, setFromDate] = useState<string>(() => buildPresetRange("30d")?.from ?? formatInputDateTime(new Date()));
   const [toDate, setToDate] = useState<string>(() => buildPresetRange("30d")?.to ?? formatInputDateTime(new Date()));
@@ -431,6 +448,48 @@ export default function AnalyticsDashboard() {
     ];
     downloadCsv(`analytics-top-proizvodi-${topTab}.csv`, lines.map((line) => line.map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(",")).join("\n"));
   }, [topRows, topTab]);
+
+  const topTableFilters = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "fromDate", label: "Od", value: fromDate },
+      { key: "toDate", label: "Do", value: toDate },
+      { key: "storeId", label: "Prodavnica", value: storeId ?? "" },
+      { key: "supplierId", label: "Dobavljac", value: supplierId ?? "" },
+    ],
+    [fromDate, supplierId, storeId, toDate]
+  );
+
+  const topTableMetadata = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "topTab", label: "Top pogled", value: topTab },
+      { key: "generatedAt", label: "Health text", value: healthText },
+    ],
+    [healthText, topTab]
+  );
+
+  const openTopProductDetail = (row: TopProductAdvancedItem) => {
+    const params = new URLSearchParams();
+    params.set("fromDate", fromDate);
+    params.set("toDate", toDate);
+    if (storeId != null) params.set("storeId", String(storeId));
+    if (supplierId != null) params.set("supplierId", String(supplierId));
+
+    saveAnalyticsDetailSnapshot(
+      buildAnalyticsDetailSnapshot({
+        table: "top-products",
+        recordId: String(row.productId),
+        title: row.productName,
+        subtitle: row.sku,
+        columns: topProductColumns,
+        row,
+        metadata: topTableFilters,
+      })
+    );
+
+    navigate(`/analitika/top-products/${row.productId}?${params.toString()}`, {
+      state: { backgroundLocation: location },
+    });
+  };
 
   return (
     <div className="analytics-dashboard">
@@ -761,7 +820,18 @@ export default function AnalyticsDashboard() {
                 <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa vise pogleda: promet, komada, brzina prodaje i marza." /></h3>
                 <p className="section-note">Hover na red prikazuje sazetak trenda. Status zalihe je obojen radi brzeg skeniranja.</p>
               </div>
-              <button className="analytics-export-button" onClick={exportTopRows} disabled={topRows.length === 0}>Izvezi CSV</button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="analytics-export-button" onClick={exportTopRows} disabled={topRows.length === 0}>Izvezi CSV</button>
+                <AnalyticsTableToolbar
+                  tableKey="top-products"
+                  tableTitle="Analytics top proizvodi"
+                  columns={topProductColumns}
+                  rows={topRows}
+                  filters={topTableFilters}
+                  metadata={topTableMetadata}
+                  defaultOrientation="landscape"
+                />
+              </div>
             </div>
             <div className="top-tabs">
               <button className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Top po prometu</button>
@@ -786,7 +856,20 @@ export default function AnalyticsDashboard() {
                   </thead>
                   <tbody>
                     {topRows.map((row) => (
-                      <tr key={`${topTab}-${row.productId}`} title={`Trend: ${formatPercent(row.trendPct)} | Promet: ${formatCurrency(row.revenue)} | Komada: ${formatNumber(row.units)}`}>
+                      <tr
+                        key={`${topTab}-${row.productId}`}
+                        title={`Trend: ${formatPercent(row.trendPct)} | Promet: ${formatCurrency(row.revenue)} | Komada: ${formatNumber(row.units)}`}
+                        className="cursor-pointer"
+                        onClick={() => openTopProductDetail(row)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openTopProductDetail(row);
+                          }
+                        }}
+                        tabIndex={0}
+                        aria-label={`Otvori detalj artikla ${row.productName}`}
+                      >
                         <td><div className="sku-cell"><strong>{row.sku}</strong><span>{row.productName}</span></div></td>
                         <td>{formatCurrency(row.revenue)}</td>
                         <td>{formatNumber(row.units)}</td>

@@ -1,0 +1,237 @@
+.data-quality-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.data-quality-header,
+.data-quality-card,
+.data-quality-controls,
+.data-quality-origin {
+  border: 1px solid #273142;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #121926 0%, #0d131d 100%);
+  padding: 1rem 1.25rem;
+}
+
+.data-quality-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.data-quality-title {
+  margin: 0;
+  font-size: 1.9rem;
+  color: #eef4ff;
+}
+
+.data-quality-subtitle,
+.data-quality-meta,
+.data-quality-table-meta {
+  color: #97a8c3;
+}
+
+.data-quality-tabs {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.data-quality-tab {
+  border: 1px solid #344258;
+  background: #141b29;
+  color: #dbe6fb;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+}
+
+.data-quality-tab.active.danger {
+  border-color: #dc2626;
+  background: #3c1717;
+}
+
+.data-quality-tab.active.warning {
+  border-color: #f59e0b;
+  background: #412a10;
+}
+
+.data-quality-tab.active.neutral {
+  border-color: #60a5fa;
+  background: #162840;
+}
+
+.data-quality-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.data-quality-search {
+  display: flex;
+  gap: 0.75rem;
+  flex: 1 1 360px;
+}
+
+.data-quality-search input,
+.data-quality-selects select {
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #0d1320;
+  color: #eef4ff;
+  padding: 0.75rem 0.85rem;
+}
+
+.data-quality-search input {
+  flex: 1 1 auto;
+}
+
+.data-quality-search button,
+.data-quality-pagination button {
+  border: 1px solid #315ca8;
+  border-radius: 12px;
+  background: #1f4d8d;
+  color: white;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+}
+
+.data-quality-selects {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.data-quality-selects label {
+  display: grid;
+  gap: 0.35rem;
+  color: #c8d5ea;
+  font-size: 0.9rem;
+}
+
+.data-quality-table-head,
+.data-quality-pagination {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.data-quality-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.data-quality-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-quality-table th,
+.data-quality-table td {
+  border-bottom: 1px solid #243144;
+  padding: 0.85rem 0.75rem;
+  text-align: left;
+  color: #e8eefb;
+  vertical-align: middle;
+}
+
+.data-quality-table th {
+  color: #9fb0ca;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.data-quality-name {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.data-quality-name span {
+  color: #8fa3c2;
+  font-size: 0.85rem;
+}
+
+.align-right {
+  text-align: right !important;
+}
+
+.data-quality-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.badge-danger {
+  background: rgba(220, 38, 38, 0.18);
+  color: #fca5a5;
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+}
+
+.badge-neutral {
+  background: rgba(96, 165, 250, 0.18);
+  color: #93c5fd;
+}
+
+.data-quality-action {
+  color: #8cc2ff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.data-quality-loading,
+.data-quality-error,
+.data-quality-empty {
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+}
+
+.data-quality-error {
+  background: rgba(127, 29, 29, 0.28);
+  color: #fecaca;
+}
+
+.data-quality-loading {
+  background: rgba(30, 41, 59, 0.42);
+  color: #dbeafe;
+}
+
+.data-quality-empty {
+  text-align: center;
+  color: #9fb0ca;
+}
+
+.data-quality-origin {
+  color: #fcd34d;
+}
+
+.data-quality-pagination span {
+  color: #dbe6fb;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .data-quality-header,
+  .data-quality-controls,
+  .data-quality-table-head,
+  .data-quality-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .data-quality-search {
+    flex-direction: column;
+  }
+}

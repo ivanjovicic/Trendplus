@@ -1,4 +1,4 @@
-import type { DnevnikPromenaResponse } from "../types/dnevnikPromena";
+import type { DnevnikPromenaDetail, DnevnikPromenaResponse } from "../types/dnevnikPromena";
 import { appendDataScopeToParams } from "../utils/dataScope";
 
 const API = import.meta.env.VITE_API_BASE_URL as string;
@@ -33,6 +33,22 @@ export async function getDnevnikPromena(
   appendDataScopeToParams(params);
 
   const resp = await fetch(`${API}/api/dnevnik-promena?${params.toString()}`);
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => null);
+    const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${resp.status}`;
+    throw new Error(message);
+  }
+
+  return resp.json();
+}
+
+export async function getDnevnikPromenaById(id: string | number): Promise<DnevnikPromenaDetail | null> {
+  const resp = await fetch(`${API}/api/dnevnik-promena/${id}`);
+
+  if (resp.status === 404) {
+    return null;
+  }
+
   if (!resp.ok) {
     const body = await resp.json().catch(() => null);
     const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${resp.status}`;

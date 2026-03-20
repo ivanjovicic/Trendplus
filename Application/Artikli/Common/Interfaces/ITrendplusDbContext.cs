@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Domain.Model;
+using Domain.Model.Documents;
 using Domain.Model.Prodaja;
 using Domain.Model.Povracaj;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,9 @@ namespace Application.Artikli.Common.Interfaces
         DbSet<Domain.Model.DnevnikPromena> DnevnikPromena { get; }
         DbSet<Domain.Model.Sezona> Sezone { get; }
         DbSet<Domain.Model.OutboxMessage> OutboxMessages { get; }
+        DbSet<DocumentRecord> Documents { get; }
+        DbSet<DocumentTemplate> DocumentTemplates { get; }
+        DbSet<DocumentAudit> DocumentAudits { get; }
         DbSet<ProdajaZaglavlje> ProdajaZaglavlja { get; }
         DbSet<ProdajaStavka> ProdajaStavke { get; }
         DbSet<PovracajZaglavlje> PovracajZaglavlja { get; }

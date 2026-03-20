@@ -1,4 +1,5 @@
 using Api.Services;
+using System.Data.Odbc;
 
 namespace Trendplus2.Endpoints;
 
@@ -89,6 +90,25 @@ public static class AccessImportEndpoints
                 var preview = await service.PreviewAsync(resolved.Path!, ct: ct);
                 return Results.Ok(preview);
             }
+            catch (FileNotFoundException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (OdbcException ex)
+            {
+                return Results.Problem(
+                    title: "Access connection failed",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
             finally
             {
                 if (resolved.DeleteAfter && File.Exists(resolved.Path))
@@ -124,6 +144,25 @@ public static class AccessImportEndpoints
             {
                 var run = await service.ImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);
                 return Results.Ok(run);
+            }
+            catch (FileNotFoundException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (OdbcException ex)
+            {
+                return Results.Problem(
+                    title: "Access connection failed",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
             }
             finally
             {

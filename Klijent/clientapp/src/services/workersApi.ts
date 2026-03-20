@@ -50,22 +50,22 @@ async function ensureOk(res: Response, message: string): Promise<void> {
 
 export async function getWorkersHealth(): Promise<WorkerHealthWithControl> {
   const res = await fetch(apiUrl("/api/workers/health"));
-  await ensureOk(res, "Neuspešno čitanje worker health statusa");
+  await ensureOk(res, "Neuspesno citanje worker health statusa");
   return res.json();
 }
 
 export async function getWorkersControl(): Promise<WorkerControlState> {
   const res = await fetch(apiUrl("/api/workers/control"));
-  await ensureOk(res, "Neuspešno čitanje worker control statusa");
+  await ensureOk(res, "Neuspesno citanje worker control statusa");
   return res.json();
 }
 
 export async function enableWorkers(): Promise<void> {
   const res = await fetch(apiUrl("/api/workers/control/enable"), { method: "POST" });
-  await ensureOk(res, "Neuspešno uključivanje workera");
+  await ensureOk(res, "Neuspesno ukljucivanje workera");
 }
 
 export async function disableWorkers(): Promise<void> {
   const res = await fetch(apiUrl("/api/workers/control/disable"), { method: "POST" });
-  await ensureOk(res, "Neuspešno isključivanje workera");
+  await ensureOk(res, "Neuspesno iskljucivanje workera");
 }

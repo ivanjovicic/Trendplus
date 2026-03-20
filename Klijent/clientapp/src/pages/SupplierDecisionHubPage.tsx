@@ -1,4 +1,5 @@
 import { startTransition, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import SupplierDetailDrawer from "../components/supplierDecisionHub/SupplierDetailDrawer";
 import SupplierDecisionFilters, {
   type SupplierDecisionFilterFormState,
@@ -19,12 +20,32 @@ import {
   type SupplierDecisionHubFilters,
   type SupplierDecisionHubSortField,
 } from "../services/supplierDecisionHubApi";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getSezone } from "../services/sezoneApi";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { Sezona } from "../types/Sezona";
 import { formatDateRange } from "../components/supplierDecisionHub/utils";
 import "./SupplierDecisionHubPage.css";
 
 const PAGE_SIZE = 12;
+
+const rankingColumns: AnalyticsTableColumn<RankingResponse["items"][number]>[] = [
+  { key: "supplierId", header: "Dobavljac ID", dataType: "number" },
+  { key: "supplierName", header: "Dobavljac", dataType: "text" },
+  { key: "revenue", header: "Prihod", dataType: "currency" },
+  { key: "units", header: "Komadi", dataType: "number" },
+  { key: "fullPriceRevenueShare", header: "Udeo bez snizenja", dataType: "percent" },
+  { key: "fullPriceSellthrough", header: "Sell-through bez snizenja", dataType: "percent" },
+  { key: "preMarkdownMarginPct", header: "Marza", dataType: "percent" },
+  { key: "markdownRevenueShare", header: "Udeo snizenja", dataType: "percent" },
+  { key: "deadStockRate", header: "Dead stock", dataType: "percent" },
+  { key: "unsoldStockValue", header: "Unsold stock value", dataType: "currency" },
+  { key: "repeatWinnerRate", header: "Repeat winner rate", dataType: "percent" },
+  { key: "mlSupplierScore", header: "AI procena", dataType: "number" },
+  { key: "supplierQualityIndex", header: "Indeks kvaliteta", dataType: "number" },
+  { key: "confidenceScore", header: "Pouzdanost", dataType: "number" },
+  { key: "recommendationCode", header: "Preporuka", dataType: "text" },
+];
 
 function createDefaultFormState(): SupplierDecisionFilterFormState {
   return {
@@ -53,6 +74,8 @@ function normalizeFilters(formState: SupplierDecisionFilterFormState): SupplierD
 }
 
 export default function SupplierDecisionHubPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [formState, setFormState] = useState<SupplierDecisionFilterFormState>(() =>
     createDefaultFormState()
   );
@@ -248,6 +271,54 @@ export default function SupplierDecisionHubPage() {
     });
   };
 
+  const analyticsFilters = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "fromDate", label: "Od datuma", value: appliedFilters.fromDate ?? "" },
+      { key: "toDate", label: "Do datuma", value: appliedFilters.toDate ?? "" },
+      { key: "category", label: "Kategorija", value: appliedFilters.category ?? "" },
+      { key: "gender", label: "Pol", value: appliedFilters.gender ?? "" },
+      { key: "seasonId", label: "Sezona", value: appliedFilters.seasonId ?? "" },
+      { key: "minRevenue", label: "Min prihod", value: appliedFilters.minRevenue ?? "" },
+      { key: "onlyHighConfidence", label: "Samo visoka pouzdanost", value: appliedFilters.onlyHighConfidence ?? false },
+      { key: "excludeOosBeforeMarkdown", label: "Iskljuci OOS pre markdown", value: appliedFilters.excludeOosBeforeMarkdown ?? false },
+      { key: "page", label: "Strana", value: page },
+      { key: "sortBy", label: "Sort", value: sortBy },
+      { key: "sortDir", label: "Sort smer", value: sortDir },
+    ],
+    [appliedFilters.category, appliedFilters.excludeOosBeforeMarkdown, appliedFilters.fromDate, appliedFilters.gender, appliedFilters.minRevenue, appliedFilters.onlyHighConfidence, appliedFilters.seasonId, appliedFilters.toDate, page, sortBy, sortDir]
+  );
+
+  const analyticsMetadata = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "periodFrom", label: "Period od", value: summary?.from ?? "" },
+      { key: "periodTo", label: "Period do", value: summary?.to ?? "" },
+      { key: "supplierCount", label: "Broj dobavljaca", value: summary?.supplierCount ?? 0 },
+      { key: "fullPriceRevenueShare", label: "Udeo bez snizenja", value: summary?.fullPriceRevenueShare ?? "" },
+      { key: "fullPriceSellthrough", label: "Sell-through bez snizenja", value: summary?.fullPriceSellthrough ?? "" },
+      { key: "markdownRevenueShare", label: "Udeo snizenja", value: summary?.markdownRevenueShare ?? "" },
+      { key: "preMarkdownMarginPct", label: "Marza pre markdown", value: summary?.preMarkdownMarginPct ?? "" },
+    ],
+    [summary?.from, summary?.fullPriceRevenueShare, summary?.fullPriceSellthrough, summary?.markdownRevenueShare, summary?.preMarkdownMarginPct, summary?.supplierCount, summary?.to]
+  );
+
+  const openSupplierDetail = (item: RankingResponse["items"][number]) => {
+    saveAnalyticsDetailSnapshot(
+      buildAnalyticsDetailSnapshot({
+        table: "supplier-decision-hub",
+        recordId: String(item.supplierId),
+        title: item.supplierName,
+        subtitle: "Rangiranje dobavljaca",
+        columns: rankingColumns,
+        row: item,
+        metadata: [...analyticsFilters, ...analyticsMetadata],
+      })
+    );
+
+    navigate(`/analitika/supplier-decision-hub/${item.supplierId}`, {
+      state: { backgroundLocation: location },
+    });
+  };
+
   return (
     <div className="supplier-decision-page">
       <section className="supplier-decision-hero">
@@ -305,6 +376,9 @@ export default function SupplierDecisionHubPage() {
         <div className="supplier-decision-section-title">Rangiranje dobavljača</div>
         <SupplierDecisionTable
           items={ranking?.items ?? []}
+          columns={rankingColumns}
+          analyticsFilters={analyticsFilters}
+          analyticsMetadata={analyticsMetadata}
           loading={loadingRanking}
           page={ranking?.page ?? page}
           pageSize={ranking?.pageSize ?? PAGE_SIZE}
@@ -314,6 +388,7 @@ export default function SupplierDecisionHubPage() {
           onPageChange={setPage}
           onSortChange={handleSortChange}
           onSelectSupplier={handleSelectSupplier}
+          onOpenDetail={openSupplierDetail}
         />
       </section>
 

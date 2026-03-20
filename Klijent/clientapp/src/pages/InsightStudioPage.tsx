@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -61,6 +62,7 @@ import {
   type PriceSensitivity,
 } from "../services/insightStudioV2Api";
 import IntelligenceSnapshotPanel from "../components/dashboard/IntelligenceSnapshotPanel";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import {
   getDemandSignals,
   getDemandSignalsSample,
@@ -75,6 +77,7 @@ import {
   type PriceIntelligenceItem,
   type TrendMomentumItem,
 } from "../services/analyticsIntelligenceApi";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import {
   buildLegacyReorderFallbackFromSignals,
   mergeAgingAsPrimary,
@@ -83,6 +86,7 @@ import {
   mergePriceSensitivityAsPrimary,
   mergeSmartReorderAsPrimary,
 } from "../services/analyticsIntelligenceDerived";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -145,6 +149,141 @@ const URGENCY_COLORS: Record<string, string> = { "KRITIČNO": PAL.red, HITNO: PA
 const AGING_COLORS: Record<string, string> = { Aktivno: PAL.green, Pazi: PAL.yellow, Upozorenje: PAL.orange, "Kritično": PAL.red };
 
 const ABC_COLORS: Record<string, string> = { A: PAL.green, B: PAL.yellow, C: PAL.red };
+
+type InsightAnalyticsContext = {
+  filters: AnalyticsNamedValue[];
+  metadata: AnalyticsNamedValue[];
+  openSnapshotDetail: <Row>(
+    table: string,
+    recordId: string,
+    title: string,
+    subtitle: string,
+    columns: AnalyticsTableColumn<Row>[],
+    row: Row
+  ) => void;
+};
+
+const supplierV2Columns: AnalyticsTableColumn<SupplierScoreV2>[] = [
+  { key: "dobavljacId", header: "Dobavljac ID", dataType: "number" },
+  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
+  { key: "totalRevenue", header: "Prihod", dataType: "currency" },
+  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  { key: "velocity", header: "Velocity", dataType: "number" },
+  { key: "unsoldStock", header: "Neprodato", dataType: "number" },
+  { key: "tier", header: "Tier", dataType: "text" },
+  { key: "compositeScore", header: "Score", dataType: "number" },
+];
+
+const supplierV1Columns: AnalyticsTableColumn<SupplierScore>[] = [
+  { key: "dobavljacId", header: "Dobavljac ID", dataType: "number" },
+  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
+  { key: "totalRevenue", header: "Prihod", dataType: "currency" },
+  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  { key: "riskLevel", header: "Risk", dataType: "text" },
+  { key: "compositeScore", header: "Score", dataType: "number" },
+];
+
+const categoryColumns: AnalyticsTableColumn<CategoryStat>[] = [
+  { key: "kategorija", header: "Kategorija", dataType: "text" },
+  { key: "totalRevenue", header: "Prihod", dataType: "currency" },
+  { key: "revShare", header: "Udeo %", dataType: "percent" },
+  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  { key: "profitLift", header: "Lift", dataType: "percent" },
+  { key: "velocity", header: "Velocity", dataType: "number" },
+  { key: "uniqueSKU", header: "SKU", dataType: "number" },
+];
+
+const genderColumns: AnalyticsTableColumn<GenderStat>[] = [
+  { key: "pol", header: "Pol", dataType: "text" },
+  { key: "totalRevenue", header: "Prihod", dataType: "currency" },
+  { key: "revShare", header: "Udeo %", dataType: "percent" },
+  { key: "totalUnits", header: "Kom", dataType: "number" },
+];
+
+const priceSensitivityColumns: AnalyticsTableColumn<PriceSensitivity["bands"][number]>[] = [
+  { key: "priceBand", header: "Opseg", dataType: "text" },
+  { key: "skuCount", header: "SKU", dataType: "number" },
+  { key: "totalUnits", header: "Prodato", dataType: "number" },
+  { key: "avgVelocityPerSku", header: "Vel/SKU", dataType: "number" },
+  { key: "avgPrice", header: "Avg cena", dataType: "currency" },
+  { key: "avgMarginPct", header: "Avg marza %", dataType: "percent" },
+  { key: "totalStock", header: "Zaliha", dataType: "number" },
+  { key: "markdownCount", header: "Niv.", dataType: "number" },
+  { key: "elasticity", header: "Elasticnost", dataType: "text" },
+];
+
+const abcColumns: AnalyticsTableColumn<AbcItem>[] = [
+  { key: "artikalId", header: "Artikal ID", dataType: "number" },
+  { key: "naziv", header: "Artikal", dataType: "text" },
+  { key: "kategorija", header: "Kategorija", dataType: "text" },
+  { key: "totalRevenue", header: "Prihod", dataType: "currency" },
+  { key: "revPct", header: "Udeo %", dataType: "percent" },
+  { key: "cumulativePct", header: "Kum. %", dataType: "percent" },
+  { key: "totalUnits", header: "Kom", dataType: "number" },
+  { key: "abcClass", header: "Klasa", dataType: "text" },
+];
+
+const lifecycleColumns: AnalyticsTableColumn<LifecycleResult["items"][number]>[] = [
+  { key: "artikalId", header: "Artikal ID", dataType: "number" },
+  { key: "naziv", header: "Artikal", dataType: "text" },
+  { key: "kategorija", header: "Kategorija", dataType: "text" },
+  { key: "totalUnits", header: "Prodato", dataType: "number" },
+  { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "currentStock", header: "Zaliha", dataType: "number" },
+  { key: "stage", header: "Faza", dataType: "text" },
+];
+
+const agingColumns: AnalyticsTableColumn<AgingItem>[] = [
+  { key: "id", header: "Artikal ID", dataType: "number" },
+  { key: "naziv", header: "Artikal", dataType: "text" },
+  { key: "kategorija", header: "Kategorija", dataType: "text" },
+  { key: "kolicina", header: "Zaliha", dataType: "number" },
+  { key: "lastSaleDate", header: "Posl. prod.", dataType: "date" },
+  { key: "daysWithoutSale", header: "Dana", dataType: "number" },
+  { key: "agingCategory", header: "Status", dataType: "text" },
+];
+
+const depletionColumns: AnalyticsTableColumn<DepletionResult["forecasts"][number]>[] = [
+  { key: "artikalId", header: "Artikal ID", dataType: "number" },
+  { key: "naziv", header: "Artikal", dataType: "text" },
+  { key: "kategorija", header: "Kategorija", dataType: "text" },
+  { key: "currentStock", header: "Zaliha", dataType: "number" },
+  { key: "avgDailySales", header: "Avg/dan", dataType: "number" },
+  { key: "daysUntilOOS", header: "Dana do OOS", dataType: "number" },
+  { key: "depletionDate", header: "Datum OOS", dataType: "date" },
+  { key: "atRiskRevenue", header: "At-risk", dataType: "currency" },
+  { key: "severity", header: "Sev.", dataType: "text" },
+];
+
+const reorderItemColumns: AnalyticsTableColumn<SmartReorderResult["items"][number] | ReorderItem>[] = [
+  { key: "artikalId", header: "Artikal ID", dataType: "number" },
+  { key: "naziv", header: "Artikal", dataType: "text" },
+  { key: "kategorija", header: "Kategorija", dataType: "text" },
+  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
+  { key: "currentStock", header: "Zaliha", dataType: "number" },
+  { key: "avgDailySales", header: "V/dan", dataType: "number" },
+  { key: "doh", header: "DOH", dataType: "number" },
+  { key: "recommendedQty", header: "Preporuka", dataType: "number" },
+  { key: "urgency", header: "Hitnost", dataType: "text" },
+];
+
+const reorderCategoryColumns: AnalyticsTableColumn<SmartReorderResult["byCategoryPlan"][number]>[] = [
+  { key: "kategorija", header: "Kategorija", dataType: "text" },
+  { key: "totalItems", header: "Artikala", dataType: "number" },
+  { key: "criticalCount", header: "Kriticno", dataType: "number" },
+  { key: "urgentCount", header: "Hitno", dataType: "number" },
+  { key: "totalReorderCost", header: "Trosak nabavke", dataType: "currency" },
+  { key: "expectedRevenue", header: "Ocekivani prihod", dataType: "currency" },
+  { key: "avgMargin", header: "Avg marza", dataType: "percent" },
+];
+
+const reorderSupplierColumns: AnalyticsTableColumn<SmartReorderResult["bySupplierPlan"][number]>[] = [
+  { key: "dobavljac", header: "Dobavljac", dataType: "text" },
+  { key: "totalItems", header: "Artikala", dataType: "number" },
+  { key: "criticalCount", header: "Kriticno", dataType: "number" },
+  { key: "totalReorderCost", header: "Trosak nabavke", dataType: "currency" },
+  { key: "avgReorderProbability", header: "Avg prob. reordering", dataType: "percent" },
+];
 
 // ══════════════════════════════════════════════════════════════════
 // HELPERS
@@ -461,10 +600,12 @@ function SupplierTab({
   v2Data,
   v1Data,
   loading,
+  analyticsContext,
 }: {
   v2Data: SupplierScoreV2[];
   v1Data: SupplierScore[];
   loading: boolean;
+  analyticsContext: InsightAnalyticsContext;
 }) {
   const [selected, setSelected] = useState<SupplierScoreV2 | null>(null);
   const data = v2Data.length > 0 ? v2Data : [];
@@ -475,7 +616,7 @@ function SupplierTab({
 
   // Fallback to v1 if v2 failed
   if (!data.length && v1Data.length) {
-    return <SupplierTabV1 data={v1Data} loading={false} />;
+    return <SupplierTabV1 data={v1Data} loading={false} analyticsContext={analyticsContext} />;
   }
 
   const displayed = selected ?? data[0];
@@ -487,6 +628,17 @@ function SupplierTab({
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
         {/* Leaderboard */}
         <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-[#2A3045]">
+          <div className="mb-3 p-3">
+            <AnalyticsTableToolbar
+              tableKey="insight-supplier-scorecard-v2"
+              tableTitle="Insight Studio - dobavljaci 2.0"
+              columns={supplierV2Columns}
+              rows={data}
+              filters={analyticsContext.filters}
+              metadata={analyticsContext.metadata}
+              defaultOrientation="landscape"
+            />
+          </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
@@ -504,7 +656,17 @@ function SupplierTab({
               {data.map((s, i) => (
                 <tr
                   key={s.dobavljacId ?? i}
-                  onClick={() => setSelected(s)}
+                  onClick={() => {
+                    setSelected(s);
+                    analyticsContext.openSnapshotDetail(
+                      "insight-supplier-scorecard-v2",
+                      String(s.dobavljacId ?? s.dobavljacNaziv),
+                      s.dobavljacNaziv,
+                      "Insight Studio - dobavljaci 2.0",
+                      supplierV2Columns,
+                      s
+                    );
+                  }}
                   className={`cursor-pointer border-b border-[#2A3045] transition hover:bg-[#1E2332] ${
                     displayed?.dobavljacId === s.dobavljacId ? "bg-[#1f2940] ring-1 ring-inset ring-[#32579e]" : ""
                   }`}
@@ -574,7 +736,7 @@ function SupplierTab({
 }
 
 // Fallback V1 supplier tab
-function SupplierTabV1({ data, loading }: { data: SupplierScore[]; loading: boolean }) {
+function SupplierTabV1({ data, loading, analyticsContext }: { data: SupplierScore[]; loading: boolean; analyticsContext: InsightAnalyticsContext }) {
   const [selected, setSelected] = useState<SupplierScore | null>(null);
   if (loading) return <Skeleton rows={8} />;
   if (!data.length) return <p className="text-[#8A95B0] text-sm">Nema podataka.</p>;
@@ -582,6 +744,17 @@ function SupplierTabV1({ data, loading }: { data: SupplierScore[]; loading: bool
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
       <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-[#2A3045]">
+        <div className="mb-3 p-3">
+          <AnalyticsTableToolbar
+            tableKey="insight-supplier-scorecard-v1"
+            tableTitle="Insight Studio - dobavljaci"
+            columns={supplierV1Columns}
+            rows={data}
+            filters={analyticsContext.filters}
+            metadata={analyticsContext.metadata}
+            defaultOrientation="landscape"
+          />
+        </div>
         <table className="w-full text-sm">
           <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
             <th className="px-3 py-2 text-left">#</th><th className="px-3 py-2 text-left">Dobavljač</th>
@@ -590,7 +763,17 @@ function SupplierTabV1({ data, loading }: { data: SupplierScore[]; loading: bool
           </tr></thead>
           <tbody>
             {data.map((s, i) => (
-              <tr key={s.dobavljacId ?? i} onClick={() => setSelected(s)}
+              <tr key={s.dobavljacId ?? i} onClick={() => {
+                setSelected(s);
+                analyticsContext.openSnapshotDetail(
+                  "insight-supplier-scorecard-v1",
+                  String(s.dobavljacId ?? s.dobavljacNaziv),
+                  s.dobavljacNaziv,
+                  "Insight Studio - dobavljaci",
+                  supplierV1Columns,
+                  s
+                );
+              }}
                 className={`cursor-pointer border-b border-[#2A3045] transition hover:bg-[#1E2332] ${displayed.dobavljacId === s.dobavljacId ? "bg-[#1f2940]" : ""}`}>
                 <td className="px-3 py-2 text-[#8A95B0]">{i + 1}</td>
                 <td className="px-3 py-2 text-[#E8ECF4]">{s.dobavljacNaziv}</td>
@@ -627,12 +810,14 @@ function CategoryTab({
   priceSensitivity,
   basketAffinity,
   loading,
+  analyticsContext,
 }: {
   byCategory: CategoryStat[];
   byGender: GenderStat[];
   priceSensitivity: PriceSensitivity | null;
   basketAffinity: BasketAffinity | null;
   loading: boolean;
+  analyticsContext: InsightAnalyticsContext;
 }) {
   const [subTab, setSubTab] = useState<"kategorije" | "pol" | "cene" | "korpa">("kategorije");
 
@@ -681,6 +866,17 @@ function CategoryTab({
             </div>
           </div>
           <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+            <div className="mb-3 p-3">
+              <AnalyticsTableToolbar
+                tableKey="insight-category-performance"
+                tableTitle="Insight Studio - kategorije"
+                columns={categoryColumns}
+                rows={byCategory}
+                filters={analyticsContext.filters}
+                metadata={analyticsContext.metadata}
+                defaultOrientation="landscape"
+              />
+            </div>
             <table className="w-full text-xs">
               <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
                 <th className="px-3 py-2 text-left">Kategorija</th>
@@ -692,7 +888,11 @@ function CategoryTab({
               </tr></thead>
               <tbody>
                 {byCategory.map((cat, i) => (
-                  <tr key={i} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+                  <tr
+                    key={i}
+                    className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                    onClick={() => analyticsContext.openSnapshotDetail("insight-category-performance", cat.kategorija, cat.kategorija, "Insight Studio - kategorije", categoryColumns, cat)}
+                  >
                     <td className="px-3 py-2 font-medium text-[#E8ECF4]">{cat.kategorija}</td>
                     <td className="px-3 py-2 text-right text-[#8A95B0]">{fmtPct(cat.revShare)}</td>
                     <td className="px-3 py-2 text-right text-[#4CAF82]">{fmtPct(cat.marginPct)}</td>
@@ -722,6 +922,17 @@ function CategoryTab({
             </ResponsiveContainer>
           </div>
           <div className="overflow-x-auto rounded-xl border border-[#2A3045] self-start">
+            <div className="mb-3 p-3">
+              <AnalyticsTableToolbar
+                tableKey="insight-gender-breakdown"
+                tableTitle="Insight Studio - po polu"
+                columns={genderColumns}
+                rows={byGender}
+                filters={analyticsContext.filters}
+                metadata={analyticsContext.metadata}
+                defaultOrientation="portrait"
+              />
+            </div>
             <table className="w-full text-xs">
               <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
                 <th className="px-3 py-2 text-left">Pol</th><th className="px-3 py-2 text-right">Prihod</th>
@@ -729,7 +940,11 @@ function CategoryTab({
               </tr></thead>
               <tbody>
                 {byGender.map((g, i) => (
-                  <tr key={i} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+                  <tr
+                    key={i}
+                    className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                    onClick={() => analyticsContext.openSnapshotDetail("insight-gender-breakdown", g.pol, g.pol, "Insight Studio - po polu", genderColumns, g)}
+                  >
                     <td className="px-3 py-2 text-[#E8ECF4] flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />{g.pol}
                     </td>
@@ -748,6 +963,17 @@ function CategoryTab({
         <div className="space-y-4">
           <h4 className="text-xs font-semibold text-[#c9d3e4]">Cenovna osetljivost — po cenovnim opsezima</h4>
           <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+            <div className="mb-3 p-3">
+              <AnalyticsTableToolbar
+                tableKey="insight-price-sensitivity"
+                tableTitle="Insight Studio - cenovna osetljivost"
+                columns={priceSensitivityColumns}
+                rows={priceSensitivity.bands}
+                filters={analyticsContext.filters}
+                metadata={analyticsContext.metadata}
+                defaultOrientation="landscape"
+              />
+            </div>
             <table className="w-full text-xs">
               <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
                 <th className="px-3 py-2 text-left">Opseg</th>
@@ -762,7 +988,11 @@ function CategoryTab({
               </tr></thead>
               <tbody>
                 {priceSensitivity.bands.map((b, i) => (
-                  <tr key={i} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+                  <tr
+                    key={i}
+                    className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                    onClick={() => analyticsContext.openSnapshotDetail("insight-price-sensitivity", b.priceBand, b.priceBand, "Insight Studio - cenovna osetljivost", priceSensitivityColumns, b)}
+                  >
                     <td className="px-3 py-2 font-medium text-[#E8ECF4]">{b.priceBand}</td>
                     <td className="px-3 py-2 text-right text-[#8A95B0]">{b.skuCount}</td>
                     <td className="px-3 py-2 text-right text-[#E8ECF4]">{fmtNum(b.totalUnits)}</td>
@@ -1062,9 +1292,11 @@ function DailyTab({
 function AbcLifecycleTab({
   abcData, abcLoading,
   lifecycle, lifecycleLoading,
+  analyticsContext,
 }: {
   abcData: AbcItem[]; abcLoading: boolean;
   lifecycle: LifecycleResult | null; lifecycleLoading: boolean;
+  analyticsContext: InsightAnalyticsContext;
 }) {
   const [subView, setSubView] = useState<"abc" | "lifecycle">("abc");
   const [showAll, setShowAll] = useState(false);
@@ -1079,20 +1311,20 @@ function AbcLifecycleTab({
 
       {subView === "abc" && (
         abcLoading ? <Skeleton rows={8} /> : !abcData.length ? <p className="text-[#8A95B0] text-sm">Nema podataka.</p> : (
-          <AbcContent data={abcData} showAll={showAll} setShowAll={setShowAll} />
+          <AbcContent data={abcData} showAll={showAll} setShowAll={setShowAll} analyticsContext={analyticsContext} />
         )
       )}
 
       {subView === "lifecycle" && (
         lifecycleLoading ? <Skeleton rows={8} /> : !lifecycle ? <p className="text-[#8A95B0] text-sm">Nema podataka životnog ciklusa.</p> : (
-          <LifecycleContent data={lifecycle} />
+          <LifecycleContent data={lifecycle} analyticsContext={analyticsContext} />
         )
       )}
     </div>
   );
 }
 
-function AbcContent({ data, showAll, setShowAll }: { data: AbcItem[]; showAll: boolean; setShowAll: (v: boolean) => void }) {
+function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: AbcItem[]; showAll: boolean; setShowAll: (v: boolean) => void; analyticsContext: InsightAnalyticsContext }) {
   const revenueA = data.filter(x => x.abcClass === "A").reduce((s, x) => s + x.totalRevenue, 0);
   const revenueB = data.filter(x => x.abcClass === "B").reduce((s, x) => s + x.totalRevenue, 0);
   const revenueC = data.filter(x => x.abcClass === "C").reduce((s, x) => s + x.totalRevenue, 0);
@@ -1142,6 +1374,17 @@ function AbcContent({ data, showAll, setShowAll }: { data: AbcItem[]; showAll: b
         </div>
       </div>
       <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+        <div className="mb-3 p-3">
+          <AnalyticsTableToolbar
+            tableKey="insight-abc-classification"
+            tableTitle="Insight Studio - ABC klasifikacija"
+            columns={abcColumns}
+            rows={displayed}
+            filters={analyticsContext.filters}
+            metadata={analyticsContext.metadata}
+            defaultOrientation="landscape"
+          />
+        </div>
         <table className="w-full text-xs">
           <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
             <th className="px-3 py-2 text-left">Artikal</th><th className="px-3 py-2 text-left">Kat.</th>
@@ -1151,7 +1394,11 @@ function AbcContent({ data, showAll, setShowAll }: { data: AbcItem[]; showAll: b
           </tr></thead>
           <tbody>
             {displayed.map(item => (
-              <tr key={item.artikalId} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+              <tr
+                key={item.artikalId}
+                className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                onClick={() => analyticsContext.openSnapshotDetail("insight-abc-classification", String(item.artikalId), item.naziv, "Insight Studio - ABC klasifikacija", abcColumns, item)}
+              >
                 <td className="px-3 py-2 text-[#E8ECF4] max-w-[160px] truncate">{item.naziv}</td>
                 <td className="px-3 py-2 text-[#8A95B0]">{item.kategorija}</td>
                 <td className="px-3 py-2 text-right">{fmtRsd(item.totalRevenue)}</td>
@@ -1173,7 +1420,7 @@ function AbcContent({ data, showAll, setShowAll }: { data: AbcItem[]; showAll: b
   );
 }
 
-function LifecycleContent({ data }: { data: LifecycleResult }) {
+function LifecycleContent({ data, analyticsContext }: { data: LifecycleResult; analyticsContext: InsightAnalyticsContext }) {
   const stages = ["LAUNCH", "GROWTH", "MATURE", "DECLINE"] as const;
   return (
     <div className="space-y-5">
@@ -1187,6 +1434,17 @@ function LifecycleContent({ data }: { data: LifecycleResult }) {
         ))}
       </div>
       <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+        <div className="mb-3 p-3">
+          <AnalyticsTableToolbar
+            tableKey="insight-lifecycle"
+            tableTitle="Insight Studio - zivotni ciklus"
+            columns={lifecycleColumns}
+            rows={data.items.slice(0, 30)}
+            filters={analyticsContext.filters}
+            metadata={analyticsContext.metadata}
+            defaultOrientation="landscape"
+          />
+        </div>
         <table className="w-full text-xs">
           <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
             <th className="px-3 py-2 text-left">Artikal</th><th className="px-3 py-2 text-left">Kat.</th>
@@ -1195,7 +1453,11 @@ function LifecycleContent({ data }: { data: LifecycleResult }) {
           </tr></thead>
           <tbody>
             {data.items.slice(0, 30).map(it => (
-              <tr key={it.artikalId} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+              <tr
+                key={it.artikalId}
+                className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                onClick={() => analyticsContext.openSnapshotDetail("insight-lifecycle", String(it.artikalId), it.naziv, "Insight Studio - zivotni ciklus", lifecycleColumns, it)}
+              >
                 <td className="px-3 py-2 text-[#E8ECF4] max-w-[160px] truncate">{it.naziv}</td>
                 <td className="px-3 py-2 text-[#8A95B0]">{it.kategorija}</td>
                 <td className="px-3 py-2 text-right">{it.totalUnits}</td>
@@ -1218,10 +1480,12 @@ function LifecycleContent({ data }: { data: LifecycleResult }) {
 function StockTab({
   agingItems, agingLoading, agingSummary,
   depletion, depletionLoading,
+  analyticsContext,
 }: {
   agingItems: AgingItem[]; agingLoading: boolean;
   agingSummary?: { totalSKU: number; critical: number; warning: number; watch: number; active: number; criticalStockValue: number };
   depletion: DepletionResult | null; depletionLoading: boolean;
+  analyticsContext: InsightAnalyticsContext;
 }) {
   const [subView, setSubView] = useState<"aging" | "depletion">("aging");
   const [filter, setFilter] = useState("Sve");
@@ -1264,6 +1528,17 @@ function StockTab({
               ))}
             </div>
             <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+              <div className="mb-3 p-3">
+                <AnalyticsTableToolbar
+                  tableKey="insight-aging-stock"
+                  tableTitle="Insight Studio - aging stock"
+                  columns={agingColumns}
+                  rows={filter === "Sve" ? agingItems : agingItems.filter(x => x.agingCategory === filter)}
+                  filters={analyticsContext.filters}
+                  metadata={analyticsContext.metadata}
+                  defaultOrientation="landscape"
+                />
+              </div>
               <table className="w-full text-xs">
                 <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
                   <th className="px-3 py-2 text-left">Artikal</th><th className="px-3 py-2 text-left">Kat.</th>
@@ -1274,7 +1549,11 @@ function StockTab({
                   {(() => {
                     const f = filter === "Sve" ? agingItems : agingItems.filter(x => x.agingCategory === filter);
                     return (showAll ? f : f.slice(0, 20)).map(item => (
-                      <tr key={item.id} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+                      <tr
+                        key={item.id}
+                        className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                        onClick={() => analyticsContext.openSnapshotDetail("insight-aging-stock", String(item.id), item.naziv, "Insight Studio - aging stock", agingColumns, item)}
+                      >
                         <td className="px-3 py-2 text-[#E8ECF4] max-w-[160px] truncate">{item.naziv}</td>
                         <td className="px-3 py-2 text-[#8A95B0]">{item.kategorija}</td>
                         <td className="px-3 py-2 text-right">{item.kolicina}</td>
@@ -1311,6 +1590,17 @@ function StockTab({
               <AlertBanner severity="danger">⚡ {depletion.criticalCount} artikala ce biti OOS u narednih 7 dana! At-risk prihod: {fmtRsd(depletion.totalAtRiskRevenue)}</AlertBanner>
             )}
             <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+              <div className="mb-3 p-3">
+                <AnalyticsTableToolbar
+                  tableKey="insight-stock-depletion"
+                  tableTitle="Insight Studio - stock depletion"
+                  columns={depletionColumns}
+                  rows={depletion.forecasts.slice(0, 30)}
+                  filters={analyticsContext.filters}
+                  metadata={analyticsContext.metadata}
+                  defaultOrientation="landscape"
+                />
+              </div>
               <table className="w-full text-xs">
                 <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
                   <th className="px-3 py-2 text-left">Artikal</th><th className="px-3 py-2 text-left">Kat.</th>
@@ -1320,7 +1610,11 @@ function StockTab({
                 </tr></thead>
                 <tbody>
                   {depletion.forecasts.slice(0, 30).map(f => (
-                    <tr key={f.artikalId} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+                    <tr
+                      key={f.artikalId}
+                      className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                      onClick={() => analyticsContext.openSnapshotDetail("insight-stock-depletion", String(f.artikalId), f.naziv, "Insight Studio - stock depletion", depletionColumns, f)}
+                    >
                       <td className="px-3 py-2 text-[#E8ECF4] max-w-[140px] truncate">{f.naziv}</td>
                       <td className="px-3 py-2 text-[#8A95B0]">{f.kategorija}</td>
                       <td className="px-3 py-2 text-right">{f.currentStock}</td>
@@ -1348,10 +1642,12 @@ function StockTab({
 function ReorderTab2({
   smartData, smartLoading,
   v1Items, v1Loading, v1Summary,
+  analyticsContext,
 }: {
   smartData: SmartReorderResult | null; smartLoading: boolean;
   v1Items: ReorderItem[]; v1Loading: boolean;
   v1Summary?: { criticalCount: number; urgentCount: number; recommendedCount: number; totalReorderValue: number };
+  analyticsContext: InsightAnalyticsContext;
 }) {
   const [urgencyFilter, setUrgencyFilter] = useState("Sve");
   const [showAll, setShowAll] = useState(false);
@@ -1434,6 +1730,17 @@ function ReorderTab2({
             ))}
           </div>
           <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+            <div className="mb-3 p-3">
+              <AnalyticsTableToolbar
+                tableKey="insight-smart-reorder-items"
+                tableTitle="Insight Studio - smart reorder po artiklima"
+                columns={reorderItemColumns}
+                rows={displayed}
+                filters={analyticsContext.filters}
+                metadata={analyticsContext.metadata}
+                defaultOrientation="landscape"
+              />
+            </div>
             <table className="w-full text-xs">
               <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
                 <th className="px-3 py-2 text-left">Artikal</th>
@@ -1449,7 +1756,11 @@ function ReorderTab2({
               </tr></thead>
               <tbody>
                 {displayed.map(item => (
-                  <tr key={item.artikalId} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+                  <tr
+                    key={item.artikalId}
+                    className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                    onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-items", String(item.artikalId), item.naziv, "Insight Studio - smart reorder po artiklima", reorderItemColumns, item)}
+                  >
                     <td className="px-3 py-2 text-[#E8ECF4] max-w-[130px] truncate">{item.naziv}</td>
                     <td className="px-2 py-2 text-[#8A95B0]">{item.kategorija}</td>
                     <td className="px-2 py-2 text-[#8A95B0]">{item.dobavljacNaziv}</td>
@@ -1479,6 +1790,17 @@ function ReorderTab2({
 
       {subView === "kategorije" && useSmart && (
         <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+          <div className="mb-3 p-3">
+            <AnalyticsTableToolbar
+              tableKey="insight-smart-reorder-categories"
+              tableTitle="Insight Studio - smart reorder po kategorijama"
+              columns={reorderCategoryColumns}
+              rows={smartData!.byCategoryPlan}
+              filters={analyticsContext.filters}
+              metadata={analyticsContext.metadata}
+              defaultOrientation="landscape"
+            />
+          </div>
           <table className="w-full text-xs">
             <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
               <th className="px-3 py-2 text-left">Kategorija</th>
@@ -1491,7 +1813,11 @@ function ReorderTab2({
             </tr></thead>
             <tbody>
               {smartData!.byCategoryPlan.map((c, i) => (
-                <tr key={i} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+                <tr
+                  key={i}
+                  className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                  onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-categories", c.kategorija, c.kategorija, "Insight Studio - smart reorder po kategorijama", reorderCategoryColumns, c)}
+                >
                   <td className="px-3 py-2 font-medium text-[#E8ECF4]">{c.kategorija}</td>
                   <td className="px-3 py-2 text-right text-[#8A95B0]">{c.totalItems}</td>
                   <td className="px-3 py-2 text-right" style={{ color: c.criticalCount > 0 ? PAL.red : PAL.textSecondary }}>{c.criticalCount}</td>
@@ -1508,6 +1834,17 @@ function ReorderTab2({
 
       {subView === "dobavljaci" && useSmart && (
         <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+          <div className="mb-3 p-3">
+            <AnalyticsTableToolbar
+              tableKey="insight-smart-reorder-suppliers"
+              tableTitle="Insight Studio - smart reorder po dobavljacima"
+              columns={reorderSupplierColumns}
+              rows={smartData!.bySupplierPlan}
+              filters={analyticsContext.filters}
+              metadata={analyticsContext.metadata}
+              defaultOrientation="landscape"
+            />
+          </div>
           <table className="w-full text-xs">
             <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
               <th className="px-3 py-2 text-left">Dobavljač</th>
@@ -1518,7 +1855,11 @@ function ReorderTab2({
             </tr></thead>
             <tbody>
               {smartData!.bySupplierPlan.map((s, i) => (
-                <tr key={i} className="border-b border-[#2A3045] hover:bg-[#1E2332] transition">
+                <tr
+                  key={i}
+                  className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                  onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-suppliers", s.dobavljac, s.dobavljac, "Insight Studio - smart reorder po dobavljacima", reorderSupplierColumns, s)}
+                >
                   <td className="px-3 py-2 font-medium text-[#E8ECF4]">{s.dobavljac}</td>
                   <td className="px-3 py-2 text-right text-[#8A95B0]">{s.totalItems}</td>
                   <td className="px-3 py-2 text-right" style={{ color: s.criticalCount > 0 ? PAL.red : PAL.textSecondary }}>{s.criticalCount}</td>
@@ -1539,11 +1880,20 @@ function ReorderTab2({
 // ══════════════════════════════════════════════════════════════════
 
 export default function InsightStudioPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabKey>("pregled");
   const [periodDays, setPeriodDays] = useState(30);
 
   const toDate = toDateStr(new Date());
   const fromDate = toDateStr(daysAgo(periodDays));
+
+  const analyticsFilters = useMemo<AnalyticsNamedValue[]>(() => [
+    { key: "fromDate", label: "Od datuma", value: fromDate },
+    { key: "toDate", label: "Do datuma", value: toDate },
+    { key: "periodDays", label: "Period (dana)", value: periodDays },
+    { key: "activeTab", label: "Aktivni tab", value: activeTab },
+  ], [activeTab, fromDate, periodDays, toDate]);
 
   // ── V1 State ──
   const [kpi, setKpi] = useState<KpiSnapshot | null>(null);
@@ -1591,6 +1941,45 @@ export default function InsightStudioPage() {
   const [smartReorderLoading, setSmartReorderLoading] = useState(false);
   const [priceSensitivity, setPriceSensitivity] = useState<PriceSensitivity | null>(null);
   const [basketAffinity, setBasketAffinity] = useState<BasketAffinity | null>(null);
+
+  const analyticsMetadata = useMemo<AnalyticsNamedValue[]>(() => [
+    { key: "dailyDate", label: "Dnevna analiza", value: dailyDate },
+    { key: "supplierCountV2", label: "Dobavljaci v2", value: supplierV2.length },
+    { key: "supplierCountV1", label: "Dobavljaci v1", value: suppliers.length },
+    { key: "abcCount", label: "ABC artikli", value: abcData.length },
+    { key: "agingCount", label: "Aging artikli", value: agingItems.length },
+  ], [abcData.length, agingItems.length, dailyDate, supplierV2.length, suppliers.length]);
+
+  const openSnapshotDetail = useCallback(<Row,>(
+    table: string,
+    recordId: string,
+    title: string,
+    subtitle: string,
+    columns: AnalyticsTableColumn<Row>[],
+    row: Row
+  ) => {
+    saveAnalyticsDetailSnapshot(
+      buildAnalyticsDetailSnapshot({
+        table,
+        recordId,
+        title,
+        subtitle,
+        columns,
+        row,
+        metadata: [...analyticsFilters, ...analyticsMetadata],
+      })
+    );
+
+    navigate(`/analitika/${table}/${encodeURIComponent(recordId)}`, {
+      state: { backgroundLocation: location },
+    });
+  }, [analyticsFilters, analyticsMetadata, location, navigate]);
+
+  const analyticsContext = useMemo<InsightAnalyticsContext>(() => ({
+    filters: analyticsFilters,
+    metadata: analyticsMetadata,
+    openSnapshotDetail,
+  }), [analyticsFilters, analyticsMetadata, openSnapshotDetail]);
 
   // ── Load KPI + overview data ──
   const loadKpi = useCallback(async () => {
@@ -1860,13 +2249,14 @@ export default function InsightStudioPage() {
           />
         )}
         {activeTab === "dobavljaci" && (
-          <SupplierTab v2Data={supplierV2} v1Data={suppliers} loading={supplierV2Loading && supplierLoading} />
+          <SupplierTab v2Data={supplierV2} v1Data={suppliers} loading={supplierV2Loading && supplierLoading} analyticsContext={analyticsContext} />
         )}
         {activeTab === "kategorije" && (
           <CategoryTab
             byCategory={catData?.byCategory ?? []} byGender={catData?.byGender ?? []}
             priceSensitivity={priceSensitivity} basketAffinity={basketAffinity}
             loading={catLoading}
+            analyticsContext={analyticsContext}
           />
         )}
         {activeTab === "matrica" && (
@@ -1877,15 +2267,15 @@ export default function InsightStudioPage() {
             selectedDate={dailyDate} heatmap={heatmap} heatmapLoading={heatmapLoading} />
         )}
         {activeTab === "abc" && (
-          <AbcLifecycleTab abcData={abcData} abcLoading={abcLoading} lifecycle={lifecycle} lifecycleLoading={lifecycleLoading} />
+          <AbcLifecycleTab abcData={abcData} abcLoading={abcLoading} lifecycle={lifecycle} lifecycleLoading={lifecycleLoading} analyticsContext={analyticsContext} />
         )}
         {activeTab === "zalihe" && (
           <StockTab agingItems={agingItems} agingLoading={agingLoading} agingSummary={agingSummary}
-            depletion={depletion} depletionLoading={depletionLoading} />
+            depletion={depletion} depletionLoading={depletionLoading} analyticsContext={analyticsContext} />
         )}
         {activeTab === "nabavka" && (
           <ReorderTab2 smartData={smartReorder} smartLoading={smartReorderLoading}
-            v1Items={reorderItems} v1Loading={reorderLoading} v1Summary={reorderSummary} />
+            v1Items={reorderItems} v1Loading={reorderLoading} v1Summary={reorderSummary} analyticsContext={analyticsContext} />
         )}
       </div>
     </div>

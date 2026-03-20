@@ -72,7 +72,19 @@ export interface AccessImportRunResponse {
     storesUpdated: number;
     sourceRowsByTable: Record<string, number>;
     importedRowsByTable: Record<string, number>;
+    coverageByTable?: Record<string, AccessImportCoverageMetric>;
     warnings: string[];
+}
+
+export interface AccessImportCoverageMetric {
+    sourceRows: number;
+    acceptedRows: number;
+    skippedRows: number;
+    targetWrites: number;
+    mergedRows: number;
+    expandedTargetRows: number;
+    coveragePercent: number;
+    transformationType: string;
 }
 
 export interface AccessImportBatchDto {

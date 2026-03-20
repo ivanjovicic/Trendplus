@@ -155,7 +155,7 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.KorisnikIme).HasMaxLength(200);
                 entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
 
-                entity.HasIndex(e => e.SourceId).IsUnique();
+                entity.HasIndex(e => new { e.SourceId, e.DataOrigin }).IsUnique();
                 entity.HasIndex(e => e.Datum);
                 entity.HasIndex(e => new { e.ArtikalId, e.Datum });
                 entity.HasIndex(e => new { e.StoreId, e.Datum });

@@ -5,7 +5,7 @@ import { getArtikliPaged } from "../services/artikliApi";
 import { getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
 import type { Dobavljac } from "../types/Dobavljaci";
-import { getDataScope } from "../utils/dataScope";
+import { getDataScope, setDataScope as persistDataScope } from "../utils/dataScope";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
 
 type ArtikalListItem = {
@@ -24,6 +24,10 @@ const CACHE_KEY_ARTIKLI_PAGED = "cached_artikli_paged_";
 const CACHE_KEY_TOTAL_COUNT = "cached_artikli_total_count_";
 const CACHE_KEY_SEZONE = "cached_sezone";
 
+function scopeLabel(scope: "all" | "existing" | "imported"): string {
+  return scope === "all" ? "Sve" : scope === "existing" ? "Postojeci" : "Importovani";
+}
+
 export default function ArtikliListPage() {
   const [artikli, setArtikli] = useState<ArtikalListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -31,7 +35,7 @@ export default function ArtikliListPage() {
   const [dobavljaci, setDobavljaci] = useState<Dobavljac[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dataScope, setDataScope] = useState(getDataScope());
+  const [dataScope, setDataScopeValue] = useState(getDataScope());
 
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -71,7 +75,7 @@ export default function ArtikliListPage() {
 
   useEffect(() => {
     const handleScopeChange = () => {
-      setDataScope(getDataScope());
+      setDataScopeValue(getDataScope());
       setPageNumber(1);
     };
 
@@ -490,13 +494,29 @@ export default function ArtikliListPage() {
             {artikli.length === 0 && (
               <div className="flex flex-col items-center gap-3 py-12 text-center">
                 <PackageX size={36} className="text-[#3A4565]" />
-                <p className="text-sm font-medium text-[#9aabc7]">Nema artikala za zadate filtere</p>
+                <p className="text-sm font-medium text-[#9aabc7]">
+                  {activeFiltersCount > 0
+                    ? "Nema artikala za zadate filtere"
+                    : `Nema artikala za prikaz '${scopeLabel(dataScope)}'`}
+                </p>
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={clearFilters}
                     className="flex items-center gap-1 rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] hover:bg-[#2d3347]"
                   >
                     <X size={12} /> Ukloni filtere
+                  </button>
+                )}
+                {activeFiltersCount === 0 && dataScope !== "all" && (
+                  <button
+                    onClick={() => {
+                      persistDataScope("all");
+                      setDataScopeValue("all");
+                      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+                    }}
+                    className="flex items-center gap-1 rounded-lg border border-[#3760b7] bg-[#2d4f95] px-3 py-1.5 text-xs text-white hover:bg-[#335aa9]"
+                  >
+                    Prikazi sve artikle
                   </button>
                 )}
               </div>

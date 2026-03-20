@@ -148,6 +148,7 @@ public class AnalyticsAggregationWorker : BackgroundService
 
             // Refresh top products (only for today)
             await RefreshTopProductsAsync(connection, today, ct);
+            await LogDataQualitySnapshotAsync(connection, ct);
 
             // === CACHE INVALIDATION ===
             if (cache != null)
@@ -396,6 +397,97 @@ public class AnalyticsAggregationWorker : BackgroundService
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
             _logger.LogWarning("⚠️ AnalyticsTopProducts table doesn't exist. Run migration 007 first.");
+        }
+    }
+
+    private async Task LogDataQualitySnapshotAsync(NpgsqlConnection connection, CancellationToken ct)
+    {
+        try
+        {
+            const string sql = """
+                WITH sales_30d AS (
+                    SELECT
+                        ps.id_artikal AS artikal_id,
+                        COALESCE(SUM(ps.kolicina * ps.cena), 0) AS sales_30d
+                    FROM prodaja_stavke ps
+                    JOIN prodaja_zaglavlje p ON p.id = ps.id_prodaja
+                    WHERE p.datum_prodaje >= NOW() - INTERVAL '30 day'
+                    GROUP BY ps.id_artikal
+                ),
+                quality_flags AS (
+                    SELECT
+                        a."Id" AS product_id,
+                        CASE
+                            WHEN a."IDDobavljac" IS NULL OR d."Id" IS NULL THEN 'MISSING_SUPPLIER'
+                            WHEN a."IDTipObuce" IS NULL OR t."Id" IS NULL THEN 'MISSING_SHOE_TYPE'
+                            WHEN NULLIF(BTRIM(a."Naziv"), '') IS NULL
+                                 OR (a."IDDobavljac" IS NOT NULL AND NULLIF(BTRIM(d."Naziv"), '') IS NULL)
+                                 OR (a."IDTipObuce" IS NOT NULL AND NULLIF(BTRIM(t."Naziv"), '') IS NULL)
+                                THEN 'INVALID_NAME'
+                            ELSE 'OK'
+                        END AS data_quality_flag,
+                        COALESCE(s.sales_30d, 0) AS sales_30d
+                    FROM "Artikli" a
+                    LEFT JOIN "Dobavljaci" d ON a."IDDobavljac" = d."Id"
+                    LEFT JOIN "TipoviObuce" t ON a."IDTipObuce" = t."Id"
+                    LEFT JOIN sales_30d s ON s.artikal_id = a."Id"
+                )
+                SELECT
+                    data_quality_flag,
+                    COUNT(*) AS issue_count,
+                    COALESCE(SUM(sales_30d), 0) AS affected_sales_30d
+                FROM quality_flags
+                GROUP BY data_quality_flag
+                ORDER BY data_quality_flag;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, connection);
+            cmd.CommandTimeout = CommandTimeoutSeconds;
+
+            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var salesImpact = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            var totalProducts = 0;
+
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var flag = reader.GetString(0);
+                var count = reader.GetInt32(1);
+                var sales = reader.GetDecimal(2);
+
+                counts[flag] = count;
+                salesImpact[flag] = sales;
+                totalProducts += count;
+            }
+
+            var missingSupplier = counts.GetValueOrDefault("MISSING_SUPPLIER");
+            var missingShoeType = counts.GetValueOrDefault("MISSING_SHOE_TYPE");
+            var invalidName = counts.GetValueOrDefault("INVALID_NAME");
+            var problematic = missingSupplier + missingShoeType + invalidName;
+            var issueRatio = totalProducts > 0 ? (decimal)problematic / totalProducts : 0m;
+
+            _logger.LogInformation(
+                "Data quality snapshot: total={TotalProducts}, missingSupplier={MissingSupplier}, missingShoeType={MissingShoeType}, invalidName={InvalidName}, affectedSales30d={AffectedSales30d}",
+                totalProducts,
+                missingSupplier,
+                missingShoeType,
+                invalidName,
+                salesImpact.GetValueOrDefault("MISSING_SUPPLIER")
+                + salesImpact.GetValueOrDefault("MISSING_SHOE_TYPE")
+                + salesImpact.GetValueOrDefault("INVALID_NAME"));
+
+            if (issueRatio > 0.05m)
+            {
+                _logger.LogWarning(
+                    "Data quality warning: {ProblematicProducts} problematic products out of {TotalProducts} ({IssueRatio:P1})",
+                    problematic,
+                    totalProducts,
+                    issueRatio);
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01")
+        {
+            _logger.LogWarning("⚠️ Data quality snapshot skipped because one of the source tables does not exist yet.");
         }
     }
 }

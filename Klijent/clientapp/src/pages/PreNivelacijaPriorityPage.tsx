@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AlertTriangle, Lightbulb, Siren, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   CartesianGrid,
@@ -11,8 +12,11 @@ import {
   YAxis,
   ZAxis,
 } from "recharts";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
 import { getPreNivelacijaPrioriteti, type PreNivelacijaQuery } from "../services/preNivelacijaApi";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { PreNivelacijaPriorityResponse, PreNivelacijaQueueItem } from "../types/preNivelacija";
 
 type Tab = "candidates" | "suppliers" | "simulator" | "alerts";
@@ -36,7 +40,37 @@ function queueKey(item: PreNivelacijaQueueItem) {
   return `${item.artikalId}`;
 }
 
+const candidateColumns: AnalyticsTableColumn<PreNivelacijaPriorityResponse["candidates"][number]>[] = [
+  { key: "sku", header: "SKU", dataType: "text" },
+  { key: "supplierName", header: "Dobavljac", dataType: "text" },
+  { key: "stockUnits", header: "Stock", dataType: "number" },
+  { key: "velocity180", header: "Velocity180", dataType: "number" },
+  { key: "daysSinceLastSale", header: "No sale days", dataType: "number" },
+  { key: "grossMarginPctEst", header: "Margin %", dataType: "percent" },
+  { key: "preNivelacijaScore", header: "Score", dataType: "number" },
+];
+
+const supplierColumns: AnalyticsTableColumn<PreNivelacijaPriorityResponse["supplierLeaderboard"][number]>[] = [
+  { key: "supplierName", header: "Dobavljac", dataType: "text" },
+  { key: "actionScore", header: "Action score", dataType: "number" },
+  { key: "highPrioritySkuCount", header: "High SKU", dataType: "number" },
+  { key: "stockUnitsAtRisk", header: "Stock risk", dataType: "number" },
+  { key: "estimatedAvoidableMarkdownLoss", header: "Avoidable loss", dataType: "currency" },
+  { key: "weekOverWeekRiskDeltaPct", header: "WoW risk", dataType: "percent" },
+];
+
+const simulatorColumns: AnalyticsTableColumn<PreNivelacijaPriorityResponse["candidates"][number]>[] = [
+  { key: "sku", header: "SKU", dataType: "text" },
+  { key: "scenarioHighlightNowRevenue", header: "Highlight rev", dataType: "currency", getValue: (row) => row.scenarioHighlightNow.expectedRevenue30d },
+  { key: "scenarioMarkdownNowRevenue", header: "Markdown rev", dataType: "currency", getValue: (row) => row.scenarioMarkdownNow.expectedRevenue30d },
+  { key: "revenueDeltaHighlightVsMarkdown", header: "Delta rev", dataType: "currency" },
+  { key: "marginDeltaHighlightVsMarkdown", header: "Delta margin", dataType: "currency" },
+  { key: "confidence", header: "Confidence", dataType: "text" },
+];
+
 export default function PreNivelacijaPriorityPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [tab, setTab] = useState<Tab>("candidates");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +157,45 @@ export default function PreNivelacijaPriorityPage() {
       { label: "Likely markdown soon", items: queues.likelyMarkdownSoon ?? [] },
     ];
   }, [data]);
+
+  const sharedFilters = useMemo<AnalyticsNamedValue[]>(() => [
+    { key: "supplierId", label: "Dobavljac", value: filters.supplierId ?? "" },
+    { key: "seasonId", label: "Sezona", value: filters.seasonId ?? "" },
+    { key: "footwearTypeId", label: "Tip obuce", value: filters.footwearTypeId ?? "" },
+    { key: "stockMin", label: "Stock min", value: filters.stockMin ?? "" },
+    { key: "noSaleDaysMin", label: "No-sale days min", value: filters.noSaleDaysMin ?? "" },
+    { key: "minScore", label: "Min score", value: filters.minScore ?? "" },
+  ], [filters]);
+
+  const sharedMetadata = useMemo<AnalyticsNamedValue[]>(() => [
+    { key: "generatedAtUtc", label: "Generisano", value: data?.generatedAtUtc ?? "" },
+    { key: "formulaVersion", label: "Formula", value: data?.formulaVersion ?? "" },
+  ], [data?.formulaVersion, data?.generatedAtUtc]);
+
+  const openSnapshotDetail = <Row,>(
+    table: string,
+    recordId: string,
+    title: string,
+    subtitle: string,
+    columns: AnalyticsTableColumn<Row>[],
+    row: Row
+  ) => {
+    saveAnalyticsDetailSnapshot(
+      buildAnalyticsDetailSnapshot({
+        table,
+        recordId,
+        title,
+        subtitle,
+        columns,
+        row,
+        metadata: sharedFilters,
+      })
+    );
+
+    navigate(`/analitika/${table}/${encodeURIComponent(recordId)}`, {
+      state: { backgroundLocation: location },
+    });
+  };
 
   return (
     <InventoryPageShell
@@ -274,6 +347,17 @@ export default function PreNivelacijaPriorityPage() {
 
         {!loading && !error && data && tab === "candidates" && (
           <div className="space-y-4">
+            <div className="flex justify-end">
+              <AnalyticsTableToolbar
+                tableKey="pre-nivelacija-candidates"
+                tableTitle="Pre-nivelacija kandidati"
+                columns={candidateColumns}
+                rows={data.candidates}
+                filters={sharedFilters}
+                metadata={sharedMetadata}
+                defaultOrientation="landscape"
+              />
+            </div>
             <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
               <table className="min-w-full divide-y divide-[#2f323b] text-sm">
                 <thead className="bg-[#14161d] text-[#93a7c8]">
@@ -289,11 +373,22 @@ export default function PreNivelacijaPriorityPage() {
                 </thead>
                 <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
                   {data.candidates.map((row) => (
-                    <tr key={row.artikalId} className={`hover:brightness-110 ${
+                    <tr
+                      key={row.artikalId}
+                      className={`cursor-pointer hover:brightness-110 ${
                       row.priorityBand === "high" ? "bg-rose-950/20" :
                       row.priorityBand === "medium" ? "bg-amber-950/15" :
                       "hover:bg-[#1f2330]"
-                    }`}>
+                    }`}
+                      onClick={() => openSnapshotDetail("pre-nivelacija-candidates", String(row.artikalId), row.sku, row.supplierName, candidateColumns, row)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSnapshotDetail("pre-nivelacija-candidates", String(row.artikalId), row.sku, row.supplierName, candidateColumns, row);
+                        }
+                      }}
+                      tabIndex={0}
+                    >
                       <td className="px-3 py-2">{row.sku}</td>
                       <td className="px-3 py-2">{row.supplierName}</td>
                       <td className="px-3 py-2 text-right">{row.stockUnits}</td>
@@ -346,6 +441,17 @@ export default function PreNivelacijaPriorityPage() {
 
         {!loading && !error && data && tab === "suppliers" && (
           <div className="space-y-4">
+            <div className="flex justify-end">
+              <AnalyticsTableToolbar
+                tableKey="pre-nivelacija-suppliers"
+                tableTitle="Pre-nivelacija supplier action board"
+                columns={supplierColumns}
+                rows={data.supplierLeaderboard}
+                filters={sharedFilters}
+                metadata={sharedMetadata}
+                defaultOrientation="landscape"
+              />
+            </div>
             <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
               <table className="min-w-full divide-y divide-[#2f323b] text-sm">
                 <thead className="bg-[#14161d] text-[#93a7c8]">
@@ -360,7 +466,18 @@ export default function PreNivelacijaPriorityPage() {
                 </thead>
                 <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
                   {data.supplierLeaderboard.map((s, idx) => (
-                    <tr key={`${s.supplierName}-${idx}`} className="hover:bg-[#1f2330]">
+                    <tr
+                      key={`${s.supplierName}-${idx}`}
+                      className="cursor-pointer hover:bg-[#1f2330]"
+                      onClick={() => openSnapshotDetail("pre-nivelacija-suppliers", String(s.supplierId ?? idx), s.supplierName, "Supplier action board", supplierColumns, s)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSnapshotDetail("pre-nivelacija-suppliers", String(s.supplierId ?? idx), s.supplierName, "Supplier action board", supplierColumns, s);
+                        }
+                      }}
+                      tabIndex={0}
+                    >
                       <td className="px-3 py-2">{s.supplierName}</td>
                       <td className="px-3 py-2 text-right font-semibold">{s.actionScore.toFixed(1)}</td>
                       <td className="px-3 py-2 text-right">{s.highPrioritySkuCount}</td>
@@ -392,6 +509,17 @@ export default function PreNivelacijaPriorityPage() {
 
         {!loading && !error && data && tab === "simulator" && (
           <div className="space-y-4">
+            <div className="flex justify-end">
+              <AnalyticsTableToolbar
+                tableKey="pre-nivelacija-simulator"
+                tableTitle="Pre-nivelacija scenario simulator"
+                columns={simulatorColumns}
+                rows={data.candidates.slice(0, 20)}
+                filters={sharedFilters}
+                metadata={sharedMetadata}
+                defaultOrientation="landscape"
+              />
+            </div>
             <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
               <table className="min-w-full divide-y divide-[#2f323b] text-sm">
                 <thead className="bg-[#14161d] text-[#93a7c8]">
@@ -406,7 +534,18 @@ export default function PreNivelacijaPriorityPage() {
                 </thead>
                 <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
                   {data.candidates.slice(0, 20).map((row) => (
-                    <tr key={row.artikalId} className="hover:bg-[#1f2330]">
+                    <tr
+                      key={row.artikalId}
+                      className="cursor-pointer hover:bg-[#1f2330]"
+                      onClick={() => openSnapshotDetail("pre-nivelacija-simulator", String(row.artikalId), row.sku, "Scenario simulator", simulatorColumns, row)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSnapshotDetail("pre-nivelacija-simulator", String(row.artikalId), row.sku, "Scenario simulator", simulatorColumns, row);
+                        }
+                      }}
+                      tabIndex={0}
+                    >
                       <td className="px-3 py-2">{row.sku}</td>
                       <td className="px-3 py-2 text-right">{fmtRsd(row.scenarioHighlightNow.expectedRevenue30d)}</td>
                       <td className="px-3 py-2 text-right">{fmtRsd(row.scenarioMarkdownNow.expectedRevenue30d)}</td>

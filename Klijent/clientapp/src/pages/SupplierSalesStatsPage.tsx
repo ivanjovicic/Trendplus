@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -15,6 +16,10 @@ import {
   type SupplierSalesStat,
   type SupplierSalesStatsResponse,
 } from "../services/supplierSalesStatsApi";
+import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./SupplierSalesStatsPage.css";
 
 type SortDir = "asc" | "desc";
@@ -41,6 +46,24 @@ const columns: Array<{ field: SortField; label: string; align?: "left" | "right"
   { field: "promenaPrometa", label: "Promena prometa %", align: "right" },
   { field: "marginPct", label: "Marza %", align: "right" },
   { field: "brojArtikalaSaNivelacijom", label: "Artikli sa/ukupno", align: "center" },
+];
+
+const analyticsColumns: AnalyticsTableColumn<SupplierSalesStat>[] = [
+  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
+  { key: "preNivelacijePromet", header: "Pre promet", dataType: "currency" },
+  { key: "preNivelacijeKolicina", header: "Pre kom", dataType: "number" },
+  { key: "posleNivelacijePromet", header: "Posle promet", dataType: "currency" },
+  { key: "posleNivelacijeKolicina", header: "Posle kom", dataType: "number" },
+  { key: "ukupanPromet", header: "Ukupan promet", dataType: "currency" },
+  { key: "ukupnaKolicina", header: "Ukupna kolicina", dataType: "number" },
+  { key: "promenaPrometa", header: "Promena prometa %", dataType: "percent" },
+  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  {
+    key: "artikliSaNivelacijom",
+    header: "Artikli sa/ukupno",
+    dataType: "text",
+    getValue: (row) => `${row.brojArtikalaSaNivelacijom} / ${row.brojArtikalaUkupno}`,
+  },
 ];
 
 function toDateInput(date: Date): string {
@@ -112,6 +135,8 @@ function SortButton(props: {
 }
 
 export default function SupplierSalesStatsPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [data, setData] = useState<SupplierSalesStatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +215,56 @@ export default function SupplierSalesStatsPage() {
         })),
     [data?.suppliers]
   );
+
+  const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => {
+    if (sezonaId != null) {
+      return [{ key: "sezonaId", label: "Sezona", value: sezonaId }];
+    }
+
+    return [
+      { key: "fromDate", label: "Od", value: fromDate },
+      { key: "toDate", label: "Do", value: toDate },
+    ];
+  }, [fromDate, sezonaId, toDate]);
+
+  const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
+      { key: "brojDobavljaca", label: "Dobavljaca", value: data?.totals.brojDobavljaca ?? 0 },
+    ],
+    [data?.generatedAt, data?.totals.brojDobavljaca]
+  );
+
+  const openSupplierDetail = (supplier: SupplierSalesStat) => {
+    console.info("Opened supplier analytics detail", { id: supplier.dobavljacId, supplier: supplier.dobavljacNaziv });
+    const recordId = supplier.dobavljacId != null
+      ? String(supplier.dobavljacId)
+      : `unknown-${encodeURIComponent(supplier.dobavljacNaziv)}`;
+    const params = new URLSearchParams();
+
+    if (sezonaId != null) {
+      params.set("sezonaId", String(sezonaId));
+    } else {
+      params.set("fromDate", `${fromDate}T00:00:00Z`);
+      params.set("toDate", `${toDate}T23:59:59Z`);
+    }
+
+    saveAnalyticsDetailSnapshot(
+      buildAnalyticsDetailSnapshot({
+        table: "supplier-sales-stats",
+        recordId,
+        title: supplier.dobavljacNaziv,
+        subtitle: "Prodaja po dobavljacu",
+        columns: analyticsColumns,
+        row: supplier,
+        metadata: toolbarFilters,
+      })
+    );
+
+    navigate(`/analitika/supplier-sales-stats/${recordId}?${params.toString()}`, {
+      state: { backgroundLocation: location },
+    });
+  };
 
   const handleSort = (field: SortField) => {
     const textField = field === "dobavljacNaziv";
@@ -372,10 +447,21 @@ export default function SupplierSalesStatsPage() {
 
           <section className="supplier-sales-card">
             <div className="supplier-sales-table-head">
-              <h2 className="supplier-sales-section-title">Tabela po dobavljacima</h2>
-              <span className="supplier-sales-table-meta">
-                Period: {toDateOnly(data.fromDate) || fromDate} - {toDateOnly(data.toDate) || toDate}
-              </span>
+              <div>
+                <h2 className="supplier-sales-section-title">Tabela po dobavljacima</h2>
+                <span className="supplier-sales-table-meta">
+                  Period: {toDateOnly(data.fromDate) || fromDate} - {toDateOnly(data.toDate) || toDate}
+                </span>
+              </div>
+              <AnalyticsTableToolbar
+                tableKey="supplier-sales-stats"
+                tableTitle="Statistika prodaje po dobavljacima"
+                columns={analyticsColumns}
+                rows={sortedSuppliers}
+                filters={toolbarFilters}
+                metadata={toolbarMetadata}
+                defaultOrientation="landscape"
+              />
             </div>
 
             <div className="supplier-sales-table-wrap">
@@ -405,8 +491,31 @@ export default function SupplierSalesStatsPage() {
                     </tr>
                   ) : (
                     sortedSuppliers.map((supplier) => (
-                      <tr key={supplier.dobavljacId ?? `unknown-${supplier.dobavljacNaziv}`}>
-                        <td>{supplier.dobavljacNaziv}</td>
+                      <tr
+                        key={supplier.dobavljacId ?? `unknown-${supplier.dobavljacNaziv}`}
+                        className="cursor-pointer"
+                        onClick={() => openSupplierDetail(supplier)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openSupplierDetail(supplier);
+                          }
+                        }}
+                        tabIndex={0}
+                        aria-label={`Otvori detalj dobavljaca ${supplier.dobavljacNaziv}`}
+                      >
+                        <td>
+                          <AnalyticsUnknownLink
+                            value={supplier.dobavljacNaziv}
+                            issueType="missingSupplier"
+                            context={{
+                              originTable: "supplier-sales-stats",
+                              fromDate,
+                              toDate,
+                              sezonaId,
+                            }}
+                          />
+                        </td>
                         <td className="align-right">{fmtRsd(supplier.preNivelacijePromet)}</td>
                         <td className="align-right">{fmtQty(supplier.preNivelacijeKolicina)}</td>
                         <td className="align-right">{fmtRsd(supplier.posleNivelacijePromet)}</td>

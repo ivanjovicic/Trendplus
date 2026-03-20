@@ -11,20 +11,54 @@ export interface ModalProps {
 
 export default function Modal({ isOpen, onClose, title, children, footer, size = "md" }: ModalProps) {
     const modalRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         if (!isOpen) return;
+
+        previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
 
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
         };
 
+        const handleTabTrap = (e: KeyboardEvent) => {
+            if (e.key !== "Tab" || !modalRef.current) return;
+
+            const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+
+            if (focusable.length === 0) {
+                e.preventDefault();
+                modalRef.current.focus();
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            const active = document.activeElement as HTMLElement | null;
+
+            if (e.shiftKey && active === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && active === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+
         document.addEventListener("keydown", handleEscape);
+        document.addEventListener("keydown", handleTabTrap);
         document.body.style.overflow = "hidden";
+        window.setTimeout(() => closeButtonRef.current?.focus(), 0);
 
         return () => {
             document.removeEventListener("keydown", handleEscape);
+            document.removeEventListener("keydown", handleTabTrap);
             document.body.style.overflow = "unset";
+            previouslyFocusedRef.current?.focus();
         };
     }, [isOpen, onClose]);
 
@@ -61,6 +95,10 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
             {/* Modal Content */}
             <div
                 ref={modalRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="modal-title"
+                tabIndex={-1}
                 style={{
                     background: "#fff",
                     borderRadius: "12px",
@@ -83,6 +121,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                     }}
                 >
                     <h3
+                        id="modal-title"
                         style={{
                             fontSize: "1.25rem",
                             fontWeight: 600,
@@ -92,6 +131,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                         {title}
                     </h3>
                     <button
+                        ref={closeButtonRef}
                         onClick={onClose}
                         style={{
                             background: "none",

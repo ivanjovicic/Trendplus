@@ -87,7 +87,11 @@ if %errorlevel% equ 0 (
 )
 echo.
 
-echo [3/4] Starting React Frontend on port 5174...
+echo [3/4] Hosted .NET workers start together with the API...
+echo [OK] Workers are hosted inside the NET API process.
+echo.
+
+echo [4/4] Starting React Frontend on port 5174...
 netstat -ano | findstr /R /C:":5174 .*LISTENING" >nul
 if %errorlevel% equ 0 (
     echo [OK] Frontend already running on localhost:5174
@@ -105,6 +109,7 @@ echo   - Redis:       localhost:6379
 echo   - Postgres:    localhost:5434
 echo   - Python API:  http://localhost:8000
 echo   - .NET API:    http://localhost:8080
+echo   - Workers:     hosted inside .NET API
 echo   - Frontend:    http://localhost:5174
 echo.
 echo Open: http://localhost:5174/global-trends

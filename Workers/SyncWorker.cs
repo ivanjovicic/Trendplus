@@ -289,27 +289,36 @@ namespace Workers
             if (suppliers.Count == 0) return;
 
             var ids = suppliers.Select(x => x.Id).ToArray();
-            var existing = await analyticsDb.SuppliersDim.Where(x => ids.Contains(x.SupplierId)).ToDictionaryAsync(x => x.SupplierId, ct);
+            var existingIds = (await analyticsDb.SuppliersDim
+                .Where(x => ids.Contains(x.SupplierId))
+                .Select(x => x.SupplierId)
+                .ToListAsync(ct))
+                .ToHashSet();
             var inserts = 0; var updates = 0;
             foreach (var s in suppliers)
             {
-                if (existing.TryGetValue(s.Id, out var dim))
+                if (existingIds.Contains(s.Id))
                 {
-                    dim.Naziv = s.Naziv ?? dim.Naziv; dim.Adresa = s.Adresa; dim.Telefon = s.Telefon;
-                    dim.Napomena = s.Napomena; dim.DataOrigin = s.DataOrigin; dim.UpdatedAt = DateTime.UtcNow;
                     updates++;
                 }
                 else
                 {
-                    analyticsDb.SuppliersDim.Add(new Domain.Model.SuppliersDim
-                    {
-                        SupplierId = s.Id, Naziv = s.Naziv ?? string.Empty, Adresa = s.Adresa,
-                        Telefon = s.Telefon, Napomena = s.Napomena, DataOrigin = s.DataOrigin, UpdatedAt = DateTime.UtcNow
-                    });
                     inserts++;
+                    existingIds.Add(s.Id);
                 }
+
+                await analyticsDb.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO "SuppliersDim" ("SupplierId", "Naziv", "Adresa", "Telefon", "Napomena", "DataOrigin", "UpdatedAt")
+                    VALUES ({s.Id}, {s.Naziv ?? string.Empty}, {s.Adresa}, {s.Telefon}, {s.Napomena}, {s.DataOrigin}, {DateTime.UtcNow})
+                    ON CONFLICT ("SupplierId") DO UPDATE
+                    SET "Naziv" = EXCLUDED."Naziv",
+                        "Adresa" = EXCLUDED."Adresa",
+                        "Telefon" = EXCLUDED."Telefon",
+                        "Napomena" = EXCLUDED."Napomena",
+                        "DataOrigin" = EXCLUDED."DataOrigin",
+                        "UpdatedAt" = EXCLUDED."UpdatedAt";
+                    """, ct);
             }
-            await analyticsDb.SaveChangesAsync(ct);
             _logger.LogInformation("SuppliersDim sync: inserts={I}, updates={U}", inserts, updates);
         }
 
@@ -319,31 +328,37 @@ namespace Workers
             if (seasons.Count == 0) return;
 
             var ids = seasons.Select(x => x.Id).ToArray();
-            var existing = await analyticsDb.SeasonsDim.Where(x => ids.Contains(x.SeasonId)).ToDictionaryAsync(x => x.SeasonId, ct);
+            var existingIds = (await analyticsDb.SeasonsDim
+                .Where(x => ids.Contains(x.SeasonId))
+                .Select(x => x.SeasonId)
+                .ToListAsync(ct))
+                .ToHashSet();
             var inserts = 0; var updates = 0;
             foreach (var s in seasons)
             {
-                if (existing.TryGetValue(s.Id, out var dim))
+                if (existingIds.Contains(s.Id))
                 {
-                    dim.Naziv = s.Naziv;
-                    dim.DatumOd = DateTime.SpecifyKind(s.DatumOd, DateTimeKind.Utc);
-                    dim.DatumDo = DateTime.SpecifyKind(s.DatumDo, DateTimeKind.Utc);
-                    dim.DataOrigin = s.DataOrigin; dim.UpdatedAt = DateTime.UtcNow;
                     updates++;
                 }
                 else
                 {
-                    analyticsDb.SeasonsDim.Add(new Domain.Model.SeasonsDim
-                    {
-                        SeasonId = s.Id, Naziv = s.Naziv,
-                        DatumOd = DateTime.SpecifyKind(s.DatumOd, DateTimeKind.Utc),
-                        DatumDo = DateTime.SpecifyKind(s.DatumDo, DateTimeKind.Utc),
-                        DataOrigin = s.DataOrigin, UpdatedAt = DateTime.UtcNow
-                    });
                     inserts++;
+                    existingIds.Add(s.Id);
                 }
+
+                var datumOd = DateTime.SpecifyKind(s.DatumOd, DateTimeKind.Utc);
+                var datumDo = DateTime.SpecifyKind(s.DatumDo, DateTimeKind.Utc);
+                await analyticsDb.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO "SeasonsDim" ("SeasonId", "Naziv", "DatumOd", "DatumDo", "DataOrigin", "UpdatedAt")
+                    VALUES ({s.Id}, {s.Naziv}, {datumOd}, {datumDo}, {s.DataOrigin}, {DateTime.UtcNow})
+                    ON CONFLICT ("SeasonId") DO UPDATE
+                    SET "Naziv" = EXCLUDED."Naziv",
+                        "DatumOd" = EXCLUDED."DatumOd",
+                        "DatumDo" = EXCLUDED."DatumDo",
+                        "DataOrigin" = EXCLUDED."DataOrigin",
+                        "UpdatedAt" = EXCLUDED."UpdatedAt";
+                    """, ct);
             }
-            await analyticsDb.SaveChangesAsync(ct);
             _logger.LogInformation("SeasonsDim sync: inserts={I}, updates={U}", inserts, updates);
         }
 
@@ -353,25 +368,33 @@ namespace Workers
             if (types.Count == 0) return;
 
             var ids = types.Select(x => x.Id).ToArray();
-            var existing = await analyticsDb.FootwearTypesDim.Where(x => ids.Contains(x.TypeId)).ToDictionaryAsync(x => x.TypeId, ct);
+            var existingIds = (await analyticsDb.FootwearTypesDim
+                .Where(x => ids.Contains(x.TypeId))
+                .Select(x => x.TypeId)
+                .ToListAsync(ct))
+                .ToHashSet();
             var inserts = 0; var updates = 0;
             foreach (var t in types)
             {
-                if (existing.TryGetValue(t.Id, out var dim))
+                if (existingIds.Contains(t.Id))
                 {
-                    dim.Naziv = t.Naziv; dim.DataOrigin = t.DataOrigin; dim.UpdatedAt = DateTime.UtcNow;
                     updates++;
                 }
                 else
                 {
-                    analyticsDb.FootwearTypesDim.Add(new Domain.Model.FootwearTypesDim
-                    {
-                        TypeId = t.Id, Naziv = t.Naziv, DataOrigin = t.DataOrigin, UpdatedAt = DateTime.UtcNow
-                    });
                     inserts++;
+                    existingIds.Add(t.Id);
                 }
+
+                await analyticsDb.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO "FootwearTypesDim" ("TypeId", "Naziv", "DataOrigin", "UpdatedAt")
+                    VALUES ({t.Id}, {t.Naziv}, {t.DataOrigin}, {DateTime.UtcNow})
+                    ON CONFLICT ("TypeId") DO UPDATE
+                    SET "Naziv" = EXCLUDED."Naziv",
+                        "DataOrigin" = EXCLUDED."DataOrigin",
+                        "UpdatedAt" = EXCLUDED."UpdatedAt";
+                    """, ct);
             }
-            await analyticsDb.SaveChangesAsync(ct);
             _logger.LogInformation("FootwearTypesDim sync: inserts={I}, updates={U}", inserts, updates);
         }
 
@@ -400,30 +423,46 @@ namespace Workers
             }
 
             var sourceIds = movements.Select(x => x.Id).ToArray();
-            var existing = await analyticsDb.InventoryMovementFacts
+            var existingIds = (await analyticsDb.InventoryMovementFacts
                 .Where(x => sourceIds.Contains(x.SourceId))
-                .ToDictionaryAsync(x => x.SourceId, ct);
+                .Select(x => x.SourceId)
+                .ToListAsync(ct))
+                .ToHashSet();
 
             var inserts = 0;
             var updates = 0;
 
             foreach (var m in movements)
             {
-                if (!existing.TryGetValue(m.Id, out var fact))
-                {
-                    fact = new Domain.Model.InventoryMovementFact();
-                    analyticsDb.InventoryMovementFacts.Add(fact);
-                    inserts++;
-                }
-                else
+                if (existingIds.Contains(m.Id))
                 {
                     updates++;
                 }
+                else
+                {
+                    inserts++;
+                    existingIds.Add(m.Id);
+                }
 
-                MapInventoryMovement(m, fact);
+                var datum = DateTime.SpecifyKind(m.Datum, DateTimeKind.Utc);
+                await analyticsDb.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO "InventoryMovementFacts" ("SourceId", "TipPromene", "Datum", "ArtikalId", "Kolicina", "StaraProdajnaCena", "NovaProdajnaCena", "Iznos", "StoreId", "DobavljacId", "BrojDokumenta", "KorisnikIme", "DataOrigin")
+                    VALUES ({m.Id}, {m.TipPromene}, {datum}, {m.ArtikalId}, {m.Kolicina}, {m.StaraProdajnaCena}, {m.NovaProdajnaCena}, {m.Iznos}, {m.IDObjekat}, {m.DobavljacId}, {m.BrojRacuna}, {m.KorisnikIme}, {m.DataOrigin})
+                    ON CONFLICT ("SourceId", "DataOrigin") DO UPDATE
+                    SET "TipPromene" = EXCLUDED."TipPromene",
+                        "Datum" = EXCLUDED."Datum",
+                        "ArtikalId" = EXCLUDED."ArtikalId",
+                        "Kolicina" = EXCLUDED."Kolicina",
+                        "StaraProdajnaCena" = EXCLUDED."StaraProdajnaCena",
+                        "NovaProdajnaCena" = EXCLUDED."NovaProdajnaCena",
+                        "Iznos" = EXCLUDED."Iznos",
+                        "StoreId" = EXCLUDED."StoreId",
+                        "DobavljacId" = EXCLUDED."DobavljacId",
+                        "BrojDokumenta" = EXCLUDED."BrojDokumenta",
+                        "KorisnikIme" = EXCLUDED."KorisnikIme",
+                        "DataOrigin" = EXCLUDED."DataOrigin";
+                    """, ct);
             }
-
-            await analyticsDb.SaveChangesAsync(ct);
             _logger.LogInformation(
                 "InventoryMovementFacts sync: replayFrom={ReplayFrom:o}, scanned={Scanned}, inserts={Inserts}, updates={Updates}",
                 replayFrom,

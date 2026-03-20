@@ -28,18 +28,17 @@ export default function WorkerControlFlag() {
   }, [apiPingEnabled]);
 
   useEffect(() => {
-    void load(true);
-  }, [load]);
-
-  useEffect(() => {
     if (!apiPingEnabled) {
+      setLoading(false);
       return;
     }
 
-    void load();
+    void load(true);
+
     const id = window.setInterval(() => {
       void load();
     }, POLL_MS);
+
     return () => window.clearInterval(id);
   }, [load, apiPingEnabled]);
 
@@ -53,11 +52,11 @@ export default function WorkerControlFlag() {
   }, [error, health]);
 
   const statusText = useMemo(() => {
-    if (loading) return "Workeri: učitavanje...";
+    if (loading) return "Workeri: ucitavanje...";
     if (error) return "Workeri: status nedostupan";
     if (!health) return "Workeri: nema podataka";
-    if (!health.workersEnabled) return "Workeri: isključeni";
-    return `Workeri: uključeni (${health.runningWorkers}/${health.totalWorkers})`;
+    if (!health.workersEnabled) return "Workeri: iskljuceni";
+    return `Workeri: ukljuceni (${health.runningWorkers}/${health.totalWorkers})`;
   }, [error, health, loading]);
 
   const onToggle = useCallback(async () => {

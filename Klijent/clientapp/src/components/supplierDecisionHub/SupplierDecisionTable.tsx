@@ -2,6 +2,8 @@ import type {
   RankingItem,
   SupplierDecisionHubSortField,
 } from "../../services/supplierDecisionHubApi";
+import AnalyticsTableToolbar from "../analytics/AnalyticsTableToolbar";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../../types/analyticsTable";
 import {
   confidenceLabel,
   formatCurrency,
@@ -13,6 +15,9 @@ import {
 
 type SupplierDecisionTableProps = {
   items: RankingItem[];
+  columns: AnalyticsTableColumn<RankingItem>[];
+  analyticsFilters: AnalyticsNamedValue[];
+  analyticsMetadata: AnalyticsNamedValue[];
   loading?: boolean;
   page: number;
   pageSize: number;
@@ -22,6 +27,7 @@ type SupplierDecisionTableProps = {
   onPageChange: (page: number) => void;
   onSortChange: (sortBy: SupplierDecisionHubSortField) => void;
   onSelectSupplier: (supplierId: number) => void;
+  onOpenDetail: (item: RankingItem) => void;
 };
 
 const sortableColumns: Array<{
@@ -52,6 +58,9 @@ function sortIndicator(
 
 export default function SupplierDecisionTable({
   items,
+  columns,
+  analyticsFilters,
+  analyticsMetadata,
   loading = false,
   page,
   pageSize,
@@ -61,6 +70,7 @@ export default function SupplierDecisionTable({
   onPageChange,
   onSortChange,
   onSelectSupplier,
+  onOpenDetail,
 }: SupplierDecisionTableProps) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
@@ -74,6 +84,18 @@ export default function SupplierDecisionTable({
         <div className="supplier-decision-table-summary">
           Prikazano: {items.length} / {totalCount}
         </div>
+      </div>
+
+      <div className="mb-3">
+        <AnalyticsTableToolbar
+          tableKey="supplier-decision-hub"
+          tableTitle="Supplier Decision Hub - rangiranje dobavljaca"
+          columns={columns}
+          rows={items}
+          filters={analyticsFilters}
+          metadata={analyticsMetadata}
+          defaultOrientation="landscape"
+        />
       </div>
 
       <div className="supplier-decision-table-wrap">
@@ -112,7 +134,10 @@ export default function SupplierDecisionTable({
                 return (
                   <tr
                     key={item.supplierId}
-                    onClick={() => onSelectSupplier(item.supplierId)}
+                    onClick={() => {
+                      onSelectSupplier(item.supplierId);
+                      onOpenDetail(item);
+                    }}
                     className="supplier-decision-table-row"
                   >
                     <td>{item.supplierName}</td>

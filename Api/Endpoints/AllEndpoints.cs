@@ -9,7 +9,10 @@ using Application.Performance.Queries;
 using Application.Povracaj.Commands;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
+using Application.TipObuce.Commands;
+using Application.TipObuce.Queries;
 using Api.Models;
+using Api.Services;
 using Domain.Model;
 using Infrastructure.Services;
 using MediatR;
@@ -721,8 +724,8 @@ public static class AllEndpoints
                                     ORDER BY price_event_id DESC
                                 ) AS rn
                             FROM "vw_vendor_sales_nivelacija"
-                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
-                              AND (@category IS NULL OR category ILIKE @categoryPattern)
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern::text)
                         )
                         SELECT
                             event_date,
@@ -1106,7 +1109,7 @@ public static class AllEndpoints
 
                     if (sezona is null)
                     {
-                        return Results.NotFound(new { message = $"Sezona {sezonaId.Value} nije pronadjena." });
+                        return Results.NotFound(new { message = $"Sezona {sezonaId.Value} nije pronađena." });
                     }
 
                     fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
@@ -1340,7 +1343,7 @@ public static class AllEndpoints
 
                     if (sezona is null)
                     {
-                        return Results.NotFound(new { message = $"Sezona {sezonaId.Value} nije pronadjena." });
+                        return Results.NotFound(new { message = $"Sezona {sezonaId.Value} nije pronađena." });
                     }
 
                     fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
@@ -2159,7 +2162,7 @@ public static class AllEndpoints
             {
                 return Results.Problem(
                     title: "Nivelacija view schema mismatch",
-                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql, 014_FixNivelacijaViewsFromDnevnik.sql, 016_AnalyticsNivelacijaEnhancements.sql and 017_CreateNightlyAnalyticsMaterializedViews.sql, then restart the backend.",
+                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql, 014_FixNivelacijaViewsFromDnevnik.sql, and 016_AnalyticsNivelacijaEnhancements.sql, then restart the backend.",
                     statusCode: 500);
             }
             catch (Exception ex)
@@ -3157,7 +3160,8 @@ public static class AllEndpoints
         .RequireRateLimiting("fixed");
 
         app.MapGet("/api/dnevnik-promena", async (
-            ITrendplusDbContext db,
+            IDnevnikPromenaReadService readService,
+            ILogger<Program> logger,
             int pageNumber = 1,
             int pageSize = 50,
             string? tipPromene = null,
@@ -3173,82 +3177,63 @@ public static class AllEndpoints
         {
             try
             {
+                logger.LogInformation(
+                    "Fetching DnevnikPromena list page {PageNumber} size {PageSize} sort {SortBy}/{SortDir}",
+                    pageNumber,
+                    pageSize,
+                    sortBy,
+                    sortDir);
+
                 if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                     fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
 
                 if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                     toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-                var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
-
-                var dnevnikBaseQuery = db.DnevnikPromena.AsNoTracking().AsQueryable();
-                dnevnikBaseQuery = normalizedDataScope switch
+                var response = await readService.GetPagedAsync(new DnevnikPromenaListQuery
                 {
-                    "imported" => dnevnikBaseQuery.Where(dp => dp.DataOrigin == "access"),
-                    "existing" => dnevnikBaseQuery.Where(dp => dp.DataOrigin == "existing" || dp.DataOrigin == null || dp.DataOrigin == ""),
-                    _ => dnevnikBaseQuery
-                };
+                    PageNumber = pageNumber,
+                    PageSize = pageSize,
+                    TipPromene = tipPromene,
+                    ArtikalId = artikalId,
+                    Naziv = naziv,
+                    BrojRacuna = brojRacuna,
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    SortBy = sortBy,
+                    SortDir = sortDir,
+                    DataScope = dataScope
+                }, ct);
 
-                var query = from dp in dnevnikBaseQuery
-                            join a in db.Artikli.AsNoTracking() on dp.ArtikalId equals a.Id into artikli
-                            from artikal in artikli.DefaultIfEmpty()
-                            join d in db.Dobavljaci.AsNoTracking() on dp.DobavljacId equals d.Id into dobavljaci
-                            from dobavljac in dobavljaci.DefaultIfEmpty()
-                            select new
-                            {
-                                dp.Id,
-                                dp.TipPromene,
-                                dp.Datum,
-                                dp.Iznos,
-                                dp.BrojRacuna,
-                                dp.ArtikalId,
-                                ArtikalNaziv = artikal != null ? artikal.Naziv : null,
-                                dp.DobavljacId,
-                                DobavljacNaziv = dobavljac != null ? dobavljac.Naziv : null,
-                                dp.StaraProdajnaCena,
-                                dp.NovaProdajnaCena,
-                                dp.Komentar,
-                                dp.KorisnikIme,
-                                dp.DataOrigin
-                            };
-
-                if (!string.IsNullOrWhiteSpace(tipPromene))
-                    query = query.Where(x => x.TipPromene == tipPromene);
-
-                if (artikalId.HasValue)
-                    query = query.Where(x => x.ArtikalId == artikalId.Value);
-
-                if (!string.IsNullOrWhiteSpace(naziv))
-                    query = query.Where(x => x.ArtikalNaziv != null && x.ArtikalNaziv.Contains(naziv));
-
-                if (!string.IsNullOrWhiteSpace(brojRacuna))
-                    query = query.Where(x => x.BrojRacuna != null && x.BrojRacuna.Contains(brojRacuna));
-
-                if (fromDate.HasValue)
-                    query = query.Where(x => x.Datum >= fromDate.Value);
-
-                if (toDate.HasValue)
-                    query = query.Where(x => x.Datum <= toDate.Value);
-
-                query = sortBy.ToLower(CultureInfo.InvariantCulture) switch
-                {
-                    "tippromene" => sortDir == "asc" ? query.OrderBy(x => x.TipPromene) : query.OrderByDescending(x => x.TipPromene),
-                    "iznos" => sortDir == "asc" ? query.OrderBy(x => x.Iznos) : query.OrderByDescending(x => x.Iznos),
-                    "naziv" => sortDir == "asc" ? query.OrderBy(x => x.ArtikalNaziv) : query.OrderByDescending(x => x.ArtikalNaziv),
-                    _ => sortDir == "asc" ? query.OrderBy(x => x.Datum) : query.OrderByDescending(x => x.Datum)
-                };
-
-                var total = await query.CountAsync(ct);
-                var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
-
-                return Results.Ok(new { items, totalCount = total, pageNumber, pageSize });
+                return Results.Ok(response);
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Greška pri učitavanju dnevnika promena");
                 return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri učitavanju dnevnika promena");
             }
         })
         .RequireRateLimiting("db-heavy");
+
+        app.MapGet("/api/dnevnik-promena/{id:int}", async (
+            int id,
+            IDnevnikPromenaReadService detailService,
+            ILogger<Program> logger,
+            CancellationToken ct) =>
+        {
+            logger.LogInformation("Fetching DnevnikPromena detail for {Id}", id);
+
+            var detail = await detailService.GetByIdAsync(id, ct);
+            if (detail is null)
+            {
+                logger.LogWarning("DnevnikPromena detail not found for {Id}", id);
+                return Results.NotFound(new { message = $"DnevnikPromena sa Id={id} nije pronađen." });
+            }
+
+            logger.LogInformation("DnevnikPromena detail fetched for {Id}", id);
+            return Results.Ok(detail);
+        })
+        .RequireRateLimiting("fixed");
 
         // ============ ARTIKLI ============
         app.MapGet("/artikli", async (IMediator mediator, CancellationToken ct) =>
@@ -3499,6 +3484,56 @@ public static class AllEndpoints
             }
         })
         .RequireRateLimiting("fixed");
+
+        // ============ TIPOVI OBUCE ============
+        app.MapGet("/api/tipovi-obuce", async (
+            IMediator mediator,
+            ILogger<Program> logger,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await mediator.Send(new GetTipObuceQuery(), ct);
+                var ordered = result
+                    .OrderBy(t => t.Naziv)
+                    .ToList();
+
+                return Results.Ok(ordered);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Greska pri ucitavanju tipova obuce");
+                return Results.Problem(detail: ex.GetBaseException().Message, statusCode: 500, title: "Greska pri ucitavanju tipova obuce");
+            }
+        })
+        .RequireRateLimiting("fixed");
+
+        app.MapPost("/api/tipovi-obuce", async (
+            CreateTipObuceCommand request,
+            IMediator mediator,
+            ILogger<Program> logger,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.Naziv))
+                {
+                    return Results.BadRequest(new { message = "Naziv tipa obuce je obavezan." });
+                }
+
+                var normalizedRequest = request with { Naziv = request.Naziv.Trim() };
+                var id = await mediator.Send(normalizedRequest, ct);
+
+                logger.LogInformation("Kreiran tip obuce {TipObuceId} sa nazivom {Naziv}", id, normalizedRequest.Naziv);
+                return Results.Ok(new { id });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Greska pri kreiranju tipa obuce");
+                return Results.Problem(detail: ex.GetBaseException().Message, statusCode: 500, title: "Greska pri kreiranju tipa obuce");
+            }
+        })
+        .RequireRateLimiting("writes");
 
         // ============ DOBAVLJACI ============
         app.MapGet("/api/dobavljaci", async (ITrendplusDbContext db, string dataScope = "all", CancellationToken ct = default) =>

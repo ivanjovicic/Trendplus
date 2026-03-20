@@ -111,17 +111,89 @@ public static class DatabaseInitializer
 
     private static string? ResolveSqlFilePath(string sqlFilePath)
     {
-        if (File.Exists(sqlFilePath))
-            return sqlFilePath;
+        if (Path.IsPathRooted(sqlFilePath) && File.Exists(sqlFilePath))
+        {
+            return Path.GetFullPath(sqlFilePath);
+        }
 
         var relative = sqlFilePath
             .Replace('\\', Path.DirectorySeparatorChar)
             .Replace('/', Path.DirectorySeparatorChar);
 
-        var candidate = Path.Combine(AppContext.BaseDirectory, relative);
+        var repoCandidate = ResolveSqlFilePathFromRepositoryRoot(relative);
+        if (repoCandidate != null)
+        {
+            return repoCandidate;
+        }
 
-        if (File.Exists(candidate))
-            return candidate;
+        var currentDirectoryCandidate = Path.GetFullPath(relative, Directory.GetCurrentDirectory());
+        if (File.Exists(currentDirectoryCandidate))
+        {
+            return currentDirectoryCandidate;
+        }
+
+        var appBaseCandidate = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relative));
+        if (File.Exists(appBaseCandidate))
+        {
+            return appBaseCandidate;
+        }
+
+        return null;
+    }
+
+    private static string? ResolveSqlFilePathFromRepositoryRoot(string relativeSqlPath)
+    {
+        foreach (var startPath in GetRepositoryProbeRoots())
+        {
+            var repositoryRoot = FindRepositoryRoot(startPath);
+            if (repositoryRoot == null)
+            {
+                continue;
+            }
+
+            var candidate = Path.GetFullPath(Path.Combine(repositoryRoot, relativeSqlPath));
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> GetRepositoryProbeRoots()
+    {
+        yield return AppContext.BaseDirectory;
+
+        var currentDirectory = Directory.GetCurrentDirectory();
+        if (!string.Equals(currentDirectory, AppContext.BaseDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            yield return currentDirectory;
+        }
+    }
+
+    private static string? FindRepositoryRoot(string startPath)
+    {
+        if (string.IsNullOrWhiteSpace(startPath))
+        {
+            return null;
+        }
+
+        var directory = new DirectoryInfo(Path.GetFullPath(startPath));
+        if (!directory.Exists)
+        {
+            directory = directory.Parent;
+        }
+
+        while (directory != null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Trendplus2.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
 
         return null;
     }
@@ -214,6 +286,45 @@ public static class DatabaseInitializer
         return (bool?)await command.ExecuteScalarAsync() ?? false;
     }
 
+    private static async Task<bool> AreVendorSalesNivelacijaViewReadyAsync(string connectionString)
+    {
+        if (!await AreRelationsReadyAsync(connectionString, "public.vw_vendor_sales_nivelacija"))
+        {
+            return false;
+        }
+
+        return await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "price_event_id")
+            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "old_price")
+            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "new_price")
+            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "coverage_pre30")
+            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "coverage_post30");
+    }
+
+    private static async Task<bool> RelationHasColumnAsync(
+        string connectionString,
+        string relationName,
+        string columnName)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = ANY (current_schemas(FALSE))
+                  AND table_name = @relationName
+                  AND column_name = @columnName
+            );
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("relationName", relationName);
+        command.Parameters.AddWithValue("columnName", columnName);
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
+    }
+
     private static async Task<bool> AreRelationsReadyAsync(string connectionString, params string[] relationNames)
     {
         if (relationNames.Length == 0)
@@ -263,6 +374,7 @@ public static class DatabaseInitializer
         await EnsureTrendplusCoreSchemaAsync(connectionString, logger);
         await EnsureTrendplusAggregationTablesAsync(connectionString, logger);
         await EnsureTrendplusOutboxSchemaAsync(connectionString, logger);
+        await EnsureTrendplusDocumentSchemaAsync(connectionString, logger);
 
         // Ensure migrations history table exists
         await ExecuteSqlCommandAsync(connectionString, @"
@@ -304,18 +416,25 @@ public static class DatabaseInitializer
             "Database/Migrations/012_AddAccessImportSupport.sql",
             "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql",
             "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql",
-            "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql",
             // 014 analytics creates vw_vendor_sales_nivelacija (analytics-native version).
-            // Runs here (synchronously, before 018 fires) so the view exists when 018
-            // builds vw_supplier_fullprice_signals which depends on it. Running it in
-            // the 018 bg task caused 55P03 lock timeouts because 018 already held
-            // read locks on the same tables via concurrent MV creation.
+            // It must run before 016 so any CASCADE self-heal leaves 016 free to
+            // recreate vw_nivelacija_did and related downstream objects on top of
+            // the final vw_vendor_sales_nivelacija contract.
             "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql",
+            "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql",
             // 018_AddSupplierDecisionHubViews.sql is intentionally excluded here.
             // It creates expensive materialized views (can take 10-30 min on first run)
             // and is fired asynchronously below so it does not block startup.
             "Database/Migrations/005_CreateArtikliAndTestData.sql"
         };
+
+        if (!await AreVendorSalesNivelacijaViewReadyAsync(connectionString))
+        {
+            logger.LogInformation(
+                "vw_vendor_sales_nivelacija is missing required supplier-decision columns. Forcing re-execution of analytics nivelacija SQL before 018.");
+            await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+            await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql");
+        }
 
         foreach (var sqlFile in sqlFiles)
         {
@@ -344,8 +463,13 @@ public static class DatabaseInitializer
         // Each statement auto-commits so partial progress is preserved if the process is killed.
         var bg018ConnectionString = connectionString;
         var bg018Logger = logger;
-        _ = Task.Run(async () =>
+
+        var runFullOnStartup = configuration.GetValue<bool>("DatabaseInitialization:RunFullSupplierDecisionHubOnStartup");
+
+        if (runFullOnStartup)
         {
+            // Execute the 018 build synchronously during startup (blocking). This can increase
+            // startup time significantly; enable only when desired via configuration.
             await using var lockConnection = new NpgsqlConnection(bg018ConnectionString);
             try
             {
@@ -354,60 +478,58 @@ public static class DatabaseInitializer
                 if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey))
                 {
                     bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because another instance is already building supplier decision hub views.");
-                    return;
-                }
-
-                // When analytics and trendplus share the same DB, 014 already runs
-                // synchronously in the trendplus init sqlFiles above, so 018 can safely
-                // reference vw_vendor_sales_nivelacija without any lock contention.
-
-                var coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
-                var cachesReady = coreViewsReady && await AreSupplierDecisionHubCachesReadyAsync(bg018ConnectionString);
-                if (!coreViewsReady)
-                {
-                    bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing. Forcing re-execution of the core-view batch...");
-                    await DeleteAppliedStartupSqlHistoryAsync(
-                        bg018ConnectionString,
-                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
-
-                    bg018Logger.LogInformation("[BG] Starting async execution of 018_AddSupplierDecisionHubViews.sql core views (startup-safe mode)...");
-                    await ExecuteSqlFileAsync(
-                        bg018ConnectionString,
-                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
-                        bg018Logger,
-                        commandTimeoutSeconds: 0,
-                        useTransaction: false,
-                        maxBatchCount: 1,
-                        historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
-                    bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql core views completed successfully.");
-                }
-
-                if (!cachesReady)
-                {
-                    bg018Logger.LogInformation("[BG] Supplier decision hub materialized caches are missing. Forcing re-execution of the cache batches...");
-                    await DeleteAppliedStartupSqlHistoryAsync(
-                        bg018ConnectionString,
-                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
-
-                    bg018Logger.LogInformation("[BG] Starting background materialized cache build for 018_AddSupplierDecisionHubViews.sql...");
-                    await ExecuteSqlFileAsync(
-                        bg018ConnectionString,
-                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
-                        bg018Logger,
-                        commandTimeoutSeconds: 0,
-                        useTransaction: false,
-                        startBatchNumber: 2,
-                        historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
-                    bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql materialized caches completed successfully.");
                 }
                 else
                 {
-                    bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because supplier decision hub materialized views already exist.");
+                    var coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
+                    var cachesReady = coreViewsReady && await AreSupplierDecisionHubCachesReadyAsync(bg018ConnectionString);
+
+                    if (!coreViewsReady)
+                    {
+                        bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing. Forcing re-execution of the core-view batch...");
+                        await DeleteAppliedStartupSqlHistoryAsync(
+                            bg018ConnectionString,
+                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+
+                        bg018Logger.LogInformation("[BG] Starting execution of 018_AddSupplierDecisionHubViews.sql core views (startup-safe mode)...");
+                        await ExecuteSqlFileAsync(
+                            bg018ConnectionString,
+                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+                            bg018Logger,
+                            commandTimeoutSeconds: 0,
+                            useTransaction: false,
+                            maxBatchCount: 1,
+                            historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+                        bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql core views completed successfully.");
+                    }
+
+                    if (!cachesReady)
+                    {
+                        bg018Logger.LogInformation("[BG] Supplier decision hub materialized caches are missing. Forcing re-execution of the cache batches...");
+                        await DeleteAppliedStartupSqlHistoryAsync(
+                            bg018ConnectionString,
+                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+
+                        bg018Logger.LogInformation("[BG] Starting materialized cache build for 018_AddSupplierDecisionHubViews.sql (startup)...");
+                        await ExecuteSqlFileAsync(
+                            bg018ConnectionString,
+                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+                            bg018Logger,
+                            commandTimeoutSeconds: 0,
+                            useTransaction: false,
+                            startBatchNumber: 2,
+                            historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+                        bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql materialized caches completed successfully.");
+                    }
+                    else
+                    {
+                        bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because supplier decision hub materialized views already exist.");
+                    }
                 }
             }
             catch (Exception ex)
             {
-                bg018Logger.LogWarning(ex, "[BG] 018 supplier decision hub core-view build failed. Views may be unavailable until next startup.");
+                bg018Logger.LogWarning(ex, "[BG] 018 supplier decision hub build failed when running on startup. Views may be unavailable until next startup.");
             }
             finally
             {
@@ -416,7 +538,79 @@ public static class DatabaseInitializer
                     await ReleaseSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey);
                 }
             }
-        });
+        }
+        else
+        {
+            _ = Task.Run(async () =>
+            {
+                await using var lockConnection = new NpgsqlConnection(bg018ConnectionString);
+                try
+                {
+                    await lockConnection.OpenAsync();
+
+                    if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey))
+                    {
+                        bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because another instance is already building supplier decision hub views.");
+                        return;
+                    }
+
+                    var coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
+                    var cachesReady = coreViewsReady && await AreSupplierDecisionHubCachesReadyAsync(bg018ConnectionString);
+                    if (!coreViewsReady)
+                    {
+                        bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing. Forcing re-execution of the core-view batch...");
+                        await DeleteAppliedStartupSqlHistoryAsync(
+                            bg018ConnectionString,
+                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+
+                        bg018Logger.LogInformation("[BG] Starting async execution of 018_AddSupplierDecisionHubViews.sql core views (startup-safe mode)...");
+                        await ExecuteSqlFileAsync(
+                            bg018ConnectionString,
+                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+                            bg018Logger,
+                            commandTimeoutSeconds: 0,
+                            useTransaction: false,
+                            maxBatchCount: 1,
+                            historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+                        bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql core views completed successfully.");
+                    }
+
+                    if (!cachesReady)
+                    {
+                        bg018Logger.LogInformation("[BG] Supplier decision hub materialized caches are missing. Forcing re-execution of the cache batches...");
+                        await DeleteAppliedStartupSqlHistoryAsync(
+                            bg018ConnectionString,
+                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+
+                        bg018Logger.LogInformation("[BG] Starting background materialized cache build for 018_AddSupplierDecisionHubViews.sql...");
+                        await ExecuteSqlFileAsync(
+                            bg018ConnectionString,
+                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+                            bg018Logger,
+                            commandTimeoutSeconds: 0,
+                            useTransaction: false,
+                            startBatchNumber: 2,
+                            historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+                        bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql materialized caches completed successfully.");
+                    }
+                    else
+                    {
+                        bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because supplier decision hub materialized views already exist.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    bg018Logger.LogWarning(ex, "[BG] 018 supplier decision hub core-view build failed. Views may be unavailable until next startup.");
+                }
+                finally
+                {
+                    if (lockConnection.State == System.Data.ConnectionState.Open)
+                    {
+                        await ReleaseSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey);
+                    }
+                }
+            });
+        }
 
         // Check if data seeding is required
         if (!await context.Artikli.AnyAsync())
@@ -1017,6 +1211,160 @@ public static class DatabaseInitializer
         await command.ExecuteNonQueryAsync();
 
         logger.LogInformation("✔ Ensured OutboxMessages table exists.");
+    }
+
+    private static async Task EnsureTrendplusDocumentSchemaAsync(
+        string connectionString,
+        ILogger logger)
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS "DocumentTemplates" (
+                "Id" uuid PRIMARY KEY,
+                "Name" character varying(200) NOT NULL,
+                "Version" integer NOT NULL,
+                "Type" character varying(100) NOT NULL,
+                "Locale" character varying(16) NOT NULL,
+                "Content" text NOT NULL,
+                "HeaderContent" text NULL,
+                "FooterContent" text NULL,
+                "IsActive" boolean NOT NULL DEFAULT true,
+                "CreatedByUserId" character varying(200) NULL,
+                "CreatedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW()
+            );
+
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_DocumentTemplates_Name_Version"
+                ON "DocumentTemplates" ("Name", "Version");
+            CREATE INDEX IF NOT EXISTS "IX_DocumentTemplates_Type_IsActive"
+                ON "DocumentTemplates" ("Type", "IsActive");
+
+            CREATE TABLE IF NOT EXISTS "Documents" (
+                "Id" uuid PRIMARY KEY,
+                "BatchId" uuid NULL,
+                "TemplateId" uuid NULL,
+                "TemplateVersion" integer NOT NULL DEFAULT 0,
+                "TemplateName" character varying(200) NOT NULL,
+                "DocumentType" character varying(100) NOT NULL,
+                "TableKey" character varying(200) NOT NULL,
+                "TableTitle" character varying(300) NOT NULL,
+                "Format" character varying(32) NOT NULL,
+                "Orientation" character varying(32) NOT NULL,
+                "Status" character varying(32) NOT NULL,
+                "RequestedByUserId" character varying(200) NOT NULL,
+                "RequestedByUserName" character varying(200) NOT NULL,
+                "RequestedByRoles" character varying(1000) NULL,
+                "Locale" character varying(16) NULL,
+                "IncludeFiltersAndMetadata" boolean NOT NULL DEFAULT true,
+                "IsPreview" boolean NOT NULL DEFAULT false,
+                "IsAsync" boolean NOT NULL DEFAULT false,
+                "RowCount" integer NOT NULL DEFAULT 0,
+                "FiltersJson" text NULL,
+                "MetadataJson" text NULL,
+                "RequestJson" text NOT NULL,
+                "MimeType" character varying(150) NULL,
+                "FileName" character varying(260) NULL,
+                "StoragePath" character varying(500) NULL,
+                "FileUrl" character varying(1000) NULL,
+                "SizeBytes" bigint NULL,
+                "Sha256" character varying(128) NULL,
+                "ErrorMessage" character varying(4000) NULL,
+                "RetryCount" integer NOT NULL DEFAULT 0,
+                "CreatedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW(),
+                "UpdatedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW(),
+                "StartedAtUtc" timestamp with time zone NULL,
+                "CompletedAtUtc" timestamp with time zone NULL,
+                "NextAttemptAtUtc" timestamp with time zone NULL,
+                "ExpiresAtUtc" timestamp with time zone NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS "IX_Documents_Status" ON "Documents" ("Status");
+            CREATE INDEX IF NOT EXISTS "IX_Documents_CreatedAtUtc" ON "Documents" ("CreatedAtUtc");
+            CREATE INDEX IF NOT EXISTS "IX_Documents_Status_NextAttemptAtUtc"
+                ON "Documents" ("Status", "NextAttemptAtUtc");
+            CREATE INDEX IF NOT EXISTS "IX_Documents_BatchId" ON "Documents" ("BatchId");
+            CREATE INDEX IF NOT EXISTS "IX_Documents_RequestedByUserId" ON "Documents" ("RequestedByUserId");
+
+            CREATE TABLE IF NOT EXISTS "DocumentAudits" (
+                "Id" bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                "DocumentId" uuid NOT NULL,
+                "Action" character varying(64) NOT NULL,
+                "UserId" character varying(200) NOT NULL,
+                "UserName" character varying(200) NOT NULL,
+                "Roles" character varying(1000) NULL,
+                "IpAddress" character varying(128) NULL,
+                "UserAgent" character varying(1024) NULL,
+                "DetailsJson" text NULL,
+                "CreatedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW()
+            );
+
+            CREATE INDEX IF NOT EXISTS "IX_DocumentAudits_DocumentId_CreatedAtUtc"
+                ON "DocumentAudits" ("DocumentId", "CreatedAtUtc");
+
+            INSERT INTO "DocumentTemplates"
+                ("Id", "Name", "Version", "Type", "Locale", "Content", "HeaderContent", "FooterContent", "IsActive", "CreatedByUserId", "CreatedAtUtc")
+            VALUES
+                (
+                    '65f367aa-4206-4b7e-b7d2-7d8ef7351111',
+                    'analytics-table-default',
+                    1,
+                    'analytics-table-report',
+                    'sr-RS',
+                    '<!DOCTYPE html><html><head><meta charset="utf-8" /><title>{{title}}</title><style>{{styles}}</style></head><body class="doc {{orientation}}"><div class="sheet"><header>{{header}}</header><section class="meta"><div><strong>Izvestaj:</strong> {{title}}</div><div><strong>Generisano:</strong> {{generated_at}}</div><div><strong>Korisnik:</strong> {{requested_by}}</div></section><section class="filters"><h3>Filteri</h3>{{filters}}</section><section class="metadata"><h3>Metapodaci</h3>{{metadata}}</section><section class="table-section">{{table}}</section><footer>{{footer}}</footer></div></body></html>',
+                    '<div class="doc-header"><h1>{{title}}</h1><p>Trendplus Analytics Export</p></div>',
+                    '<div class="doc-footer"><span>Template v{{template_version}}</span><span>{{table_key}}</span></div>',
+                    true,
+                    'system',
+                    NOW()
+                ),
+                (
+                    '65f367aa-4206-4b7e-b7d2-7d8ef7352222',
+                    'executive-summary-default',
+                    1,
+                    'executive-summary',
+                    'sr-RS',
+                    '<!DOCTYPE html><html><head><meta charset="utf-8" /><title>{{title}}</title><style>{{styles}}</style></head><body class="doc portrait"><div class="sheet"><header>{{header}}</header><section class="table-section">{{table}}</section><footer>{{footer}}</footer></div></body></html>',
+                    '<div class="doc-header"><h1>{{title}}</h1></div>',
+                    '<div class="doc-footer">Trendplus Executive Summary</div>',
+                    true,
+                    'system',
+                    NOW()
+                ),
+                (
+                    '65f367aa-4206-4b7e-b7d2-7d8ef7353333',
+                    'receipt-default',
+                    1,
+                    'receipt',
+                    'sr-RS',
+                    '<!DOCTYPE html><html><head><meta charset="utf-8" /><title>{{title}}</title><style>{{styles}}</style></head><body class="doc portrait thermal"><div class="sheet">{{table}}</div></body></html>',
+                    NULL,
+                    NULL,
+                    true,
+                    'system',
+                    NOW()
+                ),
+                (
+                    '65f367aa-4206-4b7e-b7d2-7d8ef7354444',
+                    'label-default',
+                    1,
+                    'label',
+                    'sr-RS',
+                    '<!DOCTYPE html><html><head><meta charset="utf-8" /><title>{{title}}</title><style>{{styles}}</style></head><body class="doc portrait label"><div class="sheet">{{table}}</div></body></html>',
+                    NULL,
+                    NULL,
+                    true,
+                    'system',
+                    NOW()
+                )
+            ON CONFLICT ("Name", "Version") DO NOTHING;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = BootstrapCommandTimeoutSeconds;
+        await command.ExecuteNonQueryAsync();
+
+        logger.LogInformation("Ensured document export tables and default templates exist.");
     }
 
     private static async Task ExecuteBootstrapBatchAsync(
@@ -1650,6 +1998,9 @@ public static class DatabaseInitializer
         const int maxAttempts = 5;
         for (var i = 0; i < batches.Count; i++)
         {
+            var attempt = 0;
+            Exception? lastEx = null;
+
             if (batches.Count > 1)
             {
                 logger.LogInformation(
@@ -1659,22 +2010,22 @@ public static class DatabaseInitializer
                     batches.Count);
             }
 
-            // Apply a per-session lock timeout to avoid waiting indefinitely for locks.
-            await using (var lockTimeoutCommand = new NpgsqlCommand(
-                $"SET LOCAL lock_timeout = '{StartupSqlLockTimeoutSeconds}s'; SET LOCAL statement_timeout = '0';",
-                connection))
-            {
-                lockTimeoutCommand.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
-                await lockTimeoutCommand.ExecuteNonQueryAsync();
-            }
-
-            var attempt = 0;
-            var lastEx = (Exception?)null;
             while (attempt < maxAttempts)
             {
                 attempt++;
                 try
                 {
+                    // Apply a per-session lock timeout to avoid waiting indefinitely for locks.
+                    // On retries, we increase the lock timeout.
+                    var effectiveLockTimeout = StartupSqlLockTimeoutSeconds * (int)Math.Max(1, Math.Pow(2, attempt - 1));
+                    await using (var lockTimeoutCommand = new NpgsqlCommand(
+                        $"SET LOCAL lock_timeout = '{effectiveLockTimeout}s'; SET LOCAL statement_timeout = '0';",
+                        connection))
+                    {
+                        lockTimeoutCommand.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+                        await lockTimeoutCommand.ExecuteNonQueryAsync();
+                    }
+
                     await using var command = new NpgsqlCommand(batches[i], connection);
                     command.CommandTimeout = commandTimeoutSeconds;
                     await command.ExecuteNonQueryAsync();
@@ -1686,7 +2037,7 @@ public static class DatabaseInitializer
                 {
                     // Lock timeout — log and retry with backoff
                     lastEx = pex;
-                    logger.LogWarning(pex, "Lock timeout executing batch {Batch} of {Script}. Attempt {Attempt}/{MaxAttempts}", i + 1, scriptIdentifier, attempt, maxAttempts);
+                    logger.LogWarning(pex, "Lock timeout (55P03) executing batch {Batch} of {Script}. Attempt {Attempt}/{MaxAttempts}", i + 1, scriptIdentifier, attempt, maxAttempts);
                 }
                 catch (Npgsql.NpgsqlException nex)
                 {
@@ -1701,7 +2052,7 @@ public static class DatabaseInitializer
                     throw;
                 }
 
-                if (attempt < maxAttempts)
+                if (lastEx != null && attempt < maxAttempts)
                 {
                     var delayMs = (int)(Math.Pow(2, attempt - 1) * 1000);
                     logger.LogInformation("Waiting {Delay}ms before retrying batch {Batch}", delayMs, i + 1);
@@ -1765,6 +2116,7 @@ public static class DatabaseInitializer
                 ? "Executing startup SQL file {FilePath}."
                 : "Re-executing startup SQL file {FilePath} because the file hash changed.",
             scriptDisplayIdentifier);
+        logger.LogInformation("Resolved startup SQL file {FilePath} to {ResolvedPath}.", scriptDisplayIdentifier, resolvedPath);
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 

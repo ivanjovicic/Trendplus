@@ -56,3 +56,8 @@ export async function fetchProdajaArtikliLookup(
         lookupInFlight.delete(key);
     }
 }
+
+export function clearProdajaLookupCache(): void {
+    lookupCache.clear();
+    lookupInFlight.clear();
+}

@@ -22,6 +22,8 @@ const API = import.meta.env.VITE_API_BASE_URL;
 const ARTIKLI_PAGED_CACHE_TTL_MS = 30 * 1000;
 const artikliPagedCache = new Map<string, { expiresAt: number; data: ArtikliPagedResponse<any> }>();
 const artikliPagedInFlight = new Map<string, Promise<ArtikliPagedResponse<any>>>();
+const SESSION_PAGED_PREFIX = "cached_artikli_paged_";
+const SESSION_TOTAL_PREFIX = "cached_artikli_total_count_";
 
 export type ArtikliPagedResponse<T> = {
     items: T[];
@@ -172,6 +174,28 @@ export async function getArtikliPaged<T = any>(
         return await request;
     } finally {
         artikliPagedInFlight.delete(cacheKey);
+    }
+}
+
+export function clearArtikliClientCaches(): void {
+    artikliPagedCache.clear();
+    artikliPagedInFlight.clear();
+
+    try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (!key) continue;
+            if (key.startsWith(SESSION_PAGED_PREFIX) || key.startsWith(SESSION_TOTAL_PREFIX)) {
+                keysToRemove.push(key);
+            }
+        }
+
+        for (const key of keysToRemove) {
+            sessionStorage.removeItem(key);
+        }
+    } catch {
+        // best-effort cache cleanup
     }
 }
 

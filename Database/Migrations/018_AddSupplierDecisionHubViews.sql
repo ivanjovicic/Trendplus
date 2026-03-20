@@ -18,8 +18,49 @@
 --   DROP MATERIALIZED VIEW IF EXISTS mv_supplier_markdown_dependency_cache CASCADE;
 
 -- ==========================================================
--- 1) Supplier performance before the first markdown event
+-- 1) Prerequisites and Compatibility Stubs
 -- ==========================================================
+
+-- Ensure `vw_vendor_sales_nivelacija` exists as a minimal stub. 
+-- This view is defined in 014_CreateVendorSalesNivelacijaViews.sql but might be missing 
+-- or slow during first-time schema initialization.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relkind IN ('v','r')
+          AND c.relname = 'vw_vendor_sales_nivelacija'
+    ) THEN
+        EXECUTE $create$
+        CREATE VIEW vw_vendor_sales_nivelacija AS
+        SELECT
+            NULL::bigint AS price_event_id,
+            NULL::date AS event_date,
+            NULL::bigint AS vendor_id,
+            NULL::text AS vendor_name,
+            NULL::bigint AS article_id,
+            NULL::text AS sku,
+            NULL::text AS article_name,
+            NULL::text AS category,
+            NULL::numeric AS old_price,
+            NULL::numeric AS new_price,
+            0::numeric AS pre_qty,
+            0::numeric AS post_qty,
+            0::numeric AS pre_revenue,
+            0::numeric AS post_revenue,
+            0::numeric AS coverage_pre30,
+            0::numeric AS coverage_post30,
+            0::numeric AS change_qty,
+            0::numeric AS change_revenue,
+            0::numeric AS change_percent_qty,
+            0::numeric AS change_percent_revenue,
+            FALSE AS is_low_signal
+        WHERE FALSE;
+        $create$;
+    END IF;
+END
+$$;
 
 -- Ensure `vw_nivelacija_did` exists as a minimal stub when running in an environment
 -- where the nivelacija views haven't been created yet. This avoids hard failures
@@ -43,6 +84,12 @@ BEGIN
     END IF;
 END
 $$;
+
+-- SQL_BATCH_BREAK
+
+-- ==========================================================
+-- 2) Supplier performance before the first markdown event
+-- ==========================================================
 
 CREATE OR REPLACE VIEW vw_supplier_fullprice_signals AS
 WITH ranked_markdowns AS (
@@ -292,8 +339,10 @@ COMMENT ON COLUMN vw_supplier_fullprice_signals.signal_quality_flag IS
 COMMENT ON COLUMN vw_supplier_fullprice_signals.signal_quality_reason IS
 'Human-readable explanation of why the pre-markdown signal is strong or weak.';
 
+-- SQL_BATCH_BREAK
+
 -- ==========================================================
--- 2) Supplier dependence on markdown sales
+-- 3) Supplier dependence on markdown sales
 -- ==========================================================
 CREATE OR REPLACE VIEW vw_supplier_markdown_dependency AS
 WITH signal_base AS (
@@ -425,8 +474,10 @@ COMMENT ON COLUMN vw_supplier_markdown_dependency.dead_stock_rate IS
 COMMENT ON COLUMN vw_supplier_markdown_dependency.unsold_stock_value IS
 'Current stock value tied up in analyzed supplier articles, valued at current unit cost.';
 
+-- SQL_BATCH_BREAK
+
 -- ==========================================================
--- 3) Central supplier decision scorecard
+-- 4) Central supplier decision scorecard
 -- ==========================================================
 CREATE OR REPLACE VIEW vw_supplier_decision_score AS
 WITH supplier_totals AS (
@@ -816,8 +867,10 @@ COMMENT ON COLUMN vw_supplier_decision_score.supplier_quality_index IS
 COMMENT ON COLUMN vw_supplier_decision_score.confidence_score IS
 '0-1 confidence score driven by coverage, signal quality and sample size.';
 
+-- SQL_BATCH_BREAK
+
 -- ==========================================================
--- 4) Presentation-ready recommendations
+-- 5) Presentation-ready recommendations
 -- ==========================================================
 CREATE OR REPLACE VIEW vw_supplier_recommendations AS
 WITH base AS (
@@ -909,7 +962,7 @@ COMMENT ON COLUMN vw_supplier_recommendations.recommendation_reason IS
 -- SQL_BATCH_BREAK
 
 -- ==========================================================
--- 5) Materialized cache for default overview reads
+-- 6) Materialized cache for default overview reads
 -- ==========================================================
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_markdown_dependency_cache AS
 SELECT *

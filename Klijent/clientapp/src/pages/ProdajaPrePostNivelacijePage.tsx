@@ -11,8 +11,12 @@ import {
     XAxis,
     YAxis,
 } from "recharts";
+import { useLocation, useNavigate } from "react-router-dom";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import { getDobavljaci } from "../services/dobavljaciApi";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { Dobavljac } from "../types/Dobavljaci";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import {
     getVendorSalesNivelacija,
     getVendorSalesNivelacijaOptions,
@@ -81,6 +85,70 @@ const articleColumns: Array<{ field: ArticleSortField; label: string; right?: bo
     { field: "postRevenue", label: "Post promet", right: true },
     { field: "changeRevenue", label: "Promena prometa", right: true },
     { field: "changePercent", label: "Promena %", right: true },
+];
+
+const categoryDetailColumns: AnalyticsTableColumn<VendorSalesNivelacijaResponse["categoryStats"][number]>[] = [
+    { key: "category", header: "Kategorija", dataType: "text" },
+    { key: "articlesCount", header: "Artikli", dataType: "number" },
+    { key: "vendorsCount", header: "Dobavljaci", dataType: "number" },
+    { key: "preRevenue", header: "Promet pre", dataType: "currency" },
+    { key: "postRevenue", header: "Promet posle", dataType: "currency" },
+    { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
+    { key: "changePercent", header: "Promena %", dataType: "percent" },
+];
+
+const priceDirectionDetailColumns: AnalyticsTableColumn<VendorSalesNivelacijaResponse["priceDirectionStats"][number]>[] = [
+    { key: "segment", header: "Segment", dataType: "text" },
+    { key: "articlesCount", header: "Artikli", dataType: "number" },
+    { key: "vendorsCount", header: "Dobavljaci", dataType: "number" },
+    { key: "avgPriceChangePercent", header: "Prosecna promena cene", dataType: "percent" },
+    { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
+    { key: "changePercent", header: "Promena %", dataType: "percent" },
+];
+
+const priceBucketDetailColumns: AnalyticsTableColumn<{ bucket: string; count: number; changeQty: number; changeRevenue: number }>[] = [
+    { key: "bucket", header: "Razred promene cene", dataType: "text" },
+    { key: "count", header: "Broj SKU", dataType: "number" },
+    { key: "changeQty", header: "Promena kolicine", dataType: "number" },
+    { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
+];
+
+const vendorDetailColumns: AnalyticsTableColumn<VendorSalesNivelacijaVendorStat>[] = [
+    { key: "vendorId", header: "Dobavljac ID", dataType: "number" },
+    { key: "vendorName", header: "Dobavljac", dataType: "text" },
+    { key: "preQty", header: "Pre kolicina", dataType: "number" },
+    { key: "postQty", header: "Post kolicina", dataType: "number" },
+    { key: "changeQty", header: "Promena kolicine", dataType: "number" },
+    { key: "preRevenue", header: "Pre promet", dataType: "currency" },
+    { key: "postRevenue", header: "Post promet", dataType: "currency" },
+    { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
+    { key: "changePercent", header: "Promena %", dataType: "percent" },
+    { key: "articleCount", header: "Broj artikala", dataType: "number" },
+];
+
+const articleDetailColumns: AnalyticsTableColumn<VendorSalesNivelacijaArticleStat>[] = [
+    { key: "eventDate", header: "Datum nivelacije", dataType: "date" },
+    { key: "vendorId", header: "Dobavljac ID", dataType: "number" },
+    { key: "vendorName", header: "Dobavljac", dataType: "text" },
+    { key: "sku", header: "SKU", dataType: "text" },
+    { key: "articleName", header: "Artikal", dataType: "text" },
+    { key: "category", header: "Kategorija", dataType: "text" },
+    { key: "oldPrice", header: "Stara cena", dataType: "currency" },
+    { key: "newPrice", header: "Nova cena", dataType: "currency" },
+    { key: "preQty", header: "Pre kolicina", dataType: "number" },
+    { key: "postQty", header: "Post kolicina", dataType: "number" },
+    { key: "changeQty", header: "Promena kolicine", dataType: "number" },
+    { key: "preRevenue", header: "Pre promet", dataType: "currency" },
+    { key: "postRevenue", header: "Post promet", dataType: "currency" },
+    { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
+    { key: "changePercent", header: "Promena %", dataType: "percent" },
+    { key: "priceChangePercent", header: "Promena cene %", dataType: "percent" },
+    { key: "priceElasticity", header: "Elasticnost", dataType: "number" },
+    { key: "didRevenue", header: "DiD promet", dataType: "currency" },
+    { key: "didQty", header: "DiD qty", dataType: "number" },
+    { key: "lostSalesOOS", header: "Lost sales OOS", dataType: "currency" },
+    { key: "oosRate", header: "OOS %", dataType: "percent" },
+    { key: "metricReason", header: "Metric reason", dataType: "text" },
 ];
 
 function toDateInput(date: Date): string {
@@ -210,6 +278,8 @@ function SortButton(props: { label: string; right?: boolean; onClick: () => void
 }
 
 export default function ProdajaPrePostNivelacijePage() {
+    const navigate = useNavigate();
+    const location = useLocation();
     const [filterMode, setFilterMode] = useState<FilterMode>("nivelacija");
     const [fromDate, setFromDate] = useState(() => {
         const d = new Date();
@@ -451,6 +521,57 @@ export default function ProdajaPrePostNivelacijePage() {
     const metricDelta = (x: VendorSalesNivelacijaArticleStat) => (chartMetric === "revenue" ? Number(x.changeRevenue) : x.changeQty);
     const formatMetricDelta = (v: number) => (chartMetric === "revenue" ? fmtRsd(v) : fmtQty(v));
     const articleExtraColumns = 13;
+
+    const sharedFilters = useMemo<AnalyticsNamedValue[]>(
+        () => [
+            { key: "filterMode", label: "Nacin filtriranja", value: filterMode },
+            { key: "selectedEventDate", label: "Nivelacija", value: selectedEventDate || "" },
+            { key: "fromDate", label: "Od datuma", value: fromDate },
+            { key: "toDate", label: "Do datuma", value: toDate },
+            { key: "vendorId", label: "Dobavljac ID", value: selectedVendorId ?? "" },
+            { key: "category", label: "Kategorija", value: selectedCategory || "" },
+            { key: "includeInactive", label: "Ukljuci neaktivne", value: includeInactive },
+            { key: "minValidityFilter", label: "Samo validni uzorci", value: minValidityFilter },
+        ],
+        [filterMode, fromDate, includeInactive, minValidityFilter, selectedCategory, selectedEventDate, selectedVendorId, toDate]
+    );
+
+    const sharedMetadata = useMemo<AnalyticsNamedValue[]>(
+        () => [
+            { key: "generatedAt", label: "Generisano", value: response?.generatedAt ?? "" },
+            { key: "windowDays", label: "Window days", value: response?.windowDays ?? "" },
+            { key: "avgMomentumRevenue", label: "Avg momentum", value: response?.avgMomentumRevenue ?? "" },
+            { key: "avgDidRevenue", label: "Avg DiD promet", value: response?.avgDidRevenue ?? "" },
+            { key: "avgElasticity", label: "Avg elasticnost", value: response?.avgElasticity ?? "" },
+            { key: "metricsStatus", label: "Metrics status", value: response?.metricsStatus ?? "OK" },
+        ],
+        [response?.avgDidRevenue, response?.avgElasticity, response?.avgMomentumRevenue, response?.generatedAt, response?.metricsStatus, response?.windowDays]
+    );
+
+    const openSnapshotDetail = useCallback(<Row,>(
+        table: string,
+        recordId: string,
+        title: string,
+        subtitle: string,
+        columns: AnalyticsTableColumn<Row>[],
+        row: Row
+    ) => {
+        saveAnalyticsDetailSnapshot(
+            buildAnalyticsDetailSnapshot({
+                table,
+                recordId,
+                title,
+                subtitle,
+                columns,
+                row,
+                metadata: [...sharedFilters, ...sharedMetadata],
+            })
+        );
+
+        navigate(`/analitika/${table}/${encodeURIComponent(recordId)}`, {
+            state: { backgroundLocation: location },
+        });
+    }, [location, navigate, sharedFilters, sharedMetadata]);
 
     const metricText = (valueText: string, reason?: string | null) =>
         valueText === "N/A" && reason
@@ -791,6 +912,17 @@ export default function ProdajaPrePostNivelacijePage() {
                 <div className="nivelacija-segment-grid">
                     <div className="nivelacija-card">
                         <h3 className="nivelacija-card-title">Segmentacija po kategorijama</h3>
+                        <div className="mb-3">
+                            <AnalyticsTableToolbar
+                                tableKey="vendor-sales-nivelacija-categories"
+                                tableTitle="Prodaja pre/post nivelacije - kategorije"
+                                columns={categoryDetailColumns}
+                                rows={categoryStats.slice(0, 12)}
+                                filters={sharedFilters}
+                                metadata={sharedMetadata}
+                                defaultOrientation="landscape"
+                            />
+                        </div>
                         <div className="nivelacija-scroll">
                             <table className="nivelacija-table">
                                 <thead>
@@ -804,7 +936,11 @@ export default function ProdajaPrePostNivelacijePage() {
                                 </thead>
                                 <tbody>
                                     {categoryStats.slice(0, 12).map((x) => (
-                                        <tr key={x.category}>
+                                        <tr
+                                            key={x.category}
+                                            className="cursor-pointer"
+                                            onClick={() => openSnapshotDetail("vendor-sales-nivelacija-categories", x.category, x.category, "Segmentacija po kategorijama", categoryDetailColumns, x)}
+                                        >
                                             <td>{x.category}</td>
                                             <td className="align-right">{x.articlesCount}</td>
                                             <td className="align-right">{x.vendorsCount}</td>
@@ -819,6 +955,17 @@ export default function ProdajaPrePostNivelacijePage() {
                     </div>
                     <div className="nivelacija-card">
                         <h3 className="nivelacija-card-title">Segmentacija po smeru cene</h3>
+                        <div className="mb-3">
+                            <AnalyticsTableToolbar
+                                tableKey="vendor-sales-nivelacija-price-direction"
+                                tableTitle="Prodaja pre/post nivelacije - smer cene"
+                                columns={priceDirectionDetailColumns}
+                                rows={priceDirectionStats}
+                                filters={sharedFilters}
+                                metadata={sharedMetadata}
+                                defaultOrientation="landscape"
+                            />
+                        </div>
                         <div className="nivelacija-scroll">
                             <table className="nivelacija-table">
                                 <thead>
@@ -832,7 +979,11 @@ export default function ProdajaPrePostNivelacijePage() {
                                 </thead>
                                 <tbody>
                                     {priceDirectionStats.map((x) => (
-                                        <tr key={x.segment}>
+                                        <tr
+                                            key={x.segment}
+                                            className="cursor-pointer"
+                                            onClick={() => openSnapshotDetail("vendor-sales-nivelacija-price-direction", x.segment, x.segment, "Segmentacija po smeru cene", priceDirectionDetailColumns, x)}
+                                        >
                                             <td>{x.segment}</td>
                                             <td className="align-right">{x.articlesCount}</td>
                                             <td className="align-right">{x.vendorsCount}</td>
@@ -851,6 +1002,17 @@ export default function ProdajaPrePostNivelacijePage() {
             {priceBucketStats.length > 0 && (
                 <div className="nivelacija-table-wrap">
                     <h3 className="nivelacija-table-title">Segmentacija po cenovnom razredu (Price Bucket)</h3>
+                    <div className="mb-3">
+                        <AnalyticsTableToolbar
+                            tableKey="vendor-sales-nivelacija-price-buckets"
+                            tableTitle="Prodaja pre/post nivelacije - price bucket"
+                            columns={priceBucketDetailColumns}
+                            rows={priceBucketStats}
+                            filters={sharedFilters}
+                            metadata={sharedMetadata}
+                            defaultOrientation="landscape"
+                        />
+                    </div>
                     <div className="nivelacija-scroll">
                         <table className="nivelacija-table">
                             <thead>
@@ -863,7 +1025,11 @@ export default function ProdajaPrePostNivelacijePage() {
                             </thead>
                             <tbody>
                                 {priceBucketStats.map((b) => (
-                                    <tr key={b.bucket}>
+                                    <tr
+                                        key={b.bucket}
+                                        className="cursor-pointer"
+                                        onClick={() => openSnapshotDetail("vendor-sales-nivelacija-price-buckets", b.bucket, b.bucket, "Segmentacija po cenovnom razredu", priceBucketDetailColumns, b)}
+                                    >
                                         <td><span className={`bucket-badge bucket-${b.bucket.replace(/[^a-zA-Z0-9]/g, "-")}`}>{b.bucket}</span></td>
                                         <td className="align-right">{b.count}</td>
                                         <td className={`align-right ${b.changeQty >= 0 ? "delta-pos" : "delta-neg"}`}>{b.changeQty}</td>
@@ -909,6 +1075,17 @@ export default function ProdajaPrePostNivelacijePage() {
 
             <div className="nivelacija-table-wrap">
                 <h3 className="nivelacija-table-title">Prodaja po dobavljacima</h3>
+                <div className="mb-3">
+                    <AnalyticsTableToolbar
+                        tableKey="vendor-sales-nivelacija-vendors"
+                        tableTitle="Prodaja pre/post nivelacije - dobavljaci"
+                        columns={vendorDetailColumns}
+                        rows={sortedVendorStats}
+                        filters={sharedFilters}
+                        metadata={sharedMetadata}
+                        defaultOrientation="landscape"
+                    />
+                </div>
                 <div className="nivelacija-scroll">
                     <table className="nivelacija-table">
                         <thead>
@@ -923,7 +1100,11 @@ export default function ProdajaPrePostNivelacijePage() {
                         <tbody>
                             {sortedVendorStats.length === 0 && <tr><td colSpan={vendorColumns.length} className="empty-state">Nema podataka za izabrane filtere.</td></tr>}
                             {sortedVendorStats.map((x) => (
-                                <tr key={`${x.vendorId ?? "n/a"}-${x.vendorName}`}>
+                                <tr
+                                    key={`${x.vendorId ?? "n/a"}-${x.vendorName}`}
+                                    className="cursor-pointer"
+                                    onClick={() => openSnapshotDetail("vendor-sales-nivelacija-vendors", String(x.vendorId ?? x.vendorName), x.vendorName, "Prodaja po dobavljacima", vendorDetailColumns, x)}
+                                >
                                     <td>{x.vendorName}</td>
                                     <td className="align-right">{x.preQty}</td>
                                     <td className="align-right">{x.postQty}</td>
@@ -942,6 +1123,17 @@ export default function ProdajaPrePostNivelacijePage() {
 
             <div className="nivelacija-table-wrap">
                 <h3 className="nivelacija-table-title">Prodaja po artiklima</h3>
+                <div className="mb-3">
+                    <AnalyticsTableToolbar
+                        tableKey="vendor-sales-nivelacija-articles"
+                        tableTitle="Prodaja pre/post nivelacije - artikli"
+                        columns={articleDetailColumns}
+                        rows={sortedArticleStats}
+                        filters={sharedFilters}
+                        metadata={sharedMetadata}
+                        defaultOrientation="landscape"
+                    />
+                </div>
                 <div className="nivelacija-scroll">
                     <table className="nivelacija-table">
                         <thead>
@@ -969,7 +1161,11 @@ export default function ProdajaPrePostNivelacijePage() {
                         <tbody>
                             {sortedArticleStats.length === 0 && <tr><td colSpan={articleColumns.length + articleExtraColumns} className="empty-state">Nema podataka za izabrane filtere.</td></tr>}
                             {sortedArticleStats.map((x, idx) => (
-                                <tr key={`${x.vendorId ?? "n/a"}-${x.sku}-${x.eventDate}-${idx}`}>
+                                <tr
+                                    key={`${x.vendorId ?? "n/a"}-${x.sku}-${x.eventDate}-${idx}`}
+                                    className="cursor-pointer"
+                                    onClick={() => openSnapshotDetail("vendor-sales-nivelacija-articles", `${x.sku}-${x.eventDate}`, x.articleName, `${x.vendorName} | ${x.sku}`, articleDetailColumns, x)}
+                                >
                                     <td>{new Date(x.eventDate).toLocaleDateString("sr-RS")}</td>
                                     <td>{x.vendorName}</td>
                                     <td>{x.sku}</td>

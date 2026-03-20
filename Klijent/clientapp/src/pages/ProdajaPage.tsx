@@ -4,6 +4,7 @@ import CreateProdajaForm from "../components/prodaja/CreateProdajaForm";
 import { KreirajProdajuDto } from "../types/prodaja/prodaja";
 import { fetchProdajaArtikliLookup, type ProdajaArtikalLookupDto } from "../services/prodajaApi";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
+import { getDataScope, setDataScope, type DataScope } from "../utils/dataScope";
 
 type ProdajaArtikalOption = {
     id: number;
@@ -23,7 +24,19 @@ export default function ProdajaPage() {
     const [loadingArtikli, setLoadingArtikli] = React.useState(true);
     const [artikli, setArtikli] = React.useState<ProdajaArtikalOption[]>([]);
     const [catalogError, setCatalogError] = React.useState<string | null>(null);
+    const [dataScope, setDataScopeValue] = React.useState<DataScope>(getDataScope());
     const API = import.meta.env.VITE_API_BASE_URL;
+
+    React.useEffect(() => {
+        const handleScopeChange = () => {
+            setDataScopeValue(getDataScope());
+        };
+
+        window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+        return () => {
+            window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+        };
+    }, []);
 
     React.useEffect(() => {
         let aborted = false;
@@ -103,7 +116,7 @@ export default function ProdajaPage() {
                     { label: "Artikli ucitani", value: `${artikli.length}` },
                     { label: "Status kataloga", value: loadingArtikli ? "Ucitavanje" : catalogError ? "Greska" : "Spremno", tone: loadingArtikli ? "warning" : catalogError ? "danger" : "positive" },
                     { label: "Pretraga", value: "Lookup API" },
-                    { label: "Tok", value: "Cart + Submit" },
+                    { label: "Prikaz", value: dataScope },
                 ]}
             />
 
@@ -111,10 +124,30 @@ export default function ProdajaPage() {
                 {loadingArtikli && <InventoryState message="Ucitavanje artikala..." tone="warning" />}
                 {!loadingArtikli && catalogError && <InventoryState message={catalogError} tone="danger" />}
                 {!loadingArtikli && !catalogError && artikli.length === 0 && (
-                    <InventoryState
-                        message="Nema dostupnih artikala. Kreirajte artikle pre prodaje."
-                        tone="danger"
-                    />
+                    <div className="space-y-3">
+                        <InventoryState
+                            message={dataScope === "all"
+                                ? "Nema dostupnih artikala. Kreirajte artikle pre prodaje."
+                                : `Nema dostupnih artikala za prikaz '${dataScope}'.`}
+                            tone="danger"
+                        />
+                        {dataScope !== "all" && (
+                            <div className="flex justify-center">
+                                <button
+                                    type="button"
+                                    className="rounded-lg border border-[#345dad] bg-[#1d2a46] px-3 py-2 text-xs font-semibold text-[#d6e4ff] transition hover:bg-[#22335a]"
+                                    onClick={() => {
+                                        setDataScope("all");
+                                        setDataScopeValue("all");
+                                        window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+                                        window.location.reload();
+                                    }}
+                                >
+                                    Prikazi sve artikle
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 )}
                 {!loadingArtikli && artikli.length > 0 && (
                     <CreateProdajaForm

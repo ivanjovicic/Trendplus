@@ -40,7 +40,7 @@ export default function WorkerStatusAlert() {
         if (res.status === 404) {
           setError("Worker health endpoint nije dostupan.");
         } else {
-          setError(`Neuspešno čitanje worker statusa (HTTP ${res.status})`);
+          setError(`Neuspesno citanje worker statusa (HTTP ${res.status})`);
         }
         return;
       }
@@ -49,7 +49,7 @@ export default function WorkerStatusAlert() {
       setHealth(data);
       setError(null);
     } catch {
-      setError("Nije moguće povezivanje sa backend-om.");
+      setError("Nije moguce povezivanje sa backend-om.");
     }
   }, []);
 
@@ -59,8 +59,11 @@ export default function WorkerStatusAlert() {
     }
 
     void fetchHealth();
-    const interval = setInterval(fetchHealth, WORKER_HEALTH_POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    const interval = window.setInterval(() => {
+      void fetchHealth();
+    }, WORKER_HEALTH_POLL_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
   }, [fetchHealth, apiPingEnabled]);
 
   if (!apiPingEnabled) return null;
@@ -82,19 +85,19 @@ export default function WorkerStatusAlert() {
     return date.toLocaleTimeString("sr-RS", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   };
 
-  const getStatusIcon = (status: string, isStale: boolean) => {
-    if (isStale) return "⚠️";
+  const getStatusGlyph = (status: string, isStale: boolean) => {
+    if (isStale) return "!";
     switch (status) {
       case "Healthy":
-        return "✅";
+        return "OK";
       case "Running":
-        return "🔄";
+        return "...";
       case "Error":
-        return "❌";
+        return "ERR";
       case "Stopped":
-        return "⏹️";
+        return "STOP";
       default:
-        return "❔";
+        return "?";
     }
   };
 
@@ -123,22 +126,22 @@ export default function WorkerStatusAlert() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 20 }}>
-            {error ? "🔴" : (health?.errorWorkers ?? 0) > 0 ? "❌" : (health?.staleWorkers ?? 0) > 0 ? "⚠️" : "✅"}
+          <span style={{ fontSize: 13, fontWeight: 800 }}>
+            {error ? "ERR" : (health?.errorWorkers ?? 0) > 0 ? "ERR" : (health?.staleWorkers ?? 0) > 0 ? "WARN" : "OK"}
           </span>
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: style.color }}>
               {error
                 ? "Monitoring workera nedostupan"
                 : (health?.errorWorkers ?? 0) > 0
-                ? `${health?.errorWorkers} worker ima grešku`
+                ? `${health?.errorWorkers} worker ima gresku`
                 : (health?.staleWorkers ?? 0) > 0
-                ? `${health?.staleWorkers} worker ne šalje heartbeat`
+                ? `${health?.staleWorkers} worker ne salje heartbeat`
                 : "Svi workeri su zdravi"}
             </div>
             {!expanded && health && !error && (
               <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
-                {health.totalWorkers} workera • Klikni za detalje
+                {health.totalWorkers} workera | Klikni za detalje
               </div>
             )}
           </div>
@@ -149,9 +152,9 @@ export default function WorkerStatusAlert() {
             type="button"
             onClick={() => setExpanded(!expanded)}
             style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 16, padding: 4 }}
-            title={expanded ? "Smanji" : "Proširi"}
+            title={expanded ? "Smanji" : "Prosiri"}
           >
-            {expanded ? "🔼" : "🔽"}
+            {expanded ? "^" : "v"}
           </button>
           <button
             type="button"
@@ -159,7 +162,7 @@ export default function WorkerStatusAlert() {
             style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 16, padding: 4 }}
             title="Zatvori"
           >
-            ✕
+            x
           </button>
         </div>
       </div>
@@ -185,7 +188,7 @@ export default function WorkerStatusAlert() {
               <div style={{ fontSize: 20, fontWeight: 700, color: health.errorWorkers > 0 ? "#dc2626" : undefined }}>
                 {health.errorWorkers}
               </div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>Greške</div>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>Greske</div>
             </div>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: health.staleWorkers > 0 ? "#f59e0b" : undefined }}>
@@ -209,7 +212,7 @@ export default function WorkerStatusAlert() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>{getStatusIcon(worker.status, worker.isStale)}</span>
+                    <span>{getStatusGlyph(worker.status, worker.isStale)}</span>
                     <span style={{ fontWeight: 600 }}>{worker.workerName}</span>
                   </div>
                   <span style={{ opacity: 0.7 }}>{formatTime(worker.lastHeartbeat)}</span>
@@ -219,14 +222,14 @@ export default function WorkerStatusAlert() {
 
                 {worker.lastError && (
                   <div style={{ marginTop: 4, color: "#dc2626", fontSize: 11, background: "rgba(220,38,38,0.1)", padding: 4, borderRadius: 4 }}>
-                    ❌ {worker.lastError}
+                    ERR {worker.lastError}
                     {worker.errorCount > 1 && ` (${worker.errorCount}x)`}
                   </div>
                 )}
 
                 {worker.isStale && (
                   <div style={{ marginTop: 4, color: "#f59e0b", fontSize: 11, fontWeight: 600 }}>
-                    ⚠️ Worker nije poslao heartbeat duže od 10 minuta
+                    WARN Worker nije poslao heartbeat duze od 10 minuta
                   </div>
                 )}
               </div>
@@ -249,7 +252,7 @@ export default function WorkerStatusAlert() {
               fontWeight: 600,
             }}
           >
-            🔄 Osveži status
+            Osvezi status
           </button>
         </div>
       )}
@@ -272,7 +275,7 @@ export default function WorkerStatusAlert() {
               fontWeight: 600,
             }}
           >
-            🔄 Pokušaj ponovo
+            Pokusaj ponovo
           </button>
         </div>
       )}
