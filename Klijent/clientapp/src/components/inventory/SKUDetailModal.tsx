@@ -1,0 +1,126 @@
+import Modal from "../Modal";
+import type { InventoryItemDetail } from "../../types/analytics";
+import { formatCurrency, formatDateTime, formatNumber, getAgingTone, getHistoryDirection, getRecommendation, getStockState, getAbcTone } from "./inventoryUtils";
+import type { InventoryRow } from "./types";
+
+type SKUDetailModalProps = {
+  detailRow: InventoryRow | null;
+  detailData: InventoryItemDetail | null;
+  detailLoading: boolean;
+  detailError: string | null;
+  onClose: () => void;
+};
+
+export function SKUDetailModal({
+  detailRow,
+  detailData,
+  detailLoading,
+  detailError,
+  onClose,
+}: SKUDetailModalProps) {
+  return (
+    <Modal isOpen={detailRow != null} onClose={onClose} title={detailRow ? `Detalj artikla: ${detailRow.naziv}` : "Detalj artikla"} size="lg">
+      {detailRow ? (
+        <div className="space-y-5 text-[#0f172a]">
+          <div className={`rounded-2xl border border-[#e2e8f0] bg-gradient-to-br ${getStockState(detailRow.quantity, detailRow.minimum).panel} p-5 text-white`}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.22em] text-white/70">Status artikla</div>
+                <div className="mt-2 text-2xl font-semibold">{detailRow.stockStateLabel}</div>
+                <div className="mt-2 text-sm text-white/80">{getRecommendation(detailRow)}</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {detailData?.abcClass ? <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAbcTone(detailData.abcClass)}`}>ABC {detailData.abcClass}</span> : null}
+                  {detailData?.agingLabel ? <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAgingTone(detailData.agingBucket)}`}>{detailData.agingLabel}</span> : null}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-right">
+                <div className="text-xs uppercase tracking-[0.2em] text-white/70">Procena vrednosti</div>
+                <div className="mt-2 text-xl font-semibold">{formatCurrency(detailRow.estimatedValueAmount)}</div>
+                <div className="mt-2 text-xs text-white/75">
+                  {detailData ? `${formatNumber(detailData.daysSinceMovement)} dana bez kretanja` : "Ucitavam aging detalj..."}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {detailLoading ? <div className="rounded-2xl border border-[#dbe4f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#475569]">Ucitavam istoriju kretanja i dodatne detalje artikla...</div> : null}
+          {detailError ? <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f2] px-4 py-3 text-sm text-[#9f1239]">{detailError}</div> : null}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {[
+              ["PLU", detailRow.plu ?? "Nije dodeljen"],
+              ["Prodavnica", detailData?.storeName ?? detailRow.storeName],
+              ["Dobavljac", detailData?.supplierName ?? detailRow.supplierName],
+              ["Kolicina", formatNumber(detailRow.quantity)],
+              ["Minimalna kolicina", formatNumber(detailRow.minimum)],
+              ["Gap do minimuma", formatNumber(detailRow.reorderGap)],
+              ["Nabavna cena", formatCurrency(detailRow.unitCost)],
+              ["Pokrice minimuma", detailRow.coverageRatio == null ? "Bez minimuma" : `${detailRow.coverageRatio.toFixed(2)}x`],
+              ["Poslednje kretanje", formatDateTime(detailData?.lastMovementAt)],
+              ["Dana bez kretanja", detailData ? formatNumber(detailData.daysSinceMovement) : "Ucitavanje..."],
+              ["Kretanja u 30 dana", detailData ? formatNumber(detailData.movementCount30d) : "Ucitavanje..."],
+              ["Kategorija", detailData?.kategorija ?? "Nije upisano"],
+              ["Pol", detailData?.pol ?? "Nije upisano"],
+              ["Materijal", detailData?.materijal ?? "Nije upisano"],
+              ["Poslednje azuriranje", formatDateTime(detailData?.updatedAt)],
+            ].map(([label, value]) => <div key={label} className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4"><div className="text-xs uppercase tracking-[0.18em] text-[#64748b]">{label}</div><div className="mt-2 text-base font-semibold text-[#0f172a]">{value}</div></div>)}
+          </div>
+
+          <div className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-[#64748b]">Predlog akcije</div>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-[#1e293b]">
+              <li>{getRecommendation(detailRow)}</li>
+              <li>{detailRow.stockState === "critical" ? "Proveriti da li postoji zamenski artikal ili redistribucija iz druge lokacije." : detailRow.stockState === "warning" ? "Dopunu povezati sa sledecom nabavkom dobavljaca i prioritet dati artiklima sa najvecom traznjom." : "Ako je prodaja sporija od plana, razmotriti akcijsku cenu ili preraspodelu izmedju lokacija."}</li>
+              <li>{detailData?.abcClass === "A" ? "Klasa A: proveri da li je vezani kapital u skladu sa planom prodaje i sezonom." : detailData?.abcClass === "C" ? "Klasa C: artikli nose manji deo kapitala, ali aging lako postaje signal za ciscenje zalihe." : "Klasa B: balansirati dopunu i obrt bez prevelikog vezivanja kapitala."}</li>
+              <li>Za deljenje sa timom koristi PDF ili Excel filtrirani izvoz iz vrha stranice.</li>
+            </ul>
+          </div>
+
+          <div className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[#64748b]">Istorija kretanja</div>
+                <div className="mt-1 text-sm text-[#475569]">Poslednjih 12 promena za izabrani artikal, sa dokumentom i poreklom podatka.</div>
+              </div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">{detailData?.history.length ?? 0} stavki</div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {detailData?.history?.length ? detailData.history.map((entry) => (
+                <div key={entry.movementId} className="rounded-2xl border border-[#dbe4f0] bg-white p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAgingTone((entry.kolicina ?? 0) > 0 ? "0-30" : "90+")}`}>{getHistoryDirection(entry.kolicina)}</span>
+                        <span className="text-sm font-semibold text-[#0f172a]">{entry.tipPromene}</span>
+                        {entry.dataOrigin ? <span className="rounded-full border border-[#cbd5e1] bg-[#f8fafc] px-2 py-0.5 text-[11px] font-semibold text-[#475569]">{entry.dataOrigin}</span> : null}
+                      </div>
+                      <div className="mt-2 text-sm text-[#475569]">{formatDateTime(entry.datum)}</div>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#64748b]">
+                        <span>Dokument: {entry.brojDokumenta ?? "Nije upisan"}</span>
+                        <span>Korisnik: {entry.korisnikIme ?? "Nepoznato"}</span>
+                        <span>Prodavnica: {entry.storeName ?? detailData.storeName ?? "Nije vezano"}</span>
+                        <span>Dobavljac: {entry.supplierName ?? detailData.supplierName ?? "Nije vezano"}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-[#dbe4f0] bg-[#f8fafc] px-4 py-3 text-right">
+                      <div className="text-xs uppercase tracking-[0.18em] text-[#64748b]">Kolicina / iznos</div>
+                      <div className="mt-2 text-sm font-semibold text-[#0f172a]">{entry.kolicina == null ? "N/A" : formatNumber(entry.kolicina)}</div>
+                      <div className="text-xs text-[#64748b]">{formatCurrency(entry.iznos)}</div>
+                    </div>
+                  </div>
+                  {entry.komentar || entry.staraCena != null || entry.novaCena != null ? (
+                    <div className="mt-3 border-t border-[#e2e8f0] pt-3 text-xs text-[#64748b]">
+                      {entry.komentar ? <div>Komentar: {entry.komentar}</div> : null}
+                      {entry.staraCena != null || entry.novaCena != null ? <div>Cena: {entry.staraCena != null ? formatCurrency(entry.staraCena) : "-"} -&gt; {entry.novaCena != null ? formatCurrency(entry.novaCena) : "-"}</div> : null}
+                    </div>
+                  ) : null}
+                </div>
+              )) : <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-4 py-8 text-center text-sm text-[#64748b]">Za ovaj artikal nema evidentiranih istorijskih kretanja.</div>}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </Modal>
+  );
+}
