@@ -57,6 +57,18 @@ type InventoryRow = InventoryListItem & {
 };
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
+const DEFAULT_COMPARE_STORES = 3;
+const TOP_SUPPLIERS_CHART = 6;
+const TOP_RISK_ITEMS = 5;
+const TOP_VALUE_ITEMS = 5;
+const FORECAST_OOS_DISPLAY = 7;
+const FORECAST_OVERSTOCK_DISPLAY = 7;
+const ALERTS_DISPLAY_COUNT = 12;
+const REBALANCE_DISPLAY_COUNT = 20;
+const REBALANCE_FETCH_LIMIT = 20;
+const FORECAST_FETCH_LIMIT = 50;
+const OOS_RISK_THRESHOLD = 0.25;
+const OVERSTOCK_RISK_THRESHOLD = 0.5;
 const WEEKDAY_OPTIONS = [
   { value: 1, label: "Ponedeljak" },
   { value: 2, label: "Utorak" },
@@ -169,7 +181,7 @@ function getHistoryDirection(quantity?: number | null) {
 function buildSupplierChart(rows: InventoryRow[]) {
   const totals = new Map<string, number>();
   for (const row of rows) totals.set(row.supplierName, (totals.get(row.supplierName) ?? 0) + row.estimatedValueAmount);
-  return Array.from(totals.entries()).map(([supplierName, totalValue]) => ({ supplierName, totalValue })).sort((a, b) => b.totalValue - a.totalValue).slice(0, 6);
+  return Array.from(totals.entries()).map(([supplierName, totalValue]) => ({ supplierName, totalValue })).sort((a, b) => b.totalValue - a.totalValue).slice(0, TOP_SUPPLIERS_CHART);
 }
 
 function buildRowFromInsightItem(item: InventoryInsightItem, stores: StoreOption[], suppliers: SupplierFilterOption[]) {
@@ -316,7 +328,7 @@ export default function InventoryPage() {
     void getStores(true).then((nextStores) => {
       if (!cancelled) {
         setStores(nextStores);
-        setCompareStoreIds((current) => current.length > 0 ? current : nextStores.slice(0, 3).map((store) => store.storeId));
+        setCompareStoreIds((current) => current.length > 0 ? current : nextStores.slice(0, DEFAULT_COMPARE_STORES).map((store) => store.storeId));
       }
     }).catch(console.error).finally(() => {
       if (!cancelled) setFiltersLoading(false);
@@ -430,9 +442,9 @@ export default function InventoryPage() {
     setRebalanceLoading(true);
     setForecastError(null);
     void Promise.allSettled([
-      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: 50 }),
+      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT }),
       getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId }),
-      getRebalanceSuggestions({ supplierId: selectedSupplierId, top: 30 }),
+      getRebalanceSuggestions({ supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT }),
     ]).then(([forecastResult, alertsResult, rebalanceResult]) => {
       if (cancelled) return;
       if (forecastResult.status === "fulfilled") {
@@ -470,8 +482,8 @@ export default function InventoryPage() {
   const avgUnitsPerSku = balance && balance.totalSku > 0 ? balance.totalOnHand / balance.totalSku : 0;
   const inventoryHealthScore = Math.max(0, Math.round(100 - (balance && balance.totalSku > 0 ? (balance.outOfStockCount / balance.totalSku) * 60 : 0) - (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 25 : 0)));
   const chartData = buildSupplierChart(rows);
-  const topRiskRows = rows.slice().sort((a, b) => (a.stockState === b.stockState ? b.reorderGap - a.reorderGap : { critical: 0, warning: 1, healthy: 2 }[a.stockState] - { critical: 0, warning: 1, healthy: 2 }[b.stockState])).slice(0, 5);
-  const highestValueRows = rows.slice().sort((a, b) => b.estimatedValueAmount - a.estimatedValueAmount).slice(0, 5);
+  const topRiskRows = rows.slice().sort((a, b) => (a.stockState === b.stockState ? b.reorderGap - a.reorderGap : { critical: 0, warning: 1, healthy: 2 }[a.stockState] - { critical: 0, warning: 1, healthy: 2 }[b.stockState])).slice(0, TOP_RISK_ITEMS);
+  const highestValueRows = rows.slice().sort((a, b) => b.estimatedValueAmount - a.estimatedValueAmount).slice(0, TOP_VALUE_ITEMS);
   const agingBuckets = insights?.aging ?? [];
   const abcBuckets = insights?.abc ?? [];
   const agedItems = insights?.topAgedItems ?? [];
@@ -607,7 +619,7 @@ export default function InventoryPage() {
       if (current.includes(storeId)) {
         return current.filter((value) => value !== storeId);
       }
-      if (current.length >= 3) {
+      if (current.length >= DEFAULT_COMPARE_STORES) {
         return [...current.slice(1), storeId];
       }
       return [...current, storeId];
@@ -1140,7 +1152,7 @@ export default function InventoryPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {(alerts?.items ?? [])
               .filter((a) => !alertSeverityFilter || a.severity === alertSeverityFilter)
-              .slice(0, 12)
+              .slice(0, ALERTS_DISPLAY_COUNT)
               .map((alert, idx) => (
                 <article key={idx} className="rounded-2xl border border-[#243040] bg-[#10141b] p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -1200,9 +1212,9 @@ export default function InventoryPage() {
               </h3>
               <div className="mt-3 space-y-2">
                 {(forecast?.items ?? [])
-                  .filter((f) => f.probabilityOfOOSIn7d > 0.25)
+                  .filter((f) => f.probabilityOfOOSIn7d > OOS_RISK_THRESHOLD)
                   .sort((a, b) => b.probabilityOfOOSIn7d - a.probabilityOfOOSIn7d)
-                  .slice(0, 7)
+                  .slice(0, FORECAST_OOS_DISPLAY)
                   .map((f, idx) => {
                     const name = rows.find((r) => r.id === f.skuId)?.naziv ?? `SKU #${f.skuId}`;
                     const store = stores.find((s) => s.storeId === f.storeId)?.storeName ?? `Objekat #${f.storeId}`;
@@ -1222,7 +1234,7 @@ export default function InventoryPage() {
                       </div>
                     );
                   })}
-                {(forecast?.items ?? []).filter((f) => f.probabilityOfOOSIn7d > 0.25).length === 0 ? (
+                {(forecast?.items ?? []).filter((f) => f.probabilityOfOOSIn7d > OOS_RISK_THRESHOLD).length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-[#2b3446] bg-[#10151d] px-4 py-6 text-center text-sm text-[#8797b4]">Nema visokog OOS rizika za trenutne filtere.</div>
                 ) : null}
               </div>
@@ -1235,9 +1247,9 @@ export default function InventoryPage() {
               </h3>
               <div className="mt-3 space-y-2">
                 {(forecast?.items ?? [])
-                  .filter((f) => f.overstockRisk > 0.5)
+                  .filter((f) => f.overstockRisk > OVERSTOCK_RISK_THRESHOLD)
                   .sort((a, b) => b.overstockRisk - a.overstockRisk)
-                  .slice(0, 7)
+                  .slice(0, FORECAST_OVERSTOCK_DISPLAY)
                   .map((f, idx) => {
                     const name = rows.find((r) => r.id === f.skuId)?.naziv ?? `SKU #${f.skuId}`;
                     const store = stores.find((s) => s.storeId === f.storeId)?.storeName ?? `Objekat #${f.storeId}`;
@@ -1256,7 +1268,7 @@ export default function InventoryPage() {
                       </div>
                     );
                   })}
-                {(forecast?.items ?? []).filter((f) => f.overstockRisk > 0.5).length === 0 ? (
+                {(forecast?.items ?? []).filter((f) => f.overstockRisk > OVERSTOCK_RISK_THRESHOLD).length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-[#2b3446] bg-[#10151d] px-4 py-6 text-center text-sm text-[#8797b4]">Nema overstock signala za trenutne filtere.</div>
                 ) : null}
               </div>
@@ -1393,7 +1405,7 @@ export default function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rebalance.items.slice(0, 20).map((item, idx) => {
+                  {rebalance.items.slice(0, REBALANCE_DISPLAY_COUNT).map((item, idx) => {
                     const name = rows.find((r) => r.id === item.skuId)?.naziv ?? `SKU #${item.skuId}`;
                     const fromStore = stores.find((s) => s.storeId === item.fromStoreId)?.storeName ?? `#${item.fromStoreId}`;
                     const toStore = stores.find((s) => s.storeId === item.toStoreId)?.storeName ?? `#${item.toStoreId}`;
