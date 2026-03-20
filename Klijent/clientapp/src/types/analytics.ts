@@ -228,3 +228,28 @@ export interface DataQualityIssueListResult {
   total: number;
   items: DataQualityIssueItem[];
 }
+
+export interface InventoryBalance {
+  totalSkuCount: number;
+  totalOnHand: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  estimatedInventoryValue?: number | null;
+}
+
+export interface InventoryListItem {
+  artiklId: number;
+  naziv: string;
+  sku?: string | null;
+  dobavljacNaziv?: string | null;
+  kolicina: number;
+  nabavnaCena?: number | null;
+  prodajnaCena?: number | null;
+}
+
+export interface InventoryPagedResponse {
+  items: InventoryListItem[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+}

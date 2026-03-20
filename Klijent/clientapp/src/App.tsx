@@ -46,6 +46,7 @@ import SupplierDecisionHubPage from "./pages/SupplierDecisionHubPage";
 import SupplierSalesStatsPage from "./pages/SupplierSalesStatsPage";
 import ShoeTypeSalesStatsPage from "./pages/ShoeTypeSalesStatsPage";
 import ColorSalesStatsPage from "./pages/ColorSalesStatsPage";
+import InventoryPage from "./pages/InventoryPage";
 import UnosHubPage from "./pages/UnosHubPage";
 import DataQualityPage from "./pages/DataQualityPage";
 import Modal from "./components/Modal";
@@ -81,6 +82,7 @@ function AppShell() {
                 <Route path="/analytics/pre-nivelacija-prioriteti" element={<PreNivelacijaPriorityPage />} />
                 <Route path="/analytics/dobavljaci-tipovi-obuce" element={<SupplierFootwearAnalyticsPage />} />
                 <Route path="/analytics/supplier-decision-hub" element={<SupplierDecisionHubPage />} />
+                <Route path="/analytics/inventory" element={<InventoryPage />} />
                 <Route path="/analytics-details" element={<AnalyticsDetails />} />
                 <Route path="/analitika/:table/:id" element={<AnalyticsDetailPage />} />
                 <Route path="/print/analytics/:table" element={<AnalyticsPrintPage />} />

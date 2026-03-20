@@ -507,3 +507,38 @@ export async function getDataQualityIssues(paramsInput: {
     "Greska pri ucitavanju data quality problema"
   );
 }
+
+export async function getInventoryBalance(
+  useCached = true,
+  storeId?: number | null,
+  supplierId?: number | null
+): Promise<import("../types/analytics").InventoryBalance> {
+  const params = new URLSearchParams();
+  if (storeId != null) params.append("storeId", String(storeId));
+  if (supplierId != null) params.append("supplierId", String(supplierId));
+
+  return fetchJson(
+    useCached ? "/api/analytics/cached/inventory/balance" : "/api/analytics/inventory/balance",
+    params,
+    "Greska pri ucitavanju bilansa zaliha"
+  );
+}
+
+export async function getInventoryList(
+  pageNumber = 1,
+  pageSize = 50,
+  q?: string,
+  storeId?: number | null,
+  supplierId?: number | null
+): Promise<import("../types/analytics").InventoryPagedResponse> {
+  const params = new URLSearchParams({ pageNumber: String(pageNumber), pageSize: String(pageSize) });
+  if (q) params.append("q", q);
+  if (storeId != null) params.append("storeId", String(storeId));
+  if (supplierId != null) params.append("supplierId", String(supplierId));
+
+  return fetchJson(
+    "/api/analytics/cached/inventory/list",
+    params,
+    "Greska pri ucitavanju liste zaliha"
+  );
+}
