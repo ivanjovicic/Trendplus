@@ -1,16 +1,17 @@
 import logging
-import os
+import random
 import re
+from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
-import random
-from datetime import datetime
-from playwright.async_api import async_playwright
 
 from bs4 import BeautifulSoup
-from scraper.schema import ScrapedItem
-from scraper.normalization import parse_price, infer_category_from_name, compute_rank
 
+import scraper.browser_manager as browser_manager
+from scraper.normalization import compute_rank, infer_category_from_name, parse_price
+from scraper.schema import ScrapedItem
+
+logger = logging.getLogger("scraper.humanic")
 
 DEFAULT_HUMANIC_URL = "https://www.humanic.net/at/c/Damenschuhe/womenShoes"
 ITEMS_PER_PAGE_ESTIMATE = 30
@@ -29,13 +30,6 @@ SORT_BY_MAP: Dict[str, str] = {
     "price-desc": "live_hum_products_at_price_desc",
     "price_desc": "live_hum_products_at_price_desc",
 }
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    val = os.environ.get(name)
-    if val is None:
-        return default
-    return val.strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def _split_csv(value: Optional[str]) -> List[str]:
@@ -270,71 +264,61 @@ async def _scrape_humanic_infinite_scroll(
     max_pages: int,
     auto_pages: bool,
 ) -> List[Dict[str, Any]]:
-    try:
-        from playwright.async_api import async_playwright
-    except Exception as ex:
-        raise RuntimeError("Playwright is not available for Humanic scraper") from ex
-
     seen_keys: set[str] = set()
     all_items: List[Dict[str, Any]] = []
 
     target_unique = max_pages * ITEMS_PER_PAGE_ESTIMATE
     max_scroll_rounds = 100 if auto_pages else max(12, max_pages * 8)
 
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=_env_flag("PLAYWRIGHT_HEADLESS", True))
-        context = await browser.new_context(
-            viewport={"width": 1400, "height": 900},
-            locale="de-AT",
-            extra_http_headers={"Accept-Language": "de-AT,de;q=0.9,en;q=0.8"},
-        )
-        page = await context.new_page()
+    page = await browser_manager.new_page()
+    try:
+        await page.goto(base_url, timeout=60000, wait_until="domcontentloaded")
+        await _accept_humanic_cookies(page)
+
         try:
-            await page.goto(base_url, timeout=60000, wait_until="domcontentloaded")
-            await _accept_humanic_cookies(page)
+            await page.wait_for_selector("li.productcell", timeout=20000)
+        except Exception:
+            pass
 
-            try:
-                await page.wait_for_selector("li.productcell", timeout=20000)
-            except Exception:
-                pass
+        idle_rounds = 0
+        start_time = datetime.utcnow()
 
-            idle_rounds = 0
-            start_time = datetime.utcnow()
+        for _ in range(max_scroll_rounds):
+            html = await page.content()
+            soup = BeautifulSoup(html, "lxml")
+            tiles = soup.select("li.productcell")
+            before_count = len(all_items)
 
-            while True:
-                tiles = await page.query_selector_all("li.productcell")
-                before_count = len(all_items)
+            for tile in tiles:
+                item = _tile_to_item(tile)
+                if not item:
+                    continue
+                key = item.get("url") or f"{item.get('brand')}|{item.get('name')}|{item.get('price')}"
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                all_items.append(item)
 
-                for tile in tiles:
-                    item = await self._tile_to_item(tile)
-                    if not item:
-                        continue
-                    key = item.get("url") or f"{item.get('brand')}|{item.get('name')}|{item.get('price')}"
-                    if key in seen_keys:
-                        continue
-                    seen_keys.add(key)
-                    all_items.append(item)
+            new_unique = len(all_items) - before_count
+            if new_unique == 0:
+                idle_rounds += 1
+            else:
+                idle_rounds = 0
 
-                new_unique = len(all_items) - before_count
-                if new_unique == 0:
-                    idle_rounds += 1
-                else:
-                    idle_rounds = 0
+            elapsed_time = (datetime.utcnow() - start_time).total_seconds()
+            if idle_rounds >= 3 or elapsed_time > 45:
+                break
 
-                elapsed_time = (datetime.utcnow() - start_time).total_seconds()
-                if idle_rounds >= 3 or elapsed_time > 45:
-                    break
+            if not auto_pages and len(all_items) >= target_unique:
+                break
 
-                await page.mouse.wheel(0, 3000)
-                await page.wait_for_timeout(random.randint(200, 600))
+            await page.mouse.wheel(0, 3000)
+            await page.wait_for_timeout(random.randint(200, 600))
 
-            return all_items
-        finally:
-            await page.close()
-            await context.close()
-            await browser.close()
-
-    return all_items
+        logger.info("[Humanic] Collected %s unique items (auto_pages=%s).", len(all_items), auto_pages)
+        return all_items
+    finally:
+        await browser_manager.release_page(page)
 
 
 def _to_scraped_item_humanic(d: Dict[str, Any]) -> ScrapedItem:
@@ -370,7 +354,61 @@ def _to_scraped_item_humanic(d: Dict[str, Any]) -> ScrapedItem:
     )
 
 
+def _resolve_requested_pages(filters: Dict[str, Any]) -> int:
+    value = filters.get("pages", filters.get("max_pages", 0))
+    try:
+        return int(value or 0)
+    except Exception:
+        return 0
+
+
 async def scrape_humanic_filtered(**filters: Any) -> List[ScrapedItem]:
-    raw_results = await _scrape_humanic_infinite_scroll(filters)
-    items = [_to_scraped_item_humanic(r) for r in raw_results]
-    return items
+    pages = _resolve_requested_pages(filters)
+    auto_pages = pages <= 0
+    max_pages = 5 if auto_pages else max(1, pages)
+
+    brand = filters.get("brand")
+    sort = filters.get("sort")
+    keyword = filters.get("keyword")
+    country = (filters.get("country") or "AT").strip().upper()
+    price_min = filters.get("priceMin")
+    price_max = filters.get("priceMax")
+
+    raw_materials = filters.get("upperMaterials")
+    if isinstance(raw_materials, str):
+        upper_materials = _split_csv(raw_materials)
+    elif isinstance(raw_materials, list):
+        upper_materials = [str(v).strip() for v in raw_materials if str(v).strip()]
+    else:
+        upper_materials = []
+
+    base_url = _normalize_humanic_url(
+        url=filters.get("url"),
+        category=filters.get("category"),
+        sort=sort,
+        upper_materials=upper_materials,
+        brand=brand,
+    )
+
+    raw_results = await _scrape_humanic_infinite_scroll(
+        base_url=base_url,
+        max_pages=max_pages,
+        auto_pages=auto_pages,
+    )
+    filtered = _apply_local_filters(
+        items=raw_results,
+        brand=brand,
+        keyword=keyword,
+        price_min=price_min,
+        price_max=price_max,
+    )
+    ordered = _sort_items(filtered, sort)
+
+    for idx, item in enumerate(ordered, start=1):
+        item["country"] = country
+        item["sort"] = sort or "popularity"
+        item["page"] = ((idx - 1) // ITEMS_PER_PAGE_ESTIMATE) + 1
+        item["positionOnPage"] = ((idx - 1) % ITEMS_PER_PAGE_ESTIMATE) + 1
+
+    return [_to_scraped_item_humanic(r) for r in ordered]
+

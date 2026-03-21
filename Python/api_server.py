@@ -23,10 +23,12 @@ import time
 import json
 import threading
 import asyncio
+import contextvars
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 
-from fastapi import FastAPI, HTTPException, Body, Query
+from fastapi import FastAPI, HTTPException, Body, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -80,7 +82,18 @@ except ImportError:
 # LOGGING
 # ============================================================
 
-logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+_request_id_ctx_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
+_previous_record_factory = logging.getLogRecordFactory()
+
+
+def _record_factory(*args, **kwargs):
+    record = _previous_record_factory(*args, **kwargs)
+    record.request_id = _request_id_ctx_var.get("-")
+    return record
+
+
+logging.setLogRecordFactory(_record_factory)
+logging.basicConfig(level=logging.INFO, format='[%(levelname)s] [req=%(request_id)s] %(message)s')
 
 # ============================================================
 # REDIS (opciono)
@@ -490,6 +503,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    token = _request_id_ctx_var.set(request_id)
+    start_time = time.perf_counter()
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = (time.perf_counter() - start_time) * 1000.0
+        logging.exception(
+            "HTTP %s %s failed in %.2fms",
+            request.method,
+            request.url.path,
+            duration_ms,
+        )
+        _request_id_ctx_var.reset(token)
+        raise
+
+    response.headers["X-Request-ID"] = request_id
+    duration_ms = (time.perf_counter() - start_time) * 1000.0
+    logging.info(
+        "HTTP %s %s -> %s in %.2fms",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
+    _request_id_ctx_var.reset(token)
+    return response
 
 
 @app.on_event("shutdown")

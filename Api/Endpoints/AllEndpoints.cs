@@ -28,6 +28,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Domain.Model.TrendShoes;
 using Application.TrendShoes;
 using System.Globalization;
+using Serilog.Context;
 
 namespace Trendplus2.Endpoints;
 
@@ -2526,39 +2527,50 @@ public static class AllEndpoints
 
         // ===== Zalando ad-hoc scraper proxy =====
         app.MapPost("/api/scrapers/zalando", async (
+            HttpContext httpContext,
             IHttpClientFactory httpClientFactory,
             ILogger<Program> logger,
             System.Text.Json.JsonElement filters,
             CancellationToken ct) =>
         {
+            var requestId = httpContext.Request.Headers["X-Request-ID"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                requestId = Guid.NewGuid().ToString("N");
+            }
+
+            using var __ = LogContext.PushProperty("RequestId", requestId);
             try
             {
                 var client = httpClientFactory.CreateClient("scraper");
 
                 var json = filters.GetRawText();
                 var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/scrapers/zalando")
+                {
+                    Content = content
+                };
+                requestMessage.Headers.TryAddWithoutValidation("X-Request-ID", requestId);
 
                 // Use extended timeout for scraping operations
                 client.Timeout = TimeSpan.FromMinutes(5);
 
-                var resp = await client.PostAsync("/scrapers/zalando", content, ct);
-                var body = await resp.Content.ReadAsStringAsync(ct);
+                logger.LogInformation("Proxying Zalando scraper request. RequestId={RequestId}", requestId);
+                var resp = await client.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, ct);
+                logger.LogInformation("Zalando scraper response received. RequestId={RequestId}, StatusCode={StatusCode}", requestId, (int)resp.StatusCode);
 
                 if (!resp.IsSuccessStatusCode)
                 {
+                    var body = await resp.Content.ReadAsStringAsync(ct);
                     logger.LogWarning("Zalando scraper returned {Status}: {Body}", resp.StatusCode, body);
                     return Results.Problem(detail: $"Scraper service returned {resp.StatusCode}: {body}", statusCode: 502);
                 }
 
-                try
-                {
-                    var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(body);
-                    return Results.Ok(parsed);
-                }
-                catch (Exception)
-                {
-                    return Results.Ok(new { raw = body });
-                }
+                var stream = await resp.Content.ReadAsStreamAsync(ct);
+                httpContext.Response.Headers["X-Request-ID"] = requestId;
+                httpContext.Response.RegisterForDispose(resp);
+                httpContext.Response.RegisterForDispose(stream);
+                return Results.Stream(stream, "application/json");
             }
             catch (HttpRequestException ex)
             {
@@ -2581,42 +2593,50 @@ public static class AllEndpoints
 
         // ===== Deichmann ad-hoc scraper proxy =====
         app.MapPost("/api/scrapers/deichmann", async (
+            HttpContext httpContext,
             IHttpClientFactory httpClientFactory,
             ILogger<Program> logger,
             System.Text.Json.JsonElement filters,
             CancellationToken ct) =>
         {
+            var requestId = httpContext.Request.Headers["X-Request-ID"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                requestId = Guid.NewGuid().ToString("N");
+            }
+
+            using var __ = LogContext.PushProperty("RequestId", requestId);
             try
             {
                 var client = httpClientFactory.CreateClient("scraper");
 
                 var json = filters.GetRawText();
                 var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/scrapers/deichmann")
+                {
+                    Content = content
+                };
+                requestMessage.Headers.TryAddWithoutValidation("X-Request-ID", requestId);
 
                 // Use extended timeout for scraping operations
                 client.Timeout = TimeSpan.FromMinutes(5);
 
-                var resp = await client.PostAsync("/scrapers/deichmann", content, ct);
-
-                var body = await resp.Content.ReadAsStringAsync(ct);
+                logger.LogInformation("Proxying Deichmann scraper request. RequestId={RequestId}", requestId);
+                var resp = await client.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, ct);
+                logger.LogInformation("Deichmann scraper response received. RequestId={RequestId}, StatusCode={StatusCode}", requestId, (int)resp.StatusCode);
 
                 if (!resp.IsSuccessStatusCode)
                 {
+                    var body = await resp.Content.ReadAsStringAsync(ct);
                     logger.LogWarning("Deichmann scraper returned {Status}: {Body}", resp.StatusCode, body);
                     return Results.Problem(detail: $"Scraper service returned {resp.StatusCode}: {body}", statusCode: 502);
                 }
 
-                // Try to deserialize JSON response and return it as-is
-                try
-                {
-                    var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(body);
-                    return Results.Ok(parsed);
-                }
-                catch (Exception)
-                {
-                    // If not JSON, return raw body
-                    return Results.Ok(new { raw = body });
-                }
+                var stream = await resp.Content.ReadAsStreamAsync(ct);
+                httpContext.Response.Headers["X-Request-ID"] = requestId;
+                httpContext.Response.RegisterForDispose(resp);
+                httpContext.Response.RegisterForDispose(stream);
+                return Results.Stream(stream, "application/json");
             }
             catch (HttpRequestException ex)
             {
@@ -2639,39 +2659,50 @@ public static class AllEndpoints
 
         // ===== AboutYou ad-hoc scraper proxy =====
         app.MapPost("/api/scrapers/aboutyou", async (
+            HttpContext httpContext,
             IHttpClientFactory httpClientFactory,
             ILogger<Program> logger,
             System.Text.Json.JsonElement filters,
             CancellationToken ct) =>
         {
+            var requestId = httpContext.Request.Headers["X-Request-ID"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                requestId = Guid.NewGuid().ToString("N");
+            }
+
+            using var __ = LogContext.PushProperty("RequestId", requestId);
             try
             {
                 var client = httpClientFactory.CreateClient("scraper");
 
                 var json = filters.GetRawText();
                 var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/scrapers/aboutyou")
+                {
+                    Content = content
+                };
+                requestMessage.Headers.TryAddWithoutValidation("X-Request-ID", requestId);
 
                 // Use extended timeout for scraping operations
                 client.Timeout = TimeSpan.FromMinutes(5);
 
-                var resp = await client.PostAsync("/scrapers/aboutyou", content, ct);
-                var body = await resp.Content.ReadAsStringAsync(ct);
+                logger.LogInformation("Proxying AboutYou scraper request. RequestId={RequestId}", requestId);
+                var resp = await client.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, ct);
+                logger.LogInformation("AboutYou scraper response received. RequestId={RequestId}, StatusCode={StatusCode}", requestId, (int)resp.StatusCode);
 
                 if (!resp.IsSuccessStatusCode)
                 {
+                    var body = await resp.Content.ReadAsStringAsync(ct);
                     logger.LogWarning("AboutYou scraper returned {Status}: {Body}", resp.StatusCode, body);
                     return Results.Problem(detail: $"Scraper service returned {resp.StatusCode}: {body}", statusCode: 502);
                 }
 
-                try
-                {
-                    var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(body);
-                    return Results.Ok(parsed);
-                }
-                catch (Exception)
-                {
-                    return Results.Ok(new { raw = body });
-                }
+                var stream = await resp.Content.ReadAsStreamAsync(ct);
+                httpContext.Response.Headers["X-Request-ID"] = requestId;
+                httpContext.Response.RegisterForDispose(resp);
+                httpContext.Response.RegisterForDispose(stream);
+                return Results.Stream(stream, "application/json");
             }
             catch (HttpRequestException ex)
             {
@@ -2694,39 +2725,50 @@ public static class AllEndpoints
 
         // ===== Humanic ad-hoc scraper proxy =====
         app.MapPost("/api/scrapers/humanic", async (
+            HttpContext httpContext,
             IHttpClientFactory httpClientFactory,
             ILogger<Program> logger,
             System.Text.Json.JsonElement filters,
             CancellationToken ct) =>
         {
+            var requestId = httpContext.Request.Headers["X-Request-ID"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                requestId = Guid.NewGuid().ToString("N");
+            }
+
+            using var __ = LogContext.PushProperty("RequestId", requestId);
             try
             {
                 var client = httpClientFactory.CreateClient("scraper");
 
                 var json = filters.GetRawText();
                 var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/scrapers/humanic")
+                {
+                    Content = content
+                };
+                requestMessage.Headers.TryAddWithoutValidation("X-Request-ID", requestId);
 
                 // Use extended timeout for scraping operations
                 client.Timeout = TimeSpan.FromMinutes(5);
 
-                var resp = await client.PostAsync("/scrapers/humanic", content, ct);
-                var body = await resp.Content.ReadAsStringAsync(ct);
+                logger.LogInformation("Proxying Humanic scraper request. RequestId={RequestId}", requestId);
+                var resp = await client.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, ct);
+                logger.LogInformation("Humanic scraper response received. RequestId={RequestId}, StatusCode={StatusCode}", requestId, (int)resp.StatusCode);
 
                 if (!resp.IsSuccessStatusCode)
                 {
+                    var body = await resp.Content.ReadAsStringAsync(ct);
                     logger.LogWarning("Humanic scraper returned {Status}: {Body}", resp.StatusCode, body);
                     return Results.Problem(detail: $"Scraper service returned {resp.StatusCode}: {body}", statusCode: 502);
                 }
 
-                try
-                {
-                    var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(body);
-                    return Results.Ok(parsed);
-                }
-                catch (Exception)
-                {
-                    return Results.Ok(new { raw = body });
-                }
+                var stream = await resp.Content.ReadAsStreamAsync(ct);
+                httpContext.Response.Headers["X-Request-ID"] = requestId;
+                httpContext.Response.RegisterForDispose(resp);
+                httpContext.Response.RegisterForDispose(stream);
+                return Results.Stream(stream, "application/json");
             }
             catch (HttpRequestException ex)
             {

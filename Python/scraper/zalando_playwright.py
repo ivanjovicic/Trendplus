@@ -457,8 +457,6 @@ async def _scrape_zalando_page(
     priceMax: Optional[int],
     activationDate: Optional[str],
 ) -> List[Dict[str, Any]]:
-    context = await browser_manager.get_context()
-
     base_url = build_zalando_url(
         category=category,
         brand=brand,
@@ -471,7 +469,7 @@ async def _scrape_zalando_page(
     )
     base_domain = _resolve_zalando_base_domain(country)
 
-    page = await context.new_page()
+    page = await browser_manager.new_page()
     try:
         url = base_url + str(page_num)
         print(f"[Zalando] Loading page {page_num}: {url}")
@@ -534,10 +532,7 @@ async def _scrape_zalando_page(
 
         return page_results
     finally:
-        try:
-            await page.close()
-        except Exception:
-            pass
+        await browser_manager.release_page(page)
 
 
 def _extract_zalando_sku(url: str) -> Optional[str]:

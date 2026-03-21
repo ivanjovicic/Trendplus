@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 import random
+from urllib.parse import urlencode
 from scraper.schema import ScrapedItem
 from scraper.normalization import parse_price, infer_category_from_name, compute_rank
 
@@ -118,7 +119,6 @@ async def apply_anti_bot_measures(page):
 
 async def _scrape_deichmann_page(page_index: int, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
     await browser_manager.init_browser()
-    context = await browser_manager.get_context()
 
     url = build_deichmann_url(
         gender=filters.get("gender"),
@@ -137,7 +137,7 @@ async def _scrape_deichmann_page(page_index: int, filters: Dict[str, Any]) -> Li
     )
 
     print(f"[Deichmann] Loading page {page_index}: {url}")
-    page = await context.new_page()
+    page = await browser_manager.new_page()
     try:
         await page.goto(url, timeout=0)
         try:
@@ -264,10 +264,89 @@ async def _scrape_deichmann_page(page_index: int, filters: Dict[str, Any]) -> Li
         print(f"[DEBUG] Deichmann page {page_index}: {len(page_results)} products.")
         return page_results
     finally:
-        try:
-            await page.close()
-        except Exception:
-            pass
+        await browser_manager.release_page(page)
+
+
+def build_deichmann_url(
+    *,
+    gender: Optional[str],
+    category: Optional[str],
+    country: Optional[str],
+    sort: Optional[str],
+    priceMin: Optional[int],
+    priceMax: Optional[int],
+    sale: Optional[bool],
+    isNew: Optional[bool],
+    size: Optional[str],
+    brand: Optional[str],
+    isLeather: Optional[str],
+    waterResistance: Optional[str],
+    page: int,
+) -> str:
+    code = (country or "DE").strip().upper()
+    locale = DEICHMANN_LOCALE_BY_COUNTRY.get(code, "de-de")
+    gender_key = (gender or "women").strip().lower()
+    gender_segment = DEICHMANN_GENDER_BY_COUNTRY.get(code, DEICHMANN_GENDER_BY_COUNTRY["DE"]).get(gender_key, "damen")
+    category_slug = resolve_category_slug(code, category or "")
+
+    path = f"https://www.deichmann.com/{locale}/{gender_segment}/c-{category_slug}"
+    query: Dict[str, str] = {}
+    if page > 1:
+        query["page"] = str(page)
+    if sort:
+        query["sort"] = str(sort)
+    if priceMin is not None:
+        query["priceMin"] = str(int(priceMin))
+    if priceMax is not None:
+        query["priceMax"] = str(int(priceMax))
+    if sale is True:
+        query["sale"] = "true"
+    if isNew is True:
+        query["new"] = "true"
+    if size:
+        query["size"] = str(size)
+    if brand:
+        mapped_brand = DEICHMANN_BRAND_MAP.get(str(brand).strip().lower(), str(brand).strip())
+        query["brand"] = mapped_brand
+    if isLeather:
+        query["isLeather"] = str(isLeather)
+    if waterResistance:
+        query["waterResistance"] = str(waterResistance)
+
+    if not query:
+        return path
+    return f"{path}?{urlencode(query)}"
+
+
+async def _scrape_deichmann_pages(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+    pages = filters.get("pages", filters.get("max_pages", 1))
+    try:
+        max_pages = max(1, int(pages or 1))
+    except Exception:
+        max_pages = 1
+
+    tasks = [
+        asyncio.create_task(_scrape_deichmann_page(page_index, filters))
+        for page_index in range(1, max_pages + 1)
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    flattened: List[Dict[str, Any]] = []
+    for page_idx, result in enumerate(results, start=1):
+        if isinstance(result, Exception):
+            logger.error("[Deichmann] Page %s failed: %s", page_idx, result)
+            continue
+
+        for pos, item in enumerate(result, start=1):
+            row = dict(item)
+            row["country"] = (filters.get("country") or "DE").strip().upper()
+            row["gender"] = filters.get("gender")
+            row["sort"] = filters.get("sort") or "popularity"
+            row["page"] = page_idx
+            row["positionOnPage"] = pos
+            flattened.append(row)
+
+    return deduplicate_results(flattened)
 
 
 def _to_scraped_item_deichmann(d: Dict[str, Any]) -> ScrapedItem:

@@ -299,45 +299,117 @@ async def _accept_aboutyou_cookies(page: Any) -> None:
             continue
 
 
-async def _scrape_aboutyou_infinite_scroll(
-    base_url: str, country: str, sort: str, max_pages: int = 1
-) -> List[ScrapedItem]:
-    # Simulate infinite scroll scraping logic
-    all_items: List[ScrapedItem] = []
-    global_position = 0
+def _to_scraped_item_aboutyou(
+    *,
+    raw: Dict[str, Any],
+    country: str,
+    sort: str,
+    page: int,
+    position: int,
+    page_size: int,
+) -> ScrapedItem:
+    price, currency = parse_price(raw.get("price"), market=country)
+    return ScrapedItem(
+        source="aboutyou",
+        market=country,
+        brand=raw.get("brand") or "",
+        name=raw.get("name") or "",
+        priceValue=price,
+        currency=currency,
+        url=raw.get("url"),
+        imageUrl=raw.get("image"),
+        rank=compute_rank(page, position, page_size),
+        page=page,
+        positionOnPage=position,
+        sortMode=sort or "popularity",
+        sku=None,
+        category=infer_category_from_name(raw.get("name") or ""),
+        gender=raw.get("gender"),
+        isNew=False,
+        isOnSale=bool(raw.get("old_price")),
+        hasImage=bool(raw.get("image")),
+        backend=None,
+        backendIndex=None,
+        backendRank=None,
+        raw=raw,
+    )
 
-    for page in range(1, max_pages + 1):
-        # Simulate fetching tiles (replace with actual Playwright logic)
-        tiles = []  # Replace with actual tile fetching logic
 
-        for idx, tile in enumerate(tiles):
-            position_on_page = idx + 1
-            global_position += 1
+def _scrape_aboutyou_page_sync(page_url: str, base_domain: str) -> List[Dict[str, Any]]:
+    try:
+        response = requests.get(page_url, headers=DEFAULT_HEADERS, timeout=30)
+        response.raise_for_status()
+    except Exception as ex:
+        logging.warning("[AboutYou] Failed loading %s: %s", page_url, ex)
+        return []
 
-            # Simulate extracting raw data from tile
-            raw_data = {
-                "url": "https://www.aboutyou.de/p/nike/sneaker-air-max-270-1234567",
-                "brand": "Nike",
-                "name": "Sneaker Air Max 270",
-                "price": "129.95",
-                "image": "https://example.com/image.jpg",
-            }
+    soup = BeautifulSoup(response.text, "lxml")
+    tiles = soup.select('[data-testid^="productTile-"]')
+    if not tiles:
+        tiles = soup.select("article")
 
-            item = _to_scraped_item_aboutyou(
-                raw=raw_data,
+    out: List[Dict[str, Any]] = []
+    for tile in tiles:
+        parsed = _tile_to_item(tile, base_domain)
+        if parsed:
+            out.append(parsed)
+    return out
+
+
+async def scrape_aboutyou_filtered(**filters: Any) -> List[ScrapedItem]:
+    country = (filters.get("country") or "DE").strip().upper()
+    sort = (filters.get("sort") or "popularity").strip()
+    pages_raw = filters.get("pages", filters.get("max_pages", 1))
+    try:
+        pages = max(1, int(pages_raw or 1))
+    except Exception:
+        pages = 1
+
+    base_url = _normalize_aboutyou_url(
+        url=filters.get("url"),
+        country=country,
+        gender=filters.get("gender"),
+        category=filters.get("category"),
+        sort=sort,
+        brand=filters.get("brand"),
+        price_min=filters.get("priceMin"),
+        price_max=filters.get("priceMax"),
+    )
+    base_domain = _resolve_aboutyou_base_domain(base_url, country)
+
+    raw_results: List[Dict[str, Any]] = []
+    for page_num in range(1, pages + 1):
+        page_url = _build_page_url(base_url, page_num)
+        page_items = await asyncio.to_thread(_scrape_aboutyou_page_sync, page_url, base_domain)
+        for idx, item in enumerate(page_items, start=1):
+            row = dict(item)
+            row["country"] = country
+            row["sort"] = sort
+            row["page"] = page_num
+            row["positionOnPage"] = idx
+            raw_results.append(row)
+
+    filtered = _apply_filters(
+        raw_results,
+        brand=filters.get("brand"),
+        keyword=filters.get("keyword"),
+        price_min=filters.get("priceMin"),
+        price_max=filters.get("priceMax"),
+    )
+    ordered = _sort_items(filtered, sort)
+
+    items: List[ScrapedItem] = []
+    for idx, raw in enumerate(ordered, start=1):
+        page = ((idx - 1) // 30) + 1
+        pos = ((idx - 1) % 30) + 1
+        items.append(
+            _to_scraped_item_aboutyou(
+                raw=raw,
                 country=country,
                 sort=sort,
                 page=page,
-                position=position_on_page,
-                page_size=30,  # Assume 30 items per page
+                position=pos,
+                page_size=30,
             )
-            all_items.append(item)
-
-    return all_items
-
-
-async def scrape_aboutyou_filtered(
-    country: str = "DE", sort: str = "popularity", max_pages: int = 1
-) -> List[ScrapedItem]:
-    base_url = f"https://www.aboutyou.{country.lower()}/katalog"
-    return await _scrape_aboutyou_infinite_scroll(base_url, country, sort, max_pages)
+        )
+    return items

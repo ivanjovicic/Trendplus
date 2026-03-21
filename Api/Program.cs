@@ -41,6 +41,8 @@ using System.Threading.RateLimiting;
 using Application.Documents.Interfaces;
 using Infrastructure.Configuration;
 using Infrastructure.Services.Email;
+using Polly;
+using Polly.Extensions.Http;
 
 try
 {
@@ -222,6 +224,57 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     {
         client.BaseAddress = new Uri(scraperBase);
         client.Timeout = TimeSpan.FromSeconds(30);
+    })
+    .AddPolicyHandler((sp, request) =>
+    {
+        var logger = sp.GetRequiredService<ILogger<Program>>();
+        IAsyncPolicy<HttpResponseMessage> retry = HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .OrResult(r => (int)r.StatusCode == 429)
+            .WaitAndRetryAsync(
+                retryCount: 2,
+                sleepDurationProvider: retryAttempt => retryAttempt == 1
+                    ? TimeSpan.FromSeconds(1)
+                    : TimeSpan.FromSeconds(3),
+                onRetry: (outcome, delay, attempt, _) =>
+                {
+                    logger.LogWarning(
+                        "Scraper retry {Attempt} in {DelaySeconds}s for {Method} {Uri}. Reason={Reason}",
+                        attempt,
+                        delay.TotalSeconds,
+                        request.Method,
+                        request.RequestUri,
+                        outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString());
+                });
+
+        return retry;
+    })
+    .AddPolicyHandler((sp, request) =>
+    {
+        var logger = sp.GetRequiredService<ILogger<Program>>();
+        IAsyncPolicy<HttpResponseMessage> breaker = HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .OrResult(r => (int)r.StatusCode == 429)
+            .CircuitBreakerAsync(
+                handledEventsAllowedBeforeBreaking: 3,
+                durationOfBreak: TimeSpan.FromSeconds(30),
+                onBreak: (_, breakDelay) =>
+                {
+                    logger.LogError(
+                        "Scraper circuit OPEN for {BreakDelaySeconds}s on {Method} {Uri}",
+                        breakDelay.TotalSeconds,
+                        request.Method,
+                        request.RequestUri);
+                },
+                onReset: () =>
+                {
+                    logger.LogInformation(
+                        "Scraper circuit RESET for {Method} {Uri}",
+                        request.Method,
+                        request.RequestUri);
+                });
+
+        return breaker;
     });
 
     // Optional Python model endpoint for runtime scoring evaluate (/api/v1/scoring/evaluate)

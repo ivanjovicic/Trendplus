@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import pLimit from "p-limit";
 import Modal from "../components/Modal";
 import { useToast } from "../components/Toast";
 import { runZalandoScraper } from "../services/zalandoApi";
@@ -9,10 +10,10 @@ import { fetchGlobalTop10 } from "../services/scoringApi";
 
 /* ─── SOURCE COLOR PALETTE ───────────────────────────────── */
 const SOURCE_COLOR: Record<string, { bg: string; text: string; border: string }> = {
-    zalando: { bg: "#fff1f3", text: "#be123c", border: "#fecdd3" },
-    deichmann: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
-    aboutyou: { bg: "#f5f3ff", text: "#6d28d9", border: "#ddd6fe" },
-    humanic: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
+    zalando: { bg: "rgba(var(--accent-warning-rgb), 0.1)", text: "var(--accent-warning)", border: "var(--accent-warning)" },
+    deichmann: { bg: "rgba(var(--info-rgb), 0.1)", text: "var(--info)", border: "var(--info)" },
+    aboutyou: { bg: "rgba(var(--primary-rgb), 0.1)", text: "var(--primary)", border: "var(--primary)" },
+    humanic: { bg: "rgba(var(--success-rgb), 0.1)", text: "var(--success)", border: "var(--success)" },
 };
 const SOURCE_EMOJI: Record<string, string> = {
     zalando: "🧡",
@@ -28,6 +29,9 @@ const MARKET_FLAG: Record<string, string> = {
     HU: "🇭🇺",
     RO: "🇷🇴",
 };
+const SCRAPER_CONCURRENCY = Number(import.meta.env.VITE_SCRAPER_MAX_CONCURRENCY || 4);
+const MAX_ALL_ITEMS = 3000;
+const SCORER_DEBOUNCE_MS = 300;
 
 type SourceId = "zalando" | "deichmann" | "aboutyou" | "humanic";
 type MarketCode = "DE" | "AT" | "CH" | "HU" | "RO";
@@ -35,8 +39,7 @@ type CurrencyCode = "EUR" | "HUF" | "RON" | "CHF";
 type ShoeType =
     | "sneakers" | "running"
     | "ankle_boots" | "chelsea" | "knee_boots" | "boots"
-    | "sandals"
-    | "heels" | "stilettos" | "wedges"
+    | "sandals" | "heels" | "stilettos" | "wedges"
     | "loafers" | "oxfords"
     | "flats" | "mules" | "espadrilles" | "slippers"
     | "other";
@@ -481,6 +484,7 @@ export default function ScraperHubPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalSrc, setModalSrc] = useState("");
     const [modalTitle, setModalTitle] = useState("");
+    const runAbortRef = useRef<AbortController | null>(null);
 
     const grouped = useMemo(() => groupItems(allItems), [allItems]);
 
@@ -521,20 +525,41 @@ export default function ScraperHubPage() {
 
     // ── Python-scored Global Top 10 ──────────────────────────────────────────
     useEffect(() => {
-        if (allItems.length === 0) { setScoredTop10([]); return; }
-        const itemsForScorer = allItems.filter((item) => {
-            if (typeFilter !== "all" && item.shoeType !== typeFilter) return false;
-            if (brandFilter !== "all" && item.brand.toLowerCase() !== brandFilter.toLowerCase()) return false;
-            if (!visibleSources.includes(item.source)) return false;
-            if (!SOURCE_SUPPORTS_MARKET[item.source]) return true;
-            return item.market ? visibleMarkets.includes(item.market as MarketCode) : true;
-        });
-        if (itemsForScorer.length === 0) { setScoredTop10([]); return; }
-        setTop10Loading(true);
-        fetchGlobalTop10(itemsForScorer, typeFilter !== "all" ? typeFilter : null, 10)
-            .then((scored) => setScoredTop10(scored.map(scoredToGrouped)))
-            .catch(() => setScoredTop10([]))
-            .finally(() => setTop10Loading(false));
+        return () => {
+            runAbortRef.current?.abort();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (allItems.length === 0) {
+            setScoredTop10([]);
+            setTop10Loading(false);
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            const itemsForScorer = allItems.filter((item) => {
+                if (typeFilter !== "all" && item.shoeType !== typeFilter) return false;
+                if (brandFilter !== "all" && item.brand.toLowerCase() !== brandFilter.toLowerCase()) return false;
+                if (!visibleSources.includes(item.source)) return false;
+                if (!SOURCE_SUPPORTS_MARKET[item.source]) return true;
+                return item.market ? visibleMarkets.includes(item.market as MarketCode) : true;
+            });
+
+            if (itemsForScorer.length === 0) {
+                setScoredTop10([]);
+                setTop10Loading(false);
+                return;
+            }
+
+            setTop10Loading(true);
+            fetchGlobalTop10(itemsForScorer, typeFilter !== "all" ? typeFilter : null, 10)
+                .then((scored) => setScoredTop10(scored.map(scoredToGrouped)))
+                .catch(() => setScoredTop10([]))
+                .finally(() => setTop10Loading(false));
+        }, SCORER_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(timer);
     }, [allItems, typeFilter, brandFilter, visibleSources, visibleMarkets]);
 
     const visibleRuns = useMemo(
@@ -639,111 +664,165 @@ export default function ScraperHubPage() {
         const aboutYouKeyword = aboutYouKeywordByType[scrapeType];
         const humanicKeyword = humanicKeywordByType[scrapeType];
 
+        runAbortRef.current?.abort();
+        const runController = new AbortController();
+        runAbortRef.current = runController;
+
+        const appendCappedItems = (items: UnifiedItem[]) => {
+            if (items.length === 0) return;
+            setAllItems((prev) => {
+                const next = prev.concat(items);
+                return next.length > MAX_ALL_ITEMS ? next.slice(0, MAX_ALL_ITEMS) : next;
+            });
+        };
+
         setLoading(true);
         setLastRuns(runs);
+        setAllItems([]);
+        setErrorsByRun({});
         try {
+            const limit = pLimit(Math.max(1, SCRAPER_CONCURRENCY));
+
             const settled = await Promise.allSettled(
-                runs.map(async (run) => {
+                runs.map((run) =>
+                    limit(async () => {
                     if (run.source === "zalando") {
-                        let response = await runZalandoScraper({
-                            category: zalandoCategory,
-                            pages: finitePages,
-                            sort: "popularity",
-                            country: run.market,
-                        });
+                        let response = await runZalandoScraper(
+                            {
+                                category: zalandoCategory,
+                                pages: finitePages,
+                                sort: "popularity",
+                                country: run.market,
+                            },
+                            runController.signal
+                        );
                         let rawItems = extractRawItems(response);
 
                         // Fallback to broad shoes if locale-specific type query is empty.
                         if (rawItems.length === 0 && zalandoCategory !== "schuhe") {
-                            response = await runZalandoScraper({
-                                category: "schuhe",
-                                pages: finitePages,
-                                sort: "popularity",
-                                country: run.market,
-                            });
+                            response = await runZalandoScraper(
+                                {
+                                    category: "schuhe",
+                                    pages: finitePages,
+                                    sort: "popularity",
+                                    country: run.market,
+                                },
+                                runController.signal
+                            );
                             rawItems = extractRawItems(response);
                         }
 
-                        return { run, items: toUnifiedItems(run, rawItems, scrapeType) };
+                        const items = toUnifiedItems(run, rawItems, scrapeType);
+                        appendCappedItems(items);
+                        return { run, items };
                     }
                     if (run.source === "deichmann") {
                         const country = run.market || "DE";
-                        let response = await runDeichmannScraper({
-                            category: deichmannCategory,
-                            pages: finitePages,
-                            sort: "key-relevance",
-                            gender: "women",
-                            country,
-                        });
+                        let response = await runDeichmannScraper(
+                            {
+                                category: deichmannCategory,
+                                pages: finitePages,
+                                sort: "key-relevance",
+                                gender: "women",
+                                country,
+                            },
+                            runController.signal
+                        );
                         let rawItems = extractRawItems(response);
 
                         // Fallback to broad women shoes category for the market.
                         // Pass empty category so the Python scraper uses the market-appropriate default.
                         if (rawItems.length === 0) {
-                            response = await runDeichmannScraper({
-                                category: "",
-                                pages: finitePages,
-                                sort: "key-relevance",
-                                gender: "women",
-                                country,
-                            });
+                            response = await runDeichmannScraper(
+                                {
+                                    category: "",
+                                    pages: finitePages,
+                                    sort: "key-relevance",
+                                    gender: "women",
+                                    country,
+                                },
+                                runController.signal
+                            );
                             rawItems = extractRawItems(response);
                         }
 
-                        return { run, items: toUnifiedItems(run, rawItems, scrapeType) };
+                        const items = toUnifiedItems(run, rawItems, scrapeType);
+                        appendCappedItems(items);
+                        return { run, items };
                     }
                     if (run.source === "aboutyou") {
                         const market = (run.market || "DE") as MarketCode;
                         const aboutYouUrl = getAboutYouUrl(market, scrapeType);
-                        let response = await runAboutYouScraper({
-                            url: aboutYouUrl,
-                            country: market,
-                            pages: infinitePages,
-                            sort: "popularity",
-                            keyword: aboutYouKeyword,
-                        });
+                        let response = await runAboutYouScraper(
+                            {
+                                url: aboutYouUrl,
+                                country: market,
+                                pages: infinitePages,
+                                sort: "popularity",
+                                keyword: aboutYouKeyword,
+                            },
+                            runController.signal
+                        );
                         let rawItems = extractRawItems(response);
 
                         // Fallback to broad stiefeletten listing if typed URL yields nothing.
                         if (rawItems.length === 0 && aboutYouUrl !== DEFAULT_ABOUTYOU_URL_BY_MARKET[market]) {
-                            response = await runAboutYouScraper({
-                                url: DEFAULT_ABOUTYOU_URL_BY_MARKET[market],
-                                country: market,
-                                pages: infinitePages,
-                                sort: "popularity",
-                            });
+                            response = await runAboutYouScraper(
+                                {
+                                    url: DEFAULT_ABOUTYOU_URL_BY_MARKET[market],
+                                    country: market,
+                                    pages: infinitePages,
+                                    sort: "popularity",
+                                },
+                                runController.signal
+                            );
                             rawItems = extractRawItems(response);
                         }
 
-                        return { run, items: toUnifiedItems(run, rawItems, scrapeType) };
+                        const items = toUnifiedItems(run, rawItems, scrapeType);
+                        appendCappedItems(items);
+                        return { run, items };
                     }
-                    let response = await runHumanicScraper({
-                        url: DEFAULT_HUMANIC_URL,
-                        pages: infinitePages,
-                        sort: "bestseller",
-                        keyword: humanicKeyword,
-                    });
+                    let response = await runHumanicScraper(
+                        {
+                            url: DEFAULT_HUMANIC_URL,
+                            pages: infinitePages,
+                            sort: "bestseller",
+                            keyword: humanicKeyword,
+                        },
+                        runController.signal
+                    );
                     let rawItems = extractRawItems(response);
 
                     // Fallback to broad listing without keyword to avoid empty type niche.
                     if (rawItems.length === 0 && humanicKeyword) {
-                        response = await runHumanicScraper({
-                            url: DEFAULT_HUMANIC_URL,
-                            pages: infinitePages,
-                            sort: "bestseller",
-                        });
+                        response = await runHumanicScraper(
+                            {
+                                url: DEFAULT_HUMANIC_URL,
+                                pages: infinitePages,
+                                sort: "bestseller",
+                            },
+                            runController.signal
+                        );
                         rawItems = extractRawItems(response);
                     }
 
-                    return { run, items: toUnifiedItems(run, rawItems, scrapeType) };
-                })
+                    const items = toUnifiedItems(run, rawItems, scrapeType);
+                    appendCappedItems(items);
+                    return { run, items };
+                    })
+                )
             );
 
-            const nextItems: UnifiedItem[] = [];
+            if (runController.signal.aborted || runAbortRef.current !== runController) {
+                return;
+            }
+
             const nextErrors: Record<string, string> = {};
+            let loadedCount = 0;
             settled.forEach((result, idx) => {
                 if (result.status === "fulfilled") {
-                    nextItems.push(...result.value.items);
+                    loadedCount += result.value.items.length;
                     return;
                 }
                 const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
@@ -751,15 +830,20 @@ export default function ScraperHubPage() {
                 if (run) nextErrors[run.id] = msg;
             });
 
-            setAllItems(nextItems);
             setErrorsByRun(nextErrors);
             setVisibleSources(enabledSources);
             if (enabledMarkets.length > 0) setVisibleMarkets(enabledMarkets);
-            toast.success(`Učitano ${nextItems.length} artikala iz ${runs.length} upita.`);
+            toast.success(`Učitano ${loadedCount} artikala iz ${runs.length} upita.`);
         } catch (error) {
+            if (runController.signal.aborted || runAbortRef.current !== runController) {
+                return;
+            }
             toast.error(error instanceof Error ? error.message : "Greška pri pokretanju scrapera.");
         } finally {
-            setLoading(false);
+            if (runAbortRef.current === runController) {
+                runAbortRef.current = null;
+                setLoading(false);
+            }
         }
     };
 
@@ -767,21 +851,11 @@ export default function ScraperHubPage() {
     const PillToggle = ({ label, active, onClick, emoji }: { label: string; active: boolean; onClick: () => void; emoji?: string }) => (
         <button
             onClick={onClick}
-            style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                padding: "5px 13px",
-                borderRadius: 999,
-                border: `1.5px solid ${active ? "#4f46e5" : "#2A3045"}`,
-                background: active ? "#4f46e5" : "#1A1F2E",
-                color: active ? "#fff" : "#c9d3e4",
-                fontWeight: active ? 600 : 400,
-                fontSize: 13,
-                cursor: "pointer",
-                transition: "all .15s",
-                userSelect: "none",
-            }}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm font-medium select-none ${
+                active 
+                    ? "bg-primary border-primary text-white shadow-sm" 
+                    : "bg-surface-elevated border-muted text-muted hover:border-muted/80 hover:text-contrast"
+            }`}
         >
             {emoji && <span>{emoji}</span>}
             {label}
@@ -789,25 +863,16 @@ export default function ScraperHubPage() {
     );
 
     const SourcePill = ({ source, active, onClick }: { source: SourceId; active: boolean; onClick: () => void }) => {
-        const c = SOURCE_COLOR[source];
+        const colors = SOURCE_COLOR[source];
         return (
             <button
                 onClick={onClick}
-                style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    padding: "5px 13px",
-                    borderRadius: 999,
-                    border: `1.5px solid ${active ? c.border : "#e5e7eb"}`,
-                    background: active ? c.bg : "#f9fafb",
-                    color: active ? c.text : "#9ca3af",
-                    fontWeight: active ? 700 : 400,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    transition: "all .15s",
-                    userSelect: "none",
-                }}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm font-semibold select-none ${
+                    active 
+                        ? "shadow-sm" 
+                        : "bg-surface-elevated border-muted text-muted grayscale opacity-60 hover:grayscale-0 hover:opacity-100"
+                }`}
+                style={active ? { background: colors.bg, borderColor: colors.border, color: colors.text } : {}}
             >
                 {SOURCE_EMOJI[source]} {SOURCE_LABEL[source]}
             </button>
@@ -819,32 +884,28 @@ export default function ScraperHubPage() {
     const hasResults = totalRawItems > 0;
 
     return (
-        <div style={{ maxWidth: 1380, margin: "2rem auto", padding: "0 1rem", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+        <div className="max-w-[1380px] mx-auto my-8 px-4 font-sans">
 
             {/* ── HERO HEADER ── */}
-            <div style={{ marginBottom: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div className="mb-6">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
-                        <h1 style={{ fontSize: 26, fontWeight: 800, color: "#c9d3e4", margin: 0 }}>
-                            🧩 Scraper Hub — Top 10
-                        </h1>
-                        <p style={{ color: "#8A95B0", marginTop: 4, marginBottom: 0, fontSize: 14 }}>
-                            Globalni rang popularnosti + po-izvorni spiskovi. Zalando, Deichmann, About You, Humanic — grupisano i rangirano.
-                        </p>
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-foreground m-0">🧩 Scraper Hub — Top 10</h1>
+                        <p className="text-sm text-muted mt-1 mb-0">Globalni rang popularnosti + po-izvorni spiskovi. Zalando, Deichmann, About You, Humanic — grupisano i rangirano.</p>
                     </div>
                     {hasResults && (
-                        <div style={{ display: "flex", gap: 10 }}>
-                            <div style={{ background: "rgba(5, 150, 105, 0.15)", border: "1px solid #065f46", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
-                                <div style={{ fontSize: 20, fontWeight: 800, color: "#059669" }}>{totalRawItems}</div>
-                                <div style={{ fontSize: 11, color: "#8A95B0" }}>artikala</div>
+                        <div className="flex gap-3">
+                            <div className="px-4 py-2 rounded-lg text-center bg-surface-elevated border border-border">
+                                <div className="text-xl font-extrabold text-accent-success">{totalRawItems}</div>
+                                <div className="text-xs text-muted">artikala</div>
                             </div>
-                            <div style={{ background: "rgba(37, 99, 235, 0.15)", border: "1px solid #1d4ed8", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
-                                <div style={{ fontSize: 20, fontWeight: 800, color: "#2563eb" }}>{filteredGlobal.length}</div>
-                                <div style={{ fontSize: 11, color: "#8A95B0" }}>grupa</div>
+                            <div className="px-4 py-2 rounded-lg text-center bg-surface-elevated border border-border">
+                                <div className="text-xl font-extrabold text-primary">{filteredGlobal.length}</div>
+                                <div className="text-xs text-muted">grupa</div>
                             </div>
-                            <div style={{ background: "rgba(217, 119, 6, 0.15)", border: "1px solid #b45309", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
-                                <div style={{ fontSize: 20, fontWeight: 800, color: "#d97706" }}>{totalRuns}</div>
-                                <div style={{ fontSize: 11, color: "#8A95B0" }}>upita</div>
+                            <div className="px-4 py-2 rounded-lg text-center bg-surface-elevated border border-border">
+                                <div className="text-xl font-extrabold text-accent-warning">{totalRuns}</div>
+                                <div className="text-xs text-muted">upita</div>
                             </div>
                         </div>
                     )}
@@ -852,12 +913,12 @@ export default function ScraperHubPage() {
             </div>
 
             {/* ── CONFIG CARD ── */}
-            <div style={{ background: "#161A23", border: "1px solid #2A3045", borderRadius: 14, padding: 20, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,.3)" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 20, flexWrap: "wrap" }}>
+            <div className="bg-surface border border-border rounded-xl p-5 mb-4 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", marginBottom: 8 }}>Izvori</div>
-                        <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                        <div className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Izvori</div>
+                        <div className="flex gap-2 flex-wrap">
                             {(Object.keys(SOURCE_LABEL) as SourceId[]).map((source) => (
                                 <SourcePill key={source} source={source} active={!!enabledScrapers[source]} onClick={() => {
                                     const next = !enabledScrapers[source];
@@ -869,8 +930,8 @@ export default function ScraperHubPage() {
                     </div>
 
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", marginBottom: 8 }}>Tržišta (Zalando / About You)</div>
-                        <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                        <div className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Tržišta (Zalando / About You)</div>
+                        <div className="flex gap-2 flex-wrap">
                             {MARKET_LIST.map((market) => (
                                 <PillToggle key={market} label={market} emoji={MARKET_FLAG[market]} active={enabledMarkets.includes(market)} onClick={() => {
                                     setEnabledMarkets((prev) => {
@@ -883,11 +944,11 @@ export default function ScraperHubPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, justifyContent: "flex-end", minWidth: 300 }}>
-                        <div style={{ display: "flex", gap: 8 }}>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", marginBottom: 6 }}>Tip</div>
-                                <select className="input-big" value={scrapeType} onChange={(e) => { setScrapeType(e.target.value as ScrapeType); setTypeFilter(e.target.value as "all" | ShoeType); }} style={{ width: "100%" }}>
+                    <div className="flex flex-col gap-3 justify-end min-w-[300px]">
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <div className="text-xs font-bold uppercase tracking-wider text-muted mb-1">Tip</div>
+                                <select className="input-big w-full" value={scrapeType} onChange={(e) => { setScrapeType(e.target.value as ScrapeType); setTypeFilter(e.target.value as "all" | ShoeType); }}>
                                     <option value="all">Svi tipovi</option>
                                     <optgroup label="Patike i sport">
                                         <option value="sneakers">👟 Patike</option>
@@ -907,15 +968,15 @@ export default function ScraperHubPage() {
                                     </optgroup>
                                 </select>
                             </div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", marginBottom: 6 }}>Stranice</div>
-                                <div style={{ display: "flex", gap: 6 }}>
-                                    <select className="input-big" value={pageMode} onChange={(e) => setPageMode(e.target.value as "auto" | "manual")} style={{ flex: 1 }}>
+                            <div className="flex-1">
+                                <div className="text-xs font-bold uppercase tracking-wider text-muted mb-1">Stranice</div>
+                                <div className="flex gap-2">
+                                    <select className="input-big flex-1" value={pageMode} onChange={(e) => setPageMode(e.target.value as "auto" | "manual") }>
                                         <option value="manual">Ručno</option>
                                         <option value="auto">Automatski</option>
                                     </select>
                                     {pageMode === "manual" && (
-                                        <input className="input-big" type="number" min={1} max={5} value={pages} onChange={(e) => setPages(Math.max(1, Number(e.target.value) || 1))} style={{ width: 56 }} />
+                                        <input className="input-big w-14" type="number" min={1} max={5} value={pages} onChange={(e) => setPages(Math.max(1, Number(e.target.value) || 1))} />
                                     )}
                                 </div>
                             </div>
@@ -924,55 +985,25 @@ export default function ScraperHubPage() {
                         <button
                             onClick={runAllScrapers}
                             disabled={loading}
-                            style={{
-                                padding: "10px 24px",
-                                borderRadius: 10,
-                                border: "none",
-                                cursor: loading ? "not-allowed" : "pointer",
-                                background: loading ? "#9ca3af" : "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                                color: "white",
-                                fontWeight: 700,
-                                fontSize: 14,
-                                boxShadow: loading ? "none" : "0 4px 12px rgba(79,70,229,.35)",
-                                transition: "all .2s",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 8,
-                            }}
+                            className={`button-big ml-auto ${loading ? 'opacity-60 cursor-not-allowed' : 'bg-gradient-to-tr from-indigo-500 to-indigo-600'}`}
                         >
-                            {loading ? (
-                                <>⏳ Pokretanje...</>
-                            ) : (
-                                <>🚀 Pokreni sve scrapere</>
-                            )}
+                            {loading ? '⏳ Pokretanje...' : '🚀 Pokreni sve scrapere'}
                         </button>
                     </div>
                 </div>
             </div>
 
             {/* ── GLOBAL TOP 10 ── */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 800, color: "#c9d3e4", margin: 0 }}>🌍 Globalni Top 10</h2>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <h2 className="text-xl font-extrabold text-foreground m-0">🌍 Globalni Top 10</h2>
+                <div className="flex items-center gap-3 flex-wrap">
                     {/* ── Brand filter ── */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#8A95B0", whiteSpace: "nowrap" }}>Brend</label>
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-muted whitespace-nowrap">Brend</label>
                         <select
                             value={brandFilter}
                             onChange={(e) => setBrandFilter(e.target.value)}
-                            style={{
-                                padding: "5px 10px",
-                                borderRadius: 8,
-                                border: `1.5px solid ${brandFilter !== "all" ? "#6366f1" : "#2A3045"}`,
-                                fontSize: 13,
-                                fontWeight: brandFilter !== "all" ? 700 : 400,
-                                color: brandFilter !== "all" ? "#a5b4fc" : "#c9d3e4",
-                                background: brandFilter !== "all" ? "rgba(99, 102, 241, 0.15)" : "#1A1F2E",
-                                cursor: "pointer",
-                                minWidth: 140,
-                                maxWidth: 220,
-                            }}
+                            className={`px-3 py-1 rounded-md text-sm min-w-[140px] max-w-[220px] ${brandFilter !== 'all' ? 'border-primary text-primary bg-primary/10 font-semibold' : 'border-border text-muted bg-surface'}`}
                         >
                             <option value="all">Svi brendovi ({availableBrands.length})</option>
                             {availableBrands.map((b) => (
@@ -983,13 +1014,13 @@ export default function ScraperHubPage() {
                             <button
                                 onClick={() => setBrandFilter("all")}
                                 title="Clear brand filter"
-                                style={{ background: "#eef2ff", border: "1.5px solid #6366f1", borderRadius: 7, cursor: "pointer", fontSize: 12, color: "#4f46e5", padding: "4px 8px", fontWeight: 700 }}
+                                className="bg-indigo-50 border border-indigo-500 rounded px-2 py-1 text-indigo-600 text-sm font-bold"
                             >
                                 ✕
                             </button>
                         )}
                     </div>
-                    <span style={{ fontSize: 13, color: "#8A95B0" }}>
+                    <span className="text-sm text-muted">
                         {top10Loading
                             ? "⏳ Računanje skorova…"
                             : `${filteredGlobal.length} grupa · prikazano top ${globalTop10.length}${scoredTop10.length > 0 ? " · ★ Python scored" : ""}`
@@ -999,15 +1030,15 @@ export default function ScraperHubPage() {
             </div>
 
             {globalTop10.length === 0 && !loading && (
-                <div style={{ textAlign: "center", padding: 40, background: "#161A23", border: "1px solid #2A3045", borderRadius: 14, color: "#8A95B0", marginBottom: 28 }}>
-                    <div style={{ fontSize: 36, marginBottom: 8 }}>📭</div>
-                    <div style={{ fontWeight: 600 }}>Nema rezultata</div>
-                    <div style={{ fontSize: 13, marginTop: 4 }}>Podešavanja gore, zatim klikni Pokreni.</div>
+                <div className="text-center p-10 bg-surface border border-border rounded-lg text-muted mb-7">
+                    <div className="text-4xl mb-2">📭</div>
+                    <div className="font-semibold">Nema rezultata</div>
+                    <div className="text-sm mt-1">Podešavanja gore, zatim klikni Pokreni.</div>
                 </div>
             )}
 
             {globalTop10.length > 0 && (
-                <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", marginBottom: 36 }}>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 mb-9">
                     {globalTop10.map((group, idx) => {
                         const c = SOURCE_COLOR[group.representative?.source || "zalando"];
                         const uniqueSources = group.allSources?.length
@@ -1021,38 +1052,33 @@ export default function ScraperHubPage() {
                         return (
                             <div
                                 key={group.key}
-                                style={{
-                                    background: "#161A23",
-                                    borderRadius: 14,
-                                    boxShadow: idx < 3 ? "0 6px 20px rgba(0,0,0,.4)" : "0 2px 8px rgba(0,0,0,.3)",
-                                    border: idx < 3 ? "2px solid #fbbf24" : "1px solid #2A3045",
-                                    overflow: "hidden",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    transition: "transform .2s",
-                                }}
+                                className={`rounded-xl overflow-hidden flex flex-col transition-transform duration-200 bg-surface-elevated border ${
+                                    idx < 3 ? "shadow-lg border-accent-warning" : "shadow-sm border-border"
+                                }`}
                             >
                                 {/* image */}
                                 <div
-                                    style={{ width: "100%", height: 180, background: "#1A1F2E", position: "relative", cursor: group.representative?.image ? "pointer" : "default", overflow: "hidden" }}
+                                    className={`w-full h-[180px] bg-surface relative overflow-hidden ${group.representative?.image ? 'cursor-pointer' : 'cursor-default'}`}
                                     onClick={() => openModal(group.representative?.image, `${group.brand} ${group.modelName}`)}
                                 >
                                     {group.representative?.image ? (
                                         <img
                                             src={group.representative.image}
                                             alt={group.modelName}
-                                            style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }}
+                                            className="w-full h-full object-contain p-2"
                                             onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=No+Image"; }}
                                         />
                                     ) : (
-                                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42 }}>👟</div>
+                                        <div className="w-full h-full flex items-center justify-center text-4xl">👟</div>
                                     )}
                                     {/* rank badge */}
-                                    <div style={{ position: "absolute", top: 8, left: 8, fontSize: idx < 3 ? 26 : 13, lineHeight: 1, background: idx < 3 ? "transparent" : "rgba(0,0,0,.55)", color: "white", borderRadius: 8, padding: idx < 3 ? 0 : "2px 7px", fontWeight: 700 }}>
+                                    <div className={`absolute top-2 left-2 font-bold rounded-lg ${
+                                        idx < 3 ? "text-[26px] bg-transparent" : "text-[13px] bg-black/55 text-white px-[7px] py-[2px]"
+                                    }`}>
                                         {medal}
                                     </div>
                                     {/* score badge */}
-                                    <div style={{ position: "absolute", top: 8, right: 8, background: "#4f46e5", color: "white", borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>
+                                    <div className="absolute top-2 right-2 bg-primary text-white rounded-lg px-2 py-1 text-[11px] font-bold">
                                         {group.globalScore !== undefined
                                             ? `★ ${group.globalScore.toFixed(2)}`
                                             : `${group.popularityScore} pts`}
@@ -1060,28 +1086,35 @@ export default function ScraperHubPage() {
                                 </div>
 
                                 {/* body */}
-                                <div style={{ padding: "10px 12px 14px", flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-                                    <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, textTransform: "uppercase" }}>{group.brand}</div>
-                                    <div style={{ fontWeight: 700, fontSize: 14, color: "#c9d3e4", lineHeight: 1.3 }}>{group.modelName}</div>
+                                <div className="p-3 flex-1 flex flex-col gap-1">
+                                    <div className="text-[11px] text-muted font-semibold uppercase">{group.brand}</div>
+                                    <div className="font-bold text-sm text-foreground leading-snug">{group.modelName}</div>
 
-                                    <div style={{ marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                        <span style={{ color: "#059669", fontWeight: 700, fontSize: 14 }}>
+                                    <div className="mt-1 flex justify-between items-center">
+                                        <span className="text-accent-success font-bold text-sm">
                                             {formatPriceRange(group.minPrice, group.maxPrice, group.currency, group.mixedCurrency)}
                                         </span>
-                                        <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: 6, fontSize: 10, padding: "2px 6px", fontWeight: 600 }}>
+                                        <span 
+                                            style={{ background: c.bg, color: c.text, borderColor: c.border }}
+                                            className="border rounded-md text-[10px] px-1.5 py-0.5 font-semibold"
+                                        >
                                             {SHOE_TYPE_LABEL[group.shoeType]}
                                         </span>
                                     </div>
 
                                     {/* source presence */}
-                                    <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                    <div className="mt-1.5 flex flex-wrap gap-1">
                                         {uniqueSources.map((src) => (
-                                            <span key={src} style={{ fontSize: 10, background: SOURCE_COLOR[src].bg, color: SOURCE_COLOR[src].text, border: `1px solid ${SOURCE_COLOR[src].border}`, borderRadius: 5, padding: "1px 6px", fontWeight: 600 }}>
+                                            <span 
+                                                key={src} 
+                                                style={{ background: SOURCE_COLOR[src].bg, color: SOURCE_COLOR[src].text, borderColor: SOURCE_COLOR[src].border }}
+                                                className="text-[10px] border rounded-md px-1.5 py-0.5 font-semibold"
+                                            >
                                                 {SOURCE_EMOJI[src]} {SOURCE_LABEL[src as SourceId]}
                                             </span>
                                         ))}
                                         {uniqueMarkets.map((m) => (
-                                            <span key={m} style={{ fontSize: 10, background: "#2A3045", color: "#c9d3e4", borderRadius: 5, padding: "1px 6px" }}>
+                                            <span key={m} className="text-[10px] bg-surface border border-border text-muted rounded-md px-1.5 py-0.5">
                                                 {MARKET_FLAG[m as MarketCode]}{m}
                                             </span>
                                         ))}
@@ -1089,9 +1122,9 @@ export default function ScraperHubPage() {
 
                                     {/* per-market price chips (Python scorer only) */}
                                     {group.priceByMarket && Object.keys(group.priceByMarket).length > 1 && (
-                                        <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                        <div className="mt-1 flex flex-wrap gap-1">
                                             {Object.entries(group.priceByMarket).map(([mkt, range]) => (
-                                                <span key={mkt} style={{ fontSize: 10, background: "rgba(5,150,105,0.15)", color: "#34d399", borderRadius: 5, padding: "1px 6px", fontWeight: 600 }}>
+                                                <span key={mkt} className="text-[10px] bg-accent-success/10 text-accent-success border border-accent-success/20 rounded-md px-1.5 py-0.5 font-semibold">
                                                     {MARKET_FLAG[mkt as MarketCode] ?? mkt} {range.min === range.max ? `${range.min}` : `${range.min}–${range.max}`}
                                                 </span>
                                             ))}
@@ -1100,7 +1133,7 @@ export default function ScraperHubPage() {
 
                                     {/* provenance row */}
                                     {group.occurrences !== undefined && (
-                                        <div style={{ marginTop: 2, fontSize: 10, color: "#9ca3af", display: "flex", gap: 8 }}>
+                                        <div className="mt-0.5 text-[10px] text-muted flex gap-2">
                                             <span>🔄 {group.occurrences}×</span>
                                             <span>📦 {group.allSources?.length ?? 1} src</span>
                                             <span>🌍 {group.allMarkets?.length ?? 1} mkt</span>
@@ -1113,7 +1146,7 @@ export default function ScraperHubPage() {
                                             href={group.representative.url}
                                             target="_blank"
                                             rel="noreferrer"
-                                            style={{ marginTop: 8, display: "block", textAlign: "center", background: "#4f46e5", color: "white", borderRadius: 7, padding: "6px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}
+                                            className="mt-2 block text-center bg-primary text-white rounded-lg py-1.5 text-xs font-semibold no-underline hover:opacity-90 transition-opacity"
                                         >
                                             Pogledaj →
                                         </a>
@@ -1128,90 +1161,88 @@ export default function ScraperHubPage() {
             {/* ── PER-SOURCE / MARKET TOP 10 ── */}
             {visibleRuns.length > 0 && (
                 <>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                        <h2 style={{ fontSize: 20, fontWeight: 800, color: "#c9d3e4", margin: 0 }}>📋 Top 10 po izvoru i tržištu</h2>
-                        <span style={{ fontSize: 13, color: "#8A95B0" }}>{visibleRuns.length} panela</span>
+                    <div className="flex items-center justify-between mb-3.5">
+                        <h2 className="text-xl font-extrabold text-foreground m-0">📋 Top 10 po izvoru i tržištu</h2>
+                        <span className="text-[13px] text-muted">{visibleRuns.length} panela</span>
                     </div>
-                    <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))" }}>
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(340px,1fr))] gap-3.5">
                         {visibleRuns.map((run) => {
                             const rows = top10ByRun[run.id] || [];
                             const c = SOURCE_COLOR[run.source];
                             return (
                                 <div
                                     key={run.id}
-                                    style={{
-                                        background: "white",
-                                        border: `1.5px solid ${c.border}`,
-                                        borderRadius: 14,
-                                        overflow: "hidden",
-                                        boxShadow: "0 2px 8px rgba(0,0,0,.06)",
-                                    }}
+                                    style={{ borderColor: c.border }}
+                                    className="bg-surface-elevated border-[1.5px] rounded-xl overflow-hidden shadow-sm"
                                 >
                                     {/* panel header */}
-                                    <div style={{ background: c.bg, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${c.border}` }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                            <span style={{ fontSize: 16 }}>{SOURCE_EMOJI[run.source]}</span>
-                                            <span style={{ fontWeight: 700, fontSize: 14, color: c.text }}>{run.label}</span>
-                                            {run.market && <span style={{ fontSize: 16 }}>{MARKET_FLAG[run.market]}</span>}
+                                    <div 
+                                        style={{ background: c.bg, borderBottomColor: c.border }}
+                                        className="px-3.5 py-2.5 flex justify-between items-center border-b"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-base">{SOURCE_EMOJI[run.source]}</span>
+                                            <span style={{ color: c.text }} className="font-bold text-sm">{run.label}</span>
+                                            {run.market && <span className="text-base">{MARKET_FLAG[run.market]}</span>}
                                         </div>
-                                        <span style={{ fontSize: 11, background: c.border, color: c.text, borderRadius: 999, padding: "2px 8px", fontWeight: 600 }}>
+                                        <span 
+                                            style={{ background: c.border, color: c.text }}
+                                            className="text-[11px] rounded-full px-2 py-0.5 font-semibold"
+                                        >
                                             {rows.length}/10
                                         </span>
                                     </div>
 
                                     {/* body */}
-                                    <div style={{ padding: "8px 10px" }}>
+                                    <div className="px-2.5 py-2">
                                         {errorsByRun[run.id] && (
-                                            <div style={{ color: "#fca5a5", fontSize: 12, background: "rgba(127,29,29,0.25)", border: "1px solid #7f1d1d", borderRadius: 7, padding: "6px 10px", marginBottom: 8 }}>
+                                            <div className="text-xs text-accent-error bg-accent-error/20 border border-accent-error/40 rounded-lg p-2.5 mb-2">
                                                 ❌ {errorsByRun[run.id]}
                                             </div>
                                         )}
                                         {rows.length === 0 && !errorsByRun[run.id] && (
-                                            <div style={{ color: "#8A95B0", fontSize: 13, padding: "12px 4px", textAlign: "center" }}>Nema scraped stavki.</div>
+                                            <div className="text-muted text-[13px] py-3 text-center">Nema scraped stavki.</div>
                                         )}
                                         {rows.map((group, index) => (
                                             <div
                                                 key={`${run.id}-${group.key}`}
-                                                style={{
-                                                    display: "grid",
-                                                    gridTemplateColumns: "36px 52px 1fr auto",
-                                                    alignItems: "center",
-                                                    gap: 8,
-                                                    borderBottom: index < rows.length - 1 ? "1px solid #2A3045" : "none",
-                                                    padding: "7px 4px",
-                                                }}
+                                                className={`grid grid-cols-[36px_52px_1fr_auto] items-center gap-2 py-1.5 px-1 ${
+                                                    index < rows.length - 1 ? "border-b border-border" : ""
+                                                }`}
                                             >
                                                 {/* rank */}
-                                                <div style={{ fontWeight: 800, fontSize: index < 3 ? 16 : 13, textAlign: "center" }}>
+                                                <div className={`font-extrabold text-center ${index < 3 ? "text-base" : "text-[13px]"}`}>
                                                     {MEDAL[index] ?? `#${index + 1}`}
                                                 </div>
                                                 {/* thumbnail */}
                                                 <div
-                                                    style={{ width: 52, height: 52, borderRadius: 8, overflow: "hidden", border: "1px solid #2A3045", background: "#1A1F2E", cursor: group.representative?.image ? "pointer" : "default", flexShrink: 0 }}
+                                                    className={`w-[52px] h-[52px] rounded-lg overflow-hidden border border-border bg-surface flex-shrink-0 ${group.representative?.image ? 'cursor-pointer' : 'cursor-default'}`}
                                                     onClick={() => openModal(group.representative?.image, `${group.brand} ${group.modelName}`)}
                                                 >
                                                     {group.representative?.image ? (
-                                                        <img src={group.representative.image} alt={group.modelName} style={{ width: "100%", height: "100%", objectFit: "contain" }} onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/100x100?text=?"; }} />
+                                                        <img src={group.representative.image} alt={group.modelName} className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/100x100?text=?"; }} />
                                                     ) : (
-                                                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>👟</div>
+                                                        <div className="w-full h-full flex items-center justify-center text-xl">👟</div>
                                                     )}
                                                 </div>
                                                 {/* info */}
-                                                <div style={{ overflow: "hidden" }}>
-                                                    <div style={{ fontSize: 10, color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{group.brand}</div>
-                                                    <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{group.modelName}</div>
-                                                    <div style={{ fontSize: 10, color: "#8A95B0" }}>{group.shoeStyle}</div>
+                                                <div className="overflow-hidden">
+                                                    <div className="text-[10px] text-muted font-semibold uppercase truncate">{group.brand}</div>
+                                                    <div className="font-semibold text-[13px] truncate text-foreground">{group.modelName}</div>
+                                                    <div className="text-[10px] text-muted">{group.shoeStyle}</div>
                                                 </div>
-                                                {/* price + link */}
-                                                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                                                    <div style={{ color: "#059669", fontWeight: 700, fontSize: 12, whiteSpace: "nowrap" }}>
-                                                        {formatPriceRange(group.minPrice, group.maxPrice, group.currency, group.mixedCurrency)}
+
+                                                {/* price */}
+                                                <div className="text-right flex flex-col items-end gap-0.5">
+                                                    <div className="text-xs font-bold text-accent-success">
+                                                        {formatPriceRange(group.minPrice, group.maxPrice, group.currency)}
                                                     </div>
-                                                    {group.representative?.url && (
-                                                        <a href={group.representative.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: c.text, fontWeight: 600, textDecoration: "none" }}>
-                                                            Otvori ↗
-                                                        </a>
-                                                    )}
+                                                    <span 
+                                                        style={{ background: c.bg, color: c.text, borderColor: c.border }}
+                                                        className="text-[9px] px-1.5 py-0.5 rounded border font-semibold"
+                                                    >
+                                                        {SHOE_TYPE_LABEL[group.shoeType]}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))}
@@ -1224,11 +1255,11 @@ export default function ScraperHubPage() {
             )}
 
             <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalTitle} size="lg">
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                <div className="flex justify-center items-center">
                     <img
                         src={modalSrc}
                         alt={modalTitle}
-                        style={{ maxWidth: "100%", maxHeight: "75vh", objectFit: "contain" }}
+                        className="max-w-full max-h-[75vh] object-contain"
                         onError={(e) => {
                             (e.target as HTMLImageElement).src = "https://via.placeholder.com/800x600?text=No+Image";
                         }}
@@ -1238,3 +1269,4 @@ export default function ScraperHubPage() {
         </div>
     );
 }
+

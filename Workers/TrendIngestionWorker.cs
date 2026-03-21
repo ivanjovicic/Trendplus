@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Net.Http.Json;
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -34,6 +34,7 @@ public sealed class TrendIngestionWorker : BackgroundService
     private readonly WorkerHealthService _healthService;
     private readonly WorkerRuntimeControlService _controlService;
     private readonly TrendIngestionOptions _options;
+    private const int SnapshotWriteChunkSize = 100;
 
     private static readonly JsonSerializerOptions _jsonOpts = new()
     {
@@ -177,19 +178,16 @@ public sealed class TrendIngestionWorker : BackgroundService
 
         try
         {
-            var response = await client.GetAsync(url, cts.Token);
-            var raw = await response.Content.ReadAsStringAsync(ct);
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
             _logger.LogInformation("📈 {Worker} — Trend API status: {StatusCode}, Content-Type: {ContentType}",
                 WorkerName,
                 response.StatusCode,
                 response.Content.Headers.ContentType?.ToString() ?? "<none>");
-            _logger.LogDebug("📈 {Worker} — Trend API raw response: {Raw}", WorkerName, raw);
 
             if (!response.IsSuccessStatusCode)
             {
-                var bodyPreview = string.IsNullOrWhiteSpace(raw)
-                    ? "<empty>"
-                    : raw[..Math.Min(raw.Length, 512)];
+                await using var errorStream = await response.Content.ReadAsStreamAsync(cts.Token);
+                var bodyPreview = await ReadBodyPreviewAsync(errorStream, 512, cts.Token);
 
                 _logger.LogWarning(
                     "📈 {Worker} — Python API returned HTTP {StatusCode} at {Url}. Body: {Body}",
@@ -200,21 +198,14 @@ public sealed class TrendIngestionWorker : BackgroundService
                 return [];
             }
 
-            if (string.IsNullOrWhiteSpace(raw))
+            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+            if (stream == Stream.Null)
             {
                 _logger.LogWarning("📈 {Worker} — Python API returned empty response body at {Url}.", WorkerName, _options.PythonApiBaseUrl + url);
                 return [];
             }
 
-            var trimmedPayload = raw.TrimStart();
-            if (trimmedPayload.StartsWith("[", StringComparison.Ordinal))
-            {
-                var items = JsonSerializer.Deserialize<List<TrendItemDto>>(raw, _jsonOpts);
-                return items ?? [];
-            }
-
-            var envelope = JsonSerializer.Deserialize<TrendEnvelopeDto>(raw, _jsonOpts);
-            return envelope?.Items ?? [];
+            return await DeserializeTrendItemsAsync(stream, cts.Token);
         }
         catch (HttpRequestException ex)
         {
@@ -247,26 +238,38 @@ public sealed class TrendIngestionWorker : BackgroundService
             .ToListAsync(ct);
 
         if (existing.Count > 0)
-            db.TrendProductSnapshots.RemoveRange(existing);
-
-        var snapshots = items.Select((item, idx) => new TrendProductSnapshot
         {
-            SnapshotDate   = date,
-            CanonicalKey   = item.CanonicalKey,
-            ProductName    = item.Name,
-            Brand          = item.Brand,
-            Category       = null,          // not returned by current Python API
-            Market         = item.Markets.Count > 0 ? string.Join(",", item.Markets) : null,
-            Score          = item.FinalScore,
-            RankGlobal     = item.Rank > 0 ? item.Rank : idx + 1,
-            SocialScore    = null,
-            SourceCount    = item.TotalOccurrences,
-            UniqueSources  = item.UniqueSources,
-            CreatedAt      = DateTimeOffset.UtcNow,
-        }).ToList();
+            db.TrendProductSnapshots.RemoveRange(existing);
+            await db.SaveChangesAsync(ct);
+        }
 
-        await db.TrendProductSnapshots.AddRangeAsync(snapshots, ct);
-        await db.SaveChangesAsync(ct);
+        var fallbackRank = 0;
+        foreach (var batch in items.Chunk(SnapshotWriteChunkSize))
+        {
+            var snapshots = new List<TrendProductSnapshot>(batch.Length);
+            foreach (var item in batch)
+            {
+                fallbackRank++;
+                snapshots.Add(new TrendProductSnapshot
+                {
+                    SnapshotDate = date,
+                    CanonicalKey = item.CanonicalKey,
+                    ProductName = item.Name,
+                    Brand = item.Brand,
+                    Category = null, // not returned by current Python API
+                    Market = item.Markets.Count > 0 ? string.Join(",", item.Markets) : null,
+                    Score = item.FinalScore,
+                    RankGlobal = item.Rank > 0 ? item.Rank : fallbackRank,
+                    SocialScore = null,
+                    SourceCount = item.TotalOccurrences,
+                    UniqueSources = item.UniqueSources,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                });
+            }
+
+            await db.TrendProductSnapshots.AddRangeAsync(snapshots, ct);
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     // ── Momentum ──────────────────────────────────────────────────────────────
@@ -426,6 +429,39 @@ public sealed class TrendIngestionWorker : BackgroundService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    private async Task<List<TrendItemDto>> DeserializeTrendItemsAsync(Stream stream, CancellationToken ct)
+    {
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+        if (doc.RootElement.ValueKind == JsonValueKind.Array)
+        {
+            var items = doc.RootElement.Deserialize<List<TrendItemDto>>(_jsonOpts);
+            return items ?? [];
+        }
+
+        if (doc.RootElement.ValueKind == JsonValueKind.Object
+            && doc.RootElement.TryGetProperty("items", out var itemsNode)
+            && itemsNode.ValueKind == JsonValueKind.Array)
+        {
+            var items = itemsNode.Deserialize<List<TrendItemDto>>(_jsonOpts);
+            return items ?? [];
+        }
+
+        _logger.LogWarning("{Worker} - Trend API payload shape is unexpected.", WorkerName);
+        return [];
+    }
+
+    private static async Task<string> ReadBodyPreviewAsync(Stream stream, int maxLength, CancellationToken ct)
+    {
+        using var reader = new StreamReader(stream);
+        var body = await reader.ReadToEndAsync(ct);
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return "<empty>";
+        }
+
+        return body[..Math.Min(body.Length, maxLength)];
+    }
+
     //  DTOs for Python API response deserialization
     // ─────────────────────────────────────────────────────────────────────────
 

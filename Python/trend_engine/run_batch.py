@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -42,6 +43,7 @@ from trend_engine.core import (
 )
 
 logger = logging.getLogger("trend_engine.run_batch")
+MAX_PARALLEL_SCRAPE_TASKS = max(1, int(os.environ.get("TREND_ENGINE_MAX_PARALLEL_SCRAPERS", "8")))
 
 
 # ─── Social score provider ────────────────────────────────────────────────────
@@ -185,17 +187,23 @@ async def _scrape_all(
     Scrape all configured sources and coerce results to ScrapedItem objects.
     """
     active_markets = markets or MARKETS
+    semaphore = asyncio.Semaphore(MAX_PARALLEL_SCRAPE_TASKS)
+
+    async def run_bounded(coro):
+        async with semaphore:
+            return await coro
+
     tasks: List[asyncio.Task[List[Any]]] = []
 
     for market in active_markets:
         if market in ZALANDO_MARKETS:
-            tasks.append(asyncio.create_task(_scrape_zalando(market, pages)))
+            tasks.append(asyncio.create_task(run_bounded(_scrape_zalando(market, pages))))
         if market in HUMANIC_MARKETS:
-            tasks.append(asyncio.create_task(_scrape_humanic(market, pages)))
+            tasks.append(asyncio.create_task(run_bounded(_scrape_humanic(market, pages))))
         if market in DEICHMANN_MARKETS:
-            tasks.append(asyncio.create_task(_scrape_deichmann(market, pages)))
+            tasks.append(asyncio.create_task(run_bounded(_scrape_deichmann(market, pages))))
         if market in ABOUTYOU_MARKETS:
-            tasks.append(asyncio.create_task(_scrape_aboutyou(market, pages)))
+            tasks.append(asyncio.create_task(run_bounded(_scrape_aboutyou(market, pages))))
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
     items: List[ScrapedItem] = []
