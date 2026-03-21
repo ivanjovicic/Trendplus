@@ -204,7 +204,7 @@ function DashboardRow({
                     <div style={{
                         width: 46, height: 46, borderRadius: 8,
                         overflow: "hidden",
-                        background: "#1A1F2E",
+                        background: "var(--surface-default)",
                         border: `1px solid ${PAL.border}`,
                         display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
@@ -274,11 +274,11 @@ function DashboardRow({
                 {/* â”€â”€ Coverage pills â”€â”€ */}
                 <td style={{ padding: "8px 6px", background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3, maxWidth: 260 }}>
-                        <span style={{ fontSize: 10, background: "#1A2235", color: PAL.textSecondary, borderRadius: 5, padding: "1px 6px", fontWeight: 600, border: `1px solid ${PAL.border}` }}>
+                        <span style={{ fontSize: 10, background: "var(--surface-default)", color: PAL.textSecondary, borderRadius: 5, padding: "1px 6px", fontWeight: 600, border: `1px solid ${PAL.border}` }}>
                             ðŸ”„ {item.appearanceCount}Ã—
                         </span>
                         {item.totalRunAppearances > 1 && (
-                            <span style={{ fontSize: 10, background: "#0A1F18", color: PAL.green, borderRadius: 5, padding: "1px 6px", border: "1px solid #1A5C35" }} title="Appeared in N runs">
+                            <span style={{ fontSize: 10, background: "var(--surface-default)", color: PAL.green, borderRadius: 5, padding: "1px 6px", border: "1px solid var(--success)" }} title="Appeared in N runs">
                                 ðŸ“ˆ {item.totalRunAppearances} runs
                             </span>
                         )}
@@ -291,7 +291,7 @@ function DashboardRow({
                             );
                         })}
                         {(item.markets ?? []).map((m) => (
-                            <span key={m} style={{ fontSize: 10, background: "#141C2E", color: PAL.textSecondary, borderRadius: 5, padding: "1px 5px", border: `1px solid ${PAL.borderLight}` }}>
+                            <span key={m} style={{ fontSize: 10, background: "var(--surface-default)", color: PAL.textSecondary, borderRadius: 5, padding: "1px 5px", border: `1px solid ${PAL.borderLight}` }}>
                                 {MARKET_FLAG[m] ?? "ðŸŒ"} {m}
                             </span>
                         ))}
@@ -321,7 +321,7 @@ function DashboardRow({
             {expanded && item.scoreComponents && (
                 <tr>
                     <td colSpan={8} style={{
-                        background: "#0F1320",
+                        background: "var(--surface-default)",
                         borderBottom: `1px solid ${PAL.border}`,
                         padding: "14px 16px 18px 72px",
                     }}>
@@ -548,7 +548,7 @@ export function TrendDashboard() {
                         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: PAL.textPrimary, display: "flex", alignItems: "center", gap: 8 }}>
                             ðŸ“Š Trend Leaderboard
                             {loading && (
-                                <span style={{ fontSize: 11, background: "#1A2A4A", color: PAL.blue, borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>
+                                <span style={{ fontSize: 11, background: "var(--surface-default)", color: PAL.blue, borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>
                                     Loadingâ€¦
                                 </span>
                             )}
@@ -572,7 +572,7 @@ export function TrendDashboard() {
                             value={limit}
                             onChange={(e) => setLimit(Number(e.target.value))}
                             style={{
-                                background: "#1A2235",
+                                background: "var(--surface-default)",
                                 border: `1px solid ${PAL.border}`,
                                 borderRadius: 8,
                                 color: PAL.textPrimary,
@@ -614,7 +614,7 @@ export function TrendDashboard() {
                     flexWrap: "wrap",
                     gap: 10,
                     alignItems: "center",
-                    background: "#0F1320",
+                    background: "var(--surface-default)",
                 }}>
                     {/* Search */}
                     <input
@@ -754,11 +754,11 @@ export function TrendDashboard() {
 
                 {/* â”€â”€ Error state â”€â”€ */}
                 {error && (
-                    <div style={{ padding: "14px 20px", background: "#1F0E08", borderBottom: `1px solid ${PAL.red}44` }}>
+                    <div style={{ padding: "14px 20px", background: "var(--surface-darker)", borderBottom: `1px solid ${PAL.red}44` }}>
                         <div style={{ fontWeight: 700, color: PAL.orange, fontSize: 13 }}>âš ï¸ Python servis nije dostupan</div>
                         <div style={{ color: PAL.textSecondary, fontSize: 12, marginTop: 4 }}>{error}</div>
                         <div style={{ color: PAL.textMuted, fontSize: 11, marginTop: 6 }}>
-                            Pokreni <code style={{ background: "#2A1510", padding: "1px 5px", borderRadius: 4 }}>cd Python &amp;&amp; start_api.bat</code> da bi pokrenuo Python API servis.
+                            Pokreni <code style={{ background: "var(--surface-darker)", padding: "1px 5px", borderRadius: 4 }}>cd Python &amp;&amp; start_api.bat</code> da bi pokrenuo Python API servis.
                         </div>
                     </div>
                 )}

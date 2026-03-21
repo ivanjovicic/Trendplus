@@ -38,33 +38,33 @@ export function DemandForecastPanel({
     .sort((left, right) => right.overstockRisk - left.overstockRisk)
     .slice(0, overstockDisplayCount);
 
-  return (
-    <section className="rounded-[28px] border border-[#232935] bg-[#12161f] p-5">
+    return (
+    <section className="rounded-[28px] border border-border bg-surface p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-2xl border border-[#30516d] bg-[#102231] p-2.5 text-[#8edbff]">
+          <div className="rounded-2xl border p-2.5 bg-surface-elevated text-info">
             <TrendingDown size={18} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white">Demand Forecast &amp; Out-of-Stock Risk</h2>
-            <p className="text-sm text-[#90a0ba]">Prognoza potraznje po SKU i velicini. Rizik OOS u 7 dana i overstock signali.</p>
+            <h2 className="text-lg font-semibold text-foreground">Demand Forecast &amp; Out-of-Stock Risk</h2>
+            <p className="text-sm text-muted">Prognoza potraznje po SKU i velicini. Rizik OOS u 7 dana i overstock signali.</p>
           </div>
         </div>
-        <div className="rounded-full border border-[#33405a] bg-[#182131] px-3 py-1 text-xs font-semibold text-[#dbe6fb]">
+        <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
           {forecastLoading ? "Ucitavam..." : `${forecast?.totalCount ?? 0} SKU u prognozi`}
         </div>
       </div>
 
       {!forecast?.snapshotAvailable ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-[#2b3446] bg-[#10151d] px-4 py-8 text-center text-sm text-[#8797b4]">
+        <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           {forecastLoading ? "Ucitavam forecast..." : forecastError ?? "Forecast nije dostupan. Snapshot tabela je prazna."}
-          {forecast?.warning ? <div className="mt-2 text-xs text-[#ffd590]">{forecast.warning}</div> : null}
+          {forecast?.warning ? <div className="mt-2 text-xs text-warning">{forecast.warning}</div> : null}
         </div>
       ) : (
         <div className="mt-4 grid gap-5 xl:grid-cols-2">
-          <div className="rounded-2xl border border-[#243040] bg-[#10141b] p-4">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
-              <TrendingDown size={14} className="text-[#ffb4c2]" />
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <TrendingDown size={14} className="text-warning" />
               Najveci OOS rizik u 7 dana
             </h3>
             <div className="mt-3 space-y-2">
@@ -74,21 +74,21 @@ export function DemandForecastPanel({
                 const tone = item.probabilityOfOOSIn7d > 0.7 ? TONE.severity.critical : item.probabilityOfOOSIn7d > 0.4 ? TONE.severity.warning : TONE.severity.info;
 
                 return (
-                  <div key={`${item.skuId}-${item.storeId}-${item.sizeCode}`} className="flex items-start justify-between gap-3 rounded-xl border border-[#283142] bg-[#141b26] px-3 py-2">
+                  <div key={`${item.skuId}-${item.storeId}-${item.sizeCode}`} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-3">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-white">{name}</div>
-                      <div className="truncate text-xs text-[#90a0ba]">{store} | vel. {item.sizeCode}</div>
-                      <div className="mt-1 text-xs text-[#8797b4]">{item.explanation}</div>
+                      <div className="truncate text-sm font-semibold text-foreground">{name}</div>
+                      <div className="truncate text-xs text-muted">{store} | vel. {item.sizeCode}</div>
+                      <div className="mt-1 text-xs text-muted">{item.explanation}</div>
                     </div>
                     <div className="shrink-0 text-right">
                       <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${tone}`}>
                         {Math.round(item.probabilityOfOOSIn7d * 100)}% OOS
                       </div>
-                      <div className="mt-2 h-1.5 w-24 overflow-hidden rounded-full bg-[#1e2633]">
-                        <div className="h-full rounded-full bg-[linear-gradient(90deg,#1f6c49_0%,#ffd590_55%,#7d2940_100%)]" style={{ width: `${Math.max(0, Math.min(100, item.probabilityOfOOSIn7d * 100))}%` }} />
+                      <div className="mt-2 h-1.5 w-24 overflow-hidden rounded-full bg-surface-light">
+                        <div className="h-full rounded-full bg-gradient-to-r from-success via-warning to-danger" style={{ width: `${Math.max(0, Math.min(100, item.probabilityOfOOSIn7d * 100))}%` }} />
                       </div>
-                      <div className="mt-1 text-xs text-[#7f8fa9]">7d: {item.forecast7d.toFixed(1)}</div>
-                      <button type="button" aria-label={`Predlozi dopunu za SKU ${item.skuId} velicinu ${item.sizeCode}`} onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border border-[#36543f] bg-[#17261d] px-2.5 py-1 text-[11px] font-semibold text-[#aef3bf] transition hover:border-[#4e7b5b]">
+                      <div className="mt-1 text-xs text-muted">7d: {item.forecast7d.toFixed(1)}</div>
+                      <button type="button" aria-label={`Predlozi dopunu za SKU ${item.skuId} velicinu ${item.sizeCode}`} onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border px-2.5 py-1 text-[11px] font-semibold text-success transition">
                         Predlozi dopunu
                       </button>
                     </div>

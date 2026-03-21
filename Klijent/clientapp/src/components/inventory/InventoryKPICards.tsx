@@ -28,10 +28,10 @@ export function InventoryKPICards({
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
       {cards.map((card) => (
-        <article key={card.label} className="rounded-[24px] border border-[#252c39] bg-gradient-to-br from-[#151d2c] to-[#10141b] p-5 shadow-[0_16px_40px_-32px_rgba(0,0,0,0.9)]">
-          <div className="text-xs uppercase tracking-[0.22em] text-[#90a2bf]">{card.label}</div>
-          <div className="mt-4 text-2xl font-semibold text-white">{card.value}</div>
-          <p className="mt-3 text-sm leading-5 text-[#9caac3]">{card.note}</p>
+        <article key={card.label} className="rounded-[24px] border border-border bg-surface-elevated p-5 shadow-sm">
+          <div className="text-xs uppercase tracking-[0.22em] text-muted">{card.label}</div>
+          <div className="mt-4 text-2xl font-semibold text-foreground">{card.value}</div>
+          <p className="mt-3 text-sm leading-5 text-muted">{card.note}</p>
         </article>
       ))}
     </section>

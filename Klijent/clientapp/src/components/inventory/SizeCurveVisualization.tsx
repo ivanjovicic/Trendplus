@@ -27,7 +27,7 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
             <XAxis dataKey="name" tick={{ fill: "#92a4bf", fontSize: 12 }} />
             <YAxis tick={{ fill: "#92a4bf", fontSize: 12 }} unit="%" />
             <Tooltip
-              contentStyle={{ background: "#141c29", border: "1px solid #2b3a50", color: "#dde7f7" }}
+              contentStyle={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
               formatter={(value: number | string | undefined) => `${value ?? 0}%`}
               labelFormatter={(label, payload) => {
                 const point = payload?.[0]?.payload as { actual?: number; ideal?: number; deviation?: number } | undefined;

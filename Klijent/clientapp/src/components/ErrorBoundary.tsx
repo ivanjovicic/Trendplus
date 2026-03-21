@@ -35,83 +35,21 @@ export class ErrorBoundary extends Component<Props, State> {
             }
 
             return (
-                <div style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minHeight: "400px",
-                    padding: "2rem",
-                    textAlign: "center",
-                }}>
-                    <div style={{
-                        background: "#fef2f2",
-                        border: "2px solid #dc2626",
-                        borderRadius: "12px",
-                        padding: "2rem",
-                        maxWidth: "600px",
-                    }}>
-                        <div style={{
-                            fontSize: "3rem",
-                            marginBottom: "1rem",
-                        }}>
-                            !
-                        </div>
-                        <h2 style={{
-                            fontSize: "1.5rem",
-                            fontWeight: 700,
-                            color: "#dc2626",
-                            marginBottom: "1rem",
-                        }}>
-                            Nešto je pošlo naopako
-                        </h2>
-                        <p style={{
-                            fontSize: "1rem",
-                            color: "#6b7280",
-                            marginBottom: "1.5rem",
-                        }}>
-                            Došlo je do neočekivane greške. Pokušajte ponovo ili kontaktirajte podršku.
-                        </p>
+                <div className="flex flex-col items-center justify-center" style={{ minHeight: 400, padding: '2rem', textAlign: 'center' }}>
+                    <div className="rounded-lg p-8" style={{ background: 'var(--surface-elevated)', border: '2px solid var(--error)', maxWidth: 600 }}>
+                        <div className="text-6xl mb-4">!</div>
+                        <h2 className="text-xl font-bold mb-3" style={{ color: 'var(--error)' }}>Nešto je pošlo naopako</h2>
+                        <p className="mb-4 text-sm text-muted">Došlo je do neočekivane greške. Pokušajte ponovo ili kontaktirajte podršku.</p>
                         {this.state.error && (
-                            <details style={{
-                                background: "#f9fafb",
-                                padding: "1rem",
-                                borderRadius: "8px",
-                                marginBottom: "1.5rem",
-                                textAlign: "left",
-                            }}>
-                                <summary style={{
-                                    cursor: "pointer",
-                                    fontWeight: 600,
-                                    color: "#374151",
-                                    marginBottom: "0.5rem",
-                                }}>
-                                    Tehnički detalji
-                                </summary>
-                                <pre style={{
-                                    fontSize: "0.875rem",
-                                    color: "#dc2626",
-                                    overflow: "auto",
-                                    fontFamily: "monospace",
-                                }}>
+                            <details className="bg-surface-light p-4 rounded mb-4 text-left">
+                                <summary className="cursor-pointer font-semibold text-muted mb-2">Tehnički detalji</summary>
+                                <pre className="text-sm" style={{ color: 'var(--error)', overflow: 'auto', fontFamily: 'monospace' }}>
                                     {this.state.error.message}
                                     {this.state.error.stack && `\n\n${this.state.error.stack}`}
                                 </pre>
                             </details>
                         )}
-                        <button
-                            onClick={this.handleReset}
-                            style={{
-                                background: "#2563eb",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "8px",
-                                padding: "12px 24px",
-                                fontSize: "1rem",
-                                fontWeight: 600,
-                                cursor: "pointer",
-                            }}
-                        >
+                        <button onClick={this.handleReset} className="rounded-md px-4 py-3 font-semibold" style={{ background: 'var(--info)', color: 'white', border: 'none' }}>
                             Pokušaj ponovo
                         </button>
                     </div>

@@ -303,13 +303,13 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
 
     return (
         <div className="space-y-4">
-            <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
-                <h2 className="mb-4 text-xl font-semibold text-[#f3f6ff]">Nova prodaja</h2>
+            <section className="rounded-xl border border-border bg-surface p-4">
+                <h2 className="mb-4 text-xl font-semibold text-foreground">Nova prodaja</h2>
                 <div className="mb-3 grid gap-2 md:grid-cols-3">
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${normalizeRacun(brojRacuna).length >= 3 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-[#2f323b] bg-[#1a1b1f] text-[#9aabc7]"}`}>
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${normalizeRacun(brojRacuna).length >= 3 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
                         Broj racuna
                     </div>
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${stavke.length > 0 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-[#2f323b] bg-[#1a1b1f] text-[#9aabc7]"}`}>
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${stavke.length > 0 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
                         Stavke: {stavke.length}
                     </div>
                     <div className={`rounded-lg border px-3 py-2 text-xs ${invalidStavkeCount === 0 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-amber-700 bg-amber-950/20 text-amber-300"}`}>
@@ -317,12 +317,12 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                     </div>
                 </div>
 
-                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj racuna *</label>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Broj racuna *</label>
                 <input
                     placeholder="Broj racuna"
                     value={brojRacuna}
                     onChange={(e) => setBrojRacuna(e.target.value)}
-                    className="w-full rounded-xl border border-[#2f323b] bg-[#1a1b1f] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
                 />
                 {racunSuggestions.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -331,18 +331,18 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                                 key={suggestion}
                                 type="button"
                                 onClick={() => setBrojRacuna(suggestion)}
-                                className="rounded-full border border-[#2f323b] bg-[#1a1b1f] px-2.5 py-1 text-[11px] text-[#a8b8d5] hover:border-[#4f8cff] hover:text-[#dbe6fb]"
+                                className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] text-muted hover:border-primary hover:text-foreground"
                             >
                                 {suggestion}
                             </button>
                         ))}
                     </div>
                 )}
-                <p className="mt-2 text-xs text-[#7f8ea9]">Tip: `Ctrl+Enter` cuva prodaju kada je forma validna.</p>
+                <p className="mt-2 text-xs text-muted">Tip: `Ctrl+Enter` cuva prodaju kada je forma validna.</p>
             </section>
 
-            <section className="relative rounded-xl border border-[#2f323b] bg-[#14161d] p-4" ref={searchRef}>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Pretrazi i dodaj artikal</label>
+            <section className="relative rounded-xl border border-border bg-surface p-4" ref={searchRef}>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Pretrazi i dodaj artikal</label>
                 <input
                     type="text"
                     placeholder="Pretrazi artikle po nazivu..."
@@ -353,25 +353,25 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                     }}
                     onFocus={() => setShowSearchResults(true)}
                     onKeyDown={handleKeyDown}
-                    className="w-full rounded-xl border border-[#2f323b] bg-[#1a1b1f] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
                 />
 
                 {showSearchResults && searchQuery.trim() && (
-                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-[#2f323b] bg-[#1a1b1f] shadow-xl">
+                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl">
                         {isSearching ? (
-                            <div className="px-3 py-5 text-center text-sm text-[#9aabc7]">Pretrazujem...</div>
+                            <div className="px-3 py-5 text-center text-sm text-muted">Pretrazujem...</div>
                         ) : filteredArtikli.length > 0 ? (
                             filteredArtikli.map((art, idx) => (
-                                <button
+                                    <button
                                     key={art.id}
                                     type="button"
                                     onClick={() => quickAddArtikal(art)}
-                                    className={`flex w-full items-center justify-between border-b border-[#262a34] px-3 py-3 text-left transition ${idx === selectedIndex ? "bg-[#1f2d48]" : "hover:bg-[#1f2330]"}`}
+                                        className={`flex w-full items-center justify-between border-b border-border px-3 py-3 text-left transition ${idx === selectedIndex ? "bg-surface-elevated" : "hover:bg-surface-elevated"}`}
                                     onMouseEnter={() => setSelectedIndex(idx)}
                                 >
                                     <div>
-                                        <div className="font-semibold text-[#e7eeff]">{art.naziv}</div>
-                                        <div className="text-xs text-[#8ea0bd]">ID: {art.id}</div>
+                                        <div className="font-semibold text-foreground">{art.naziv}</div>
+                                        <div className="text-xs text-muted">ID: {art.id}</div>
                                     </div>
                                     <div className="text-sm font-semibold text-emerald-300">{art.cena} RSD</div>
                                 </button>
@@ -385,11 +385,12 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
 
             <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
                 <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-[#93a7c8]">Stavke ({stavke.length})</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Stavke ({stavke.length})</h3>
                     <button
                         type="button"
                         onClick={addStavka}
-                        className="rounded-lg border border-[#2d7759] bg-[#1e5b45] px-3 py-1.5 text-xs font-semibold text-emerald-100"
+                        className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                        style={{ borderColor: 'var(--success)', background: 'var(--success-900, #1e5b45)', color: 'var(--on-success, #e6ffef)' }}
                     >
                         + Dodaj stavku
                     </button>
@@ -397,7 +398,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
 
                 <div className="space-y-3">
                     {stavke.map((s, i) => (
-                        <div key={i} className="grid gap-2 rounded-lg border border-[#2a2f3b] bg-[#1a1b1f] p-3 lg:grid-cols-[1.7fr_0.7fr_0.8fr_0.8fr_auto]">
+                        <div key={i} className="grid gap-2 rounded-lg border border-border bg-surface p-3 lg:grid-cols-[1.7fr_0.7fr_0.8fr_0.8fr_auto]"> 
                             <div>
                                 <label className="mb-1 block text-xs text-[#8ea0bd]">Artikal</label>
                                 <select

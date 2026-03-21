@@ -254,40 +254,25 @@ export default function UnosArtikalaForm({
     const postojecihArtikala = stavke.filter(s => s.isExisting).length;
 
     return (
-        <div className="card" style={{ maxWidth: '100%', width: '100%' }}>
-       {/*     <h2 className="text-2xl font-semibold mb-6">Unos artikala</h2>*/}
+        <div className="card w-full">
+           {/*     <h2 className="text-2xl font-semibold mb-6">Unos artikala</h2>*/}
 
-            <div style={{
-                background: '#eff6ff',
-                border: '2px solid #3b82f6',
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '20px',
-            }}>
-                <h2 style={{ fontWeight: 600, color: '#1e40af', fontSize: '1rem', marginBottom: '8px' }}>
-                    Unos robe
-                </h2>
-                <div style={{ fontSize: '0.875rem', color: '#1e3a8a' }}>
-                    <p>Broj računa: <strong>{brojRacuna}</strong></p>
-                    <p>Dobavljač: <strong>{dobavljacNaziv}</strong> (ID: {dobavljacId})</p>
-                    <p style={{ marginTop: '8px', color: '#6b7280' }}>
-                        Tip: Pretražite postojeće artikle ili unesite novi naziv
-                    </p>
+                <div className="rounded-lg border-2 p-4 mb-5" style={{ background: 'var(--info-10, #eff6ff)', borderColor: 'var(--info)' }}>
+                    <h2 className="font-semibold text-base mb-2" style={{ color: 'var(--info)' }}>
+                        Unos robe
+                    </h2>
+                    <div className="text-sm" style={{ color: 'var(--info-700, #1e3a8a)' }}>
+                        <p>Broj računa: <strong>{brojRacuna}</strong></p>
+                        <p>Dobavljač: <strong>{dobavljacNaziv}</strong> (ID: {dobavljacId})</p>
+                        <p className="mt-2 text-muted">Tip: Pretražite postojeće artikle ili unesite novi naziv</p>
+                    </div>
                 </div>
+
+            <div className="mb-4">
+                <h3 className="font-semibold text-lg mb-3">Lista artikala ({ukupnoStavki} - {novihArtikala} novih, {postojecihArtikala} postojećih)</h3>
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-                <h3 style={{ fontWeight: 600, fontSize: '1.125rem', marginBottom: '12px' }}>
-                    Lista artikala ({ukupnoStavki} - {novihArtikala} novih, {postojecihArtikala} postojećih)
-                </h3>
-            </div>
-
-            <div style={{ 
-                overflowX: 'auto', 
-                marginBottom: '1.5rem', 
-                width: '100%',
-                minHeight: '500px'
-            }}>
+            <div className="overflow-x-auto mb-6 w-full min-h-[500px]">
                 <table style={{
                     width: '100%',
                     borderCollapse: 'collapse',
@@ -296,8 +281,7 @@ export default function UnosArtikalaForm({
                 }}>
                     <thead>
                         <tr style={{
-                            background: '#f3f4f6',
-                            borderBottom: '2px solid #e5e7eb'
+                            background: 'var(--surface-elevated)'
                         }}>
                             <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '20%', minWidth: '200px' }}>
                                 Naziv artikla (pretraga)
@@ -333,10 +317,10 @@ export default function UnosArtikalaForm({
 
                             return (
                                 <tr key={index} style={{
-                                    borderBottom: '1px solid #e5e7eb',
-                                    background: stavka.isExisting ? '#f0fdf4' : (index % 2 === 0 ? 'white' : '#f9fafb'),
-                                    height: '70px'
-                                }}>
+                                            borderBottom: '1px solid var(--border-default)',
+                                            background: stavka.isExisting ? 'var(--success-10)' : (index % 2 === 0 ? 'var(--surface-default)' : 'var(--surface-light)'),
+                                            height: '70px'
+                                        }}>
                                     <td style={{ padding: '8px', position: 'relative' }}>
                                         <input
                                             type="text"
@@ -349,8 +333,8 @@ export default function UnosArtikalaForm({
                                                 marginBottom: 0,
                                                 padding: inputPadding,
                                                 fontSize: fontSize,
-                                                background: stavka.isExisting ? '#f0fdf4' : 'white',
-                                                borderColor: stavka.isExisting ? '#059669' : undefined,
+                                                background: stavka.isExisting ? 'var(--success-10)' : 'var(--surface-default)',
+                                                borderColor: stavka.isExisting ? 'var(--success)' : undefined,
                                                 width: '100%'
                                             }}
                                         />
@@ -371,29 +355,19 @@ export default function UnosArtikalaForm({
                                                 minWidth: '300px',
                                             }}>
                                                 {filteredArtikli.map((art) => (
-                                                    <div
-                                                        key={art.id}
-                                                        onClick={() => selectExistingArtikal(index, art)}
-                                                        style={{
-                                                            padding: '14px',
-                                                            cursor: 'pointer',
-                                                            borderBottom: '1px solid #f3f4f6',
-                                                            fontSize: fontSize,
-                                                            background: 'white',
-                                                            transition: 'background 0.15s'
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = '#eff6ff';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = 'white';
-                                                        }}
-                                                    >
-                                                        <div style={{ fontWeight: 600, marginBottom: '6px' }}>{art.naziv}</div>
-                                                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
-                                                            Cena: {art.prodajnaCena} RSD | Kolicina: {art.kolicina || 0}
-                                                        </div>
-                                                    </div>
+                                                            <div
+                                                                key={art.id}
+                                                                onClick={() => selectExistingArtikal(index, art)}
+                                                                className="p-3 cursor-pointer border-b"
+                                                                style={{ fontSize: fontSize, transition: 'background 0.15s' }}
+                                                                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--info-10)'; }}
+                                                                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-default)'; }}
+                                                            >
+                                                                <div className="font-semibold mb-1">{art.naziv}</div>
+                                                                <div className="text-sm text-muted mt-1">
+                                                                    Cena: {art.prodajnaCena} RSD | Kolicina: {art.kolicina || 0}
+                                                                </div>
+                                                            </div>
                                                 ))}
                                             </div>
                                         )}

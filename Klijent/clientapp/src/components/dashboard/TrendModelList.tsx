@@ -10,7 +10,7 @@ const TREND_MODELS = [
 
 export default function TrendModelList() {
   return (
-    <section className="rounded-2xl border border-muted surface-elevated p-4">
+    <section className="rounded-2xl border border-border bg-surface-elevated p-4">
       <div className="mb-3 flex items-center gap-2">
         <Sparkles size={16} className="text-info" />
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Trend Models</h3>

@@ -7,17 +7,17 @@ import type {
 } from "../../services/analyticsIntelligenceApi";
 
 const PAL = {
-  blue: "#4F8EF7",
-  green: "#4CAF82",
-  yellow: "#F5C542",
-  orange: "#F97316",
-  red: "#E05C5C",
-  cyan: "#22D3EE",
-  card: "#161A23",
-  panel: "#1E2332",
-  border: "#2A3045",
-  textPrimary: "#E8ECF4",
-  textSecondary: "#8A95B0",
+  blue: 'var(--info)',
+  green: 'var(--success)',
+  yellow: 'var(--warning)',
+  orange: 'var(--warning)',
+  red: 'var(--error)',
+  cyan: 'var(--info)',
+  card: 'var(--surface-default)',
+  panel: 'var(--surface-elevated)',
+  border: 'var(--border-default)',
+  textPrimary: 'var(--text-primary)',
+  textSecondary: 'var(--text-secondary)',
 };
 
 type IntelligenceSnapshotPanelProps = {
@@ -78,7 +78,7 @@ function SignalCard({
   children,
 }: SignalCardProps) {
   return (
-    <div className="rounded-xl border bg-[#161A23] p-4" style={{ borderColor: PAL.border }}>
+    <div className="rounded-xl border p-4 bg-[var(--surface-default)]" style={{ borderColor: PAL.border }}>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.24em]" style={{ color: accent }}>
@@ -88,10 +88,7 @@ function SignalCard({
             {subtitle}
           </div>
         </div>
-        <div
-          className="min-w-[128px] rounded-lg border px-3 py-2 text-right"
-          style={{ borderColor: `${accent}33`, background: `${accent}10` }}
-        >
+        <div className="min-w-[128px] rounded-lg border px-3 py-2 text-right" style={{ borderColor: PAL.border, background: 'var(--surface-elevated)' }}>
           <div className="text-[10px] uppercase" style={{ color: PAL.textSecondary }}>
             {summaryLabel}
           </div>
@@ -146,12 +143,12 @@ function PanelSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
       {Array.from({ length: 4 }).map((_, idx) => (
-        <div key={idx} className="rounded-xl border bg-[#161A23] p-4 animate-pulse" style={{ borderColor: PAL.border }}>
-          <div className="mb-4 h-3 w-28 rounded bg-[#2A3045]" />
-          <div className="mb-4 h-10 rounded bg-[#1E2332]" />
+        <div key={idx} className="rounded-xl border p-4 animate-pulse" style={{ borderColor: PAL.border, background: PAL.panel }}>
+          <div className="mb-4 h-3 w-28 rounded" style={{ background: PAL.card }} />
+          <div className="mb-4 h-10 rounded" style={{ background: PAL.card }} />
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((__, rowIdx) => (
-              <div key={rowIdx} className="h-12 rounded bg-[#1E2332]" />
+              <div key={rowIdx} className="h-12 rounded" style={{ background: PAL.card }} />
             ))}
           </div>
         </div>
@@ -196,12 +193,12 @@ export default function IntelligenceSnapshotPanel({
     <div className="space-y-4">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[#c9d3e4]">Signals Snapshot</h3>
-          <p className="text-[11px] text-[#8A95B0]">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Signals Snapshot</h3>
+          <p className="text-[11px] text-[var(--text-secondary)]">
             Live read preko analytics_intel cache layer-a za demand, zalihe, cene i trend.
           </p>
         </div>
-        <div className="text-[11px] text-[#8A95B0]">Snapshot: {formatDateLabel(asOfDate)}</div>
+        <div className="text-[11px] text-[var(--text-secondary)]">Snapshot: {formatDateLabel(asOfDate)}</div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

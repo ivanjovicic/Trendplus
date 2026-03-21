@@ -103,35 +103,12 @@ export default function WorkerStatusAlert() {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 20,
-        right: 20,
-        maxWidth: 420,
-        zIndex: 9999,
-        background: style.background,
-        border: `2px solid ${style.borderColor}`,
-        borderRadius: 12,
-        padding: 16,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        fontFamily: "system-ui, -apple-system, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: expanded ? 12 : 0,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 800 }}>
-            {error ? "ERR" : (health?.errorWorkers ?? 0) > 0 ? "ERR" : (health?.staleWorkers ?? 0) > 0 ? "WARN" : "OK"}
-          </span>
+    <div className="fixed bottom-5 right-5 z-[9999] rounded-xl p-4 shadow-lg min-w-[280px] max-w-[420px] border-2" style={{ background: style.background, borderColor: style.borderColor, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div className="flex justify-between items-center" style={{ marginBottom: expanded ? 12 : 0 }}>
+        <div className="flex items-center gap-2">
+          <span className="font-extrabold text-[13px]">{error ? "ERR" : (health?.errorWorkers ?? 0) > 0 ? "ERR" : (health?.staleWorkers ?? 0) > 0 ? "WARN" : "OK"}</span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: style.color }}>
+            <div className="font-bold text-sm" style={{ color: style.color }}>
               {error
                 ? "Monitoring workera nedostupan"
                 : (health?.errorWorkers ?? 0) > 0
@@ -141,28 +118,18 @@ export default function WorkerStatusAlert() {
                 : "Svi workeri su zdravi"}
             </div>
             {!expanded && health && !error && (
-              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
+              <div className="text-[12px] opacity-80 mt-1">
                 {health.totalWorkers} workera | Klikni za detalje
               </div>
             )}
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => setExpanded(!expanded)}
-            style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 16, padding: 4 }}
-            title={expanded ? "Smanji" : "Prosiri"}
-          >
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setExpanded(!expanded)} className="p-1 text-lg" title={expanded ? "Smanji" : "Prosiri"}>
             {expanded ? "^" : "v"}
           </button>
-          <button
-            type="button"
-            onClick={() => setDismissed(true)}
-            style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 16, padding: 4 }}
-            title="Zatvori"
-          >
+          <button type="button" onClick={() => setDismissed(true)} className="p-1 text-lg" title="Zatvori">
             x
           </button>
         </div>
@@ -170,66 +137,43 @@ export default function WorkerStatusAlert() {
 
       {expanded && health && (
         <div style={{ marginTop: 8 }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 8,
-              marginBottom: 12,
-              padding: 8,
-              background: "rgba(255,255,255,0.5)",
-              borderRadius: 8,
-            }}
-          >
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{health.healthyWorkers}</div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>Zdravi</div>
+          <div className="grid grid-cols-3 gap-2 mb-3 p-2 rounded" style={{ background: 'rgba(255,255,255,0.5)' }}>
+            <div className="text-center">
+              <div className="text-2xl font-bold">{health.healthyWorkers}</div>
+              <div className="text-xs opacity-70">Zdravi</div>
             </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: health.errorWorkers > 0 ? "var(--error)" : undefined }}>
-                {health.errorWorkers}
-              </div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>Greske</div>
+            <div className="text-center">
+              <div className="text-2xl font-bold" style={{ color: health.errorWorkers > 0 ? 'var(--error)' : undefined }}>{health.errorWorkers}</div>
+              <div className="text-xs opacity-70">Greske</div>
             </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: health.staleWorkers > 0 ? "var(--warning)" : undefined }}>
-                {health.staleWorkers}
-              </div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>Stale</div>
+            <div className="text-center">
+              <div className="text-2xl font-bold" style={{ color: health.staleWorkers > 0 ? 'var(--warning)' : undefined }}>{health.staleWorkers}</div>
+              <div className="text-xs opacity-70">Stale</div>
             </div>
           </div>
 
-          <div style={{ maxHeight: 220, overflowY: "auto" }}>
+          <div className="max-h-[220px] overflow-y-auto">
             {health.workers.map((worker, idx) => (
-              <div
-                key={idx}
-                style={{
-                  padding: 8,
-                  marginBottom: 4,
-                  background: worker.status === "Error" || worker.isStale ? "rgba(220,38,38,0.1)" : "rgba(255,255,255,0.5)",
-                  borderRadius: 6,
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div key={idx} className="p-2 mb-1 rounded text-sm" style={{ background: worker.status === "Error" || worker.isStale ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.5)' }}>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1">
                     <span>{getStatusGlyph(worker.status, worker.isStale)}</span>
-                    <span style={{ fontWeight: 600 }}>{worker.workerName}</span>
+                    <span className="font-semibold">{worker.workerName}</span>
                   </div>
-                  <span style={{ opacity: 0.7 }}>{formatTime(worker.lastHeartbeat)}</span>
+                  <span className="opacity-70">{formatTime(worker.lastHeartbeat)}</span>
                 </div>
 
-                {worker.message && <div style={{ marginTop: 4, opacity: 0.8, fontSize: 11 }}>{worker.message}</div>}
+                {worker.message && <div className="mt-1 opacity-80 text-[11px]">{worker.message}</div>}
 
                 {worker.lastError && (
-                  <div style={{ marginTop: 4, color: "var(--error)", fontSize: 11, background: "rgba(220,38,38,0.1)", padding: 4, borderRadius: 4 }}>
+                  <div className="mt-1 p-1 rounded text-[11px]" style={{ color: 'var(--error)', background: 'rgba(220,38,38,0.1)' }}>
                     ERR {worker.lastError}
                     {worker.errorCount > 1 && ` (${worker.errorCount}x)`}
                   </div>
                 )}
 
                 {worker.isStale && (
-                  <div style={{ marginTop: 4, color: "var(--warning)", fontSize: 11, fontWeight: 600 }}>
+                  <div className="mt-1 text-[11px] font-semibold" style={{ color: 'var(--warning)' }}>
                     WARN Worker nije poslao heartbeat duze od 10 minuta
                   </div>
                 )}
@@ -237,22 +181,7 @@ export default function WorkerStatusAlert() {
             ))}
           </div>
 
-            <button
-            type="button"
-            onClick={() => void fetchHealth()}
-              style={{
-              marginTop: 8,
-              width: "100%",
-              padding: "8px 12px",
-              background: style.borderColor,
-              color: "white",
-              border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
+          <button type="button" onClick={() => void fetchHealth()} className="mt-2 w-full py-2 rounded-md text-white font-semibold" style={{ background: style.borderColor }}>
             Osvezi status
           </button>
         </div>

@@ -8,22 +8,15 @@ interface LoadingSkeletonProps {
 export function LoadingSkeleton({ type = "stats", count = 1 }: LoadingSkeletonProps) {
     if (type === "stats") {
         return (
-            <div style={{ 
-                display: "grid", 
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-                gap: "1rem", 
-                marginBottom: "2rem" 
-            }}>
+            <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
                 {Array.from({ length: 5 }).map((_, idx) => (
                     <div
                         key={idx}
-                        className="skeleton-card"
+                        className="skeleton-card rounded-lg p-6"
                         style={{
-                            background: "linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)",
+                            background: "linear-gradient(90deg, var(--surface-elevated, #f3f4f6) 25%, var(--surface-default, #e5e7eb) 50%, var(--surface-elevated, #f3f4f6) 75%)",
                             backgroundSize: "200% 100%",
                             animation: "shimmer 1.5s infinite",
-                            padding: "1.5rem",
-                            borderRadius: "12px",
                             height: "100px",
                         }}
                     />
@@ -34,17 +27,15 @@ export function LoadingSkeleton({ type = "stats", count = 1 }: LoadingSkeletonPr
 
     if (type === "messages") {
         return (
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div className="flex flex-col gap-4">
                 {Array.from({ length: count }).map((_, idx) => (
                     <div
                         key={idx}
-                        className="skeleton-card"
+                        className="skeleton-card rounded-lg p-4"
                         style={{
-                            background: "linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)",
+                            background: "linear-gradient(90deg, var(--surface-elevated, #f3f4f6) 25%, var(--surface-default, #e5e7eb) 50%, var(--surface-elevated, #f3f4f6) 75%)",
                             backgroundSize: "200% 100%",
                             animation: "shimmer 1.5s infinite",
-                            padding: "1rem",
-                            borderRadius: "12px",
                             height: "150px",
                         }}
                     />
@@ -55,47 +46,45 @@ export function LoadingSkeleton({ type = "stats", count = 1 }: LoadingSkeletonPr
 
     if (type === "table") {
         return (
-            <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                        <tr style={{ background: "#f3f4f6" }}>
-                            {Array.from({ length: 5 }).map((_, idx) => (
-                                <th key={idx} style={{ padding: "12px" }}>
-                                    <div
-                                        className="skeleton-text"
-                                        style={{
-                                            background: "#e5e7eb",
-                                            height: "16px",
-                                            borderRadius: "4px",
-                                        }}
-                                    />
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {Array.from({ length: count }).map((_, rowIdx) => (
-                            <tr key={rowIdx} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                                {Array.from({ length: 5 }).map((_, colIdx) => (
-                                    <td key={colIdx} style={{ padding: "12px" }}>
+            <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="bg-surface-elevated">
+                                {Array.from({ length: 5 }).map((_, idx) => (
+                                    <th key={idx} className="p-3">
                                         <div
-                                            className="skeleton-text"
+                                            className="skeleton-text rounded"
                                             style={{
-                                                background: "linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)",
-                                                backgroundSize: "200% 100%",
-                                                animation: "shimmer 1.5s infinite",
+                                                background: "var(--surface-default, #e5e7eb)",
                                                 height: "16px",
-                                                borderRadius: "4px",
-                                                width: colIdx % 2 === 0 ? "80%" : "60%",
                                             }}
                                         />
-                                    </td>
+                                    </th>
                                 ))}
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            {Array.from({ length: count }).map((_, rowIdx) => (
+                                <tr key={rowIdx} className="border-b" style={{ borderColor: 'var(--border-default)' }}>
+                                    {Array.from({ length: 5 }).map((_, colIdx) => (
+                                        <td key={colIdx} className="p-3">
+                                            <div
+                                                className="skeleton-text rounded"
+                                                style={{
+                                                    background: "linear-gradient(90deg, var(--surface-elevated, #f3f4f6) 25%, var(--surface-default, #e5e7eb) 50%, var(--surface-elevated, #f3f4f6) 75%)",
+                                                    backgroundSize: "200% 100%",
+                                                    animation: "shimmer 1.5s infinite",
+                                                    height: "16px",
+                                                    width: colIdx % 2 === 0 ? "80%" : "60%",
+                                                }}
+                                            />
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
         );
     }
 

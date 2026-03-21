@@ -25,7 +25,7 @@ export default function PromptNumberModal({
     min = 1,
     max = 365,
     confirmText = "Potvrdi",
-    cancelText = "Otkaži",
+    cancelText = "Otkaï¿½i",
     isBusy = false,
     onConfirm,
     onCancel,
@@ -63,7 +63,6 @@ export default function PromptNumberModal({
                     <button
                         type="button"
                         className="button-big button-secondary"
-                        style={{ width: "auto", padding: "10px 18px", marginTop: 0 }}
                         onClick={onCancel}
                         disabled={isBusy}
                     >
@@ -72,7 +71,7 @@ export default function PromptNumberModal({
                     <button
                         type="button"
                         className="button-big"
-                        style={{ width: "auto", padding: "10px 18px", marginTop: 0, boxShadow: "none" }}
+                        style={{ boxShadow: "none" }}
                         onClick={() => onConfirm(parsed)}
                         disabled={!canConfirm}
                     >
@@ -82,7 +81,7 @@ export default function PromptNumberModal({
             }
         >
             {description && (
-                <div style={{ marginBottom: 12, color: "#4b5563", lineHeight: 1.5 }}>{description}</div>
+                <div className="mb-3 text-sm text-muted" style={{ lineHeight: 1.5 }}>{description}</div>
             )}
 
             <label className="field-label" style={{ marginTop: 0 }}>
@@ -101,8 +100,8 @@ export default function PromptNumberModal({
             />
 
             {validationError && (
-                <div style={{ marginTop: 10 }}>
-                    <span className="error-msg" style={{ display: "block" }}>{validationError}</span>
+                <div className="mt-2">
+                    <span className="error-msg block">{validationError}</span>
                 </div>
             )}
         </Modal>

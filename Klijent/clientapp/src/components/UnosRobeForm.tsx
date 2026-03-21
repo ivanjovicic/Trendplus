@@ -319,7 +319,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 </div>
 
                 {showSearchResults && searchQuery.trim() && (
-                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-[#2f323b] bg-[#1a1b1f] shadow-xl">
+                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl">
                         {filteredDobavljaci.length > 0 ? (
                             filteredDobavljaci.map((dobavljac, index) => (
                                 <button
@@ -366,15 +366,15 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 </section>
             ) : null}
 
-            <section className={`rounded-xl border p-4 ${canProceed ? "border-emerald-700 bg-emerald-950/20" : "border-[#2f323b] bg-[#14161d]"}`}>
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#93a7c8]">Pregled unosa</h3>
-                <div className="space-y-1 text-sm text-[#dbe6fb]">
-                    <p><span className="text-[#93a7c8]">Broj racuna:</span> {normalizeInvoice(brojRacuna) || "[Nije unet]"}</p>
-                    <p><span className="text-[#93a7c8]">Dobavljac:</span> {selectedDobavljac?.naziv || "[Nije izabran]"}</p>
+            <section className={`rounded-xl border p-4 ${canProceed ? "border-emerald-700 bg-emerald-950/20" : "border-border bg-surface"}`}>
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Pregled unosa</h3>
+                <div className="space-y-1 text-sm text-foreground">
+                    <p><span className="text-muted">Broj racuna:</span> {normalizeInvoice(brojRacuna) || "[Nije unet]"}</p>
+                    <p><span className="text-muted">Dobavljac:</span> {selectedDobavljac?.naziv || "[Nije izabran]"}</p>
                 </div>
 
                 {validationMessage ? (
-                    <div className="mt-3 rounded-lg border border-[#7f1d1d] bg-[#2b0a0a] px-3 py-2 text-xs text-[#fda4af]">
+                    <div className="mt-3 rounded-lg border border-rose-700 bg-rose-900/40 px-3 py-2 text-xs text-rose-200">
                         {validationMessage}
                     </div>
                 ) : null}
@@ -382,7 +382,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 <button
                     onClick={handleContinue}
                     disabled={!canProceed}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#3760b7] bg-[#2d4f95] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7] disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${canProceed ? 'border-emerald-700 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-700' : 'border-border bg-surface text-muted'}`}
                 >
                     Nastavi na unos artikala <ArrowRight size={14} />
                 </button>

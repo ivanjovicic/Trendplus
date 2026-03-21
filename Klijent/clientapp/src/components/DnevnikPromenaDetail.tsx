@@ -92,7 +92,8 @@ export default function DnevnikPromenaDetail({ id }: { id: number }) {
                     <button
                         type="button"
                         onClick={() => void loadDetail()}
-                        className="inline-flex items-center gap-2 rounded-lg border border-[#345dad] bg-[#1d2a46] px-3 py-2 text-xs font-semibold text-[#d6e4ff] transition hover:bg-[#22335a]"
+                        className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition hover:bg-[var(--surface-elevated)]"
+                        style={{ borderColor: 'var(--focus-ring)', background: 'var(--surface-default)', color: 'var(--text-primary)' }}
                     >
                         <RefreshCw size={14} />
                         Pokusaj ponovo
@@ -113,17 +114,18 @@ export default function DnevnikPromenaDetail({ id }: { id: number }) {
 
     return (
         <div className="space-y-5 text-sm">
-            <section className="rounded-xl border border-[#2a2b32] bg-[#14161d] p-4">
+            <section className="rounded-xl border border-border bg-surface p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <div className="text-xs uppercase tracking-wide text-[#8ea0bd]">Tip promene</div>
-                        <div className="mt-2 text-lg font-semibold text-white">{detail.tipPromene}</div>
+                        <div className="text-xs uppercase tracking-wide text-muted">Tip promene</div>
+                        <div className="mt-2 text-lg font-semibold text-foreground">{detail.tipPromene}</div>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={() => void copyValue(detail.id)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-xs text-[#dbe6fb] hover:bg-[#2d3347]"
+                            className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs transition hover:bg-[var(--surface-elevated)]"
+                            style={{ borderColor: 'var(--border-default)', background: 'var(--surface-default)', color: 'var(--text-primary)' }}
                         >
                             <Copy size={13} />
                             Kopiraj ID
@@ -132,28 +134,28 @@ export default function DnevnikPromenaDetail({ id }: { id: number }) {
                 </div>
             </section>
 
-            <section className="rounded-xl border border-[#2a2b32] bg-[#14161d] p-4">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#93a7c8]">Header</h3>
+            <section className="rounded-xl border border-border bg-surface p-4">
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Header</h3>
                 <DetailRow label="Datum" value={formatDate(detail.datum)} />
                 <DetailRow label="Artikal ID" value={detail.artikalId ?? "-"} />
                 <DetailRow label="Naziv artikla" value={detail.nazivArtikla ?? "-"} />
             </section>
 
-            <section className="rounded-xl border border-[#2a2b32] bg-[#14161d] p-4">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#93a7c8]">Promena</h3>
+            <section className="rounded-xl border border-border bg-surface p-4">
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Promena</h3>
                 {priceChanged && (
-                    <div className="mb-4 rounded-xl border border-emerald-800/70 bg-gradient-to-r from-[#13251f] via-[#173128] to-[#11211c] p-4">
+                    <div className="mb-4 rounded-xl border border-emerald-700 p-4 bg-surface-elevated">
                         <div className="mb-2 text-xs uppercase tracking-wide text-emerald-300">Promena cene</div>
                         <div className="flex flex-wrap items-center gap-3 text-base">
-                            <span className="rounded-lg border border-[#455468] bg-[#1a2230] px-3 py-2 text-[#c6d2e7]">
+                            <span className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--border-default)', background: 'var(--surface-default)', color: 'var(--text-primary)' }}>
                                 {formatCurrency(detail.staraCena)}
                             </span>
                             <ArrowRight size={16} className="text-emerald-300" />
-                            <span className="rounded-lg border border-emerald-700 bg-[#123126] px-3 py-2 font-semibold text-emerald-300">
+                            <span className="rounded-lg border border-emerald-700 px-3 py-2 font-semibold text-emerald-300" style={{ background: 'var(--surface-default)' }}>
                                 {formatCurrency(detail.novaCena)}
                             </span>
                             {priceDelta != null && (
-                                <span className={`rounded-lg px-3 py-2 font-semibold ${priceDelta >= 0 ? "bg-[#3a1d1d] text-rose-300" : "bg-[#162b20] text-emerald-300"}`}>
+                                <span className={`rounded-lg px-3 py-2 font-semibold ${priceDelta >= 0 ? 'text-rose-300' : 'text-emerald-300'}`}>
                                     {priceDelta >= 0 ? "+" : ""}{priceDelta.toFixed(2)} RSD
                                 </span>
                             )}

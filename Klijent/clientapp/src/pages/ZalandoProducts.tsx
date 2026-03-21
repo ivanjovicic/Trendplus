@@ -56,7 +56,7 @@ export default function ZalandoProducts() {
             {p.imageUrl ? (
               <img src={p.imageUrl} alt={p.name} style={{ width: "100%", borderRadius: 8, objectFit: "cover", height: 180 }} />
             ) : (
-              <div style={{ width: "100%", height: 180, background: "#f3f4f6", borderRadius: 8 }} />
+              <div style={{ width: "100%", height: 180, background: "var(--gray-100)", borderRadius: 8 }} />
             )}
 
             <div style={{ paddingTop: 8 }}>

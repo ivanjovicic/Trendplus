@@ -70,7 +70,7 @@ export default function TipObucePage() {
                 )}
             </form>
 
-            <div style={{ marginTop: "2rem", padding: "1rem", background: "#f9fafb", borderRadius: "8px" }}>
+            <div style={{ marginTop: "2rem", padding: "1rem", background: "var(--surface-light)", borderRadius: "8px" }}>
                 <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.5rem" }}>
                     ℹ️ Napomena
                 </h3>

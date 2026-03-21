@@ -203,7 +203,7 @@ export default function ImageUpload({
                     style={{
                         marginTop: "1rem",
                         padding: "1rem",
-                        background: "#f9fafb",
+                        background: "var(--surface-light)",
                         border: "2px solid #e5e7eb",
                         borderRadius: "12px",
                         animation: "fadeIn 0.3s ease-in",
@@ -265,7 +265,7 @@ export default function ImageUpload({
                     style={{
                         marginTop: "0.5rem",
                         padding: "0.75rem",
-                        background: "#f0fdf4",
+                        background: "var(--surface-elevated)",
                         border: "1px solid #86efac",
                         borderRadius: "8px",
                         display: "flex",
@@ -283,7 +283,7 @@ export default function ImageUpload({
                             handleClear();
                         }}
                         style={{
-                            background: "#dc2626",
+                            background: "var(--error)",
                             color: "white",
                             padding: "4px 8px",
                             borderRadius: "4px",
