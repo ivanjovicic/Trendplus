@@ -1,21 +1,18 @@
 .analytics-dashboard {
-  --bg: #070b16;
-  --bg-soft: #0e1428;
-  --panel: rgba(16, 25, 50, 0.75);
-  --panel-border: rgba(126, 154, 219, 0.24);
-  --text: #e8edff;
-  --muted: #9aa4c7;
-  --accent: #3dd9a4;
-  --accent-2: #6ea8ff;
-  --warning: #ffbc57;
-  --critical: #ff6c6c;
-  --good: #31c48d;
-  --neutral: #8aa0d6;
+  --bg: var(--background);
+  --bg-soft: var(--surface-darker);
+  --panel: var(--surface-elevated);
+  --panel-border: var(--border-muted);
+  --text: var(--text-contrast);
+  --muted: var(--text-muted);
+  --accent: var(--info);
+  --accent-2: var(--info);
+  --warning: var(--error);
+  --critical: var(--error);
+  --good: var(--success);
+  --neutral: var(--text-muted);
   color: var(--text);
-  background:
-    radial-gradient(1200px 600px at 12% -8%, rgba(61, 217, 164, 0.2), transparent 55%),
-    radial-gradient(1000px 560px at 90% 0%, rgba(110, 168, 255, 0.22), transparent 55%),
-    linear-gradient(180deg, #060a14 0%, #0a1020 100%);
+  background: var(--bg);
   min-height: calc(100vh - 64px);
   padding: 24px;
 }

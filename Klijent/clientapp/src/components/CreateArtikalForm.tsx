@@ -309,37 +309,15 @@ export default function CreateArtikalForm({
     };
 
     return (
-        <div 
-            className="card" 
-            style={{
-                background: "linear-gradient(to bottom, #ffffff, #fafbfc)",
-                boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
-                border: "1px solid #e5e7eb"
-            }}
-        >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h2 className="text-2xl font-semibold" style={{ margin: 0, color: "#1f2937" }}>
+        <div className="card bg-surface border border-border shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold text-foreground m-0">
                     {mode === "edit" ? "✏️ Izmeni artikal" : "➕ Kreiraj novi artikal"}
                 </h2>
                 <button
                     type="button"
                     onClick={() => setShowAdvanced(!showAdvanced)}
-                    style={{
-                        background: showAdvanced 
-                            ? "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)" 
-                            : "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)",
-                        color: showAdvanced ? "white" : "#374151",
-                        padding: "10px 18px",
-                        borderRadius: "10px",
-                        border: showAdvanced ? "none" : "1px solid #d1d5db",
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        boxShadow: showAdvanced 
-                            ? "0 4px 6px -1px rgba(8,145,178,0.3)" 
-                            : "0 1px 3px rgba(0,0,0,0.1)",
-                        transition: "all 0.2s ease",
-                    }}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${showAdvanced ? 'bg-primary text-white shadow-sm' : 'bg-surface-elevated border border-border text-muted hover:opacity-90'}`}
                     title="Ctrl+Shift+A"
                 >
                     {showAdvanced ? "🔽 Sakrij dodatna polja" : "🔼 Prikaži dodatna polja"}
@@ -348,42 +326,15 @@ export default function CreateArtikalForm({
 
             <form onSubmit={handleSubmit}>
                 {/* OSNOVNI PODACI */}
-                <div 
-                    style={{ 
-                        marginBottom: "2rem",
-                        background: "#ffffff",
-                        padding: "1.5rem",
-                        borderRadius: "12px",
-                        border: "1px solid #e5e7eb",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
-                    }}
-                >
-                    <h3 style={{ 
-                        fontSize: "1.125rem", 
-                        fontWeight: 600, 
-                        marginBottom: "1.25rem", 
-                        color: "#374151",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px"
-                    }}>
-                        <span style={{
-                            background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                            color: "white",
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "8px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "1rem"
-                        }}>📦</span>
+                <div className="mb-8 bg-surface p-6 rounded-lg border border-border shadow-sm">
+                    <h3 className="text-lg font-semibold mb-5 text-muted flex items-center gap-2">
+                        <span className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-base">📦</span>
                         Osnovni podaci
                     </h3>
                     <div className="form-grid">
                         <div>
-                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>
-                                Naziv <span style={{ color: "#ef4444" }}>*</span>
+                            <label className="field-label font-semibold text-foreground">
+                                Naziv <span className="text-accent-error">*</span>
                             </label>
                             <input
                                 ref={nazivRef}
@@ -392,32 +343,16 @@ export default function CreateArtikalForm({
                                 value={naziv}
                                 onChange={(e) => setNaziv(e.target.value)}
                                 onBlur={(e) => handleFieldBlur("naziv", e.target.value)}
-                                style={{
-                                    borderColor: errors.naziv ? "#ef4444" : "#d1d5db",
-                                    boxShadow: errors.naziv 
-                                        ? "0 0 0 3px rgba(239,68,68,0.15)" 
-                                        : "0 1px 3px rgba(0,0,0,0.1)",
-                                    transition: "all 0.2s ease"
-                                }}
-                                onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.15)"}
+                                style={{ borderColor: errors.naziv ? 'var(--error)' : 'var(--border-default)' }}
                             />
                             {errors.naziv && (
-                                <p style={{ 
-                                    color: "#ef4444", 
-                                    fontSize: "0.875rem", 
-                                    marginTop: "0.5rem",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px"
-                                }}>
-                                    ⚠️ {errors.naziv}
-                                </p>
+                                <p className="text-accent-error text-sm mt-2 flex items-center gap-1">⚠️ {errors.naziv}</p>
                             )}
                         </div>
 
                         <div>
-                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>
-                                Prodajna cena (RSD) <span style={{ color: "#ef4444" }}>*</span>
+                            <label className="field-label font-semibold text-foreground">
+                                Prodajna cena (RSD) <span className="text-accent-error">*</span>
                             </label>
                             <input
                                 className="input-big"
@@ -427,31 +362,15 @@ export default function CreateArtikalForm({
                                 value={prodajnaCena}
                                 onChange={(e) => setProdajnaCena(e.target.value)}
                                 onBlur={(e) => handleFieldBlur("prodajnaCena", e.target.value)}
-                                style={{ 
-                                    borderColor: errors.prodajnaCena ? "#ef4444" : "#d1d5db",
-                                    boxShadow: errors.prodajnaCena 
-                                        ? "0 0 0 3px rgba(239,68,68,0.15)" 
-                                        : "0 1px 3px rgba(0,0,0,0.1)",
-                                    transition: "all 0.2s ease"
-                                }}
-                                onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.15)"}
+                                style={{ borderColor: errors.prodajnaCena ? 'var(--error)' : 'var(--border-default)' }}
                             />
                             {errors.prodajnaCena && (
-                                <p style={{ 
-                                    color: "#ef4444", 
-                                    fontSize: "0.875rem", 
-                                    marginTop: "0.5rem",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px"
-                                }}>
-                                    ⚠️ {errors.prodajnaCena}
-                                </p>
+                                <p className="text-accent-error text-sm mt-2 flex items-center gap-1">⚠️ {errors.prodajnaCena}</p>
                             )}
                         </div>
 
                         <div>
-                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>Količina</label>
+                            <label className="field-label font-semibold text-foreground">Količina</label>
                             <input
                                 className="input-big"
                                 placeholder="0"
@@ -459,39 +378,23 @@ export default function CreateArtikalForm({
                                 value={kolicina}
                                 onChange={(e) => setKolicina(e.target.value)}
                                 onBlur={(e) => handleFieldBlur("kolicina", e.target.value)}
-                                style={{ 
-                                    borderColor: errors.kolicina ? "#ef4444" : "#d1d5db",
-                                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                                    transition: "all 0.2s ease"
-                                }}
-                                onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 3px rgba(139,92,246,0.15)"}
+                                style={{ borderColor: errors.kolicina ? 'var(--error)' : 'var(--border-default)' }}
                             />
                             {errors.kolicina && (
-                                <p style={{ color: "#ef4444", fontSize: "0.875rem", marginTop: "0.5rem" }}>
-                                    ⚠️ {errors.kolicina}
-                                </p>
+                                <p className="text-accent-error text-sm mt-2">⚠️ {errors.kolicina}</p>
                             )}
                         </div>
 
                         <div>
-                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>
-                                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    👟 Tip obuće
-                                </span>
+                            <label className="field-label font-semibold text-foreground">
+                                <span className="flex items-center gap-2">👟 Tip obuće</span>
                             </label>
                             <div style={{ display: "flex", gap: "8px" }}>
                                 <select
                                     className="input-big"
                                     value={selectedTip ?? ""}
                                     onChange={(e) => setSelectedTip(e.target.value ? Number(e.target.value) : null)}
-                                    style={{ 
-                                        flex: 1, 
-                                        marginBottom: 0,
-                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                                        borderColor: selectedTip ? "#0891b2" : "#d1d5db",
-                                        background: selectedTip ? "linear-gradient(to right, #ffffff, #ecfeff)" : "white",
-                                        transition: "all 0.2s ease"
-                                    }}
+                                    style={{ flex: 1, marginBottom: 0, borderColor: selectedTip ? 'var(--focus-ring)' : 'var(--border-default)' }}
                                 >
                                     <option value="">-- izaberite --</option>
                                     {localTipoviObuce.map((t) => (
@@ -501,21 +404,8 @@ export default function CreateArtikalForm({
                                 <button
                                     type="button"
                                     onClick={() => setShowNewTipModal(true)}
-                                    style={{
-                                        background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
-                                        color: "white",
-                                        padding: "10px 16px",
-                                        borderRadius: "10px",
-                                        border: "none",
-                                        fontSize: "1.5rem",
-                                        cursor: "pointer",
-                                        lineHeight: 1,
-                                        boxShadow: "0 4px 10px rgba(8,145,178,0.4)",
-                                        transition: "all 0.2s ease",
-                                    }}
+                                    className="px-3.5 py-1.5 rounded-lg text-xl font-bold text-white bg-gradient-to-r from-cyan-500 to-teal-400 shadow-sm transform transition-transform hover:scale-105"
                                     title="Dodaj novi tip obuće"
-                                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
-                                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
                                 >
                                     +
                                 </button>
@@ -523,24 +413,15 @@ export default function CreateArtikalForm({
                         </div>
 
                         <div>
-                            <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>
-                                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    🏢 Dobavljač
-                                </span>
+                            <label className="field-label font-semibold text-foreground">
+                                <span className="flex items-center gap-2">🏢 Dobavljač</span>
                             </label>
                             <div style={{ display: "flex", gap: "8px" }}>
                                 <select
                                     className="input-big"
                                     value={selectedDobavljac ?? ""}
                                     onChange={(e) => setSelectedDobavljac(e.target.value ? Number(e.target.value) : null)}
-                                    style={{ 
-                                        flex: 1, 
-                                        marginBottom: 0,
-                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                                        borderColor: selectedDobavljac ? "#059669" : "#d1d5db",
-                                        background: selectedDobavljac ? "linear-gradient(to right, #ffffff, #ecfdf5)" : "white",
-                                        transition: "all 0.2s ease"
-                                    }}
+                                    style={{ flex: 1, marginBottom: 0, borderColor: selectedDobavljac ? 'var(--success)' : 'var(--border-default)' }}
                                 >
                                     <option value="">-- izaberite --</option>
                                     {localDobavljaci.map((d) => (
@@ -550,21 +431,8 @@ export default function CreateArtikalForm({
                                 <button
                                     type="button"
                                     onClick={() => setShowNewDobModal(true)}
-                                    style={{
-                                        background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
-                                        color: "white",
-                                        padding: "10px 16px",
-                                        borderRadius: "10px",
-                                        border: "none",
-                                        fontSize: "1.5rem",
-                                        cursor: "pointer",
-                                        lineHeight: 1,
-                                        boxShadow: "0 4px 10px rgba(5,150,105,0.4)",
-                                        transition: "all 0.2s ease",
-                                    }}
+                                    className="px-3.5 py-1.5 rounded-lg text-xl font-bold text-white bg-gradient-to-r from-green-500 to-emerald-500 shadow-sm transform transition-transform hover:scale-105"
                                     title="Dodaj novog dobavljača"
-                                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
-                                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
                                 >
                                     +
                                 </button>
@@ -575,41 +443,14 @@ export default function CreateArtikalForm({
 
                 {/* DODATNI PODACI (conditional) */}
                 {showAdvanced && (
-                    <div 
-                        style={{ 
-                            marginBottom: "2rem",
-                            background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
-                            padding: "1.5rem",
-                            borderRadius: "12px",
-                            border: "1px solid #fbbf24",
-                            boxShadow: "0 4px 12px rgba(251,191,36,0.25)"
-                        }}
-                    >
-                        <h3 style={{ 
-                            fontSize: "1.125rem", 
-                            fontWeight: 600, 
-                            marginBottom: "1.25rem", 
-                            color: "#78350f",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px"
-                        }}>
-                            <span style={{
-                                background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                                color: "white",
-                                width: "32px",
-                                height: "32px",
-                                borderRadius: "8px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: "1rem"
-                            }}>📊</span>
+                    <div className="mb-8 bg-accent-warning/10 p-6 rounded-lg border border-accent-warning shadow-sm">
+                        <h3 className="text-lg font-semibold mb-5 text-accent-warning flex items-center gap-2">
+                            <span className="bg-accent-warning text-white w-8 h-8 rounded-lg flex items-center justify-center text-base">📊</span>
                             Dodatni podaci
                         </h3>
                         <div className="form-grid">
                             <div>
-                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Nabavna cena</label>
+                                <label className="field-label font-semibold text-accent-warning">Nabavna cena</label>
                                 <input
                                     className="input-big"
                                     placeholder="0.00"
@@ -617,17 +458,12 @@ export default function CreateArtikalForm({
                                     step="0.01"
                                     value={nabavnaCena}
                                     onChange={(e) => setNabavnaCena(e.target.value)}
-                                    style={{ 
-                                        background: "white",
-                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                                        borderColor: "#fbbf24",
-                                        transition: "all 0.2s ease"
-                                    }}
+                                    style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderColor: 'var(--warning)' }}
                                 />
                             </div>
 
                             <div>
-                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Nabavna cena (din)</label>
+                                <label className="field-label font-semibold text-accent-warning">Nabavna cena (din)</label>
                                 <input
                                     className="input-big"
                                     placeholder="0.00"
@@ -635,17 +471,12 @@ export default function CreateArtikalForm({
                                     step="0.01"
                                     value={nabavnaCenaDin}
                                     onChange={(e) => setNabavnaCenaDin(e.target.value)}
-                                    style={{ 
-                                        background: "white",
-                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                                        borderColor: "#fbbf24",
-                                        transition: "all 0.2s ease"
-                                    }}
+                                    style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderColor: 'var(--warning)' }}
                                 />
                             </div>
 
                             <div>
-                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Prva prodajna cena</label>
+                                <label className="field-label font-semibold text-accent-warning">Prva prodajna cena</label>
                                 <input
                                     className="input-big"
                                     placeholder="0.00"
@@ -653,27 +484,17 @@ export default function CreateArtikalForm({
                                     step="0.01"
                                     value={prvaProdajnaCena}
                                     onChange={(e) => setPrvaProdajnaCena(e.target.value)}
-                                    style={{ 
-                                        background: "white",
-                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                                        borderColor: "#fbbf24",
-                                        transition: "all 0.2s ease"
-                                    }}
+                                    style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderColor: 'var(--warning)' }}
                                 />
                             </div>
 
                             <div>
-                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Sezona</label>
+                                <label className="field-label font-semibold text-accent-warning">Sezona</label>
                                 <select
                                     className="input-big"
                                     value={selectedSezona ?? ""}
                                     onChange={(e) => setSelectedSezona(e.target.value ? Number(e.target.value) : null)}
-                                    style={{ 
-                                        background: "white",
-                                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                                        borderColor: "#fbbf24",
-                                        transition: "all 0.2s ease"
-                                    }}
+                                    style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderColor: 'var(--warning)' }}
                                 >
                                     <option value="">-- izaberite sezonu --</option>
                                     {sezone.map((s) => (
@@ -683,39 +504,22 @@ export default function CreateArtikalForm({
                             </div>
 
                             <div className="form-full">
-                                <label className="field-label" style={{ fontWeight: 600, color: "#78350f" }}>Komentar</label>
+                                <label className="field-label font-semibold text-accent-warning">Komentar</label>
                                 <textarea
                                     className="input-big"
                                     placeholder="Dodatne napomene..."
                                     value={komentar}
                                     onChange={(e) => setKomentar(e.target.value)}
                                     rows={3}
-                                    style={{ 
-                                        background: "white",
-                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                                        borderColor: "#fbbf24"
-                                    }}
+                                    style={{ background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.04)', borderColor: 'var(--warning)' }}
                                 />
                             </div>
 
                             {/* IMAGE UPLOAD SECTION - Only in edit mode */}
                             {mode === "edit" && artikalId && (
-                                <div className="form-full" style={{ marginTop: "1rem" }}>
-                                    <div style={{
-                                        background: "white",
-                                        padding: "1.5rem",
-                                        borderRadius: "12px",
-                                        border: "2px solid #fbbf24",
-                                    }}>
-                                        <h4 style={{ 
-                                            fontSize: "1rem", 
-                                            fontWeight: 600, 
-                                            marginBottom: "1rem", 
-                                            color: "#78350f",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "8px"
-                                        }}>
+                                <div className="form-full mt-4">
+                                    <div className="bg-white p-6 rounded-lg border-2" style={{ borderColor: 'var(--warning)' }}>
+                                        <h4 className="text-base font-semibold mb-4 text-accent-warning flex items-center gap-2">
                                             <span>📸</span>
                                             Slika artikla
                                         </h4>
@@ -729,39 +533,10 @@ export default function CreateArtikalForm({
                                                     alignItems: "center",
                                                     marginBottom: "0.75rem",
                                                 }}>
-                                                    <span style={{ fontSize: "0.875rem", color: "#78350f", fontWeight: 600 }}>
-                                                        Trenutna slika
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleDeleteImage}
-                                                        style={{
-                                                            background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
-                                                            color: "white",
-                                                            padding: "6px 12px",
-                                                            borderRadius: "6px",
-                                                            border: "none",
-                                                            cursor: "pointer",
-                                                            fontSize: "0.75rem",
-                                                            fontWeight: 600,
-                                                        }}
-                                                    >
-                                                        🗑️ Obriši
-                                                    </button>
+                                                    <span className="text-sm font-semibold text-accent-warning">Trenutna slika</span>
+                                                    <button type="button" onClick={handleDeleteImage} className="px-3 py-1 rounded-md text-white bg-accent-error font-semibold">🗑️ Obriši</button>
                                                 </div>
-                                                <img
-                                                    src={getImageUrl(currentImagePath) || ""}
-                                                    alt="Product"
-                                                    style={{
-                                                        maxWidth: "100%",
-                                                        maxHeight: "300px",
-                                                        borderRadius: "8px",
-                                                        border: "1px solid #d1d5db",
-                                                        objectFit: "contain",
-                                                        display: "block",
-                                                        margin: "0 auto",
-                                                    }}
-                                                />
+                                                <img src={getImageUrl(currentImagePath) || ""} alt="Product" className="max-w-full max-h-[300px] rounded-lg border border-border object-contain block mx-auto" />
                                             </div>
                                         )}
 
@@ -774,19 +549,7 @@ export default function CreateArtikalForm({
                                         />
 
                                         {uploading && (
-                                            <div style={{
-                                                marginTop: "1rem",
-                                                padding: "0.75rem",
-                                                background: "#eff6ff",
-                                                border: "1px solid #3b82f6",
-                                                borderRadius: "8px",
-                                                textAlign: "center",
-                                                color: "#1e40af",
-                                                fontWeight: 600,
-                                                fontSize: "0.875rem"
-                                            }}>
-                                                ⏳ Otpremam sliku...
-                                            </div>
+                                            <div className="mt-4 p-3 rounded-md border border-primary bg-primary/10 text-primary font-semibold text-sm text-center">⏳ Otpremam sliku...</div>
                                         )}
                                     </div>
                                 </div>
@@ -796,25 +559,12 @@ export default function CreateArtikalForm({
                 )}
 
                 {/* SUBMIT BUTTON */}
-                <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+                <div className="flex gap-3 items-center flex-wrap">
                     <button
                         type="submit"
-                        className="button-big"
+                        className={`button-big ${isSubmitting ? 'opacity-60 cursor-not-allowed bg-gray-400' : 'bg-accent-success text-white'}`}
                         disabled={isSubmitting}
-                        style={{
-                            maxWidth: "420px",
-                            background: isSubmitting 
-                                ? "linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)" 
-                                : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                            cursor: isSubmitting ? "not-allowed" : "pointer",
-                            boxShadow: isSubmitting 
-                                ? "none" 
-                                : "0 4px 6px -1px rgba(16,185,129,0.4), 0 2px 4px -1px rgba(16,185,129,0.2)",
-                            border: "none",
-                            transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.transform = "translateY(-2px)")}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                        style={{ maxWidth: '420px' }}
                     >
                         {isSubmitting 
                             ? "⏳ Čuvam..." 
@@ -822,29 +572,8 @@ export default function CreateArtikalForm({
                                 ? "💾 Sačuvaj izmene" 
                                 : "✅ Kreiraj artikal"}
                     </button>
-                    <span style={{ 
-                        fontSize: "0.875rem", 
-                        color: "#6b7280",
-                        background: "#f3f4f6",
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        border: "1px solid #e5e7eb"
-                    }}>
-                        💡 <kbd style={{ 
-                            background: "white", 
-                            padding: "2px 6px", 
-                            borderRadius: "4px",
-                            border: "1px solid #d1d5db",
-                            fontSize: "0.75rem",
-                            fontFamily: "monospace"
-                        }}>Ctrl</kbd> + <kbd style={{ 
-                            background: "white", 
-                            padding: "2px 6px", 
-                            borderRadius: "4px",
-                            border: "1px solid #d1d5db",
-                            fontSize: "0.75rem",
-                            fontFamily: "monospace"
-                        }}>Enter</kbd> za brzo čuvanje
+                    <span className="text-sm text-muted bg-surface p-2.5 rounded-md border border-border flex items-center gap-2">
+                        💡 <kbd className="bg-white px-2 py-0.5 rounded border border-border text-xs font-mono">Ctrl</kbd> + <kbd className="bg-white px-2 py-0.5 rounded border border-border text-xs font-mono">Enter</kbd> za brzo čuvanje
                     </span>
                 </div>
             </form>
@@ -858,28 +587,13 @@ export default function CreateArtikalForm({
                 footer={
                     <>
                         <button
-                            className="button-big"
-                            style={{ 
-                                background: "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)", 
-                                color: "#374151", 
-                                width: "auto", 
-                                padding: "10px 20px", 
-                                marginTop: 0,
-                                border: "1px solid #d1d5db"
-                            }}
+                            className="button-big bg-surface-elevated text-foreground border border-border"
                             onClick={() => setShowNewTipModal(false)}
                         >
                             Otkaži
                         </button>
                         <button
-                            className="button-big"
-                            style={{ 
-                                width: "auto", 
-                                padding: "10px 20px", 
-                                marginTop: 0,
-                                background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
-                                boxShadow: "0 4px 6px -1px rgba(8,145,178,0.3)"
-                            }}
+                                className="button-big bg-gradient-to-r from-cyan-500 to-teal-400 text-white shadow-sm"
                             onClick={handleCreateTip}
                             disabled={!newTip.trim() || isCreatingTip}
                         >
@@ -889,7 +603,7 @@ export default function CreateArtikalForm({
                 }
             >
                 <div>
-                    <label className="field-label" style={{ fontWeight: 600 }}>Naziv tipa</label>
+                    <label className="field-label font-semibold">Naziv tipa</label>
                     <input
                         className="input-big"
                         placeholder="npr. Patike"
@@ -915,39 +629,13 @@ export default function CreateArtikalForm({
                 size="sm"
                 footer={
                     <>
-                        <button
-                            className="button-big"
-                            style={{ 
-                                background: "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)", 
-                                color: "#374151", 
-                                width: "auto", 
-                                padding: "10px 20px", 
-                                marginTop: 0,
-                                border: "1px solid #d1d5db"
-                            }}
-                            onClick={() => setShowNewDobModal(false)}
-                        >
-                            Otkaži
-                        </button>
-                        <button
-                            className="button-big"
-                            style={{ 
-                                width: "auto", 
-                                padding: "10px 20px", 
-                                marginTop: 0,
-                                background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
-                                boxShadow: "0 4px 10px rgba(5,150,105,0.4)"
-                            }}
-                            onClick={handleCreateDob}
-                            disabled={!newDob.trim() || isCreatingDob}
-                        >
-                            {isCreatingDob ? "Kreiram..." : "Potvrdi"}
-                        </button>
+                        <button className="button-big bg-surface-elevated text-foreground border border-border" onClick={() => setShowNewDobModal(false)}>Otkaži</button>
+                        <button className="button-big bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm" onClick={handleCreateDob} disabled={!newDob.trim() || isCreatingDob}>{isCreatingDob ? "Kreiram..." : "Potvrdi"}</button>
                     </>
                 }
             >
                 <div>
-                    <label className="field-label" style={{ fontWeight: 600 }}>Naziv dobavljača</label>
+                    <label className="field-label font-semibold">Naziv dobavljača</label>
                     <input
                         className="input-big"
                         placeholder="npr. Nike"

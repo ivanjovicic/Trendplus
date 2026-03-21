@@ -126,25 +126,35 @@ export default function DeichmannPage() {
     };
 
     return (
-        <div style={{ maxWidth: 1200, margin: "2rem auto", padding: "0 1rem" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12, color: "#c9d3e4" }}>Deichmann — Scraper EU tržišta</h1>
+        <div className="max-w-[1200px] mx-auto my-8 px-4">
+            <h1 className="text-2xl font-bold mb-3 text-foreground">Deichmann — Scraper EU tržišta</h1>
 
-            <div className="card" style={{ marginBottom: "1.5rem" }}>
-                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                    <div style={{ minWidth: 180 }}>
-                        <label className="field-label">Deichmann stranice</label>
-                        <input type="number" className="input-big" value={filterPages} min={1} onChange={(e) => setFilterPages(Number(e.target.value) || 1)} />
+            <div className="bg-surface-elevated border border-border rounded-xl p-4 mb-6 transition-colors">
+                <div className="flex gap-3 items-center flex-wrap">
+                    <div className="min-w-[180px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Deichmann stranice</label>
+                        <input 
+                            type="number" 
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all" 
+                            value={filterPages} 
+                            min={1} 
+                            onChange={(e) => setFilterPages(Number(e.target.value) || 1)} 
+                        />
                     </div>
 
-                    <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Kategorija</label>
-                        <select className="input-big" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+                    <div className="min-w-[220px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Kategorija</label>
+                        <select 
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all" 
+                            value={selectedCategory} 
+                            onChange={(e) => setSelectedCategory(e.target.value)}
+                        >
                             {categories.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                     </div>
 
-                    <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Brend</label>
+                    <div className="min-w-[220px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Brend</label>
                         <SearchableSelect 
                             value={filterBrand}
                             onChange={setFilterBrand}
@@ -154,10 +164,10 @@ export default function DeichmannPage() {
                         />
                     </div>
 
-                    <div style={{ minWidth: 160 }}>
-                        <label className="field-label">Pol</label>
+                    <div className="min-w-[160px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Pol</label>
                         <select
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             value={filterGender}
                             onChange={(e) => setFilterGender(e.target.value)}
                         >
@@ -168,10 +178,10 @@ export default function DeichmannPage() {
                         </select>
                     </div>
 
-                    <div style={{ minWidth: 160 }}>
-                        <label className="field-label">Sortiranje</label>
+                    <div className="min-w-[160px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Sortiranje</label>
                         <select
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             value={filterSort}
                             onChange={(e) => setFilterSort(e.target.value)}
                         >
@@ -182,30 +192,30 @@ export default function DeichmannPage() {
                         </select>
                     </div>
 
-                    <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Min cena (€)</label>
+                    <div className="min-w-[150px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Min cena (€)</label>
                         <input
                             type="number"
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             placeholder="0"
                             value={filterPriceMin ?? ""}
                             onChange={(e) => setFilterPriceMin(e.target.value ? Number(e.target.value) : undefined)}
                         />
                     </div>
 
-                    <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Max cena (€)</label>
+                    <div className="min-w-[150px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Max cena (€)</label>
                         <input
                             type="number"
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             placeholder="500"
                             value={filterPriceMax ?? ""}
                             onChange={(e) => setFilterPriceMax(e.target.value ? Number(e.target.value) : undefined)}
                         />
                     </div>
 
-                    <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Veličina (EUR)</label>
+                    <div className="min-w-[220px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Veličina (EUR)</label>
                         <SearchableSelect
                             value={size ?? []}
                             onChange={(v) => setSize(v as string[])}
@@ -215,10 +225,10 @@ export default function DeichmannPage() {
                         />
                     </div>
 
-                    <div style={{ minWidth: 260 }}>
-                        <label className="field-label">Nova kolekcija</label>
+                    <div className="min-w-[260px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Nova kolekcija</label>
                         <select
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             value={filterActivationDate ?? ""}
                             onChange={(e) => setFilterActivationDate(e.target.value || undefined)}
                         >
@@ -229,25 +239,22 @@ export default function DeichmannPage() {
                         </select>
                     </div>
 
-                    <label 
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.5rem",
-                            cursor: "pointer",
-                            marginTop: "auto"
-                        }}
-                    >
+                    <label className="flex items-center gap-2 cursor-pointer mt-auto py-2">
                         <input
                             type="checkbox"
                             checked={filterImportToCore}
                             onChange={(e) => setFilterImportToCore(e.target.checked)}
+                            className="w-4 h-4 rounded border-border bg-surface text-primary focus:ring-primary"
                         />
-                        <span style={{ fontSize: 14, color: "#c9d3e4" }}>Uvezi u bazu</span>
+                        <span className="text-sm text-foreground font-medium">Uvezi u bazu</span>
                     </label>
 
-                    <div style={{ marginLeft: "auto" }}>
-                        <button className="button-big" onClick={runDeichmannFiltered} disabled={loading} style={{ minWidth: 160 }}>
+                    <div className="ml-auto">
+                        <button 
+                            className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]"
+                            onClick={runDeichmannFiltered} 
+                            disabled={loading}
+                        >
                             {loading ? '⏳ Pokretanje...' : '🔍 Pokreni Deichmann'}
                         </button>
                     </div>
@@ -256,20 +263,39 @@ export default function DeichmannPage() {
 
             {results.length > 0 && (
                 <div>
-                    <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Rezultati ({results.length})</h3>
-                    <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+                    <h3 className="text-lg font-bold mb-3 text-foreground">Rezultati ({results.length})</h3>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
                         {results.map((p, idx) => (
-                            <div key={idx} className="card" style={{ padding: 12 }}>
-                                <div style={{ width: '100%', height: 220, overflow: 'hidden', borderRadius: 8, background: '#1A1F2E' }}>
+                            <div key={idx} className="bg-surface-elevated border border-border rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="w-full h-[220px] overflow-hidden rounded-lg bg-surface border border-border flex items-center justify-center relative group">
                                     {p.image ? (
-                                        <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={() => openImage(p.image, p.name)} onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=No+Image' }} />
-                                    ) : null}
+                                        <img 
+                                            src={p.image} 
+                                            alt={p.name} 
+                                            className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105" 
+                                            onClick={() => openImage(p.image, p.name)} 
+                                            onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=No+Image' }} 
+                                        />
+                                    ) : (
+                                        <div className="text-4xl opacity-30">👟</div>
+                                    )}
                                 </div>
-                                <div style={{ paddingTop: 12 }}>
-                                    <div style={{ fontSize: 12, color: '#8A95B0' }}>{p.brand}</div>
-                                    <div style={{ fontWeight: 700, margin: '6px 0', color: '#c9d3e4' }}>{p.name}</div>
-                                    <div style={{ color: '#059669', fontWeight: 700 }}>{p.price || '-'}</div>
-                                    {p.url && <a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#4F8EF7' }}>Pogledaj</a>}
+                                <div className="mt-3">
+                                    <div className="text-[11px] text-muted font-bold uppercase truncate">{p.brand}</div>
+                                    <div className="font-bold text-sm text-foreground leading-tight line-clamp-2 h-10 mb-2">{p.name}</div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-accent-success font-bold text-base">{p.price || '-'}</div>
+                                        {p.url && (
+                                            <a 
+                                                href={p.url} 
+                                                target="_blank" 
+                                                rel="noreferrer" 
+                                                className="text-primary hover:text-primary-hover font-bold text-xs"
+                                            >
+                                                POGLEDAJ ↗
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -278,10 +304,17 @@ export default function DeichmannPage() {
             )}
 
             <Modal isOpen={imageModalOpen} onClose={() => setImageModalOpen(false)} title={imageModalTitle} size="lg">
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <img src={imageModalSrc} alt={imageModalTitle} style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain' }} onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800x600?text=No+Image' }} />
+                <div className="flex justify-center items-center p-2">
+                    <img 
+                        src={imageModalSrc} 
+                        alt={imageModalTitle} 
+                        className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-xl" 
+                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800x600?text=No+Image' }} 
+                    />
                 </div>
             </Modal>
         </div>
     );
 }
+
+            

@@ -1,216 +1,228 @@
-﻿import { useEffect, useState } from "react";
-import { getSezone, createSezona } from "../services/sezoneApi";
+import { type FormEvent, useEffect, useState } from "react";
+import { createSezona, getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
 
-// Helper funkcija za generisanje predloga sezona za prethodnu, tekucu i sledecu godinu
 function generateSeasonSuggestions(): string[] {
-  const currentYear = new Date().getFullYear();
-  const suggestions: string[] = [];
+    const currentYear = new Date().getFullYear();
+    const suggestions: string[] = [];
 
-  for (let yearOffset = -1; yearOffset <= 1; yearOffset++) {
-    const year = currentYear + yearOffset;
-    suggestions.push(`Proleće/Leto ${year}`);
-    suggestions.push(`Jesen/Zima ${year}/${year + 1}`);
-  }
+    for (let yearOffset = -1; yearOffset <= 1; yearOffset++) {
+        const year = currentYear + yearOffset;
+        suggestions.push(`Proleće/Leto ${year}`);
+        suggestions.push(`Jesen/Zima ${year}/${year + 1}`);
+    }
 
-  return suggestions;
+    return suggestions;
 }
 
 export default function SezonaPage() {
-  const [sezone, setSezone] = useState<Sezona[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    const [sezone, setSezone] = useState<Sezona[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [naziv, setNaziv] = useState("");
+    const [customNaziv, setCustomNaziv] = useState("");
+    const [useCustomNaziv, setUseCustomNaziv] = useState(false);
+    const [datumOd, setDatumOd] = useState("");
+    const [datumDo, setDatumDo] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const [success, setSuccess] = useState<string | null>(null);
 
-  const [naziv, setNaziv] = useState("");
-  const [customNaziv, setCustomNaziv] = useState(""); // Za custom unos
-  const [useCustomNaziv, setUseCustomNaziv] = useState(false);
-  const [datumOd, setDatumOd] = useState("");
-  const [datumDo, setDatumDo] = useState("");
+    const seasonSuggestions = generateSeasonSuggestions();
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
+    const loadSezone = async () => {
+        setLoading(true);
+        setError(null);
 
-  const seasonSuggestions = generateSeasonSuggestions();
+        try {
+            const data = await getSezone();
+            setSezone(data);
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Greška pri učitavanju sezona";
+            setError(message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const loadSezone = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getSezone();
-      setSezone(data);
-    } catch (e: any) {
-      setError(e?.message ?? "Greška pri učitavanju sezona");
-    } finally {
-      setLoading(false);
-    }
-  };
+    useEffect(() => {
+        loadSezone();
+    }, []);
 
-  useEffect(() => {
-    loadSezone();
-  }, []);
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+        const finalNaziv = useCustomNaziv ? customNaziv.trim() : naziv;
 
-    const finalNaziv = useCustomNaziv ? customNaziv.trim() : naziv;
+        if (!finalNaziv) {
+            setError("Naziv je obavezan.");
+            return;
+        }
 
-    if (!finalNaziv) {
-      setError("Naziv je obavezan.");
-      return;
-    }
+        if (!datumOd || !datumDo) {
+            setError("Oba datuma su obavezna.");
+            return;
+        }
 
-    if (!datumOd || !datumDo) {
-      setError("Oba datuma su obavezna.");
-      return;
-    }
+        if (new Date(datumOd) >= new Date(datumDo)) {
+            setError("Datum od mora biti pre datuma do.");
+            return;
+        }
 
-    if (new Date(datumOd) >= new Date(datumDo)) {
-      setError("DatumOd mora biti pre DatumDo.");
-      return;
-    }
+        setIsSaving(true);
+        setError(null);
+        setSuccess(null);
 
-    setIsSaving(true);
-    setError(null);
-    setSuccess(null);
+        try {
+            await createSezona(finalNaziv, datumOd, datumDo);
+            setSuccess("Sezona uspešno kreirana!");
+            setNaziv("");
+            setCustomNaziv("");
+            setUseCustomNaziv(false);
+            setDatumOd("");
+            setDatumDo("");
+            await loadSezone();
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Greška pri kreiranju sezone";
+            setError(message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
-    try {
-      await createSezona(finalNaziv, datumOd, datumDo);
-      setSuccess("Sezona uspešno kreirana!");
-      setNaziv("");
-      setCustomNaziv("");
-      setUseCustomNaziv(false);
-      setDatumOd("");
-      setDatumDo("");
-      await loadSezone();
-    } catch (e: any) {
-      setError(e?.message ?? "Greška pri kreiranju sezone");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    return (
+        <div className="card max-w-4xl">
+            <h2 className="text-2xl font-bold mb-6 text-contrast">{"\u{1F4C5}"} Sezone</h2>
 
-  return (
-    <div className="card" style={{ maxWidth: 900 }}>
-      <h2 className="text-2xl font-semibold mb-6">📅 Sezone</h2>
-
-      {error && <p className="error-msg">{error}</p>}
-      {success && <p style={{ marginTop: "0.75rem", color: "#059669", fontWeight: 600 }}>{success}</p>}
-
-      <form onSubmit={handleSubmit} style={{ marginBottom: "2rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem", marginBottom: "1rem" }}>
-          <div>
-            <label className="field-label">Naziv sezone</label>
-            
-            <div style={{ marginBottom: "0.5rem" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.9rem" }}>
-                <input
-                  type="radio"
-                  checked={!useCustomNaziv}
-                  onChange={() => setUseCustomNaziv(false)}
-                />
-                Izaberi iz ponuđenih
-              </label>
-            </div>
-
-            {!useCustomNaziv && (
-              <select
-                className="input-big"
-                value={naziv}
-                onChange={(e) => setNaziv(e.target.value)}
-                required={!useCustomNaziv}
-                style={{ marginBottom: "0.5rem" }}
-              >
-                <option value="">-- Izaberi sezonu --</option>
-                {seasonSuggestions.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+            {error && (
+                <div className="mb-4 rounded-lg border border-error bg-error/10 p-4 text-sm text-error">
+                    {error}
+                </div>
             )}
 
-            <div style={{ marginBottom: "0.5rem" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.9rem" }}>
-                <input
-                  type="radio"
-                  checked={useCustomNaziv}
-                  onChange={() => setUseCustomNaziv(true)}
-                />
-                Unesi novi naziv
-              </label>
-            </div>
-
-            {useCustomNaziv && (
-              <input
-                className="input-big"
-                value={customNaziv}
-                onChange={(e) => setCustomNaziv(e.target.value)}
-                placeholder="Unesite vlastiti naziv sezone..."
-                required={useCustomNaziv}
-              />
+            {success && (
+                <div className="mb-4 rounded-lg border border-success bg-success/10 p-4 text-sm text-success font-semibold">
+                    {success}
+                </div>
             )}
-          </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-            <div>
-              <label className="field-label">Datum od</label>
-              <input
-                type="date"
-                className="input-big"
-                value={datumOd}
-                onChange={(e) => setDatumOd(e.target.value)}
-                required
-              />
-            </div>
+            <form onSubmit={handleSubmit} className="mb-12 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                        <label className="field-label text-muted !mb-0">Naziv sezone</label>
 
-            <div>
-              <label className="field-label">Datum do</label>
-              <input
-                type="date"
-                className="input-big"
-                value={datumDo}
-                onChange={(e) => setDatumDo(e.target.value)}
-                required
-              />
-            </div>
-          </div>
+                        <div className="flex flex-col gap-3 p-4 rounded-xl border border-muted bg-surface-darker">
+                            <label className="flex items-center gap-3 text-sm text-contrast cursor-pointer">
+                                <input
+                                    type="radio"
+                                    className="w-4 h-4 accent-info"
+                                    checked={!useCustomNaziv}
+                                    onChange={() => setUseCustomNaziv(false)}
+                                />
+                                Izaberi iz ponuđenih
+                            </label>
+
+                            {!useCustomNaziv && (
+                                <select
+                                    className="input-big w-full"
+                                    value={naziv}
+                                    onChange={(e) => setNaziv(e.target.value)}
+                                    required={!useCustomNaziv}
+                                >
+                                    <option value="">-- Izaberi sezonu --</option>
+                                    {seasonSuggestions.map((season) => (
+                                        <option key={season} value={season}>
+                                            {season}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+
+                            <label className="flex items-center gap-3 text-sm text-contrast cursor-pointer">
+                                <input
+                                    type="radio"
+                                    className="w-4 h-4 accent-info"
+                                    checked={useCustomNaziv}
+                                    onChange={() => setUseCustomNaziv(true)}
+                                />
+                                Unesi novi naziv
+                            </label>
+
+                            {useCustomNaziv && (
+                                <input
+                                    className="input-big w-full"
+                                    value={customNaziv}
+                                    onChange={(e) => setCustomNaziv(e.target.value)}
+                                    placeholder="Unesite vlastiti naziv sezone..."
+                                    required={useCustomNaziv}
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-fit">
+                        <div className="space-y-2">
+                            <label className="field-label text-muted">Datum od</label>
+                            <input
+                                type="date"
+                                className="input-big w-full"
+                                value={datumOd}
+                                onChange={(e) => setDatumOd(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="field-label text-muted">Datum do</label>
+                            <input
+                                type="date"
+                                className="input-big w-full"
+                                value={datumDo}
+                                onChange={(e) => setDatumDo(e.target.value)}
+                                required
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <button className="button-big min-w-[180px]" type="submit" disabled={isSaving}>
+                    {isSaving ? "Čuvam..." : "Dodaj sezonu"}
+                </button>
+            </form>
+
+            <h3 className="text-xl font-bold mb-4 text-contrast">Postojeće sezone</h3>
+
+            {loading && <div className="py-10 text-center text-muted">Učitavanje...</div>}
+
+            {!loading && sezone.length === 0 && (
+                <div className="py-10 text-center text-muted border border-dashed border-muted rounded-xl">
+                    Nema nijedne kreirane sezone.
+                </div>
+            )}
+
+            {!loading && sezone.length > 0 && (
+                <div className="overflow-hidden rounded-xl border border-muted bg-surface-elevated">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-muted text-sm">
+                            <thead className="bg-surface-darker text-muted">
+                                <tr>
+                                    <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Naziv</th>
+                                    <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Datum od</th>
+                                    <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Datum do</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-muted text-contrast">
+                                {sezone.map((season) => (
+                                    <tr key={season.id} className="hover:bg-surface/50 transition-colors">
+                                        <td className="px-6 py-4 font-bold">{season.naziv}</td>
+                                        <td className="px-6 py-4">{new Date(season.datumOd).toLocaleDateString("sr-RS")}</td>
+                                        <td className="px-6 py-4">{new Date(season.datumDo).toLocaleDateString("sr-RS")}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
-
-        <button className="button-big" type="submit" disabled={isSaving} style={{ maxWidth: 200 }}>
-          {isSaving ? "Čuvam..." : "Dodaj sezonu"}
-        </button>
-      </form>
-
-      <h3 className="text-xl font-semibold mb-4">Postojeće sezone</h3>
-
-      {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
-
-      {!loading && sezone.length === 0 && (
-        <p style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>Nema kreiranu nijednu sezonu.</p>
-      )}
-
-      {!loading && sezone.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Naziv</th>
-                <th>Datum od</th>
-                <th>Datum do</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sezone.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ fontWeight: 600 }}>{s.naziv}</td>
-                  <td>{new Date(s.datumOd).toLocaleDateString("sr-RS")}</td>
-                  <td>{new Date(s.datumDo).toLocaleDateString("sr-RS")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
+    );
 }

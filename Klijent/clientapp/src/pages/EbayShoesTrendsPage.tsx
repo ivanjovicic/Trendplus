@@ -69,39 +69,35 @@ const POPULAR_BRANDS: { group: string; brands: string[] }[] = [
     },
 ];
 
-const EBAY_BRAND_COLOR = "#e53238"; // eBay red
+const EBAY_BRAND_COLOR = "#e53238"; // kept as reference but UI uses theme classes
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function ConditionBadge({ condition }: { condition: string | null }) {
     if (!condition) return null;
     const upper = condition.toUpperCase();
-    const bg    = upper.includes("NEW") ? "#dcfce7" : upper.includes("REFURB") ? "#eff6ff" : "#f9fafb";
-    const color = upper.includes("NEW") ? "#166534" : upper.includes("REFURB") ? "#1e40af" : "#6b7280";
-    return (
-        <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", background: bg, color, borderRadius: 4, padding: "1px 5px", border: `1px solid ${color}22` }}>
-            {condition}
-        </span>
-    );
+    if (upper.includes("NEW")) return <span className="text-[9px] font-bold uppercase text-success bg-success/10 px-1.5 py-0.5 rounded border border-success/20">{condition}</span>;
+    if (upper.includes("REFURB")) return <span className="text-[9px] font-bold uppercase text-info bg-info/10 px-1.5 py-0.5 rounded border border-info/20">{condition}</span>;
+    return <span className="text-[9px] font-bold uppercase text-muted bg-surface/50 px-1.5 py-0.5 rounded border border-border">{condition}</span>;
 }
 
 function StarRating({ rating }: { rating: number }) {
-    if (rating <= 0) return <span style={{ fontSize: 11, color: "#d1d5db" }}>no ratings</span>;
+    if (rating <= 0) return <span className="text-xs text-muted">no ratings</span>;
     const full  = Math.floor(rating);
     const half  = rating - full >= 0.4;
     const empty = 5 - full - (half ? 1 : 0);
     return (
-        <span title={`${rating.toFixed(1)} / 5 (seller feedback)`} style={{ color: "#f59e0b", fontSize: 13, letterSpacing: -1 }}>
+        <span title={`${rating.toFixed(1)} / 5 (seller feedback)`} className="text-warning text-base tracking-tight">
             {"★".repeat(full)}{"½".repeat(half ? 1 : 0)}{"☆".repeat(empty)}
         </span>
     );
 }
 
 function PriceLabel({ price, currency }: { price: number | null; currency: string | null }) {
-    if (price == null) return <span style={{ color: "#d1d5db" }}>Price N/A</span>;
+    if (price == null) return <span className="text-muted">Price N/A</span>;
     const sym = currency === "EUR" ? "€" : currency === "USD" ? "$" : currency ?? "";
     return (
-        <span style={{ fontWeight: 800, fontSize: 15, color: "#e53238" }}>
+        <span className="font-extrabold text-base text-error">
             {sym}{price.toFixed(2)}
         </span>
     );
@@ -121,12 +117,10 @@ function CategoryPanel({
     onDelete:   (c: string) => void;
 }) {
     return (
-        <div style={{ minWidth: 210 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#6b7280", marginBottom: 8, letterSpacing: "0.06em" }}>
-                Categories in DB
-            </div>
+        <div className="min-w-[210px]">
+            <div className="text-xs font-bold text-muted uppercase mb-2 tracking-wide">Categories in DB</div>
             {categories.length === 0 && (
-                <div style={{ color: "#9ca3af", fontSize: 12, fontStyle: "italic" }}>No data — sync first</div>
+                <div className="text-muted text-sm italic">No data — sync first</div>
             )}
             {categories.map((c) => {
                 const key = c.category ?? "";
@@ -134,28 +128,17 @@ function CategoryPanel({
                 return (
                     <div
                         key={key}
-                        style={{
-                            display: "flex", alignItems: "center", justifyContent: "space-between",
-                            padding: "6px 10px", borderRadius: 8, marginBottom: 4,
-                            background: active ? EBAY_BRAND_COLOR : "#f9fafb",
-                            border: `1px solid ${active ? EBAY_BRAND_COLOR : "#e5e7eb"}`,
-                            cursor: "pointer", transition: "all .12s",
-                        }}
+                        className={`flex items-center justify-between p-2 rounded-md mb-1 transition-all cursor-pointer ${active ? 'bg-accent text-white border-accent' : 'bg-surface border-border'}`}
                         onClick={() => onSelect(key)}
                     >
                         <div>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: active ? "white" : "#111827" }}>
-                                {c.category ?? "—"}
-                            </div>
-                            <div style={{ fontSize: 10, color: active ? "rgba(255,255,255,.7)" : "#9ca3af" }}>
-                                {c.count} items
-                                {c.avgPrice != null ? ` · €${c.avgPrice.toFixed(0)}` : ""}
-                            </div>
+                            <div className={`font-semibold text-sm ${active ? 'text-white' : 'text-foreground'}`}>{c.category ?? '—'}</div>
+                            <div className={`text-xs ${active ? 'text-white/80' : 'text-muted'}`}>{c.count} items{c.avgPrice != null ? ` · €${c.avgPrice.toFixed(0)}` : ''}</div>
                         </div>
                         <button
                             onClick={(e) => { e.stopPropagation(); onDelete(key); }}
                             title="Delete category"
-                            style={{ background: "none", border: "none", cursor: "pointer", color: active ? "rgba(255,255,255,.7)" : "#d1d5db", fontSize: 14, lineHeight: 1, padding: "0 2px" }}
+                            className={`text-sm ${active ? 'text-white/80' : 'text-muted'}`}
                         >
                             ✕
                         </button>
@@ -170,37 +153,31 @@ function CategoryPanel({
 
 function EbayShoeCard({ shoe }: { shoe: EbayShoeProduct }) {
     return (
-        <div
-            style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", transition: "box-shadow .15s, transform .15s" }}
-            onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "0 8px 24px rgba(0,0,0,.12)"; el.style.transform = "translateY(-2px)"; }}
-            onMouseLeave={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = ""; el.style.transform = ""; }}
-        >
+        <div className="card overflow-hidden flex flex-col transition-transform hover:-translate-y-1 hover:shadow-lg">
             {/* eBay colour strip */}
-            <div style={{ height: 3, background: `linear-gradient(90deg, #e53238, #f5af02, #86b817, #05adee)` }} />
+            <div className="h-1 bg-gradient-to-r from-red-600 via-yellow-400 to-green-500" />
 
             {/* Image */}
             <a href={shoe.productUrl ?? "#"} target="_blank" rel="noopener noreferrer" tabIndex={-1}>
-                <div style={{ width: "100%", height: 175, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                <div className="w-full h-44 bg-surface flex items-center justify-center overflow-hidden">
                     {shoe.imageUrl ? (
                         <img
                             src={shoe.imageUrl}
                             alt={shoe.name ?? ""}
-                            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 8 }}
+                            className="max-w-full max-h-full object-contain p-2"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                         />
                     ) : (
-                        <span style={{ fontSize: 44 }}>👟</span>
+                        <span className="text-3xl">👟</span>
                     )}
                 </div>
             </a>
 
             {/* Body */}
-            <div style={{ padding: "10px 12px 12px", flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div className="p-3 flex-1 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
                     {shoe.brand && (
-                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#9ca3af", letterSpacing: "0.04em" }}>
-                            {shoe.brand}
-                        </span>
+                        <span className="text-xs font-bold uppercase text-muted tracking-wider">{shoe.brand}</span>
                     )}
                     <ConditionBadge condition={shoe.condition} />
                 </div>
@@ -209,30 +186,26 @@ function EbayShoeCard({ shoe }: { shoe: EbayShoeProduct }) {
                     href={shoe.productUrl ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ fontWeight: 700, fontSize: 13, color: "#111827", lineHeight: 1.35, textDecoration: "none" }}
+                    className="font-semibold text-sm text-foreground leading-tight no-underline"
                     title={shoe.name ?? ""}
                 >
                     {shoe.name && shoe.name.length > 70 ? shoe.name.slice(0, 68) + "…" : shoe.name ?? "—"}
                 </a>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                <div className="flex items-center gap-2 mt-1">
                     <StarRating rating={shoe.rating} />
                     {shoe.reviewCount > 0 && (
-                        <span style={{ fontSize: 10, color: "#6b7280" }}>({shoe.reviewCount.toLocaleString()} feedback)</span>
+                        <span className="text-xs text-muted">({shoe.reviewCount.toLocaleString()} feedback)</span>
                     )}
                 </div>
 
-                <div style={{ marginTop: "auto", paddingTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="mt-auto pt-2 flex justify-between items-center">
                     <PriceLabel price={shoe.price} currency={shoe.currency} />
-                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <div className="flex gap-2 items-center">
                         {shoe.trendScore > 0 && (
-                            <span style={{ fontSize: 9, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 5px", border: "1px solid #fde68a", fontWeight: 700 }}>
-                                ◆ {shoe.trendScore.toFixed(1)}
-                            </span>
+                            <span className="text-xs font-bold bg-warning/10 text-warning rounded px-2 py-0.5 border border-warning/20">◆ {shoe.trendScore.toFixed(1)}</span>
                         )}
-                        <span style={{ fontSize: 10, background: "#fff7ed", color: "#ea580c", borderRadius: 5, padding: "1px 6px", border: "1px solid #fed7aa", fontWeight: 600 }}>
-                            eBay
-                        </span>
+                        <span className="text-xs font-semibold bg-surface-elevated text-muted rounded px-2 py-0.5">eBay</span>
                     </div>
                 </div>
             </div>

@@ -20,9 +20,9 @@ function formatCurrency(value?: number | null): string {
 
 function DetailRow({ label, value, highlight = false }: { label: string; value: React.ReactNode; highlight?: boolean }) {
     return (
-        <div className="grid gap-1 border-b border-[#2a2b32] py-3 sm:grid-cols-[140px_1fr] sm:gap-3">
-            <div className="text-xs uppercase tracking-wide text-[#8ea0bd]">{label}</div>
-            <div className={highlight ? "font-semibold text-emerald-300" : "text-[#e7eeff]"}>{value}</div>
+        <div className="grid gap-1 border-b border-border py-3 sm:grid-cols-[140px_1fr] sm:gap-3">
+            <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
+            <div className={highlight ? "font-semibold text-emerald-300" : "text-foreground"}>{value}</div>
         </div>
     );
 }
@@ -31,13 +31,13 @@ function DetailSkeleton() {
     return (
         <div className="space-y-5 animate-pulse">
             {[0, 1, 2].map((section) => (
-                <section key={section} className="rounded-xl border border-[#2a2b32] bg-[#14161d] p-4">
-                    <div className="mb-4 h-4 w-32 rounded bg-[#253049]" />
+                <section key={section} className="rounded-xl border border-border bg-surface p-4">
+                    <div className="mb-4 h-4 w-32 rounded bg-surface-elevated" />
                     <div className="space-y-3">
                         {[0, 1, 2].map((row) => (
                             <div key={row} className="grid gap-2 sm:grid-cols-[140px_1fr]">
-                                <div className="h-3 w-24 rounded bg-[#202938]" />
-                                <div className="h-4 w-full rounded bg-[#2a3448]" />
+                                <div className="h-3 w-24 rounded bg-surface-elevated" />
+                                <div className="h-4 w-full rounded bg-surface-elevated" />
                             </div>
                         ))}
                     </div>

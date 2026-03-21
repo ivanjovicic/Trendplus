@@ -66,7 +66,7 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
                         <div style={{ fontWeight: 700, color: config.text, fontSize: "1rem" }}>
                             Circuit Breaker
                         </div>
-                        <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                        <div className="text-xs text-muted">
                             {stats.name} - {config.label}
                         </div>
                     </div>
@@ -95,25 +95,25 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
                 }}
             >
                 <div style={{ background: "rgba(0,0,0,0.05)", padding: "8px", borderRadius: "6px" }}>
-                    <div style={{ color: "#6b7280", fontSize: "0.75rem" }}>Total Requests</div>
-                    <div style={{ fontWeight: 600, color: "#111827" }}>{stats.totalRequests}</div>
+                    <div className="text-xs text-muted">Total Requests</div>
+                    <div className="font-semibold text-foreground">{stats.totalRequests}</div>
                 </div>
                 <div style={{ background: "rgba(0,0,0,0.05)", padding: "8px", borderRadius: "6px" }}>
-                    <div style={{ color: "#6b7280", fontSize: "0.75rem" }}>Failures</div>
-                    <div style={{ fontWeight: 600, color: stats.failures > 0 ? "#dc2626" : "#111827" }}>
+                    <div className="text-xs text-muted">Failures</div>
+                    <div className={stats.failures > 0 ? "font-semibold text-accent-error" : "font-semibold text-foreground"}>
                         {stats.failures}
                     </div>
                 </div>
                 <div style={{ background: "rgba(0,0,0,0.05)", padding: "8px", borderRadius: "6px" }}>
-                    <div style={{ color: "#6b7280", fontSize: "0.75rem" }}>Rejected</div>
-                    <div style={{ fontWeight: 600, color: stats.rejectedRequests > 0 ? "#f59e0b" : "#111827" }}>
+                    <div className="text-xs text-muted">Rejected</div>
+                    <div className={stats.rejectedRequests > 0 ? "font-semibold text-accent-warning" : "font-semibold text-foreground"}>
                         {stats.rejectedRequests}
                     </div>
                 </div>
                 {stats.state === "OPEN" && (
                     <div style={{ background: "rgba(0,0,0,0.05)", padding: "8px", borderRadius: "6px" }}>
-                        <div style={{ color: "#6b7280", fontSize: "0.75rem" }}>Retry In</div>
-                        <div style={{ fontWeight: 600, color: "#dc2626" }}>{displayCountdown}s</div>
+                        <div className="text-xs text-muted">Retry In</div>
+                        <div className="font-semibold text-accent-error">{displayCountdown}s</div>
                     </div>
                 )}
             </div>
@@ -126,8 +126,8 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
                         borderRadius: "6px",
                         marginBottom: "12px",
                         fontSize: "0.875rem",
-                        color: "#dc2626",
                     }}
+                    className="text-accent-error"
                 >
                     ?? Backend is temporarily unavailable.
                 </div>
@@ -141,8 +141,8 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
                         borderRadius: "6px",
                         marginBottom: "12px",
                         fontSize: "0.875rem",
-                        color: "#f59e0b",
                     }}
+                    className="text-accent-warning"
                 >
                     ?? Testing backend availability...
                 </div>

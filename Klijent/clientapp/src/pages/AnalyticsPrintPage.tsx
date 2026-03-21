@@ -26,7 +26,7 @@ export default function AnalyticsPrintPage() {
   }
 
   return (
-    <div style={{ background: "#fff", color: "#111827", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}>
+    <div style={{ background: "var(--surface)", color: "var(--foreground)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}>
       <style>{`
         @page { size: A4 landscape; margin: 14mm; }
         @media print {
@@ -34,25 +34,25 @@ export default function AnalyticsPrintPage() {
           body { background: #fff !important; }
         }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #d1d5db; padding: 8px; font-size: 12px; vertical-align: top; }
-        th { background: #f3f4f6; text-align: left; }
+        th, td { border: 1px solid var(--border); padding: 8px; font-size: 12px; vertical-align: top; }
+        th { background: var(--surface-elevated); text-align: left; }
       `}</style>
 
       <div className="analytics-print-actions" style={{ marginBottom: 20, display: "flex", gap: 12 }}>
-        <button type="button" onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #374151", background: "#111827", color: "#fff", cursor: "pointer" }}>
+        <button type="button" onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--muted)", background: "var(--foreground)", color: "var(--on-foreground)", cursor: "pointer" }}>
           Print
         </button>
-        <button type="button" onClick={() => window.close()} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #9ca3af", background: "#fff", color: "#111827", cursor: "pointer" }}>
+        <button type="button" onClick={() => window.close()} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--foreground)", cursor: "pointer" }}>
           Zatvori
         </button>
       </div>
 
       <header style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 12, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           Trendplus analitika
         </div>
         <h1 style={{ margin: "6px 0 4px", fontSize: 28 }}>{payload.tableTitle}</h1>
-        <div style={{ fontSize: 12, color: "#6b7280" }}>
+        <div style={{ fontSize: 12, color: "var(--muted)" }}>
           Table key: {params.table ?? payload.tableKey} | Generated in browser print view
         </div>
       </header>

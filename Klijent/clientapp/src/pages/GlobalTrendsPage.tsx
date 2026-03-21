@@ -272,55 +272,24 @@ export default function GlobalTrendsPage() {
     };
 
     return (
-        <div style={{ maxWidth: "1400px", margin: "2rem auto", padding: "0 1rem" }}>
+        <div className="max-w-[1400px] mx-auto my-8 px-4">
             {/* Header */}
-            <div style={{ marginBottom: "2rem" }}>
-                <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#c9d3e4", marginBottom: "0.5rem" }}>
-                    🌍 Globalna analitika trendova
-                </h1>
-                <p style={{ color: "#8A95B0", fontSize: "1rem" }}>
-                    Prati EU modne trendove i buzz sa TikToka i Instagrama
-                </p>
+            <div className="mb-8">
+                <h1 className="text-2xl font-bold mb-2 text-contrast">🌍 Globalna analitika trendova</h1>
+                <p className="text-muted">Prati EU modne trendove i buzz sa TikToka i Instagrama</p>
             </div>
 
             {/* Tabs */}
-            <div style={{ 
-                display: "flex", 
-                gap: "1rem", 
-                marginBottom: "2rem",
-                borderBottom: "2px solid #2A3045"
-            }}>
+            <div className="flex gap-4 mb-6 border-b-2 border-border">
                 <button
                     onClick={() => setActiveTab("trends")}
-                    style={{
-                        padding: "1rem 2rem",
-                        background: activeTab === "trends" ? "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" : "transparent",
-                        color: activeTab === "trends" ? "white" : "#8A95B0",
-                        border: "none",
-                        borderBottom: activeTab === "trends" ? "3px solid #3b82f6" : "none",
-                        cursor: "pointer",
-                        fontWeight: 600,
-                        fontSize: "1rem",
-                        borderRadius: "8px 8px 0 0",
-                        transition: "all 0.2s"
-                    }}
+                    className={`px-6 py-3 rounded-t-lg font-semibold text-base transition ${activeTab === 'trends' ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white border-b-4 border-indigo-500' : 'bg-transparent text-muted'}`}
                 >
                     📊 Trendovi na mrežama
                 </button>
                 <button
                     onClick={() => setActiveTab("scrapers")}
-                    style={{
-                        padding: "1rem 2rem",
-                        background: activeTab === "scrapers" ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "transparent",
-                        color: activeTab === "scrapers" ? "white" : "#8A95B0",
-                        border: "none",
-                        borderBottom: activeTab === "scrapers" ? "3px solid #10b981" : "none",
-                        cursor: "pointer",
-                        fontWeight: 600,
-                        fontSize: "1rem",
-                        borderRadius: "8px 8px 0 0",
-                        transition: "all 0.2s"
-                    }}
+                    className={`px-6 py-3 rounded-t-lg font-semibold text-base transition ${activeTab === 'scrapers' ? 'bg-gradient-to-tr from-emerald-400 to-emerald-600 text-white border-b-4 border-emerald-500' : 'bg-transparent text-muted'}`}
                 >
                     🔍 Scraperi EU tržišta
                 </button>
@@ -329,18 +298,11 @@ export default function GlobalTrendsPage() {
             {/* TRENDS TAB */}
             {activeTab === "trends" && (
                 <div>
-                    <div className="card" style={{ marginBottom: "1.5rem" }}>
-                        <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
-                            <div style={{ flex: "1", minWidth: "200px" }}>
-                                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, color: "#8A95B0" }}>
-                                    Kategorija
-                                </label>
-                                <select
-                                    className="input-big"
-                                    value={selectedCategory}
-                                    onChange={(e) => setSelectedCategory(e.target.value)}
-                                    style={{ width: "100%", marginBottom: 0 }}
-                                >
+                    <div className="card mb-6">
+                        <div className="flex gap-4 items-center flex-wrap">
+                            <div className="flex-1 min-w-[200px]">
+                                <label className="field-label">Kategorija</label>
+                                <select className="input-big w-full" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
                                     {categories.map(cat => (
                                         <option key={cat} value={cat}>{cat}</option>
                                     ))}
@@ -349,13 +311,7 @@ export default function GlobalTrendsPage() {
                             <button
                                 onClick={fetchTrends}
                                 disabled={loading}
-                                className="button-big"
-                                style={{
-                                    background: loading ? "#9ca3af" : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                                    alignSelf: "flex-end",
-                                    minWidth: "200px",
-                                    marginTop: 0
-                                }}
+                                className={`button-big min-w-[200px] ${loading ? 'opacity-60 cursor-not-allowed' : 'bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white'}`}
                             >
                                 {loading ? "⏳ Učitavanje..." : "🔍 Učitaj trendove"}
                             </button>
@@ -366,25 +322,9 @@ export default function GlobalTrendsPage() {
                     {trends.length > 0 && (
                         <div style={{ display: "grid", gap: "1.5rem", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))" }}>
                             {trends.map((trend, index) => (
-                                <div 
-                                    key={index}
-                                    className="card"
-                                    style={{
-                                        background: "white",
-                                        border: "1px solid #e5e7eb",
-                                        borderRadius: "12px",
-                                        overflow: "hidden",
-                                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
-                                    }}
-                                >
+                                <div key={index} className="card rounded-xl overflow-hidden">
                                     {/* Product Image */}
-                                    <div style={{ 
-                                        width: "100%", 
-                                        height: "250px", 
-                                        background: "#f3f4f6",
-                                        position: "relative",
-                                        overflow: "hidden"
-                                    }}>
+                                    <div className="w-full h-64 bg-surface relative overflow-hidden">
                                         <img 
                                             src={trend.imageUrl} 
                                             alt={trend.productName}
@@ -398,159 +338,60 @@ export default function GlobalTrendsPage() {
                                             }}
                                         />
                                         {/* Price badge */}
-                                        <div style={{
-                                            position: "absolute",
-                                            bottom: "10px",
-                                            left: "10px",
-                                            background: "rgba(59, 130, 246, 0.95)",
-                                            color: "white",
-                                            padding: "0.5rem 0.9rem",
-                                            borderRadius: "999px",
-                                            fontSize: "1.1rem",
-                                            fontWeight: 700,
-                                            boxShadow: "0 2px 8px rgba(59,130,246,0.15)"
-                                        }}>
+                                        <div className="absolute bottom-2 left-2 px-3 py-1 rounded-full bg-info text-white font-bold shadow">
                                             €{trend.priceEur.toFixed(2)}
                                         </div>
-                                        {/* Trend level badge */}
-                                        <div style={{
-                                            position: "absolute",
-                                            top: "10px",
-                                            right: "10px",
-                                            background: "rgba(255, 255, 255, 0.95)",
-                                            padding: "0.5rem 0.75rem",
-                                            borderRadius: "999px",
-                                            fontSize: "0.875rem",
-                                            fontWeight: 600
-                                        }}>
+                                        <div className="absolute top-2 right-2 bg-surface-elevated px-3 py-1 rounded-full text-sm font-semibold">
                                             {trend.trendLevel}
                                         </div>
                                     </div>
 
                                     {/* Product Info */}
-                                    <div style={{ padding: "1.5rem" }}>
-                                        <div style={{ marginBottom: "1rem" }}>
-                                            <div style={{ 
-                                                fontSize: "0.875rem", 
-                                                color: "#8A95B0",
-                                                marginBottom: "0.25rem",
-                                                fontWeight: 600
-                                            }}>
-                                                {trend.brand}
-                                            </div>
-                                            <h3 style={{ 
-                                                fontSize: "1.25rem", 
-                                                fontWeight: 700, 
-                                                margin: 0,
-                                                color: "#c9d3e4"
-                                            }}>
-                                                {trend.productName}
-                                            </h3>
-                                            <div style={{ 
-                                                fontSize: "1.5rem", 
-                                                fontWeight: 700, 
-                                                color: "#3b82f6",
-                                                marginTop: "0.5rem"
-                                            }}>
-                                                €{trend.priceEur.toFixed(2)}
-                                            </div>
+                                    <div className="p-6">
+                                        <div className="mb-4">
+                                            <div className="text-sm text-muted mb-1 font-semibold">{trend.brand}</div>
+                                            <h3 className="text-lg font-bold text-contrast m-0">{trend.productName}</h3>
+                                            <div className="text-2xl font-bold text-info mt-2">€{trend.priceEur.toFixed(2)}</div>
                                         </div>
 
                                         {/* Trend Scores */}
-                                        <div style={{ 
-                                            display: "grid", 
-                                            gridTemplateColumns: "repeat(3, 1fr)", 
-                                            gap: "0.75rem", 
-                                            marginBottom: "1rem",
-                                            padding: "1rem",
-                                            background: "#1A1F2E",
-                                            borderRadius: "8px"
-                                        }}>
-                                            <div style={{ textAlign: "center" }}>
-                                                <div style={{ fontSize: "0.75rem", color: "#8A95B0" }}>Trend skor</div>
-                                                <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#c9d3e4" }}>
-                                                    {trend.finalTrendScore.toFixed(1)}
-                                                </div>
+                                        <div className="grid grid-cols-3 gap-3 mb-4 p-4 bg-surface-darker rounded">
+                                            <div className="text-center">
+                                                <div className="text-xs text-muted">Trend skor</div>
+                                                <div className="text-lg font-bold text-contrast">{trend.finalTrendScore.toFixed(1)}</div>
                                             </div>
-                                            <div style={{ textAlign: "center" }}>
-                                                <div style={{ fontSize: "0.75rem", color: "#8A95B0" }}>TikTok</div>
-                                                <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#dc2626" }}>
-                                                    {trend.tiktokScore.toFixed(1)}
-                                                </div>
+                                            <div className="text-center">
+                                                <div className="text-xs text-muted">TikTok</div>
+                                                <div className="text-lg font-bold text-error">{trend.tiktokScore.toFixed(1)}</div>
                                             </div>
-                                            <div style={{ textAlign: "center" }}>
-                                                <div style={{ fontSize: "0.75rem", color: "#8A95B0" }}>Instagram</div>
-                                                <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#c026d3" }}>
-                                                    {trend.instagramScore.toFixed(1)}
-                                                </div>
+                                            <div className="text-center">
+                                                <div className="text-xs text-muted">Instagram</div>
+                                                <div className="text-lg font-bold text-accent">{trend.instagramScore.toFixed(1)}</div>
                                             </div>
                                         </div>
 
                                         {/* Key Features */}
-                                        <div style={{ marginBottom: "1rem" }}>
-                                            <div style={{ 
-                                                fontSize: "0.875rem", 
-                                                fontWeight: 600, 
-                                                color: "#c9d3e4",
-                                                marginBottom: "0.5rem"
-                                            }}>
-                                                Ključne karakteristike:
-                                            </div>
-                                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                                        <div className="mb-4">
+                                            <div className="text-sm font-semibold text-contrast mb-2">Ključne karakteristike:</div>
+                                            <div className="flex flex-wrap gap-2">
                                                 {trend.keyFeatures.map((feature, idx) => (
-                                                    <span 
-                                                        key={idx}
-                                                        style={{
-                                                            padding: "0.25rem 0.75rem",
-                                                            background: "rgba(79, 142, 247, 0.15)",
-                                                            color: "#4F8EF7",
-                                                            borderRadius: "999px",
-                                                            fontSize: "0.75rem",
-                                                            fontWeight: 500
-                                                        }}
-                                                    >
-                                                        {feature}
-                                                    </span>
+                                                    <span key={idx} className="px-3 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">{feature}</span>
                                                 ))}
                                             </div>
                                         </div>
 
                                         {/* Popular Colors */}
-                                        <div style={{ marginBottom: "1rem" }}>
-                                            <div style={{ 
-                                                fontSize: "0.875rem", 
-                                                fontWeight: 600, 
-                                                color: "#c9d3e4",
-                                                marginBottom: "0.5rem"
-                                            }}>
-                                                Popularne boje:
-                                            </div>
-                                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                                        <div className="mb-4">
+                                            <div className="text-sm font-semibold text-muted mb-2">Popularne boje:</div>
+                                            <div className="flex flex-wrap gap-2">
                                                 {trend.popularColors.map((color, idx) => (
-                                                    <span 
-                                                        key={idx}
-                                                        style={{
-                                                            padding: "0.25rem 0.75rem",
-                                                            background: "#2A3045",
-                                                            color: "#c9d3e4",
-                                                            borderRadius: "999px",
-                                                            fontSize: "0.75rem",
-                                                            fontWeight: 500
-                                                        }}
-                                                    >
-                                                        {color}
-                                                    </span>
+                                                    <span key={idx} className="px-3 py-1 rounded-full text-xs font-medium bg-surface-elevated text-muted">{color}</span>
                                                 ))}
                                             </div>
                                         </div>
 
                                         {/* Social Stats */}
-                                        <div style={{ 
-                                            fontSize: "0.75rem", 
-                                            color: "#8A95B0",
-                                            borderTop: "1px solid #2A3045",
-                                            paddingTop: "1rem"
-                                        }}>
+                                        <div className="text-xs text-muted border-t border-border pt-4">
                                             <div>📱 TikTok: {(trend.tiktokViews / 1000000000).toFixed(1)}B views</div>
                                             <div>📸 Instagram: {(trend.instagramPosts / 1000000).toFixed(1)}M posts</div>
                                         </div>
@@ -561,8 +402,8 @@ export default function GlobalTrendsPage() {
                     )}
 
                     {trends.length === 0 && !loading && (
-                        <div className="card" style={{ textAlign: "center", padding: "3rem", color: "#8A95B0" }}>
-                            <p style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>📊 Nema podataka o trendovima</p>
+                        <div className="card text-center p-12 text-muted">
+                            <p className="text-lg mb-2">📊 Nema podataka o trendovima</p>
                             <p>Odaberite kategoriju i kliknite "🔍 Učitaj trendove"</p>
                         </div>
                     )}
@@ -572,17 +413,17 @@ export default function GlobalTrendsPage() {
             {/* SCRAPERS TAB */}
             {activeTab === "scrapers" && (
                 <div>
-                    <div className="card" style={{ marginBottom: "1.5rem" }}>
-                        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                            <div style={{ minWidth: 180 }}>
+                    <div className="card mb-6">
+                        <div className="flex gap-3 items-center flex-wrap">
+                            <div className="min-w-[180px]">
                                 <label className="field-label">Zalando stranice</label>
                                 <input type="number" className="input-big" value={zalandoPages} min={1} onChange={(e) => setZalandoPages(Number(e.target.value) || 1)} />
                             </div>
-                            <div style={{ minWidth: 180 }}>
+                            <div className="min-w-[180px]">
                                 <label className="field-label">Deichmann stranice</label>
                                 <input type="number" className="input-big" value={deichmannPages} min={1} onChange={(e) => setDeichmannPages(Number(e.target.value) || 1)} />
                             </div>
-                            <div style={{ minWidth: 220 }}>
+                            <div className="min-w-[220px]">
                                 <label className="field-label">Kategorija</label>
                                 <select className="input-big" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
                                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -592,11 +433,7 @@ export default function GlobalTrendsPage() {
                                 <button
                                     onClick={runScrapers}
                                     disabled={loading}
-                                    className="button-big"
-                                    style={{
-                                        background: loading ? "#9ca3af" : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                                        minWidth: "200px"
-                                    }}
+                                    className={`button-big min-w-[200px] ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 >
                                     {loading ? "⏳ Pokrećanje..." : "🚀 Pokreni scrapere"}
                                 </button>
@@ -605,22 +442,9 @@ export default function GlobalTrendsPage() {
                     </div>
 
                     {/* FILTER BAR – Modernized */}
-                    <div 
-                        style={{
-                            marginTop: "1.5rem",
-                            marginBottom: "1.5rem",
-                            padding: "1.25rem",
-                            borderRadius: "12px",
-                            background: "#161A23",
-                            border: "1px solid #2A3045",
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: "1rem",
-                            alignItems: "flex-end"
-                        }}
-                    >
+                    <div className="mt-6 mb-6 p-5 rounded-lg bg-surface border border-border flex flex-wrap gap-4 items-end">
                         {/* Brand (Searchable Select) */}
-                        <div style={{ minWidth: 220 }}>
+                        <div className="min-w-[220px]">
                             <label className="field-label">Brend</label>
                             <SearchableSelect 
                                 value={filterBrand}
@@ -632,7 +456,7 @@ export default function GlobalTrendsPage() {
                         </div>
 
                         {/* Gender with icons */}
-                        <div style={{ minWidth: 160 }}>
+                        <div className="min-w-[160px]">
                             <label className="field-label">Pol</label>
                             <select
                                 className="input-big"
@@ -646,7 +470,7 @@ export default function GlobalTrendsPage() {
                             </select>
                         </div>
 
-                        <div style={{ minWidth: 200 }}>
+                        <div className="min-w-[200px]">
                             <label className="field-label">Zalando zemlja</label>
                             <select
                                 className="input-big"
@@ -662,7 +486,7 @@ export default function GlobalTrendsPage() {
                         </div>
 
                         {/* Price Range */}
-                        <div style={{ minWidth: 150 }}>
+                        <div className="min-w-[150px]">
                             <label className="field-label">Min cena (€)</label>
                             <input
                                 type="number"
@@ -675,7 +499,7 @@ export default function GlobalTrendsPage() {
                             />
                         </div>
 
-                        <div style={{ minWidth: 150 }}>
+                        <div className="min-w-[150px]">
                             <label className="field-label">Max cena (€)</label>
                             <input
                                 type="number"
@@ -689,7 +513,7 @@ export default function GlobalTrendsPage() {
                         </div>
 
                         {/* Sort */}
-                        <div style={{ minWidth: 160 }}>
+                        <div className="min-w-[160px]">
                             <label className="field-label">Sortiranje</label>
                             <select
                                 className="input-big"
@@ -704,7 +528,7 @@ export default function GlobalTrendsPage() {
                         </div>
 
                         {/* Pages */}
-                        <div style={{ minWidth: 100 }}>
+                        <div className="min-w-[100px]">
                             <label className="field-label">Stranice</label>
                             <input
                                 type="number"
@@ -715,7 +539,7 @@ export default function GlobalTrendsPage() {
                             />
                         </div>
 
-                        <div style={{ minWidth: 260 }}>
+                        <div className="min-w-[260px]">
                             <label className="field-label">Nova kolekcija</label>
                             <select
                                 className="input-big"
@@ -730,32 +554,19 @@ export default function GlobalTrendsPage() {
                         </div>
 
                         {/* Import switch */}
-                        <label 
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.5rem",
-                                cursor: "pointer",
-                                marginTop: "auto"
-                            }}
-                        >
+                        <label className="flex items-center gap-2 cursor-pointer mt-auto">
                             <input
                                 type="checkbox"
                                 checked={filterImportToCore}
                                 onChange={(e) => setFilterImportToCore(e.target.checked)}
                             />
-                            <span style={{ fontSize: 14, color: "#c9d3e4" }}>Uvezi u bazu</span>
+                            <span className="text-sm text-muted">Uvezi u bazu</span>
                         </label>
 
                         {/* Run button */}
                         <button
                             onClick={runZalandoFiltered}
-                            className="button-big"
-                            style={{
-                                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                                marginLeft: "auto",
-                                minWidth: 180,
-                            }}
+                            className="button-big ml-auto min-w-[180px] bg-gradient-to-tr from-indigo-500 to-indigo-600"
                         >
                             🔍 Pokreni pretragu
                         </button>
@@ -765,22 +576,10 @@ export default function GlobalTrendsPage() {
                         <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
                             {scraperResults.map((result, index) => (
                                 <div key={index} className="card">
-                                    <h3 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1rem" }}>
-                                        {result.source}
-                                    </h3>
-                                    <div style={{ fontSize: "2rem", fontWeight: 700, color: "#10b981", marginBottom: "0.5rem" }}>
-                                        {result.productsCount}
-                                    </div>
-                                    <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>products scraped</div>
-                                    <div style={{
-                                        marginTop: "1rem",
-                                        padding: "0.5rem",
-                                        background: "#ecfdf5",
-                                        borderRadius: "6px",
-                                        textAlign: "center",
-                                        color: "#059669",
-                                        fontWeight: 600
-                                    }}>
+                                    <h3 className="text-xl font-semibold mb-4">{result.source}</h3>
+                                    <div className="text-4xl font-extrabold text-accent-success mb-2">{result.productsCount}</div>
+                                    <div className="text-sm text-muted">products scraped</div>
+                                    <div className="mt-4 px-3 py-2 rounded text-center font-semibold bg-accent-success/10 text-accent-success">
                                         ✅ {result.status}
                                     </div>
                                 </div>
@@ -799,27 +598,27 @@ export default function GlobalTrendsPage() {
                             <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Rezultati scraper-a</h3>
                             <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
                                 {scrapedProducts.map((p) => (
-                                    <div key={p.id} className="card" style={{ padding: 12 }}>
-                                        <div style={{ width: "100%", height: 160, overflow: "hidden", borderRadius: 8, background: "#f3f4f6" }}>
-                                            {p.imageUrl ? (
-                                                <img
-                                                    src={p.imageUrl}
-                                                    alt={p.name}
-                                                    style={{ width: "100%", height: "100%", objectFit: "cover", cursor: 'pointer' }}
-                                                    onClick={() => openImageModal(p.imageUrl, p.name)}
-                                                    onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=No+Image" }}
-                                                />
-                                            ) : null}
-                                        </div>
-                                        <div style={{ paddingTop: 8 }}>
-                                            <div style={{ fontSize: 12, color: "#8A95B0" }}>{p.brand}</div>
-                                            <div style={{ fontWeight: 700, margin: "6px 0", color: "#c9d3e4" }}>{p.name}</div>
-                                            <div style={{ color: "#059669", fontWeight: 700 }}>{p.price != null ? `${p.price}` : "-"}</div>
-                                            {p.url && (
-                                                <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: "#4F8EF7" }}>Pogledaj</a>
-                                            )}
-                                        </div>
-                                    </div>
+                                    <div key={p.id} className="card p-3">
+                                                <div className="w-full h-40 overflow-hidden rounded-md bg-surface">
+                                                    {p.imageUrl ? (
+                                                        <img
+                                                            src={p.imageUrl}
+                                                            alt={p.name}
+                                                            style={{ width: "100%", height: "100%", objectFit: "cover", cursor: 'pointer' }}
+                                                            onClick={() => openImageModal(p.imageUrl, p.name)}
+                                                            onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=No+Image" }}
+                                                        />
+                                                    ) : null}
+                                                </div>
+                                                <div className="pt-2">
+                                                    <div className="text-xs text-muted">{p.brand}</div>
+                                                    <div className="font-semibold my-1 text-foreground">{p.name}</div>
+                                                    <div className="text-accent-success font-semibold">{p.price != null ? `${p.price}` : "-"}</div>
+                                                    {p.url && (
+                                                        <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">Pogledaj</a>
+                                                    )}
+                                                </div>
+                                            </div>
                                 ))}
                             </div>
                         </div>
@@ -830,27 +629,27 @@ export default function GlobalTrendsPage() {
                             <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Zalando ad-hoc rezultati</h3>
                             <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
                                 {adhocProducts.map((p: any, idx: number) => (
-                                    <div key={idx} className="card" style={{ padding: 12 }}>
-                                        <div style={{ width: "100%", height: 160, overflow: "hidden", borderRadius: 8, background: "#1A1F2E" }}>
-                                            {p.image_url ? (
-                                                <img
-                                                    src={p.image_url}
-                                                    alt={p.name}
-                                                    style={{ width: "100%", height: "100%", objectFit: "cover", cursor: 'pointer' }}
-                                                    onClick={() => openImageModal(p.image_url, p.name)}
-                                                    onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=No+Image" }}
-                                                />
-                                            ) : null}
+                                    <div key={idx} className="card p-3">
+                                            <div className="w-full h-40 overflow-hidden rounded-md bg-surface-elevated">
+                                                {p.image_url ? (
+                                                    <img
+                                                        src={p.image_url}
+                                                        alt={p.name}
+                                                        style={{ width: "100%", height: "100%", objectFit: "cover", cursor: 'pointer' }}
+                                                        onClick={() => openImageModal(p.image_url, p.name)}
+                                                        onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=No+Image" }}
+                                                    />
+                                                ) : null}
+                                            </div>
+                                            <div className="pt-2">
+                                                <div className="text-xs text-muted">{p.brand}</div>
+                                                <div className="font-semibold my-1 text-foreground">{p.name}</div>
+                                                <div className="text-accent-success font-semibold">{p.price || "-"}</div>
+                                                {p.url && (
+                                                    <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">Pogledaj</a>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div style={{ paddingTop: 8 }}>
-                                            <div style={{ fontSize: 12, color: "#8A95B0" }}>{p.brand}</div>
-                                            <div style={{ fontWeight: 700, margin: "6px 0", color: "#c9d3e4" }}>{p.name}</div>
-                                            <div style={{ color: "#059669", fontWeight: 700 }}>{p.price || "-"}</div>
-                                            {p.url && (
-                                                <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: "#4F8EF7" }}>Pogledaj</a>
-                                            )}
-                                        </div>
-                                    </div>
                                 ))}
                             </div>
                         </div>

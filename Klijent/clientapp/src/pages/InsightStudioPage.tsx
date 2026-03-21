@@ -298,7 +298,7 @@ const fmtNum = (v: number) => v.toLocaleString("sr-RS");
 function changeBadge(change: number, suffix = "%") {
   const up = change >= 0;
   return (
-    <span className={`ml-1 text-[11px] font-semibold ${up ? "text-[#4CAF82]" : "text-[#E05C5C]"}`}>
+    <span className={`ml-1 text-[11px] font-semibold ${up ? "text-success" : "text-error"}`}>
       {up ? "▲" : "▼"} {Math.abs(change).toFixed(1)}{suffix}
     </span>
   );
@@ -317,22 +317,22 @@ function KpiCard({
   const [showTip, setShowTip] = useState(false);
   return (
     <div
-      className="group relative rounded-xl border border-[#2A3045] bg-[#161A23] p-4 flex flex-col gap-1 overflow-hidden transition hover:border-[#3A4565]"
+      className="group relative rounded-xl border border-border bg-surface p-4 flex flex-col gap-1 overflow-hidden transition hover:border-border-hover"
       onMouseEnter={() => setShowTip(true)} onMouseLeave={() => setShowTip(false)}
     >
       <div className="absolute left-0 top-0 h-[3px] w-full opacity-80" style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }} />
-      <div className="flex items-center gap-1.5 text-[11px] text-[#8A95B0] uppercase tracking-wider">
+      <div className="flex items-center gap-1.5 text-[11px] text-muted uppercase tracking-wider">
         {icon && <span className="text-sm">{icon}</span>}
         {label}
         {tooltip && showTip && (
-          <div className="absolute left-4 top-full z-20 mt-1 max-w-[220px] rounded-lg bg-[#1E2332] border border-[#2A3045] px-3 py-2 text-[11px] text-[#8A95B0] normal-case tracking-normal shadow-xl">
+          <div className="absolute left-4 top-full z-20 mt-1 max-w-[220px] rounded-lg bg-surface-darker border border-border px-3 py-2 text-[11px] text-muted normal-case tracking-normal shadow-xl">
             {tooltip}
           </div>
         )}
       </div>
-      <div className="text-xl font-bold text-[#E8ECF4]">{value}</div>
+      <div className="text-xl font-bold text-foreground">{value}</div>
       {sub && (
-        <div className="text-[11px] text-[#8A95B0]">
+        <div className="text-[11px] text-muted">
           {sub}
           {change !== undefined && changeBadge(change)}
         </div>
@@ -361,9 +361,9 @@ function Skeleton({ rows = 5 }: { rows?: number }) {
     <div className="space-y-3 animate-pulse">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex gap-3">
-          <div className="h-4 flex-1 bg-[#2A3045] rounded" />
-          <div className="h-4 w-20 bg-[#2A3045] rounded" />
-          <div className="h-4 w-20 bg-[#2A3045] rounded" />
+          <div className="h-4 flex-1 bg-border rounded" />
+          <div className="h-4 w-20 bg-border rounded" />
+          <div className="h-4 w-20 bg-border rounded" />
         </div>
       ))}
     </div>
@@ -371,7 +371,7 @@ function Skeleton({ rows = 5 }: { rows?: number }) {
 }
 
 function CardSkeleton() {
-  return <div className="rounded-xl border border-[#2A3045] bg-[#161A23] p-4 animate-pulse"><div className="h-3 w-24 bg-[#2A3045] rounded mb-3" /><div className="h-6 w-32 bg-[#2A3045] rounded mb-2" /><div className="h-3 w-20 bg-[#2A3045] rounded" /></div>;
+  return <div className="rounded-xl border border-border bg-surface p-4 animate-pulse"><div className="h-3 w-24 bg-border rounded mb-3" /><div className="h-6 w-32 bg-border rounded mb-2" /><div className="h-3 w-20 bg-border rounded" /></div>;
 }
 
 function Badge({ label, color }: { label: string; color: string }) {
@@ -396,8 +396,8 @@ function ScoreBar({ label, score, max = 100 }: { label: string; score: number; m
 
 function MiniStat({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
-    <div className="rounded-lg bg-[#1E2332] px-3 py-2">
-      <div className="text-[10px] text-[#8A95B0] uppercase">{label}</div>
+    <div className="rounded-lg bg-surface-darker px-3 py-2">
+      <div className="text-[10px] text-muted uppercase">{label}</div>
       <div className="font-semibold text-sm" style={{ color: color ?? PAL.textPrimary }}>{value}</div>
     </div>
   );
@@ -406,8 +406,8 @@ function MiniStat({ label, value, color }: { label: string; value: string | numb
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-4">
-      <h3 className="text-sm font-semibold text-[#c9d3e4]">{title}</h3>
-      {subtitle && <p className="text-[10px] text-[#8A95B0] mt-0.5">{subtitle}</p>}
+      <h3 className="text-sm font-semibold text-contrast">{title}</h3>
+      {subtitle && <p className="text-[10px] text-muted mt-0.5">{subtitle}</p>}
     </div>
   );
 }
@@ -459,28 +459,28 @@ function OverviewTab({
     <div className="space-y-6">
       {/* Weekly Changelog Alert Strip */}
       {changelog && (
-        <div className="rounded-xl border border-[#2A3045] bg-[#161A23] p-5">
+        <div className="rounded-xl border border-border bg-surface p-5">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-base">🔔</span>
-            <h3 className="text-sm font-bold text-[#c9d3e4]">Šta se promenilo ove nedelje?</h3>
+            <h3 className="text-sm font-bold text-contrast">Šta se promenilo ove nedelje?</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-lg bg-[#1E2332] px-3 py-2">
-              <div className="text-[10px] text-[#8A95B0] uppercase">Prihod ove nedelje</div>
-              <div className="text-sm font-bold text-[#E8ECF4]">{fmtRsd(changelog.thisWeekRevenue)}</div>
+            <div className="rounded-lg bg-surface-darker px-3 py-2">
+              <div className="text-[10px] text-muted uppercase">Prihod ove nedelje</div>
+              <div className="text-sm font-bold text-foreground">{fmtRsd(changelog.thisWeekRevenue)}</div>
               <div className="text-[11px]">{changeBadge(changelog.revenueChangePct)}</div>
             </div>
-            <div className="rounded-lg bg-[#1E2332] px-3 py-2">
-              <div className="text-[10px] text-[#8A95B0] uppercase">Prodato kom.</div>
-              <div className="text-sm font-bold text-[#E8ECF4]">{fmtNum(changelog.thisWeekUnits)}</div>
+            <div className="rounded-lg bg-surface-darker px-3 py-2">
+              <div className="text-[10px] text-muted uppercase">Prodato kom.</div>
+              <div className="text-sm font-bold text-foreground">{fmtNum(changelog.thisWeekUnits)}</div>
               <div className="text-[11px]">{changeBadge(changelog.unitChangePct)}</div>
             </div>
-            <div className="rounded-lg bg-[#1E2332] px-3 py-2">
-              <div className="text-[10px] text-[#8A95B0] uppercase">Transakcije</div>
-              <div className="text-sm font-bold text-[#E8ECF4]">{fmtNum(changelog.thisWeekTransactions)}</div>
+            <div className="rounded-lg bg-surface-darker px-3 py-2">
+              <div className="text-[10px] text-muted uppercase">Transakcije</div>
+              <div className="text-sm font-bold text-foreground">{fmtNum(changelog.thisWeekTransactions)}</div>
             </div>
-            <div className="rounded-lg bg-[#1E2332] px-3 py-2">
-              <div className="text-[10px] text-[#8A95B0] uppercase">OOS / Promene cena</div>
+            <div className="rounded-lg bg-surface-darker px-3 py-2">
+              <div className="text-[10px] text-muted uppercase">OOS / Promene cena</div>
               <div className="text-sm font-bold" style={{ color: changelog.oosCount > 5 ? PAL.red : PAL.textPrimary }}>{changelog.oosCount} / {changelog.priceChangesThisWeek}</div>
             </div>
           </div>
@@ -488,14 +488,14 @@ function OverviewTab({
           {/* Category movement */}
           {changelog.categoryChanges.length > 0 && (
             <div className="mt-4">
-              <div className="text-[11px] text-[#8A95B0] uppercase mb-2">Promene po kategorijama (nedelja-na-nedelju)</div>
+              <div className="text-[11px] text-muted uppercase mb-2">Promene po kategorijama (nedelja-na-nedelju)</div>
               <div className="flex flex-wrap gap-2">
                 {changelog.categoryChanges.slice(0, 8).map((c) => (
                   <div
                     key={c.kategorija}
-                    className="rounded-lg border border-[#2A3045] bg-[#0D0F14] px-3 py-1.5 text-xs"
+                    className="rounded-lg border border-border bg-[#0D0F14] px-3 py-1.5 text-xs"
                   >
-                    <span className="text-[#c9d3e4] font-medium">{c.kategorija}</span>
+                    <span className="text-contrast font-medium">{c.kategorija}</span>
                     {changeBadge(c.changePct)}
                   </div>
                 ))}
@@ -507,10 +507,10 @@ function OverviewTab({
 
       {/* Margin Pressure Alerts */}
       {marginAlerts && marginAlerts.alerts.length > 0 && (
-        <div className="rounded-xl border border-[#E05C5C]/20 bg-[#E05C5C]/5 p-5">
+        <div className="rounded-xl border border-error/20 bg-error/5 p-5">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-base">⚠️</span>
-            <h3 className="text-sm font-bold text-[#E05C5C]">
+            <h3 className="text-sm font-bold text-error">
               Margin Pressure — {marginAlerts.summary.negativeMarginCount + marginAlerts.summary.lowMarginCount} artikala ugroženo
             </h3>
           </div>
@@ -521,10 +521,10 @@ function OverviewTab({
           </div>
           <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
             {marginAlerts.alerts.slice(0, 8).map((a) => (
-              <div key={a.artikalId} className="flex items-center gap-3 rounded-lg bg-[#161A23] border border-[#2A3045] px-3 py-2 text-xs">
+              <div key={a.artikalId} className="flex items-center gap-3 rounded-lg bg-surface border border-border px-3 py-2 text-xs">
                 <Badge label={a.alertType === "NEGATIVE_MARGIN" ? "NEG" : a.alertType === "LOW_MARGIN" ? "LOW" : "MD"} color={a.alertType === "NEGATIVE_MARGIN" ? PAL.red : PAL.orange} />
-                <span className="flex-1 text-[#E8ECF4] truncate">{a.naziv}</span>
-                <span className="text-[#8A95B0]">{a.kategorija}</span>
+                <span className="flex-1 text-foreground truncate">{a.naziv}</span>
+                <span className="text-muted">{a.kategorija}</span>
                 <span style={{ color: a.marginPct < 0 ? PAL.red : PAL.orange }}>{fmtPct(a.marginPct)}</span>
               </div>
             ))}

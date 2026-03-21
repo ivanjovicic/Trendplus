@@ -52,6 +52,8 @@ import DataQualityPage from "./pages/DataQualityPage";
 import Modal from "./components/Modal";
 import AnalyticsDetailPage from "./pages/AnalyticsDetailPage";
 import AnalyticsPrintPage from "./pages/AnalyticsPrintPage";
+import ThemeSettingsPage from "./pages/ThemeSettingsPage";
+import { ThemeProvider } from "./context/ThemeContext";
 
 function AppShell() {
     const location = useLocation();
@@ -110,6 +112,8 @@ function AppShell() {
                 <Route path="/runtime-scoring" element={<RuntimeScoringPage />} />
                 <Route path="/access-import" element={<AccessImportPage />} />
                 <Route path="/admin/common-products" element={<CommonProductsPage />} />
+                <Route path="/settings/themes" element={<ThemeSettingsPage />} />
+                <Route path="/settings/themes" element={<ThemeSettingsPage />} />
             </Routes>
 
             {backgroundLocation ? (
@@ -157,11 +161,13 @@ function AppRouterContent() {
 export default function App() {
     return (
         <ErrorBoundary>
-            <ToastProvider>
-                <BrowserRouter>
-                    <AppRouterContent />
-                </BrowserRouter>
-            </ToastProvider>
+            <ThemeProvider defaultTheme="inventory-dark">
+                <ToastProvider>
+                    <BrowserRouter>
+                        <AppRouterContent />
+                    </BrowserRouter>
+                </ToastProvider>
+            </ThemeProvider>
         </ErrorBoundary>
     );
 }

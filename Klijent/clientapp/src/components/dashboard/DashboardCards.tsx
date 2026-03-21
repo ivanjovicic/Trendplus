@@ -20,13 +20,13 @@ export default function DashboardCards() {
             <Link
               key={item.to}
               to={item.to}
-              className="group rounded-2xl border border-[#2b2d34] bg-[#1a1b1f] p-4 shadow-[0_12px_30px_-20px_rgba(0,0,0,0.85)] transition hover:-translate-y-0.5 hover:border-[#3e64b8] hover:bg-[#1f2330]"
+              className="group rounded-2xl border border-muted surface-elevated p-4 shadow-lg transition hover:-translate-y-0.5 hover:border-[var(--info)] hover:bg-[var(--surface-light)]"
             >
-              <div className="mb-3 inline-flex rounded-lg border border-[#3b3d47] bg-[#15161b] p-2 text-[#79a1ff] transition group-hover:border-[#5576be] group-hover:text-[#9fbfff]">
+              <div className="mb-3 inline-flex rounded-lg border border-muted bg-[var(--surface-darker)] p-2 text-[var(--info)] transition group-hover:border-secondary group-hover:opacity-80">
                 <Icon size={18} />
               </div>
-              <h3 className="text-base font-semibold text-white">{item.title}</h3>
-              <p className="mt-1 text-sm text-[#8f9bb2]">{item.subtitle}</p>
+              <h3 className="text-base font-semibold text-contrast">{item.title}</h3>
+              <p className="mt-1 text-sm text-muted">{item.subtitle}</p>
             </Link>
           );
         })}

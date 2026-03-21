@@ -62,11 +62,11 @@ export default function PerformanceDashboard() {
         return `${(ms / 1000).toFixed(2)}s`;
     };
 
-    const getDurationColor = (ms: number) => {
-        if (ms < 1000) return "#059669"; // green
-        if (ms < 3000) return "#f59e0b"; // yellow
-        if (ms < 5000) return "#f97316"; // orange
-        return "#dc2626"; // red
+    const getDurationClass = (ms: number) => {
+        if (ms < 1000) return "text-success";
+        if (ms < 3000) return "text-warning";
+        if (ms < 5000) return "text-accent-warning";
+        return "text-error";
     };
 
     const handleSort = (key: SortKey) => {
@@ -111,87 +111,55 @@ export default function PerformanceDashboard() {
     };
 
     return (
-        <div className="card" style={{ maxWidth: "1400px" }}>
-            <h2 className="text-2xl font-semibold mb-6">⚡ Performance Dashboard</h2>
+        <div className="card max-w-[1400px]">
+            <h2 className="text-2xl font-bold mb-6 text-contrast">
+                ⚡ Performance Dashboard
+            </h2>
 
             {/* Summary Cards */}
             {summary && (
-                <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: "1rem",
-                    marginBottom: "2rem"
-                }}>
-                    <div style={{
-                        background: "#eff6ff",
-                        padding: "1.5rem",
-                        borderRadius: "12px",
-                        border: "2px solid #2563eb"
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                    <div className="p-4 rounded-xl border-2 border-info bg-info/10">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
                             Total Requests
                         </div>
-                        <div style={{ fontSize: "2rem", fontWeight: 700, color: "#2563eb" }}>
+                        <div className="text-3xl font-bold text-info">
                             {summary.totalRequests}
                         </div>
                     </div>
 
-                    <div style={{
-                        background: "#fef3c7",
-                        padding: "1.5rem",
-                        borderRadius: "12px",
-                        border: "2px solid #f59e0b"
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
+                    <div className="p-4 rounded-xl border-2 border-warning bg-warning/10">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
                             Slow Requests (&gt;1s)
                         </div>
-                        <div style={{ fontSize: "2rem", fontWeight: 700, color: "#f59e0b" }}>
+                        <div className="text-3xl font-bold text-warning">
                             {summary.slowRequests}
                         </div>
                     </div>
 
-                    <div style={{
-                        background: summary.failedRequests > 0 ? "#fef2f2" : "#f0fdf4",
-                        padding: "1.5rem",
-                        borderRadius: "12px",
-                        border: `2px solid ${summary.failedRequests > 0 ? "#dc2626" : "#059669"}`
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
+                    <div className={`p-4 rounded-xl border-2 ${summary.failedRequests > 0 ? "border-error bg-error/10" : "border-success bg-success/10"}`}>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
                             Failed Requests
                         </div>
-                        <div style={{
-                            fontSize: "2rem",
-                            fontWeight: 700,
-                            color: summary.failedRequests > 0 ? "#dc2626" : "#059669"
-                        }}>
+                        <div className={`text-3xl font-bold ${summary.failedRequests > 0 ? "text-error" : "text-success"}`}>
                             {summary.failedRequests}
                         </div>
                     </div>
 
-                    <div style={{
-                        background: "#f3f4f6",
-                        padding: "1.5rem",
-                        borderRadius: "12px",
-                        border: "2px solid #6b7280"
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
+                    <div className="p-4 rounded-xl border-2 border-muted bg-surface-darker">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
                             Average Duration
                         </div>
-                        <div style={{ fontSize: "2rem", fontWeight: 700, color: "#374151" }}>
+                        <div className="text-3xl font-bold text-contrast">
                             {formatDuration(summary.averageDurationMs)}
                         </div>
                     </div>
 
-                    <div style={{
-                        background: "#fef2f2",
-                        padding: "1.5rem",
-                        borderRadius: "12px",
-                        border: "2px solid #dc2626"
-                    }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>
+                    <div className="p-4 rounded-xl border-2 border-error bg-error/5">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
                             Max Duration
                         </div>
-                        <div style={{ fontSize: "2rem", fontWeight: 700, color: "#dc2626" }}>
+                        <div className="text-3xl font-bold text-error">
                             {formatDuration(summary.maxDurationMs)}
                         </div>
                     </div>
@@ -199,167 +167,140 @@ export default function PerformanceDashboard() {
             )}
 
             {/* Filters */}
-            <div className="toolbar" style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "1rem",
-                marginBottom: "1.5rem",
-                background: "#f9fafb"
-            }}>
-                <div>
-                    <label className="field-label" style={{ fontSize: "0.875rem" }}>Top Count</label>
+            <div className="toolbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 rounded-xl border border-muted bg-surface-darker">
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Broj zapisa</label>
                     <input
                         type="number"
-                        className="input-big"
+                        className="input-big w-full"
                         value={topCount}
                         onChange={(e) => setTopCount(Number(e.target.value))}
                         min={1}
                         max={100}
-                        style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     />
                 </div>
 
-                <div>
-                    <label className="field-label" style={{ fontSize: "0.875rem" }}>Min Duration (ms)</label>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Min. trajanje (ms)</label>
                     <input
                         type="number"
-                        className="input-big"
+                        className="input-big w-full"
                         value={minDuration}
                         onChange={(e) => setMinDuration(Number(e.target.value))}
                         min={0}
                         step={100}
-                        style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     />
                 </div>
 
-                <div>
-                    <label className="field-label" style={{ fontSize: "0.875rem" }}>Od datuma</label>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Od datuma</label>
                     <input
                         type="datetime-local"
-                        className="input-big"
+                        className="input-big w-full"
                         value={fromDate}
                         onChange={(e) => setFromDate(e.target.value)}
-                        style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     />
                 </div>
 
-                <div>
-                    <label className="field-label" style={{ fontSize: "0.875rem" }}>Do datuma</label>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Do datuma</label>
                     <input
                         type="datetime-local"
-                        className="input-big"
+                        className="input-big w-full"
                         value={toDate}
                         onChange={(e) => setToDate(e.target.value)}
-                        style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     />
                 </div>
 
-                <div style={{ display: "flex", alignItems: "flex-end" }}>
+                <div className="flex items-end">
                     <button
-                        className="button-big button-secondary"
+                        className="button-big button-secondary w-full"
                         onClick={() => {
                             setTopCount(20);
                             setMinDuration(1000);
                             setFromDate("");
                             setToDate("");
                         }}
-                        style={{ padding: "8px 16px", marginTop: 0, marginBottom: 0, fontSize: "0.95rem" }}
                         type="button"
                     >
-                        Reset
+                        Resetuj
                     </button>
                 </div>
             </div>
 
-            {/* Loading / Error */}
-            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
-            {error && <p className="error-msg">{error}</p>}
-
-            {/* Slowest Requests Table */}
-            {!loading && !error && (
-                <>
-                    <h3 className="text-lg font-semibold" style={{ marginBottom: "1rem" }}>
-                        Najsporiji zahtevi
-                    </h3>
-
-                    <div style={{ overflowX: "auto" }}>
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("timestamp")}>
-                                        Vreme {getSortIcon("timestamp")}
-                                    </th>
-                                    <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("requestName")}>
-                                        Request {getSortIcon("requestName")}
-                                    </th>
-                                    <th style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("durationMs")}>
-                                        Trajanje {getSortIcon("durationMs")}
-                                    </th>
-                                    <th style={{ textAlign: "center", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("isSuccess")}>
-                                        Status {getSortIcon("isSuccess")}
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedStats.map((stat) => (
-                                    <React.Fragment key={stat.id}>
-                                        <tr style={{ background: stat.isSuccess ? "#ffffff" : "#fef2f2" }}>
-                                            <td style={{ whiteSpace: "nowrap", fontFamily: "monospace", fontSize: "0.8rem" }}>
-                                                {formatDate(stat.timestamp)}
-                                            </td>
-                                            <td style={{ fontWeight: 600 }}>{stat.requestName}</td>
-                                            <td style={{ textAlign: "right", fontWeight: 800, color: getDurationColor(stat.durationMs) }}>
-                                                {formatDuration(stat.durationMs)}
-                                            </td>
-                                            <td style={{ textAlign: "center" }}>
-                                                {stat.isSuccess ? (
-                                                    <span style={{
-                                                        padding: "4px 12px",
-                                                        borderRadius: "8px",
-                                                        background: "#f0fdf4",
-                                                        color: "#059669",
-                                                        fontSize: "0.75rem",
-                                                        fontWeight: 800,
-                                                        border: "1px solid #a7f3d0"
-                                                    }}>
-                                                        Success
-                                                    </span>
-                                                ) : (
-                                                    <span style={{
-                                                        padding: "4px 12px",
-                                                        borderRadius: "8px",
-                                                        background: "#fef2f2",
-                                                        color: "#dc2626",
-                                                        fontSize: "0.75rem",
-                                                        fontWeight: 800,
-                                                        border: "1px solid #fecaca"
-                                                    }}>
-                                                        Failed
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                        {stat.exceptionMessage && (
-                                            <tr style={{ background: "#fef2f2" }}>
-                                                <td colSpan={4}>
-                                                    <div style={{ color: "#dc2626", fontSize: "0.8rem", fontFamily: "monospace" }}>
-                                                        <strong>Exception:</strong> {stat.exceptionMessage}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
+            {/* Error Message */}
+            {error && (
+                <div className="mb-6 p-4 rounded-xl border border-error bg-error/10 text-error text-sm">
+                    {error}
+                </div>
             )}
 
-            {!loading && !error && stats.length === 0 && (
-                <p style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
-                    Nema sporih zahteva koji odgovaraju filterima.
-                </p>
+            {/* Slowest Requests Table */}
+            {loading ? (
+                <div className="py-20 text-center text-muted uppercase tracking-widest text-xs font-bold">
+                    Učitavanje podataka o performansama...
+                </div>
+            ) : (
+                <>
+                    <h3 className="text-lg font-bold text-contrast mb-4">
+                        🚀 Najsporiji zahtevi
+                    </h3>
+
+                    <div className="overflow-hidden rounded-xl border border-muted bg-surface-elevated">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-muted text-sm">
+                                <thead className="bg-surface-darker text-muted">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider cursor-pointer hover:text-contrast transition-colors" onClick={() => handleSort("timestamp")}>
+                                            Vreme {getSortIcon("timestamp")}
+                                        </th>
+                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider cursor-pointer hover:text-contrast transition-colors" onClick={() => handleSort("requestName")}>
+                                            Request {getSortIcon("requestName")}
+                                        </th>
+                                        <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider cursor-pointer hover:text-contrast transition-colors" onClick={() => handleSort("durationMs")}>
+                                            Trajanje {getSortIcon("durationMs")}
+                                        </th>
+                                        <th className="px-4 py-3 text-center font-semibold uppercase tracking-wider cursor-pointer hover:text-contrast transition-colors" onClick={() => handleSort("isSuccess")}>
+                                            Status {getSortIcon("isSuccess")}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-muted/50 text-contrast font-mono text-xs">
+                                    {sortedStats.map((stat) => (
+                                        <React.Fragment key={stat.id}>
+                                            <tr className={stat.isSuccess ? "hover:bg-surface/30 transition-colors" : "bg-error/5 hover:bg-error/10 transition-colors"}>
+                                                <td className="px-4 py-2 whitespace-nowrap opacity-70">
+                                                    {formatDate(stat.timestamp)}
+                                                </td>
+                                                <td className="px-4 py-2 font-semibold text-sm font-sans">{stat.requestName}</td>
+                                                <td className={`px-4 py-2 text-right font-bold text-sm ${getDurationClass(stat.durationMs)}`}>
+                                                    {formatDuration(stat.durationMs)}
+                                                </td>
+                                                <td className="px-4 py-2 text-center">
+                                                    {stat.isSuccess ? (
+                                                        <span className="px-2 py-1 rounded-lg border border-success bg-success/10 text-success text-[10px] font-bold uppercase">
+                                                            Success
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 py-1 rounded-lg border border-error bg-error/10 text-error text-[10px] font-bold uppercase">
+                                                            Failed
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        </React.Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {sortedStats.length === 0 && (
+                        <div className="py-20 text-center text-muted border border-dashed border-muted rounded-xl mt-4">
+                            Nema podataka za zadate kriterijume pretrage.
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

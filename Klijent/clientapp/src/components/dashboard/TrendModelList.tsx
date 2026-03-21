@@ -10,29 +10,29 @@ const TREND_MODELS = [
 
 export default function TrendModelList() {
   return (
-    <section className="rounded-2xl border border-[#2a2b32] bg-[#1a1b1f] p-4">
+    <section className="rounded-2xl border border-muted surface-elevated p-4">
       <div className="mb-3 flex items-center gap-2">
-        <Sparkles size={16} className="text-[#83a9ff]" />
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-[#c4d2ee]">Trend Models</h3>
+        <Sparkles size={16} className="text-info" />
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Trend Models</h3>
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {TREND_MODELS.map((model) => (
           <article
             key={model.id}
-            className="rounded-xl border border-[#31333b] bg-[#14161d] p-3 transition hover:border-[#456fc4]"
+            className="rounded-xl border border-muted bg-surface-darker p-3 transition hover:border-info"
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-[#d9e3f7]">{model.title}</p>
-              <TrendingUp size={14} className="text-[#5f8ff4]" />
+              <p className="text-sm font-medium text-contrast">{model.title}</p>
+              <TrendingUp size={14} className="text-info" />
             </div>
             <div className="mt-3 flex items-end justify-between">
-              <p className="text-2xl font-bold text-white">{model.score}</p>
-              <p className={`text-xs font-semibold ${model.change.startsWith("-") ? "text-amber-300" : "text-emerald-300"}`}>
+              <p className="text-2xl font-bold text-contrast">{model.score}</p>
+              <p className={`text-xs font-semibold ${model.change.startsWith("-") ? "text-error" : "text-success"}`}>
                 {model.change}
               </p>
             </div>
-            <div className="mt-2 h-1.5 rounded-full bg-[#232630]">
-              <div className="h-1.5 rounded-full bg-gradient-to-r from-[#4f8cff] to-[#6ea4ff]" style={{ width: `${model.score}%` }} />
+            <div className="mt-2 h-1.5 rounded-full bg-surface">
+              <div className="h-1.5 rounded-full bg-info" style={{ width: `${model.score}%` }} />
             </div>
           </article>
         ))}

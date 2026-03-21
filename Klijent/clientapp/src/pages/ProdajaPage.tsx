@@ -135,7 +135,7 @@ export default function ProdajaPage() {
                             <div className="flex justify-center">
                                 <button
                                     type="button"
-                                    className="rounded-lg border border-[#345dad] bg-[#1d2a46] px-3 py-2 text-xs font-semibold text-[#d6e4ff] transition hover:bg-[#22335a]"
+                                    className="rounded-lg border border-info bg-info/10 px-3 py-2 text-xs font-semibold text-info transition hover:bg-info/20"
                                     onClick={() => {
                                         setDataScope("all");
                                         setDataScopeValue("all");

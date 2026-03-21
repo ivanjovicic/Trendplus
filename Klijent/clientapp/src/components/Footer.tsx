@@ -2,182 +2,42 @@
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer style={{
-            background: "linear-gradient(135deg, #1f2937 0%, #111827 100%)",
-            color: "white",
-            marginTop: "4rem",
-            borderTop: "3px solid #3b82f6"
-        }}>
-            <div style={{
-                maxWidth: 1200,
-                margin: "0 auto",
-                padding: "3rem 2rem 2rem"
-            }}>
+        <footer className="mt-16 bg-gradient-to-br from-gray-800 to-gray-900 text-white border-t-4 border-primary">
+            <div className="max-w-screen-lg mx-auto px-6 py-12">
                 {/* Main Footer Content */}
-                <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                    gap: "2.5rem",
-                    marginBottom: "2.5rem"
-                }}>
+                <div className="grid gap-10 grid-cols-[repeat(auto-fit,minmax(280px,1fr))] mb-10">
                     {/* Company Info */}
                     <div>
-                        <h3 style={{
-                            fontSize: "1.5rem",
-                            fontWeight: "700",
-                            marginBottom: "1rem",
-                            background: "linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)",
-                            WebkitBackgroundClip: "text",
-                            WebkitTextFillColor: "transparent",
-                            backgroundClip: "text"
-                        }}>
-                            Obuća Trend Plus
-                        </h3>
-                        <p style={{
-                            color: "rgba(255, 255, 255, 0.8)",
-                            lineHeight: "1.6",
-                            marginBottom: "1rem"
-                        }}>
-                            Vaša pouzdana prodavnica obuće sa tradicijom i kvalitetom.
-                        </p>
+                        <h3 className="text-2xl font-extrabold mb-4 bg-gradient-to-r from-blue-500 to-sky-400 bg-clip-text text-transparent">Obuća Trend Plus</h3>
+                        <p className="text-white/85 leading-loose mb-4">Vaša pouzdana prodavnica obuće sa tradicijom i kvalitetom.</p>
                     </div>
 
                     {/* Location */}
                     <div>
-                        <h4 style={{
-                            fontSize: "1.1rem",
-                            fontWeight: "600",
-                            marginBottom: "1rem",
-                            color: "#60a5fa"
-                        }}>
-                            📍 Lokacija
-                        </h4>
-                        <p style={{
-                            color: "rgba(255, 255, 255, 0.8)",
-                            lineHeight: "1.8",
-                            marginBottom: "0.5rem"
-                        }}>
-                            <strong>Trgovačka 30B</strong><br />
-                            Beograd (Čukarica)<br />
-                            Srbija
-                        </p>
-                        <a
-                            href="https://www.google.com/maps/search/?api=1&query=Trgovačka+30B+Beograd+Čukarica"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.5rem",
-                                color: "#60a5fa",
-                                textDecoration: "none",
-                                fontSize: "0.9rem",
-                                marginTop: "0.5rem",
-                                transition: "color 0.2s"
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.color = "#93c5fd";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.color = "#60a5fa";
-                            }}
-                        >
-                            🗺️ Prikaži na mapi
-                        </a>
+                        <h4 className="text-lg font-semibold mb-3 text-primary">📍 Lokacija</h4>
+                        <p className="text-white/80 leading-relaxed mb-2"><strong>Trgovačka 30B</strong><br/>Beograd (Čukarica)<br/>Srbija</p>
+                        <a href="https://www.google.com/maps/search/?api=1&query=Trgovačka+30B+Beograd+Čukarica" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary no-underline text-sm hover:text-primary-300 transition">🗺️ Prikaži na mapi</a>
                     </div>
 
                     {/* Social Media */}
                     <div>
-                        <h4 style={{
-                            fontSize: "1.1rem",
-                            fontWeight: "600",
-                            marginBottom: "1rem",
-                            color: "#60a5fa"
-                        }}>
-                            🔗 Pratite nas
-                        </h4>
-                        <div style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.75rem"
-                        }}>
+                        <h4 className="text-lg font-semibold mb-3 text-primary">🔗 Pratite nas</h4>
+                        <div className="flex flex-col gap-3">
                             {/* Facebook */}
-                            <a
-                                href="https://www.facebook.com/trendplusobuca/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "0.75rem",
-                                    padding: "0.75rem 1rem",
-                                    background: "rgba(59, 130, 246, 0.1)",
-                                    borderRadius: "8px",
-                                    color: "white",
-                                    textDecoration: "none",
-                                    transition: "all 0.3s ease",
-                                    border: "1px solid rgba(59, 130, 246, 0.2)"
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)";
-                                    e.currentTarget.style.transform = "translateX(5px)";
-                                    e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.4)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
-                                    e.currentTarget.style.transform = "translateX(0)";
-                                    e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.2)";
-                                }}
-                            >
-                                <span style={{ fontSize: "1.5rem" }}>📘</span>
+                            <a href="https://www.facebook.com/trendplusobuca/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20 text-white no-underline hover:bg-primary/20 hover:translate-x-1 transition">
+                                <span className="text-xl">📘</span>
                                 <div>
-                                    <div style={{ fontWeight: "600", fontSize: "0.95rem" }}>Facebook</div>
-                                    <div style={{
-                                        fontSize: "0.8rem",
-                                        color: "rgba(255, 255, 255, 0.6)"
-                                    }}>
-                                        @trendplusobuca
-                                    </div>
+                                    <div className="font-semibold text-sm">Facebook</div>
+                                    <div className="text-xs text-white/70">@trendplusobuca</div>
                                 </div>
                             </a>
 
                             {/* Instagram */}
-                            <a
-                                href="https://www.instagram.com/trendplusobuca/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "0.75rem",
-                                    padding: "0.75rem 1rem",
-                                    background: "rgba(236, 72, 153, 0.1)",
-                                    borderRadius: "8px",
-                                    color: "white",
-                                    textDecoration: "none",
-                                    transition: "all 0.3s ease",
-                                    border: "1px solid rgba(236, 72, 153, 0.2)"
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = "rgba(236, 72, 153, 0.2)";
-                                    e.currentTarget.style.transform = "translateX(5px)";
-                                    e.currentTarget.style.borderColor = "rgba(236, 72, 153, 0.4)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = "rgba(236, 72, 153, 0.1)";
-                                    e.currentTarget.style.transform = "translateX(0)";
-                                    e.currentTarget.style.borderColor = "rgba(236, 72, 153, 0.2)";
-                                }}
-                            >
-                                <span style={{ fontSize: "1.5rem" }}>📷</span>
+                            <a href="https://www.instagram.com/trendplusobuca/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg bg-pink-600/10 border border-pink-600/20 text-white no-underline hover:bg-pink-600/20 hover:translate-x-1 transition">
+                                <span className="text-xl">📷</span>
                                 <div>
-                                    <div style={{ fontWeight: "600", fontSize: "0.95rem" }}>Instagram</div>
-                                    <div style={{
-                                        fontSize: "0.8rem",
-                                        color: "rgba(255, 255, 255, 0.6)"
-                                    }}>
-                                        @trendplusobuca
-                                    </div>
+                                    <div className="font-semibold text-sm">Instagram</div>
+                                    <div className="text-xs text-white/70">@trendplusobuca</div>
                                 </div>
                             </a>
                         </div>
@@ -185,27 +45,9 @@
                 </div>
 
                 {/* Bottom Bar */}
-                <div style={{
-                    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-                    paddingTop: "1.5rem",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: "1rem",
-                    fontSize: "0.9rem",
-                    color: "rgba(255, 255, 255, 0.6)"
-                }}>
-                    <div>
-                        © {currentYear} Obuća Trend Plus. Sva prava zadržana.
-                    </div>
-                    <div style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem"
-                    }}>
-                        Made with <span style={{ color: "#ef4444" }}>❤️</span> in Belgrade
-                    </div>
+                <div className="pt-6 border-t border-white/10 flex flex-wrap justify-between items-center gap-4 text-sm text-white/70">
+                    <div>© {currentYear} Obuća Trend Plus. Sva prava zadržana.</div>
+                    <div className="flex items-center gap-2">Made with <span className="text-accent-error">❤️</span> in Belgrade</div>
                 </div>
             </div>
         </footer>

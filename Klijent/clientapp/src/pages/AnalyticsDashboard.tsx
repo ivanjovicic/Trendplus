@@ -68,7 +68,20 @@ const HELP: Record<string, string> = {
   trend: "Smer promene u odnosu na prethodni uporediv period.",
 };
 
-const CHART_COLORS = ["#3dd9a4", "#6ea8ff", "#ffbc57", "#ff7e67", "#a88cff", "#44d0ff", "#ff6c6c", "#75f0d1"];
+const CHART_COLORS = ["var(--success)", "var(--info)", "var(--warning)", "var(--error)", "var(--accent-info)", "var(--primary)", "var(--accent-success)", "var(--accent-warning)"];
+const CHART_GRID_STROKE = "rgba(var(--text-muted-rgb, 154, 164, 199), 0.2)";
+const CHART_TEXT_COLOR = "var(--text-muted)";
+const CHART_TOOLTIP_BG = "var(--surface-elevated)";
+const CHART_TOOLTIP_BORDER = "var(--muted)";
+const CHART_TOOLTIP_TEXT = "var(--contrast)";
+
+const CHART_TOOLTIP_CONTENT_STYLE: React.CSSProperties = {
+  background: CHART_TOOLTIP_BG,
+  border: `1px solid ${CHART_TOOLTIP_BORDER}`,
+  color: CHART_TOOLTIP_TEXT,
+  borderRadius: "8px",
+};
+
 const DEFAULT_WEEKDAYS = ["Nedelja", "Ponedeljak", "Utorak", "Sreda", "Cetvrtak", "Petak", "Subota"];
 
 const topProductColumns: AnalyticsTableColumn<TopProductAdvancedItem>[] = [
@@ -672,13 +685,25 @@ export default function AnalyticsDashboard() {
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height={320}>
                 <LineChart data={dailySales}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
-                  <XAxis dataKey="date" tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                  <YAxis tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                  <Tooltip contentStyle={{ background: "#131a31", border: "1px solid #2a3350", color: "#ecf1ff" }} formatter={(value: number | string | undefined, name?: string) => [name === "totalRevenue" ? formatCurrency(typeof value === "number" ? value : Number(value ?? 0)) : formatNumber(typeof value === "number" ? value : Number(value ?? 0)), name === "totalRevenue" ? "Promet" : "Transakcije"]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
+                  <XAxis dataKey="date" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
+                  <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
+                  <Tooltip 
+                    contentStyle={{ 
+                        background: CHART_TOOLTIP_BG, 
+                        border: `1px solid ${CHART_TOOLTIP_BORDER}`, 
+                        color: CHART_TOOLTIP_TEXT,
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }} 
+                    formatter={(value: number | string | undefined, name?: string) => [
+                        name === "totalRevenue" ? formatCurrency(typeof value === "number" ? value : Number(value ?? 0)) : formatNumber(typeof value === "number" ? value : Number(value ?? 0)), 
+                        name === "totalRevenue" ? "Promet" : "Transakcije"
+                    ]} 
+                  />
                   <Legend />
-                  <Line type="monotone" dataKey="totalRevenue" stroke="#3dd9a4" strokeWidth={2.5} dot={false} name="Promet" />
-                  <Line type="monotone" dataKey="transactionCount" stroke="#6ea8ff" strokeWidth={2} dot={false} name="Transakcije" />
+                  <Line type="monotone" dataKey="totalRevenue" stroke="var(--success)" strokeWidth={2.5} dot={false} name="Promet" />
+                  <Line type="monotone" dataKey="transactionCount" stroke="var(--info)" strokeWidth={2} dot={false} name="Transakcije" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -693,10 +718,13 @@ export default function AnalyticsDashboard() {
               <div className="chart-wrap">
                 <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
-                    <Pie data={categoryPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={105} innerRadius={48}>
+                    <Pie data={categoryPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={105} innerRadius={48} stroke="transparent">
                       {categoryPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
+                    <Tooltip 
+                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
+                    />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -711,10 +739,13 @@ export default function AnalyticsDashboard() {
               <div className="chart-wrap">
                 <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
-                    <Pie data={genderPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={102} innerRadius={58}>
+                    <Pie data={genderPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={102} innerRadius={58} stroke="transparent">
                       {genderPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
+                    <Tooltip 
+                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
+                    />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -729,11 +760,14 @@ export default function AnalyticsDashboard() {
               <div className="chart-wrap">
                 <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={supplierBarData} layout="vertical" margin={{ left: 12, right: 12 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
-                    <XAxis type="number" tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                    <YAxis type="category" dataKey="name" width={150} tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
-                    <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="#6ea8ff" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
+                    <XAxis type="number" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
+                    <YAxis type="category" dataKey="name" width={150} tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
+                    <Tooltip 
+                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
+                    />
+                    <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="var(--info)" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -747,11 +781,14 @@ export default function AnalyticsDashboard() {
               <div className="chart-wrap">
                 <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={weekdayChartData} layout="vertical" margin={{ left: 12, right: 12 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
-                    <XAxis type="number" tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                    <YAxis type="category" dataKey="dayName" width={110} tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
-                    <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="#3dd9a4" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
+                    <XAxis type="number" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
+                    <YAxis type="category" dataKey="dayName" width={110} tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
+                    <Tooltip 
+                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
+                    />
+                    <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="var(--success)" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -767,15 +804,18 @@ export default function AnalyticsDashboard() {
                   <AreaChart data={hourChartData}>
                     <defs>
                       <linearGradient id="hourGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#44d0ff" stopOpacity={0.85} />
-                        <stop offset="95%" stopColor="#44d0ff" stopOpacity={0.05} />
+                        <stop offset="5%" stopColor="var(--accent-info)" stopOpacity={0.85} />
+                        <stop offset="95%" stopColor="var(--accent-info)" stopOpacity={0.05} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
-                    <XAxis dataKey="label" tick={{ fill: "#9aa4c7", fontSize: 12 }} interval={1} />
-                    <YAxis tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
-                    <Area type="monotone" dataKey="totalRevenue" stroke="#44d0ff" fill="url(#hourGradient)" strokeWidth={2.2} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
+                    <XAxis dataKey="label" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} interval={1} />
+                    <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
+                    <Tooltip 
+                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
+                    />
+                    <Area type="monotone" dataKey="totalRevenue" stroke="var(--accent-info)" fill="url(#hourGradient)" strokeWidth={2.2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -789,11 +829,14 @@ export default function AnalyticsDashboard() {
               <div className="chart-wrap">
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={paymentChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2a3350" />
-                    <XAxis dataKey="name" tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                    <YAxis tick={{ fill: "#9aa4c7", fontSize: 12 }} />
-                    <Tooltip formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
-                    <Bar dataKey="totalRevenue" fill="#ffbc57" radius={[8, 8, 0, 0]} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
+                    <XAxis dataKey="name" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
+                    <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
+                    <Tooltip 
+                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
+                    />
+                    <Bar dataKey="totalRevenue" fill="var(--warning)" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

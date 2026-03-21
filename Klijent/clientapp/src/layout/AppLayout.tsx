@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#0c0d10] text-[#dbe6fb]">
+    <div className="min-h-screen surface text-contrast">
       <AutoReloadOnBackendOnline />
       <WorkerStatusAlert />
 

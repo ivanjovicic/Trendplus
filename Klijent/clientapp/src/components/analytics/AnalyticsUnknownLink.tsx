@@ -35,7 +35,7 @@ export default function AnalyticsUnknownLink(props: {
   return (
     <Link
       to={`/analytics/data-quality?${params.toString()}`}
-      className={props.className ?? "text-[#f59e0b] underline decoration-dotted underline-offset-2"}
+      className={props.className ?? "text-accent-warning underline decoration-dotted underline-offset-2"}
       onClick={(event) => {
         event.stopPropagation();
       }}

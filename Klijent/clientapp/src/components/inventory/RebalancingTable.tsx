@@ -83,7 +83,7 @@ export function RebalancingTable({
                       <td className="px-4 py-3 text-right text-[#9ff0c7]">{formatCurrency(item.expectedSavedSales)}</td>
                       <td className="max-w-[220px] truncate px-4 py-3 text-[#90a0ba]">{item.reason}</td>
                       <td className="px-4 py-3 text-right">
-                        <button type="button" aria-label={`Uporedi lokacije ${fromStore} i ${toStore}`} onClick={() => onCompareStores(item.fromStoreId, item.toStoreId)} className="rounded-lg border border-[#30516d] bg-[#102231] px-2.5 py-1 text-[11px] font-semibold text-[#8edbff] transition hover:border-[#3f6d95]">
+                        <button type="button" aria-label={`Uporedi lokacije ${fromStore} i ${toStore}`} onClick={() => onCompareStores(item.fromStoreId, item.toStoreId)} className="rounded-lg border border-[#30516d] bg-[#102231] px-2.5 py-1 text-[11px] font-semibold text-[#8edbff] transition-all duration-200 hover:border-[#3f6d95] hover:bg-[#153142] hover:text-white hover:shadow-md focus:outline-none focus-visible:border-[#44d0ff] focus-visible:ring-2 focus-visible:ring-[#44d0ff] focus-visible:ring-opacity-30">
                           Uporedi lokacije
                         </button>
                       </td>

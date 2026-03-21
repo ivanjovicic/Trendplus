@@ -43,12 +43,12 @@ export default function WorkerControlFlag() {
   }, [load, apiPingEnabled]);
 
   const statusTone = useMemo(() => {
-    if (error) return { bg: "#7f1d1d", border: "#f87171", text: "#fee2e2" };
-    if (!health) return { bg: "#1f2937", border: "#6b7280", text: "#e5e7eb" };
-    if (!health.workersEnabled) return { bg: "#1f2937", border: "#9ca3af", text: "#e5e7eb" };
-    if (health.errorWorkers > 0) return { bg: "#7f1d1d", border: "#f87171", text: "#fee2e2" };
-    if (health.staleWorkers > 0) return { bg: "#78350f", border: "#fbbf24", text: "#fef3c7" };
-    return { bg: "#064e3b", border: "#34d399", text: "#d1fae5" };
+    if (error) return { bg: "var(--error)", border: "var(--error)", text: "var(--text-primary)" };
+    if (!health) return { bg: "var(--surface-default)", border: "var(--border-default)", text: "var(--text-primary)" };
+    if (!health.workersEnabled) return { bg: "var(--surface-default)", border: "var(--border-hover)", text: "var(--text-primary)" };
+    if (health.errorWorkers > 0) return { bg: "var(--error)", border: "var(--error)", text: "var(--text-primary)" };
+    if (health.staleWorkers > 0) return { bg: "var(--warning)", border: "var(--warning)", text: "var(--text-primary)" };
+    return { bg: "var(--success)", border: "var(--success)", text: "var(--text-primary)" };
   }, [error, health]);
 
   const statusText = useMemo(() => {
@@ -103,8 +103,8 @@ export default function WorkerControlFlag() {
         style={{
           padding: "5px 10px",
           borderRadius: 8,
-          border: "1px solid #4b5563",
-          background: busy ? "#374151" : "#1f2937",
+          border: "1px solid var(--border-default)",
+          background: busy ? "var(--surface-elevated)" : "var(--surface-default)",
           color: "white",
           fontSize: 12,
           fontWeight: 600,
@@ -121,8 +121,8 @@ export default function WorkerControlFlag() {
         style={{
           padding: "5px 8px",
           borderRadius: 8,
-          border: "1px solid #4b5563",
-          background: "#1f2937",
+          border: "1px solid var(--border-default)",
+          background: "var(--surface-default)",
           color: "white",
           fontSize: 11,
           cursor: busy ? "not-allowed" : "pointer",

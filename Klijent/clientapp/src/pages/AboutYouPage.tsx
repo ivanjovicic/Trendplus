@@ -145,25 +145,25 @@ export default function AboutYouPage() {
     };
 
     return (
-        <div style={{ maxWidth: 1200, margin: "2rem auto", padding: "0 1rem" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12, color: "#c9d3e4" }}>About You — Scraper EU tržišta</h1>
+        <div className="max-w-[1200px] mx-auto my-8 px-4">
+            <h1 className="text-2xl font-bold mb-3 text-foreground">About You — Scraper EU tržišta</h1>
 
-            <div className="card" style={{ marginBottom: "1.5rem" }}>
-                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                    <div style={{ minWidth: 420, flex: 1 }}>
-                        <label className="field-label">URL kategorije</label>
+            <div className="bg-surface-elevated border border-border rounded-xl p-4 mb-6">
+                <div className="flex gap-3 items-center flex-wrap">
+                    <div className="min-w-[420px] flex-1">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">URL kategorije</label>
                         <input
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             value={aboutYouUrl}
                             onChange={(e) => setAboutYouUrl(e.target.value)}
                             placeholder={ABOUTYOU_DEFAULT_URLS[country]}
                         />
                     </div>
 
-                    <div style={{ minWidth: 180 }}>
-                        <label className="field-label">Zemlja</label>
+                    <div className="min-w-[180px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Zemlja</label>
                         <select
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             value={country}
                             onChange={(e) => handleCountryChange(e.target.value)}
                         >
@@ -175,10 +175,10 @@ export default function AboutYouPage() {
                         </select>
                     </div>
 
-                    <div style={{ minWidth: 200 }}>
-                        <label className="field-label">Režim stranica</label>
+                    <div className="min-w-[200px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Režim stranica</label>
                         <select
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             value={pageMode}
                             onChange={(e) => setPageMode((e.target.value as "auto" | "manual") || "auto")}
                         >
@@ -186,30 +186,30 @@ export default function AboutYouPage() {
                             <option value="manual">Ručno</option>
                         </select>
                         {pageMode === "auto" && (
-                            <div style={{ fontSize: 12, color: "#8A95B0", marginTop: 4 }}>
+                            <div className="text-[11px] text-muted mt-1 ml-1">
                                 Automatski režim staje kada nema novih proizvoda.
                             </div>
                         )}
                     </div>
 
                     {pageMode === "manual" && (
-                        <div style={{ minWidth: 160 }}>
-                            <label className="field-label">Stranice</label>
+                        <div className="min-w-[160px]">
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Stranice</label>
                             <input
                                 type="number"
-                                className="input-big"
+                                className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                                 value={filterPages}
                                 min={1}
                                 onChange={(e) => setFilterPages(Number(e.target.value) || 1)}
                             />
-                            <div style={{ fontSize: 12, color: "#8A95B0", marginTop: 4 }}>
+                            <div className="text-[11px] text-muted mt-1 ml-1">
                                 Koristite 1-3 stranice za brže pokretanje.
                             </div>
                         </div>
                     )}
 
-                    <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Brend</label>
+                    <div className="min-w-[220px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Brend</label>
                         <SearchableSelect
                             value={filterBrand}
                             onChange={setFilterBrand}
@@ -219,8 +219,8 @@ export default function AboutYouPage() {
                         />
                     </div>
 
-                    <div style={{ minWidth: 220 }}>
-                        <label className="field-label">Ključna reč</label>
+                    <div className="min-w-[220px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Ključna reč</label>
                         <SearchableSelect
                             value={filterKeyword}
                             onChange={(v) => setFilterKeyword(Array.isArray(v) ? v.join(" ") : v)}
@@ -229,32 +229,32 @@ export default function AboutYouPage() {
                         />
                     </div>
 
-                    <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Min cena (€)</label>
+                    <div className="min-w-[150px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Min cena (€)</label>
                         <input
                             type="number"
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             placeholder="0"
                             value={filterPriceMin ?? ""}
                             onChange={(e) => setFilterPriceMin(e.target.value ? Number(e.target.value) : undefined)}
                         />
                     </div>
 
-                    <div style={{ minWidth: 150 }}>
-                        <label className="field-label">Max cena (€)</label>
+                    <div className="min-w-[150px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Max cena (€)</label>
                         <input
                             type="number"
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             placeholder="500"
                             value={filterPriceMax ?? ""}
                             onChange={(e) => setFilterPriceMax(e.target.value ? Number(e.target.value) : undefined)}
                         />
                     </div>
 
-                    <div style={{ minWidth: 180 }}>
-                        <label className="field-label">Sortiranje</label>
+                    <div className="min-w-[180px]">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Sortiranje</label>
                         <select
-                            className="input-big"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             value={filterSort}
                             onChange={(e) => setFilterSort(e.target.value)}
                         >
@@ -266,8 +266,12 @@ export default function AboutYouPage() {
                         </select>
                     </div>
 
-                    <div style={{ marginLeft: "auto" }}>
-                        <button className="button-big" onClick={runAboutYouFiltered} disabled={loading} style={{ minWidth: 170 }}>
+                    <div className="ml-auto">
+                        <button 
+                            className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[170px]"
+                            onClick={runAboutYouFiltered} 
+                            disabled={loading}
+                        >
                             {loading ? "⏳ Pretraga u toku..." : "🔍 Pokreni About You"}
                         </button>
                     </div>
@@ -276,50 +280,48 @@ export default function AboutYouPage() {
 
             {results.length > 0 && (
                 <div>
-                    <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Rezultati ({results.length})</h3>
-                    <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
+                    <h3 className="text-lg font-bold mb-3 text-foreground">Rezultati ({results.length})</h3>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
                         {results.map((p, idx) => (
-                            <div key={idx} className="card" style={{ padding: 12 }}>
+                            <div key={idx} className="bg-surface-elevated border border-border rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
                                 <div
-                                    style={{
-                                        width: "100%",
-                                        height: 170,
-                                        overflow: "hidden",
-                                        borderRadius: 8,
-                                        background: "#1A1F2E",
-                                        border: "1px solid #2A3045",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                    }}
+                                    className="w-full h-[170px] overflow-hidden rounded-lg bg-surface border border-border flex items-center justify-center relative group"
                                 >
                                     {p.image ? (
                                         <img
                                             src={p.image}
                                             alt={p.name}
-                                            style={{ width: "100%", height: "100%", objectFit: "contain", cursor: "pointer", padding: 6 }}
+                                            className="w-full h-full object-contain cursor-pointer p-1.5 transition-transform group-hover:scale-105"
                                             onClick={() => openImage(p.image, p.name)}
-                                            onError={(e) => {
-                                                (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=No+Image";
-                                            }}
+                                            onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/200x200?text=No+Image"; }}
                                         />
-                                    ) : null}
-                                </div>
-                                <div style={{ paddingTop: 12 }}>
-                                    <div style={{ fontSize: 12, color: "#8A95B0" }}>{p.brand || "About You"}</div>
-                                    <div style={{ fontWeight: 700, margin: "6px 0" }}>{p.name}</div>
-                                    <div style={{ color: "#059669", fontWeight: 700 }}>{p.price || "-"}</div>
-                                    {p.url && (
-                                        <a href={p.url} target="_blank" rel="noreferrer" style={{ color: "#4F8EF7" }}>
-                                            Pogledaj
-                                        </a>
+                                    ) : (
+                                        <div className="text-4xl opacity-40">👟</div>
                                     )}
+                                </div>
+                                <div className="mt-3">
+                                    <div className="text-[10px] text-muted font-bold uppercase truncate">{p.brand}</div>
+                                    <div className="font-bold text-sm text-foreground leading-tight line-clamp-2 h-10 mb-2">{p.name}</div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-accent-success font-bold text-base">{p.price || "-"}</div>
+                                        {p.url && (
+                                            <a 
+                                                href={p.url} 
+                                                target="_blank" 
+                                                rel="noreferrer" 
+                                                className="text-primary hover:text-primary-hover font-bold text-xs"
+                                            >
+                                                LINK ↗
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
             )}
+            
 
             <Modal isOpen={imageModalOpen} onClose={() => setImageModalOpen(false)} title={imageModalTitle} size="lg">
                 <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>

@@ -1,8 +1,10 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { getLogs } from "../services/logsApi";
-import { LogEntry } from "../types/logs";
+import type { LogEntry } from "../types/logs";
 
 type TimePeriod = "" | "30m" | "1h" | "6h" | "1d" | "2d" | "7d";
+
+const PAGE_SIZE = 100;
 
 const timePeriodOptions: { value: TimePeriod; label: string }[] = [
     { value: "", label: "Prilagođeni period" },
@@ -16,10 +18,10 @@ const timePeriodOptions: { value: TimePeriod; label: string }[] = [
 
 function getDateRangeFromPeriod(period: TimePeriod): { from: string; to: string } {
     if (!period) return { from: "", to: "" };
-    
+
     const now = new Date();
-    const to = now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
-    
+    const to = now.toISOString().slice(0, 16);
+
     let from: Date;
     switch (period) {
         case "30m":
@@ -43,43 +45,67 @@ function getDateRangeFromPeriod(period: TimePeriod): { from: string; to: string 
         default:
             return { from: "", to: "" };
     }
-    
-    return { from: from.toISOString().slice(0, 16), to };
+
+    return {
+        from: from.toISOString().slice(0, 16),
+        to,
+    };
+}
+
+function getLevelColor(level: string): string {
+    switch (level.toUpperCase()) {
+        case "ERROR":
+        case "FATAL":
+            return "var(--error)";
+        case "WARNING":
+            return "var(--warning)";
+        case "INFORMATION":
+        case "INFO":
+            return "var(--info)";
+        case "DEBUG":
+            return "var(--text-secondary, #94a3b8)";
+        default:
+            return "var(--text-muted)";
+    }
+}
+
+function getLevelBgColor(level: string): string {
+    switch (level.toUpperCase()) {
+        case "ERROR":
+        case "FATAL":
+            return "rgba(var(--error-rgb), 0.1)";
+        case "WARNING":
+            return "rgba(245, 158, 11, 0.1)";
+        case "INFORMATION":
+        case "INFO":
+            return "rgba(var(--info-rgb), 0.1)";
+        default:
+            return "transparent";
+    }
+}
+
+function formatDate(timestamp: string): string {
+    const date = new Date(timestamp);
+    return date.toLocaleString("sr-RS", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+    });
 }
 
 export default function LogsPage() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
-    // Filters
-    const [selectedLevel, setSelectedLevel] = useState<string>("");
+    const [selectedLevel, setSelectedLevel] = useState("");
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("");
-    const [fromDate, setFromDate] = useState<string>("");
-    const [toDate, setToDate] = useState<string>("");
-    
-    // Pagination
+    const [fromDate, setFromDate] = useState("");
+    const [toDate, setToDate] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-    const [pageSize] = useState(50);
-
-    const handlePeriodChange = (period: TimePeriod) => {
-        setSelectedPeriod(period);
-        const range = getDateRangeFromPeriod(period);
-        setFromDate(range.from);
-        setToDate(range.to);
-        setCurrentPage(1);
-    };
-
-    const handleCustomDateChange = (type: "from" | "to", value: string) => {
-        setSelectedPeriod(""); // Switch to custom period
-        if (type === "from") {
-            setFromDate(value);
-        } else {
-            setToDate(value);
-        }
-        setCurrentPage(1);
-    };
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -88,7 +114,7 @@ export default function LogsPage() {
         try {
             const result = await getLogs(
                 currentPage,
-                pageSize,
+                PAGE_SIZE,
                 selectedLevel || undefined,
                 fromDate || undefined,
                 toDate || undefined
@@ -96,9 +122,9 @@ export default function LogsPage() {
 
             setLogs(result.logs);
             setTotalCount(result.totalCount);
-        } catch (err: any) {
-            console.error("Error fetching logs:", err);
-            setError(err?.message ?? "Greška pri učitavanju logova");
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Greška pri učitavanju logova";
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -108,78 +134,39 @@ export default function LogsPage() {
         fetchLogs();
     }, [currentPage, selectedLevel, fromDate, toDate]);
 
-    const getLevelColor = (level: string) => {
-        switch (level.toUpperCase()) {
-            case "ERROR":
-            case "FATAL":
-                return "#dc2626";
-            case "WARNING":
-                return "#f59e0b";
-            case "INFORMATION":
-            case "INFO":
-                return "#2563eb";
-            case "DEBUG":
-                return "#6b7280";
-            default:
-                return "#374151";
-        }
+    const handlePeriodChange = (period: TimePeriod) => {
+        setSelectedPeriod(period);
+        const range = getDateRangeFromPeriod(period);
+        setFromDate(range.from);
+        setToDate(range.to);
+        setCurrentPage(1);
     };
 
-    const getLevelBgColor = (level: string) => {
-        switch (level.toUpperCase()) {
-            case "ERROR":
-            case "FATAL":
-                return "#fef2f2";
-            case "WARNING":
-                return "#fffbeb";
-            case "INFORMATION":
-            case "INFO":
-                return "#eff6ff";
-            case "DEBUG":
-                return "#f9fafb";
-            default:
-                return "#f9fafb";
-        }
+    const handleCustomDateChange = (field: "from" | "to", value: string) => {
+        setSelectedPeriod("");
+        if (field === "from") setFromDate(value);
+        if (field === "to") setToDate(value);
+        setCurrentPage(1);
     };
 
-    const formatDate = (timestamp: string) => {
-        const date = new Date(timestamp);
-        return date.toLocaleString("sr-RS", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-        });
-    };
-
-    const totalPages = Math.ceil(totalCount / pageSize);
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
     return (
-        <div className="card" style={{ maxWidth: "1400px" }}>
-            <h2 className="text-2xl font-semibold mb-6">
+        <div className="card max-w-[1400px]">
+            <h2 className="text-2xl font-bold mb-6 text-contrast">
                 {"\u{1F4CB}"} Pregled logova
             </h2>
 
-            {/* Filters */}
-            <div className="toolbar" style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "1rem",
-                marginBottom: "1.5rem",
-                background: "#f9fafb"
-            }}>
-                <div>
-                    <label className="field-label" style={{ fontSize: "0.875rem" }}>Nivo</label>
+            <div className="toolbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 rounded-xl border border-muted bg-surface-darker">
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Nivo</label>
                     <select
-                        className="input-big"
+                        className="input-big w-full"
                         value={selectedLevel}
                         onChange={(e) => {
                             setSelectedLevel(e.target.value);
                             setCurrentPage(1);
                         }}
-                        style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     >
                         <option value="">Svi nivoi</option>
                         <option value="Debug">Debug</option>
@@ -190,53 +177,52 @@ export default function LogsPage() {
                     </select>
                 </div>
 
-                <div>
-                    <label className="field-label" style={{ fontSize: "0.875rem" }}>Vremenski period</label>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Vremenski period</label>
                     <select
-                        className="input-big"
+                        className="input-big w-full"
                         value={selectedPeriod}
                         onChange={(e) => handlePeriodChange(e.target.value as TimePeriod)}
-                        style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     >
-                        {timePeriodOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        {timePeriodOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
                         ))}
                     </select>
                 </div>
 
-                <div>
-                    <label className="field-label" style={{ fontSize: "0.875rem" }}>Od datuma</label>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Od datuma</label>
                     <input
                         type="datetime-local"
-                        className="input-big"
+                        className="input-big w-full"
                         value={fromDate}
                         onChange={(e) => handleCustomDateChange("from", e.target.value)}
-                        style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     />
                 </div>
 
-                <div>
-                    <label className="field-label" style={{ fontSize: "0.875rem" }}>Do datuma</label>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Do datuma</label>
                     <input
                         type="datetime-local"
-                        className="input-big"
+                        className="input-big w-full"
                         value={toDate}
                         onChange={(e) => handleCustomDateChange("to", e.target.value)}
-                        style={{ marginTop: "0.25rem", marginBottom: 0, fontSize: "0.95rem", padding: "8px 12px" }}
                     />
                 </div>
 
-                <div style={{ display: "flex", alignItems: "flex-end", gap: "0.5rem" }}>
+                <div className="flex items-end gap-2">
                     <button
-                        className="button-big"
-                        onClick={() => fetchLogs()}
-                        style={{ padding: "8px 16px", marginTop: 0, marginBottom: 0, fontSize: "0.95rem" }}
+                        className="button-big flex-1"
+                        onClick={fetchLogs}
                         title="Osveži logove"
+                        type="button"
                     >
-                        🔄 Osveži
+                        {"\u{1F504}"} Osveži
                     </button>
                     <button
-                        className="button-big button-secondary"
+                        className="button-big button-secondary !px-3"
                         onClick={() => {
                             setSelectedLevel("");
                             setSelectedPeriod("");
@@ -244,141 +230,117 @@ export default function LogsPage() {
                             setToDate("");
                             setCurrentPage(1);
                         }}
-                        style={{ padding: "8px 16px", marginTop: 0, marginBottom: 0, fontSize: "0.95rem" }}
+                        title="Resetuj filtere"
+                        type="button"
                     >
-                        Resetuj
+                        Reset
                     </button>
                 </div>
             </div>
 
-            {/* Stats */}
-            <div className="toolbar" style={{
-                marginBottom: "1rem",
-                padding: "0.75rem",
-                background: "#f3f4f6",
-                borderRadius: "12px",
-                fontSize: "0.95rem",
-                display: "flex",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: "0.5rem"
-            }}>
-                <span>
-                    <strong>Ukupno:</strong> {totalCount} logova | <strong>Stranica:</strong> {currentPage} od {totalPages || 1}
+            <div className="flex justify-between items-center flex-wrap gap-4 mb-4 p-3 rounded-lg border border-muted bg-surface/30 text-sm">
+                <span className="text-contrast">
+                    <strong className="text-muted">Ukupno:</strong> {totalCount} logova |{" "}
+                    <strong className="text-muted">Stranica:</strong> {currentPage} od {totalPages}
                 </span>
                 {selectedPeriod && (
-                    <span style={{ color: "#2563eb", fontWeight: 700 }}>
-                        📅 {timePeriodOptions.find(o => o.value === selectedPeriod)?.label}
+                    <span className="text-info font-bold">
+                        {"\u{1F4C5}"} {timePeriodOptions.find((option) => option.value === selectedPeriod)?.label}
                     </span>
                 )}
             </div>
 
-            {/* Loading / Error */}
-            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
-            {error && <p className="error-msg">{error}</p>}
+            {error && (
+                <div className="mb-4 rounded-lg border border-error bg-error/10 p-4 text-sm text-error">
+                    {error}
+                </div>
+            )}
 
-            {/* Logs Table */}
-            {!loading && !error && (
+            {loading ? (
+                <div className="py-20 text-center text-muted">Učitavanje logova...</div>
+            ) : (
                 <>
-                    <div style={{ overflowX: "auto" }}>
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th>Vreme</th>
-                                    <th>Nivo</th>
-                                    <th>Poruka</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {logs.map((log, index) => (
-                                    <React.Fragment key={index}>
-                                        <tr style={{ background: getLevelBgColor(log.level) }}>
-                                            <td style={{ whiteSpace: "nowrap", fontFamily: "monospace", fontSize: "0.8rem" }}>
-                                                {formatDate(log.timestamp)}
-                                            </td>
-                                            <td>
-                                                <span style={{
-                                                    padding: "4px 12px",
-                                                    borderRadius: "8px",
-                                                    fontWeight: 800,
-                                                    fontSize: "0.75rem",
-                                                    color: getLevelColor(log.level),
-                                                    background: "white",
-                                                    border: `1px solid ${getLevelColor(log.level)}`,
-                                                    display: "inline-block"
-                                                }}>
-                                                    {log.level.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td style={{ wordBreak: "break-word", lineHeight: 1.5 }}>{log.message}</td>
-                                        </tr>
-                                        {log.exception && (
-                                            <tr style={{ background: "#fef2f2" }}>
-                                                <td colSpan={3}>
-                                                    <details>
-                                                        <summary style={{ cursor: "pointer", fontWeight: 800, color: "#dc2626", marginBottom: "8px" }}>
-                                                            {"\u{1F41E}"} Exception Details
-                                                        </summary>
-                                                        <pre style={{
-                                                            background: "#ffffff",
-                                                            padding: "12px",
-                                                            borderRadius: "12px",
-                                                            border: "1px solid #fecaca",
-                                                            fontSize: "0.75rem",
-                                                            overflow: "auto",
-                                                            lineHeight: 1.4
-                                                        }}>
-                                                            {log.exception}
-                                                        </pre>
-                                                    </details>
+                    <div className="overflow-hidden rounded-xl border border-muted bg-surface-elevated">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-muted text-sm">
+                                <thead className="bg-surface-darker text-muted">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider w-40">Vreme</th>
+                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider w-24">Nivo</th>
+                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider">Poruka</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-muted/50 text-contrast font-mono text-xs">
+                                    {logs.map((log, index) => (
+                                        <React.Fragment key={`${log.timestamp}-${index}`}>
+                                            <tr
+                                                className="hover:bg-surface/30 transition-colors"
+                                                style={{ backgroundColor: getLevelBgColor(log.level) }}
+                                            >
+                                                <td className="px-4 py-2 whitespace-nowrap opacity-70">
+                                                    {formatDate(log.timestamp)}
+                                                </td>
+                                                <td className="px-4 py-2">
+                                                    <span
+                                                        className="font-bold uppercase"
+                                                        style={{ color: getLevelColor(log.level) }}
+                                                    >
+                                                        {log.level}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-2 break-all">
+                                                    {log.message}
                                                 </td>
                                             </tr>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                            </tbody>
-                        </table>
+                                            {log.exception && (
+                                                <tr className="bg-error/5">
+                                                    <td colSpan={3} className="px-4 py-3">
+                                                        <details>
+                                                            <summary className="cursor-pointer font-bold text-error mb-2">
+                                                                {"\u{1F41E}"} Exception Details
+                                                            </summary>
+                                                            <pre className="rounded-xl border border-error/30 bg-surface px-3 py-2 text-[11px] leading-5 overflow-auto whitespace-pre-wrap">
+                                                                {log.exception}
+                                                            </pre>
+                                                        </details>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            gap: "0.5rem",
-                            marginTop: "1.5rem",
-                            flexWrap: "wrap"
-                        }}>
-                            <button
-                                className="button-big button-secondary"
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                style={{ width: "auto", padding: "8px 16px", fontSize: "0.95rem", marginTop: 0 }}
-                            >
-                                ← Prethodna
-                            </button>
+                    <div className="flex justify-center flex-wrap gap-2 mt-6">
+                        <button
+                            className="button-big button-secondary !px-4"
+                            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                            disabled={currentPage === 1 || loading}
+                            type="button"
+                        >
+                            {"\u2190"} Prethodna
+                        </button>
+                        <div className="flex items-center gap-1 font-semibold mx-2 text-contrast">
+                            {currentPage} / {totalPages}
+                        </div>
+                        <button
+                            className="button-big button-secondary !px-4"
+                            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                            disabled={currentPage >= totalPages || loading}
+                            type="button"
+                        >
+                            Sledeća {"\u2192"}
+                        </button>
+                    </div>
 
-                            <span style={{ padding: "8px 16px", alignSelf: "center", fontWeight: 800 }}>
-                                {currentPage} / {totalPages}
-                            </span>
-
-                            <button
-                                className="button-big button-secondary"
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                                style={{ width: "auto", padding: "8px 16px", fontSize: "0.95rem", marginTop: 0 }}
-                            >
-                                Sledeća →
-                            </button>
+                    {logs.length === 0 && !loading && (
+                        <div className="py-20 text-center text-muted border border-dashed border-muted rounded-xl mt-4">
+                            Nema logova za zadate kriterijume.
                         </div>
                     )}
                 </>
-            )}
-
-            {!loading && !error && logs.length === 0 && (
-                <p style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
-                    Nema logova koji odgovaraju filterima.
-                </p>
             )}
         </div>
     );

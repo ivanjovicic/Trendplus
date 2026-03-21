@@ -217,26 +217,26 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
 
     return (
         <div className="space-y-4">
-            <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
-                <h2 className="mb-3 text-xl font-semibold text-[#f3f6ff]">Unos robe</h2>
+            <section className="rounded-xl border border-border bg-surface p-4">
+                <h2 className="mb-3 text-xl font-semibold text-foreground">Unos robe</h2>
                 <div className="grid gap-2 md:grid-cols-3">
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${invoiceReady ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-[#2f323b] bg-[#1a1b1f] text-[#9aabc7]"}`}>
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${invoiceReady ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
                         {invoiceReady ? <CheckCircle2 size={14} className="mb-1" /> : <Circle size={14} className="mb-1" />}
                         1) Broj racuna
                     </div>
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${supplierReady ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-[#2f323b] bg-[#1a1b1f] text-[#9aabc7]"}`}>
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${supplierReady ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
                         {supplierReady ? <CheckCircle2 size={14} className="mb-1" /> : <Circle size={14} className="mb-1" />}
                         2) Dobavljac
                     </div>
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${canProceed ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-[#2f323b] bg-[#1a1b1f] text-[#9aabc7]"}`}>
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${canProceed ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
                         {canProceed ? <CheckCircle2 size={14} className="mb-1" /> : <Clock3 size={14} className="mb-1" />}
                         3) Nastavak na stavke
                     </div>
                 </div>
             </section>
 
-            <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
-                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj racuna *</label>
+            <section className="rounded-xl border border-border bg-surface p-4">
+                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Broj racuna *</label>
                 <input
                     type="text"
                     placeholder="Npr. PR-2026-001"
@@ -245,7 +245,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                         setBrojRacuna(event.target.value);
                         setValidationMessage(null);
                     }}
-                    className="w-full rounded-xl border border-[#2f323b] bg-[#1a1b1f] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
                     {invoiceSuggestions.map((suggestion) => (
@@ -253,26 +253,26 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                             key={suggestion}
                             type="button"
                             onClick={() => setBrojRacuna(suggestion)}
-                            className="rounded-full border border-[#2f323b] bg-[#1a1b1f] px-2.5 py-1 text-[11px] text-[#a8b8d5] hover:border-[#4f8cff] hover:text-[#dbe6fb]"
+                            className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] text-muted hover:border-primary hover:text-foreground"
                         >
                             {suggestion}
                         </button>
                     ))}
                 </div>
-                <p className="mt-2 text-xs text-[#7f8ea9]">Tip: `Ctrl+Enter` nastavlja cim su polja validna.</p>
+                <p className="mt-2 text-xs text-muted">Tip: `Ctrl+Enter` nastavlja cim su polja validna.</p>
             </section>
 
             {recentDobavljaci.length > 0 && (
-                <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
+                <section className="rounded-xl border border-border bg-surface p-4">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-[#dbe6fb]">Poslednje korisceni dobavljaci</h3>
+                        <h3 className="text-sm font-semibold text-foreground">Poslednje korisceni dobavljaci</h3>
                         <button
                             type="button"
                             onClick={() => {
                                 setRecentDobavljaci([]);
                                 saveRecentDobavljaci([]);
                             }}
-                            className="rounded-lg border border-[#3c4458] bg-[#222734] px-2.5 py-1 text-[11px] text-[#c7d6ef] hover:bg-[#2a3140]"
+                            className="rounded-lg border border-border bg-surface-elevated px-2.5 py-1 text-[11px] text-foreground hover:bg-surface-elevated"
                         >
                             Ocisti listu
                         </button>
@@ -287,21 +287,21 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                                     if (match) handleSelectDobavljac(match);
                                     if (recent.lastInvoice && !brojRacuna.trim()) setBrojRacuna(recent.lastInvoice);
                                 }}
-                                className="rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-3 py-1.5 text-left text-xs text-[#c9d3e4] hover:border-[#4f8cff]"
+                                className="rounded-lg border border-border bg-surface px-3 py-1.5 text-left text-xs text-foreground hover:border-primary"
                             >
                                 <div className="font-semibold">{recent.naziv}</div>
-                                {recent.lastInvoice ? <div className="text-[#8ea0bd]">Racun: {recent.lastInvoice}</div> : null}
-                                <div className="text-[11px] text-[#7f8ea9]">Koriscen: {formatUsedAt(recent.lastUsedAt)}</div>
+                                {recent.lastInvoice ? <div className="text-muted">Racun: {recent.lastInvoice}</div> : null}
+                                <div className="text-[11px] text-muted">Koriscen: {formatUsedAt(recent.lastUsedAt)}</div>
                             </button>
                         ))}
                     </div>
                 </section>
             )}
 
-            <section className="relative rounded-xl border border-[#2f323b] bg-[#14161d] p-4" ref={searchRef}>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Pretraga dobavljaca *</label>
+            <section className="relative rounded-xl border border-border bg-surface p-4" ref={searchRef}>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Pretraga dobavljaca *</label>
                 <div className="relative">
-                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#7f8ea9]" />
+                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                     <input
                         type="text"
                         placeholder="Naziv, adresa ili telefon..."
@@ -314,7 +314,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                         }}
                         onFocus={() => setShowSearchResults(true)}
                         onKeyDown={handleKeyDown}
-                        className="w-full rounded-xl border border-[#2f323b] bg-[#1a1b1f] py-2 pl-9 pr-3 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                        className="w-full rounded-xl border border-border bg-surface py-2 pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-primary"
                     />
                 </div>
 
@@ -327,17 +327,17 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                                     type="button"
                                     onClick={() => handleSelectDobavljac(dobavljac)}
                                     onMouseEnter={() => setSelectedIndex(index)}
-                                    className={`block w-full border-b border-[#262a34] px-3 py-3 text-left transition ${
-                                        index === selectedIndex ? "bg-[#1f2d48]" : "hover:bg-[#1f2330]"
+                                    className={`block w-full border-b border-border px-3 py-3 text-left transition ${
+                                        index === selectedIndex ? "bg-surface-elevated" : "hover:bg-surface-elevated"
                                     }`}
                                 >
-                                    <div className="font-semibold text-[#e7eeff]">{dobavljac.naziv}</div>
-                                    {dobavljac.adresa ? <div className="text-xs text-[#9aabc7]">Adresa: {dobavljac.adresa}</div> : null}
-                                    {dobavljac.telefon ? <div className="text-xs text-[#9aabc7]">Telefon: {dobavljac.telefon}</div> : null}
+                                    <div className="font-semibold text-foreground">{dobavljac.naziv}</div>
+                                    {dobavljac.adresa ? <div className="text-xs text-muted">Adresa: {dobavljac.adresa}</div> : null}
+                                    {dobavljac.telefon ? <div className="text-xs text-muted">Telefon: {dobavljac.telefon}</div> : null}
                                 </button>
                             ))
                         ) : (
-                            <div className="px-3 py-5 text-center text-sm text-[#9aabc7]">Nema rezultata za "{searchQuery}"</div>
+                            <div className="px-3 py-5 text-center text-sm text-muted">Nema rezultata za "{searchQuery}"</div>
                         )}
                     </div>
                 )}

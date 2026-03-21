@@ -36,7 +36,7 @@
     flex-shrink: 0;
     border-radius: 10px;
     object-fit: cover;
-    background: #f5f5f5;
+    background: var(--surface-elevated);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
 }
@@ -59,8 +59,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(145deg, #ffffff 0%, #f3f4f6 100%);
-    border: 2px solid #e5e7eb;
+    background: linear-gradient(145deg, var(--surface-default) 0%, var(--surface-light) 100%);
+    border: 2px solid var(--border-default);
     border-radius: 12px;
     cursor: pointer;
     opacity: 0;
@@ -79,9 +79,9 @@
 
 .carousel-nav-btn:hover {
     opacity: 1 !important;
-    background: linear-gradient(145deg, #ffffff 0%, #e5e7eb 100%);
+    background: linear-gradient(145deg, var(--surface-default) 0%, var(--surface-2) 100%);
     transform: translateY(-50%) scale(1.05);
-    border-color: #d1d5db;
+    border-color: var(--border-default);
     box-shadow: 
         0 6px 12px rgba(0, 0, 0, 0.08),
         0 15px 25px rgba(0, 0, 0, 0.08),
@@ -99,7 +99,7 @@
 .carousel-nav-btn svg {
     width: 20px;
     height: 20px;
-    stroke: #6b7280;
+    stroke: var(--gray-500);
     stroke-width: 2.5;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -107,7 +107,7 @@
 }
 
 .carousel-nav-btn:hover svg {
-    stroke: #374151;
+    stroke: var(--gray-700);
 }
 
 /* ===============================

@@ -73,15 +73,15 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   };
 
   const sidebarContent = (
-    <aside className="h-full w-80 border-r border-[#2a2b32] bg-[#111217]">
-      <div className="flex items-center justify-between border-b border-[#2a2b32] px-5 py-4">
+    <aside className="h-full w-80 border-r border-muted surface">
+      <div className="flex items-center justify-between border-b border-muted px-5 py-4">
         <div>
-          <div className="text-sm font-medium text-[#91a2c0]">Trendplus</div>
-          <h1 className="text-lg font-semibold text-white">Backoffice</h1>
+          <div className="text-sm font-medium text-muted">Trendplus</div>
+          <h1 className="text-lg font-semibold text-contrast">Backoffice</h1>
         </div>
         <button
           type="button"
-          className="rounded-md border border-[#2a2b32] p-1 text-[#9fa9ba] lg:hidden"
+          className="rounded-md border border-muted p-1 text-secondary lg:hidden"
           onClick={onCloseMobile}
           aria-label="Close navigation"
         >
@@ -96,19 +96,19 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             const isOpen = openGroups.has(group.id);
             const activeItemTo = findBestMatchForGroup(location.pathname, group);
             return (
-              <div key={group.id} className="rounded-xl border border-[#23242b] bg-[#181920]">
+              <div key={group.id} className="rounded-xl border border-muted surface-elevated">
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
                   className="flex w-full items-center justify-between px-3 py-2.5 text-left"
                 >
-                  <span className="flex items-center gap-2 text-sm font-semibold text-[#c9d3e4]">
-                    <GroupIcon size={15} className="text-[#7ea5ff]" />
+                  <span className="flex items-center gap-2 text-sm font-semibold text-contrast">
+                    <GroupIcon size={15} className="text-[var(--info)]" />
                     {group.label}
                   </span>
                   <ChevronDown
                     size={15}
-                    className={`text-[#7f8aa0] transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    className={`text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
                   />
                 </button>
 
@@ -118,18 +118,14 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                       const ItemIcon = item.icon;
                       return (
                         <li key={item.to}>
-                          {
-                            // Determine active per-group using best-match logic so only one item
-                            // in a group is highlighted when routes overlap (e.g. /analytics and /analytics/...)
-                          }
                           <NavLink to={item.to} onClick={onCloseMobile} className={
                             `group flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition ${
                               item.to === activeItemTo
-                                ? "bg-[#1f2940] text-[#d8e5ff] ring-1 ring-[#32579e]"
-                                : "text-[#9eabc4] hover:bg-[#20222a] hover:text-white"
+                                ? "bg-[var(--surface-light)] text-contrast ring-1 ring-[var(--info)]"
+                                : "text-secondary hover:bg-[var(--surface-default)] hover:text-contrast"
                             }`
                           }>
-                            <ItemIcon size={15} className="shrink-0 text-[#86a7ff] group-hover:text-[#9dc0ff]" />
+                            <ItemIcon size={15} className="shrink-0 text-[var(--info)] group-hover:opacity-80" />
                             <span className="truncate">{item.label}</span>
                           </NavLink>
                         </li>

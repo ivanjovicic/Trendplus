@@ -75,10 +75,10 @@ export default function WorkerStatusAlert() {
   }
 
   const style = (() => {
-    if (error) return { background: "#fef2f2", borderColor: "#dc2626", color: "#991b1b" };
-    if ((health?.errorWorkers ?? 0) > 0) return { background: "#fef2f2", borderColor: "#dc2626", color: "#991b1b" };
-    if ((health?.staleWorkers ?? 0) > 0) return { background: "#fffbeb", borderColor: "#f59e0b", color: "#92400e" };
-    return { background: "#f0fdf4", borderColor: "#059669", color: "#065f46" };
+    if (error) return { background: "var(--surface-elevated)", borderColor: "var(--error)", color: "var(--error)" };
+    if ((health?.errorWorkers ?? 0) > 0) return { background: "var(--surface-elevated)", borderColor: "var(--error)", color: "var(--error)" };
+    if ((health?.staleWorkers ?? 0) > 0) return { background: "var(--surface-elevated)", borderColor: "var(--warning)", color: "var(--warning)" };
+    return { background: "var(--surface-elevated)", borderColor: "var(--success)", color: "var(--success)" };
   })();
 
   const formatTime = (dateStr: string) => {
@@ -186,13 +186,13 @@ export default function WorkerStatusAlert() {
               <div style={{ fontSize: 11, opacity: 0.7 }}>Zdravi</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: health.errorWorkers > 0 ? "#dc2626" : undefined }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: health.errorWorkers > 0 ? "var(--error)" : undefined }}>
                 {health.errorWorkers}
               </div>
               <div style={{ fontSize: 11, opacity: 0.7 }}>Greske</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: health.staleWorkers > 0 ? "#f59e0b" : undefined }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: health.staleWorkers > 0 ? "var(--warning)" : undefined }}>
                 {health.staleWorkers}
               </div>
               <div style={{ fontSize: 11, opacity: 0.7 }}>Stale</div>
@@ -222,14 +222,14 @@ export default function WorkerStatusAlert() {
                 {worker.message && <div style={{ marginTop: 4, opacity: 0.8, fontSize: 11 }}>{worker.message}</div>}
 
                 {worker.lastError && (
-                  <div style={{ marginTop: 4, color: "#dc2626", fontSize: 11, background: "rgba(220,38,38,0.1)", padding: 4, borderRadius: 4 }}>
+                  <div style={{ marginTop: 4, color: "var(--error)", fontSize: 11, background: "rgba(220,38,38,0.1)", padding: 4, borderRadius: 4 }}>
                     ERR {worker.lastError}
                     {worker.errorCount > 1 && ` (${worker.errorCount}x)`}
                   </div>
                 )}
 
                 {worker.isStale && (
-                  <div style={{ marginTop: 4, color: "#f59e0b", fontSize: 11, fontWeight: 600 }}>
+                  <div style={{ marginTop: 4, color: "var(--warning)", fontSize: 11, fontWeight: 600 }}>
                     WARN Worker nije poslao heartbeat duze od 10 minuta
                   </div>
                 )}
@@ -237,10 +237,10 @@ export default function WorkerStatusAlert() {
             ))}
           </div>
 
-          <button
+            <button
             type="button"
             onClick={() => void fetchHealth()}
-            style={{
+              style={{
               marginTop: 8,
               width: "100%",
               padding: "8px 12px",
@@ -267,7 +267,7 @@ export default function WorkerStatusAlert() {
             style={{
               width: "100%",
               padding: "8px 12px",
-              background: "#dc2626",
+              background: "var(--error)",
               color: "white",
               border: "none",
               borderRadius: 6,

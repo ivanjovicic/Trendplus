@@ -18,7 +18,7 @@ export default function ConfirmModal({
     title,
     message,
     confirmText = "Potvrdi",
-    cancelText = "Otkaži",
+    cancelText = "Otkaï¿½i",
     confirmVariant = "primary",
     isBusy = false,
     onConfirm,
@@ -37,8 +37,7 @@ export default function ConfirmModal({
                 <>
                     <button
                         type="button"
-                        className="button-big button-secondary"
-                        style={{ width: "auto", padding: "10px 18px", marginTop: 0 }}
+                        className="button-big bg-surface-elevated text-foreground border border-border"
                         onClick={onCancel}
                         disabled={isBusy}
                     >
@@ -46,8 +45,7 @@ export default function ConfirmModal({
                     </button>
                     <button
                         type="button"
-                        className={confirmClassName}
-                        style={{ width: "auto", padding: "10px 18px", marginTop: 0, boxShadow: "none" }}
+                        className={`${confirmClassName} ${confirmVariant === 'danger' ? 'button-danger' : 'bg-primary text-white'}`}
                         onClick={onConfirm}
                         disabled={isBusy}
                     >
@@ -56,7 +54,7 @@ export default function ConfirmModal({
                 </>
             }
         >
-            <div style={{ color: "#374151", lineHeight: 1.5 }}>{message}</div>
+            <div className="text-foreground leading-relaxed">{message}</div>
         </Modal>
     );
 }
