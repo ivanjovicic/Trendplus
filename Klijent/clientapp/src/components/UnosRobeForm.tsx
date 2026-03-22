@@ -344,13 +344,13 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
             </section>
 
             {selectedDobavljac ? (
-                <section className="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4">
+                <section className="rounded-xl border border-success bg-success-10 p-4">
                     <div className="flex items-start justify-between gap-3">
                         <div>
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-300">Izabrani dobavljac</h3>
-                            <p className="mt-1 text-base font-semibold text-[#f3f6ff]">{selectedDobavljac.naziv}</p>
-                            {selectedDobavljac.adresa ? <p className="text-sm text-emerald-200">Adresa: {selectedDobavljac.adresa}</p> : null}
-                            {selectedDobavljac.telefon ? <p className="text-sm text-emerald-200">Telefon: {selectedDobavljac.telefon}</p> : null}
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-success">Izabrani dobavljac</h3>
+                            <p className="mt-1 text-base font-semibold text-foreground">{selectedDobavljac.naziv}</p>
+                            {selectedDobavljac.adresa ? <p className="text-sm text-muted">Adresa: {selectedDobavljac.adresa}</p> : null}
+                            {selectedDobavljac.telefon ? <p className="text-sm text-muted">Telefon: {selectedDobavljac.telefon}</p> : null}
                         </div>
                         <button
                             type="button"
@@ -358,7 +358,8 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                                 setSelectedDobavljac(null);
                                 setSearchQuery("");
                             }}
-                            className="inline-flex items-center gap-1 rounded-lg border border-rose-700 bg-rose-900/40 px-3 py-1.5 text-xs font-semibold text-rose-200"
+                            className="inline-flex items-center gap-1 rounded-lg border bg-danger-10 px-3 py-1.5 text-xs font-semibold text-danger"
+                            style={{ borderColor: 'var(--danger)' }}
                         >
                             <X size={12} /> Promeni
                         </button>
@@ -366,7 +367,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 </section>
             ) : null}
 
-            <section className={`rounded-xl border p-4 ${canProceed ? "border-emerald-700 bg-emerald-950/20" : "border-border bg-surface"}`}>
+            <section className={`rounded-xl border p-4 ${canProceed ? "border-success bg-success-10" : "border-border bg-surface"}`}>
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Pregled unosa</h3>
                 <div className="space-y-1 text-sm text-foreground">
                     <p><span className="text-muted">Broj racuna:</span> {normalizeInvoice(brojRacuna) || "[Nije unet]"}</p>
@@ -374,7 +375,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 </div>
 
                 {validationMessage ? (
-                    <div className="mt-3 rounded-lg border border-rose-700 bg-rose-900/40 px-3 py-2 text-xs text-rose-200">
+                    <div className="mt-3 rounded-lg border bg-danger-10 px-3 py-2 text-xs text-danger" style={{ borderColor: 'var(--danger)' }}>
                         {validationMessage}
                     </div>
                 ) : null}
@@ -382,7 +383,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 <button
                     onClick={handleContinue}
                     disabled={!canProceed}
-                    className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${canProceed ? 'border-emerald-700 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-700' : 'border-border bg-surface text-muted'}`}
+                    className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${canProceed ? 'border-success bg-success-10 text-success hover:bg-success' : 'border-border bg-surface text-muted'}`}
                 >
                     Nastavi na unos artikala <ArrowRight size={14} />
                 </button>

@@ -17,7 +17,7 @@ const WORKFLOWS: WorkflowCard[] = [
     title: "Unos robe",
     description: "Brz prijem robe po dobavljaču uz selekciju računa i prelaz na unos stavki.",
     icon: PackagePlus,
-    accent: "border-[#2f5d9d] bg-[#13223b]",
+    accent: "border-info bg-surface-elevated text-info",
     tips: ["Ctrl+Enter za nastavak", "Poslednji dobavljači", "Brzi izbor računa"],
   },
   {
@@ -25,7 +25,7 @@ const WORKFLOWS: WorkflowCard[] = [
     title: "Prodaja",
     description: "POS tok sa pretragom artikala, stavkama i obračunom ukupnog iznosa u realnom vremenu.",
     icon: ShoppingCart,
-    accent: "border-[#2f6750] bg-[#10261d]",
+    accent: "border-success bg-surface-elevated text-success",
     tips: ["Live pretraga artikala", "Brzo dodavanje u listu", "Validacija pre slanja"],
   },
   {
@@ -33,7 +33,7 @@ const WORKFLOWS: WorkflowCard[] = [
     title: "Povraćaj robe",
     description: "Wizard za povraćaj sa statusima, istorijom i paginacijom zapisnika.",
     icon: RotateCcw,
-    accent: "border-[#7a5832] bg-[#2a1b0d]",
+    accent: "border-warning bg-surface-elevated text-warning",
     tips: ["Korak-po-korak flow", "Kontrola stavki", "Istorija povraćaja"],
   },
   {
@@ -41,7 +41,7 @@ const WORKFLOWS: WorkflowCard[] = [
     title: "Nivelacija cena",
     description: "Promena cena po artiklu sa instant pregledom delte i evidencijom promene.",
     icon: GaugeCircle,
-    accent: "border-[#5a4b86] bg-[#1d1931]",
+    accent: "border-info bg-surface-elevated text-info",
     tips: ["Live delta cene", "Brza pretraga artikla", "Audit trag u dnevniku"],
   },
   {
@@ -49,7 +49,7 @@ const WORKFLOWS: WorkflowCard[] = [
     title: "Access import",
     description: "Kontrolisani ETL uvoz sa analizom šeme, statusima i rollback batch-a.",
     icon: Boxes,
-    accent: "border-[#5d5f70] bg-[#1a1c28]",
+    accent: "border-border bg-surface-elevated text-muted",
     tips: ["Analiza pre importa", "Batch istorija", "Sigurno brisanje"],
   },
 ];
@@ -75,13 +75,13 @@ export default function UnosHubPage() {
           {WORKFLOWS.map((workflow) => {
             const Icon = workflow.icon;
             return (
-              <article key={workflow.to} className="rounded-xl border border-[#2a2b32] bg-[#14161d] p-4">
+              <article key={workflow.to} className="rounded-xl border border-border bg-surface p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-base font-semibold text-[#f3f6ff]">{workflow.title}</h2>
-                    <p className="mt-1 text-sm text-[#9aabc7]">{workflow.description}</p>
+                    <h2 className="text-base font-semibold text-foreground">{workflow.title}</h2>
+                    <p className="mt-1 text-sm text-muted">{workflow.description}</p>
                   </div>
-                  <span className={`shrink-0 rounded-lg border p-2 text-[#c9d9ff] ${workflow.accent}`}>
+                  <span className={`shrink-0 rounded-lg border p-2 ${workflow.accent}`}>
                     <Icon size={16} />
                   </span>
                 </div>
@@ -90,7 +90,7 @@ export default function UnosHubPage() {
                   {workflow.tips.map((tip) => (
                     <span
                       key={tip}
-                      className="rounded-full border border-[#2f323b] bg-[#1a1b1f] px-2.5 py-1 text-[11px] text-[#a8b8d5]"
+                      className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] text-muted"
                     >
                       {tip}
                     </span>
@@ -100,7 +100,7 @@ export default function UnosHubPage() {
                 <div className="mt-4">
                   <Link
                     to={workflow.to}
-                    className="inline-flex items-center rounded-xl border border-[#3760b7] bg-[#2d4f95] px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7]"
+                    className="inline-flex items-center rounded-xl border bg-primary px-3.5 py-2 text-sm font-semibold text-on-primary transition hover:bg-primary-hover"
                   >
                     Otvori modul
                   </Link>

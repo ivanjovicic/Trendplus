@@ -514,7 +514,7 @@ export default function ArtikliListPage() {
                       setDataScopeValue("all");
                       window.dispatchEvent(new Event("trendplus:data-scope-changed"));
                     }}
-                    className="flex items-center gap-1 rounded-lg border border-primary bg-primary px-3 py-1.5 text-xs text-white hover:bg-primary-dark"
+                    className="flex items-center gap-1 rounded-lg border border-info bg-info px-3 py-1.5 text-xs text-white hover:opacity-90"
                   >
                     Prikazi sve artikle
                   </button>

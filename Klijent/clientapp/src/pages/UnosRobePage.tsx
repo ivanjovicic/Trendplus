@@ -70,17 +70,17 @@ export default function UnosRobePage() {
 
             <InventoryPanel>
                 <div className="mb-4 grid gap-3 md:grid-cols-3">
-                    <article className="rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-wide text-[#93a7c8]">Korak 1</p>
-                        <p className="mt-1 text-sm font-semibold text-[#e7eeff]">Unesite broj racuna</p>
+                    <article className="rounded-xl border border-border bg-surface px-3 py-2">
+                        <p className="text-[11px] uppercase tracking-wide text-muted">Korak 1</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">Unesite broj racuna</p>
                     </article>
-                    <article className="rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-wide text-[#93a7c8]">Korak 2</p>
-                        <p className="mt-1 text-sm font-semibold text-[#e7eeff]">Izaberite dobavljaca</p>
+                    <article className="rounded-xl border border-border bg-surface px-3 py-2">
+                        <p className="text-[11px] uppercase tracking-wide text-muted">Korak 2</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">Izaberite dobavljaca</p>
                     </article>
-                    <article className="rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-wide text-[#93a7c8]">Korak 3</p>
-                        <p className="mt-1 text-sm font-semibold text-[#e7eeff]">Ctrl+Enter za nastavak</p>
+                    <article className="rounded-xl border border-border bg-surface px-3 py-2">
+                        <p className="text-[11px] uppercase tracking-wide text-muted">Korak 3</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">Ctrl+Enter za nastavak</p>
                     </article>
                 </div>
 
