@@ -1,39 +1,39 @@
-/* Access Import page - aligned to Inventory & Sales dark design system */
+/* Access Import page - theme-aware design */
 
 .accimport-page {
-    background: linear-gradient(180deg, #161921 0%, #14161d 100%);
-    color: #dbe6fb;
-    border: 1px solid #2a2b32;
+    background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface-default) 100%);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
     border-radius: 16px;
     padding: 16px;
-    box-shadow: 0 24px 40px -32px rgba(0, 0, 0, 0.9);
+    box-shadow: 0 24px 40px -32px rgba(0, 0, 0, 0.45);
 }
 
 .accimport-title {
     margin: 0 0 6px;
     font-size: 20px;
     font-weight: 700;
-    color: #f3f6ff;
+    color: var(--text-primary);
 }
 
 .accimport-subtitle {
     margin: 0 0 14px;
     font-size: 13px;
-    color: #9aabc7;
+    color: var(--text-secondary);
 }
 
 .accimport-tabs {
     display: flex;
     gap: 6px;
     margin-bottom: 14px;
-    border-bottom: 1px solid #2a2b32;
+    border-bottom: 1px solid var(--border-default);
 }
 
 .accimport-tab {
-    border: 1px solid #2f323b;
+    border: 1px solid var(--border-default);
     border-bottom: none;
-    background: #14161d;
-    color: #97a7c2;
+    background: var(--surface-default);
+    color: var(--text-secondary);
     border-radius: 10px 10px 0 0;
     padding: 9px 14px;
     font-size: 12px;
@@ -43,22 +43,22 @@
 }
 
 .accimport-tab:hover {
-    color: #dbe6fb;
-    background: #1b1f29;
+    color: var(--text-primary);
+    background: var(--surface-light);
 }
 
 .accimport-tab.active {
-    background: #1f2d48;
-    color: #eaf1ff;
-    border-color: #3760b7;
+    background: var(--surface-light);
+    color: var(--text-primary);
+    border-color: var(--info);
 }
 
 .accimport-filterbar {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 10px;
-    background: #14161d;
-    border: 1px solid #2f323b;
+    background: var(--surface-default);
+    border: 1px solid var(--border-default);
     border-radius: 12px;
     padding: 12px;
     margin-bottom: 14px;
@@ -80,7 +80,7 @@
 
 .accimport-label {
     font-size: 12px;
-    color: #93a7c8;
+    color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -90,16 +90,16 @@
     width: 100%;
     padding: 8px 10px;
     border-radius: 8px;
-    border: 1px solid #2f323b;
-    background: #1a1b1f;
-    color: #e3ebff;
+    border: 1px solid var(--border-default);
+    background: var(--surface-light);
+    color: var(--text-primary);
     font-size: 13px;
 }
 
 .accimport-input:focus {
     outline: none;
-    border-color: #4f8cff;
-    box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.2);
+    border-color: var(--focus-ring);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .accimport-checkbox-row {
@@ -107,13 +107,13 @@
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    color: #dbe6fb;
+    color: var(--text-primary);
 }
 
 .accimport-checkbox-row input[type="checkbox"] {
     width: 14px;
     height: 14px;
-    accent-color: #4f8cff;
+    accent-color: var(--info);
 }
 
 .accimport-actions {
@@ -139,46 +139,46 @@
 }
 
 .accimport-btn-primary {
-    background: #2d4f95;
-    border-color: #3760b7;
-    color: #fff;
+    background: var(--info);
+    border-color: var(--info);
+    color: var(--text-primary);
 }
 
 .accimport-btn-primary:hover:not(:disabled) {
-    background: #3760b7;
+    opacity: 0.88;
 }
 
 .accimport-btn-secondary {
-    background: #222734;
-    color: #dbe6fb;
-    border-color: #3c4458;
+    background: var(--surface-light);
+    color: var(--text-primary);
+    border-color: var(--border-hover);
 }
 
 .accimport-btn-secondary:hover:not(:disabled) {
-    background: #2b3140;
+    border-color: var(--info);
 }
 
 .accimport-btn-success {
-    background: #1e5b45;
-    border-color: #2d7759;
-    color: #fff;
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--text-primary);
 }
 
 .accimport-btn-success:hover:not(:disabled) {
-    background: #267058;
+    opacity: 0.88;
 }
 
 .accimport-btn-danger,
 .accimport-btn-clear {
-    background: #4d1f26;
-    color: #ffd5da;
-    border-color: #7f1d1d;
+    background: var(--surface-light);
+    color: var(--error);
+    border-color: var(--error);
     font-size: 12px;
 }
 
 .accimport-btn-danger:hover:not(:disabled),
 .accimport-btn-clear:hover:not(:disabled) {
-    background: #6c2932;
+    opacity: 0.88;
 }
 
 .accimport-file-row {
@@ -190,11 +190,11 @@
 
 .accimport-file-name {
     font-size: 13px;
-    color: #9aabc7;
+    color: var(--text-secondary);
 }
 
 .accimport-file-name.has-file {
-    color: #6ee7b7;
+    color: var(--success);
 }
 
 .accimport-source-row {
@@ -208,7 +208,7 @@
 .accimport-hint {
     margin-top: 6px;
     font-size: 12px;
-    color: #9aabc7;
+    color: var(--text-secondary);
 }
 
 .accimport-kpis {
@@ -219,29 +219,29 @@
 }
 
 .accimport-kpi {
-    background: #14161d;
-    border: 1px solid #2f323b;
+    background: var(--surface-default);
+    border: 1px solid var(--border-default);
     border-radius: 12px;
     padding: 10px;
 }
 
 .accimport-kpi-label {
     font-size: 12px;
-    color: #93a7c8;
+    color: var(--text-secondary);
 }
 
 .accimport-kpi-value {
     margin-top: 6px;
     font-size: 18px;
     font-weight: 700;
-    color: #f3f6ff;
+    color: var(--text-primary);
 }
 
 .accimport-progress,
 .accimport-card,
 .accimport-table-wrap {
-    background: #14161d;
-    border: 1px solid #2f323b;
+    background: var(--surface-default);
+    border: 1px solid var(--border-default);
     border-radius: 12px;
     padding: 12px;
     margin-bottom: 12px;
@@ -253,12 +253,12 @@
     margin: 0 0 8px;
     font-size: 14px;
     font-weight: 700;
-    color: #f3f6ff;
+    color: var(--text-primary);
 }
 
 .accimport-progress-bar-track {
     height: 10px;
-    background: #202431;
+    background: var(--surface-light);
     border-radius: 6px;
     overflow: hidden;
     margin-bottom: 6px;
@@ -266,7 +266,7 @@
 
 .accimport-progress-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #4f8cff, #4ac99b);
+    background: linear-gradient(90deg, var(--info), var(--success));
     border-radius: 6px;
 }
 
@@ -274,13 +274,13 @@
     display: flex;
     justify-content: space-between;
     font-size: 12px;
-    color: #9aabc7;
+    color: var(--text-secondary);
 }
 
 .accimport-scroll {
     max-height: 420px;
     overflow: auto;
-    border: 1px solid #2f323b;
+    border: 1px solid var(--border-default);
     border-radius: 10px;
 }
 
@@ -288,29 +288,29 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
-    background: #1a1b1f;
+    background: var(--surface-light);
 }
 
 .accimport-table th {
     position: sticky;
     top: 0;
     z-index: 1;
-    background: #14161d;
-    color: #93a7c8;
+    background: var(--surface-default);
+    color: var(--text-secondary);
     text-align: left;
     font-weight: 700;
     padding: 8px;
-    border-bottom: 1px solid #2f323b;
+    border-bottom: 1px solid var(--border-default);
 }
 
 .accimport-table td {
     padding: 8px;
-    border-bottom: 1px solid #262a34;
-    color: #dbe6fb;
+    border-bottom: 1px solid var(--border-default);
+    color: var(--text-primary);
 }
 
 .accimport-table tr:hover {
-    background: #1f2330;
+    background: var(--surface-elevated);
 }
 
 .accimport-table .align-right {
@@ -325,35 +325,40 @@
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
+    border: 1px solid var(--border-default);
 }
 
 .accimport-status-Completed,
 .accimport-mapping-matched {
-    background: #134e3a;
-    color: #6ee7b7;
+    background: var(--surface-light);
+    color: var(--success);
+    border-color: var(--success);
 }
 
 .accimport-status-Running {
-    background: #1f2d48;
-    color: #9fc0ff;
+    background: var(--surface-light);
+    color: var(--info);
+    border-color: var(--info);
 }
 
 .accimport-status-Pending {
-    background: #2a2f3b;
-    color: #9ca3af;
+    background: var(--surface-light);
+    color: var(--text-muted);
+    border-color: var(--border-hover);
 }
 
 .accimport-status-Failed,
 .accimport-mapping-missing {
-    background: #4d1f26;
-    color: #fecaca;
+    background: var(--surface-light);
+    color: var(--error);
+    border-color: var(--error);
 }
 
 .accimport-schema-details {
-    border: 1px solid #2f323b;
+    border: 1px solid var(--border-default);
     border-radius: 10px;
     padding: 8px 10px;
-    background: #14161d;
+    background: var(--surface-default);
     margin-bottom: 8px;
 }
 
@@ -364,11 +369,11 @@
     gap: 10px;
     flex-wrap: wrap;
     font-size: 13px;
-    color: #dbe6fb;
+    color: var(--text-primary);
 }
 
 .accimport-schema-summary strong {
-    color: #f3f6ff;
+    color: var(--text-primary);
 }
 
 .accimport-schema-badge {
@@ -377,19 +382,19 @@
     border-radius: 999px;
     font-size: 11px;
     font-weight: 600;
-    border: 1px solid #3c4458;
+    border: 1px solid var(--border-hover);
 }
 
 .accimport-schema-badge.all-matched {
-    color: #6ee7b7;
-    background: rgba(19, 78, 58, 0.35);
-    border-color: #2d7759;
+    color: var(--success);
+    background: var(--surface-light);
+    border-color: var(--success);
 }
 
 .accimport-schema-badge.partial {
-    color: #fbbf24;
-    background: rgba(120, 53, 15, 0.35);
-    border-color: #78350f;
+    color: var(--warning);
+    background: var(--surface-light);
+    border-color: var(--warning);
 }
 
 .accimport-col-chips {
@@ -401,11 +406,11 @@
 
 .accimport-col-chip {
     font-size: 11px;
-    background: #1a1b1f;
-    border: 1px solid #3c4458;
+    background: var(--surface-light);
+    border: 1px solid var(--border-hover);
     border-radius: 999px;
     padding: 2px 8px;
-    color: #d1d5db;
+    color: var(--text-primary);
 }
 
 .accimport-error,
@@ -416,31 +421,29 @@
     border-radius: 10px;
     padding: 10px 12px;
     font-size: 13px;
+    background: var(--surface-light);
 }
 
 .accimport-error {
-    background: rgba(127, 29, 29, 0.25);
-    border: 1px solid #7f1d1d;
-    color: #fecaca;
+    border: 1px solid var(--error);
+    color: var(--error);
 }
 
 .accimport-warning {
-    background: rgba(120, 53, 15, 0.25);
-    border: 1px solid #78350f;
-    color: #fcd34d;
+    border: 1px solid var(--warning);
+    color: var(--warning);
 }
 
 .accimport-success,
 .accimport-delete-banner {
-    background: rgba(19, 78, 58, 0.28);
-    border: 1px solid #2d7759;
-    color: #6ee7b7;
+    border: 1px solid var(--success);
+    color: var(--success);
 }
 
 .accimport-empty-state {
     padding: 24px;
     text-align: center;
-    color: #9aabc7;
+    color: var(--text-secondary);
     font-size: 14px;
 }
 
@@ -456,24 +459,24 @@
     align-items: baseline;
     font-size: 13px;
     padding: 4px 0;
-    border-bottom: 1px solid #2a2f3b;
+    border-bottom: 1px solid var(--border-default);
 }
 
 .accimport-result-entity {
-    color: #9aabc7;
+    color: var(--text-secondary);
 }
 
 .accimport-result-counts {
     font-weight: 700;
-    color: #e3ebff;
+    color: var(--text-primary);
 }
 
 .accimport-result-counts .ins {
-    color: #6ee7b7;
+    color: var(--success);
 }
 
 .accimport-result-counts .upd {
-    color: #9fc0ff;
+    color: var(--info);
 }
 
 .accimport-delete-banner-close {
@@ -484,6 +487,11 @@
     cursor: pointer;
     font-weight: 700;
     font-size: 16px;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
 }
 
 @media (max-width: 1100px) {

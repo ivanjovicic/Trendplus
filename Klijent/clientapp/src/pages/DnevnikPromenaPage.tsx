@@ -60,6 +60,16 @@ function formatDate(dateStr: string) {
   });
 }
 
+function getTipPromeneStyle(tip: string): React.CSSProperties {
+  const tipLower = tip.toLowerCase();
+  if (tipLower.includes("prodaja")) return { backgroundColor: "var(--success)", color: "var(--text-primary)" };
+  if (tipLower.includes("nivelacija")) return { backgroundColor: "var(--error)", color: "var(--text-primary)" };
+  if (tipLower.includes("unos")) return { backgroundColor: "var(--info)", color: "var(--text-primary)" };
+  if (tipLower.includes("korekcija")) return { backgroundColor: "var(--warning)", color: "var(--surface-default)" };
+  if (tipLower.includes("povracaj")) return { backgroundColor: "var(--gray-600)", color: "var(--text-primary)" };
+  return { backgroundColor: "var(--gray-500)", color: "var(--text-primary)" };
+}
+
 export default function DnevnikPromenaPage() {
   const navigate = useNavigate();
   const params = useParams<{ id?: string }>();
@@ -126,7 +136,7 @@ export default function DnevnikPromenaPage() {
       }
     };
 
-    loadTipovi();
+    void loadTipovi();
     return () => {
       aborted = true;
     };
@@ -163,14 +173,13 @@ export default function DnevnikPromenaPage() {
       } catch (err: unknown) {
         if (aborted) return;
         console.error(err);
-        setError((err as Error)?.message ?? "Greška pri učitavanju dnevnika promena.");
+        setError((err as Error)?.message ?? "Greska pri ucitavanju dnevnika promena.");
       } finally {
         if (!aborted) setLoading(false);
       }
     };
 
     void load();
-
     return () => {
       aborted = true;
     };
@@ -189,8 +198,8 @@ export default function DnevnikPromenaPage() {
   const renderSortIndicator = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
     if (sortBy !== column) return <ArrowUpDown size={12} className="ml-1 inline opacity-40" />;
     return sortDir === "asc"
-      ? <ArrowUp size={12} className="ml-1 inline text-[#4F8EF7]" />
-      : <ArrowDown size={12} className="ml-1 inline text-[#4F8EF7]" />;
+      ? <ArrowUp size={12} className="ml-1 inline" style={{ color: "var(--info)" }} />
+      : <ArrowDown size={12} className="ml-1 inline" style={{ color: "var(--info)" }} />;
   };
 
   const clearFilters = () => {
@@ -235,21 +244,11 @@ export default function DnevnikPromenaPage() {
     navigate("/dnevnik-promena", { replace: true });
   };
 
-  const getTipPromeneColor = (tip: string) => {
-    const tipLower = tip.toLowerCase();
-    if (tipLower.includes("prodaja")) return "bg-emerald-700";
-    if (tipLower.includes("nivelacija")) return "bg-rose-700";
-    if (tipLower.includes("unos")) return "bg-blue-700";
-    if (tipLower.includes("korekcija")) return "bg-amber-700";
-    if (tipLower.includes("povracaj")) return "bg-violet-700";
-    return "bg-slate-600";
-  };
-
   return (
     <InventoryPageShell
       icon={ClipboardList}
       title="Dnevnik promena"
-      subtitle="Audit pregled svih poslovnih promena po artiklima, računima i korisnicima."
+      subtitle="Audit pregled svih poslovnih promena po artiklima, racunima i korisnicima."
       actions={
         <>
           <AnalyticsTableToolbar
@@ -263,7 +262,8 @@ export default function DnevnikPromenaPage() {
           />
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-3 py-2 text-xs font-semibold text-white"
+            className="rounded-xl border px-3 py-2 text-xs font-semibold text-contrast transition hover:opacity-90"
+            style={{ borderColor: "var(--info)", backgroundColor: "var(--info)" }}
           >
             {showFilters ? "Sakrij filtere" : `Filteri ${activeFiltersCount > 0 ? `(${activeFiltersCount})` : ""}`}
           </button>
@@ -275,31 +275,31 @@ export default function DnevnikPromenaPage() {
           { label: "Zapisa", value: `${totalCount}` },
           { label: "Prikazano", value: `${promene.length}` },
           { label: "Strana", value: `${pageNumber}/${totalPages}` },
-          { label: "Status", value: loading ? "Učitavanje" : error ? "Greška" : "Spremno", tone: loading ? "warning" : error ? "danger" : "positive" },
+          { label: "Status", value: loading ? "Ucitavanje" : error ? "Greska" : "Spremno", tone: loading ? "warning" : error ? "danger" : "positive" },
         ]}
       />
 
       <InventoryPanel>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
-            className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
+            className="rounded-lg border border-muted bg-[var(--surface-darker)] px-3 py-1.5 text-xs text-contrast disabled:opacity-40"
             disabled={pageNumber <= 1}
             onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
           >
             <ChevronLeft size={14} />
           </button>
-          <span className="text-sm text-[#9aabc7]">{pageNumber} / {totalPages}</span>
+          <span className="text-sm text-secondary">{pageNumber} / {totalPages}</span>
           <button
-            className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-1.5 text-xs text-[#dbe6fb] disabled:opacity-40"
+            className="rounded-lg border border-muted bg-[var(--surface-darker)] px-3 py-1.5 text-xs text-contrast disabled:opacity-40"
             disabled={pageNumber >= totalPages}
             onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
           >
             <ChevronRight size={14} />
           </button>
-          <span className="mx-1 text-[#57637a]">|</span>
-          <span className="text-xs text-[#9aabc7]">Po strani</span>
+          <span className="mx-1 text-muted">|</span>
+          <span className="text-xs text-secondary">Po strani</span>
           <select
-            className="rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-1 text-xs text-[#dbe6fb]"
+            className="rounded-lg border border-muted bg-[var(--surface-darker)] px-2 py-1 text-xs text-contrast"
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -313,11 +313,11 @@ export default function DnevnikPromenaPage() {
         </div>
 
         {showFilters && (
-          <div className="mb-4 grid gap-3 rounded-xl border border-[#2f323b] bg-[#14161d] p-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mb-4 grid gap-3 rounded-xl border border-muted bg-[var(--surface-darker)] p-3 md:grid-cols-2 xl:grid-cols-5">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Tip promene</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-secondary">Tip promene</label>
               <select
-                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
+                className="control-muted w-full rounded-lg border px-2 py-2 text-sm"
                 value={filterTipPromene}
                 onChange={(e) => {
                   setFilterTipPromene(e.target.value);
@@ -332,10 +332,10 @@ export default function DnevnikPromenaPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Artikal</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-secondary">Artikal</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
+                className="control-muted w-full rounded-lg border px-2 py-2 text-sm"
                 value={searchNaziv}
                 onChange={(e) => {
                   setSearchNaziv(e.target.value);
@@ -345,10 +345,10 @@ export default function DnevnikPromenaPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Broj računa</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-secondary">Broj racuna</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
+                className="control-muted w-full rounded-lg border px-2 py-2 text-sm"
                 value={searchBrojRacuna}
                 onChange={(e) => {
                   setSearchBrojRacuna(e.target.value);
@@ -358,10 +358,10 @@ export default function DnevnikPromenaPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Datum od</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-secondary">Datum od</label>
               <input
                 type="date"
-                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
+                className="control-muted w-full rounded-lg border px-2 py-2 text-sm"
                 value={filterFromDate}
                 onChange={(e) => {
                   setFilterFromDate(e.target.value);
@@ -371,10 +371,10 @@ export default function DnevnikPromenaPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Datum do</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-secondary">Datum do</label>
               <input
                 type="date"
-                className="w-full rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-2 text-sm text-[#dbe6fb]"
+                className="control-muted w-full rounded-lg border px-2 py-2 text-sm"
                 value={filterToDate}
                 onChange={(e) => {
                   setFilterToDate(e.target.value);
@@ -386,7 +386,7 @@ export default function DnevnikPromenaPage() {
             <div className="xl:col-span-5">
               <button
                 onClick={clearFilters}
-                className="rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb]"
+                className="rounded-lg border border-muted bg-[var(--surface-light)] px-3 py-2 text-sm text-contrast transition hover:opacity-90"
               >
                 Resetuj filtere
               </button>
@@ -394,7 +394,7 @@ export default function DnevnikPromenaPage() {
           </div>
         )}
 
-        {loading && promene.length === 0 && <InventoryState message="Učitavanje dnevnika promena..." tone="warning" />}
+        {loading && promene.length === 0 && <InventoryState message="Ucitavanje dnevnika promena..." tone="warning" />}
         {error && <InventoryState message={error} tone="danger" />}
 
         {!loading && !error && promene.length === 0 && (
@@ -402,15 +402,15 @@ export default function DnevnikPromenaPage() {
         )}
 
         {!error && promene.length > 0 && (
-          <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
-            <table className="min-w-full divide-y divide-[#2f323b] text-sm">
-              <thead className="bg-[#14161d] text-[#93a7c8]">
+          <div className="overflow-x-auto rounded-xl border border-muted">
+            <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
+              <thead className="bg-[var(--surface-darker)] text-secondary">
                 <tr>
                   <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("datum")}>Datum{renderSortIndicator("datum")}</th>
                   <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("tipPromene")}>Tip{renderSortIndicator("tipPromene")}</th>
                   <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("naziv")}>Artikal{renderSortIndicator("naziv")}</th>
-                  <th className="px-3 py-3 text-left">Dobavljač</th>
-                  <th className="px-3 py-3 text-left">Račun</th>
+                  <th className="px-3 py-3 text-left">Dobavljac</th>
+                  <th className="px-3 py-3 text-left">Racun</th>
                   <th className="cursor-pointer px-3 py-3 text-right" onClick={() => handleSort("iznos")}>Iznos{renderSortIndicator("iznos")}</th>
                   <th className="px-3 py-3 text-center">Stara</th>
                   <th className="px-3 py-3 text-center">Nova</th>
@@ -419,11 +419,11 @@ export default function DnevnikPromenaPage() {
                   <th className="px-3 py-3 text-center">Detalji</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
+              <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-light)] text-contrast">
                 {promene.map((item) => (
                   <tr
                     key={item.id}
-                    className="cursor-pointer hover:bg-[#1f2330] focus-within:bg-[#1f2330]"
+                    className="cursor-pointer hover:bg-[var(--surface-elevated)] focus-within:bg-[var(--surface-elevated)]"
                     onClick={() => openDetail(item.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -434,24 +434,25 @@ export default function DnevnikPromenaPage() {
                     tabIndex={0}
                     aria-label={`Otvori detalje promene ${item.id}`}
                   >
-                    <td className="px-3 py-3 text-xs text-[#a4b3cd]">{formatDate(item.datum)}</td>
+                    <td className="px-3 py-3 text-xs text-secondary">{formatDate(item.datum)}</td>
                     <td className="px-3 py-3">
-                      <span className={`inline-block rounded-md px-2 py-1 text-xs font-semibold text-white ${getTipPromeneColor(item.tipPromene)}`}>
+                      <span className="inline-block rounded-md px-2 py-1 text-xs font-semibold" style={getTipPromeneStyle(item.tipPromene)}>
                         {item.tipPromene}
                       </span>
                     </td>
                     <td className="px-3 py-3 font-medium">{item.artikalNaziv || "-"}</td>
-                    <td className="px-3 py-3 text-[#b1bfd7]">{item.dobavljacNaziv || "-"}</td>
-                    <td className="px-3 py-3 font-mono text-xs text-[#a4b3cd]">{item.brojRacuna || "-"}</td>
-                    <td className={`px-3 py-3 text-right font-semibold ${item.iznos >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{item.iznos.toFixed(2)} RSD</td>
-                    <td className="px-3 py-3 text-center text-xs text-[#b1bfd7]">{item.staraProdajnaCena != null ? `${item.staraProdajnaCena.toFixed(2)} RSD` : "-"}</td>
-                    <td className="px-3 py-3 text-center text-xs font-semibold text-emerald-300">{item.novaProdajnaCena != null ? `${item.novaProdajnaCena.toFixed(2)} RSD` : "-"}</td>
-                    <td className="max-w-[220px] px-3 py-3 text-xs text-[#b1bfd7]">{item.komentar || "-"}</td>
-                    <td className="px-3 py-3 text-xs text-[#b1bfd7]">{item.korisnikIme || "-"}</td>
+                    <td className="px-3 py-3 text-secondary">{item.dobavljacNaziv || "-"}</td>
+                    <td className="px-3 py-3 font-mono text-xs text-secondary">{item.brojRacuna || "-"}</td>
+                    <td className="px-3 py-3 text-right font-semibold" style={{ color: item.iznos >= 0 ? "var(--success)" : "var(--error)" }}>{item.iznos.toFixed(2)} RSD</td>
+                    <td className="px-3 py-3 text-center text-xs text-secondary">{item.staraProdajnaCena != null ? `${item.staraProdajnaCena.toFixed(2)} RSD` : "-"}</td>
+                    <td className="px-3 py-3 text-center text-xs font-semibold" style={{ color: "var(--success)" }}>{item.novaProdajnaCena != null ? `${item.novaProdajnaCena.toFixed(2)} RSD` : "-"}</td>
+                    <td className="max-w-[220px] px-3 py-3 text-xs text-secondary">{item.komentar || "-"}</td>
+                    <td className="px-3 py-3 text-xs text-secondary">{item.korisnikIme || "-"}</td>
                     <td className="px-3 py-3 text-center">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-lg border border-[#3760b7] bg-[#2d4f95] px-2 py-1 text-xs font-semibold text-white"
+                        className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold text-contrast transition hover:opacity-90"
+                        style={{ borderColor: "var(--info)", backgroundColor: "var(--info)" }}
                         onClick={(e) => {
                           e.stopPropagation();
                           openDetail(item.id);

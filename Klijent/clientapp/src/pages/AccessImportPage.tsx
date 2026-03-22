@@ -22,7 +22,7 @@ type Tab = "source" | "preview" | "lastImport" | "batches";
 type BatchStatusFilter = "all" | "Completed" | "Running" | "Pending" | "Failed";
 
 function fmtDate(value: string | null): string {
-    if (!value) return "—";
+    if (!value) return "-";
     return new Date(value).toLocaleString("sr-RS");
 }
 
@@ -217,7 +217,7 @@ export default function AccessImportPage() {
             <div className="accimport-page">
             <h1 className="accimport-title">Access Import (TRENDPLUS.accdb)</h1>
             <p className="accimport-subtitle">
-                ETL pipeline: Access → Trendplus DB + Analytics DB. Podrska za upsert, analizu seme, batch istoriju i kaskadno brisanje.
+                ETL pipeline: Access -&gt; Trendplus DB + Analytics DB. Podrska za upsert, analizu seme, batch istoriju i kaskadno brisanje.
             </p>
 
             {/* ---- Tabs ---- */}
@@ -342,9 +342,9 @@ export default function AccessImportPage() {
                         <div className="accimport-field" style={{ gridColumn: "1 / -1" }}>
                             <div className={preview.canImport ? "accimport-success" : "accimport-warning"} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                                 <span>
-                                    Analiza seme: <strong>{preview.canImport ? "OK" : "BLOKIRANO"}</strong> • Tabele:{" "}
-                                    <strong>{preview.mappedAccessTables}/{preview.totalAccessTables}</strong> • Redovi coverage:{" "}
-                                    <strong>{preview.rowCoveragePercent.toFixed(1)}%</strong> • Nemapirano tabela sa podacima:{" "}
+                                    Analiza seme: <strong>{preview.canImport ? "OK" : "BLOKIRANO"}</strong> - Tabele:{" "}
+                                    <strong>{preview.mappedAccessTables}/{preview.totalAccessTables}</strong> - Redovi coverage:{" "}
+                                    <strong>{preview.rowCoveragePercent.toFixed(1)}%</strong> - Nemapirano tabela sa podacima:{" "}
                                     <strong>{preview.unmappedAccessTablesWithRows.length}</strong>
                                 </span>
                                 <button
@@ -419,7 +419,7 @@ export default function AccessImportPage() {
                     {preview && (
                         <div className="accimport-card">
                             <h3 className="accimport-card-title">
-                                Rezultat analize — {preview.sourceFileName}
+                                Rezultat analize - {preview.sourceFileName}
                                 <span style={{ marginLeft: 10 }}>
                                     {preview.canImport
                                         ? <span className="accimport-status accimport-status-Completed">Moze se importovati</span>
@@ -430,7 +430,7 @@ export default function AccessImportPage() {
 
                             {preview.warnings.length > 0 && (
                                 <div className="accimport-warning">
-                                    {preview.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+                                    {preview.warnings.map((w, i) => <div key={i}>[!] {w}</div>)}
                                 </div>
                             )}
 
@@ -490,10 +490,10 @@ export default function AccessImportPage() {
                                         <details key={t.key} className="accimport-schema-details">
                                             <summary className="accimport-schema-summary">
                                                 <strong>{t.key}</strong>
-                                                <span style={{ color: t.found ? "#e5e7eb" : "#6b7280" }}>{t.tableName ?? "—"}</span>
-                                                <span style={{ fontSize: 12, color: "#6b7280" }}>rows: {t.rowCount}</span>
+                                                <span style={{ color: t.found ? "var(--text-primary)" : "var(--text-muted)" }}>{t.tableName ?? "-"}</span>
+                                                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>rows: {t.rowCount}</span>
                                                 {t.found && (
-                                                    <span style={{ fontSize: 12, color: "#6b7280" }}>
+                                                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                                                         match: {t.matchStrategy}
                                                     </span>
                                                 )}
@@ -520,7 +520,7 @@ export default function AccessImportPage() {
                                                     <div className="accimport-label" style={{ marginBottom: 4 }}>Nedostaju obavezna polja</div>
                                                     <div className="accimport-col-chips">
                                                         {t.requiredFieldsMissing.map((field) => (
-                                                            <span key={`${t.key}-missing-${field}`} className="accimport-col-chip" style={{ borderColor: "#7f1d1d", color: "#fecaca" }}>
+                                                            <span key={`${t.key}-missing-${field}`} className="accimport-col-chip" style={{ borderColor: "var(--error)", color: "var(--error)" }}>
                                                                 {field}
                                                             </span>
                                                         ))}
@@ -557,7 +557,7 @@ export default function AccessImportPage() {
                                                             {t.fieldMappings.map((m) => (
                                                                 <tr key={`${t.key}-${m.targetField}`}>
                                                                     <td>{m.targetField}</td>
-                                                                    <td style={{ color: m.sourceColumn ? "#e5e7eb" : "#6b7280" }}>{m.sourceColumn ?? "—"}</td>
+                                                                    <td style={{ color: m.sourceColumn ? "var(--text-primary)" : "var(--text-muted)" }}>{m.sourceColumn ?? "-"}</td>
                                                                     <td>
                                                                         <span className={`accimport-mapping-badge ${m.status.toLowerCase() === "matched" ? "accimport-mapping-matched" : "accimport-mapping-missing"}`}>
                                                                             {m.status}
@@ -618,7 +618,7 @@ export default function AccessImportPage() {
 
                             {/* Entity counters */}
                             <div className="accimport-card">
-                                <h3 className="accimport-card-title">Rezultati importa — Trendplus entiteti</h3>
+                                <h3 className="accimport-card-title">Rezultati importa - Trendplus entiteti</h3>
                                 <div className="accimport-result-grid">
                                     <ResultLine entity="Artikli" inserted={runResult.artikliInserted} updated={runResult.artikliUpdated} />
                                     <ResultLine entity="Dobavljaci" inserted={runResult.dobavljaciInserted} updated={runResult.dobavljaciUpdated} />
@@ -650,7 +650,7 @@ export default function AccessImportPage() {
                                             </thead>
                                             <tbody>
                                                 {runCoverageRows.map((row) => {
-                                                    const tone = row.coverage >= 95 ? "#6ee7b7" : row.coverage >= 70 ? "#fcd34d" : "#fca5a5";
+                                                    const tone = row.coverage >= 95 ? "var(--success)" : row.coverage >= 70 ? "var(--warning)" : "var(--error)";
                                                     return (
                                                         <tr key={row.key}>
                                                             <td>{row.key}</td>
@@ -673,7 +673,7 @@ export default function AccessImportPage() {
 
                             {runResult.includeAnalytics && (
                                 <div className="accimport-card">
-                                    <h3 className="accimport-card-title">Rezultati importa — Analytics dimenzije</h3>
+                                    <h3 className="accimport-card-title">Rezultati importa - Analytics dimenzije</h3>
                                     <div className="accimport-result-grid">
                                         <ResultLine entity="ProductsDim" inserted={runResult.productsDimInserted} updated={runResult.productsDimUpdated} />
                                         <ResultLine entity="SalesFacts" inserted={runResult.salesFactsInserted} updated={runResult.salesFactsUpdated} />
@@ -685,7 +685,7 @@ export default function AccessImportPage() {
 
                             {runResult.warnings.length > 0 && (
                                 <div className="accimport-warning">
-                                    {runResult.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+                                    {runResult.warnings.map((w, i) => <div key={i}>[!] {w}</div>)}
                                 </div>
                             )}
                         </>
@@ -717,7 +717,7 @@ export default function AccessImportPage() {
                         </div>
                         <div className="accimport-field" style={{ alignItems: "flex-end" }}>
                             <button className="accimport-btn accimport-btn-secondary" onClick={() => void refreshBatches()}>
-                                &#8635; Osvezi
+                                Osvezi
                             </button>
                         </div>
                     </div>

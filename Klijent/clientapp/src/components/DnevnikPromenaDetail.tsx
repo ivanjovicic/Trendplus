@@ -171,8 +171,8 @@ export default function DnevnikPromenaDetail({ id }: { id: number }) {
                 />
             </section>
 
-            <section className="rounded-xl border border-[#2a2b32] bg-[#14161d] p-4">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#93a7c8]">Metadata</h3>
+            <section className="rounded-xl border border-border bg-surface p-4">
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Metadata</h3>
                 <DetailRow label="Broj racuna" value={detail.brojRacuna ?? "-"} />
                 <DetailRow label="Korisnik" value={detail.korisnikIme ?? "-"} />
                 <DetailRow label="Komentar" value={detail.komentar ?? "-"} />

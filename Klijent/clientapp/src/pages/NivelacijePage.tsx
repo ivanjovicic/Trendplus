@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChartCandlestick, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  ChartCandlestick,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from "lucide-react";
 import { getNivelacije } from "../services/artikliApi";
 import { NivelacijaItem } from "../types/nivelacije";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel } from "../components/inventory/InventoryPageShell";
@@ -8,10 +16,10 @@ type SortBy = "datum" | "artikalid" | "stara" | "nova" | "naziv";
 type SortDir = "asc" | "desc";
 
 function SortIcon({ field, sortBy, sortDir }: { field: SortBy; sortBy: SortBy; sortDir: SortDir }) {
-  if (sortBy !== field) return <ArrowUpDown className="ml-1 inline-block" size={12} style={{ opacity: 0.35 }} />;
+  if (sortBy !== field) return <ArrowUpDown className="ml-1 inline-block opacity-35" size={12} />;
   return sortDir === "asc"
-    ? <ArrowUp className="ml-1 inline-block text-[#4F8EF7]" size={12} />
-    : <ArrowDown className="ml-1 inline-block text-[#4F8EF7]" size={12} />;
+    ? <ArrowUp className="ml-1 inline-block text-[var(--info)]" size={12} />
+    : <ArrowDown className="ml-1 inline-block text-[var(--info)]" size={12} />;
 }
 
 export default function NivelacijePage() {
@@ -50,7 +58,7 @@ export default function NivelacijePage() {
       setItems(res.items);
       setTotalCount(res.totalCount);
     } catch (e: any) {
-      setError(e?.message ?? "Greška pri učitavanju nivelacija");
+      setError(e?.message ?? "Greska pri ucitavanju nivelacija");
     } finally {
       setLoading(false);
     }
@@ -68,7 +76,7 @@ export default function NivelacijePage() {
       setPageNumber(1);
       return;
     }
-    setSortDir(prev => (prev === "desc" ? "asc" : "desc"));
+    setSortDir((prev) => (prev === "desc" ? "asc" : "desc"));
     setPageNumber(1);
   };
 
@@ -83,18 +91,18 @@ export default function NivelacijePage() {
           { label: "Ukupno zapisa", value: `${totalCount}` },
           { label: "Stranica", value: `${pageNumber}/${totalPages}` },
           { label: "Sortiranje", value: `${sortBy} ${sortDir.toUpperCase()}` },
-          { label: "Status", value: loading ? "Učitavanje" : error ? "Greška" : "Aktivno", tone: loading ? "warning" : error ? "danger" : "positive" },
+          { label: "Status", value: loading ? "Ucitavanje" : error ? "Greska" : "Aktivno", tone: loading ? "warning" : error ? "danger" : "positive" },
         ]}
       />
 
       <InventoryPanel>
         <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Artikal ID</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Artikal ID</label>
             <input
-              className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+              className="w-full rounded-xl border border-muted bg-surface-darker px-3 py-2 text-sm text-contrast outline-none transition focus:border-[var(--focus-ring)]"
               value={artikalId}
-              onChange={e => {
+              onChange={(e) => {
                 setArtikalId(e.target.value);
                 setPageNumber(1);
               }}
@@ -103,11 +111,11 @@ export default function NivelacijePage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Naziv sadrži</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Naziv sadrzi</label>
             <input
-              className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+              className="w-full rounded-xl border border-muted bg-surface-darker px-3 py-2 text-sm text-contrast outline-none transition focus:border-[var(--focus-ring)]"
               value={naziv}
-              onChange={e => {
+              onChange={(e) => {
                 setNaziv(e.target.value);
                 setPageNumber(1);
               }}
@@ -116,12 +124,12 @@ export default function NivelacijePage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Od datuma</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Od datuma</label>
             <input
               type="datetime-local"
-              className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+              className="w-full rounded-xl border border-muted bg-surface-darker px-3 py-2 text-sm text-contrast outline-none transition focus:border-[var(--focus-ring)]"
               value={fromDate}
-              onChange={e => {
+              onChange={(e) => {
                 setFromDate(e.target.value);
                 setPageNumber(1);
               }}
@@ -129,12 +137,12 @@ export default function NivelacijePage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Do datuma</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Do datuma</label>
             <input
               type="datetime-local"
-              className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+              className="w-full rounded-xl border border-muted bg-surface-darker px-3 py-2 text-sm text-contrast outline-none transition focus:border-[var(--focus-ring)]"
               value={toDate}
-              onChange={e => {
+              onChange={(e) => {
                 setToDate(e.target.value);
                 setPageNumber(1);
               }}
@@ -143,7 +151,7 @@ export default function NivelacijePage() {
 
           <div className="flex items-end">
             <button
-              className="w-full rounded-xl border border-[#3c4458] bg-[#222734] px-4 py-2 text-sm font-semibold text-[#dbe6fb] transition hover:bg-[#2b3140]"
+              className="w-full rounded-xl border border-muted bg-surface px-4 py-2 text-sm font-semibold text-contrast transition hover:bg-surface-elevated"
               onClick={() => {
                 setArtikalId("");
                 setNaziv("");
@@ -160,60 +168,59 @@ export default function NivelacijePage() {
           </div>
         </div>
 
-        {/* active filter chips */}
         {(artikalId || naziv || fromDate || toDate) && (
           <div className="mb-3 flex flex-wrap gap-2">
             {artikalId && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-[#3760b7] bg-[#1e2d52] px-2 py-0.5 text-xs text-[#93bbf4]">
+              <span className="inline-flex items-center gap-1 rounded-full border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
                 ID: {artikalId}
-                <button type="button" onClick={() => { setArtikalId(""); setPageNumber(1); }} className="ml-0.5 hover:text-white">×</button>
+                <button type="button" onClick={() => { setArtikalId(""); setPageNumber(1); }} className="ml-0.5 hover:text-contrast">x</button>
               </span>
             )}
             {naziv && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-[#3760b7] bg-[#1e2d52] px-2 py-0.5 text-xs text-[#93bbf4]">
+              <span className="inline-flex items-center gap-1 rounded-full border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
                 Naziv: {naziv}
-                <button type="button" onClick={() => { setNaziv(""); setPageNumber(1); }} className="ml-0.5 hover:text-white">×</button>
+                <button type="button" onClick={() => { setNaziv(""); setPageNumber(1); }} className="ml-0.5 hover:text-contrast">x</button>
               </span>
             )}
             {fromDate && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-[#3760b7] bg-[#1e2d52] px-2 py-0.5 text-xs text-[#93bbf4]">
+              <span className="inline-flex items-center gap-1 rounded-full border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
                 Od: {fromDate.replace("T", " ")}
-                <button type="button" onClick={() => { setFromDate(""); setPageNumber(1); }} className="ml-0.5 hover:text-white">×</button>
+                <button type="button" onClick={() => { setFromDate(""); setPageNumber(1); }} className="ml-0.5 hover:text-contrast">x</button>
               </span>
             )}
             {toDate && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-[#3760b7] bg-[#1e2d52] px-2 py-0.5 text-xs text-[#93bbf4]">
+              <span className="inline-flex items-center gap-1 rounded-full border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
                 Do: {toDate.replace("T", " ")}
-                <button type="button" onClick={() => { setToDate(""); setPageNumber(1); }} className="ml-0.5 hover:text-white">×</button>
+                <button type="button" onClick={() => { setToDate(""); setPageNumber(1); }} className="ml-0.5 hover:text-contrast">x</button>
               </span>
             )}
           </div>
         )}
 
-        {loading && <p className="py-8 text-center text-sm text-[#9aabc7]">Učitavanje...</p>}
+        {loading && <p className="py-8 text-center text-sm text-muted">Ucitavanje...</p>}
         {error && <p className="py-8 text-center text-sm font-medium text-rose-300">{error}</p>}
 
         {!loading && !error && (
-          <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
-            <table className="min-w-full divide-y divide-[#2f323b] text-sm">
-              <thead className="bg-[#14161d] text-[#93a7c8]">
+          <div className="overflow-x-auto rounded-xl border border-muted">
+            <table className="min-w-full divide-y divide-muted text-sm">
+              <thead className="bg-surface-darker text-muted">
                 <tr>
-                  <th className="cursor-pointer select-none px-3 py-3 text-left hover:text-[#c9d3e4]" onClick={() => toggleSort("datum")}>Datum<SortIcon field="datum" sortBy={sortBy} sortDir={sortDir} /></th>
-                  <th className="cursor-pointer select-none px-3 py-3 text-left hover:text-[#c9d3e4]" onClick={() => toggleSort("artikalid")}>Artikal<SortIcon field="artikalid" sortBy={sortBy} sortDir={sortDir} /></th>
-                  <th className="cursor-pointer select-none px-3 py-3 text-left hover:text-[#c9d3e4]" onClick={() => toggleSort("naziv")}>Naziv<SortIcon field="naziv" sortBy={sortBy} sortDir={sortDir} /></th>
-                  <th className="cursor-pointer select-none px-3 py-3 text-right hover:text-[#c9d3e4]" onClick={() => toggleSort("stara")}>Stara cena<SortIcon field="stara" sortBy={sortBy} sortDir={sortDir} /></th>
-                  <th className="cursor-pointer select-none px-3 py-3 text-right hover:text-[#c9d3e4]" onClick={() => toggleSort("nova")}>Nova cena<SortIcon field="nova" sortBy={sortBy} sortDir={sortDir} /></th>
+                  <th className="cursor-pointer select-none px-3 py-3 text-left hover:text-contrast" onClick={() => toggleSort("datum")}>Datum<SortIcon field="datum" sortBy={sortBy} sortDir={sortDir} /></th>
+                  <th className="cursor-pointer select-none px-3 py-3 text-left hover:text-contrast" onClick={() => toggleSort("artikalid")}>Artikal<SortIcon field="artikalid" sortBy={sortBy} sortDir={sortDir} /></th>
+                  <th className="cursor-pointer select-none px-3 py-3 text-left hover:text-contrast" onClick={() => toggleSort("naziv")}>Naziv<SortIcon field="naziv" sortBy={sortBy} sortDir={sortDir} /></th>
+                  <th className="cursor-pointer select-none px-3 py-3 text-right hover:text-contrast" onClick={() => toggleSort("stara")}>Stara cena<SortIcon field="stara" sortBy={sortBy} sortDir={sortDir} /></th>
+                  <th className="cursor-pointer select-none px-3 py-3 text-right hover:text-contrast" onClick={() => toggleSort("nova")}>Nova cena<SortIcon field="nova" sortBy={sortBy} sortDir={sortDir} /></th>
                   <th className="px-3 py-3 text-left">Korisnik</th>
                   <th className="px-3 py-3 text-left">Komentar</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
-                {items.map(it => (
-                  <tr key={it.id} className="hover:bg-[#1f2330]">
-                    <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-[#a4b3cd]">{new Date(it.datum).toLocaleString("sr-RS")}</td>
+              <tbody className="divide-y divide-muted bg-surface-elevated text-contrast">
+                {items.map((it) => (
+                  <tr key={it.id} className="hover:bg-surface">
+                    <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-muted">{new Date(it.datum).toLocaleString("sr-RS")}</td>
                     <td className="px-3 py-3">{it.artikalId ?? "-"}</td>
                     <td className="px-3 py-3">{it.artikalNaziv ?? ""}</td>
-                    <td className="px-3 py-3 text-right text-[#b9c7df]">{it.staraProdajnaCena ?? "-"}</td>
+                    <td className="px-3 py-3 text-right text-secondary">{it.staraProdajnaCena ?? "-"}</td>
                     <td className="px-3 py-3 text-right font-semibold text-emerald-300">{it.novaProdajnaCena ?? "-"}</td>
                     <td className="px-3 py-3">{it.korisnikIme ?? "-"}</td>
                     <td className="px-3 py-3">{it.komentar ?? ""}</td>
@@ -221,24 +228,24 @@ export default function NivelacijePage() {
                 ))}
               </tbody>
             </table>
-            {items.length === 0 && <p className="py-8 text-center text-sm text-[#9aabc7]">Nema rezultata.</p>}
+            {items.length === 0 && <p className="py-8 text-center text-sm text-muted">Nema rezultata.</p>}
           </div>
         )}
 
         {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-center gap-3">
             <button
-              className="rounded-lg border border-[#3c4458] bg-[#222734] p-2 text-[#dbe6fb] disabled:opacity-40"
-              onClick={() => setPageNumber(p => Math.max(1, p - 1))}
+              className="rounded-lg border border-muted bg-surface px-2 py-2 text-contrast disabled:opacity-40"
+              onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
               disabled={pageNumber === 1}
               title="Prethodna strana"
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="text-sm text-[#93a7c8]">Strana {pageNumber} / {totalPages}</span>
+            <span className="text-sm text-muted">Strana {pageNumber} / {totalPages}</span>
             <button
-              className="rounded-lg border border-[#3c4458] bg-[#222734] p-2 text-[#dbe6fb] disabled:opacity-40"
-              onClick={() => setPageNumber(p => Math.min(totalPages, p + 1))}
+              className="rounded-lg border border-muted bg-surface px-2 py-2 text-contrast disabled:opacity-40"
+              onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
               disabled={pageNumber === totalPages}
               title="Sledeca strana"
             >
@@ -250,3 +257,4 @@ export default function NivelacijePage() {
     </InventoryPageShell>
   );
 }
+
