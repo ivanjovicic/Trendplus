@@ -373,24 +373,23 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                                         <div className="font-semibold text-foreground">{art.naziv}</div>
                                         <div className="text-xs text-muted">ID: {art.id}</div>
                                     </div>
-                                    <div className="text-sm font-semibold text-emerald-300">{art.cena} RSD</div>
+                                    <div className="text-sm font-semibold text-success">{art.cena} RSD</div>
                                 </button>
                             ))
                         ) : (
-                            <div className="px-3 py-5 text-center text-sm text-[#9aabc7]">Nema rezultata za "{searchQuery}"</div>
+                            <div className="px-3 py-5 text-center text-sm text-muted">Nema rezultata za "{searchQuery}"</div>
                         )}
                     </div>
                 )}
             </section>
 
-            <section className="rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
+            <section className="rounded-xl border border-border bg-surface p-4">
                 <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Stavke ({stavke.length})</h3>
                     <button
                         type="button"
                         onClick={addStavka}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
-                        style={{ borderColor: 'var(--success)', background: 'var(--success-900, #1e5b45)', color: 'var(--on-success, #e6ffef)' }}
+                        className="rounded-lg border px-3 py-1.5 text-xs font-semibold border-success bg-success-10 text-success hover:bg-success"
                     >
                         + Dodaj stavku
                     </button>
@@ -400,7 +399,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                     {stavke.map((s, i) => (
                         <div key={i} className="grid gap-2 rounded-lg border border-border bg-surface p-3 lg:grid-cols-[1.7fr_0.7fr_0.8fr_0.8fr_auto]"> 
                             <div>
-                                <label className="mb-1 block text-xs text-[#8ea0bd]">Artikal</label>
+                                <label className="mb-1 block text-xs text-muted">Artikal</label>
                                 <select
                                     value={s.idArtikal}
                                     onChange={(e) => {
@@ -408,37 +407,37 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                                         const art = knownArtikli.find((a) => a.id === id);
                                         updateStavka(i, { idArtikal: id, cena: art?.cena ?? s.cena });
                                     }}
-                                    className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+                                    className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
                                 >
                                     {artikalOptions}
                                 </select>
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs text-[#8ea0bd]">Kolicina</label>
+                                <label className="mb-1 block text-xs text-muted">Kolicina</label>
                                 <input
                                     type="number"
                                     min={1}
                                     value={s.kolicina}
                                     onChange={(e) => updateStavka(i, { kolicina: Number(e.target.value) })}
-                                    className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+                                    className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
                                 />
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs text-[#8ea0bd]">Cena</label>
+                                <label className="mb-1 block text-xs text-muted">Cena</label>
                                 <input
                                     type="number"
                                     min={0}
                                     value={s.cena}
                                     onChange={(e) => updateStavka(i, { cena: Number(e.target.value) })}
-                                    className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+                                    className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
                                 />
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs text-[#8ea0bd]">Iznos</label>
-                                <div className="rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm font-semibold text-emerald-300">
+                                <label className="mb-1 block text-xs text-muted">Iznos</label>
+                                <div className="rounded-lg border border-border bg-surface px-2 py-2 text-sm font-semibold text-success">
                                     {(safeNumber(s.kolicina, 0) * safeNumber(s.cena, 0)).toFixed(2)} RSD
                                 </div>
                             </div>
@@ -447,7 +446,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                                 <button
                                     type="button"
                                     onClick={() => removeStavka(i)}
-                                    className="rounded-lg border border-rose-700 bg-rose-900/40 px-3 py-2 text-xs font-semibold text-rose-200"
+                                    className="rounded-lg border border-danger bg-danger-10 px-3 py-2 text-xs font-semibold text-danger"
                                 >
                                     Ukloni
                                 </button>
@@ -457,19 +456,19 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                 </div>
             </section>
 
-            <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#2f323b] bg-[#14161d] p-4">
-                <div className="text-base font-semibold text-[#f3f6ff]">Ukupno: <span className="text-emerald-300">{safeNumber(ukupno, 0).toFixed(2)} RSD</span></div>
+            <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+                <div className="text-base font-semibold text-foreground">Ukupno: <span className="text-success">{safeNumber(ukupno, 0).toFixed(2)} RSD</span></div>
                 <button
                     type="button"
                     onClick={handleSubmit}
                     disabled={!canSubmit}
-                    className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7] disabled:opacity-60"
+                    className="rounded-xl border border-primary bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition hover:bg-primary-hover disabled:opacity-60"
                 >
                     {isSubmitting ? "Kreiram..." : "Sacuvaj prodaju"}
                 </button>
             </section>
 
-            {error && <p className="rounded-lg border border-rose-700 bg-rose-950/30 px-3 py-2 text-sm text-rose-300">{error}</p>}
+            {error && <p className="rounded-lg border border-danger bg-danger-10 px-3 py-2 text-sm text-danger">{error}</p>}
         </div>
     );
 }

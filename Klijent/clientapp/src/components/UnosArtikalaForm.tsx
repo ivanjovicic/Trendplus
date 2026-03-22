@@ -257,11 +257,11 @@ export default function UnosArtikalaForm({
         <div className="card w-full">
            {/*     <h2 className="text-2xl font-semibold mb-6">Unos artikala</h2>*/}
 
-                <div className="rounded-lg border-2 p-4 mb-5" style={{ background: 'var(--info-10, #eff6ff)', borderColor: 'var(--info)' }}>
-                    <h2 className="font-semibold text-base mb-2" style={{ color: 'var(--info)' }}>
+                <div className="rounded-lg border-2 p-4 mb-5 bg-info-10" style={{ borderColor: 'var(--info)' }}>
+                    <h2 className="font-semibold text-base mb-2 text-info">
                         Unos robe
                     </h2>
-                    <div className="text-sm" style={{ color: 'var(--info-700, #1e3a8a)' }}>
+                    <div className="text-sm text-info">
                         <p>Broj računa: <strong>{brojRacuna}</strong></p>
                         <p>Dobavljač: <strong>{dobavljacNaziv}</strong> (ID: {dobavljacId})</p>
                         <p className="mt-2 text-muted">Tip: Pretražite postojeće artikle ili unesite novi naziv</p>
@@ -345,8 +345,8 @@ export default function UnosArtikalaForm({
                                                 ...(openUpward ? { bottom: '100%', marginBottom: '4px' } : { top: '100%', marginTop: '4px' }),
                                                 left: '8px',
                                                 right: '8px',
-                                                background: 'white',
-                                                border: '2px solid #3b82f6',
+                                                background: 'var(--surface-default)',
+                                                border: '2px solid var(--info)',
                                                 borderRadius: '8px',
                                                 maxHeight: '400px',
                                                 overflowY: 'auto',
@@ -373,7 +373,7 @@ export default function UnosArtikalaForm({
                                         )}
                                         
                                         {stavka.isExisting && (
-                                            <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '4px' }}>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '4px' }}>
                                                 [Postojeći artikal - ID: {stavka.id}]
                                             </div>
                                         )}
@@ -483,9 +483,10 @@ export default function UnosArtikalaForm({
                                         <button
                                             onClick={() => removeStavka(index)}
                                             disabled={stavke.length === 1}
+                                            className="rounded px-3 py-2 text-sm font-semibold"
                                             style={{
-                                                background: stavke.length === 1 ? '#9ca3af' : '#dc2626',
-                                                color: 'white',
+                                                background: stavke.length === 1 ? 'var(--muted, #9ca3af)' : 'var(--danger)',
+                                                color: 'var(--on-danger, white)',
                                                 padding: '8px 14px',
                                                 borderRadius: '6px',
                                                 border: 'none',
@@ -507,9 +508,8 @@ export default function UnosArtikalaForm({
 
             <button
                 onClick={addStavka}
-                className="button-big"
+                className="button-big bg-success text-on-success"
                 style={{
-                    background: '#059669',
                     maxWidth: '200px',
                     marginBottom: '1.5rem'
                 }}
@@ -518,19 +518,19 @@ export default function UnosArtikalaForm({
             </button>
 
             <div style={{
-                borderTop: '2px solid #e5e7eb',
+                borderTop: '2px solid var(--border-default)',
                 paddingTop: '1rem',
                 marginBottom: '1rem',
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span style={{ fontWeight: 600 }}>Ukupno artikala:</span>
-                    <span style={{ fontWeight: 600, color: '#059669' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--success)' }}>
                         {ukupnoStavki} ({novihArtikala} novih + {postojecihArtikala} postojećih)
                     </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontWeight: 600 }}>Ukupna vrednost (nabavna):</span>
-                    <span style={{ fontWeight: 600, fontSize: '1.125rem', color: '#059669' }}>
+                    <span style={{ fontWeight: 600, fontSize: '1.125rem', color: 'var(--success)' }}>
                         {ukupnaVrednost.toFixed(2)} RSD
                     </span>
                 </div>
@@ -540,9 +540,8 @@ export default function UnosArtikalaForm({
                 <button
                     onClick={handleSubmitAll}
                     disabled={isSubmitting}
-                    className="button-big"
+                    className="button-big bg-primary text-on-primary"
                     style={{
-                        background: '#2563eb',
                         maxWidth: '300px'
                     }}
                 >
@@ -553,7 +552,7 @@ export default function UnosArtikalaForm({
                 </button>
 
                 {isSubmitting && (
-                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--muted, #6b7280)' }}>
                         Molimo sačekajte...
                     </span>
                 )}
