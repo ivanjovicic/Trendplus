@@ -9,6 +9,7 @@ using Domain.Model.Povracaj;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Api.Services;
 
@@ -580,27 +581,67 @@ public sealed class AccessImportService : IAccessImportService
     public async Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
-        return await _trendDb.DataImportBatches
-            .AsNoTracking()
-            .OrderByDescending(x => x.StartedAtUtc)
-            .Take(take)
-            .Select(x => new AccessImportBatchDto
-            {
-                Id = x.Id,
-                SourceSystem = x.SourceSystem,
-                SourceFileName = x.SourceFileName,
-                StartedAtUtc = x.StartedAtUtc,
-                CompletedAtUtc = x.CompletedAtUtc,
-                Status = x.Status,
-                SummaryJson = x.SummaryJson,
-                ErrorMessage = x.ErrorMessage,
-                DurationSeconds = x.DurationSeconds,
-                TotalImported = x.TotalImported,
-                TotalUpdated = x.TotalUpdated,
-                TotalErrors = x.TotalErrors,
-                DataOrigin = x.DataOrigin
-            })
-            .ToListAsync(ct);
+        try
+        {
+            return await _trendDb.DataImportBatches
+                .AsNoTracking()
+                .OrderByDescending(x => x.StartedAtUtc)
+                .Take(take)
+                .Select(x => new AccessImportBatchDto
+                {
+                    Id = x.Id,
+                    SourceSystem = x.SourceSystem,
+                    SourceFileName = x.SourceFileName,
+                    StartedAtUtc = x.StartedAtUtc,
+                    CompletedAtUtc = x.CompletedAtUtc,
+                    Status = x.Status,
+                    SummaryJson = x.SummaryJson,
+                    ErrorMessage = x.ErrorMessage,
+                    DurationSeconds = x.DurationSeconds,
+                    TotalImported = x.TotalImported,
+                    TotalUpdated = x.TotalUpdated,
+                    TotalErrors = x.TotalErrors,
+                    DataOrigin = x.DataOrigin
+                })
+                .ToListAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            // Legacy DB compatibility: pre-015/016 schemas may miss batch metrics/DataOrigin columns.
+            _logger.LogWarning(
+                ex,
+                "Access import batches query hit legacy schema (missing columns). Falling back to compatibility projection.");
+
+            return await _trendDb.DataImportBatches
+                .AsNoTracking()
+                .OrderByDescending(x => x.StartedAtUtc)
+                .Take(take)
+                .Select(x => new AccessImportBatchDto
+                {
+                    Id = x.Id,
+                    SourceSystem = x.SourceSystem,
+                    SourceFileName = x.SourceFileName,
+                    StartedAtUtc = x.StartedAtUtc,
+                    CompletedAtUtc = x.CompletedAtUtc,
+                    Status = x.Status,
+                    SummaryJson = x.SummaryJson,
+                    ErrorMessage = x.ErrorMessage,
+                    DurationSeconds = null,
+                    TotalImported = 0,
+                    TotalUpdated = 0,
+                    TotalErrors = 0,
+                    DataOrigin = "access"
+                })
+                .ToListAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            // Legacy DB compatibility: some environments may not have DataImportBatches table yet.
+            _logger.LogWarning(
+                ex,
+                "Access import batches table is missing. Returning empty list as compatibility fallback.");
+            return [];
+        }
     }
 
     public async Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default)

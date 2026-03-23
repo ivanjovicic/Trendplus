@@ -1,4 +1,5 @@
 using Api.Services;
+using Npgsql;
 using System.Data.Odbc;
 
 namespace Trendplus2.Endpoints;
@@ -12,11 +13,35 @@ public static class AccessImportEndpoints
 
         group.MapGet("/batches", async (
             IAccessImportService service,
+            ILogger<Program> logger,
             int take = 20,
             CancellationToken ct = default) =>
         {
-            var rows = await service.GetRecentBatchesAsync(take, ct);
-            return Results.Ok(rows);
+            try
+            {
+                var rows = await service.GetRecentBatchesAsync(take, ct);
+                return Results.Ok(rows);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogWarning("Request cancelled while loading access import batches.");
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Access import batches fallback due to database issue.");
+                return Results.Ok(Array.Empty<object>());
+            }
+            catch (TimeoutException ex)
+            {
+                logger.LogWarning(ex, "Access import batches fallback due to timeout.");
+                return Results.Ok(Array.Empty<object>());
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Access import batches fallback due to unexpected error.");
+                return Results.Ok(Array.Empty<object>());
+            }
         })
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportBatches");
@@ -79,6 +104,7 @@ public static class AccessImportEndpoints
         group.MapPost("/preview", async (
             HttpRequest request,
             IAccessImportService service,
+            ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
             var resolved = await ResolveSourceFileAsync(request, ct);
@@ -109,6 +135,38 @@ public static class AccessImportEndpoints
                     detail: ex.Message,
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
+            catch (DllNotFoundException ex)
+            {
+                logger.LogWarning(ex, "Access import preview failed due to missing ODBC runtime dependency.");
+                return Results.Problem(
+                    title: "Access ODBC runtime missing",
+                    detail: "Access preview is unavailable on this server because required ODBC runtime libraries are missing.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (PlatformNotSupportedException ex)
+            {
+                logger.LogWarning(ex, "Access import preview is not supported on this platform.");
+                return Results.Problem(
+                    title: "Access preview not supported",
+                    detail: "Access preview is not supported on this server platform.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (TypeInitializationException ex) when (ex.InnerException is DllNotFoundException)
+            {
+                logger.LogWarning(ex, "Access import preview failed due to missing native dependency.");
+                return Results.Problem(
+                    title: "Access ODBC runtime missing",
+                    detail: "Access preview is unavailable on this server because required native ODBC libraries are missing.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Access import preview failed unexpectedly.");
+                return Results.Problem(
+                    title: "Access preview failed",
+                    detail: ex.GetBaseException().Message,
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
             finally
             {
                 if (resolved.DeleteAfter && File.Exists(resolved.Path))
@@ -122,6 +180,7 @@ public static class AccessImportEndpoints
         group.MapPost("/run", async (
             HttpRequest request,
             IAccessImportService service,
+            ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
             var resolved = await ResolveSourceFileAsync(request, ct);
@@ -162,6 +221,38 @@ public static class AccessImportEndpoints
                 return Results.Problem(
                     title: "Access connection failed",
                     detail: ex.Message,
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (DllNotFoundException ex)
+            {
+                logger.LogWarning(ex, "Access import run failed due to missing ODBC runtime dependency.");
+                return Results.Problem(
+                    title: "Access ODBC runtime missing",
+                    detail: "Access import is unavailable on this server because required ODBC runtime libraries are missing.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (PlatformNotSupportedException ex)
+            {
+                logger.LogWarning(ex, "Access import run is not supported on this platform.");
+                return Results.Problem(
+                    title: "Access import not supported",
+                    detail: "Access import is not supported on this server platform.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (TypeInitializationException ex) when (ex.InnerException is DllNotFoundException)
+            {
+                logger.LogWarning(ex, "Access import run failed due to missing native dependency.");
+                return Results.Problem(
+                    title: "Access ODBC runtime missing",
+                    detail: "Access import is unavailable on this server because required native ODBC libraries are missing.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Access import run failed unexpectedly.");
+                return Results.Problem(
+                    title: "Access import failed",
+                    detail: ex.GetBaseException().Message,
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
             finally

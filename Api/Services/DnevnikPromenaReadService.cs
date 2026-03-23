@@ -1,6 +1,7 @@
 using Api.Models;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Api.Services;
 
@@ -52,57 +53,81 @@ public sealed class DnevnikPromenaReadService : IDnevnikPromenaReadService
         var normalizedSortBy = (query.SortBy ?? "datum").Trim().ToLowerInvariant();
         var normalizedSortDir = string.Equals(query.SortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
 
-        var dataQuery = BuildTrendMovementQuery(query.DataScope);
-
-        if (!string.IsNullOrWhiteSpace(query.TipPromene))
-            dataQuery = dataQuery.Where(x => x.TipPromene == query.TipPromene);
-
-        if (query.ArtikalId.HasValue)
-            dataQuery = dataQuery.Where(x => x.ArtikalId == query.ArtikalId.Value);
-
-        if (!string.IsNullOrWhiteSpace(query.Naziv))
-            dataQuery = dataQuery.Where(x => x.ArtikalNaziv != null && x.ArtikalNaziv.Contains(query.Naziv));
-
-        if (!string.IsNullOrWhiteSpace(query.BrojRacuna))
-            dataQuery = dataQuery.Where(x => x.BrojRacuna != null && x.BrojRacuna.Contains(query.BrojRacuna));
-
-        if (query.FromDate.HasValue)
-            dataQuery = dataQuery.Where(x => x.Datum >= query.FromDate.Value);
-
-        if (query.ToDate.HasValue)
-            dataQuery = dataQuery.Where(x => x.Datum <= query.ToDate.Value);
-
-        dataQuery = normalizedSortBy switch
+        try
         {
-            "tippromene" => normalizedSortDir == "asc" ? dataQuery.OrderBy(x => x.TipPromene) : dataQuery.OrderByDescending(x => x.TipPromene),
-            "iznos" => normalizedSortDir == "asc" ? dataQuery.OrderBy(x => x.Iznos) : dataQuery.OrderByDescending(x => x.Iznos),
-            "naziv" => normalizedSortDir == "asc" ? dataQuery.OrderBy(x => x.ArtikalNaziv) : dataQuery.OrderByDescending(x => x.ArtikalNaziv),
-            _ => normalizedSortDir == "asc" ? dataQuery.OrderBy(x => x.Datum) : dataQuery.OrderByDescending(x => x.Datum)
-        };
+            var dataQuery = BuildTrendMovementQuery(query.DataScope);
+            dataQuery = ApplyFilters(dataQuery, query, includeArtikalFilters: true);
+            dataQuery = ApplySorting(dataQuery, normalizedSortBy, normalizedSortDir);
 
-        var total = await dataQuery.CountAsync(ct);
-        var items = await dataQuery
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(x => ToListItemDto(x))
-            .ToListAsync(ct);
-
-        return new DnevnikPromenaListResponseDto
+            return await BuildPagedResponseAsync(dataQuery, pageNumber, pageSize, normalizedSortBy, normalizedSortDir, ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
         {
-            Items = items,
-            TotalCount = total,
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            SortBy = normalizedSortBy,
-            SortDir = normalizedSortDir
-        };
+            _logger.LogWarning(
+                ex,
+                "DnevnikPromena query hit legacy schema (missing columns). Falling back to compatibility projection.");
+
+            if (query.ArtikalId.HasValue || !string.IsNullOrWhiteSpace(query.Naziv) || !string.Equals(query.DataScope, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(
+                    "Legacy fallback ignored unsupported filters (ArtikalId/Naziv/DataScope) because required columns are missing.");
+            }
+
+            var legacyQuery = BuildLegacyTrendMovementQuery();
+            legacyQuery = ApplyFilters(legacyQuery, query, includeArtikalFilters: false);
+            legacyQuery = ApplySorting(legacyQuery, normalizedSortBy, normalizedSortDir);
+
+            return await BuildPagedResponseAsync(legacyQuery, pageNumber, pageSize, normalizedSortBy, normalizedSortDir, ct);
+        }
+        catch (Exception ex) when (IsUndefinedColumnCompatibilityError(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "DnevnikPromena query failed due to compatibility error. Falling back to legacy projection.");
+
+            if (query.ArtikalId.HasValue || !string.IsNullOrWhiteSpace(query.Naziv) || !string.Equals(query.DataScope, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(
+                    "Compatibility fallback ignored unsupported filters (ArtikalId/Naziv/DataScope) because required columns are missing.");
+            }
+
+            var legacyQuery = BuildLegacyTrendMovementQuery();
+            legacyQuery = ApplyFilters(legacyQuery, query, includeArtikalFilters: false);
+            legacyQuery = ApplySorting(legacyQuery, normalizedSortBy, normalizedSortDir);
+
+            return await BuildPagedResponseAsync(legacyQuery, pageNumber, pageSize, normalizedSortBy, normalizedSortDir, ct);
+        }
     }
 
     public async Task<DnevnikPromenaDetailDto?> GetByIdAsync(int id, CancellationToken ct = default)
     {
-        var primary = await BuildTrendMovementQuery("all")
-            .Where(x => x.Id == id)
-            .FirstOrDefaultAsync(ct);
+        TrendMovementProjection? primary;
+        try
+        {
+            primary = await BuildTrendMovementQuery("all")
+                .Where(x => x.Id == id)
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogWarning(
+                ex,
+                "DnevnikPromena detail query hit legacy schema (missing columns). Falling back to compatibility projection.");
+
+            primary = await BuildLegacyTrendMovementQuery()
+                .Where(x => x.Id == id)
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (Exception ex) when (IsUndefinedColumnCompatibilityError(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "DnevnikPromena detail query failed due to compatibility error. Falling back to legacy projection.");
+
+            primary = await BuildLegacyTrendMovementQuery()
+                .Where(x => x.Id == id)
+                .FirstOrDefaultAsync(ct);
+        }
 
         if (primary is not null)
         {
@@ -200,6 +225,97 @@ public sealed class DnevnikPromenaReadService : IDnevnikPromenaReadService
                };
     }
 
+    private IQueryable<TrendMovementProjection> BuildLegacyTrendMovementQuery()
+    {
+        return from dp in _trendDb.DnevnikPromena.AsNoTracking()
+               join d in _trendDb.Dobavljaci.AsNoTracking() on dp.DobavljacId equals d.Id into dobavljaci
+               from dobavljac in dobavljaci.DefaultIfEmpty()
+               select new TrendMovementProjection
+               {
+                   Id = dp.Id,
+                   TipPromene = dp.TipPromene,
+                   Datum = dp.Datum,
+                   Iznos = dp.Iznos,
+                   BrojRacuna = dp.BrojRacuna,
+                   ArtikalId = null,
+                   ArtikalNaziv = null,
+                   DobavljacId = dp.DobavljacId,
+                   DobavljacNaziv = dobavljac != null ? dobavljac.Naziv : null,
+                   StaraProdajnaCena = null,
+                   NovaProdajnaCena = null,
+                   Kolicina = null,
+                   Komentar = dp.Komentar,
+                   KorisnikIme = dp.KorisnikIme,
+                   DataOrigin = null
+               };
+    }
+
+    private static IQueryable<TrendMovementProjection> ApplyFilters(
+        IQueryable<TrendMovementProjection> queryable,
+        DnevnikPromenaListQuery query,
+        bool includeArtikalFilters)
+    {
+        if (!string.IsNullOrWhiteSpace(query.TipPromene))
+            queryable = queryable.Where(x => x.TipPromene == query.TipPromene);
+
+        if (includeArtikalFilters && query.ArtikalId.HasValue)
+            queryable = queryable.Where(x => x.ArtikalId == query.ArtikalId.Value);
+
+        if (includeArtikalFilters && !string.IsNullOrWhiteSpace(query.Naziv))
+            queryable = queryable.Where(x => x.ArtikalNaziv != null && x.ArtikalNaziv.Contains(query.Naziv));
+
+        if (!string.IsNullOrWhiteSpace(query.BrojRacuna))
+            queryable = queryable.Where(x => x.BrojRacuna != null && x.BrojRacuna.Contains(query.BrojRacuna));
+
+        if (query.FromDate.HasValue)
+            queryable = queryable.Where(x => x.Datum >= query.FromDate.Value);
+
+        if (query.ToDate.HasValue)
+            queryable = queryable.Where(x => x.Datum <= query.ToDate.Value);
+
+        return queryable;
+    }
+
+    private static IQueryable<TrendMovementProjection> ApplySorting(
+        IQueryable<TrendMovementProjection> queryable,
+        string normalizedSortBy,
+        string normalizedSortDir)
+    {
+        return normalizedSortBy switch
+        {
+            "tippromene" => normalizedSortDir == "asc" ? queryable.OrderBy(x => x.TipPromene) : queryable.OrderByDescending(x => x.TipPromene),
+            "iznos" => normalizedSortDir == "asc" ? queryable.OrderBy(x => x.Iznos) : queryable.OrderByDescending(x => x.Iznos),
+            "naziv" => normalizedSortDir == "asc" ? queryable.OrderBy(x => x.ArtikalNaziv) : queryable.OrderByDescending(x => x.ArtikalNaziv),
+            _ => normalizedSortDir == "asc" ? queryable.OrderBy(x => x.Datum) : queryable.OrderByDescending(x => x.Datum)
+        };
+    }
+
+    private static async Task<DnevnikPromenaListResponseDto> BuildPagedResponseAsync(
+        IQueryable<TrendMovementProjection> dataQuery,
+        int pageNumber,
+        int pageSize,
+        string normalizedSortBy,
+        string normalizedSortDir,
+        CancellationToken ct)
+    {
+        var total = await dataQuery.CountAsync(ct);
+        var items = await dataQuery
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => ToListItemDto(x))
+            .ToListAsync(ct);
+
+        return new DnevnikPromenaListResponseDto
+        {
+            Items = items,
+            TotalCount = total,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            SortBy = normalizedSortBy,
+            SortDir = normalizedSortDir
+        };
+    }
+
     private async Task<string?> ResolveProductNameAsync(int artikalId, CancellationToken ct)
     {
         var trendName = await _trendDb.Artikli
@@ -261,4 +377,30 @@ public sealed class DnevnikPromenaReadService : IDnevnikPromenaReadService
 
     private static string? NormalizeText(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private static bool IsUndefinedColumnCompatibilityError(Exception ex)
+    {
+        static bool IsUndefinedColumn(PostgresException pg) =>
+            string.Equals(pg.SqlState, PostgresErrorCodes.UndefinedColumn, StringComparison.Ordinal);
+
+        if (ex is PostgresException pgEx && IsUndefinedColumn(pgEx))
+            return true;
+
+        var current = ex;
+        while (current is not null)
+        {
+            if (current is PostgresException currentPg && IsUndefinedColumn(currentPg))
+                return true;
+
+            if (current.Message.Contains("does not exist", StringComparison.OrdinalIgnoreCase)
+                && current.Message.Contains("column", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            current = current.InnerException;
+        }
+
+        return false;
+    }
 }
