@@ -406,14 +406,29 @@ public sealed class AccessImportService : IAccessImportService
         {
             using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)} WHERE 1=0", conn);
             using var r = cmd.ExecuteReader();
-            if (r is null) return columns;
+            
+            if (r is null || r.FieldCount == 0)
+                return columns;
 
             for (var i = 0; i < r.FieldCount; i++)
-                columns.Add(r.GetName(i));
+            {
+                try
+                {
+                    var name = r.GetName(i);
+                    if (!string.IsNullOrWhiteSpace(name))
+                        columns.Add(name);
+                }
+                catch (Exception fex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ReadColumnNames] Error reading column {i}: {fex.Message}");
+                    // Skip problematic column, continue with others
+                }
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort preview. Import path itself performs stronger validation/parsing.
+            // Best-effort preview. Import path performs stronger validation.
+            System.Diagnostics.Debug.WriteLine($"[ReadColumnNames] Exception reading {table}: {ex.GetType().Name}: {ex.Message}");
         }
         return columns;
     }
@@ -2212,19 +2227,190 @@ public sealed class AccessImportService : IAccessImportService
         return null;
     }
 
+    /// <summary>
+    /// Safely resolves a table name from a DataRow schema row.
+    /// Handles provider-specific schema variations (missing TABLE_NAME, renamed columns, etc).
+    /// 
+    /// Resolution order:
+    /// 1. TABLE_NAME column (standard OLEDB)
+    /// 2. TABLE column (ODBC fallback)
+    /// 3. Any column containing "TABLE" (case-insensitive)
+    /// 4. Any column containing "NAME" (case-insensitive)
+    /// 5. First available column
+    /// 6. null (if no columns available)
+    /// 
+    /// INTERNAL: Exposed for testing.
+    /// </summary>
+    internal static string? ResolveTableName(DataRow row, DataTable schema)
+    {
+        if (row is null || schema?.Columns.Count == 0)
+            return null;
+
+        try
+        {
+            // 1. Try TABLE_NAME (standard OLEDB)
+            if (schema!.Columns.Contains("TABLE_NAME"))
+            {
+                var value = row["TABLE_NAME"];
+                var name = value is not DBNull ? value?.ToString() : null;
+                if (!string.IsNullOrWhiteSpace(name))
+                    return name.Trim();
+            }
+
+            // 2. Try TABLE (ODBC fallback)
+            if (schema.Columns.Contains("TABLE"))
+            {
+                var value = row["TABLE"];
+                var name = value is not DBNull ? value?.ToString() : null;
+                if (!string.IsNullOrWhiteSpace(name))
+                    return name.Trim();
+            }
+
+            // 3. Find any column containing "TABLE" (case-insensitive)
+            var tableCol = schema.Columns.Cast<DataColumn>()
+                .FirstOrDefault(c => c.ColumnName.Contains("TABLE", StringComparison.OrdinalIgnoreCase));
+            if (tableCol is not null)
+            {
+                var value = row[tableCol.Ordinal];
+                var name = value is not DBNull ? value?.ToString() : null;
+                if (!string.IsNullOrWhiteSpace(name))
+                    return name.Trim();
+            }
+
+            // 4. Find any column containing "NAME" (case-insensitive)
+            var nameCol = schema.Columns.Cast<DataColumn>()
+                .FirstOrDefault(c => c.ColumnName.Contains("NAME", StringComparison.OrdinalIgnoreCase));
+            if (nameCol is not null)
+            {
+                var value = row[nameCol.Ordinal];
+                var name = value is not DBNull ? value?.ToString() : null;
+                if (!string.IsNullOrWhiteSpace(name))
+                    return name.Trim();
+            }
+
+            // 5. Fallback to first column
+            if (schema.Columns.Count > 0)
+            {
+                var value = row[0];
+                var name = value is not DBNull ? value?.ToString() : null;
+                if (!string.IsNullOrWhiteSpace(name))
+                    return name.Trim();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Gracefully handle any Access/ODBC provider quirks
+            System.Diagnostics.Debug.WriteLine($"[ResolveTableName] Exception: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Safely checks if a row represents a user table (not a system/temporary table).
+    /// Handles missing or misnamed TABLE_TYPE column across ODBC/OLEDB providers.
+    /// 
+    /// Rules:
+    /// - If TABLE_TYPE column exists → must equal "TABLE"
+    /// - If TABLE_TYPE column missing → assume it's a user table (fail-open)
+    /// 
+    /// INTERNAL: Exposed for testing.
+    /// </summary>
+    internal static bool CheckIsUserTable(DataRow row, DataTable schema)
+    {
+        if (schema?.Columns.Count == 0)
+        {
+            // Empty schema → assume it's a user table (fail-open)
+            return true;
+        }
+
+        if (!schema!.Columns.Contains("TABLE_TYPE"))
+        {
+            // Missing column → assume it's a user table (fail-open, safe default)
+            return true;
+        }
+
+        try
+        {
+            var value = row["TABLE_TYPE"];
+            if (value is null or DBNull)
+                return true; // Null → assume user table
+
+            var typeStr = value.ToString() ?? string.Empty;
+            return string.Equals(typeStr, "TABLE", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            // On any error → assume it's a user table
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Safely retrieves user table names from Access database via ODBC/OLEDB.
+    /// 
+    /// This method is defensive against provider-specific schema variations:
+    /// - Handles missing TABLE_NAME/TABLE_TYPE columns
+    /// - Falls back to alternative column names (TABLE, NAME, etc)
+    /// - Logs provider type and any schema issues for diagnostics
+    /// - Never throws; returns empty list on schema errors
+    /// </summary>
     private static List<string> GetUserTables(OdbcConnection conn, bool includeTemporaryTables = false)
     {
-        var schema = conn.GetSchema("Tables");
-        bool hasTableType = schema.Columns.Contains("TABLE_TYPE");
+        try
+        {
+            var schema = conn.GetSchema("Tables");
+            
+            if (schema is null || schema.Rows.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("[GetUserTables] Schema is null or empty. Connection type: " + conn.GetType().Name);
+                return new List<string>();
+            }
 
-        return schema.Rows.Cast<DataRow>()
-            .Where(r => !hasTableType || string.Equals(Convert.ToString(r["TABLE_TYPE"], CultureInfo.InvariantCulture), "TABLE", StringComparison.OrdinalIgnoreCase))
-            .Select(r => Convert.ToString(r["TABLE_NAME"], CultureInfo.InvariantCulture) ?? string.Empty)
-            .Where(x => !string.IsNullOrWhiteSpace(x)
-             && !x.StartsWith("MSys", StringComparison.OrdinalIgnoreCase)
-             && (includeTemporaryTables || !Normalize(x).Contains("privremena", StringComparison.Ordinal)))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            // Log provider info for diagnostics
+            var provider = conn.GetType().Name;
+            var hasStandardColumns = schema.Columns.Contains("TABLE_NAME") && schema.Columns.Contains("TABLE_TYPE");
+            if (!hasStandardColumns)
+            {
+                var columns = string.Join(",", schema.Columns.Cast<DataColumn>().Select(c => c.ColumnName));
+                System.Diagnostics.Debug.WriteLine(
+                    $"[GetUserTables] Non-standard Access schema detected. Provider: {provider}. Available columns: {columns}");
+            }
+
+            var result = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (DataRow row in schema.Rows)
+            {
+                // Check if it's a user table (not system/temporary)
+                if (!CheckIsUserTable(row, schema))
+                    continue;
+
+                // Safely resolve table name across providers
+                var tableName = ResolveTableName(row, schema);
+                if (string.IsNullOrWhiteSpace(tableName))
+                    continue;
+
+                // Filter system tables
+                if (tableName.StartsWith("MSys", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // Filter private/temporary tables unless requested
+                if (!includeTemporaryTables && Normalize(tableName).Contains("privremena", StringComparison.Ordinal))
+                    continue;
+
+                // Deduplicate (case-insensitive)
+                if (seen.Add(tableName))
+                    result.Add(tableName);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[GetUserTables] Exception: {ex.GetType().Name}: {ex.Message}");
+            return new List<string>();
+        }
     }
 
     private static int RowCount(OdbcConnection conn, string table)
@@ -2232,10 +2418,21 @@ public sealed class AccessImportService : IAccessImportService
         try
         {
             using var cmd = new OdbcCommand($"SELECT COUNT(*) FROM {QuoteAccessIdentifier(table)}", conn);
-            return ConvertToInt(cmd.ExecuteScalar()) ?? 0;
+            var result = cmd.ExecuteScalar();
+            
+            // Handle various return types from different ODBC providers
+            return result switch
+            {
+                null or DBNull => 0,
+                int i => i,
+                long l => l > int.MaxValue ? int.MaxValue : (int)l,
+                decimal d => d > int.MaxValue ? int.MaxValue : (int)d,
+                _ => ConvertToInt(result) ?? 0
+            };
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[RowCount] Error counting rows in {table}: {ex.GetType().Name}: {ex.Message}");
             return 0;
         }
     }
@@ -2322,11 +2519,30 @@ public sealed class AccessImportService : IAccessImportService
         {
             using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)} WHERE 1=0", conn);
             using var r = cmd.ExecuteReader();
-            if (r is null) return cols;
+            
+            if (r is null || r.FieldCount == 0)
+                return cols;
+
             for (var i = 0; i < r.FieldCount; i++)
-                cols.Add(Normalize(r.GetName(i)));
+            {
+                try
+                {
+                    var name = r.GetName(i);
+                    if (!string.IsNullOrWhiteSpace(name))
+                        cols.Add(Normalize(name));
+                }
+                catch (Exception fex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] Error reading column {i}: {fex.Message}");
+                    // Skip problematic column, continue
+                }
+            }
         }
-        catch { /* table unreadable – skip */ }
+        catch (Exception ex)
+        {
+            // Table unreadable – skip with diagnostic log
+            System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] Exception reading {table}: {ex.GetType().Name}: {ex.Message}");
+        }
         return cols;
     }
 

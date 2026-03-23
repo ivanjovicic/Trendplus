@@ -188,13 +188,52 @@ public static class AccessImportEndpoints
                     detail: "Access preview is unavailable on this server because required native ODBC libraries are missing.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
+            catch (IndexOutOfRangeException ex)
+            {
+                // Schema issue: column missing from ODBC provider schema
+                logger.LogWarning(ex, "Access import schema handling error - provider returned non-standard schema. Returning best-effort preview.");
+                return Results.Ok(new
+                {
+                    tables = new object[0],
+                    warnings = new[] { "Access database schema could not be fully analyzed. The ODBC provider may have returned unexpected results. Try again or contact support if issues persist." },
+                    canImport = false,
+                    mappedAccessTables = 0
+                });
+            }
+            catch (Exception ex) when (ex.Message.Contains("does not belong to table", StringComparison.OrdinalIgnoreCase))
+            {
+                // Schema issue: specific ODBC provider column-not-found error
+                logger.LogWarning(ex, "Access import schema error - ODBC provider returned non-standard schema structure. Returning best-effort preview.");
+                return Results.Ok(new
+                {
+                    tables = new object[0],
+                    warnings = new[] { "The Access ODBC provider returned an unexpected schema structure. Unable to enumerate tables. This may be a provider compatibility issue." },
+                    canImport = false,
+                    mappedAccessTables = 0
+                });
+            }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Access import preview failed unexpectedly.");
-                return Results.Problem(
-                    title: "Access preview failed",
-                    detail: ex.GetBaseException().Message,
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
+                logger.LogWarning(ex, "Access import preview failed unexpectedly. Exception: {ExceptionType}: {Message}", ex.GetType().Name, ex.GetBaseException().Message);
+                
+                // For schema/provider issues, return 200 with diagnostic warnings
+                // For system failures (unavailable runtime), return 503
+                if (ex is DllNotFoundException or PlatformNotSupportedException)
+                {
+                    return Results.Problem(
+                        title: "Access preview not available",
+                        detail: ex.GetBaseException().Message,
+                        statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
+
+                // Other errors: return 200 with best-effort warning (schema might be readable despite error)
+                return Results.Ok(new
+                {
+                    tables = new object[0],
+                    warnings = new[] { $"Access preview encountered an issue: {ex.GetBaseException().Message}" },
+                    canImport = false,
+                    mappedAccessTables = 0
+                });
             }
             finally
             {
@@ -285,13 +324,45 @@ public static class AccessImportEndpoints
                     detail: "Access import is unavailable on this server because required native ODBC libraries are missing.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
+            catch (IndexOutOfRangeException ex)
+            {
+                // Schema issue during import: column missing from ODBC provider schema
+                logger.LogWarning(ex, "Access import schema handling error during import - provider returned non-standard schema.");
+                return Results.BadRequest(new 
+                { 
+                    error = "Access database schema could not be processed. The ODBC provider may have returned unexpected results. Try again or contact support.",
+                    status = "failed"
+                });
+            }
+            catch (Exception ex) when (ex.Message.Contains("does not belong to table", StringComparison.OrdinalIgnoreCase))
+            {
+                // Schema issue: specific ODBC provider column-not-found error during import
+                logger.LogWarning(ex, "Access import schema error - ODBC provider returned non-standard schema structure.");
+                return Results.BadRequest(new 
+                { 
+                    error = "The Access ODBC provider returned an unexpected schema structure. This may be a provider compatibility issue. Please verify your database file and try again.",
+                    status = "failed"
+                });
+            }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Access import run failed unexpectedly.");
-                return Results.Problem(
-                    title: "Access import failed",
-                    detail: ex.GetBaseException().Message,
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
+                logger.LogWarning(ex, "Access import run failed unexpectedly. Exception: {ExceptionType}: {Message}", ex.GetType().Name, ex.GetBaseException().Message);
+                
+                // For system failures (unavailable runtime), return 503
+                if (ex is DllNotFoundException or PlatformNotSupportedException)
+                {
+                    return Results.Problem(
+                        title: "Access import not available",
+                        detail: ex.GetBaseException().Message,
+                        statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
+
+                // For data/validation errors, return 400 with diagnostic info
+                return Results.BadRequest(new 
+                { 
+                    error = ex.GetBaseException().Message,
+                    status = "failed"
+                });
             }
             finally
             {
