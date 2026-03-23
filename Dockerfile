@@ -20,6 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         odbc-mdbtools \
     && rm -rf /var/lib/apt/lists/*
 
+# Register the MDBTools driver for unixODBC (resolves DSN not found errors)
+RUN printf "[MDBTools]\nDescription=MDBTools Driver\nDriver=/usr/lib/x86_64-linux-gnu/odbc/libmdbodbc.so\nSetup=/usr/lib/x86_64-linux-gnu/odbc/libmdbodbc.so\nFileUsage=1" > /etc/odbcinst.ini
+
 COPY --from=build /app/publish .
 
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
