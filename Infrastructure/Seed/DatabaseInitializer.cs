@@ -765,6 +765,10 @@ public static class DatabaseInitializer
             );
         ", logger);
 
+        // Legacy compatibility self-heal:
+        // some existing databases have these tables without DataOrigin.
+        await EnsureImportReferenceDataOriginColumnsAsync(connectionString, logger);
+
         if (await IsTrendplusCoreSchemaReadyAsync(connectionString))
         {
             logger.LogInformation("Trendplus core schema already present. Skipping bootstrap.");
@@ -1033,9 +1037,36 @@ public static class DatabaseInitializer
                 $"trendplus-core-{i + 1}",
                 batches[i],
                 BootstrapCommandTimeoutSeconds);
+
         }
 
+        // Re-run after bootstrap so old and fresh schemas end up aligned.
+        await EnsureImportReferenceDataOriginColumnsAsync(connectionString, logger);
+
         logger.LogInformation("✔ Ensured Trendplus core schema for Artikli/DnevnikPromena/Prodaja columns.");
+    }
+
+    private static async Task EnsureImportReferenceDataOriginColumnsAsync(
+        string connectionString,
+        ILogger logger)
+    {
+        const string sql = @"
+            ALTER TABLE IF EXISTS ""Dobavljaci""
+                ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
+
+            ALTER TABLE IF EXISTS ""Sezone""
+                ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
+
+            ALTER TABLE IF EXISTS ""TipoviObuce""
+                ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
+
+            CREATE INDEX IF NOT EXISTS ""IX_Dobavljaci_DataOrigin"" ON ""Dobavljaci"" (""DataOrigin"");
+            CREATE INDEX IF NOT EXISTS ""IX_Sezone_DataOrigin"" ON ""Sezone"" (""DataOrigin"");
+            CREATE INDEX IF NOT EXISTS ""IX_TipoviObuce_DataOrigin"" ON ""TipoviObuce"" (""DataOrigin"");
+        ";
+
+        await ExecuteSqlCommandAsync(connectionString, sql, logger);
+        logger.LogInformation("Ensured DataOrigin columns for import reference tables (Dobavljaci/Sezone/TipoviObuce).");
     }
 
     private static async Task EnsureTrendplusAggregationTablesAsync(
