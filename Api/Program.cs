@@ -497,14 +497,22 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         var logger = services.GetRequiredService<ILogger<Program>>();
         var configuration = services.GetRequiredService<IConfiguration>();
 
-        try
+        const int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            await DatabaseInitializer.InitializeDatabasesAsync(services, configuration, logger);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "An error occurred while initializing databases");
-            // Don't throw - allow app to start even if seeding fails
+            try
+            {
+                await DatabaseInitializer.InitializeDatabasesAsync(services, configuration, logger);
+                logger.LogInformation("Database initialization succeeded on attempt {Attempt}", attempt);
+                break;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Database initialization failed (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                if (attempt < maxRetries)
+                    await Task.Delay(TimeSpan.FromSeconds(attempt * 3));
+                // Don't throw - allow app to start even if seeding fails
+            }
         }
     }
 
