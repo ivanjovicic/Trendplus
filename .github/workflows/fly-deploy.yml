@@ -21,8 +21,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Fly CLI
-        uses: superfly/flyctl-actions/install-flyctl@v1
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly
         run: flyctl deploy --config fly.toml --remote-only --app trendplus

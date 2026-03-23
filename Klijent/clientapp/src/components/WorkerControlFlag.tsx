@@ -61,6 +61,7 @@ export default function WorkerControlFlag() {
 
   const onToggle = useCallback(async () => {
     if (!health || busy) return;
+    if (!health.runtimeToggleAllowed && !health.workersEnabled) return;
     try {
       setBusy(true);
       setError(null);
@@ -78,6 +79,12 @@ export default function WorkerControlFlag() {
   }, [busy, health, load]);
 
   const buttonLabel = health?.workersEnabled ? "Stop workers" : "Start workers";
+  const toggleDisabled = busy || loading || !!error || !health || (!health.runtimeToggleAllowed && !health.workersEnabled);
+  const toggleTitle = !health
+    ? "Worker control"
+    : !health.runtimeToggleAllowed && !health.workersEnabled
+      ? "U ovoj okolini ukljucivanje workera je zakljucano."
+      : "Promeni worker status";
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -99,7 +106,7 @@ export default function WorkerControlFlag() {
       <button
         type="button"
         onClick={() => void onToggle()}
-        disabled={busy || loading || !!error}
+        disabled={toggleDisabled}
         style={{
           padding: "5px 10px",
           borderRadius: 8,
@@ -108,11 +115,12 @@ export default function WorkerControlFlag() {
           color: "white",
           fontSize: 12,
           fontWeight: 600,
-          cursor: busy || loading || !!error ? "not-allowed" : "pointer",
-          opacity: busy || loading || !!error ? 0.6 : 1,
+          cursor: toggleDisabled ? "not-allowed" : "pointer",
+          opacity: toggleDisabled ? 0.6 : 1,
         }}
+        title={toggleTitle}
       >
-        {busy ? "..." : buttonLabel}
+        {busy ? "..." : (!health?.runtimeToggleAllowed && !health?.workersEnabled ? "Locked" : buttonLabel)}
       </button>
       <button
         type="button"

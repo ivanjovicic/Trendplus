@@ -85,6 +85,7 @@ public static class AllEndpoints
                 HasCriticalIssues = summary.HasCriticalIssues,
                 Workers = summary.Workers,
                 WorkersEnabled = workerControl.IsEnabled,
+                RuntimeToggleAllowed = workerControl.IsRuntimeToggleAllowed,
                 Environment = env.EnvironmentName,
                 LastSwitchAtUtc = workerControl.LastChangedUtc,
                 LastSwitchBy = workerControl.LastChangedBy
@@ -104,6 +105,16 @@ public static class AllEndpoints
 
         app.MapPost("/api/workers/control/enable", (WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
         {
+            if (!workerControl.IsRuntimeToggleAllowed)
+            {
+                return Results.BadRequest(new
+                {
+                    Enabled = workerControl.IsEnabled,
+                    Changed = false,
+                    Message = "U ovoj okolini runtime ukljucivanje workera je zakljucano."
+                });
+            }
+
             var changed = workerControl.SetEnabled(true, $"api:{env.EnvironmentName}");
             return Results.Ok(new
             {
@@ -126,6 +137,7 @@ public static class AllEndpoints
                 Enabled = false,
                 Changed = changed,
                 Message = changed ? "Workeri su iskljuceni." : "Workeri su vec iskljuceni.",
+                RuntimeToggleAllowed = workerControl.IsRuntimeToggleAllowed,
                 LastSwitchAtUtc = workerControl.LastChangedUtc,
                 LastSwitchBy = workerControl.LastChangedBy
             });

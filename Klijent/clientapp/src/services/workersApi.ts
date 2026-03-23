@@ -22,6 +22,7 @@ export interface WorkerHealthWithControl {
   hasCriticalIssues: boolean;
   workers: WorkerStatusItem[];
   workersEnabled: boolean;
+  runtimeToggleAllowed: boolean;
   environment?: string;
   lastSwitchAtUtc?: string;
   lastSwitchBy?: string;
@@ -30,6 +31,7 @@ export interface WorkerHealthWithControl {
 export interface WorkerControlState {
   enabled: boolean;
   environment: string;
+  runtimeToggleAllowed: boolean;
   lastChangedUtc: string;
   lastChangedBy: string;
 }

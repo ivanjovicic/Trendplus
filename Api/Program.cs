@@ -80,6 +80,8 @@ try
     // Explicit Workers:Enabled overrides this default.
     var workersEnabledFromConfig = builder.Configuration.GetValue<bool?>("Workers:Enabled");
     var workersEnabled = workersEnabledFromConfig ?? builder.Environment.IsDevelopment();
+    var workersRuntimeToggleAllowedFromConfig = builder.Configuration.GetValue<bool?>("Workers:AllowRuntimeToggle");
+    var workersRuntimeToggleAllowed = workersRuntimeToggleAllowedFromConfig ?? builder.Environment.IsDevelopment();
 
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
@@ -184,6 +186,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddSingleton(sp =>
         new WorkerRuntimeControlService(
             workersEnabled,
+            workersRuntimeToggleAllowed,
             workersEnabledFromConfig.HasValue
                 ? "config"
                 : (builder.Environment.IsDevelopment() ? "development-default" : "production-default")));
@@ -308,6 +311,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddHostedService<Workers.DocumentGenerationWorker>();
     builder.Services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
+    Console.WriteLine($"Background workers runtime toggle: {(workersRuntimeToggleAllowed ? "ALLOWED" : "LOCKED")}");
 
     builder.Services.AddControllers();
     builder.Services.ConfigureHttpJsonOptions(opts =>
