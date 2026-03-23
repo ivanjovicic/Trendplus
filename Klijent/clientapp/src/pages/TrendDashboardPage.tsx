@@ -15,7 +15,7 @@ export default function TrendDashboardPage() {
             fontFamily: "system-ui, -apple-system, sans-serif",
         }}>
             <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: 24, fontWeight: 800, color: PAL.textPrimary, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                    <h1 className="text-2xl font-extrabold text-contrast m-0 flex items-center gap-2">
                     📊 Trend Dashboard
                 </h1>
                 <p style={{ color: PAL.textSecondary, marginTop: 5, marginBottom: 0, fontSize: 14 }}>

@@ -29,6 +29,11 @@ namespace Infrastructure.Services
         // Circuit breaker state for health checks
         public bool IsCircuitOpen { get; private set; }
 
+        private bool HasMinimumConfiguration =>
+            !string.IsNullOrWhiteSpace(_settings.HostName)
+            && _settings.Port > 0
+            && !string.IsNullOrWhiteSpace(_settings.ExchangeName);
+
         public RabbitMqMessageBroker(
             IOptions<RabbitMqSettings> settings,
             ILogger<RabbitMqMessageBroker> logger)
@@ -36,12 +41,37 @@ namespace Infrastructure.Services
             _settings = settings.Value;
             _logger = logger;
 
+            _settings.HostName = _settings.HostName?.Trim() ?? string.Empty;
+            _settings.UserName = _settings.UserName?.Trim() ?? string.Empty;
+            _settings.Password = _settings.Password?.Trim() ?? string.Empty;
+            _settings.VirtualHost = string.IsNullOrWhiteSpace(_settings.VirtualHost)
+                ? "/"
+                : _settings.VirtualHost.Trim();
+            _settings.ExchangeName = _settings.ExchangeName?.Trim() ?? "trendplus.events";
+            _settings.ExchangeType = string.IsNullOrWhiteSpace(_settings.ExchangeType)
+                ? "topic"
+                : _settings.ExchangeType.Trim();
+
             // Initialize circuit breaker
             _circuitBreaker = CircuitBreakerPolicies.CreateAsyncPipeline(
                 logger: _logger,
                 name: "RabbitMQ",
                 failureThreshold: 3,
                 breakDuration: TimeSpan.FromSeconds(60));
+
+            if (_settings.Enabled && !HasMinimumConfiguration)
+            {
+                _logger.LogWarning(
+                    "RabbitMQ is enabled but configuration is incomplete. Disabling broker. " +
+                    "Host: {Host}, Port: {Port}, Exchange: {Exchange}",
+                    _settings.HostName,
+                    _settings.Port,
+                    _settings.ExchangeName);
+
+                _settings.Enabled = false;
+                IsCircuitOpen = true;
+                return;
+            }
 
             if (_settings.Enabled)
             {
@@ -64,6 +94,12 @@ namespace Infrastructure.Services
 
         private void InitializeConnection()
         {
+            if (!HasMinimumConfiguration)
+            {
+                throw new InvalidOperationException(
+                    $"RabbitMQ configuration is incomplete. Host='{_settings.HostName}', Port='{_settings.Port}', Exchange='{_settings.ExchangeName}'.");
+            }
+
             try
             {
                 var factory = new ConnectionFactory

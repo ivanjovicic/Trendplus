@@ -46,54 +46,33 @@ function fmtDate(s: string): string {
 //  ScoreBar 
 function ScoreBar({ score, color }: { score: number; color: string }) {
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 120 }}>
-            <div style={{ flex: 1, height: 6, background: "#e5e7eb", borderRadius: 4, overflow: "hidden" }}>
-                <div style={{
-                    width: `${Math.min(score, 100)}%`, height: "100%",
-                    background: color, borderRadius: 4, transition: "width .4s",
-                }} />
+        <div className="flex items-center gap-2 min-w-[120px]">
+            <div className="flex-1 h-1.5 rounded overflow-hidden bg-muted/20">
+                <div style={{ width: `${Math.min(score, 100)}%`, height: "100%", background: color, transition: "width .4s" }} />
             </div>
-            <span style={{ fontWeight: 800, fontSize: 16, color, minWidth: 40, textAlign: "right" }}>
-                {score.toFixed(1)}
-            </span>
+            <span style={{ color }} className="font-extrabold text-base min-w-[40px] text-right">{score.toFixed(1)}</span>
         </div>
     );
 }
 
 //  Chip 
-function Chip({ label, count, active, onClick }: {
-    label: string; count?: number; active: boolean; onClick: () => void;
-}) {
+function Chip({ label, count, active, onClick }: { label: string; count?: number; active: boolean; onClick: () => void; }) {
     return (
         <button
             onClick={onClick}
-            style={{
-                padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-                cursor: "pointer", border: `1.5px solid ${active ? C.blue : C.border}`,
-                background: active ? C.blue : "white",
-                color: active ? "white" : "#374151",
-                transition: "all .1s", whiteSpace: "nowrap",
-            }}
+            className={`px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${active ? 'bg-info text-white border-info' : 'bg-surface border border-muted text-muted'}`}
         >
-            {label}{count != null ? <span style={{ opacity: .7, marginLeft: 4 }}>({fmt(count)})</span> : null}
+            {label}{count != null ? <span className="opacity-70 ml-1">({fmt(count)})</span> : null}
         </button>
     );
 }
 
 //  TabBtn 
-function TabBtn({ id, label, active, onClick }: {
-    id: Tab; label: string; active: boolean; onClick: (t: Tab) => void;
-}) {
+function TabBtn({ id, label, active, onClick }: { id: Tab; label: string; active: boolean; onClick: (t: Tab) => void; }) {
     return (
         <button
             onClick={() => onClick(id)}
-            style={{
-                padding: "9px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer",
-                border: `1.5px solid ${active ? C.blue : C.border}`,
-                background: active ? C.blue : "white",
-                color: active ? "white" : "#374151",
-                transition: "all .12s",
-            }}
+            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${active ? 'bg-info text-white border-info' : 'bg-white text-muted border border-muted'}`}
         >
             {label}
         </button>
@@ -232,19 +211,14 @@ export default function OpenTrainingPage() {
     }, [tab, loadDiag]);
 
     return (
-        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "0 0 48px" }}>
+        <div className="max-w-[1000px] mx-auto pb-12">
 
             {/*  Header  */}
-            <div style={{
-                background: `linear-gradient(135deg, ${C.blue} 0%, ${C.purple} 100%)`,
-                borderRadius: 16, padding: "22px 28px 18px", marginBottom: 20, color: "white",
-            }}>
-                <div style={{ fontSize: 24, fontWeight: 800 }}> Open Product Training</div>
-                <div style={{ fontSize: 13, opacity: .82, marginTop: 3, marginBottom: 14 }}>
-                    Popularity &amp; deal score iz open dataset-ova  koriste se kao signal za Trending Score
-                </div>
+            <div className="rounded-2xl p-5 mb-5 bg-surface-elevated text-contrast">
+                <div className="text-2xl font-extrabold">Open Product Training</div>
+                <div className="text-sm opacity-80 mt-1 mb-3">Popularity &amp; deal score iz open dataset-ova koriste se kao signal za Trending Score</div>
                 {stats && (
-                    <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                    <div className="flex gap-6 flex-wrap">
                         {[
                             { label: "Dataseta",          value: fmt(stats.datasetCount),          icon: "" },
                             { label: "Proizvoda",          value: fmt(stats.productCount),          icon: "" },
@@ -252,8 +226,8 @@ export default function OpenTrainingPage() {
                             { label: "Deal labela",        value: fmt(stats.dealLabelCount),        icon: "" },
                         ].map(s => (
                             <div key={s.label}>
-                                <div style={{ fontSize: 11, opacity: .72 }}>{s.icon} {s.label}</div>
-                                <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.1 }}>{s.value}</div>
+                                <div className="text-xs opacity-70">{s.icon} {s.label}</div>
+                                <div className="text-xl font-extrabold leading-tight">{s.value}</div>
                             </div>
                         ))}
                     </div>

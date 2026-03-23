@@ -132,29 +132,40 @@ export default function OutboxDashboard() {
         }
     };
 
+    const badgeStyle = (status: "processed" | "pending" | "failed") => {
+        switch (status) {
+            case "processed":
+                return { background: "var(--surface-light)", borderColor: "var(--success)", color: "var(--success)" };
+            case "failed":
+                return { background: "var(--surface-light)", borderColor: "var(--error)", color: "var(--error)" };
+            default:
+                return { background: "var(--surface-light)", borderColor: "var(--warning)", color: "var(--warning)" };
+        }
+    };
+
+    const rowStyle = (message: OutboxMessage) => {
+        if (message.isProcessed) {
+            return { background: "var(--surface-light)", borderColor: "var(--success)" };
+        }
+        if (message.retryCount >= 5) {
+            return { background: "var(--surface-light)", borderColor: "var(--error)" };
+        }
+        return { background: "var(--surface-light)", borderColor: "var(--warning)" };
+    };
+
     return (
         <div className="card" style={{ maxWidth: "1400px" }}>
-            <div
-                className="toolbar"
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "1.5rem",
-                    gap: "1rem",
-                    flexWrap: "wrap",
-                }}
-            >
+            <div className="toolbar flex flex-wrap gap-4 items-center justify-between mb-6">
                 <h2 className="text-2xl font-semibold" style={{ margin: 0 }}>
                     Outbox nadzor
                 </h2>
 
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+                <div className="flex flex-wrap gap-4 items-center">
                     <Link
                         to="/outbox/messages"
                         className="button-big"
                         style={{
-                            background: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+                            background: "linear-gradient(135deg, var(--info), var(--focus-ring))",
                             padding: "8px 16px",
                             marginBottom: 0,
                             textDecoration: "none",
@@ -163,7 +174,7 @@ export default function OutboxDashboard() {
                         Sve poruke
                     </Link>
 
-                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
+                    <label className="flex items-center gap-2 text-sm">
                         <input
                             type="checkbox"
                             checked={autoRefresh}
@@ -186,17 +197,7 @@ export default function OutboxDashboard() {
 
             {/* Bulk Operations */}
             {stats && stats.failed > 0 && (
-                <div
-                    className="toolbar"
-                    style={{
-                        display: "flex",
-                        gap: "1rem",
-                        marginBottom: "1.5rem",
-                        background: "#fef2f2",
-                        border: "2px solid #fecaca",
-                        flexWrap: "wrap",
-                    }}
-                >
+                <div className="toolbar flex flex-wrap gap-4 mb-6 rounded-2xl border border-warning bg-surface-light p-4">
                     <button
                         className="button-big button-danger"
                         type="button"
@@ -219,78 +220,67 @@ export default function OutboxDashboard() {
 
             {/* Summary Cards */}
             {stats && (
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                        gap: "1rem",
-                        marginBottom: "2rem",
-                    }}
-                >
-                    <div style={{ background: "#eff6ff", padding: "1.5rem", borderRadius: "12px", border: "2px solid #2563eb" }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Total Messages</div>
-                        <div style={{ fontSize: "2rem", fontWeight: 800, color: "#2563eb" }}>{stats.total}</div>
+                <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+                    <div className="rounded-2xl border border-muted bg-surface px-6 py-5">
+                        <div className="text-xs text-muted mb-2">Total Messages</div>
+                        <div className="text-3xl font-extrabold text-contrast">{stats.total}</div>
                     </div>
 
-                    <div style={{ background: "#f0fdf4", padding: "1.5rem", borderRadius: "12px", border: "2px solid #059669" }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Processed</div>
-                        <div style={{ fontSize: "2rem", fontWeight: 800, color: "#059669" }}>{stats.processed}</div>
+                    <div className="rounded-2xl border border-muted bg-surface px-6 py-5">
+                        <div className="text-xs text-muted mb-2">Processed</div>
+                        <div className="text-3xl font-extrabold text-success">{stats.processed}</div>
                     </div>
 
-                    <div style={{ background: "#fef3c7", padding: "1.5rem", borderRadius: "12px", border: "2px solid #f59e0b" }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Pending</div>
-                        <div style={{ fontSize: "2rem", fontWeight: 800, color: "#f59e0b" }}>{stats.pending}</div>
+                    <div className="rounded-2xl border border-muted bg-surface px-6 py-5">
+                        <div className="text-xs text-muted mb-2">Pending</div>
+                        <div className="text-3xl font-extrabold text-warning">{stats.pending}</div>
                     </div>
 
                     <div
-                        style={{
-                            background: stats.failed > 0 ? "#fef2f2" : "#f3f4f6",
-                            padding: "1.5rem",
-                            borderRadius: "12px",
-                            border: `2px solid ${stats.failed > 0 ? "#dc2626" : "#6b7280"}`,
-                        }}
+                        className="rounded-2xl bg-surface px-6 py-5"
+                        style={{ borderColor: stats.failed > 0 ? "var(--error)" : "var(--border-hover)", borderWidth: 2, borderStyle: "solid" }}
                     >
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Failed (Retries ? 5)</div>
-                        <div style={{ fontSize: "2rem", fontWeight: 800, color: stats.failed > 0 ? "#dc2626" : "#6b7280" }}>
+                        <div className="text-xs mb-2" style={{ color: stats.failed > 0 ? "var(--error)" : "var(--text-muted)" }}>
+                            Failed (Retries ≥ 5)
+                        </div>
+                        <div className="text-3xl font-extrabold" style={{ color: stats.failed > 0 ? "var(--error)" : "var(--text-secondary)" }}>
                             {stats.failed}
                         </div>
                     </div>
 
-                    <div style={{ background: "#ecfdf5", padding: "1.5rem", borderRadius: "12px", border: "2px solid #10b981" }}>
-                        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Success Rate</div>
-                        <div style={{ fontSize: "2rem", fontWeight: 800, color: "#10b981" }}>{stats.successRate.toFixed(1)}%</div>
+                    <div className="rounded-2xl border border-muted bg-surface px-6 py-5">
+                        <div className="text-xs text-muted mb-2">Success Rate</div>
+                        <div className="text-3xl font-extrabold text-success">{stats.successRate.toFixed(1)}%</div>
                     </div>
                 </div>
             )}
 
             {/* Event Type Statistics */}
             {eventTypeStats.length > 0 && (
-                <div style={{ marginBottom: "2rem" }}>
-                    <h3 className="text-lg font-semibold" style={{ marginBottom: "1rem" }}>
-                        Statistika po tipu događaja
-                    </h3>
-                    <div style={{ overflowX: "auto" }}>
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th>Event Type</th>
-                                    <th style={{ textAlign: "right" }}>Total</th>
-                                    <th style={{ textAlign: "right" }}>Processed</th>
-                                    <th style={{ textAlign: "right" }}>Pending</th>
-                                    <th style={{ textAlign: "right" }}>Failed</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {eventTypeStats.map((stat) => (
-                                    <tr key={stat.eventType}>
-                                        <td style={{ fontWeight: 700 }}>{stat.eventType}</td>
-                                        <td style={{ textAlign: "right", fontWeight: 800 }}>{stat.total}</td>
-                                        <td style={{ textAlign: "right", color: "#059669", fontWeight: 800 }}>{stat.processed}</td>
-                                        <td style={{ textAlign: "right", color: "#f59e0b", fontWeight: 800 }}>{stat.pending}</td>
-                                        <td style={{ textAlign: "right", color: stat.failed > 0 ? "#dc2626" : "#6b7280", fontWeight: 800 }}>
-                                            {stat.failed}
-                                        </td>
+                    <div style={{ marginBottom: "2rem" }}>
+                        <h3 className="text-lg font-semibold text-foreground mb-3">Statistika po tipu događaja</h3>
+                        <div style={{ overflowX: "auto" }}>
+                            <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th>Event Type</th>
+                                        <th style={{ textAlign: "right" }}>Total</th>
+                                        <th style={{ textAlign: "right" }}>Processed</th>
+                                        <th style={{ textAlign: "right" }}>Pending</th>
+                                        <th style={{ textAlign: "right" }}>Failed</th>
                                     </tr>
+                                </thead>
+                                <tbody>
+                                    {eventTypeStats.map((stat) => (
+                                        <tr key={stat.eventType}>
+                                            <td style={{ fontWeight: 700 }}>{stat.eventType}</td>
+                                            <td style={{ textAlign: "right", fontWeight: 800 }}>{stat.total}</td>
+                                            <td style={{ textAlign: "right", color: "var(--success)", fontWeight: 800 }}>{stat.processed}</td>
+                                            <td style={{ textAlign: "right", color: "var(--warning)", fontWeight: 800 }}>{stat.pending}</td>
+                                            <td style={{ textAlign: "right", color: stat.failed > 0 ? "var(--error)" : "var(--text-secondary)", fontWeight: 800 }}>
+                                                {stat.failed}
+                                            </td>
+                                        </tr>
                                 ))}
                             </tbody>
                         </table>
@@ -298,7 +288,7 @@ export default function OutboxDashboard() {
                 </div>
             )}
 
-            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
+            {loading && <p className="text-center py-8 text-secondary">Učitavanje...</p>}
             {error && <p className="error-msg">{error}</p>}
 
             {/* Recent Messages */}
@@ -312,13 +302,8 @@ export default function OutboxDashboard() {
                         {recentMessages.map((message) => (
                             <div
                                 key={message.id}
-                                className="toolbar"
-                                style={{
-                                    background: message.isProcessed ? "#f0fdf4" : message.retryCount >= 5 ? "#fef2f2" : "#fef3c7",
-                                    border: `2px solid ${
-                                        message.isProcessed ? "#059669" : message.retryCount >= 5 ? "#dc2626" : "#f59e0b"
-                                    }`,
-                                }}
+                                className="toolbar rounded-2xl border-2 mb-2"
+                                style={rowStyle(message)}
                             >
                                 <div
                                     style={{
@@ -345,11 +330,10 @@ export default function OutboxDashboard() {
                                                 style={{
                                                     padding: "4px 12px",
                                                     borderRadius: "8px",
-                                                    background: "#f0fdf4",
-                                                    color: "#059669",
                                                     fontSize: "0.75rem",
                                                     fontWeight: 800,
-                                                    border: "1px solid #a7f3d0",
+                                                    ...badgeStyle("processed"),
+                                                    border: `1px solid ${badgeStyle("processed").borderColor}`,
                                                 }}
                                             >
                                                 Processed
@@ -360,11 +344,10 @@ export default function OutboxDashboard() {
                                                     style={{
                                                         padding: "4px 12px",
                                                         borderRadius: "8px",
-                                                        background: "#fef2f2",
-                                                        color: "#dc2626",
                                                         fontSize: "0.75rem",
                                                         fontWeight: 800,
-                                                        border: "1px solid #fecaca",
+                                                        ...badgeStyle("failed"),
+                                                        border: `1px solid ${badgeStyle("failed").borderColor}`,
                                                     }}
                                                 >
                                                     Failed
@@ -389,11 +372,10 @@ export default function OutboxDashboard() {
                                                 style={{
                                                     padding: "4px 12px",
                                                     borderRadius: "8px",
-                                                    background: "#fef3c7",
-                                                    color: "#92400e",
                                                     fontSize: "0.75rem",
                                                     fontWeight: 800,
-                                                    border: "1px solid #fde68a",
+                                                    ...badgeStyle("pending"),
+                                                    border: `1px solid ${badgeStyle("pending").borderColor}`,
                                                 }}
                                             >
                                                 Pending (Retry: {message.retryCount})
@@ -423,19 +405,12 @@ export default function OutboxDashboard() {
                                 )}
 
                                 <details>
-                                    <summary style={{ cursor: "pointer", fontSize: "0.875rem", fontWeight: 800, marginBottom: "0.5rem" }}>
+                                    <summary className="cursor-pointer font-semibold text-sm mb-2">
                                     Payload
                                     </summary>
                                     <pre
-                                        style={{
-                                            background: "#f9fafb",
-                                            padding: "1rem",
-                                            borderRadius: "12px",
-                                            fontSize: "0.75rem",
-                                            overflow: "auto",
-                                            maxHeight: "300px",
-                                            border: "1px solid #e5e7eb",
-                                        }}
+                                        className="rounded-2xl border border-muted bg-surface-light overflow-auto"
+                                        style={{ padding: "1rem", fontSize: "0.75rem", maxHeight: "300px" }}
                                     >
                                         {formatPayload(message.payload)}
                                     </pre>
@@ -447,7 +422,7 @@ export default function OutboxDashboard() {
             )}
 
             {!loading && !error && recentMessages.length === 0 && (
-                <p style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>Nema outbox poruka.</p>
+                <p className="text-center py-8 text-secondary">Nema outbox poruka.</p>
             )}
 
             <ConfirmModal

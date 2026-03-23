@@ -566,7 +566,8 @@ export default function GlobalTrendsPage() {
                         {/* Run button */}
                         <button
                             onClick={runZalandoFiltered}
-                            className="button-big ml-auto min-w-[180px] bg-gradient-to-tr from-indigo-500 to-indigo-600"
+                            className="button-big ml-auto min-w-[180px]"
+                            style={{ background: "linear-gradient(135deg, var(--info), var(--focus-ring))" }}
                         >
                             🔍 Pokreni pretragu
                         </button>
@@ -595,7 +596,7 @@ export default function GlobalTrendsPage() {
 
                     {scrapedProducts.length > 0 && (
                         <div style={{ marginTop: 20 }}>
-                            <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Rezultati scraper-a</h3>
+                            <h3 className="mb-3 text-secondary">Rezultati scraper-a</h3>
                             <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
                                 {scrapedProducts.map((p) => (
                                     <div key={p.id} className="card p-3">
@@ -626,7 +627,7 @@ export default function GlobalTrendsPage() {
 
                     {adhocProducts.length > 0 && (
                         <div style={{ marginTop: 20 }}>
-                            <h3 style={{ marginBottom: 12, color: "#c9d3e4" }}>Zalando ad-hoc rezultati</h3>
+                            <h3 className="mb-3 text-secondary">Zalando ad-hoc rezultati</h3>
                             <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
                                 {adhocProducts.map((p: any, idx: number) => (
                                     <div key={idx} className="card p-3">
@@ -656,8 +657,8 @@ export default function GlobalTrendsPage() {
                     )}
 
                     {scraperResults.length === 0 && !loading && (
-                        <div className="card" style={{ textAlign: "center", padding: "3rem", color: "#8A95B0" }}>
-                            <p style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>🔍 Nema rezultata</p>
+                        <div className="card bg-surface rounded-2xl border border-muted" style={{ textAlign: "center", padding: "3rem" }}>
+                            <p className="text-lg mb-2 text-contrast">🔍 Nema rezultata</p>
                             <p>Klikni "🚀 Pokreni scrapere" za učitavanje podataka</p>
                         </div>
                     )}

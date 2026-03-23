@@ -58,21 +58,21 @@ const SCORE_META: Record<
 
 const SCORE_GROUPS = ["Cena i margina", "Tržišni signali", "Pokrivenost", "Lokalni signali"];
 
-const VERDICT_PALETTE = {
-    green:  { bg: "#0d2118", border: "#166534", text: "#4ade80", ring: "#22c55e" },
-    blue:   { bg: "#0e1e38", border: "#1e40af", text: "#60a5fa", ring: "#3b82f6" },
-    amber:  { bg: "#2b1e08", border: "#92400e", text: "#fbbf24", ring: "#f59e0b" },
-    orange: { bg: "#2b1408", border: "#9a3412", text: "#fb923c", ring: "#f97316" },
-    red:    { bg: "#2b0a0a", border: "#991b1b", text: "#f87171", ring: "#ef4444" },
-    gray:   { bg: "#161A23", border: "#2A3045", text: "#8A95B0", ring: "#4F8EF7" },
+const VERDICT_MAP: Record<string, { container: string; ring: string }> = {
+    green:  { container: 'bg-surface-elevated border-success text-success', ring: 'var(--success)' },
+    blue:   { container: 'bg-surface-elevated border-info text-info', ring: 'var(--info)' },
+    amber:  { container: 'bg-surface-elevated border-warning text-warning', ring: 'var(--warning)' },
+    orange: { container: 'bg-surface-elevated border-warning text-warning', ring: 'var(--warning)' },
+    red:    { container: 'bg-surface-elevated border-error text-error', ring: 'var(--error)' },
+    gray:   { container: 'bg-surface-elevated border-muted text-muted', ring: 'var(--info)' },
 };
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function scoreBarColor(value: number): string {
-    if (value >= 70) return "#22c55e";
-    if (value >= 40) return "#f59e0b";
-    return "#ef4444";
+function scoreBarClass(value: number): string {
+    if (value >= 70) return 'bg-success';
+    if (value >= 40) return 'bg-warning';
+    return 'bg-error';
 }
 
 function scoreQualityLabel(value: number): string {
@@ -100,7 +100,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
     const offset = circ * (1 - Math.max(0, Math.min(100, score)) / 100);
     return (
         <svg width={128} height={128} style={{ display: "block" }}>
-            <circle cx={64} cy={64} r={R} fill="none" stroke="#2A3045" strokeWidth={10} />
+            <circle cx={64} cy={64} r={R} fill="none" stroke="var(--border)" strokeWidth={10} />
             <circle
                 cx={64} cy={64} r={R} fill="none"
                 stroke={color} strokeWidth={10}
@@ -123,16 +123,16 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
 function ScoreRow({ fieldKey, value }: { fieldKey: string; value: number }) {
     const meta = SCORE_META[fieldKey];
     if (!meta) return null;
-    const color = scoreBarColor(value);
+    const barClass = scoreBarClass(value);
     const qlabel = scoreQualityLabel(value);
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #2A3045" }}>
-            <div style={{ flex: "0 0 140px", fontSize: 12, fontWeight: 600, color: "#c9d3e4" }}>{meta.label}</div>
-            <div style={{ flex: 1, height: 7, borderRadius: 8, background: "#2A3045", overflow: "hidden" }}>
-                <div style={{ width: `${Math.max(0, Math.min(100, value))}%`, height: "100%", borderRadius: 8, background: color, transition: "width .35s ease" }} />
+        <div className="flex items-center gap-3 py-2 border-b border-muted">
+            <div className="flex-none w-[140px] text-sm font-semibold text-contrast">{meta.label}</div>
+            <div className="flex-1 h-2 rounded overflow-hidden bg-muted/30">
+                <div className={`${barClass} h-full rounded`} style={{ width: `${Math.max(0, Math.min(100, value))}%`, transition: 'width .35s' }} />
             </div>
-            <span style={{ minWidth: 36, textAlign: "right", fontWeight: 700, fontSize: 13, color }}>{value.toFixed(1)}</span>
-            <span style={{ minWidth: 56, textAlign: "right", fontSize: 11, color, background: `${color}22`, borderRadius: 6, padding: "2px 6px" }}>
+            <span className="min-w-[36px] text-right font-bold text-sm">{value.toFixed(1)}</span>
+            <span className={`min-w-[56px] text-right text-sm font-semibold rounded px-2 ${barClass} bg-opacity-10`}>
                 {qlabel}
             </span>
         </div>
@@ -263,7 +263,7 @@ export default function RuntimeScoringPage() {
         }
     };
 
-    const verdictPalette = result ? VERDICT_PALETTE[result.verdictColor] ?? VERDICT_PALETTE.gray : VERDICT_PALETTE.gray;
+    const verdictCls = result ? VERDICT_MAP[result.verdictColor] ?? VERDICT_MAP.gray : VERDICT_MAP.gray;
 
     const sellBarColor = sellProbabilityPercent >= 60 ? "#22c55e" : sellProbabilityPercent >= 30 ? "#f59e0b" : "#ef4444";
 
@@ -314,30 +314,20 @@ export default function RuntimeScoringPage() {
     }, [result, brand, category, market, cost, targetPrice, velicina, boja, materijal, file]);
 
     return (
-        <div style={{ maxWidth: 1160, margin: "0 auto", paddingBottom: 40 }}>
+        <div className="max-w-[1160px] mx-auto pb-10">
             {/* header */}
-            <div style={{ background: "linear-gradient(135deg, #1a2e5a 0%, #2d1b69 100%)", border: "1px solid #2A3045", color: "white", borderRadius: 14, padding: "20px 24px", marginBottom: 18 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div className="rounded-2xl border border-muted bg-surface-elevated p-5 mb-4 text-contrast">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div>
-                        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Runtime Scoring Engine</h1>
-                        <p style={{ margin: "6px 0 0", opacity: 0.9, fontSize: 13 }}>
-                            Ubaci sliku modela i proceni score, verovatnocu prodaje i signal tr�i�ta u realnom vremenu.
-                        </p>
+                        <h1 className="m-0 text-lg font-extrabold">Runtime Scoring Engine</h1>
+                        <p className="mt-1 text-sm opacity-90">Ubaci sliku modela i proceni score, verovatnocu prodaje i signal tržišta u realnom vremenu.</p>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={handleRunEvaluation}
                             disabled={loading}
-                            style={{
-                                border: "none",
-                                borderRadius: 8,
-                                padding: "10px 14px",
-                                color: "white",
-                                background: loading ? "#9ca3af" : "#0f766e",
-                                fontWeight: 700,
-                                cursor: loading ? "not-allowed" : "pointer",
-                            }}
+                            className={`rounded-md px-4 py-2 font-bold text-white ${loading ? 'bg-muted/70 cursor-not-allowed' : 'bg-success'}`}
                         >
                             {loading ? "Pokrecem..." : "Pokreni procenu"}
                         </button>
@@ -345,46 +335,27 @@ export default function RuntimeScoringPage() {
                             type="button"
                             onClick={handleSaveScenario}
                             disabled={loading || !result}
-                            style={{
-                                border: "1px solid #ffffff66",
-                                borderRadius: 8,
-                                padding: "10px 14px",
-                                color: "white",
-                                background: loading || !result ? "rgba(255,255,255,.2)" : "rgba(255,255,255,.14)",
-                                fontWeight: 700,
-                                cursor: loading || !result ? "not-allowed" : "pointer",
-                            }}
+                            className={`rounded-md px-4 py-2 border border-white/40 font-bold ${loading || !result ? 'text-white/60 bg-surface' : 'bg-surface/90 text-white'}`}
                         >
                             Sacuvaj scenario
                         </button>
                     </div>
                 </div>
                 {saveNotice && (
-                    <div
-                        style={{
-                            marginTop: 12,
-                            borderRadius: 8,
-                            padding: "8px 10px",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            background: saveNotice.kind === "success" ? "#0d2118" : "#2b0a0a",
-                            border: `1px solid ${saveNotice.kind === "success" ? "#166534" : "#991b1b"}`,
-                            color: saveNotice.kind === "success" ? "#4ade80" : "#f87171",
-                        }}
-                    >
+                    <div className={`mt-3 rounded-md px-3 py-2 text-sm font-semibold ${saveNotice.kind === 'success' ? 'bg-success/10 border-success text-success' : 'bg-error/10 border-error text-error'}`}>
                         {saveNotice.text}
                     </div>
                 )}
             </div>
 
-            <form ref={formRef} onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, alignItems: "start" }}>
+            <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-[340px_1fr] gap-4 items-start">
                 {/* ── LEFT: input panel ── */}
-                <div style={{ background: "#161A23", border: "1px solid #2A3045", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#c9d3e4" }}>Parametri procene</div>
+                <div className="bg-surface border border-muted rounded-lg p-4 flex flex-col gap-3">
+                    <div className="font-bold text-sm text-contrast">Parametri procene</div>
 
                     {/* drag-drop zone */}
                     <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8A95B0", marginBottom: 6 }}>Slika obuće *</label>
+                        <label className="block text-xs font-semibold text-muted mb-1">Slika obuće *</label>
                         <div
                             role="button"
                             tabIndex={0}
@@ -393,71 +364,44 @@ export default function RuntimeScoringPage() {
                             onDrop={onDrop}
                             onDragOver={onDragOver}
                             onDragLeave={onDragLeave}
-                            style={{
-                                border: `2px dashed ${isDragging ? "#4F8EF7" : formErrors.file ? "#ef4444" : "#2A3045"}`,
-                                borderRadius: 12,
-                                background: isDragging ? "#0e1e38" : previewUrl ? "#1A1F2E" : "#1A1F2E",
-                                minHeight: 200,
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                                overflow: "hidden",
-                                transition: "border-color .15s, background .15s",
-                                position: "relative",
-                            }}
+                            className={`border-2 border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all relative ${isDragging ? 'border-info' : formErrors.file ? 'border-error' : 'border-muted'}`}
                         >
                             {previewUrl ? (
                                 <>
-                                    <img src={previewUrl} alt="Preview" style={{ width: "100%", maxHeight: 220, objectFit: "contain" }} />
-                                    <span style={{ position: "absolute", bottom: 6, right: 8, background: "rgba(0,0,0,.7)", color: "#c9d3e4", fontSize: 11, borderRadius: 6, padding: "2px 8px" }}>
-                                        klikni za zamenu
-                                    </span>
+                                    <img src={previewUrl} alt="Preview" className="w-full max-h-[220px] object-contain" />
+                                    <span className="absolute bottom-1.5 right-2 bg-black/70 text-contrast text-xs rounded-md px-2">klikni za zamenu</span>
                                 </>
                             ) : (
                                 <>
                                     <svg width={36} height={36} fill="none" stroke={isDragging ? "#4F8EF7" : "#3A4565"} strokeWidth={1.5} viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                                     </svg>
-                                    <span style={{ marginTop: 8, fontSize: 13, color: "#8A95B0", textAlign: "center", lineHeight: "1.4" }}>
-                                        {isDragging ? "Pusti sliku ovde" : "Prevuci sliku ili klikni za izbor"}
-                                    </span>
-                                    <span style={{ fontSize: 11, color: "#3A4565", marginTop: 4 }}>JPG, PNG, WEBP — maks 12 MB</span>
+                                    <span className="mt-2 text-sm text-muted text-center">{isDragging ? "Pusti sliku ovde" : "Prevuci sliku ili klikni za izbor"}</span>
+                                    <span className="text-xs text-muted/70 mt-1">JPG, PNG, WEBP — maks 12 MB</span>
                                 </>
                             )}
                         </div>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                            onChange={(e) => applyFile(e.target.files?.[0] ?? null)}
-                            style={{ display: "none" }}
-                        />
+                        <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={(e) => applyFile(e.target.files?.[0] ?? null)} className="hidden" />
                         {formErrors.file && <div style={{ marginTop: 5, color: "#f87171", fontSize: 12 }}>{formErrors.file}</div>}
                     </div>
 
                     {/* brand */}
                     <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8A95B0", marginBottom: 5 }}>Brend</label>
+                        <label className="block text-xs font-semibold text-muted mb-1">Brend</label>
                         <input
                             value={brand}
                             maxLength={60}
                             onChange={(e) => { setBrand(e.target.value); if (formErrors.brand) setFormErrors((p) => ({ ...p, brand: undefined })); }}
                             placeholder="npr. Tamaris, Nike, Skechers"
-                            style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: `1px solid ${formErrors.brand ? "#ef4444" : "#2A3045"}`, fontSize: 13, background: "#1A1F2E", color: "#c9d3e4" }}
+                            className={`w-full box-border px-3 py-2 rounded-md text-contrast bg-surface border ${formErrors.brand ? 'border-error' : 'border-muted'}`}
                         />
-                        {formErrors.brand && <div style={{ marginTop: 5, color: "#f87171", fontSize: 12 }}>{formErrors.brand}</div>}
+                        {formErrors.brand && <div className="mt-1 text-xs text-error">{formErrors.brand}</div>}
                     </div>
 
                     {/* category — dropdown */}
                     <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8A95B0", marginBottom: 5 }}>Tip obuće</label>
-                        <select
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #2A3045", fontSize: 13, background: "#1A1F2E", color: "#c9d3e4" }}
-                        >
+                        <label className="block text-xs font-semibold text-muted mb-1">Tip obuće</label>
+                        <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 rounded-md border border-muted bg-surface text-contrast">
                             {SHOE_CATEGORIES.map((c) => (
                                 <option key={c.value} value={c.value}>{c.label}</option>
                             ))}
@@ -544,35 +488,16 @@ export default function RuntimeScoringPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            style={{ width: "100%", border: "none", borderRadius: 8, padding: "11px 12px", color: "white", background: loading ? "#2A3045" : "#2563eb", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: 14, letterSpacing: ".02em", transition: "background .15s" }}
-                        >
+                    <div className="grid grid-cols-2 gap-2">
+                        <button type="submit" disabled={loading} className={`w-full rounded-md py-3 text-white font-bold ${loading ? 'bg-muted/70 cursor-not-allowed' : 'bg-info'}`}>
                             {loading ? (
-                                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                                    <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid #ffffff55", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                                <span className="flex items-center justify-center gap-2">
+                                    <span className="inline-block w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
                                     Racunam...
                                 </span>
                             ) : "Pokreni procenu"}
                         </button>
-                        <button
-                            type="button"
-                            onClick={handleSaveScenario}
-                            disabled={loading || !result}
-                            style={{
-                                width: "100%",
-                                border: "1px solid #2A3045",
-                                borderRadius: 8,
-                                padding: "11px 12px",
-                                color: loading || !result ? "#3A4565" : "#c9d3e4",
-                                background: "#1E2332",
-                                fontWeight: 700,
-                                cursor: loading || !result ? "not-allowed" : "pointer",
-                                fontSize: 14,
-                            }}
-                        >
+                        <button type="button" onClick={handleSaveScenario} disabled={loading || !result} className={`w-full rounded-md py-3 border ${loading || !result ? 'border-muted text-muted bg-surface' : 'border-muted text-contrast bg-surface'}`}>
                             Sacuvaj scenario
                         </button>
                     </div>
@@ -582,16 +507,14 @@ export default function RuntimeScoringPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
                     {error && (
-                        <div style={{ background: "#2b0a0a", color: "#f87171", border: "1px solid #991b1b", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>
-                            ⚠️ {error}
-                        </div>
+                        <div className="bg-error/10 text-error border border-error rounded-md p-3 text-sm">⚠️ {error}</div>
                     )}
 
                     {/* loading skeleton */}
                     {loading && (
-                        <div style={{ background: "#161A23", border: "1px solid #2A3045", borderRadius: 12, padding: "24px 20px" }}>
+                        <div className="bg-surface border border-muted rounded-md p-6">
                             {[80, 60, 45, 70, 55].map((w, i) => (
-                                <div key={i} style={{ height: 14, borderRadius: 8, background: "#2A3045", marginBottom: 12, width: `${w}%`, animation: "pulse 1.4s ease-in-out infinite", animationDelay: `${i * 0.15}s` }} />
+                                <div key={i} className="h-3.5 rounded-md bg-muted mb-3" style={{ width: `${w}%`, animationDelay: `${i * 0.15}s` }} />
                             ))}
                         </div>
                     )}
@@ -610,43 +533,37 @@ export default function RuntimeScoringPage() {
                     {result && (
                         <>
                             {/* ── verdict banner ── */}
-                            <div style={{ background: verdictPalette.bg, border: `1px solid ${verdictPalette.border}`, borderRadius: 14, padding: "18px 20px", display: "flex", alignItems: "center", gap: 20, boxShadow: `0 0 0 1px ${verdictPalette.border}22` }}>
-                                <ScoreRing score={result.finalScore} color={verdictPalette.ring} />
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                                        <span style={{ fontSize: 22, fontWeight: 800, color: verdictPalette.text }}>{result.verdict}</span>
-                                        <span style={{ fontSize: 13, fontWeight: 600, background: verdictPalette.ring + "22", color: verdictPalette.text, borderRadius: 8, padding: "2px 8px" }}>
-                                            {result.scoreLabel}
-                                        </span>
+                            <div className={`rounded-xl p-4 border ${verdictCls.container} flex items-center gap-5`}>
+                                <ScoreRing score={result.finalScore} color={verdictCls.ring} />
+                                <div className="flex-1">
+                                    <div className="flex items-baseline gap-3 flex-wrap">
+                                        <span className="text-2xl font-extrabold">{result.verdict}</span>
+                                        <span className="text-sm font-semibold rounded px-2 py-0.5 bg-opacity-10" style={{ backgroundImage: 'none' }}>{result.scoreLabel}</span>
                                     </div>
                                     {/* sell probability bar */}
-                                    <div style={{ marginTop: 10 }}>
-                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#8A95B0", marginBottom: 4 }}>
+                                    <div className="mt-2">
+                                        <div className="flex justify-between text-sm text-muted mb-1">
                                             <span>Verovatnoća prodaje ({result.market})</span>
-                                            <strong style={{ color: sellBarColor }}>{sellProbabilityPercent.toFixed(1)}%</strong>
+                                            <strong className={`${sellProbabilityPercent >= 60 ? 'text-success' : sellProbabilityPercent >= 30 ? 'text-warning' : 'text-error'}`}>{sellProbabilityPercent.toFixed(1)}%</strong>
                                         </div>
-                                        <div style={{ height: 10, borderRadius: 8, background: "#2A3045", overflow: "hidden" }}>
-                                            <div style={{ width: `${sellProbabilityPercent}%`, height: "100%", borderRadius: 8, background: sellBarColor, transition: "width .5s ease" }} />
+                                        <div className="h-2 rounded overflow-hidden bg-muted/30">
+                                            <div className={`${sellProbabilityPercent >= 60 ? 'bg-success' : sellProbabilityPercent >= 30 ? 'bg-warning' : 'bg-error'} h-full`} style={{ width: `${sellProbabilityPercent}%`, transition: 'width .5s' }} />
                                         </div>
                                     </div>
                                     {/* meta badges */}
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                                        <Badge bg="#1a1d3c" color="#818cf8">{result.usedPythonModel ? "Python model ✓" : "Lokalni model"}</Badge>
-                                        <Badge bg={result.hasTrainingSignal ? "#0d2118" : "#1E2332"} color={result.hasTrainingSignal ? "#4ade80" : "#8A95B0"}>
-                                            {result.hasTrainingSignal ? "Trening signal ✓" : "Nema trening signala"}
-                                        </Badge>
-                                        <Badge bg="#0d2118" color="#4ade80">Pouzdanost: {result.confidence.toFixed(0)}%</Badge>
-                                        <Badge bg="#1E2332" color="#8A95B0">{result.sourceCoverageCount} izvora</Badge>
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-surface text-info">{result.usedPythonModel ? "Python model ✓" : "Lokalni model"}</span>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${result.hasTrainingSignal ? 'bg-success/10 text-success' : 'bg-surface text-muted'}`}>{result.hasTrainingSignal ? "Trening signal ✓" : "Nema trening signala"}</span>
+                                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-success/10 text-success">Pouzdanost: {result.confidence.toFixed(0)}%</span>
+                                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-surface text-muted">{result.sourceCoverageCount} izvora</span>
                                         {result.pricePositioning && (
-                                            <Badge bg="#2b1e08" color="#fbbf24">
-                                                {result.pricePositioning === "ispod_tržišta" ? "⬇ Ispod tržišta" : result.pricePositioning === "iznad_tržišta" ? "⬆ Iznad tržišta" : "↔ U rangu tržišta"}
-                                            </Badge>
+                                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-warning/10 text-warning">{result.pricePositioning === "ispod_tržišta" ? "⬇ Ispod tržišta" : result.pricePositioning === "iznad_tržišta" ? "⬆ Iznad tržišta" : "↔ U rangu tržišta"}</span>
                                         )}
                                     </div>
                                     {/* price info */}
-                                    <div style={{ marginTop: 10, display: "flex", gap: 16, fontSize: 12, color: "#8A95B0", flexWrap: "wrap" }}>
-                                        <span>Preporučeni opseg: <strong style={{ color: "#c9d3e4" }}>{result.recommendedPriceRange}</strong></span>
-                                        {result.typicalPrice != null && <span>Tipična cena: <strong style={{ color: "#c9d3e4" }}>{result.currency ?? "EUR"} {result.typicalPrice}</strong></span>}
+                                    <div className="mt-3 flex gap-4 text-sm text-muted flex-wrap">
+                                        <span>Preporučeni opseg: <strong className="text-contrast">{result.recommendedPriceRange}</strong></span>
+                                        {result.typicalPrice != null && <span>Tipična cena: <strong className="text-contrast">{result.currency ?? "EUR"} {result.typicalPrice}</strong></span>}
                                     </div>
                                 </div>
                             </div>
