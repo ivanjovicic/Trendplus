@@ -2165,21 +2165,28 @@ public sealed class AccessImportService : IAccessImportService
     /// </summary>
     private static OdbcConnection CreateOdbcConnection(string accessFilePath)
     {
-        string cs;
-        if (OperatingSystem.IsWindows())
-        {
-            cs = $"Driver={{Microsoft Access Driver (*.mdb, *.accdb)}};Dbq={accessFilePath};ReadOnly=1;";
-        }
-        else
-        {
-            // Try to find the actual .so path for mdbtools ODBC driver.
-            // This avoids relying on odbcinst.ini registration.
-            var driverPath = FindMdbToolsDriver();
-            cs = driverPath != null
-                ? $"Driver={driverPath};Database={accessFilePath};"
-                : $"Driver=MDBTools;Database={accessFilePath};";  // fallback to registered name
-        }
+        var cs = BuildAccessOdbcConnectionString(
+            accessFilePath,
+            OperatingSystem.IsWindows(),
+            FindMdbToolsDriver());
+
         return new OdbcConnection(cs);
+    }
+
+    internal static string BuildAccessOdbcConnectionString(string accessFilePath, bool isWindows, string? driverPath = null)
+    {
+        if (isWindows)
+        {
+            return $"Driver={{Microsoft Access Driver (*.mdb, *.accdb)}};Dbq={accessFilePath};ReadOnly=1;";
+        }
+
+        // MDBTools expects DBQ for the database file path. Using Database= causes
+        // unixODBC to reject the connection string with "Could not find DSN nor DBQ".
+        var driverToken = !string.IsNullOrWhiteSpace(driverPath)
+            ? driverPath
+            : "{MDBTools}";
+
+        return $"Driver={driverToken};DBQ={accessFilePath};";
     }
 
     private static string? FindMdbToolsDriver()
