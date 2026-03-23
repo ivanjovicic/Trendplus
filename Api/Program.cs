@@ -497,7 +497,22 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         var logger = services.GetRequiredService<ILogger<Program>>();
         var configuration = services.GetRequiredService<IConfiguration>();
 
-        const int maxRetries = 3;
+        // Wake up Neon databases before init (they may be sleeping)
+        try
+        {
+            var trendDb = services.GetRequiredService<ITrendplusDbContext>();
+            var analyticsDb = services.GetRequiredService<IAnalyticsDbContext>();
+            logger.LogInformation("[NeonWarmup] Waking up databases before init...");
+            await ((Microsoft.EntityFrameworkCore.DbContext)trendDb).Database.ExecuteSqlRawAsync("SELECT 1");
+            await ((Microsoft.EntityFrameworkCore.DbContext)analyticsDb).Database.ExecuteSqlRawAsync("SELECT 1");
+            logger.LogInformation("[NeonWarmup] Databases are awake.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "[NeonWarmup] Warmup ping failed, will retry during init.");
+        }
+
+        const int maxRetries = 5;
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
@@ -510,7 +525,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             {
                 logger.LogError(ex, "Database initialization failed (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
                 if (attempt < maxRetries)
-                    await Task.Delay(TimeSpan.FromSeconds(attempt * 3));
+                    await Task.Delay(TimeSpan.FromSeconds(attempt * 5));
                 // Don't throw - allow app to start even if seeding fails
             }
         }
