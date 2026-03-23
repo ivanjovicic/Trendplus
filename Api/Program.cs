@@ -310,7 +310,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddHostedService<Workers.TrendIngestionWorker>();
     builder.Services.AddHostedService<Workers.DocumentGenerationWorker>();
     builder.Services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
-    builder.Services.AddHostedService<Workers.DatabaseKeepAliveWorker>();
+    // builder.Services.AddHostedService<Workers.DatabaseKeepAliveWorker>();
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
     Console.WriteLine($"Background workers runtime toggle: {(workersRuntimeToggleAllowed ? "ALLOWED" : "LOCKED")}");
 
