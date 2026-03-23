@@ -1,7 +1,15 @@
 import { OutboxStatsResponse, OutboxMessagesResponse } from "../types/outbox";
-import { apiCircuitBreaker } from "../utils/circuitBreaker";
+import CircuitBreaker from "../utils/circuitBreaker";
 
 const API = import.meta.env.VITE_API_BASE_URL || "";
+
+const outboxCircuitBreaker = new CircuitBreaker({
+    name: "OutboxAPI",
+    failureThreshold: 4,
+    successThreshold: 1,
+    cooldownPeriod: 30000,
+    timeout: 45000,
+});
 
 /**
  * Execute fetch request through Circuit Breaker
@@ -10,7 +18,7 @@ async function fetchWithCircuitBreaker(
     url: string,
     options?: RequestInit
 ): Promise<Response> {
-    return apiCircuitBreaker.execute(async () => {
+    return outboxCircuitBreaker.execute(async () => {
         const response = await fetch(url, options);
 
         // Treat 5xx errors as circuit breaker failures

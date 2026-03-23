@@ -40,14 +40,24 @@ export default function OutboxDashboard() {
 
     const fetchStats = async () => {
         try {
-            const [statsResult, eventStatsResult] = await Promise.all([
+            const [statsResult, eventStatsResult] = await Promise.allSettled([
                 getOutboxStats(),
                 getEventTypeStats(),
             ]);
 
-            setStats(statsResult.stats);
-            setRecentMessages(statsResult.recentMessages);
-            setEventTypeStats(eventStatsResult);
+            if (statsResult.status !== "fulfilled") {
+                throw statsResult.reason;
+            }
+
+            setStats(statsResult.value.stats);
+            setRecentMessages(statsResult.value.recentMessages);
+
+            if (eventStatsResult.status === "fulfilled") {
+                setEventTypeStats(eventStatsResult.value);
+            } else {
+                setEventTypeStats([]);
+            }
+
             setError(null);
         } catch (err) {
             console.error("Error fetching outbox stats:", err);
