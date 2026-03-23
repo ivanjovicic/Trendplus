@@ -74,7 +74,7 @@ export default function TipObucePage() {
                 <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.5rem" }}>
                     ℹ️ Napomena
                 </h3>
-                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>
+                <p className="text-sm text-muted">
                     Tipovi obuće se koriste za kategorizaciju artikala (npr. Patike, čizme, Sandale). 
                     Nakon kreiranja, tip obuće će biti dostupan u dropdown-u na formi za kreiranje artikala.
                 </p>
