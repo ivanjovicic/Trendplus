@@ -2215,8 +2215,10 @@ public sealed class AccessImportService : IAccessImportService
     private static List<string> GetUserTables(OdbcConnection conn, bool includeTemporaryTables = false)
     {
         var schema = conn.GetSchema("Tables");
+        bool hasTableType = schema.Columns.Contains("TABLE_TYPE");
+
         return schema.Rows.Cast<DataRow>()
-            .Where(r => string.Equals(Convert.ToString(r["TABLE_TYPE"], CultureInfo.InvariantCulture), "TABLE", StringComparison.OrdinalIgnoreCase))
+            .Where(r => !hasTableType || string.Equals(Convert.ToString(r["TABLE_TYPE"], CultureInfo.InvariantCulture), "TABLE", StringComparison.OrdinalIgnoreCase))
             .Select(r => Convert.ToString(r["TABLE_NAME"], CultureInfo.InvariantCulture) ?? string.Empty)
             .Where(x => !string.IsNullOrWhiteSpace(x)
              && !x.StartsWith("MSys", StringComparison.OrdinalIgnoreCase)
