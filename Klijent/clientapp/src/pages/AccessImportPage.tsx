@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DatabaseZap } from "lucide-react";
 import {
     deleteAccessImportBatch,
+    getAccessImportRuntimeStatus,
     getAccessImportBatches,
     previewAccessImport,
     runAccessImport,
     type AccessImportBatchDto,
     type AccessImportCoverageMetric,
     type AccessImportPreviewResponse,
+    type AccessImportRuntimeStatusResponse,
     type AccessImportRunResponse,
     type AccessImportTablePreview,
     type DeleteBatchResult,
@@ -69,6 +71,7 @@ export default function AccessImportPage() {
     const [deleteIncludeAnalytics, setDeleteIncludeAnalytics] = useState(true);
     const [deleteResult, setDeleteResult] = useState<DeleteBatchResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [runtimeStatus, setRuntimeStatus] = useState<AccessImportRuntimeStatusResponse | null>(null);
 
     // --- data loading ---
 
@@ -77,6 +80,19 @@ export default function AccessImportPage() {
     };
 
     useEffect(() => { void refreshBatches(); }, []);
+
+    useEffect(() => {
+        const loadRuntimeStatus = async () => {
+            try {
+                const status = await getAccessImportRuntimeStatus();
+                setRuntimeStatus(status);
+            } catch {
+                setRuntimeStatus(null);
+            }
+        };
+
+        void loadRuntimeStatus();
+    }, []);
 
     // Keep "root file" and "manual file" mutually exclusive (reduces confusion).
     useEffect(() => {
@@ -159,6 +175,7 @@ export default function AccessImportPage() {
     const busy = loadingPreview || loadingImport;
     const sourceSelected = useRootFile || !!file;
     const previewBlocksImport = preview !== null && !preview.canImport;
+    const runtimeBlocksImport = runtimeStatus !== null && !runtimeStatus.available;
     const previewCoverageTone = preview && preview.rowCoveragePercent < 80
         ? "danger"
         : preview && preview.rowCoveragePercent < 95
@@ -242,6 +259,13 @@ export default function AccessImportPage() {
             {/* ---- Global error ---- */}
             {error && <div className="accimport-error">{error}</div>}
 
+            {runtimeBlocksImport && (
+                <div className="accimport-error">
+                    {runtimeStatus?.detail ??
+                        "Access preview/import je privremeno nedostupan jer nedostaju ODBC zavisnosti na serveru."}
+                </div>
+            )}
+
             {/* ---- Progress bar (visible on any tab while importing) ---- */}
             {loadingImport && (
                 <div className="accimport-progress">
@@ -319,13 +343,18 @@ export default function AccessImportPage() {
                     <div className="accimport-field">
                         <span className="accimport-label">Akcije</span>
                         <div className="accimport-actions">
-                            <button className="accimport-btn accimport-btn-primary" onClick={() => void handlePreview()} disabled={busy || !sourceSelected}>
+                            <button className="accimport-btn accimport-btn-primary" onClick={() => void handlePreview()} disabled={busy || !sourceSelected || runtimeBlocksImport}>
                                 {loadingPreview ? "Analiziram..." : "Analiza seme"}
                             </button>
-                            <button className="accimport-btn accimport-btn-success" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport}>
+                            <button className="accimport-btn accimport-btn-success" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport || runtimeBlocksImport}>
                                 {loadingImport ? "Importujem..." : "Pokreni import"}
                             </button>
                         </div>
+                        {runtimeBlocksImport && (
+                            <div className="accimport-hint">
+                                Import je blokiran dok server ne dobije ODBC runtime (`unixODBC` + `MDBTools`).
+                            </div>
+                        )}
                         {previewBlocksImport && (
                             <div className="accimport-hint">
                                 Import je blokiran: analiza seme je vratila da fajl nije spreman za import.
@@ -390,13 +419,18 @@ export default function AccessImportPage() {
                         <div className="accimport-field">
                             <span className="accimport-label">Akcije</span>
                             <div className="accimport-actions">
-                                <button className="accimport-btn accimport-btn-secondary" type="button" onClick={() => void handlePreview()} disabled={busy || !sourceSelected}>
+                                <button className="accimport-btn accimport-btn-secondary" type="button" onClick={() => void handlePreview()} disabled={busy || !sourceSelected || runtimeBlocksImport}>
                                     {loadingPreview ? "Analiziram..." : "Ponovi analizu"}
                                 </button>
-                                <button className="accimport-btn accimport-btn-success" type="button" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport}>
+                                <button className="accimport-btn accimport-btn-success" type="button" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport || runtimeBlocksImport}>
                                     {loadingImport ? "Importujem..." : "Pokreni import"}
                                 </button>
                             </div>
+                            {runtimeBlocksImport && (
+                                <div className="accimport-hint">
+                                    Import je blokiran dok server ne dobije ODBC runtime (`unixODBC` + `MDBTools`).
+                                </div>
+                            )}
                             {previewBlocksImport && (
                                 <div className="accimport-hint">
                                     Import je blokiran: analiza seme je vratila da fajl nije spreman za import.

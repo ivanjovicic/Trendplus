@@ -213,8 +213,21 @@ export interface DeleteBatchResult {
     povracajStavkeDeleted: number;
 }
 
+export interface AccessImportRuntimeStatusResponse {
+    available: boolean;
+    platform: string;
+    missingDependencies: string[];
+    detail?: string | null;
+}
+
 export async function deleteAccessImportBatch(batchId: number, includeAnalytics = true): Promise<DeleteBatchResult> {
     const res = await fetch(`${API}/api/access-import/batches/${batchId}?includeAnalytics=${includeAnalytics}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+}
+
+export async function getAccessImportRuntimeStatus(): Promise<AccessImportRuntimeStatusResponse> {
+    const res = await fetch(`${API}/api/access-import/runtime-status`);
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }

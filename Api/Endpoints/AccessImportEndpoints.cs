@@ -1,15 +1,35 @@
 using Api.Services;
 using Npgsql;
 using System.Data.Odbc;
+using System.Runtime.InteropServices;
 
 namespace Trendplus2.Endpoints;
 
 public static class AccessImportEndpoints
 {
+    private sealed record AccessImportRuntimeStatus(
+        bool Available,
+        string Platform,
+        string[] MissingDependencies,
+        string? Detail);
+
     public static void MapAccessImportEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/access-import")
             .WithTags("Access Import");
+
+        group.MapGet("/runtime-status", () =>
+        {
+            var status = GetAccessImportRuntimeStatus();
+            return Results.Ok(new
+            {
+                available = status.Available,
+                platform = status.Platform,
+                missingDependencies = status.MissingDependencies,
+                detail = status.Detail
+            });
+        })
+        .WithName("GetAccessImportRuntimeStatus");
 
         group.MapGet("/batches", async (
             IAccessImportService service,
@@ -107,6 +127,15 @@ public static class AccessImportEndpoints
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
+            var runtimeStatus = GetAccessImportRuntimeStatus();
+            if (!runtimeStatus.Available)
+            {
+                return Results.Problem(
+                    title: "Access ODBC runtime missing",
+                    detail: runtimeStatus.Detail ?? "Access preview is unavailable on this server because required ODBC runtime libraries are missing.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
             var resolved = await ResolveSourceFileAsync(request, ct);
             if (!resolved.Success)
                 return Results.BadRequest(new { error = resolved.Error });
@@ -183,6 +212,15 @@ public static class AccessImportEndpoints
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
+            var runtimeStatus = GetAccessImportRuntimeStatus();
+            if (!runtimeStatus.Available)
+            {
+                return Results.Problem(
+                    title: "Access ODBC runtime missing",
+                    detail: runtimeStatus.Detail ?? "Access import is unavailable on this server because required ODBC runtime libraries are missing.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
             var resolved = await ResolveSourceFileAsync(request, ct);
             if (!resolved.Success)
                 return Results.BadRequest(new { error = resolved.Error });
@@ -271,6 +309,90 @@ public static class AccessImportEndpoints
         if (string.IsNullOrWhiteSpace(raw))
             return defaultValue;
         return bool.TryParse(raw, out var parsed) ? parsed : defaultValue;
+    }
+
+    private static AccessImportRuntimeStatus GetAccessImportRuntimeStatus()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return new AccessImportRuntimeStatus(
+                Available: true,
+                Platform: "windows",
+                MissingDependencies: [],
+                Detail: null);
+        }
+
+        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+        {
+            var missing = new List<string>();
+
+            if (!TryLoadNativeLibrary("libodbc.so.2") && !TryLoadNativeLibrary("libodbc.so"))
+            {
+                missing.Add("unixODBC runtime (libodbc.so.2)");
+            }
+
+            if (OperatingSystem.IsLinux() && !IsMdbToolsDriverRegistered())
+            {
+                missing.Add("MDBTools ODBC driver registration (/etc/odbcinst.ini)");
+            }
+
+            if (missing.Count == 0)
+            {
+                return new AccessImportRuntimeStatus(
+                    Available: true,
+                    Platform: OperatingSystem.IsLinux() ? "linux" : "macos",
+                    MissingDependencies: [],
+                    Detail: null);
+            }
+
+            var detail = $"Access preview/import is unavailable on this server. Missing: {string.Join(", ", missing)}.";
+            return new AccessImportRuntimeStatus(
+                Available: false,
+                Platform: OperatingSystem.IsLinux() ? "linux" : "macos",
+                MissingDependencies: missing.ToArray(),
+                Detail: detail);
+        }
+
+        return new AccessImportRuntimeStatus(
+            Available: false,
+            Platform: "unknown",
+            MissingDependencies: ["Unsupported platform"],
+            Detail: "Access preview/import is unavailable on this server platform.");
+    }
+
+    private static bool TryLoadNativeLibrary(string name)
+    {
+        try
+        {
+            if (NativeLibrary.TryLoad(name, out var handle))
+            {
+                NativeLibrary.Free(handle);
+                return true;
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return false;
+    }
+
+    private static bool IsMdbToolsDriverRegistered()
+    {
+        const string path = "/etc/odbcinst.ini";
+        if (!File.Exists(path))
+            return false;
+
+        try
+        {
+            var content = File.ReadAllText(path);
+            return content.Contains("[MDBTools]", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static async Task<(bool Success, string? Path, string? Error, bool DeleteAfter)> ResolveSourceFileAsync(

@@ -2131,8 +2131,8 @@ public sealed class AccessImportService : IAccessImportService
     /// <summary>
     /// Creates a cross-platform ODBC connection to an Access database.
     /// Windows  : uses the built-in "Microsoft Access Driver (*.mdb, *.accdb)" ODBC driver (no ACE/Office needed).
-    /// Linux/Mac: uses the open-source MDBTools ODBC driver — add to Dockerfile:
-    ///   RUN apt-get update &amp;&amp; apt-get install -y mdbtools odbc-mdbtools
+    /// Linux/Mac: uses the open-source MDBTools ODBC driver.
+    ///   Docker install: apt-get update && apt-get install -y unixodbc libodbc2 mdbtools odbc-mdbtools
     /// </summary>
     private static OdbcConnection CreateOdbcConnection(string accessFilePath)
     {
@@ -2637,6 +2637,7 @@ public sealed class AccessImportService : IAccessImportService
     {
         // No platform restriction — ODBC works on Windows, Linux, macOS, and Docker.
         // Windows:  Microsoft Access Driver (*.mdb, *.accdb) — ships with Windows by default.
-        // Linux:    Install mdbtools + odbc-mdbtools (apt-get install -y mdbtools odbc-mdbtools).
+        // Linux:    Install unixODBC + MDBTools (apt-get install -y unixodbc libodbc2 mdbtools odbc-mdbtools).
     }
 }
+
