@@ -69,7 +69,7 @@ const POPULAR_BRANDS: { group: string; brands: string[] }[] = [
     },
 ];
 
-const STAR_COLOR = "#f59e0b";
+// star color uses theme warning
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,22 +78,20 @@ function StarRating({ rating }: { rating: number }) {
     const half  = rating - full >= 0.4;
     const empty = 5 - full - (half ? 1 : 0);
     return (
-        <span title={`${rating.toFixed(1)} / 5`} style={{ color: STAR_COLOR, fontSize: 13, letterSpacing: -1 }}>
+        <span title={`${rating.toFixed(1)} / 5`} className="text-warning text-sm">
             {"★".repeat(full)}{"½".repeat(half ? 1 : 0)}{"☆".repeat(empty)}
         </span>
     );
 }
 
 function PriceLabel({ price, original, currency }: { price: number | null; original: number | null; currency: string | null }) {
-    if (price == null) return <span style={{ color: "#d1d5db" }}>—</span>;
+    if (price == null) return <span className="text-muted">—</span>;
     const fmt = (v: number) => `${v.toFixed(2)} ${currency ?? ""}`.trim();
     return (
         <span>
-            <span style={{ fontWeight: 700, color: "#059669" }}>{fmt(price)}</span>
+            <span className="font-semibold text-success">{fmt(price)}</span>
             {original != null && original > price && (
-                <span style={{ marginLeft: 5, color: "#9ca3af", textDecoration: "line-through", fontSize: 11 }}>
-                    {fmt(original)}
-                </span>
+                <span className="ml-1 text-muted line-through text-xs">{fmt(original)}</span>
             )}
         </span>
     );
@@ -113,47 +111,29 @@ function CategoryPanel({
     onDelete: (c: string) => void;
 }) {
     return (
-        <div style={{ minWidth: 200 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#6b7280", marginBottom: 8, letterSpacing: "0.06em" }}>
-                Categories in DB
-            </div>
+        <div className="min-w-[200px]">
+            <div className="text-xs font-bold uppercase text-muted mb-2 tracking-wider">Categories in DB</div>
             {categories.length === 0 && (
-                <div style={{ color: "#9ca3af", fontSize: 12, fontStyle: "italic" }}>No data yet — sync first</div>
+                <div className="text-muted text-sm italic">No data yet — sync first</div>
             )}
             {categories.map((c) => (
                 <div
                     key={c.category ?? "null"}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "6px 10px",
-                        borderRadius: 8,
-                        marginBottom: 4,
-                        background: selected === (c.category ?? "") ? "#4f46e5" : "#f9fafb",
-                        border: `1px solid ${selected === (c.category ?? "") ? "#4f46e5" : "#e5e7eb"}`,
-                        cursor: "pointer",
-                        transition: "all .12s",
-                    }}
+                    className={`flex items-center justify-between p-2.5 rounded-md mb-1 transition-all cursor-pointer ${selected === (c.category ?? "") ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-surface border-muted'}`}
                     onClick={() => onSelect(c.category ?? "")}
                 >
                     <div>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: selected === (c.category ?? "") ? "white" : "#111827" }}>
+                        <div className={`font-semibold text-sm ${selected === (c.category ?? "") ? 'text-white' : 'text-contrast'}`}>
                             {c.category ?? "—"}
                         </div>
-                        <div style={{ fontSize: 10, color: selected === (c.category ?? "") ? "rgba(255,255,255,.7)" : "#9ca3af" }}>
-                            {c.count} items · ★{c.avgRating.toFixed(1)}
-                            {c.avgPrice != null ? ` · €${c.avgPrice.toFixed(0)}` : ""}
+                        <div className={`text-xs ${selected === (c.category ?? "") ? 'text-white/70' : 'text-muted'}`}>
+                            {c.count} items · ★{c.avgRating.toFixed(1)}{c.avgPrice != null ? ` · €${c.avgPrice.toFixed(0)}` : ""}
                         </div>
                     </div>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(c.category ?? ""); }}
                         title="Delete category"
-                        style={{
-                            background: "none", border: "none", cursor: "pointer",
-                            color: selected === (c.category ?? "") ? "rgba(255,255,255,.7)" : "#d1d5db",
-                            fontSize: 14, padding: "0 2px", lineHeight: 1,
-                        }}
+                        className={`bg-none border-none p-0 text-lg leading-4 ${selected === (c.category ?? "") ? 'text-white/70' : 'text-muted'}`}
                     >
                         ✕
                     </button>
@@ -167,22 +147,13 @@ function CategoryPanel({
 
 function ShoeCard({ shoe }: { shoe: AmazonShoeProduct }) {
     return (
-        <div style={{
-            background: "white",
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            transition: "box-shadow .15s, transform .15s",
-            cursor: "default",
-        }}
+        <div className="bg-surface border border-muted rounded-xl overflow-hidden flex flex-col transition-shadow transform-gpu cursor-default"
             onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "0 8px 24px rgba(0,0,0,.12)"; el.style.transform = "translateY(-2px)"; }}
             onMouseLeave={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = ""; el.style.transform = ""; }}
         >
             {/* Image */}
             <a href={shoe.productUrl ?? "#"} target="_blank" rel="noopener noreferrer" tabIndex={-1}>
-                <div style={{ width: "100%", height: 180, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                <div className="w-full h-[180px] bg-surface flex items-center justify-center overflow-hidden">
                     {shoe.imageUrl ? (
                         <img
                             src={shoe.imageUrl}
@@ -197,38 +168,32 @@ function ShoeCard({ shoe }: { shoe: AmazonShoeProduct }) {
             </a>
 
             {/* Body */}
-            <div style={{ padding: "10px 12px 12px", flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                <div className="p-3 flex-1 flex flex-col gap-1">
                 {shoe.brand && (
-                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#9ca3af", letterSpacing: "0.04em" }}>
-                        {shoe.brand}
-                    </div>
+                    <div className="text-[10px] font-bold uppercase text-muted tracking-tight">{shoe.brand}</div>
                 )}
                 <a
                     href={shoe.productUrl ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ fontWeight: 700, fontSize: 13, color: "#111827", lineHeight: 1.35, textDecoration: "none" }}
+                    className="font-semibold text-sm text-contrast leading-tight no-underline"
                     title={shoe.name ?? ""}
                 >
                     {shoe.name && shoe.name.length > 70 ? shoe.name.slice(0, 68) + "…" : shoe.name ?? "—"}
                 </a>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                <div className="flex items-center gap-2 mt-1">
                     <StarRating rating={shoe.rating} />
-                    <span style={{ fontSize: 11, color: "#6b7280" }}>({shoe.reviewCount.toLocaleString()})</span>
+                    <span className="text-xs text-muted">({shoe.reviewCount.toLocaleString()})</span>
                 </div>
 
-                <div style={{ marginTop: "auto", paddingTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="mt-auto pt-1 flex justify-between items-center">
                     <PriceLabel price={shoe.price} original={shoe.originalPrice} currency={shoe.currency} />
                     <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                         {shoe.trendScore > 0 && (
-                            <span style={{ fontSize: 9, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 5px", border: "1px solid #fde68a", fontWeight: 700 }}>
-                                ◆ {shoe.trendScore.toFixed(1)}
-                            </span>
+                            <span className="text-[9px] bg-warning/10 text-warning rounded px-1 font-bold border border-warning/30">◆ {shoe.trendScore.toFixed(1)}</span>
                         )}
-                        <span style={{ fontSize: 10, background: "#f3f4f6", color: "#6b7280", borderRadius: 5, padding: "1px 6px" }}>
-                            {shoe.asin}
-                        </span>
+                        <span className="text-xs bg-surface text-muted rounded px-2">{shoe.asin}</span>
                     </div>
                 </div>
             </div>
