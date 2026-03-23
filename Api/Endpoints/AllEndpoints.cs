@@ -687,6 +687,7 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/vendor-sales-nivelacija/options", async (
             TrendplusDbContext trendplusDb,
+            ILogger<Program> logger,
             int? vendorId = null,
             string? category = null,
             int take = 200,
@@ -841,12 +842,15 @@ public static class AllEndpoints
 
                 return Results.Ok(options);
             }
-            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            catch (PostgresException ex)
             {
-                return Results.Problem(
-                    title: "Nivelacija view schema mismatch",
-                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql, 014_FixNivelacijaViewsFromDnevnik.sql, and 016_AnalyticsNivelacijaEnhancements.sql, then restart the backend.",
-                    statusCode: 500);
+                logger.LogWarning(
+                    ex,
+                    "Vendor sales nivelacija options fallback due to database/schema issue. SqlState={SqlState}",
+                    ex.SqlState);
+
+                // Return an empty options set instead of hard-failing the screen.
+                return Results.Ok(new List<VendorSalesNivelacijaOptionDto>());
             }
             catch (Exception ex)
             {
@@ -1554,12 +1558,14 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/vendor-sales-nivelacija", async (
             TrendplusDbContext trendplusDb,
+            ILogger<Program> logger,
             int? vendorId = null,
             DateTime? eventDate = null,
             DateTime? from = null,
             DateTime? to = null,
             string? category = null,
             bool includeInactive = false,
+            int maxRows = 5000,
             CancellationToken ct = default) =>
         {
             try
@@ -1589,6 +1595,7 @@ public static class AllEndpoints
 
                 var categoryTrimmed = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
                 var categoryPattern = string.IsNullOrWhiteSpace(categoryTrimmed) ? null : $"%{categoryTrimmed}%";
+                maxRows = Math.Clamp(maxRows, 100, 50_000);
 
                 await using var connection = new NpgsqlConnection(connectionString);
                 await connection.OpenAsync(ct);
@@ -1745,7 +1752,8 @@ public static class AllEndpoints
                             change_percent
                         FROM ranked
                         WHERE rn = 1
-                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
+                        LIMIT @maxRows;
                         """
                     : $"""
                         WITH ranked AS (
@@ -1801,7 +1809,8 @@ public static class AllEndpoints
                             change_percent
                         FROM ranked
                         WHERE rn = 1
-                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
+                        LIMIT @maxRows;
                         """;
 
                 var dedupRows = new List<VendorSalesNivelacijaArticleStatDto>();
@@ -1839,6 +1848,10 @@ public static class AllEndpoints
                     cmd.Parameters.Add(new NpgsqlParameter("categoryPattern", NpgsqlTypes.NpgsqlDbType.Text)
                     {
                         Value = (object?)categoryPattern ?? DBNull.Value
+                    });
+                    cmd.Parameters.Add(new NpgsqlParameter("maxRows", NpgsqlTypes.NpgsqlDbType.Integer)
+                    {
+                        Value = maxRows
                     });
 
                     await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -1921,6 +1934,10 @@ public static class AllEndpoints
 
                 // Advanced metrics (best-effort, non-fatal).
                 var globalWarnings = new List<string>();
+                if (deduplicatedRows >= maxRows)
+                {
+                    globalWarnings.Add($"Article stats capped to {maxRows.ToString(CultureInfo.InvariantCulture)} rows");
+                }
 
                 try
                 {
@@ -2171,12 +2188,26 @@ public static class AllEndpoints
 
                 return Results.Ok(response);
             }
-            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            catch (PostgresException ex)
             {
-                return Results.Problem(
-                    title: "Nivelacija view schema mismatch",
-                    detail: "Run DB migration scripts 013_AddVendorSalesNivelacijaViews.sql, 014_FixNivelacijaViewsFromDnevnik.sql, and 016_AnalyticsNivelacijaEnhancements.sql, then restart the backend.",
-                    statusCode: 500);
+                var reason =
+                    "Vendor sales nivelacija analytics fallback: view/schema mismatch or database issue. " +
+                    $"SqlState={ex.SqlState ?? "unknown"}.";
+
+                logger.LogWarning(
+                    ex,
+                    "Vendor sales nivelacija fallback due to database/schema issue. SqlState={SqlState}",
+                    ex.SqlState);
+
+                // Keep the UI operational with an empty payload when DB schema is behind.
+                return Results.Ok(CreateVendorSalesNivelacijaFallbackResponse(
+                    vendorId,
+                    eventDate?.Date,
+                    from,
+                    to,
+                    string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
+                    includeInactive,
+                    reason));
             }
             catch (Exception ex)
             {
@@ -3201,15 +3232,49 @@ public static class AllEndpoints
         .RequireRateLimiting("strict");
 
         // ============ DNEVNIK PROMENA ============
-        app.MapGet("/api/dnevnik-promena/tipovi", async (ITrendplusDbContext db, CancellationToken ct) =>
+        app.MapGet("/api/dnevnik-promena/tipovi", async (
+            ITrendplusDbContext db,
+            IMemoryCache cache,
+            ILogger<Program> logger,
+            CancellationToken ct) =>
         {
-            var tipovi = await db.DnevnikPromena
-                .Select(x => x.TipPromene)
-                .Distinct()
-                .OrderBy(x => x)
-                .ToListAsync(ct);
+            const string cacheKey = "dnevnik_promena_tipovi";
+            if (cache.TryGetValue(cacheKey, out List<string>? cachedTipovi) && cachedTipovi is not null)
+            {
+                return Results.Ok(cachedTipovi);
+            }
 
-            return Results.Ok(tipovi);
+            try
+            {
+                var tipovi = await db.DnevnikPromena
+                    .Select(x => x.TipPromene)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToListAsync(ct);
+
+                cache.Set(cacheKey, tipovi, TimeSpan.FromMinutes(10));
+                return Results.Ok(tipovi);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogWarning("Request cancelled while loading dnevnik tipovi.");
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Dnevnik tipovi fallback due to database issue.");
+                return Results.Ok(Array.Empty<string>());
+            }
+            catch (TimeoutException ex)
+            {
+                logger.LogWarning(ex, "Dnevnik tipovi fallback due to timeout.");
+                return Results.Ok(Array.Empty<string>());
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Greška pri učitavanju tipova dnevnika promena.");
+                return Results.Problem(detail: ex.GetBaseException().Message, statusCode: 500, title: "Greška pri učitavanju tipova dnevnika promena");
+            }
         })
         .RequireRateLimiting("fixed");
 
@@ -3260,6 +3325,21 @@ public static class AllEndpoints
                 }, ct);
 
                 return Results.Ok(response);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogWarning("Request cancelled while loading dnevnik promena list.");
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "DnevnikPromena list fallback due to database issue.");
+                return Results.Ok(CreateEmptyDnevnikPromenaResponse(pageNumber, pageSize, sortBy, sortDir));
+            }
+            catch (TimeoutException ex)
+            {
+                logger.LogWarning(ex, "DnevnikPromena list fallback due to timeout.");
+                return Results.Ok(CreateEmptyDnevnikPromenaResponse(pageNumber, pageSize, sortBy, sortDir));
             }
             catch (Exception ex)
             {
@@ -3509,15 +3589,15 @@ public static class AllEndpoints
         // ============ SEZONE ============
         app.MapGet("/api/sezone", async (ITrendplusDbContext db, IMemoryCache cache, ILogger<Program> logger, string dataScope = "all", CancellationToken ct = default) =>
         {
+            var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
+            var cacheKey = $"sezone_all_{normalizedDataScope}";
+            if (cache.TryGetValue(cacheKey, out List<Sezona>? cachedSezone) && cachedSezone is not null)
+            {
+                return Results.Ok(cachedSezone);
+            }
+
             try
             {
-                var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
-                var cacheKey = $"sezone_all_{normalizedDataScope}";
-                if (cache.TryGetValue(cacheKey, out List<Sezona>? cachedSezone) && cachedSezone is not null)
-                {
-                    return Results.Ok(cachedSezone);
-                }
-
                 var query = db.Sezone.AsNoTracking().AsQueryable();
                 query = normalizedDataScope switch
                 {
@@ -3529,6 +3609,17 @@ public static class AllEndpoints
                 var sezone = await query.OrderBy(s => s.Naziv).ToListAsync(ct);
                 cache.Set(cacheKey, sezone, TimeSpan.FromMinutes(10));
                 return Results.Ok(sezone);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42703" || ex.SqlState == "42P01")
+            {
+                logger.LogWarning(
+                    ex,
+                    "Sezone fallback due to database/schema issue. SqlState={SqlState}",
+                    ex.SqlState);
+
+                var fallbackSezone = await LoadSezoneCompatibilityFallbackAsync(db, normalizedDataScope, ct);
+                cache.Set(cacheKey, fallbackSezone, TimeSpan.FromMinutes(2));
+                return Results.Ok(fallbackSezone);
             }
             catch (Exception ex)
             {
@@ -3590,19 +3681,60 @@ public static class AllEndpoints
         .RequireRateLimiting("writes");
 
         // ============ DOBAVLJACI ============
-        app.MapGet("/api/dobavljaci", async (ITrendplusDbContext db, string dataScope = "all", CancellationToken ct = default) =>
+        app.MapGet("/api/dobavljaci", async (
+            ITrendplusDbContext db,
+            IMemoryCache cache,
+            ILogger<Program> logger,
+            string dataScope = "all",
+            CancellationToken ct = default) =>
         {
             var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
-            var query = db.Dobavljaci.AsNoTracking().AsQueryable();
-            query = normalizedDataScope switch
+            var cacheKey = $"dobavljaci_all_{normalizedDataScope}";
+            if (cache.TryGetValue(cacheKey, out List<Dobavljac>? cachedDobavljaci) && cachedDobavljaci is not null)
             {
-                "imported" => query.Where(d => d.DataOrigin == "access"),
-                "existing" => query.Where(d => d.DataOrigin == "existing" || d.DataOrigin == null || d.DataOrigin == ""),
-                _ => query
-            };
+                return Results.Ok(cachedDobavljaci);
+            }
 
-            var result = await query.OrderBy(d => d.Naziv).ToListAsync(ct);
-            return Results.Ok(result);
+            try
+            {
+                var query = db.Dobavljaci.AsNoTracking().AsQueryable();
+                query = normalizedDataScope switch
+                {
+                    "imported" => query.Where(d => d.DataOrigin == "access"),
+                    "existing" => query.Where(d => d.DataOrigin == "existing" || d.DataOrigin == null || d.DataOrigin == ""),
+                    _ => query
+                };
+
+                var result = await query.OrderBy(d => d.Naziv).ToListAsync(ct);
+                cache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
+                return Results.Ok(result);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogWarning("Request cancelled while loading dobavljaci.");
+                return Results.StatusCode(499);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42703" || ex.SqlState == "42P01")
+            {
+                logger.LogWarning(
+                    ex,
+                    "Dobavljaci fallback due to database/schema issue. SqlState={SqlState}",
+                    ex.SqlState);
+
+                var fallbackDobavljaci = await LoadDobavljaciCompatibilityFallbackAsync(db, normalizedDataScope, ct);
+                cache.Set(cacheKey, fallbackDobavljaci, TimeSpan.FromMinutes(2));
+                return Results.Ok(fallbackDobavljaci);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Dobavljaci fallback due to transient database issue.");
+                return Results.Ok(Array.Empty<Dobavljac>());
+            }
+            catch (TimeoutException ex)
+            {
+                logger.LogWarning(ex, "Dobavljaci fallback due to timeout.");
+                return Results.Ok(Array.Empty<Dobavljac>());
+            }
         })
         .RequireRateLimiting("fixed");
 
@@ -3650,6 +3782,7 @@ public static class AllEndpoints
 
         app.MapGet("/api/nivelacije", async (
             ITrendplusDbContext db,
+            ILogger<Program> logger,
             int pageNumber = 1,
             int pageSize = 50,
             int? artikalId = null,
@@ -3708,6 +3841,21 @@ public static class AllEndpoints
                 var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
                 return Results.Ok(new { items, totalCount = total, pageNumber, pageSize });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogWarning("Request cancelled while loading nivelacije.");
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Nivelacije fallback due to database issue.");
+                return Results.Ok(new { items = Array.Empty<object>(), totalCount = 0, pageNumber, pageSize });
+            }
+            catch (TimeoutException ex)
+            {
+                logger.LogWarning(ex, "Nivelacije fallback due to timeout.");
+                return Results.Ok(new { items = Array.Empty<object>(), totalCount = 0, pageNumber, pageSize });
             }
             catch (Exception ex)
             {
@@ -4476,6 +4624,190 @@ public static class AllEndpoints
                 ? null
                 : string.Join("; ", reasons.Distinct(StringComparer.Ordinal));
         }
+    }
+
+    private static VendorSalesNivelacijaResponseDto CreateVendorSalesNivelacijaFallbackResponse(
+        int? vendorId,
+        DateTime? eventDate,
+        DateTime? from,
+        DateTime? to,
+        string? category,
+        bool includeInactive,
+        string reason)
+    {
+        return new VendorSalesNivelacijaResponseDto
+        {
+            GeneratedAt = DateTime.UtcNow,
+            WindowDays = 30,
+            VendorId = vendorId,
+            EventDate = eventDate,
+            From = from,
+            To = to,
+            Category = category,
+            IncludeInactive = includeInactive,
+            Categories = [],
+            VendorStats = [],
+            ArticleStats = [],
+            Totals = new VendorSalesNivelacijaTotalsDto(),
+            DataQuality = new VendorSalesNivelacijaDataQualityDto(),
+            CategoryStats = [],
+            PriceDirectionStats = [],
+            Insights = new List<VendorSalesNivelacijaInsightDto>
+            {
+                new()
+                {
+                    Title = "Podaci privremeno nedostupni",
+                    Value = "Fallback mode",
+                    Details = reason,
+                    Tone = "warning"
+                }
+            },
+            AvgMomentumRevenue = null,
+            AvgElasticity = null,
+            AvgDidRevenue = null,
+            AvgLostSalesOOS = null,
+            OOSRate = null,
+            MetricsStatus = reason
+        };
+    }
+
+    private static async Task<List<Sezona>> LoadSezoneCompatibilityFallbackAsync(
+        ITrendplusDbContext db,
+        string normalizedDataScope,
+        CancellationToken ct)
+    {
+        if (string.Equals(normalizedDataScope, "imported", StringComparison.OrdinalIgnoreCase))
+        {
+            return [];
+        }
+
+        var connection = db.GetDbConnection();
+        var shouldClose = connection.State != System.Data.ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync(ct);
+        }
+
+        try
+        {
+            const string sql = """
+                SELECT "Id", "Naziv", "DatumOd", "DatumDo"
+                FROM "Sezone"
+                ORDER BY "Naziv";
+                """;
+
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = sql;
+
+            var items = new List<Sezona>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                items.Add(new Sezona
+                {
+                    Id = reader.GetInt32(0),
+                    Naziv = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                    DatumOd = reader.GetDateTime(2),
+                    DatumDo = reader.GetDateTime(3),
+                    DataOrigin = "existing"
+                });
+            }
+
+            return items;
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01")
+        {
+            return [];
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static async Task<List<Dobavljac>> LoadDobavljaciCompatibilityFallbackAsync(
+        ITrendplusDbContext db,
+        string normalizedDataScope,
+        CancellationToken ct)
+    {
+        if (string.Equals(normalizedDataScope, "imported", StringComparison.OrdinalIgnoreCase))
+        {
+            return [];
+        }
+
+        var connection = db.GetDbConnection();
+        var shouldClose = connection.State != System.Data.ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync(ct);
+        }
+
+        try
+        {
+            const string sql = """
+                SELECT "Id", "Naziv", "Adresa", "Telefon", "Napomena"
+                FROM "Dobavljaci"
+                ORDER BY "Naziv";
+                """;
+
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = sql;
+
+            var items = new List<Dobavljac>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                items.Add(new Dobavljac
+                {
+                    Id = reader.GetInt32(0),
+                    Naziv = reader.IsDBNull(1) ? null : reader.GetString(1),
+                    Adresa = reader.IsDBNull(2) ? null : reader.GetString(2),
+                    Telefon = reader.IsDBNull(3) ? null : reader.GetString(3),
+                    Napomena = reader.IsDBNull(4) ? null : reader.GetString(4),
+                    DataOrigin = "existing"
+                });
+            }
+
+            return items;
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01")
+        {
+            return [];
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static DnevnikPromenaListResponseDto CreateEmptyDnevnikPromenaResponse(
+        int pageNumber,
+        int pageSize,
+        string sortBy,
+        string sortDir)
+    {
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy)
+            ? "datum"
+            : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase)
+            ? "asc"
+            : "desc";
+
+        return new DnevnikPromenaListResponseDto
+        {
+            Items = Array.Empty<DnevnikPromenaListItemDto>(),
+            TotalCount = 0,
+            PageNumber = pageNumber < 1 ? 1 : pageNumber,
+            PageSize = pageSize < 1 ? 50 : Math.Min(pageSize, 200),
+            SortBy = normalizedSortBy,
+            SortDir = normalizedSortDir
+        };
     }
 
     private static async Task<bool> RelationHasColumnAsync(

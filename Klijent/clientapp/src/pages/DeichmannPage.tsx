@@ -42,7 +42,7 @@ export default function DeichmannPage() {
         { label: "42.5", value: "425-120944" },
     ];
 
-    // sizes not selected by default — show all until user chooses
+    // sizes not selected by default � show all until user chooses
     const [size, setSize] = useState<string[] | undefined>(undefined);
     const [saleOnly, setSaleOnly] = useState<boolean>(false);
     const [isNewOnly, setIsNewOnly] = useState<boolean>(false);
@@ -110,16 +110,16 @@ export default function DeichmannPage() {
                 payload.sizeEu = sizePayload;
             }
 
-            console.log("▶ Calling Deichmann scraper with payload:", payload);
+            console.log("? Calling Deichmann scraper with payload:", payload);
             toast.info("Pokretanje Deichmann scraper-a...");
             const data = await runDeichmannScraper(payload);
-            console.log("◄ Deichmann scraper response:", data);
+            console.log("? Deichmann scraper response:", data);
             const items = data.items || [];
             setResults(items);
-            toast.success(`Deichmann: učitano ${data.count ?? items.length} stavki`);
+            toast.success(`Deichmann: ucitano ${data.count ?? items.length} stavki`);
         } catch (e) {
             console.error(e);
-            toast.error(e instanceof Error ? e.message : "Greška pri pokretanju Deichmann scraper-a");
+            toast.error(e instanceof Error ? e.message : "Gre�ka pri pokretanju Deichmann scraper-a");
         } finally {
             setLoading(false);
         }
@@ -127,7 +127,7 @@ export default function DeichmannPage() {
 
     return (
         <div className="max-w-[1200px] mx-auto my-8 px-4">
-            <h1 className="text-2xl font-bold mb-3 text-foreground">Deichmann — Scraper EU tržišta</h1>
+            <h1 className="text-2xl font-bold mb-3 text-foreground">Deichmann � Scraper EU tr�i�ta</h1>
 
             <div className="bg-surface-elevated border border-border rounded-xl p-4 mb-6 transition-colors">
                 <div className="flex gap-3 items-center flex-wrap">
@@ -135,7 +135,7 @@ export default function DeichmannPage() {
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Deichmann stranice</label>
                         <input 
                             type="number" 
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all" 
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all" 
                             value={filterPages} 
                             min={1} 
                             onChange={(e) => setFilterPages(Number(e.target.value) || 1)} 
@@ -145,7 +145,7 @@ export default function DeichmannPage() {
                     <div className="min-w-[220px]">
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Kategorija</label>
                         <select 
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all" 
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all" 
                             value={selectedCategory} 
                             onChange={(e) => setSelectedCategory(e.target.value)}
                         >
@@ -158,7 +158,7 @@ export default function DeichmannPage() {
                         <SearchableSelect 
                             value={filterBrand}
                             onChange={setFilterBrand}
-                            placeholder="Select or type brand…"
+                            placeholder="Select or type brand�"
                             options={deichmannBrands}
                             multiple={true}
                         />
@@ -167,36 +167,36 @@ export default function DeichmannPage() {
                     <div className="min-w-[160px]">
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Pol</label>
                         <select
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             value={filterGender}
                             onChange={(e) => setFilterGender(e.target.value)}
                         >
                             <option value="">Unisex</option>
-                            <option value="women">👠 žene</option>
-                            <option value="men">👞 Muškarci</option>
-                            <option value="kids">🧒 Deca</option>
+                            <option value="women">?? �ene</option>
+                            <option value="men">?? Mu�karci</option>
+                            <option value="kids">?? Deca</option>
                         </select>
                     </div>
 
                     <div className="min-w-[160px]">
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Sortiranje</label>
                         <select
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             value={filterSort}
                             onChange={(e) => setFilterSort(e.target.value)}
                         >
-                            <option value="popularity">🔥 Popularnost</option>
-                            <option value="price-asc">💸 Cena: raste</option>
-                            <option value="price-desc">💰 Cena: pada</option>
-                            <option value="new">✨ Novo u ponudi</option>
+                            <option value="popularity">?? Popularnost</option>
+                            <option value="price-asc">?? Cena: raste</option>
+                            <option value="price-desc">?? Cena: pada</option>
+                            <option value="new">? Novo u ponudi</option>
                         </select>
                     </div>
 
                     <div className="min-w-[150px]">
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Min cena (€)</label>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Min cena (�)</label>
                         <input
                             type="number"
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             placeholder="0"
                             value={filterPriceMin ?? ""}
                             onChange={(e) => setFilterPriceMin(e.target.value ? Number(e.target.value) : undefined)}
@@ -204,10 +204,10 @@ export default function DeichmannPage() {
                     </div>
 
                     <div className="min-w-[150px]">
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Max cena (€)</label>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Max cena (�)</label>
                         <input
                             type="number"
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             placeholder="500"
                             value={filterPriceMax ?? ""}
                             onChange={(e) => setFilterPriceMax(e.target.value ? Number(e.target.value) : undefined)}
@@ -215,7 +215,7 @@ export default function DeichmannPage() {
                     </div>
 
                     <div className="min-w-[220px]">
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Veličina (EUR)</label>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Velicina (EUR)</label>
                         <SearchableSelect
                             value={size ?? []}
                             onChange={(v) => setSize(v as string[])}
@@ -228,7 +228,7 @@ export default function DeichmannPage() {
                     <div className="min-w-[260px]">
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Nova kolekcija</label>
                         <select
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             value={filterActivationDate ?? ""}
                             onChange={(e) => setFilterActivationDate(e.target.value || undefined)}
                         >
@@ -244,7 +244,7 @@ export default function DeichmannPage() {
                             type="checkbox"
                             checked={filterImportToCore}
                             onChange={(e) => setFilterImportToCore(e.target.checked)}
-                            className="w-4 h-4 rounded border-border bg-surface text-primary focus:ring-primary"
+                            className="w-4 h-4 rounded border-border bg-surface text-primary focus:ring-[var(--focus-ring)]"
                         />
                         <span className="text-sm text-foreground font-medium">Uvezi u bazu</span>
                     </label>
@@ -255,7 +255,7 @@ export default function DeichmannPage() {
                             onClick={runDeichmannFiltered} 
                             disabled={loading}
                         >
-                            {loading ? '⏳ Pokretanje...' : '🔍 Pokreni Deichmann'}
+                            {loading ? '? Pokretanje...' : '?? Pokreni Deichmann'}
                         </button>
                     </div>
                 </div>
@@ -277,7 +277,7 @@ export default function DeichmannPage() {
                                             onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=No+Image' }} 
                                         />
                                     ) : (
-                                        <div className="text-4xl opacity-30">👟</div>
+                                        <div className="text-4xl opacity-30">??</div>
                                     )}
                                 </div>
                                 <div className="mt-3">
@@ -292,7 +292,7 @@ export default function DeichmannPage() {
                                                 rel="noreferrer" 
                                                 className="text-primary hover:text-primary-hover font-bold text-xs"
                                             >
-                                                POGLEDAJ ↗
+                                                POGLEDAJ ?
                                             </a>
                                         )}
                                     </div>

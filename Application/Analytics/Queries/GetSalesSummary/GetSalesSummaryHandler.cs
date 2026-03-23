@@ -30,10 +30,15 @@ namespace Application.Analytics.Queries.GetSalesSummary
             if (request.StoreId.HasValue)
                 q = q.Where(x => x.StoreId == request.StoreId.Value);
 
-            var totalRevenue = await q.SumAsync(x => x.TotalAmount, cancellationToken);
+            var result = await q.GroupBy(_ => 1).Select(g => new {
+                TotalRevenue = g.Sum(x => x.TotalAmount),
+                TotalTransactions = g.Count(),
+                TotalUnits = g.Sum(x => (int?)x.TotalUnits) ?? 0
+            }).FirstOrDefaultAsync(cancellationToken);
 
-            var totalTransactions = await q.CountAsync(cancellationToken);
-            var totalUnits = await q.SumAsync(x => (int?)x.TotalUnits, cancellationToken) ?? 0;
+            var totalRevenue = result?.TotalRevenue ?? 0m;
+            var totalTransactions = result?.TotalTransactions ?? 0;
+            var totalUnits = result?.TotalUnits ?? 0;
 
             var avgBasket = totalTransactions > 0
                 ? Math.Round(totalRevenue / totalTransactions, 2)

@@ -30,6 +30,7 @@ public sealed class GetInventoryAlertsHandler
         }
 
         await using var command = connection.CreateCommand();
+        command.CommandTimeout = 60;
         command.CommandText = """
             select
                 coalesce(alert_type, 'unknown') as alert_type,

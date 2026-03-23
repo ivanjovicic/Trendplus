@@ -18,18 +18,19 @@ namespace Application.Analytics.Queries.GetInventoryStatus
 
         public async Task<InventoryStatusDto> Handle(GetInventoryStatusQuery request, CancellationToken cancellationToken)
         {
-            var q = _db.ProductsDim.AsNoTracking().AsQueryable();
-
-            var totalSku = await q.CountAsync(cancellationToken);
-            var totalOnHand = await q.SumAsync(x => (int?)x.Kolicina, cancellationToken) ?? 0;
-            var outOfStock = await q.CountAsync(x => (x.Kolicina ?? 0) == 0, cancellationToken);
-            var lowStock = await q.CountAsync(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= request.LowStockThreshold, cancellationToken);
+            var result = await _db.ProductsDim.AsNoTracking().GroupBy(_ => 1).Select(g => new
+            {
+                TotalSkuCount = g.Count(),
+                TotalOnHand = g.Sum(x => (int?)x.Kolicina) ?? 0,
+                LowStockCount = g.Count(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= request.LowStockThreshold),
+                OutOfStockCount = g.Count(x => (x.Kolicina ?? 0) == 0)
+            }).FirstOrDefaultAsync(cancellationToken);
 
             return new InventoryStatusDto(
-                TotalSkuCount: totalSku,
-                TotalOnHand: totalOnHand,
-                LowStockCount: lowStock,
-                OutOfStockCount: outOfStock
+                TotalSkuCount: result?.TotalSkuCount ?? 0,
+                TotalOnHand: result?.TotalOnHand ?? 0,
+                LowStockCount: result?.LowStockCount ?? 0,
+                OutOfStockCount: result?.OutOfStockCount ?? 0
             );
         }
     }

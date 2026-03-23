@@ -43,54 +43,32 @@ public class GetTopProductsHandler : IRequestHandler<GetTopProductsQuery, TopPro
                 salesQuery = salesQuery.Where(s => s.StoreId == request.StoreId.Value);
             }
 
-            var salesCount = await salesQuery.CountAsync(cancellationToken);
-            _logger.LogInformation("Sales count after filters: {SalesCount}", salesCount);
+            var baseQuery = from sf in salesQuery
+                            join slf in _db.SalesLineFacts.AsNoTracking() on sf.SaleId equals slf.SaleId
+                            join p in _db.ProductsDim.AsNoTracking() on slf.ProductId equals p.ProductId into pj
+                            from p in pj.DefaultIfEmpty()
+                            group new { slf, p } by new { slf.ProductId, p.ProductName, p.Velicina, p.Boja } into g
+                            select new
+                            {
+                                g.Key.ProductId,
+                                ProductName = g.Key.ProductName ?? $"Product #{g.Key.ProductId}",
+                                TotalRevenue = g.Sum(x => x.slf.LineTotal),
+                                TotalUnits = g.Sum(x => x.slf.Qty),
+                                g.Key.Velicina,
+                                g.Key.Boja
+                            };
 
-            if (salesCount == 0)
-            {
-                _logger.LogInformation("No sales found, returning empty lists");
-                return new TopProductsResult(new List<TopProductDto>(), new List<TopProductDto>());
-            }
-
-            // 2. Join filtered sales with SalesLineFacts
-            var query = from sf in salesQuery
-                        join slf in _db.SalesLineFacts.AsNoTracking() on sf.SaleId equals slf.SaleId
-                        select slf;
-
-            // 3. Group by ProductId and aggregate
-            var aggregatedData = await query
-                .GroupBy(slf => slf.ProductId)
-                .Select(g => new
-                {
-                    ProductId = g.Key,
-                    TotalRevenue = g.Sum(x => x.LineTotal),
-                    TotalSold = g.Sum(x => x.Qty)
-                })
+            var topByRevenue = await baseQuery
+                .OrderByDescending(x => x.TotalRevenue)
+                .Take(request.Top)
+                .Select(x => new TopProductDto(x.ProductId, x.ProductName, x.TotalRevenue, x.TotalUnits, x.Velicina, x.Boja))
                 .ToListAsync(cancellationToken);
 
-            // 4. Join with ProductsDim to get product details (including Velicina and Boja)
-            var productIds = aggregatedData.Select(a => a.ProductId).ToList();
-            var products = await _db.ProductsDim
-                .AsNoTracking()
-                .Where(p => productIds.Contains(p.ProductId))
-                .ToDictionaryAsync(p => p.ProductId, p => p, cancellationToken);
-
-            // 5. Materialize the final result
-            var topProducts = aggregatedData.Select(a =>
-            {
-                var product = products.GetValueOrDefault(a.ProductId);
-                return new TopProductDto(
-                    a.ProductId,
-                    product?.ProductName ?? $"Product #{a.ProductId}",
-                    a.TotalRevenue,
-                    a.TotalSold,
-                    product?.Velicina,
-                    product?.Boja
-                );
-            }).ToList();
-
-            var topByRevenue = topProducts.OrderByDescending(p => p.TotalRevenue).Take(request.Top).ToList();
-            var topByUnits = topProducts.OrderByDescending(p => p.TotalUnits).Take(request.Top).ToList();
+            var topByUnits = await baseQuery
+                .OrderByDescending(x => x.TotalUnits)
+                .Take(request.Top)
+                .Select(x => new TopProductDto(x.ProductId, x.ProductName, x.TotalRevenue, x.TotalUnits, x.Velicina, x.Boja))
+                .ToListAsync(cancellationToken);
 
             _logger.LogInformation("Top products: {RevenueCount} by revenue, {UnitsCount} by units",
                 topByRevenue.Count, topByUnits.Count);

@@ -15,7 +15,7 @@ export function FormField({ label, name, register, errors, type = "text", placeh
                 type={type}
                 placeholder={placeholder}
                 {...register(name)}
-                className="border rounded-lg px-3 py-2 text-lg shadow-sm focus:ring-2 focus:ring-blue-500"
+                className="border rounded-lg px-3 py-2 text-lg shadow-sm focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50"
             />
             {errors[name] && (
                 <p className="text-red-600 text-sm mt-1">{errors[name].message}</p>

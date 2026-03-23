@@ -1,5 +1,7 @@
 using Infrastructure.Configuration;
 using Infrastructure.Services.Documents;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -13,7 +15,7 @@ public class DocumentSecurityTests
         var service = new DocumentDownloadTokenService(Options.Create(new DocumentExportOptions
         {
             SigningKey = "unit-test-key"
-        }));
+        }), CreateHostEnvironment(), NullLogger<DocumentDownloadTokenService>.Instance);
 
         var documentId = Guid.NewGuid();
         var token = service.Create(documentId, DateTime.UtcNow.AddMinutes(5));
@@ -59,7 +61,21 @@ public class DocumentSecurityTests
         return new DocumentDownloadTokenService(Options.Create(new DocumentExportOptions
         {
             SigningKey = "unit-test-key"
-        }));
+        }), CreateHostEnvironment(), NullLogger<DocumentDownloadTokenService>.Instance);
+    }
+
+    private static IHostEnvironment CreateHostEnvironment()
+    {
+        return new TestHostEnvironment();
+    }
+
+    private sealed class TestHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = Environments.Production;
+        public string ApplicationName { get; set; } = "Api.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } =
+            new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 
     private static string Base64UrlEncode(byte[] bytes)

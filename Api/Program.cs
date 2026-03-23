@@ -310,6 +310,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddHostedService<Workers.TrendIngestionWorker>();
     builder.Services.AddHostedService<Workers.DocumentGenerationWorker>();
     builder.Services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
+    builder.Services.AddHostedService<Workers.DatabaseKeepAliveWorker>();
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
     Console.WriteLine($"Background workers runtime toggle: {(workersRuntimeToggleAllowed ? "ALLOWED" : "LOCKED")}");
 
@@ -552,6 +553,30 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     });
 
     app.UseAuthorization();
+
+    // ================= WARMUP =================
+    using (var scope = app.Services.CreateScope())
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        try
+        {
+            logger.LogInformation("Waking up Neon databases...");
+            var trendDb = scope.ServiceProvider.GetRequiredService<ITrendplusDbContext>();
+            var analyticsDb = scope.ServiceProvider.GetRequiredService<IAnalyticsDbContext>();
+            
+            await trendDb.Database.ExecuteSqlRawAsync("SELECT 1");
+            var conn = analyticsDb.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+            await cmd.ExecuteScalarAsync();
+            logger.LogInformation("Databases are awake.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to warmup databases.");
+        }
+    }
 
     // Removed duplicate minimal API proxy for /api/release/{gender} because Api.Controllers.ReleaseController already defines this endpoint.
     // Use the existing ReleaseController implementation instead.

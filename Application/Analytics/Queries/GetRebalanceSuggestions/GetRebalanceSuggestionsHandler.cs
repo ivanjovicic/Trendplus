@@ -30,6 +30,7 @@ public sealed class GetRebalanceSuggestionsHandler
         }
 
         await using var command = connection.CreateCommand();
+        command.CommandTimeout = 60;
         command.CommandText = """
             select
                 from_store_id,

@@ -326,6 +326,10 @@ export default function ProdajaPrePostNivelacijePage() {
     }, [selectedVendorId, selectedCategory]);
 
     const load = useCallback(async () => {
+        if (filterMode === "nivelacija" && !selectedEventDate) {
+            return;
+        }
+
         setLoading(true);
         setError("");
         try {

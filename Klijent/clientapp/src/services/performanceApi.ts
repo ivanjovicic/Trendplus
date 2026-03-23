@@ -11,12 +11,24 @@ function getPerformanceUrl(params: URLSearchParams): string {
 }
 
 async function parseError(res: Response): Promise<string> {
-    try {
-        const body = await res.json();
-        return body?.detail ?? body?.title ?? body?.message ?? `HTTP ${res.status}`;
-    } catch {
+    const raw = await res.text().catch(() => "");
+    if (!raw) {
         return `HTTP ${res.status}`;
     }
+
+    try {
+        const body = JSON.parse(raw);
+        return body?.detail ?? body?.title ?? body?.message ?? raw;
+    } catch {
+        return raw;
+    }
+}
+
+function toUtcIsoOrUndefined(value?: string): string | undefined {
+    if (!value) return undefined;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toISOString();
 }
 
 export async function getPerformanceStats(
@@ -25,13 +37,18 @@ export async function getPerformanceStats(
     fromDate?: string,
     toDate?: string
 ): Promise<PerformanceStatsResponse> {
+    const safeTopCount = Number.isFinite(topCount) ? Math.min(200, Math.max(1, Math.floor(topCount))) : 20;
+    const safeMinDuration = Number.isFinite(minDurationMs) ? Math.max(0, Math.floor(minDurationMs)) : 1000;
+    const fromDateParam = toUtcIsoOrUndefined(fromDate);
+    const toDateParam = toUtcIsoOrUndefined(toDate);
+
     const params = new URLSearchParams({
-        topCount: topCount.toString(),
-        minDurationMs: minDurationMs.toString(),
+        topCount: safeTopCount.toString(),
+        minDurationMs: safeMinDuration.toString(),
     });
 
-    if (fromDate) params.append("fromDate", fromDate);
-    if (toDate) params.append("toDate", toDate);
+    if (fromDateParam) params.append("fromDate", fromDateParam);
+    if (toDateParam) params.append("toDate", toDateParam);
 
     const url = getPerformanceUrl(params);
 

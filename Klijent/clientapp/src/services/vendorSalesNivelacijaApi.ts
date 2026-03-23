@@ -1,4 +1,7 @@
-const API = import.meta.env.VITE_API_BASE_URL;
+import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import { apiUrl } from "../utils/apiUrl";
+
+const REQUEST_TIMEOUT_MS = 60_000;
 
 export interface VendorSalesNivelacijaVendorStat {
     vendorId: number | null;
@@ -162,11 +165,12 @@ export async function getVendorSalesNivelacija(
     if (query.category) params.set("category", query.category);
     if (query.includeInactive != null) params.set("includeInactive", String(query.includeInactive));
 
+    const baseUrl = apiUrl("/api/analytics/vendor-sales-nivelacija");
     const url = params.toString()
-        ? `${API}/api/analytics/vendor-sales-nivelacija?${params.toString()}`
-        : `${API}/api/analytics/vendor-sales-nivelacija`;
+        ? `${baseUrl}?${params.toString()}`
+        : baseUrl;
 
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url, undefined, REQUEST_TIMEOUT_MS);
     if (!response.ok) {
         const text = await response.text();
         throw new Error(`Neuspesno ucitavanje pre/post nivelacija analitike: ${text}`);
@@ -183,11 +187,12 @@ export async function getVendorSalesNivelacijaOptions(
     if (query.category) params.set("category", query.category);
     if (query.take != null) params.set("take", String(query.take));
 
+    const baseUrl = apiUrl("/api/analytics/vendor-sales-nivelacija/options");
     const url = params.toString()
-        ? `${API}/api/analytics/vendor-sales-nivelacija/options?${params.toString()}`
-        : `${API}/api/analytics/vendor-sales-nivelacija/options`;
+        ? `${baseUrl}?${params.toString()}`
+        : baseUrl;
 
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url, undefined, REQUEST_TIMEOUT_MS);
     if (!response.ok) {
         const text = await response.text();
         throw new Error(`Neuspesno ucitavanje nivo opcija: ${text}`);

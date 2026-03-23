@@ -119,7 +119,7 @@ export default function HumanicPage() {
                     <div className="min-w-[420px] flex-1">
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">URL kategorije</label>
                         <input
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             value={humanicUrl}
                             onChange={(e) => setHumanicUrl(e.target.value)}
                             placeholder="https://www.humanic.net/at/c/Damenschuhe/womenShoes"
@@ -129,7 +129,7 @@ export default function HumanicPage() {
                     <div className="min-w-[200px]">
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Režim stranica</label>
                         <select
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             value={pageMode}
                             onChange={(e) => setPageMode((e.target.value as "auto" | "manual") || "auto")}
                         >
@@ -146,7 +146,7 @@ export default function HumanicPage() {
                             <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Stranice</label>
                             <input
                                 type="number"
-                                className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                                className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                                 value={filterPages}
                                 min={1}
                                 onChange={(e) => setFilterPages(Number(e.target.value) || 1)}
@@ -158,7 +158,7 @@ export default function HumanicPage() {
                     <div className="min-w-[180px]">
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Sortiranje</label>
                         <select
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             value={filterSort}
                             onChange={(e) => setFilterSort(e.target.value)}
                         >
@@ -206,7 +206,7 @@ export default function HumanicPage() {
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Min cena (EUR)</label>
                         <input
                             type="number"
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             placeholder="0"
                             value={filterPriceMin ?? ""}
                             onChange={(e) => setFilterPriceMin(e.target.value ? Number(e.target.value) : undefined)}
@@ -217,7 +217,7 @@ export default function HumanicPage() {
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Max cena (EUR)</label>
                         <input
                             type="number"
-                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
                             placeholder="500"
                             value={filterPriceMax ?? ""}
                             onChange={(e) => setFilterPriceMax(e.target.value ? Number(e.target.value) : undefined)}

@@ -3,9 +3,9 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace Application.Performance.Queries
 {
@@ -26,12 +26,17 @@ namespace Application.Performance.Queries
             GetPerformanceStatsQuery request,
             CancellationToken cancellationToken)
         {
-            var query = _db.PerformanceLogs.AsQueryable();
+            var safeTopCount = Math.Clamp(request.TopCount, 1, 200);
+            var safeMinDuration = Math.Max(0, request.MinDurationMs);
+
+            var query = _db.PerformanceLogs
+                .AsNoTracking()
+                .AsQueryable();
 
             // Apply filters
-            if (request.MinDurationMs > 0)
+            if (safeMinDuration > 0)
             {
-                query = query.Where(p => p.DurationMs >= request.MinDurationMs);
+                query = query.Where(p => p.DurationMs >= safeMinDuration);
             }
 
             if (request.FromDate.HasValue)
@@ -47,7 +52,7 @@ namespace Application.Performance.Queries
             // Get slowest requests
             var slowestRequests = await query
                 .OrderByDescending(p => p.DurationMs)
-                .Take(request.TopCount)
+                .Take(safeTopCount)
                 .Select(p => new PerformanceStatDto(
                     p.Id,
                     p.Timestamp,
@@ -58,15 +63,31 @@ namespace Application.Performance.Queries
                 ))
                 .ToListAsync(cancellationToken);
 
-            // Calculate summary stats
-            var allLogs = await query.ToListAsync(cancellationToken);
-            
+            // Calculate summary stats without materializing full result set.
+            var totalRequestsTask = query.CountAsync(cancellationToken);
+            var slowRequestsTask = query.CountAsync(p => p.DurationMs >= 1000, cancellationToken);
+            var failedRequestsTask = query.CountAsync(p => !p.IsSuccess, cancellationToken);
+            var averageDurationTask = query
+                .Select(p => (double?)p.DurationMs)
+                .AverageAsync(cancellationToken);
+            var maxDurationTask = query
+                .Select(p => (long?)p.DurationMs)
+                .MaxAsync(cancellationToken);
+
+            await Task.WhenAll(
+                totalRequestsTask,
+                slowRequestsTask,
+                failedRequestsTask,
+                averageDurationTask,
+                maxDurationTask
+            );
+
             var summary = new PerformanceSummaryDto(
-                TotalRequests: allLogs.Count,
-                SlowRequests: allLogs.Count(p => p.DurationMs >= 1000),
-                FailedRequests: allLogs.Count(p => !p.IsSuccess),
-                AverageDurationMs: allLogs.Any() ? (long)allLogs.Average(p => p.DurationMs) : 0,
-                MaxDurationMs: allLogs.Any() ? allLogs.Max(p => p.DurationMs) : 0
+                TotalRequests: totalRequestsTask.Result,
+                SlowRequests: slowRequestsTask.Result,
+                FailedRequests: failedRequestsTask.Result,
+                AverageDurationMs: averageDurationTask.Result.HasValue ? (long)Math.Round(averageDurationTask.Result.Value) : 0,
+                MaxDurationMs: maxDurationTask.Result ?? 0
             );
 
             _logger.LogInformation(

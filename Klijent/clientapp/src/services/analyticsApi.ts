@@ -41,6 +41,7 @@ import { apiUrl } from "../utils/apiUrl";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
 const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
+const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = 60_000;
 const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
@@ -81,7 +82,7 @@ async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage
   }
 
   const request = (async () => {
-    const res = await fetchWithTimeout(url, undefined, 20_000);
+    const res = await fetchWithTimeout(url, undefined, DEFAULT_ANALYTICS_GET_TIMEOUT_MS);
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }

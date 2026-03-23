@@ -101,6 +101,7 @@ public sealed class GetDataQualityIssuesHandler
         try
         {
             await using var command = new NpgsqlCommand(sql, connection);
+            command.CommandTimeout = 60;
             command.Parameters.AddWithValue("salesFromUtc", DateTime.UtcNow.AddDays(-30));
             command.Parameters.AddWithValue("issueType", issueType);
             command.Parameters.AddWithValue("query", query);

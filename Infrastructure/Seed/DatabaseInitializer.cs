@@ -457,6 +457,18 @@ public static class DatabaseInitializer
             commandTimeoutSeconds: 0,
             useTransaction: false);
 
+        await ExecuteSqlFileAsync(
+            connectionString,
+            "Database/Migrations/025_AddTrendplusPerformanceIndexes.sql",
+            logger,
+            commandTimeoutSeconds: 0,
+            useTransaction: false);
+
+        await ExecuteSqlFileAsync(
+            connectionString,
+            "Database/Migrations/026_CreatePerformanceExplainTemplates.sql",
+            logger);
+
         // Fire-and-forget: startup now builds only the core supplier decision views from 018.
         // The heavy supplier materialized caches are intentionally deferred so API startup can
         // complete promptly and endpoints can fall back to live views on first run.
@@ -695,7 +707,17 @@ public static class DatabaseInitializer
                     FROM information_schema.columns
                     WHERE table_schema = 'public' AND table_name = 'DnevnikPromena' AND column_name = 'DataOrigin'
                 )
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'DnevnikPromena' AND column_name = 'Kolicina'
+                )
                 AND to_regclass('public.""DataImportBatches""') IS NOT NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'DataImportBatches' AND column_name = 'DataOrigin'
+                )
                 AND to_regclass('public.""ErrorRecords""') IS NOT NULL
                 AND to_regclass('public.""AccessImportLog""') IS NOT NULL
                 AND to_regclass('public.povracaj_zaglavlje') IS NOT NULL
@@ -1060,13 +1082,37 @@ public static class DatabaseInitializer
             ALTER TABLE IF EXISTS ""TipoviObuce""
                 ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
 
+            -- DnevnikPromena compatibility columns (older DBs can miss post-2025 fields)
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""BrojRacuna"" character varying(100);
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""DobavljacId"" integer;
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""ArtikalId"" integer;
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""StaraProdajnaCena"" decimal(18,2);
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""NovaProdajnaCena"" decimal(18,2);
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""Kolicina"" integer;
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""IDObjekat"" integer;
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""RedniBroj"" integer;
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""Komentar"" character varying(500);
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""KorisnikIme"" character varying(200);
+            ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
+
+            -- Access import batch compatibility columns (added after initial 012 schema)
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DurationSeconds"" integer;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalImported"" integer NOT NULL DEFAULT 0;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalUpdated"" integer NOT NULL DEFAULT 0;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalErrors"" integer NOT NULL DEFAULT 0;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'access';
+
             CREATE INDEX IF NOT EXISTS ""IX_Dobavljaci_DataOrigin"" ON ""Dobavljaci"" (""DataOrigin"");
             CREATE INDEX IF NOT EXISTS ""IX_Sezone_DataOrigin"" ON ""Sezone"" (""DataOrigin"");
             CREATE INDEX IF NOT EXISTS ""IX_TipoviObuce_DataOrigin"" ON ""TipoviObuce"" (""DataOrigin"");
+            CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_DataOrigin"" ON ""DnevnikPromena"" (""DataOrigin"");
+            CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
+            CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_StartedAtUtc"" ON ""DataImportBatches"" (""StartedAtUtc"");
+            CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_Status"" ON ""DataImportBatches"" (""Status"");
         ";
 
         await ExecuteSqlCommandAsync(connectionString, sql, logger);
-        logger.LogInformation("Ensured DataOrigin columns for import reference tables (Dobavljaci/Sezone/TipoviObuce).");
+        logger.LogInformation("Ensured import compatibility columns for reference/master tables and batch history.");
     }
 
     private static async Task EnsureTrendplusAggregationTablesAsync(
@@ -1536,6 +1582,13 @@ public static class DatabaseInitializer
         await ExecuteSqlFileAsync(
             connectionString,
             "Database/Analytics/016_AddScraperScoringSearchIndexes.sql",
+            logger,
+            commandTimeoutSeconds: 0,
+            useTransaction: false);
+
+        await ExecuteSqlFileAsync(
+            connectionString,
+            "Database/Analytics/017_AddAnalyticsPerformanceIndexes.sql",
             logger,
             commandTimeoutSeconds: 0,
             useTransaction: false);

@@ -1,4 +1,4 @@
-﻿using Application.Analytics.Queries.GetInventoryStatus;
+using Application.Analytics.Queries.GetInventoryStatus;
 using Application.Analytics.Queries.GetSalesSummary;
 using Application.Analytics.Queries.GetInventoryForecast;
 using Application.Analytics.Queries.GetInventoryAlerts;
@@ -1078,38 +1078,47 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IMediator mediator,
+            ILogger<Program> logger,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
             int? supplierId = null,
             CancellationToken ct = default) =>
         {
-            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            var requestAborted = ct;
 
-            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(12));
+                ct = timeoutCts.Token;
 
-            var cacheKey = AnalyticsCacheKeys.DashboardBootstrap(fromDate, toDate, storeId, supplierId);
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    var response = new AnalyticsDashboardBootstrapDto();
+                if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                    fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
 
-                    var tasks = new List<Task>();
+                if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                    toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-                    tasks.Add(Task.Run(async () =>
+                var cacheKey = AnalyticsCacheKeys.DashboardBootstrap(fromDate, toDate, storeId, supplierId);
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
                     {
-                        response.Summary = await TrySectionAsync(
-                            async () => await cache.GetOrSetAsync(
-                                AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId),
-                                async () => await BuildSalesSummarySnapshotAsync(db, mediator, fromDate, toDate, storeId, supplierId, ct),
-                                CacheExpiration.Medium,
-                                ct),
-                            response.Errors,
-                            "Sazetak prodaje nije dostupan.");
-                    }));
+                        var response = new AnalyticsDashboardBootstrapDto();
+
+                        var tasks = new List<Task>();
+
+                        tasks.Add(Task.Run(async () =>
+                        {
+                            response.Summary = await TrySectionAsync(
+                                async () => await cache.GetOrSetAsync(
+                                    AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId),
+                                    async () => await BuildSalesSummarySnapshotAsync(db, mediator, fromDate, toDate, storeId, supplierId, ct),
+                                    CacheExpiration.Medium,
+                                    ct),
+                                response.Errors,
+                                "Sazetak prodaje nije dostupan.");
+                        }));
 
                     tasks.Add(Task.Run(async () =>
                     {
@@ -1303,60 +1312,150 @@ public static class CachedAnalyticsEndpoints
                             "Lost-sales validacija nije dostupna.");
                     }));
 
-                    await Task.WhenAll(tasks);
-                    return response;
-                },
-                CacheExpiration.Short,
-                ct);
+                        await Task.WhenAll(tasks);
+                        return response;
+                    },
+                    CacheExpiration.Short,
+                    ct);
 
-            return Results.Ok(result);
+                return Results.Ok(result);
+            }
+            catch (OperationCanceledException) when (requestAborted.IsCancellationRequested)
+            {
+                logger.LogWarning("Request cancelled while loading analytics dashboard bootstrap.");
+                return Results.StatusCode(499);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Dashboard bootstrap fallback due to timeout.");
+                return Results.Ok(new AnalyticsDashboardBootstrapDto
+                {
+                    Errors = ["Dashboard bootstrap fallback: request timed out."]
+                });
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Dashboard bootstrap fallback due to database issue.");
+                return Results.Ok(new AnalyticsDashboardBootstrapDto
+                {
+                    Errors = ["Dashboard bootstrap fallback: database temporarily unavailable."]
+                });
+            }
+            catch (TimeoutException ex)
+            {
+                logger.LogWarning(ex, "Dashboard bootstrap fallback due to timeout.");
+                return Results.Ok(new AnalyticsDashboardBootstrapDto
+                {
+                    Errors = ["Dashboard bootstrap fallback: request timed out."]
+                });
+            }
         });
 
         group.MapGet("/filters/suppliers", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            ILogger<Program> logger,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
             CancellationToken ct = default) =>
         {
-            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            var requestAborted = ct;
 
-            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+                ct = timeoutCts.Token;
 
-            var result = await cache.GetOrSetAsync(
-                AnalyticsCacheKeys.SupplierFilters(fromDate, toDate, storeId),
-                async () => await BuildSupplierFilterOptionsAsync(db, fromDate, toDate, storeId, ct),
-                CacheExpiration.Long,
-                ct);
+                if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                    fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
 
-            return Results.Ok(result);
+                if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                    toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+                var result = await cache.GetOrSetAsync(
+                    AnalyticsCacheKeys.SupplierFilters(fromDate, toDate, storeId),
+                    async () => await BuildSupplierFilterOptionsAsync(db, fromDate, toDate, storeId, ct),
+                    CacheExpiration.Long,
+                    ct);
+
+                return Results.Ok(result);
+            }
+            catch (OperationCanceledException) when (requestAborted.IsCancellationRequested)
+            {
+                logger.LogWarning("Request cancelled while loading supplier filters.");
+                return Results.StatusCode(499);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Supplier filters fallback due to timeout.");
+                return Results.Ok(Array.Empty<SupplierFilterOptionDto>());
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Supplier filters fallback due to database issue.");
+                return Results.Ok(Array.Empty<SupplierFilterOptionDto>());
+            }
+            catch (TimeoutException ex)
+            {
+                logger.LogWarning(ex, "Supplier filters fallback due to timeout.");
+                return Results.Ok(Array.Empty<SupplierFilterOptionDto>());
+            }
         });
 
         group.MapGet("/filters/stores", async (
             IAnalyticsCacheService cache,
             IAnalyticsDbContext analyticsDb,
+            ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
-            var result = await cache.GetOrSetAsync(
-                AnalyticsCacheKeys.Stores,
-                async () => await analyticsDb.StoresDim
-                    .AsNoTracking()
-                    .OrderBy(x => x.StoreName)
-                    .Select(x => new StoreFilterOptionDto
-                    {
-                        StoreId = x.StoreId,
-                        StoreName = x.StoreName,
-                        City = x.City,
-                        Region = x.Region
-                    })
-                    .ToListAsync(ct),
-                CacheExpiration.Long,
-                ct);
+            var requestAborted = ct;
 
-            return Results.Ok(result);
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+                ct = timeoutCts.Token;
+
+                var result = await cache.GetOrSetAsync(
+                    AnalyticsCacheKeys.Stores,
+                    async () => await analyticsDb.StoresDim
+                        .AsNoTracking()
+                        .OrderBy(x => x.StoreName)
+                        .Select(x => new StoreFilterOptionDto
+                        {
+                            StoreId = x.StoreId,
+                            StoreName = x.StoreName,
+                            City = x.City,
+                            Region = x.Region
+                        })
+                        .ToListAsync(ct),
+                    CacheExpiration.Long,
+                    ct);
+
+                return Results.Ok(result);
+            }
+            catch (OperationCanceledException) when (requestAborted.IsCancellationRequested)
+            {
+                logger.LogWarning("Request cancelled while loading store filters.");
+                return Results.StatusCode(499);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Store filters fallback due to timeout.");
+                return Results.Ok(Array.Empty<StoreFilterOptionDto>());
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Store filters fallback due to database issue.");
+                return Results.Ok(Array.Empty<StoreFilterOptionDto>());
+            }
+            catch (TimeoutException ex)
+            {
+                logger.LogWarning(ex, "Store filters fallback due to timeout.");
+                return Results.Ok(Array.Empty<StoreFilterOptionDto>());
+            }
         });
 
         // ========== VALIDATION: COMPLETENESS (CACHED) ==========
@@ -1534,6 +1633,14 @@ public static class CachedAnalyticsEndpoints
         return conn;
     }
 
+    private static void AddNullableDateParameter(NpgsqlCommand command, string name, DateTime? value)
+    {
+        command.Parameters.Add(new NpgsqlParameter(name, NpgsqlTypes.NpgsqlDbType.Date)
+        {
+            Value = value.HasValue ? value.Value.Date : DBNull.Value
+        });
+    }
+
     private static async Task<SalesSummaryDto?> TryGetSalesSummaryFromAggregatesAsync(
         ITrendplusDbContext db,
         DateTime? fromDate,
@@ -1556,8 +1663,8 @@ public static class CachedAnalyticsEndpoints
                   AND (@toDate IS NULL OR "Date" <= @toDate::date);
                 """;
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+            AddNullableDateParameter(cmd, "fromDate", fromDate);
+            AddNullableDateParameter(cmd, "toDate", toDate);
 
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             if (!await reader.ReadAsync(ct)) return null;
@@ -1603,8 +1710,8 @@ public static class CachedAnalyticsEndpoints
                 GROUP BY "ProductId", COALESCE("ProductName", 'Nepoznato');
                 """;
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+            AddNullableDateParameter(cmd, "fromDate", fromDate);
+            AddNullableDateParameter(cmd, "toDate", toDate);
 
             var all = new List<TopProductDto>();
             await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -1654,8 +1761,8 @@ public static class CachedAnalyticsEndpoints
                 ORDER BY "Date";
                 """;
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+            AddNullableDateParameter(cmd, "fromDate", fromDate);
+            AddNullableDateParameter(cmd, "toDate", toDate);
 
             var list = new List<DailySaleDto>();
             await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -1703,8 +1810,8 @@ public static class CachedAnalyticsEndpoints
                 ORDER BY total_revenue DESC;
                 """;
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+            AddNullableDateParameter(cmd, "fromDate", fromDate);
+            AddNullableDateParameter(cmd, "toDate", toDate);
 
             var list = new List<CategoryDataDto>();
             await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -1751,8 +1858,8 @@ public static class CachedAnalyticsEndpoints
                 ORDER BY total_revenue DESC;
                 """;
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+            AddNullableDateParameter(cmd, "fromDate", fromDate);
+            AddNullableDateParameter(cmd, "toDate", toDate);
 
             var list = new List<GenderDataDto>();
             await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -1799,8 +1906,8 @@ public static class CachedAnalyticsEndpoints
                 ORDER BY total_revenue DESC;
                 """;
             await using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("fromDate", (object?)fromDate?.Date ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("toDate", (object?)toDate?.Date ?? DBNull.Value);
+            AddNullableDateParameter(cmd, "fromDate", fromDate);
+            AddNullableDateParameter(cmd, "toDate", toDate);
 
             var list = new List<SupplierDataDto>();
             await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -3252,3 +3359,4 @@ public class AnalyticsDashboardBootstrapDto
     public DashboardValidationEndpointDto? ValidationLostSales { get; set; }
     public List<string> Errors { get; set; } = [];
 }
+
