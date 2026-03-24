@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DatabaseZap } from "lucide-react";
 import {
     deleteAccessImportBatch,
+    getAccessImportBatchDetail,
     getAccessImportRuntimeStatus,
     getAccessImportBatches,
     previewAccessImport,
@@ -53,6 +54,46 @@ function describeTransformation(metric: AccessImportCoverageMetric): string {
     return "1:1";
 }
 
+function createEmptyRunResult(batchId: number, sourceFileName: string, includeAnalytics: boolean, startedAtUtc: string, status = "running", completedAtUtc: string | null = null, warnings: string[] = []): AccessImportRunResponse {
+    return {
+        batchId,
+        status,
+        sourceFileName,
+        includeAnalytics,
+        startedAtUtc,
+        completedAtUtc,
+        tipoviInserted: 0,
+        tipoviUpdated: 0,
+        dobavljaciInserted: 0,
+        dobavljaciUpdated: 0,
+        sezoneInserted: 0,
+        sezoneUpdated: 0,
+        artikliInserted: 0,
+        artikliUpdated: 0,
+        prodajaInserted: 0,
+        prodajaUpdated: 0,
+        prodajaStavkeInserted: 0,
+        prodajaStavkeUpdated: 0,
+        dnevnikInserted: 0,
+        dnevnikUpdated: 0,
+        povracajInserted: 0,
+        povracajUpdated: 0,
+        povracajStavkeInserted: 0,
+        povracajStavkeUpdated: 0,
+        productsDimInserted: 0,
+        productsDimUpdated: 0,
+        salesFactsInserted: 0,
+        salesFactsUpdated: 0,
+        salesLineFactsInserted: 0,
+        storesInserted: 0,
+        storesUpdated: 0,
+        sourceRowsByTable: {},
+        importedRowsByTable: {},
+        coverageByTable: {},
+        warnings,
+    };
+}
+
 export default function AccessImportPage() {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>("source");
@@ -66,6 +107,7 @@ export default function AccessImportPage() {
     const [batchStatusFilter, setBatchStatusFilter] = useState<BatchStatusFilter>("all");
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [loadingImport, setLoadingImport] = useState(false);
+    const [runningBatchId, setRunningBatchId] = useState<number | null>(null);
     const [importElapsed, setImportElapsed] = useState(0);
     const [deletingBatchId, setDeletingBatchId] = useState<number | null>(null);
     const [deleteIncludeAnalytics, setDeleteIncludeAnalytics] = useState(true);
@@ -77,6 +119,51 @@ export default function AccessImportPage() {
 
     const refreshBatches = async () => {
         try { setBatches(await getAccessImportBatches(50)); } catch { /* best effort */ }
+    };
+
+    const applySuccessfulImportSideEffects = () => {
+        clearArtikliClientCaches();
+        clearProdajaLookupCache();
+        setDataScope("all");
+        window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    };
+
+    const hydrateRunResultFromBatch = (batch: AccessImportBatchDto, fallbackIncludeAnalytics: boolean) => {
+        if (batch.summaryJson) {
+            try {
+                const parsed = JSON.parse(batch.summaryJson) as AccessImportRunResponse;
+                return {
+                    ...createEmptyRunResult(
+                        batch.id,
+                        batch.sourceFileName,
+                        fallbackIncludeAnalytics,
+                        batch.startedAtUtc,
+                        batch.status,
+                        batch.completedAtUtc,
+                        batch.errorMessage ? [batch.errorMessage] : [],
+                    ),
+                    ...parsed,
+                    batchId: parsed.batchId || batch.id,
+                    status: parsed.status || batch.status,
+                    sourceFileName: parsed.sourceFileName || batch.sourceFileName,
+                    startedAtUtc: parsed.startedAtUtc || batch.startedAtUtc,
+                    completedAtUtc: parsed.completedAtUtc ?? batch.completedAtUtc,
+                    warnings: parsed.warnings?.length ? parsed.warnings : (batch.errorMessage ? [batch.errorMessage] : []),
+                } satisfies AccessImportRunResponse;
+            } catch {
+                // fall through to minimal shape
+            }
+        }
+
+        return createEmptyRunResult(
+            batch.id,
+            batch.sourceFileName,
+            fallbackIncludeAnalytics,
+            batch.startedAtUtc,
+            batch.status,
+            batch.completedAtUtc,
+            batch.errorMessage ? [batch.errorMessage] : [],
+        );
     };
 
     useEffect(() => { void refreshBatches(); }, []);
@@ -107,13 +194,59 @@ export default function AccessImportPage() {
         setPreview(null);
     }, [file]);
 
+    const importBusy = loadingImport || runningBatchId !== null;
+
     // elapsed timer while importing
     useEffect(() => {
-        if (!loadingImport) { setImportElapsed(0); return; }
+        if (!importBusy) { setImportElapsed(0); return; }
         const t0 = Date.now();
         const id = setInterval(() => setImportElapsed(Math.floor((Date.now() - t0) / 1000)), 500);
         return () => clearInterval(id);
-    }, [loadingImport]);
+    }, [importBusy]);
+
+    useEffect(() => {
+        if (runningBatchId === null) return;
+
+        let cancelled = false;
+
+        const pollBatch = async () => {
+            try {
+                const detail = await getAccessImportBatchDetail(runningBatchId, 200);
+                if (cancelled) return;
+
+                const nextRunResult = hydrateRunResultFromBatch(
+                    detail.batch,
+                    runResult?.includeAnalytics ?? includeAnalytics,
+                );
+
+                setRunResult(nextRunResult);
+                await refreshBatches();
+
+                const normalizedStatus = detail.batch.status.toLowerCase();
+                if (normalizedStatus === "completed") {
+                    setRunningBatchId(null);
+                    applySuccessfulImportSideEffects();
+                } else if (normalizedStatus === "failed") {
+                    setRunningBatchId(null);
+                    if (detail.batch.errorMessage) {
+                        setError(detail.batch.errorMessage);
+                    }
+                }
+            } catch (e: unknown) {
+                if (cancelled) return;
+                const message = e instanceof Error ? e.message : "Greska pri pracenju batch statusa.";
+                setError(message);
+            }
+        };
+
+        void pollBatch();
+        const id = window.setInterval(() => { void pollBatch(); }, 3000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(id);
+        };
+    }, [runningBatchId, includeAnalytics, runResult?.includeAnalytics]);
 
     // --- handlers ---
 
@@ -135,13 +268,14 @@ export default function AccessImportPage() {
         setLoadingImport(true);
         try {
             const data = await runAccessImport(file, { useRootFile, includeAnalytics, overwriteExisting });
-            clearArtikliClientCaches();
-            clearProdajaLookupCache();
-            setDataScope("all");
-            window.dispatchEvent(new Event("trendplus:data-scope-changed"));
             setRunResult(data);
             setActiveTab("lastImport");
             await refreshBatches();
+            if (data.status.toLowerCase() === "running") {
+                setRunningBatchId(data.batchId);
+            } else if (data.status.toLowerCase() === "completed") {
+                applySuccessfulImportSideEffects();
+            }
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Greska pri importu.");
         } finally {
@@ -172,7 +306,7 @@ export default function AccessImportPage() {
         [batches, batchStatusFilter],
     );
 
-    const busy = loadingPreview || loadingImport;
+    const busy = loadingPreview || importBusy;
     const sourceSelected = useRootFile || !!file;
     const previewBlocksImport = preview !== null && !preview.canImport;
     const runtimeBlocksImport = runtimeStatus !== null && !runtimeStatus.available;
@@ -267,7 +401,7 @@ export default function AccessImportPage() {
             )}
 
             {/* ---- Progress bar (visible on any tab while importing) ---- */}
-            {loadingImport && (
+            {importBusy && (
                 <div className="accimport-progress">
                     <div className="accimport-progress-title">Import u toku...</div>
                     <div className="accimport-progress-bar-track">
@@ -347,7 +481,7 @@ export default function AccessImportPage() {
                                 {loadingPreview ? "Analiziram..." : "Analiza seme"}
                             </button>
                             <button className="accimport-btn accimport-btn-success" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport || runtimeBlocksImport}>
-                                {loadingImport ? "Importujem..." : "Pokreni import"}
+                                {importBusy ? "Import u toku..." : "Pokreni import"}
                             </button>
                         </div>
                         {runtimeBlocksImport && (
@@ -423,7 +557,7 @@ export default function AccessImportPage() {
                                     {loadingPreview ? "Analiziram..." : "Ponovi analizu"}
                                 </button>
                                 <button className="accimport-btn accimport-btn-success" type="button" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport || runtimeBlocksImport}>
-                                    {loadingImport ? "Importujem..." : "Pokreni import"}
+                                    {importBusy ? "Import u toku..." : "Pokreni import"}
                                 </button>
                             </div>
                             {runtimeBlocksImport && (
@@ -615,7 +749,7 @@ export default function AccessImportPage() {
             {/* ============ TAB: Last Import ============ */}
             {activeTab === "lastImport" && (
                 <>
-                    {!runResult && !loadingImport && (
+                    {!runResult && !importBusy && (
                         <div className="accimport-empty-state">Nije pokrenut import u ovoj sesiji.</div>
                     )}
                     {runResult && (

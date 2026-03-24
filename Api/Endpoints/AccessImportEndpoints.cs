@@ -283,8 +283,8 @@ public static class AccessImportEndpoints
 
             try
             {
-                var run = await service.ImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);
-                return Results.Ok(run);
+                var run = await service.StartImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);
+                return Results.Accepted($"/api/access-import/batches/{run.BatchId}", run);
             }
             catch (FileNotFoundException ex)
             {

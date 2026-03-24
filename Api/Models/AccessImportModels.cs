@@ -61,7 +61,7 @@ namespace Api.Models
         public string SourceFileName { get; set; } = string.Empty;
         public bool IncludeAnalytics { get; set; }
         public DateTime StartedAtUtc { get; set; }
-        public DateTime CompletedAtUtc { get; set; }
+        public DateTime? CompletedAtUtc { get; set; }
 
         public int TipoviInserted { get; set; }
         public int TipoviUpdated { get; set; }

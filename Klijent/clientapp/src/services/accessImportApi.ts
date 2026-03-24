@@ -44,7 +44,7 @@ export interface AccessImportRunResponse {
     sourceFileName: string;
     includeAnalytics: boolean;
     startedAtUtc: string;
-    completedAtUtc: string;
+    completedAtUtc: string | null;
     tipoviInserted: number;
     tipoviUpdated: number;
     dobavljaciInserted: number;

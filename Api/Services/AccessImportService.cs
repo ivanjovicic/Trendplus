@@ -13,6 +13,7 @@ using Domain.Model.Povracaj;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -22,6 +23,8 @@ public interface IAccessImportService
 {
     Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default);
     Task<AccessImportRunResponse> ImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
+    Task<AccessImportRunResponse> StartImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
+    Task<AccessImportRunResponse> RunExistingBatchAsync(long batchId, string accessFilePath, string sourceFileName, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, bool deleteWorkingFileAfterCompletion = false, CancellationToken ct = default);
     Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default);
     Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default);
 }
@@ -197,6 +200,7 @@ public sealed class AccessImportService : IAccessImportService
     private readonly IAnalyticsCacheService? _analyticsCache;
     private readonly ILogger<AccessImportService> _logger;
     private readonly AccessImportOptions _options;
+    private readonly IServiceScopeFactory? _serviceScopeFactory;
 
     // Populated by ImportTrendplus, consumed by SyncAnalyticsAsync for StoresDim upsert
     private Dictionary<int, (string Name, string? Address, string? Phone, string? Manager)> _importedStores = [];
@@ -211,13 +215,15 @@ public sealed class AccessImportService : IAccessImportService
         AnalyticsDbContext analyticsDb,
         ILogger<AccessImportService> logger,
         IOptions<AccessImportOptions>? options = null,
-        IAnalyticsCacheService? analyticsCache = null)
+        IAnalyticsCacheService? analyticsCache = null,
+        IServiceScopeFactory? serviceScopeFactory = null)
     {
         _trendDb = trendDb;
         _analyticsDb = analyticsDb;
         _logger = logger;
         _options = options?.Value ?? new AccessImportOptions();
         _analyticsCache = analyticsCache;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     private IAccessDataReaderSession CreateReadSession(string accessFilePath)
@@ -833,13 +839,92 @@ public sealed class AccessImportService : IAccessImportService
         bool includeTemporaryTables = false,
         CancellationToken ct = default)
     {
+        var (batch, _) = await CreateImportBatchAsync(accessFilePath, includeAnalytics, ct);
+        return await ExecuteImportBatchAsync(
+            batch.Id,
+            accessFilePath,
+            batch.SourceFileName,
+            includeAnalytics,
+            overwriteExisting,
+            includeTemporaryTables,
+            deleteWorkingFileAfterCompletion: false,
+            ct);
+    }
+
+    public async Task<AccessImportRunResponse> StartImportAsync(
+        string accessFilePath,
+        bool includeAnalytics,
+        bool overwriteExisting,
+        bool includeTemporaryTables = false,
+        CancellationToken ct = default)
+    {
+        EnsurePlatformSupport();
+        if (!File.Exists(accessFilePath))
+            throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", accessFilePath);
+
+        var workingCopy = CreateBackgroundWorkingCopy(accessFilePath);
+        var (batch, result) = await CreateImportBatchAsync(accessFilePath, includeAnalytics, ct);
+        var scopeFactory = _serviceScopeFactory
+            ?? throw new InvalidOperationException("Access import background execution is unavailable because IServiceScopeFactory is not configured.");
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await using var scope = scopeFactory.CreateAsyncScope();
+                var service = scope.ServiceProvider.GetRequiredService<IAccessImportService>();
+                await service.RunExistingBatchAsync(
+                    batch.Id,
+                    workingCopy,
+                    batch.SourceFileName,
+                    includeAnalytics,
+                    overwriteExisting,
+                    includeTemporaryTables,
+                    deleteWorkingFileAfterCompletion: true,
+                    ct: CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Background Access import task crashed before completion. BatchId: {BatchId}. SourceFileName: {SourceFileName}.",
+                    batch.Id,
+                    batch.SourceFileName);
+            }
+        });
+
+        return result;
+    }
+
+    public Task<AccessImportRunResponse> RunExistingBatchAsync(
+        long batchId,
+        string accessFilePath,
+        string sourceFileName,
+        bool includeAnalytics,
+        bool overwriteExisting,
+        bool includeTemporaryTables = false,
+        bool deleteWorkingFileAfterCompletion = false,
+        CancellationToken ct = default)
+        => ExecuteImportBatchAsync(
+            batchId,
+            accessFilePath,
+            sourceFileName,
+            includeAnalytics,
+            overwriteExisting,
+            includeTemporaryTables,
+            deleteWorkingFileAfterCompletion,
+            ct);
+
+    private async Task<(DataImportBatch Batch, AccessImportRunResponse Result)> CreateImportBatchAsync(
+        string accessFilePath,
+        bool includeAnalytics,
+        CancellationToken ct)
+    {
         EnsurePlatformSupport();
         if (!File.Exists(accessFilePath))
             throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", accessFilePath);
 
         var started = DateTime.UtcNow;
-        var operationId = Guid.NewGuid().ToString("N");
-        // Ensure DataImportBatches table exists (handles first-ever deploy)
         await EnsureDataImportBatchesTableAsync(ct);
 
         var batch = new DataImportBatch
@@ -856,11 +941,44 @@ public sealed class AccessImportService : IAccessImportService
         var result = new AccessImportRunResponse
         {
             BatchId = batch.Id,
+            Status = "running",
             SourceFileName = batch.SourceFileName,
             IncludeAnalytics = includeAnalytics,
             StartedAtUtc = started
         };
 
+        return (batch, result);
+    }
+
+    private async Task<AccessImportRunResponse> ExecuteImportBatchAsync(
+        long batchId,
+        string accessFilePath,
+        string sourceFileName,
+        bool includeAnalytics,
+        bool overwriteExisting,
+        bool includeTemporaryTables,
+        bool deleteWorkingFileAfterCompletion,
+        CancellationToken ct)
+    {
+        EnsurePlatformSupport();
+        if (!File.Exists(accessFilePath))
+            throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", accessFilePath);
+
+        var batch = await _trendDb.DataImportBatches.FirstOrDefaultAsync(x => x.Id == batchId, ct)
+            ?? throw new InvalidOperationException($"Batch {batchId} nije pronaÄ‘en.");
+
+        batch.SourceFileName = string.IsNullOrWhiteSpace(sourceFileName) ? batch.SourceFileName : sourceFileName;
+
+        var result = new AccessImportRunResponse
+        {
+            BatchId = batch.Id,
+            Status = batch.Status,
+            SourceFileName = batch.SourceFileName,
+            IncludeAnalytics = includeAnalytics,
+            StartedAtUtc = batch.StartedAtUtc
+        };
+
+        var operationId = Guid.NewGuid().ToString("N");
         var snapshot = CreateSnapshotIfLocked(accessFilePath);
         if (!string.IsNullOrWhiteSpace(snapshot.Warning))
             result.Warnings.Add(snapshot.Warning);
@@ -879,6 +997,11 @@ public sealed class AccessImportService : IAccessImportService
             var originalAutoDetectChanges = _trendDb.ChangeTracker.AutoDetectChangesEnabled;
             try
             {
+                batch.Status = "running";
+                batch.ErrorMessage = null;
+                batch.CompletedAtUtc = null;
+                batch.SummaryJson = null;
+
                 _trendDb.ChangeTracker.AutoDetectChangesEnabled = false;
                 _pendingTrendWrites = 0;
                 await using var session = CreateReadSession(snapshot.FilePath);
@@ -905,6 +1028,10 @@ public sealed class AccessImportService : IAccessImportService
                 result.CompletedAtUtc = DateTime.UtcNow;
                 batch.Status = "completed";
                 batch.CompletedAtUtc = result.CompletedAtUtc;
+                batch.DurationSeconds = (int)Math.Max(0, Math.Round(((result.CompletedAtUtc ?? DateTime.UtcNow) - batch.StartedAtUtc).TotalSeconds));
+                batch.TotalImported = CountImportedRows(result);
+                batch.TotalUpdated = CountUpdatedRows(result);
+                batch.TotalErrors = result.Warnings.Count;
                 batch.SummaryJson = JsonSerializer.Serialize(result);
                 await _trendDb.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
@@ -935,6 +1062,10 @@ public sealed class AccessImportService : IAccessImportService
 
             batch.Status = "failed";
             batch.CompletedAtUtc = result.CompletedAtUtc;
+            batch.DurationSeconds = (int)Math.Max(0, Math.Round(((result.CompletedAtUtc ?? DateTime.UtcNow) - batch.StartedAtUtc).TotalSeconds));
+            batch.TotalImported = CountImportedRows(result);
+            batch.TotalUpdated = CountUpdatedRows(result);
+            batch.TotalErrors = Math.Max(1, result.Warnings.Count);
             batch.ErrorMessage = ex.GetBaseException().Message;
             batch.SummaryJson = JsonSerializer.Serialize(result);
 
@@ -971,6 +1102,9 @@ public sealed class AccessImportService : IAccessImportService
         {
             if (snapshot.IsSnapshot)
                 TryDeleteFile(snapshot.FilePath, "import-cleanup", batch.SourceFileName, batch.Id, "snapshot");
+
+            if (deleteWorkingFileAfterCompletion)
+                TryDeleteFile(accessFilePath, "background-import-cleanup", batch.SourceFileName, batch.Id, "working-copy");
         }
     }
 
@@ -4619,6 +4753,20 @@ public sealed class AccessImportService : IAccessImportService
 
     private sealed record AccessFileSnapshot(string FilePath, bool IsSnapshot, string? Warning);
 
+    private static string CreateBackgroundWorkingCopy(string accessFilePath)
+    {
+        var tmpDir = Path.Combine(Path.GetTempPath(), "trendplus_access_jobs");
+        Directory.CreateDirectory(tmpDir);
+
+        var ext = Path.GetExtension(accessFilePath);
+        var baseName = Path.GetFileNameWithoutExtension(accessFilePath);
+        var tmpName = $"{baseName}_job_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{ext}";
+        var tmpPath = Path.Combine(tmpDir, tmpName);
+
+        File.Copy(accessFilePath, tmpPath, overwrite: true);
+        return tmpPath;
+    }
+
     private static AccessFileSnapshot CreateSnapshotIfLocked(string accessFilePath)
     {
         var lockFilePath = TryGetAccessLockFilePath(accessFilePath);
@@ -4914,6 +5062,41 @@ public sealed class AccessImportService : IAccessImportService
     {
         _pendingTrendWrites++;
     }
+
+    private static int CountImportedRows(AccessImportRunResponse result)
+        => result.TipoviInserted
+         + result.DobavljaciInserted
+         + result.SezoneInserted
+         + result.ArtikliInserted
+         + result.ProdajaInserted
+         + result.ProdajaStavkeInserted
+         + result.DnevnikInserted
+         + result.PovracajInserted
+         + result.PovracajStavkeInserted
+         + result.NivelacijeInserted
+         + result.UnosRobeInserted
+         + result.PovratnicaInserted
+         + result.PrenosRobeInserted
+         + result.ObjekatInserted
+         + result.ProductsDimInserted
+         + result.SalesFactsInserted
+         + result.SalesLineFactsInserted
+         + result.StoresInserted;
+
+    private static int CountUpdatedRows(AccessImportRunResponse result)
+        => result.TipoviUpdated
+         + result.DobavljaciUpdated
+         + result.SezoneUpdated
+         + result.ArtikliUpdated
+         + result.ProdajaUpdated
+         + result.ProdajaStavkeUpdated
+         + result.DnevnikUpdated
+         + result.PovracajUpdated
+         + result.PovracajStavkeUpdated
+         + result.ObjekatUpdated
+         + result.ProductsDimUpdated
+         + result.SalesFactsUpdated
+         + result.StoresUpdated;
 
     private async Task FlushTrendWritesAsync(bool force, CancellationToken ct)
     {
