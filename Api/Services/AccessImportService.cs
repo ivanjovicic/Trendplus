@@ -191,8 +191,13 @@ public sealed class AccessImportService : IAccessImportService
     private readonly AnalyticsDbContext _analyticsDb;
     private readonly IAnalyticsCacheService? _analyticsCache;
     private readonly ILogger<AccessImportService> _logger;
+
     // Populated by ImportTrendplus, consumed by SyncAnalyticsAsync for StoresDim upsert
     private Dictionary<int, (string Name, string? Address, string? Phone, string? Manager)> _importedStores = [];
+
+    // CLI fallback state
+    private bool _useCliMode = false;
+    private string? _cliFilePath = null;
 
     public AccessImportService(
         TrendplusDbContext trendDb,
@@ -2535,6 +2540,17 @@ public sealed class AccessImportService : IAccessImportService
                     "TablesSchema",
                     "get-user-tables",
                     provider);
+
+                // CLI fallback: Only on Linux, if CLI is available and ODBC failed
+                if (!OperatingSystem.IsWindows() && IsMdbToolsCliAvailable() && conn.DataSource is string filePath && File.Exists(filePath))
+                {
+                    _useCliMode = true;
+                    _cliFilePath = filePath;
+                    _logger.LogWarning("Falling back to MDBTools CLI for table listing: {FilePath}", filePath);
+                    var cliTables = MdbCliGetTables(filePath);
+                    return cliTables;
+                }
+
                 return [];
             }
 
@@ -2590,74 +2606,105 @@ public sealed class AccessImportService : IAccessImportService
                 0L,
                 "TablesSchema",
                 "get-user-tables");
+
+            // CLI fallback: Only on Linux, if CLI is available and ODBC failed
+            if (!_useCliMode && !OperatingSystem.IsWindows() && IsMdbToolsCliAvailable() && conn.DataSource is string filePath && File.Exists(filePath))
+            {
+                _useCliMode = true;
+                _cliFilePath = filePath;
+                _logger.LogWarning("Falling back to MDBTools CLI for table listing (exception): {FilePath}", filePath);
+                var cliTables = MdbCliGetTables(filePath);
+                return cliTables;
+            }
+
             return [];
         }
     }
 
     private int RowCount(OdbcConnection conn, string table)
     {
-        if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
+        if (_useCliMode && _cliFilePath is not null)
         {
-            _logger.LogWarning(
-                "Invalid table name for row count. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Reason: {Reason}.",
-                0L,
-                table ?? "unknown",
-                "row-count",
-                failureReason);
-            return 0;
-        }
-
-        try
-        {
-            using var cmd = new OdbcCommand($"SELECT COUNT(*) FROM {quotedTable}", conn);
-            var result = cmd.ExecuteScalar();
-            
-            // Handle various return types from different ODBC providers
-            return result switch
+            try { return MdbCliRowCount(_cliFilePath, table); }
+            catch (Exception ex)
             {
-                null or DBNull => 0,
-                int i => i,
-                long l => l > int.MaxValue ? int.MaxValue : (int)l,
-                decimal d => d > int.MaxValue ? int.MaxValue : (int)d,
-                _ => ConvertToInt(result) ?? 0
-            };
+                _logger.LogWarning(ex, "MDBTools CLI row count failed for {Table}", table);
+                return 0;
+            }
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogWarning(
-                ex,
-                "Row count query failed. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
-                0L,
-                table ?? "unknown",
-                "row-count");
-            return 0;
+            if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
+            {
+                _logger.LogWarning(
+                    "Invalid table name for row count. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Reason: {Reason}.",
+                    0L,
+                    table ?? "unknown",
+                    "row-count",
+                    failureReason);
+                return 0;
+            }
+
+            try
+            {
+                using var cmd = new OdbcCommand($"SELECT COUNT(*) FROM {quotedTable}", conn);
+                var result = cmd.ExecuteScalar();
+                // Handle various return types from different ODBC providers
+                return result switch
+                {
+                    null or DBNull => 0,
+                    int i => i,
+                    long l => l > int.MaxValue ? int.MaxValue : (int)l,
+                    decimal d => d > int.MaxValue ? int.MaxValue : (int)d,
+                    _ => ConvertToInt(result) ?? 0
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Row count query failed. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                    0L,
+                    table ?? "unknown",
+                    "row-count");
+                return 0;
+            }
         }
     }
 
     private IEnumerable<Dictionary<string, object?>> ReadRows(OdbcConnection conn, string table)
     {
-        if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
+        if (_useCliMode && _cliFilePath is not null)
         {
-            _logger.LogWarning(
-                "Invalid table name for row read. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Reason: {Reason}.",
-                0L,
-                table ?? "unknown",
-                "read-rows",
-                failureReason);
+            foreach (var row in MdbCliReadRows(_cliFilePath, table))
+                yield return row;
             yield break;
         }
-
-        using var cmd = new OdbcCommand($"SELECT * FROM {quotedTable}", conn);
-        using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-        if (r is null) yield break;
-
-        var names = Enumerable.Range(0, r.FieldCount).Select(i => (idx: i, name: Normalize(r.GetName(i)))).ToList();
-        while (r.Read())
+        else
         {
-            var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-            foreach (var (idx, name) in names)
-                row[name] = r.IsDBNull(idx) ? null : r.GetValue(idx);
-            yield return row;
+            if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
+            {
+                _logger.LogWarning(
+                    "Invalid table name for row read. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Reason: {Reason}.",
+                    0L,
+                    table ?? "unknown",
+                    "read-rows",
+                    failureReason);
+                yield break;
+            }
+
+            using var cmd = new OdbcCommand($"SELECT * FROM {quotedTable}", conn);
+            using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+            if (r is null) yield break;
+
+            var names = Enumerable.Range(0, r.FieldCount).Select(i => (idx: i, name: Normalize(r.GetName(i)))).ToList();
+            while (r.Read())
+            {
+                var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                foreach (var (idx, name) in names)
+                    row[name] = r.IsDBNull(idx) ? null : r.GetValue(idx);
+                yield return row;
+            }
         }
     }
 
@@ -2723,6 +2770,17 @@ public sealed class AccessImportService : IAccessImportService
     private static HashSet<string> ReadColumnNamesNormalized(OdbcConnection conn, string table)
     {
         var cols = new HashSet<string>(StringComparer.Ordinal);
+        // CLI fallback
+        if (_useCliMode && _cliFilePath is not null)
+        {
+            try { return MdbCliGetColumns(_cliFilePath, table); }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] CLI failed: {ex.Message}");
+                return cols;
+            }
+        }
+
         if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
         {
             System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] Invalid table name '{table}': {failureReason}");
@@ -2754,7 +2812,7 @@ public sealed class AccessImportService : IAccessImportService
         }
         catch (Exception ex)
         {
-            // Table unreadable â€“ skip with diagnostic log
+            // Table unreadable – skip with diagnostic log
             System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] Exception reading {table}: {ex.GetType().Name}: {ex.Message}");
         }
         return cols;
@@ -3222,10 +3280,148 @@ public sealed class AccessImportService : IAccessImportService
 
     private static void EnsurePlatformSupport()
     {
-        // No platform restriction â€” ODBC works on Windows, Linux, macOS, and Docker.
-        // Windows:  Microsoft Access Driver (*.mdb, *.accdb) â€” ships with Windows by default.
-        // Linux:    Install unixODBC + MDBTools (apt-get install -y unixodbc libodbc2 mdbtools odbc-mdbtools).
+        // No platform restriction - ODBC works on Windows, Linux, macOS, and Docker.
+        // Falls back to mdb-tables / mdb-export CLI if ODBC driver is broken on Linux.
+    }
+
+    // ======================================================================
+    // MDBTools CLI fallback - used when the ODBC driver fails on Linux/Docker
+    // ======================================================================
+
+    private static bool IsMdbToolsCliAvailable()
+    {
+        if (OperatingSystem.IsWindows()) return false;
+        try
+        {
+            using var proc = new System.Diagnostics.Process();
+            proc.StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "mdb-tables",
+                Arguments = "--help",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            proc.Start();
+            proc.WaitForExit(3000);
+            return true;
+        }
+        catch { return false; }
+    }
+
+    private static string RunMdbCli(string command, string args, int timeoutMs = 30000)
+    {
+        using var proc = new System.Diagnostics.Process();
+        proc.StartInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = command,
+            Arguments = args,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8
+        };
+        proc.Start();
+        var output = proc.StandardOutput.ReadToEnd();
+        var stderr = proc.StandardError.ReadToEnd();
+        proc.WaitForExit(timeoutMs);
+        if (proc.ExitCode != 0 && !string.IsNullOrWhiteSpace(stderr))
+            throw new InvalidOperationException($"{command} failed: {stderr}");
+        return output;
+    }
+
+    private static List<string> MdbCliGetTables(string filePath)
+    {
+        var output = RunMdbCli("mdb-tables", $"-1 \"{filePath}\"");
+        return output
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(t => !t.StartsWith("MSys", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private static int MdbCliRowCount(string filePath, string tableName)
+    {
+        try
+        {
+            var csv = RunMdbCli("mdb-export", $"-H \"{filePath}\" \"{tableName}\"");
+            return csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+        }
+        catch { return 0; }
+    }
+
+    private static HashSet<string> MdbCliGetColumns(string filePath, string tableName)
+    {
+        var cols = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            var csv = RunMdbCli("mdb-export", $"\"{filePath}\" \"{tableName}\"");
+            var header = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            if (header is null) return cols;
+            foreach (var col in ParseCsvLine(header))
+            {
+                var clean = col.Trim().Trim('"');
+                if (!string.IsNullOrWhiteSpace(clean))
+                    cols.Add(Normalize(clean));
+            }
+        }
+        catch { }
+        return cols;
+    }
+
+    private static IEnumerable<Dictionary<string, object?>> MdbCliReadRows(string filePath, string tableName)
+    {
+        string csv;
+        try
+        {
+            csv = RunMdbCli("mdb-export", $"\"{filePath}\" \"{tableName}\"", timeoutMs: 60000);
+        }
+        catch { yield break; }
+
+        var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length < 2) yield break;
+
+        var headers = ParseCsvLine(lines[0]);
+        var normalizedHeaders = headers.Select(h => Normalize(h.Trim().Trim('"'))).ToArray();
+
+        for (var i = 1; i < lines.Length; i++)
+        {
+            var values = ParseCsvLine(lines[i]);
+            var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            for (var j = 0; j < normalizedHeaders.Length && j < values.Length; j++)
+            {
+                var val = values[j].Trim().Trim('"');
+                row[normalizedHeaders[j]] = string.IsNullOrEmpty(val) ? null : (object)val;
+            }
+            yield return row;
+        }
+    }
+
+    private static string[] ParseCsvLine(string line)
+    {
+        var fields = new List<string>();
+        var inQuote = false;
+        var current = new StringBuilder();
+
+        foreach (var ch in line)
+        {
+            if (ch == '"')
+            {
+                inQuote = !inQuote;
+                current.Append(ch);
+            }
+            else if (ch == ',' && !inQuote)
+            {
+                fields.Add(current.ToString());
+                current.Clear();
+            }
+            else
+            {
+                current.Append(ch);
+            }
+        }
+        fields.Add(current.ToString());
+        return fields.ToArray();
     }
 }
-
-
