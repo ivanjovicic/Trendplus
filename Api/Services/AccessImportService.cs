@@ -196,8 +196,8 @@ public sealed class AccessImportService : IAccessImportService
     private Dictionary<int, (string Name, string? Address, string? Phone, string? Manager)> _importedStores = [];
 
     // CLI fallback state
-    private bool _useCliMode = false;
-    private string? _cliFilePath = null;
+    private bool _useCliMode;
+    private string? _cliFilePath;
 
     public AccessImportService(
         TrendplusDbContext trendDb,
@@ -209,6 +209,93 @@ public sealed class AccessImportService : IAccessImportService
         _analyticsDb = analyticsDb;
         _logger = logger;
         _analyticsCache = analyticsCache;
+    }
+
+    private void ResetAccessReadMode(string accessFilePath)
+    {
+        _useCliMode = false;
+        _cliFilePath = File.Exists(accessFilePath) ? accessFilePath : null;
+    }
+
+    private bool TryEnableCliMode(string operation, Exception? ex = null)
+    {
+        if (_useCliMode)
+            return !string.IsNullOrWhiteSpace(_cliFilePath) && File.Exists(_cliFilePath);
+
+        if (OperatingSystem.IsWindows() || !IsMdbToolsCliAvailable())
+            return false;
+
+        if (string.IsNullOrWhiteSpace(_cliFilePath) || !File.Exists(_cliFilePath))
+            return false;
+
+        _useCliMode = true;
+        if (ex is null)
+        {
+            _logger.LogWarning(
+                "Falling back to MDBTools CLI. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. FilePath: {FilePath}.",
+                0L,
+                "all",
+                operation,
+                _cliFilePath);
+        }
+        else
+        {
+            _logger.LogWarning(
+                ex,
+                "Falling back to MDBTools CLI. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. FilePath: {FilePath}.",
+                0L,
+                "all",
+                operation,
+                _cliFilePath);
+        }
+
+        return true;
+    }
+
+    private void OpenAccessConnectionOrEnableCli(OdbcConnection conn, string operation)
+    {
+        if (_useCliMode)
+            return;
+
+        try
+        {
+            conn.Open();
+        }
+        catch (Exception ex) when (TryEnableCliMode($"{operation}:open", ex))
+        {
+            // CLI mode is active; downstream reads will use MDBTools commands instead.
+        }
+    }
+
+    private static List<string> FilterVisibleAccessTables(IEnumerable<string> tables, bool includeTemporaryTables)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var filtered = new List<string>();
+
+        foreach (var tableName in tables)
+        {
+            if (string.IsNullOrWhiteSpace(tableName))
+                continue;
+
+            if (tableName.StartsWith("MSys", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!includeTemporaryTables && Normalize(tableName).Contains("privremena", StringComparison.Ordinal))
+                continue;
+
+            if (seen.Add(tableName))
+                filtered.Add(tableName);
+        }
+
+        return filtered;
+    }
+
+    private List<string> GetCliUserTables(bool includeTemporaryTables)
+    {
+        if (!_useCliMode || string.IsNullOrWhiteSpace(_cliFilePath))
+            return [];
+
+        return FilterVisibleAccessTables(MdbCliGetTables(_cliFilePath), includeTemporaryTables);
     }
 
     private static IReadOnlyDictionary<string, Dictionary<string, string>> BuildPreviewAliasToTargetByKey()
@@ -280,8 +367,9 @@ public sealed class AccessImportService : IAccessImportService
             var snapshot = CreateSnapshotIfLocked(accessFilePath);
             try
             {
+                ResetAccessReadMode(snapshot.FilePath);
                 using var conn = CreateOdbcConnection(snapshot.FilePath);
-                conn.Open();
+                OpenAccessConnectionOrEnableCli(conn, "preview");
                 var tables = GetUserTables(conn, includeTemporaryTables);
                 var tableRowCounts = GetTableRowCounts(conn, tables);
 
@@ -483,9 +571,22 @@ public sealed class AccessImportService : IAccessImportService
         return preview;
     }
 
-    private static List<string> ReadColumnNames(OdbcConnection conn, string table)
+    private List<string> ReadColumnNames(OdbcConnection conn, string table)
     {
         var columns = new List<string>();
+        if (_useCliMode && _cliFilePath is not null)
+        {
+            try
+            {
+                return MdbCliGetColumnsRaw(_cliFilePath, table);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ReadColumnNames] CLI failed for {table}: {ex.Message}");
+                return columns;
+            }
+        }
+
         if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
         {
             System.Diagnostics.Debug.WriteLine($"[ReadColumnNames] Invalid table name '{table}': {failureReason}");
@@ -918,8 +1019,9 @@ public sealed class AccessImportService : IAccessImportService
 
     private void ImportTrendplus(string accessFilePath, bool overwriteExisting, bool includeTemporaryTables, AccessImportRunResponse result)
     {
+        ResetAccessReadMode(accessFilePath);
         using var conn = CreateOdbcConnection(accessFilePath);
-        conn.Open();
+        OpenAccessConnectionOrEnableCli(conn, "import");
 
         var tables = GetUserTables(conn, includeTemporaryTables);
         var tipovi        = FindTable(conn, tables, TipoviCandidates);
@@ -1303,21 +1405,11 @@ public sealed class AccessImportService : IAccessImportService
         }
     }
 
-    private static bool IsProdajaLineTable(OdbcConnection conn, string table)
+    private bool IsProdajaLineTable(OdbcConnection conn, string table)
     {
-        if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out _))
-            return false;
-
         try
         {
-            using var cmd = new OdbcCommand($"SELECT * FROM {quotedTable} WHERE 1=0", conn);
-            using var r = cmd.ExecuteReader();
-            if (r is null) return false;
-
-            var cols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            for (var i = 0; i < r.FieldCount; i++)
-                cols.Add(Normalize(r.GetName(i)));
-
+            var cols = ReadColumnNamesNormalized(conn, table);
             return cols.Contains("iddnevnik")
                 && cols.Contains("idartikal")
                 && cols.Contains("kolicina")
@@ -2527,6 +2619,9 @@ public sealed class AccessImportService : IAccessImportService
     /// </summary>
     private List<string> GetUserTables(OdbcConnection conn, bool includeTemporaryTables = false)
     {
+        if (_useCliMode)
+            return GetCliUserTables(includeTemporaryTables);
+
         try
         {
             var schema = conn.GetSchema("Tables");
@@ -2541,15 +2636,8 @@ public sealed class AccessImportService : IAccessImportService
                     "get-user-tables",
                     provider);
 
-                // CLI fallback: Only on Linux, if CLI is available and ODBC failed
-                if (!OperatingSystem.IsWindows() && IsMdbToolsCliAvailable() && conn.DataSource is string filePath && File.Exists(filePath))
-                {
-                    _useCliMode = true;
-                    _cliFilePath = filePath;
-                    _logger.LogWarning("Falling back to MDBTools CLI for table listing: {FilePath}", filePath);
-                    var cliTables = MdbCliGetTables(filePath);
-                    return cliTables;
-                }
+                if (TryEnableCliMode("get-user-tables:empty-schema"))
+                    return GetCliUserTables(includeTemporaryTables);
 
                 return [];
             }
@@ -2596,6 +2684,10 @@ public sealed class AccessImportService : IAccessImportService
                 "get-user-tables",
                 provider,
                 result.Count);
+
+            if (result.Count == 0 && TryEnableCliMode("get-user-tables:no-user-tables"))
+                return GetCliUserTables(includeTemporaryTables);
+
             return result;
         }
         catch (Exception ex)
@@ -2607,15 +2699,8 @@ public sealed class AccessImportService : IAccessImportService
                 "TablesSchema",
                 "get-user-tables");
 
-            // CLI fallback: Only on Linux, if CLI is available and ODBC failed
-            if (!_useCliMode && !OperatingSystem.IsWindows() && IsMdbToolsCliAvailable() && conn.DataSource is string filePath && File.Exists(filePath))
-            {
-                _useCliMode = true;
-                _cliFilePath = filePath;
-                _logger.LogWarning("Falling back to MDBTools CLI for table listing (exception): {FilePath}", filePath);
-                var cliTables = MdbCliGetTables(filePath);
-                return cliTables;
-            }
+            if (TryEnableCliMode("get-user-tables:exception", ex))
+                return GetCliUserTables(includeTemporaryTables);
 
             return [];
         }
@@ -2708,10 +2793,10 @@ public sealed class AccessImportService : IAccessImportService
         }
     }
 
-    private static string? FindTable(OdbcConnection conn, IReadOnlyList<string> tables, string[] candidates, string[]? sigRequired = null, string[]? sigBonus = null)
+    private string? FindTable(OdbcConnection conn, IReadOnlyList<string> tables, string[] candidates, string[]? sigRequired = null, string[]? sigBonus = null)
         => FindTableDetailed(conn, tables, candidates, sigRequired, sigBonus).TableName;
 
-    private static TableMatch FindTableDetailed(
+    private TableMatch FindTableDetailed(
         OdbcConnection conn,
         IReadOnlyList<string> tables,
         string[] candidates,
@@ -2767,55 +2852,12 @@ public sealed class AccessImportService : IAccessImportService
         return new TableMatch(null, "none");
     }
 
-    private static HashSet<string> ReadColumnNamesNormalized(OdbcConnection conn, string table)
+    private HashSet<string> ReadColumnNamesNormalized(OdbcConnection conn, string table)
     {
-        var cols = new HashSet<string>(StringComparer.Ordinal);
-        // CLI fallback
-        if (_useCliMode && _cliFilePath is not null)
-        {
-            try { return MdbCliGetColumns(_cliFilePath, table); }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] CLI failed: {ex.Message}");
-                return cols;
-            }
-        }
-
-        if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
-        {
-            System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] Invalid table name '{table}': {failureReason}");
-            return cols;
-        }
-
-        try
-        {
-            using var cmd = new OdbcCommand($"SELECT * FROM {quotedTable} WHERE 1=0", conn);
-            using var r = cmd.ExecuteReader();
-            
-            if (r is null || r.FieldCount == 0)
-                return cols;
-
-            for (var i = 0; i < r.FieldCount; i++)
-            {
-                try
-                {
-                    var name = r.GetName(i);
-                    if (!string.IsNullOrWhiteSpace(name))
-                        cols.Add(Normalize(name));
-                }
-                catch (Exception fex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] Error reading column {i}: {fex.Message}");
-                    // Skip problematic column, continue
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Table unreadable – skip with diagnostic log
-            System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] Exception reading {table}: {ex.GetType().Name}: {ex.Message}");
-        }
-        return cols;
+        return ReadColumnNames(conn, table)
+            .Select(Normalize)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToHashSet(StringComparer.Ordinal);
     }
 
     private static string Normalize(string? s)
@@ -2969,26 +3011,12 @@ public sealed class AccessImportService : IAccessImportService
                     var source = tablePreview.FieldMappings
                         .FirstOrDefault(m => m.TargetField.Equals(t, StringComparison.OrdinalIgnoreCase))
                         ?.SourceColumn;
-                    return (Target: t, Source: source);
+                    return (Target: t, SourceKey: Normalize(source));
                 })
-                .Where(x => !string.IsNullOrWhiteSpace(x.Source))
+                .Where(x => !string.IsNullOrWhiteSpace(x.SourceKey))
                 .ToList();
 
             if (mappings.Count == 0)
-                return;
-
-            var selectCols = string.Join(", ", mappings.Select(m => QuoteAccessIdentifier(m.Source!)));
-            if (!TryGetQuotedTableIdentifier(tablePreview.TableName, out var quotedTable, out var failureReason))
-            {
-                warnings.Add($"Preview warning: preskoceno citanje uzorka za tabelu '{tablePreview.TableName}' ({failureReason}).");
-                return;
-            }
-
-            var sql = $"SELECT TOP {sampleTake} {selectCols} FROM {quotedTable}";
-
-            using var cmd = new OdbcCommand(sql, conn);
-            using var r = cmd.ExecuteReader();
-            if (r is null)
                 return;
 
             var nullCount = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -2997,13 +3025,13 @@ public sealed class AccessImportService : IAccessImportService
             var idSets = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
             var rows = 0;
 
-            while (r.Read())
+            foreach (var row in ReadRows(conn, tablePreview.TableName!).Take(sampleTake))
             {
                 rows++;
-                for (var i = 0; i < mappings.Count; i++)
+                foreach (var mapping in mappings)
                 {
-                    var target = mappings[i].Target;
-                    var value = r.IsDBNull(i) ? null : r.GetValue(i);
+                    var target = mapping.Target;
+                    row.TryGetValue(mapping.SourceKey, out var value);
 
                     if (value is null || value is DBNull)
                     {
@@ -3351,22 +3379,35 @@ public sealed class AccessImportService : IAccessImportService
         catch { return 0; }
     }
 
-    private static HashSet<string> MdbCliGetColumns(string filePath, string tableName)
+    private static List<string> MdbCliGetColumnsRaw(string filePath, string tableName)
     {
-        var cols = new HashSet<string>(StringComparer.Ordinal);
+        var cols = new List<string>();
         try
         {
             var csv = RunMdbCli("mdb-export", $"\"{filePath}\" \"{tableName}\"");
             var header = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-            if (header is null) return cols;
+            if (header is null)
+                return cols;
+
             foreach (var col in ParseCsvLine(header))
             {
                 var clean = col.Trim().Trim('"');
                 if (!string.IsNullOrWhiteSpace(clean))
-                    cols.Add(Normalize(clean));
+                    cols.Add(clean);
             }
         }
-        catch { }
+        catch
+        {
+        }
+
+        return cols;
+    }
+
+    private static HashSet<string> MdbCliGetColumns(string filePath, string tableName)
+    {
+        var cols = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var col in MdbCliGetColumnsRaw(filePath, tableName))
+            cols.Add(Normalize(col));
         return cols;
     }
 
