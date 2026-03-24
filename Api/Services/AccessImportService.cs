@@ -1903,6 +1903,9 @@ public sealed class AccessImportService : IAccessImportService
             {
                 orphanRows++;
                 var sourceRowJson = SerializeRowForDiagnostics(row);
+                var logMessage = TrimToMaxLength(
+                    $"FK-skip: prodaja_stavke row skipped because id_prodaja={idProdaja.Value} does not exist in prodaja_zaglavlje.",
+                    2000);
                 if (orphanSamples.Count < ForeignKeyWarningSampleLimit)
                     orphanSamples.Add($"row {rowIndex}: id_prodaja={idProdaja.Value}");
 
@@ -1914,12 +1917,22 @@ public sealed class AccessImportService : IAccessImportService
                     _options.SkipInvalidForeignKeys,
                     sourceRowJson);
 
+                AddAccessImportLogEntry(
+                    result.BatchId,
+                    table,
+                    rowIndex,
+                    "warning",
+                    logMessage,
+                    sourceRowJson);
+                TrackTrendWrite();
+
                 if (!_options.SkipInvalidForeignKeys)
                 {
                     throw new InvalidOperationException(
                         $"Tabela '{table}' sadrzi prodaja_stavke red sa nepostojecim id_prodaja={idProdaja.Value} na redu {rowIndex}. SourceRow={sourceRowJson}");
                 }
 
+                await FlushTrendWritesAsync(force: false, ct);
                 continue;
             }
 
@@ -1979,6 +1992,13 @@ public sealed class AccessImportService : IAccessImportService
                 : $"Tabela '{table}' ima {orphanRows} prodaja_stavke redova sa nepostojecim id_prodaja. Import je zaustavljen zbog AccessImport:SkipInvalidForeignKeys=false.{sampleSuffix}";
 
             result.Warnings.Add(summary);
+            AddAccessImportLogEntry(
+                result.BatchId,
+                table,
+                0,
+                "warning",
+                TrimToMaxLength(summary, 2000));
+            TrackTrendWrite();
             _logger.LogWarning(
                 "Access import prodaja_stavke FK validation summary. TableName: {TableName}. OrphanRows: {OrphanRows}. SkipInvalidForeignKeys: {SkipInvalidForeignKeys}. Samples: {Samples}.",
                 table,
@@ -4928,6 +4948,34 @@ public sealed class AccessImportService : IAccessImportService
         return json.Length <= maxLength
             ? json
             : json[..maxLength] + "...(truncated)";
+    }
+
+    private void AddAccessImportLogEntry(long batchId, string tableName, int rowIndex, string severity, string message, string? sourceRowJson = null)
+    {
+        if (batchId <= 0)
+            return;
+
+        _trendDb.AccessImportLogs.Add(new AccessImportLog
+        {
+            BatchId = batchId,
+            TableName = TrimToMaxLength(tableName, 128),
+            RowIndex = Math.Max(0, rowIndex),
+            Severity = TrimToMaxLength(string.IsNullOrWhiteSpace(severity) ? "info" : severity.Trim(), 16),
+            Message = TrimToMaxLength(message, 2000),
+            SourceRowJson = sourceRowJson
+        });
+    }
+
+    private static string TrimToMaxLength(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var trimmed = value.Trim();
+        if (trimmed.Length <= maxLength)
+            return trimmed;
+
+        return trimmed[..Math.Max(0, maxLength - 14)] + "...(truncated)";
     }
 
     private static void FinalizeCoverageMetrics(

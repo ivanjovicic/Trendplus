@@ -1544,8 +1544,12 @@ public static class DatabaseInitializer
             await ExecuteSqlFileAsync(connectionString, "Database/Analytics/010_AddGoogleShoppingTable.sql", logger);
         }
 
-        // 013 creates compatibility views that shadow trendplus operational tables ("Artikli", "Dobavljaci", etc.).
-        // When analytics and trendplus share the same DB those views would conflict with existing tables, so skip.
+        // Access-import origin support patch (idempotent)
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/011_AddDataOriginColumns.sql", logger);
+
+        // 013 creates compatibility views that shadow trendplus operational tables ("Artikli", "Dobavljaci", etc.)
+        // and expects DataOrigin to already exist on analytics fact/dimension tables.
+        // Run 011 first so legacy analytics DBs are patched before those views are created.
         if (!unifiedDb)
         {
             await ExecuteSqlFileAsync(connectionString, "Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql", logger);
@@ -1554,9 +1558,6 @@ public static class DatabaseInitializer
         {
             logger.LogInformation("Skipping 013_AddSupplierDecisionCompatibilitySchema.sql: analytics and trendplus share the same database (compatibility views not needed).");
         }
-
-        // Access-import origin support patch (idempotent)
-        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/011_AddDataOriginColumns.sql", logger);
 
         // Open product training schema (stored in analytics DB by default)
         if (!await TableExistsAsync(connectionString, "dataset", logger))
@@ -2250,13 +2251,13 @@ public static class DatabaseInitializer
                     {
                         // Lock timeout — rollback and retry with backoff
                         lastEx = pgEx;
-                        try { if (tx != null) await tx.RollbackAsync(); } catch { }
+                        await TryRollbackTransactionAsync(tx, logger, scriptDisplayIdentifier);
                         logger.LogWarning(pgEx, "Lock timeout executing startup SQL file {FilePath}. Attempt {Attempt}/{MaxAttempts}", scriptDisplayIdentifier, attempt, maxAttempts);
                     }
                     catch (PostgresException pgEx) when (pgEx.SqlState == "42P07" || (pgEx.Detail != null && pgEx.Detail.Contains("already exists", StringComparison.OrdinalIgnoreCase)))
                     {
                         // Non-fatal duplicate-object error during transactional execution — rollback and continue.
-                        try { if (tx != null) await tx.RollbackAsync(); } catch { }
+                        await TryRollbackTransactionAsync(tx, logger, scriptDisplayIdentifier);
                         logger.LogWarning(pgEx,
                             "Non-fatal Postgres error while executing SQL file {FilePath} (object already exists). SqlState={SqlState}, Detail={Detail}",
                             scriptDisplayIdentifier, pgEx.SqlState, pgEx.Detail);
@@ -2264,7 +2265,7 @@ public static class DatabaseInitializer
                     }
                     catch (Exception ex)
                     {
-                        try { if (tx != null) await tx.RollbackAsync(); } catch { }
+                        await TryRollbackTransactionAsync(tx, logger, scriptDisplayIdentifier);
                         logger.LogError(ex, "Failed executing startup SQL file {FilePath} on attempt {Attempt}.", scriptDisplayIdentifier, attempt);
                         throw;
                     }
@@ -2290,7 +2291,7 @@ public static class DatabaseInitializer
         }
         catch (PostgresException pgEx)
         {
-            if (tx != null) await tx.RollbackAsync();
+            await TryRollbackTransactionAsync(tx, logger, scriptDisplayIdentifier);
 
             if (pgEx.SqlState == "55P03")
             {
@@ -2319,13 +2320,36 @@ public static class DatabaseInitializer
         }
         catch (Exception ex)
         {
-            if (tx != null) await tx.RollbackAsync();
+            await TryRollbackTransactionAsync(tx, logger, scriptDisplayIdentifier);
             logger.LogError(ex, "Failed to execute SQL file: {FilePath}", scriptDisplayIdentifier);
             throw;
         }
         finally
         {
             if (tx != null) await tx.DisposeAsync();
+        }
+    }
+
+    private static async Task TryRollbackTransactionAsync(
+        NpgsqlTransaction? tx,
+        ILogger logger,
+        string scriptDisplayIdentifier)
+    {
+        if (tx is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await tx.RollbackAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogDebug(
+                ex,
+                "Skipping rollback for startup SQL file {FilePath} because the transaction has already completed.",
+                scriptDisplayIdentifier);
         }
     }
 

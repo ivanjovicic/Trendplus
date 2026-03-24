@@ -337,6 +337,14 @@ public sealed class AccessImportServiceTests
         Assert.True(options.SkipInvalidForeignKeys);
     }
 
+    [Fact]
+    public void AccessImportOptions_AutoInsertMissingParents_DefaultsToFalse()
+    {
+        var options = new AccessImportOptions();
+
+        Assert.False(options.AutoInsertMissingParents);
+    }
+
     #endregion
 }
 
