@@ -1,8 +1,9 @@
-using System.Data;
+﻿using System.Data;
 using System.Data.Odbc;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Collections.Concurrent;
 using Api.Models;
 using Domain.Model;
 using Domain.Model.Povracaj;
@@ -35,7 +36,7 @@ public sealed class AccessImportService : IAccessImportService
         }
     }
 
-    // ── Table-name candidates (exact then contains, then column-signature fallback) ────────────────
+    // â”€â”€ Table-name candidates (exact then contains, then column-signature fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private static readonly string[] TipoviCandidates        = ["tipoviobuce", "tipobuce", "tipovi_obuce", "footweartypes", "tbltipobuce", "tbltipovi"];
     private static readonly string[] DobavljaciCandidates    = ["dobavljaci", "dobavljac", "suppliers", "tbldobavljaci", "tbldobavljac"];
     private static readonly string[] SezoneCandidates        = ["sezone", "sezona", "seasons", "tblsezone", "tblsezona", "godisnjedoba"];
@@ -45,7 +46,7 @@ public sealed class AccessImportService : IAccessImportService
     private static readonly string[] DnevnikPromenaCandidates = ["dnevnikpromjena", "dnevnikpromena", "dnevnik_promjena", "dnevnik_promena", "dnevnik", "log", "promena", "promjena", "events", "journal", "tbldnevnikpromena", "tbldnevnikpromjena", "tbldnevnik"];
     private static readonly string[] PovracajCandidates      = ["povracaj_zaglavlje", "povracajzaglavlje", "povracaj", "returns", "returnheader", "vracanje", "tblpovracaj", "tblzapisnikopovracaju", "tblzapisnik"];
     private static readonly string[] PovracajStavkeCandidates2 = ["povracaj_stavke", "povracajstavke", "stavkepovracaja", "returnlines", "returnstems", "tblstavkepovracaja", "tblstavkezapisnika"];
-    // ── New movement-type candidates ─────────────────────────────────────────────────────────────
+    // â”€â”€ New movement-type candidates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private static readonly string[] NivelacijeCandidates    = ["nivelacije", "nivelacija", "priceupdate", "cenovneizmene", "tblnivelacije", "tblnivelacija", "nivelacijeartikala"];
     private static readonly string[] UnosRobeCandidates      = ["unosrobe", "unos_robe", "goodsreceipt", "prijem", "tblunosrobe", "tblprijemsrobe", "tblprijem", "kretanjezalihe"];
     private static readonly string[] PovratniceCandidates    = ["povratnice", "povratnica", "customerreturns", "vracajakupaca", "tblpovratnice", "tblpovratnica", "tblvracanjakupaca"];
@@ -179,6 +180,13 @@ public sealed class AccessImportService : IAccessImportService
             ["dnevnik_promena"] = ["Id", "TipPromene", "Datum"],
         };
 
+    private static readonly ConcurrentDictionary<string, string> NormalizedStringCache =
+        new(StringComparer.Ordinal);
+    private static readonly IReadOnlyDictionary<string, Dictionary<string, string>> PreviewAliasToTargetByKey =
+        BuildPreviewAliasToTargetByKey();
+    private const int SnapshotDeleteMaxAttempts = 3;
+    private static readonly TimeSpan SnapshotDeleteRetryDelay = TimeSpan.FromMilliseconds(250);
+
     private readonly TrendplusDbContext _trendDb;
     private readonly AnalyticsDbContext _analyticsDb;
     private readonly IAnalyticsCacheService? _analyticsCache;
@@ -198,61 +206,120 @@ public sealed class AccessImportService : IAccessImportService
         _analyticsCache = analyticsCache;
     }
 
-    public async Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default)
+    private static IReadOnlyDictionary<string, Dictionary<string, string>> BuildPreviewAliasToTargetByKey()
     {
-        EnsurePlatformSupport();
-        if (!File.Exists(accessFilePath))
-            throw new FileNotFoundException("ACCDB fajl nije pronađen.", accessFilePath);
+        var output = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
-        return await Task.Run(() =>
+        foreach (var (tableKey, mappings) in PreviewFieldMappings)
         {
+            var aliasToTarget = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var mapping in mappings)
+            {
+                foreach (var alias in mapping.Aliases)
+                {
+                    var normalizedAlias = Normalize(alias);
+                    if (string.IsNullOrWhiteSpace(normalizedAlias))
+                        continue;
+
+                    aliasToTarget.TryAdd(normalizedAlias, mapping.TargetField);
+                }
+            }
+
+            output[tableKey] = aliasToTarget;
+        }
+
+        return output;
+    }
+
+    private IReadOnlyDictionary<string, int> GetTableRowCounts(
+        OdbcConnection conn,
+        IEnumerable<string> tables)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var table in tables)
+            counts[table] = RowCount(conn, table);
+
+        return counts;
+    }
+
+    private static AccessImportPreviewResponse CreatePreviewFailureResponse(string sourceFileName, Exception ex)
+    {
+        return new AccessImportPreviewResponse
+        {
+            SourceFileName = sourceFileName,
+            CanImport = false,
+            Tables = [],
+            AvailableTables = [],
+            Warnings = [$"Preview failed: {ex.GetBaseException().Message}"]
+        };
+    }
+
+    public Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default)
+    {
+        var sourceFileName = Path.GetFileName(accessFilePath ?? string.Empty);
+        using var previewScope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["BatchId"] = 0L,
+            ["TableName"] = "all",
+            ["Operation"] = "preview"
+        });
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            EnsurePlatformSupport();
+            if (!File.Exists(accessFilePath))
+                throw new FileNotFoundException("ACCDB file was not found.", accessFilePath);
+
             var snapshot = CreateSnapshotIfLocked(accessFilePath);
             try
             {
                 using var conn = CreateOdbcConnection(snapshot.FilePath);
                 conn.Open();
                 var tables = GetUserTables(conn, includeTemporaryTables);
-                var tableRowCounts = tables.ToDictionary(t => t, t => RowCount(conn, t), StringComparer.OrdinalIgnoreCase);
+                var tableRowCounts = GetTableRowCounts(conn, tables);
 
                 var map = new Dictionary<string, TableMatch>(StringComparer.OrdinalIgnoreCase)
                 {
-                    ["tipovi_obuce"]    = FindTableDetailed(conn, tables, TipoviCandidates),
-                    ["dobavljaci"]      = FindTableDetailed(conn, tables, DobavljaciCandidates),
-                    ["sezone"]         = FindTableDetailed(conn, tables, SezoneCandidates,
-                                             sigRequired: ["idsezona", "naziv"]),
-                    ["artikli"]        = FindTableDetailed(conn, tables, ArtikliCandidates,
-                                             sigRequired: ["idartikal", "naziv"],
-                                             sigBonus:    ["nabavnacena", "prodajnacena", "plu"]),
+                    ["tipovi_obuce"] = FindTableDetailed(conn, tables, TipoviCandidates),
+                    ["dobavljaci"] = FindTableDetailed(conn, tables, DobavljaciCandidates),
+                    ["sezone"] = FindTableDetailed(conn, tables, SezoneCandidates,
+                        sigRequired: ["idsezona", "naziv"]),
+                    ["artikli"] = FindTableDetailed(conn, tables, ArtikliCandidates,
+                        sigRequired: ["idartikal", "naziv"],
+                        sigBonus: ["nabavnacena", "prodajnacena", "plu"]),
                     ["prodaja_zaglavlje"] = FindTableDetailed(conn, tables, ProdajaCandidates),
-                    ["prodaja_stavke"]  = FindTableDetailed(conn, tables, ProdajaStavkeCandidates),
+                    ["prodaja_stavke"] = FindTableDetailed(conn, tables, ProdajaStavkeCandidates),
                     ["dnevnik_promena"] = FindTableDetailed(conn, tables, DnevnikPromenaCandidates,
-                                             sigRequired: ["iddnevnik", "datum"]),
+                        sigRequired: ["iddnevnik", "datum"]),
                     ["povracaj_zaglavlje"] = FindTableDetailed(conn, tables, PovracajCandidates),
                     ["povracaj_stavke"] = FindTableDetailed(conn, tables, PovracajStavkeCandidates2),
-                    ["nivelacije"]      = FindTableDetailed(conn, tables, NivelacijeCandidates,
-                                             sigRequired: ["idartikal", "novacena"]),
-                    ["unos_robe"]       = FindTableDetailed(conn, tables, UnosRobeCandidates,
-                                             sigRequired: ["idartikal", "kolicina", "iddobavljac"]),
-                    ["povratnice"]      = FindTableDetailed(conn, tables, PovratniceCandidates,
-                                             sigRequired: ["idartikal", "kolicina"],
-                                             sigBonus:    ["razlog", "idpovratnice"]),
-                    ["prenos_robe"]     = FindTableDetailed(conn, tables, PrenosRobeCandidates,
-                                             sigRequired: ["idartikal", "kolicina"],
-                                             sigBonus:    ["idobjekatiz", "idobjekatulaz", "idobjekat"]),
-                    ["objekti"]         = FindTableDetailed(conn, tables, ObjekatCandidates,
-                                             sigRequired: ["idobjekat", "nazivobjekta"]),
+                    ["nivelacije"] = FindTableDetailed(conn, tables, NivelacijeCandidates,
+                        sigRequired: ["idartikal", "novacena"]),
+                    ["unos_robe"] = FindTableDetailed(conn, tables, UnosRobeCandidates,
+                        sigRequired: ["idartikal", "kolicina", "iddobavljac"]),
+                    ["povratnice"] = FindTableDetailed(conn, tables, PovratniceCandidates,
+                        sigRequired: ["idartikal", "kolicina"],
+                        sigBonus: ["razlog", "idpovratnice"]),
+                    ["prenos_robe"] = FindTableDetailed(conn, tables, PrenosRobeCandidates,
+                        sigRequired: ["idartikal", "kolicina"],
+                        sigBonus: ["idobjekatiz", "idobjekatulaz", "idobjekat"]),
+                    ["objekti"] = FindTableDetailed(conn, tables, ObjekatCandidates,
+                        sigRequired: ["idobjekat", "nazivobjekta"]),
                 };
 
                 var response = new AccessImportPreviewResponse
                 {
-                    SourceFileName = Path.GetFileName(accessFilePath),
+                    SourceFileName = sourceFileName,
                     CanImport = map["artikli"].TableName is not null,
                     AvailableTables = tables.OrderBy(x => x).ToList(),
                     TotalAccessTables = tables.Count,
                     AccessTablesWithRows = tableRowCounts.Values.Count(x => x > 0),
                     TotalAccessRows = tableRowCounts.Values.Sum(),
-                    Tables = new List<AccessImportTablePreview>()
+                    Tables = []
                 };
+
                 if (!string.IsNullOrWhiteSpace(snapshot.Warning))
                     response.Warnings.Add(snapshot.Warning);
 
@@ -270,9 +337,8 @@ public sealed class AccessImportService : IAccessImportService
                 }
 
                 if (!response.CanImport)
-                    response.Warnings.Add("Nije pronađena tabela za artikle (obavezna).");
+                    response.Warnings.Add("Nije pronadjena tabela za artikle (obavezna).");
 
-                // Preview diagnostics for required fields (improves "canImport" accuracy and helps mapping/debugging).
                 foreach (var req in PreviewRequiredFields)
                 {
                     var tablePreview = response.Tables.FirstOrDefault(t =>
@@ -287,12 +353,10 @@ public sealed class AccessImportService : IAccessImportService
                     {
                         response.Warnings.Add($"Tabela '{tablePreview.TableName}' ({tablePreview.Key}) nema obavezna polja: {string.Join(", ", missing)}.");
 
-                        // Hard-block only when Artikli cannot be identified reliably.
                         if (req.Key.Equals("artikli", StringComparison.OrdinalIgnoreCase))
                             response.CanImport = false;
                     }
 
-                    // Best-effort sample validation (nulls/duplicates) to catch mapping issues early.
                     TryAddSampleDataWarnings(conn, tablePreview, req.Value, response.Warnings);
                 }
 
@@ -331,35 +395,50 @@ public sealed class AccessImportService : IAccessImportService
                 }
 
                 if (map["prodaja_zaglavlje"].TableName is null && map["dnevnik_promena"].TableName is not null)
-                    response.Warnings.Add("Nije pronađena tabela prodaje — prodaja će biti sintetizovana iz DnevnikPromena (tip='Prodaja').");
+                    response.Warnings.Add("Nije pronadjena tabela prodaje - prodaja ce biti sintetizovana iz DnevnikPromena (tip='Prodaja').");
 
                 if (map["prodaja_stavke"].TableName is null && map["prodaja_zaglavlje"].TableName is not null)
-                    response.Warnings.Add("Nije pronađena tabela stavki prodaje — zaglavlja bez stavki biće uvezena bez linija.");
+                    response.Warnings.Add("Nije pronadjena tabela stavki prodaje - zaglavlja bez stavki bice uvezena bez linija.");
 
                 var foundMovements = new List<string>();
                 foreach (var k in new[] { "nivelacije", "unos_robe", "povratnice", "prenos_robe" })
                 {
                     if (map.TryGetValue(k, out var tm) && tm.TableName is not null)
-                        foundMovements.Add(tm.TableName!);
+                        foundMovements.Add(tm.TableName);
                 }
                 if (foundMovements.Count > 0)
-                    response.Warnings.Add($"Pronađene tabele kretanja zaliha: {string.Join(", ", foundMovements)}.");
+                    response.Warnings.Add($"Pronadjene tabele kretanja zaliha: {string.Join(", ", foundMovements)}.");
 
-                return response;
+                return Task.FromResult(response);
             }
             finally
             {
                 if (snapshot.IsSnapshot)
-                    TryDeleteFile(snapshot.FilePath);
+                    TryDeleteFile(snapshot.FilePath, "preview-cleanup", sourceFileName);
             }
-        }, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Preview failed for file {SourceFileName}. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Returning fail-soft response.",
+                sourceFileName,
+                0L,
+                "all",
+                "preview");
+            return Task.FromResult(CreatePreviewFailureResponse(sourceFileName, ex));
+        }
     }
 
-    private static AccessImportTablePreview BuildTablePreview(
+    private AccessImportTablePreview BuildTablePreview(
         OdbcConnection conn,
         string key,
         TableMatch tableMatch,
-        Dictionary<string, int> tableRowCounts)
+        IReadOnlyDictionary<string, int> tableRowCounts)
     {
         var tableName = tableMatch.TableName;
         var preview = new AccessImportTablePreview
@@ -369,7 +448,7 @@ public sealed class AccessImportService : IAccessImportService
             MatchStrategy = tableMatch.Strategy,
             RowCount = tableName is null
                 ? 0
-                : (tableRowCounts.TryGetValue(tableName, out var rowCount) ? rowCount : RowCount(conn, tableName))
+                : (tableRowCounts.TryGetValue(tableName, out var rowCount) ? rowCount : 0)
         };
 
         if (string.IsNullOrWhiteSpace(tableName))
@@ -402,9 +481,15 @@ public sealed class AccessImportService : IAccessImportService
     private static List<string> ReadColumnNames(OdbcConnection conn, string table)
     {
         var columns = new List<string>();
+        if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
+        {
+            System.Diagnostics.Debug.WriteLine($"[ReadColumnNames] Invalid table name '{table}': {failureReason}");
+            return columns;
+        }
+
         try
         {
-            using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)} WHERE 1=0", conn);
+            using var cmd = new OdbcCommand($"SELECT * FROM {quotedTable} WHERE 1=0", conn);
             using var r = cmd.ExecuteReader();
             
             if (r is null || r.FieldCount == 0)
@@ -438,20 +523,26 @@ public sealed class AccessImportService : IAccessImportService
         if (!PreviewFieldMappings.TryGetValue(key, out var fieldAliases) || fieldAliases.Count == 0)
             return new List<AccessImportFieldMappingPreview>();
 
-        var normalizedColumns = columns
-            .Select(c => new { Original = c, Normalized = Normalize(c) })
-            .GroupBy(x => x.Normalized, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().Original, StringComparer.OrdinalIgnoreCase);
+        PreviewAliasToTargetByKey.TryGetValue(key, out var aliasToTarget);
+        aliasToTarget ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        var matchedByTarget = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var column in columns)
+        {
+            var normalized = Normalize(column);
+            if (string.IsNullOrWhiteSpace(normalized))
+                continue;
+
+            if (!aliasToTarget.TryGetValue(normalized, out var targetField))
+                continue;
+
+            matchedByTarget.TryAdd(targetField, column);
+        }
 
         var output = new List<AccessImportFieldMappingPreview>(fieldAliases.Count);
         foreach (var field in fieldAliases)
         {
-            string? matchedColumn = null;
-            foreach (var alias in field.Aliases)
-            {
-                if (normalizedColumns.TryGetValue(Normalize(alias), out matchedColumn))
-                    break;
-            }
+            matchedByTarget.TryGetValue(field.TargetField, out var matchedColumn);
 
             output.Add(new AccessImportFieldMappingPreview
             {
@@ -510,7 +601,7 @@ public sealed class AccessImportService : IAccessImportService
     {
         EnsurePlatformSupport();
         if (!File.Exists(accessFilePath))
-            throw new FileNotFoundException("ACCDB fajl nije pronađen.", accessFilePath);
+            throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", accessFilePath);
 
         var started = DateTime.UtcNow;
         // Ensure DataImportBatches table exists (handles first-ever deploy)
@@ -539,21 +630,38 @@ public sealed class AccessImportService : IAccessImportService
         if (!string.IsNullOrWhiteSpace(snapshot.Warning))
             result.Warnings.Add(snapshot.Warning);
 
+        using var importScope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["BatchId"] = batch.Id,
+            ["TableName"] = "all",
+            ["Operation"] = "access-import"
+        });
+
         try
         {
-            await Task.Run(() => ImportTrendplus(snapshot.FilePath, overwriteExisting, includeTemporaryTables, result), ct);
-            await _trendDb.SaveChangesAsync(ct);
-            await ResetTrendplusSequencesAsync(ct);
+            await using var tx = await _trendDb.Database.BeginTransactionAsync(ct);
+            try
+            {
+                ImportTrendplus(snapshot.FilePath, overwriteExisting, includeTemporaryTables, result);
+                await _trendDb.SaveChangesAsync(ct);
+                await ResetTrendplusSequencesAsync(ct);
 
-            if (includeAnalytics)
-                await SyncAnalyticsAsync(result, ct);
+                if (includeAnalytics)
+                    await SyncAnalyticsAsync(result, ct);
 
-            result.Status = "completed";
-            result.CompletedAtUtc = DateTime.UtcNow;
-            batch.Status = "completed";
-            batch.CompletedAtUtc = result.CompletedAtUtc;
-            batch.SummaryJson = JsonSerializer.Serialize(result);
-            await _trendDb.SaveChangesAsync(ct);
+                result.Status = "completed";
+                result.CompletedAtUtc = DateTime.UtcNow;
+                batch.Status = "completed";
+                batch.CompletedAtUtc = result.CompletedAtUtc;
+                batch.SummaryJson = JsonSerializer.Serialize(result);
+                await _trendDb.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
 
             return result;
         }
@@ -581,16 +689,26 @@ public sealed class AccessImportService : IAccessImportService
             }
             catch (Exception saveFailedEx)
             {
-                _logger.LogWarning(saveFailedEx, "Failed to persist failed Access import batch status for batch {BatchId}.", batch.Id);
+                _logger.LogWarning(
+                    saveFailedEx,
+                    "Failed to persist failed Access import batch status. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                    batch.Id,
+                    "DataImportBatches",
+                    "mark-failed");
             }
 
-            _logger.LogError(ex, "Access import failed.");
+            _logger.LogError(
+                ex,
+                "Access import failed. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                batch.Id,
+                "all",
+                "import");
             throw;
         }
         finally
         {
             if (snapshot.IsSnapshot)
-                TryDeleteFile(snapshot.FilePath);
+                TryDeleteFile(snapshot.FilePath, "import-cleanup", batch.SourceFileName, batch.Id, "snapshot");
         }
     }
 
@@ -628,7 +746,10 @@ public sealed class AccessImportService : IAccessImportService
             // Legacy DB compatibility: pre-015/016 schemas may miss batch metrics/DataOrigin columns.
             _logger.LogWarning(
                 ex,
-                "Access import batches query hit legacy schema (missing columns). Falling back to compatibility projection.");
+                "Access import batches query hit legacy schema (missing columns). BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Falling back to compatibility projection.",
+                0L,
+                "DataImportBatches",
+                "list-batches");
 
             return await _trendDb.DataImportBatches
                 .AsNoTracking()
@@ -657,9 +778,37 @@ public sealed class AccessImportService : IAccessImportService
             // Legacy DB compatibility: some environments may not have DataImportBatches table yet.
             _logger.LogWarning(
                 ex,
-                "Access import batches table is missing. Returning empty list as compatibility fallback.");
+                "Access import batches table is missing. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Returning empty list as compatibility fallback.",
+                0L,
+                "DataImportBatches",
+                "list-batches");
             return [];
         }
+        catch (Exception ex) when (IsTransientDatabaseTimeout(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "Access import batches query hit a transient timeout/connectivity issue. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Returning empty list.",
+                0L,
+                "DataImportBatches",
+                "list-batches");
+            return [];
+        }
+    }
+
+    private static bool IsTransientDatabaseTimeout(Exception ex)
+    {
+        for (Exception? current = ex; current is not null; current = current.InnerException)
+        {
+            if (current is TimeoutException)
+                return true;
+
+            if (current is NpgsqlException npgsqlException &&
+                npgsqlException is not PostgresException)
+                return true;
+        }
+
+        return false;
     }
 
     public async Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default)
@@ -733,8 +882,8 @@ public sealed class AccessImportService : IAccessImportService
         }
 
         _logger.LogInformation(
-            "Deleted access-import batch {BatchId}: artikli={Ar}, prodaja={Pv}/{Sv}, dnevnik={Dn}, povracaj={Pv2}/{PvS}, sezone={Se}, dobavljaci={Do}, tipovi={Ti}, analytics={IncludeAnalytics} pd={Pd}/sf={Sf}/slf={Slf}/im={Im}/sup={Sup}/seas={Seas}/types={Types}/stores={Stores}, cacheInvalidated={CacheInvalidated}",
-            batchId, arDeleted, pvDeleted, svDeleted, dnDeleted, pvDeleted2, pvStavkeDeleted, seDeleted, doDeleted, tiDeleted, includeAnalytics, pdDeleted, sfDeleted, slfDeleted, imDeleted, suppDeleted, seasDeleted, typeDeleted, storeDeleted, cacheInvalidated);
+            "Deleted access-import batch {BatchId}: artikli={Ar}, prodaja={Pv}/{Sv}, dnevnik={Dn}, povracaj={Pv2}/{PvS}, sezone={Se}, dobavljaci={Do}, tipovi={Ti}, analytics={IncludeAnalytics} pd={Pd}/sf={Sf}/slf={Slf}/im={Im}/sup={Sup}/seas={Seas}/types={Types}/stores={Stores}, cacheInvalidated={CacheInvalidated}. TableName: {TableName}. Operation: {Operation}.",
+            batchId, arDeleted, pvDeleted, svDeleted, dnDeleted, pvDeleted2, pvStavkeDeleted, seDeleted, doDeleted, tiDeleted, includeAnalytics, pdDeleted, sfDeleted, slfDeleted, imDeleted, suppDeleted, seasDeleted, typeDeleted, storeDeleted, cacheInvalidated, "all", "delete-batch");
 
         return new DeleteBatchResult
         {
@@ -783,13 +932,16 @@ public sealed class AccessImportService : IAccessImportService
         var povratnice    = FindTable(conn, tables, PovratniceCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["razlog", "idpovratnice"]);
         var prenosRobe    = FindTable(conn, tables, PrenosRobeCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["idobjekatiz", "idobjekatulaz", "idobjekat"]);
         var objekti       = FindTable(conn, tables, ObjekatCandidates,     sigRequired: ["idobjekat", "nazivobjekta"]);
+        var tableRowCounts = GetTableRowCounts(conn, tables);
         var sourceRowsByTable = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         void AddSourceRowCount(string key, string? tableName)
         {
             if (string.IsNullOrWhiteSpace(tableName))
                 return;
-            sourceRowsByTable[key] = RowCount(conn, tableName);
+
+            if (tableRowCounts.TryGetValue(tableName, out var rowCount))
+                sourceRowsByTable[key] = rowCount;
         }
 
         AddSourceRowCount("tipovi_obuce", tipovi);
@@ -808,7 +960,7 @@ public sealed class AccessImportService : IAccessImportService
         AddSourceRowCount("prenos_robe", prenosRobe);
 
         if (artikli is null)
-            throw new InvalidOperationException("Nije pronađena tabela za artikle u ACCDB fajlu.");
+            throw new InvalidOperationException("Nije pronaÄ‘ena tabela za artikle u ACCDB fajlu.");
 
         if (tipovi is not null) ImportTipovi(conn, tipovi, overwriteExisting, result);
         if (dobavljaci is not null) ImportDobavljaci(conn, dobavljaci, overwriteExisting, result);
@@ -833,7 +985,7 @@ public sealed class AccessImportService : IAccessImportService
         if (povracaj is not null) ImportPovracaj(conn, povracaj, overwriteExisting, result);
         if (povracajStavke is not null) ImportPovracajStavke(conn, povracajStavke, overwriteExisting, result);
 
-        // Movement types — all map to DnevnikPromena with different TipPromene values
+        // Movement types â€” all map to DnevnikPromena with different TipPromene values
         if (nivelacije is not null)  ImportNivelacije(conn, nivelacije, overwriteExisting, result);
         if (unosRobe is not null)    ImportUnosRobe(conn, unosRobe, overwriteExisting, result);
         if (povratnice is not null)  ImportPovratnice(conn, povratnice, overwriteExisting, result);
@@ -883,7 +1035,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private void ImportTipovi(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existing = _trendDb.TipoviObuce.ToDictionary(x => x.Id);
+        var existing = ToFirstDictionary(_trendDb.TipoviObuce, x => x.Id);
         foreach (var row in ReadRows(conn, table))
         {
             var naziv = S(row, "naziv", "tip", "tipobuce", "name");
@@ -910,7 +1062,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private void ImportDobavljaci(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existing = _trendDb.Dobavljaci.ToDictionary(x => x.Id);
+        var existing = ToFirstDictionary(_trendDb.Dobavljaci, x => x.Id);
         foreach (var row in ReadRows(conn, table))
         {
             var naziv = S(row, "naziv", "dobavljac", "supplier", "name");
@@ -948,7 +1100,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private void ImportSezone(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existing = _trendDb.Sezone.ToDictionary(x => x.Id);
+        var existing = ToFirstDictionary(_trendDb.Sezone, x => x.Id);
         foreach (var row in ReadRows(conn, table))
         {
             var naziv = S(row, "naziv", "sezona", "name");
@@ -987,7 +1139,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private void ImportArtikli(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existing = _trendDb.Artikli.ToDictionary(x => x.Id);
+        var existing = ToFirstDictionary(_trendDb.Artikli, x => x.Id);
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         foreach (var row in ReadRows(conn, table))
@@ -1059,7 +1211,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private void ImportProdaja(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existing = _trendDb.ProdajaZaglavlja.ToDictionary(x => x.Id);
+        var existing = ToFirstDictionary(_trendDb.ProdajaZaglavlja, x => x.Id);
         foreach (var row in ReadRows(conn, table))
         {
             var id = I(row, "id", "idprodaja", "saleid");
@@ -1097,7 +1249,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private void ImportProdajaStavke(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existing = _trendDb.ProdajaStavke.ToDictionary(x => x.Id);
+        var existing = ToFirstDictionary(_trendDb.ProdajaStavke, x => x.Id);
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var saleIds = _trendDb.ProdajaZaglavlja.Select(x => x.Id).ToHashSet();
@@ -1148,9 +1300,12 @@ public sealed class AccessImportService : IAccessImportService
 
     private static bool IsProdajaLineTable(OdbcConnection conn, string table)
     {
+        if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out _))
+            return false;
+
         try
         {
-            using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)} WHERE 1=0", conn);
+            using var cmd = new OdbcCommand($"SELECT * FROM {quotedTable} WHERE 1=0", conn);
             using var r = cmd.ExecuteReader();
             if (r is null) return false;
 
@@ -1165,15 +1320,16 @@ public sealed class AccessImportService : IAccessImportService
                 && !cols.Contains("datumprodaje")
                 && !cols.Contains("brojracuna");
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[IsProdajaLineTable] Exception for table '{table}': {ex.GetType().Name}: {ex.Message}");
             return false;
         }
     }
 
     private void ImportProdajaFromLineTable(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existingZaglavlja = _trendDb.ProdajaZaglavlja.ToDictionary(x => x.Id);
+        var existingZaglavlja = ToFirstDictionary(_trendDb.ProdajaZaglavlja, x => x.Id);
         var existingBrojevi = BuildDuplicateTolerantLookup(
             _trendDb.ProdajaZaglavlja
                 .AsNoTracking()
@@ -1297,7 +1453,7 @@ public sealed class AccessImportService : IAccessImportService
 
         if (saleEntries.Count == 0) return;
 
-        var existingZaglavlja = _trendDb.ProdajaZaglavlja.ToDictionary(x => x.Id);
+        var existingZaglavlja = ToFirstDictionary(_trendDb.ProdajaZaglavlja, x => x.Id);
         var existingBrojevi = BuildDuplicateTolerantLookup(
             _trendDb.ProdajaZaglavlja
                 .AsNoTracking()
@@ -1363,12 +1519,12 @@ public sealed class AccessImportService : IAccessImportService
             }
         }
 
-        result.Warnings.Add($"Sintetizovano {result.ProdajaInserted} prodaja i {result.ProdajaStavkeInserted} stavki iz DnevnikPromena (nije pronađena posebna tabela prodaje).");
+        result.Warnings.Add($"Sintetizovano {result.ProdajaInserted} prodaja i {result.ProdajaStavkeInserted} stavki iz DnevnikPromena (nije pronaÄ‘ena posebna tabela prodaje).");
     }
 
     private void ImportPovracajStavke(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existing = _trendDb.PovracajStavke.ToDictionary(x => x.Id);
+        var existing = ToFirstDictionary(_trendDb.PovracajStavke, x => x.Id);
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var povracajIds = _trendDb.PovracajZaglavlja.Select(x => x.Id).ToHashSet();
@@ -1425,7 +1581,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private void ImportDnevnikPromena(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existing = _trendDb.DnevnikPromena.ToDictionary(x => x.Id);
+        var existing = ToFirstDictionary(_trendDb.DnevnikPromena, x => x.Id);
         var dbExistingIds = existing.Keys.ToHashSet();
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
@@ -1585,7 +1741,6 @@ public sealed class AccessImportService : IAccessImportService
             });
             result.NivelacijeInserted++;
         }
-        _trendDb.SaveChanges();
     }
 
     private void ImportUnosRobe(OdbcConnection conn, string? table, bool overwriteExisting, AccessImportRunResponse result)
@@ -1621,7 +1776,6 @@ public sealed class AccessImportService : IAccessImportService
             });
             result.UnosRobeInserted++;
         }
-        _trendDb.SaveChanges();
     }
 
     private void ImportPovratnice(OdbcConnection conn, string? table, bool overwriteExisting, AccessImportRunResponse result)
@@ -1656,12 +1810,11 @@ public sealed class AccessImportService : IAccessImportService
             });
             result.PovratnicaInserted++;
         }
-        _trendDb.SaveChanges();
     }
 
     private void ImportPrenosRobe(OdbcConnection conn, string? table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        // Each transfer row → TWO DnevnikPromena entries: izlaz from source + ulaz to destination
+        // Each transfer row â†’ TWO DnevnikPromena entries: izlaz from source + ulaz to destination
         if (table is null) return;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
@@ -1696,7 +1849,6 @@ public sealed class AccessImportService : IAccessImportService
             });
             result.PrenosRobeInserted += 2;
         }
-        _trendDb.SaveChanges();
     }
 
     /// <summary>
@@ -1751,9 +1903,9 @@ public sealed class AccessImportService : IAccessImportService
             "nabavka iz ",
             "nabavka kod ",
             "povracaj robe u ",
-            "povraćaj robe u ",
+            "povraÄ‡aj robe u ",
             "povracaj u ",
-            "povraćaj u ",
+            "povraÄ‡aj u ",
             "isporuka od "
         };
 
@@ -1771,7 +1923,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private void ImportPovracaj(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        var existing = _trendDb.PovracajZaglavlja.ToDictionary(x => x.Id);
+        var existing = ToFirstDictionary(_trendDb.PovracajZaglavlja, x => x.Id);
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var existingByBroj = BuildDuplicateTolerantLookup(
@@ -1793,7 +1945,7 @@ public sealed class AccessImportService : IAccessImportService
             var id = I(row, "id", "idpovracaj", "returnid");
             var idDobavljac = I(row, "iddobavljac", "dobavljacid", "supplierid") ?? 0;
             var datum = DT(row, "datumazapisnika", "datumpovracaja", "datum", "date") ?? DateTime.UtcNow;
-            var broj = S(row, "brozapisnika", "bројзаписника", "broj", "recordnumber", "returnno")
+            var broj = S(row, "brozapisnika", "bÑ€Ð¾Ñ˜Ð·Ð°Ð¿Ð¸ÑÐ½Ð¸ÐºÐ°", "broj", "recordnumber", "returnno")
                        ?? $"ZP-{datum:yyyyMMdd}-{++seq:D4}";
 
             PovracajZaglavlje? e = null;
@@ -2013,16 +2165,16 @@ public sealed class AccessImportService : IAccessImportService
             result.SalesLineFactsInserted = newLines.Count;
         }
 
-        // ── Suppliers ──────────────────────────────────────────────────────────────
+        // â”€â”€ Suppliers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         var importedSuppliers = await _trendDb.Dobavljaci.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
 
-        // ── Seasons ────────────────────────────────────────────────────────────────
+        // â”€â”€ Seasons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         var importedSeasons = await _trendDb.Sezone.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
 
-        // ── Footwear types ─────────────────────────────────────────────────────────
+        // â”€â”€ Footwear types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         var importedTypes = await _trendDb.TipoviObuce.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
 
-        // ── Inventory Movements ────────────────────────────────────────────────────
+        // â”€â”€ Inventory Movements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         var importedMovements = await _trendDb.DnevnikPromena.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
         await _analyticsDb.SaveChangesAsync(ct);
         await UpsertSuppliersDimAsync(importedSuppliers, ct);
@@ -2223,7 +2375,10 @@ public sealed class AccessImportService : IAccessImportService
             foreach (var f in Directory.EnumerateFiles("/usr", "libmdbodbc*.so*", SearchOption.AllDirectories))
                 return f;
         }
-        catch { /* permission or filesystem issue */ }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FindMdbToolsDriver] Search failed: {ex.GetType().Name}: {ex.Message}");
+        }
         return null;
     }
 
@@ -2266,23 +2421,32 @@ public sealed class AccessImportService : IAccessImportService
                     return name.Trim();
             }
 
-            // 3. Find any column containing "TABLE" (case-insensitive)
-            var tableCol = schema.Columns.Cast<DataColumn>()
-                .FirstOrDefault(c => c.ColumnName.Contains("TABLE", StringComparison.OrdinalIgnoreCase));
-            if (tableCol is not null)
-            {
-                var value = row[tableCol.Ordinal];
-                var name = value is not DBNull ? value?.ToString() : null;
-                if (!string.IsNullOrWhiteSpace(name))
-                    return name.Trim();
-            }
+            // 3. Any best-effort column containing "TABLE" or "NAME" (provider-specific schemas).
+            var candidateColumns = schema.Columns.Cast<DataColumn>()
+                .Where(c =>
+                    c.ColumnName.Contains("TABLE", StringComparison.OrdinalIgnoreCase) ||
+                    c.ColumnName.Contains("NAME", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c =>
+                {
+                    var col = c.ColumnName;
+                    var hasName = col.Contains("NAME", StringComparison.OrdinalIgnoreCase);
+                    var hasTable = col.Contains("TABLE", StringComparison.OrdinalIgnoreCase);
+                    var isMetadata = col.Contains("TYPE", StringComparison.OrdinalIgnoreCase)
+                        || col.Contains("SCHEMA", StringComparison.OrdinalIgnoreCase)
+                        || col.Contains("CAT", StringComparison.OrdinalIgnoreCase)
+                        || col.Contains("CATALOG", StringComparison.OrdinalIgnoreCase);
 
-            // 4. Find any column containing "NAME" (case-insensitive)
-            var nameCol = schema.Columns.Cast<DataColumn>()
-                .FirstOrDefault(c => c.ColumnName.Contains("NAME", StringComparison.OrdinalIgnoreCase));
-            if (nameCol is not null)
+                    if (hasTable && hasName) return 0;
+                    if (hasName && !isMetadata) return 1;
+                    if (hasTable && !isMetadata) return 2;
+                    if (hasName) return 3;
+                    return 4;
+                })
+                .ToList();
+
+            foreach (var candidateColumn in candidateColumns)
             {
-                var value = row[nameCol.Ordinal];
+                var value = row[candidateColumn.Ordinal];
                 var name = value is not DBNull ? value?.ToString() : null;
                 if (!string.IsNullOrWhiteSpace(name))
                     return name.Trim();
@@ -2311,8 +2475,8 @@ public sealed class AccessImportService : IAccessImportService
     /// Handles missing or misnamed TABLE_TYPE column across ODBC/OLEDB providers.
     /// 
     /// Rules:
-    /// - If TABLE_TYPE column exists → must equal "TABLE"
-    /// - If TABLE_TYPE column missing → assume it's a user table (fail-open)
+    /// - If TABLE_TYPE column exists â†’ must equal "TABLE"
+    /// - If TABLE_TYPE column missing â†’ assume it's a user table (fail-open)
     /// 
     /// INTERNAL: Exposed for testing.
     /// </summary>
@@ -2320,13 +2484,13 @@ public sealed class AccessImportService : IAccessImportService
     {
         if (schema?.Columns.Count == 0)
         {
-            // Empty schema → assume it's a user table (fail-open)
+            // Empty schema â†’ assume it's a user table (fail-open)
             return true;
         }
 
         if (!schema!.Columns.Contains("TABLE_TYPE"))
         {
-            // Missing column → assume it's a user table (fail-open, safe default)
+            // Missing column â†’ assume it's a user table (fail-open, safe default)
             return true;
         }
 
@@ -2334,14 +2498,15 @@ public sealed class AccessImportService : IAccessImportService
         {
             var value = row["TABLE_TYPE"];
             if (value is null or DBNull)
-                return true; // Null → assume user table
+                return true; // Null â†’ assume user table
 
             var typeStr = value.ToString() ?? string.Empty;
             return string.Equals(typeStr, "TABLE", StringComparison.OrdinalIgnoreCase);
         }
-        catch
+        catch (Exception ex)
         {
-            // On any error → assume it's a user table
+            System.Diagnostics.Debug.WriteLine($"[CheckIsUserTable] Exception: {ex.GetType().Name}: {ex.Message}");
+            // On any error â†’ assume it's a user table
             return true;
         }
     }
@@ -2355,69 +2520,96 @@ public sealed class AccessImportService : IAccessImportService
     /// - Logs provider type and any schema issues for diagnostics
     /// - Never throws; returns empty list on schema errors
     /// </summary>
-    private static List<string> GetUserTables(OdbcConnection conn, bool includeTemporaryTables = false)
+    private List<string> GetUserTables(OdbcConnection conn, bool includeTemporaryTables = false)
     {
         try
         {
             var schema = conn.GetSchema("Tables");
-            
+            var provider = conn.GetType().Name;
+
             if (schema is null || schema.Rows.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("[GetUserTables] Schema is null or empty. Connection type: " + conn.GetType().Name);
-                return new List<string>();
+                _logger.LogWarning(
+                    "Access schema returned no rows. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Provider: {Provider}.",
+                    0L,
+                    "TablesSchema",
+                    "get-user-tables",
+                    provider);
+                return [];
             }
 
-            // Log provider info for diagnostics
-            var provider = conn.GetType().Name;
-            var hasStandardColumns = schema.Columns.Contains("TABLE_NAME") && schema.Columns.Contains("TABLE_TYPE");
-            if (!hasStandardColumns)
+            var hasTableName = schema.Columns.Contains("TABLE_NAME");
+            var hasTableType = schema.Columns.Contains("TABLE_TYPE");
+            if (!hasTableName || !hasTableType)
             {
-                var columns = string.Join(",", schema.Columns.Cast<DataColumn>().Select(c => c.ColumnName));
-                System.Diagnostics.Debug.WriteLine(
-                    $"[GetUserTables] Non-standard Access schema detected. Provider: {provider}. Available columns: {columns}");
+                _logger.LogWarning(
+                    "Non-standard schema detected. Provider: {Provider}. Columns: {Columns}. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                    provider,
+                    string.Join(",", schema.Columns.Cast<DataColumn>().Select(c => c.ColumnName)),
+                    0L,
+                    "TablesSchema",
+                    "get-user-tables");
             }
 
             var result = new List<string>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
             foreach (DataRow row in schema.Rows)
             {
-                // Check if it's a user table (not system/temporary)
-                if (!CheckIsUserTable(row, schema))
+                var isUserTable = CheckIsUserTable(row, schema);
+                if (!isUserTable)
                     continue;
 
-                // Safely resolve table name across providers
                 var tableName = ResolveTableName(row, schema);
                 if (string.IsNullOrWhiteSpace(tableName))
                     continue;
 
-                // Filter system tables
                 if (tableName.StartsWith("MSys", StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                // Filter private/temporary tables unless requested
                 if (!includeTemporaryTables && Normalize(tableName).Contains("privremena", StringComparison.Ordinal))
                     continue;
 
-                // Deduplicate (case-insensitive)
                 if (seen.Add(tableName))
                     result.Add(tableName);
             }
 
+            _logger.LogInformation(
+                "Resolved Access user tables. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Provider: {Provider}. Count: {Count}.",
+                0L,
+                "TablesSchema",
+                "get-user-tables",
+                provider,
+                result.Count);
             return result;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[GetUserTables] Exception: {ex.GetType().Name}: {ex.Message}");
-            return new List<string>();
+            _logger.LogWarning(
+                ex,
+                "Failed to read Access schema tables. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                0L,
+                "TablesSchema",
+                "get-user-tables");
+            return [];
         }
     }
 
-    private static int RowCount(OdbcConnection conn, string table)
+    private int RowCount(OdbcConnection conn, string table)
     {
+        if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
+        {
+            _logger.LogWarning(
+                "Invalid table name for row count. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Reason: {Reason}.",
+                0L,
+                table ?? "unknown",
+                "row-count",
+                failureReason);
+            return 0;
+        }
+
         try
         {
-            using var cmd = new OdbcCommand($"SELECT COUNT(*) FROM {QuoteAccessIdentifier(table)}", conn);
+            using var cmd = new OdbcCommand($"SELECT COUNT(*) FROM {quotedTable}", conn);
             var result = cmd.ExecuteScalar();
             
             // Handle various return types from different ODBC providers
@@ -2432,15 +2624,31 @@ public sealed class AccessImportService : IAccessImportService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[RowCount] Error counting rows in {table}: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogWarning(
+                ex,
+                "Row count query failed. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                0L,
+                table ?? "unknown",
+                "row-count");
             return 0;
         }
     }
 
-    private static IEnumerable<Dictionary<string, object?>> ReadRows(OdbcConnection conn, string table)
+    private IEnumerable<Dictionary<string, object?>> ReadRows(OdbcConnection conn, string table)
     {
-        using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)}", conn);
-        using var r = cmd.ExecuteReader();
+        if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
+        {
+            _logger.LogWarning(
+                "Invalid table name for row read. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Reason: {Reason}.",
+                0L,
+                table ?? "unknown",
+                "read-rows",
+                failureReason);
+            yield break;
+        }
+
+        using var cmd = new OdbcCommand($"SELECT * FROM {quotedTable}", conn);
+        using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
         if (r is null) yield break;
 
         var names = Enumerable.Range(0, r.FieldCount).Select(i => (idx: i, name: Normalize(r.GetName(i)))).ToList();
@@ -2515,9 +2723,15 @@ public sealed class AccessImportService : IAccessImportService
     private static HashSet<string> ReadColumnNamesNormalized(OdbcConnection conn, string table)
     {
         var cols = new HashSet<string>(StringComparer.Ordinal);
+        if (!TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
+        {
+            System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] Invalid table name '{table}': {failureReason}");
+            return cols;
+        }
+
         try
         {
-            using var cmd = new OdbcCommand($"SELECT * FROM {QuoteAccessIdentifier(table)} WHERE 1=0", conn);
+            using var cmd = new OdbcCommand($"SELECT * FROM {quotedTable} WHERE 1=0", conn);
             using var r = cmd.ExecuteReader();
             
             if (r is null || r.FieldCount == 0)
@@ -2540,7 +2754,7 @@ public sealed class AccessImportService : IAccessImportService
         }
         catch (Exception ex)
         {
-            // Table unreadable – skip with diagnostic log
+            // Table unreadable â€“ skip with diagnostic log
             System.Diagnostics.Debug.WriteLine($"[ReadColumnNamesNormalized] Exception reading {table}: {ex.GetType().Name}: {ex.Message}");
         }
         return cols;
@@ -2548,8 +2762,15 @@ public sealed class AccessImportService : IAccessImportService
 
     private static string Normalize(string? s)
     {
-        if (string.IsNullOrWhiteSpace(s)) return string.Empty;
-        var normalized = s.Normalize(NormalizationForm.FormD);
+        if (string.IsNullOrWhiteSpace(s))
+            return string.Empty;
+
+        return NormalizedStringCache.GetOrAdd(s, static key => NormalizeCore(key));
+    }
+
+    private static string NormalizeCore(string value)
+    {
+        var normalized = value.Normalize(NormalizationForm.FormD);
         Span<char> buffer = stackalloc char[normalized.Length];
         var j = 0;
         foreach (var c in normalized)
@@ -2576,6 +2797,28 @@ public sealed class AccessImportService : IAccessImportService
         return $"[{identifier.Replace("]", "]]")}]";
     }
 
+    private static bool TryGetQuotedTableIdentifier(string? tableName, out string quotedIdentifier, out string failureReason)
+    {
+        quotedIdentifier = string.Empty;
+        failureReason = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            failureReason = "table name is empty";
+            return false;
+        }
+
+        var trimmed = tableName.Trim();
+        if (trimmed.IndexOfAny(['\0', '\r', '\n', ';']) >= 0)
+        {
+            failureReason = "table name contains prohibited characters";
+            return false;
+        }
+
+        quotedIdentifier = QuoteAccessIdentifier(trimmed);
+        return true;
+    }
+
     private sealed record AccessFileSnapshot(string FilePath, bool IsSnapshot, string? Warning);
 
     private static AccessFileSnapshot CreateSnapshotIfLocked(string accessFilePath)
@@ -2599,31 +2842,57 @@ public sealed class AccessImportService : IAccessImportService
             return new AccessFileSnapshot(
                 FilePath: tmpPath,
                 IsSnapshot: true,
-                Warning: $"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Koristi se snapshot kopija '{tmpName}'.");
+                Warning: $"Access baza deluje otvorena (pronaÄ‘en lock fajl '{Path.GetFileName(lockFilePath)}'). Koristi se snapshot kopija '{tmpName}'.");
         }
         catch (Exception ex)
         {
             return new AccessFileSnapshot(
                 FilePath: accessFilePath,
                 IsSnapshot: false,
-                Warning: $"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Snapshot kopija nije uspela ({ex.GetType().Name}). Preporuka: zatvori Access pre importa.");
+                Warning: $"Access baza deluje otvorena (pronaÄ‘en lock fajl '{Path.GetFileName(lockFilePath)}'). Snapshot kopija nije uspela ({ex.GetType().Name}). Preporuka: zatvori Access pre importa.");
         }
     }
 
-    private static void TryDeleteFile(string path)
+    private void TryDeleteFile(
+        string path,
+        string operation,
+        string sourceFileName,
+        long batchId = 0,
+        string tableName = "snapshot")
     {
-        try
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        for (var attempt = 1; attempt <= SnapshotDeleteMaxAttempts; attempt++)
         {
-            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
-                File.Delete(path);
-        }
-        catch
-        {
-            // best effort
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+                return;
+            }
+            catch (Exception ex)
+            {
+                if (attempt >= SnapshotDeleteMaxAttempts)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to delete snapshot file after retries. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. SourceFileName: {SourceFileName}. SnapshotPath: {SnapshotPath}. Attempts: {Attempts}.",
+                        batchId,
+                        tableName,
+                        operation,
+                        sourceFileName,
+                        path,
+                        attempt);
+                    return;
+                }
+
+                Thread.Sleep(SnapshotDeleteRetryDelay);
+            }
         }
     }
 
-    private static void TryAddSampleDataWarnings(
+    private void TryAddSampleDataWarnings(
         OdbcConnection conn,
         AccessImportTablePreview tablePreview,
         IReadOnlyCollection<string> requiredTargets,
@@ -2651,7 +2920,13 @@ public sealed class AccessImportService : IAccessImportService
                 return;
 
             var selectCols = string.Join(", ", mappings.Select(m => QuoteAccessIdentifier(m.Source!)));
-            var sql = $"SELECT TOP {sampleTake} {selectCols} FROM {QuoteAccessIdentifier(tablePreview.TableName)}";
+            if (!TryGetQuotedTableIdentifier(tablePreview.TableName, out var quotedTable, out var failureReason))
+            {
+                warnings.Add($"Preview warning: preskoceno citanje uzorka za tabelu '{tablePreview.TableName}' ({failureReason}).");
+                return;
+            }
+
+            var sql = $"SELECT TOP {sampleTake} {selectCols} FROM {quotedTable}";
 
             using var cmd = new OdbcCommand(sql, conn);
             using var r = cmd.ExecuteReader();
@@ -2725,29 +3000,34 @@ public sealed class AccessImportService : IAccessImportService
             }
 
             var tn = tablePreview.TableName!;
-            AddIf("Id", nullCount, 1, "⚠", warnings, tn, rows);
-            AddIf("Naziv", nullCount, 1, "⚠", warnings, tn, rows);
-            AddIf("Datum", nullCount, 1, "⚠", warnings, tn, rows);
-            AddIf("DatumProdaje", nullCount, 1, "⚠", warnings, tn, rows);
-            AddIf("TipPromene", nullCount, 1, "⚠", warnings, tn, rows);
-            AddIf("IdProdaja", nullCount, 1, "⚠", warnings, tn, rows);
-            AddIf("IdArtikal", nullCount, 1, "⚠", warnings, tn, rows);
-            AddIf("Kolicina", nullCount, 1, "⚠", warnings, tn, rows);
-            AddIf("Cena", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("Id", nullCount, 1, "âš ", warnings, tn, rows);
+            AddIf("Naziv", nullCount, 1, "âš ", warnings, tn, rows);
+            AddIf("Datum", nullCount, 1, "âš ", warnings, tn, rows);
+            AddIf("DatumProdaje", nullCount, 1, "âš ", warnings, tn, rows);
+            AddIf("TipPromene", nullCount, 1, "âš ", warnings, tn, rows);
+            AddIf("IdProdaja", nullCount, 1, "âš ", warnings, tn, rows);
+            AddIf("IdArtikal", nullCount, 1, "âš ", warnings, tn, rows);
+            AddIf("Kolicina", nullCount, 1, "âš ", warnings, tn, rows);
+            AddIf("Cena", nullCount, 1, "âš ", warnings, tn, rows);
 
             foreach (var (k, v) in dupCount.Where(x => x.Value > 0))
             {
-                warnings.Add($"⚠ Tabela '{tn}': duplikati u uzorku za '{k}' = {v} (od {rows} redova).");
+                warnings.Add($"âš  Tabela '{tn}': duplikati u uzorku za '{k}' = {v} (od {rows} redova).");
             }
 
             foreach (var (k, v) in nonPositiveCount.Where(x => x.Value > 0))
             {
-                warnings.Add($"⚠ Tabela '{tn}': {v}/{rows} redova u uzorku ima '{k}' <= 0 ili nije broj.");
+                warnings.Add($"âš  Tabela '{tn}': {v}/{rows} redova u uzorku ima '{k}' <= 0 ili nije broj.");
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // table might be unreadable; keep preview resilient
+            _logger.LogWarning(
+                ex,
+                "Sample data analysis failed. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                0L,
+                tablePreview.TableName ?? "unknown",
+                "preview-sample-analysis");
         }
     }
 
@@ -2774,6 +3054,25 @@ public sealed class AccessImportService : IAccessImportService
 
         var lockPath = Path.Combine(dir, name + lockExt);
         return File.Exists(lockPath) ? lockPath : null;
+    }
+
+    internal static Dictionary<TKey, TValue> ToFirstDictionary<TKey, TValue>(
+        IEnumerable<TValue> source,
+        Func<TValue, TKey> keySelector,
+        IEqualityComparer<TKey>? comparer = null)
+        where TKey : notnull
+    {
+        var output = comparer is null
+            ? new Dictionary<TKey, TValue>()
+            : new Dictionary<TKey, TValue>(comparer);
+
+        foreach (var item in source)
+        {
+            var key = keySelector(item);
+            output.TryAdd(key, item);
+        }
+
+        return output;
     }
 
     private static Dictionary<string, T> BuildDuplicateTolerantLookup<T>(
@@ -2923,9 +3222,10 @@ public sealed class AccessImportService : IAccessImportService
 
     private static void EnsurePlatformSupport()
     {
-        // No platform restriction — ODBC works on Windows, Linux, macOS, and Docker.
-        // Windows:  Microsoft Access Driver (*.mdb, *.accdb) — ships with Windows by default.
+        // No platform restriction â€” ODBC works on Windows, Linux, macOS, and Docker.
+        // Windows:  Microsoft Access Driver (*.mdb, *.accdb) â€” ships with Windows by default.
         // Linux:    Install unixODBC + MDBTools (apt-get install -y unixodbc libodbc2 mdbtools odbc-mdbtools).
     }
 }
+
 

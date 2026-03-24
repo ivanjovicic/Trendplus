@@ -1,5 +1,6 @@
 using Api.Services;
 using System.Data;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Api.Tests;
@@ -162,7 +163,7 @@ public sealed class AccessImportServiceTests
     {
         var schema = CreateStandardSchema("test_table");
 
-        var result = AccessImportService.ResolveTableName(null, schema);
+        var result = AccessImportService.ResolveTableName((DataRow)null!, schema);
 
         Assert.Null(result);
     }
@@ -170,7 +171,13 @@ public sealed class AccessImportServiceTests
     [Fact]
     public void ResolveTableName_WithNullSchema_ReturnsNull()
     {
-        var result = AccessImportService.ResolveTableName(new DataTable().Rows.Add(), null);
+        var schema = new DataTable("Tables");
+        schema.Columns.Add("Any");
+        var row = schema.NewRow();
+        row[0] = "value";
+        schema.Rows.Add(row);
+
+        var result = AccessImportService.ResolveTableName(row, null!);
 
         Assert.Null(result);
     }
@@ -202,13 +209,59 @@ public sealed class AccessImportServiceTests
     public void CheckIsUserTable_WithNullTableTypeValue_DefaultsTrue()
     {
         var schema = CreateStandardSchema();
-        schema.Columns["TABLE_TYPE"].AllowDBNull = true;
+        schema.Columns["TABLE_TYPE"]!.AllowDBNull = true;
         schema.Rows.Add("master", "dbo", "TestTable", DBNull.Value);
         var row = schema.Rows[0];
 
         var result = AccessImportService.CheckIsUserTable(row, schema);
 
         Assert.True(result);
+    }
+
+    [Fact]
+    public void ToFirstDictionary_WithDuplicateKeys_KeepsFirstItem()
+    {
+        var source = new[]
+        {
+            (Id: 1, Name: "first"),
+            (Id: 1, Name: "second"),
+            (Id: 2, Name: "third")
+        };
+
+        var result = AccessImportService.ToFirstDictionary(source, x => x.Id);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("first", result[1].Name);
+        Assert.Equal("third", result[2].Name);
+    }
+
+    [Fact]
+    public void ToFirstDictionary_WithLargeInput_DoesNotThrow_AndPreservesFirstOccurrence()
+    {
+        var source = Enumerable.Range(1, 100_000)
+            .Select(i => (Id: i % 50, Value: i))
+            .ToList();
+
+        var result = AccessImportService.ToFirstDictionary(source, x => x.Id);
+
+        Assert.Equal(50, result.Count);
+        Assert.Equal(50, result[0].Value);
+        Assert.Equal(1, result[1].Value);
+    }
+
+    [Fact]
+    public async Task PreviewAsync_WhenFileDoesNotExist_ReturnsFailSoftResponse()
+    {
+        var service = new AccessImportService(
+            trendDb: null!,
+            analyticsDb: null!,
+            logger: NullLogger<AccessImportService>.Instance);
+
+        var response = await service.PreviewAsync(@"C:\definitely-missing\missing.accdb");
+
+        Assert.False(response.CanImport);
+        Assert.Empty(response.Tables);
+        Assert.Contains(response.Warnings, warning => warning.StartsWith("Preview failed:", StringComparison.Ordinal));
     }
 
     #endregion

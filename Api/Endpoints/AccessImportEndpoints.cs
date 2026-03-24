@@ -7,6 +7,16 @@ namespace Trendplus2.Endpoints;
 
 public static class AccessImportEndpoints
 {
+    private const int BatchListFallbackTimeoutSeconds = 8;
+    private static readonly string[] SchemaAnalysisUnavailableWarnings =
+    [
+        "Access database schema could not be fully analyzed. The ODBC provider may have returned unexpected results. Try again or contact support if issues persist."
+    ];
+    private static readonly string[] UnexpectedSchemaStructureWarnings =
+    [
+        "The Access ODBC provider returned an unexpected schema structure. Unable to enumerate tables. This may be a provider compatibility issue."
+    ];
+
     private sealed record AccessImportRuntimeStatus(
         bool Available,
         string Platform,
@@ -39,13 +49,24 @@ public static class AccessImportEndpoints
         {
             try
             {
-                var rows = await service.GetRecentBatchesAsync(take, ct);
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchListFallbackTimeoutSeconds));
+
+                var rows = await service.GetRecentBatchesAsync(take, timeoutCts.Token);
                 return Results.Ok(rows);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 logger.LogWarning("Request cancelled while loading access import batches.");
                 return Results.StatusCode(499);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Access import batches fallback after exceeding {TimeoutSeconds}s.",
+                    BatchListFallbackTimeoutSeconds);
+                return Results.Ok(Array.Empty<object>());
             }
             catch (NpgsqlException ex)
             {
@@ -145,24 +166,20 @@ public static class AccessImportEndpoints
                 var preview = await service.PreviewAsync(resolved.Path!, ct: ct);
                 return Results.Ok(preview);
             }
-            catch (FileNotFoundException ex)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
-                return Results.BadRequest(new { error = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Results.BadRequest(new { error = ex.Message });
-            }
-            catch (ArgumentException ex)
-            {
-                return Results.BadRequest(new { error = ex.Message });
+                return Results.StatusCode(499);
             }
             catch (OdbcException ex)
             {
-                return Results.Problem(
-                    title: "Access connection failed",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
+                logger.LogWarning(ex, "Access preview ODBC issue. Returning fail-soft preview response.");
+                return Results.Ok(new
+                {
+                    tables = Array.Empty<object>(),
+                    warnings = new[] { $"Preview failed: {ex.GetBaseException().Message}" },
+                    canImport = false,
+                    mappedAccessTables = 0
+                });
             }
             catch (DllNotFoundException ex)
             {
@@ -194,8 +211,8 @@ public static class AccessImportEndpoints
                 logger.LogWarning(ex, "Access import schema handling error - provider returned non-standard schema. Returning best-effort preview.");
                 return Results.Ok(new
                 {
-                    tables = new object[0],
-                    warnings = new[] { "Access database schema could not be fully analyzed. The ODBC provider may have returned unexpected results. Try again or contact support if issues persist." },
+                    tables = Array.Empty<object>(),
+                    warnings = SchemaAnalysisUnavailableWarnings,
                     canImport = false,
                     mappedAccessTables = 0
                 });
@@ -206,8 +223,8 @@ public static class AccessImportEndpoints
                 logger.LogWarning(ex, "Access import schema error - ODBC provider returned non-standard schema structure. Returning best-effort preview.");
                 return Results.Ok(new
                 {
-                    tables = new object[0],
-                    warnings = new[] { "The Access ODBC provider returned an unexpected schema structure. Unable to enumerate tables. This may be a provider compatibility issue." },
+                    tables = Array.Empty<object>(),
+                    warnings = UnexpectedSchemaStructureWarnings,
                     canImport = false,
                     mappedAccessTables = 0
                 });
@@ -215,21 +232,9 @@ public static class AccessImportEndpoints
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Access import preview failed unexpectedly. Exception: {ExceptionType}: {Message}", ex.GetType().Name, ex.GetBaseException().Message);
-                
-                // For schema/provider issues, return 200 with diagnostic warnings
-                // For system failures (unavailable runtime), return 503
-                if (ex is DllNotFoundException or PlatformNotSupportedException)
-                {
-                    return Results.Problem(
-                        title: "Access preview not available",
-                        detail: ex.GetBaseException().Message,
-                        statusCode: StatusCodes.Status503ServiceUnavailable);
-                }
-
-                // Other errors: return 200 with best-effort warning (schema might be readable despite error)
                 return Results.Ok(new
                 {
-                    tables = new object[0],
+                    tables = Array.Empty<object>(),
                     warnings = new[] { $"Access preview encountered an issue: {ex.GetBaseException().Message}" },
                     canImport = false,
                     mappedAccessTables = 0
