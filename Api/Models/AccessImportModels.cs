@@ -24,6 +24,7 @@ namespace Api.Models
         public string Key { get; set; } = string.Empty;
         public string? TableName { get; set; }
         public int RowCount { get; set; }
+        public string RowCountMode { get; set; } = "unknown";
         public string MatchStrategy { get; set; } = "none";
         public List<string> AccessColumns { get; set; } = new();
         public List<AccessImportFieldMappingPreview> FieldMappings { get; set; } = new();

@@ -152,8 +152,8 @@ public static class AccessImportEndpoints
             if (!runtimeStatus.Available)
             {
                 return Results.Problem(
-                    title: "Access ODBC runtime missing",
-                    detail: runtimeStatus.Detail ?? "Access preview is unavailable on this server because required ODBC runtime libraries are missing.",
+                    title: "Access import runtime missing",
+                    detail: runtimeStatus.Detail ?? "Access preview is unavailable on this server because required runtime dependencies are missing.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
@@ -185,8 +185,8 @@ public static class AccessImportEndpoints
             {
                 logger.LogWarning(ex, "Access import preview failed due to missing ODBC runtime dependency.");
                 return Results.Problem(
-                    title: "Access ODBC runtime missing",
-                    detail: "Access preview is unavailable on this server because required ODBC runtime libraries are missing.",
+                    title: "Access import runtime missing",
+                    detail: "Access preview is unavailable on this server because required runtime dependencies are missing.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
             catch (PlatformNotSupportedException ex)
@@ -201,8 +201,8 @@ public static class AccessImportEndpoints
             {
                 logger.LogWarning(ex, "Access import preview failed due to missing native dependency.");
                 return Results.Problem(
-                    title: "Access ODBC runtime missing",
-                    detail: "Access preview is unavailable on this server because required native ODBC libraries are missing.",
+                    title: "Access import runtime missing",
+                    detail: "Access preview is unavailable on this server because required native runtime dependencies are missing.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
             catch (IndexOutOfRangeException ex)
@@ -260,8 +260,8 @@ public static class AccessImportEndpoints
             if (!runtimeStatus.Available)
             {
                 return Results.Problem(
-                    title: "Access ODBC runtime missing",
-                    detail: runtimeStatus.Detail ?? "Access import is unavailable on this server because required ODBC runtime libraries are missing.",
+                    title: "Access import runtime missing",
+                    detail: runtimeStatus.Detail ?? "Access import is unavailable on this server because required runtime dependencies are missing.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
@@ -309,8 +309,8 @@ public static class AccessImportEndpoints
             {
                 logger.LogWarning(ex, "Access import run failed due to missing ODBC runtime dependency.");
                 return Results.Problem(
-                    title: "Access ODBC runtime missing",
-                    detail: "Access import is unavailable on this server because required ODBC runtime libraries are missing.",
+                    title: "Access import runtime missing",
+                    detail: "Access import is unavailable on this server because required runtime dependencies are missing.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
             catch (PlatformNotSupportedException ex)
@@ -325,8 +325,8 @@ public static class AccessImportEndpoints
             {
                 logger.LogWarning(ex, "Access import run failed due to missing native dependency.");
                 return Results.Problem(
-                    title: "Access ODBC runtime missing",
-                    detail: "Access import is unavailable on this server because required native ODBC libraries are missing.",
+                    title: "Access import runtime missing",
+                    detail: "Access import is unavailable on this server because required native runtime dependencies are missing.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
             catch (IndexOutOfRangeException ex)
@@ -401,16 +401,11 @@ public static class AccessImportEndpoints
         if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
         {
             var missing = new List<string>();
+            if (!IsCommandAvailable("mdb-tables"))
+                missing.Add("mdb-tables");
 
-            if (!TryLoadNativeLibrary("libodbc.so.2") && !TryLoadNativeLibrary("libodbc.so"))
-            {
-                missing.Add("unixODBC runtime (libodbc.so.2)");
-            }
-
-            if (OperatingSystem.IsLinux() && !IsMdbToolsDriverRegistered())
-            {
-                missing.Add("MDBTools ODBC driver registration (/etc/odbcinst.ini)");
-            }
+            if (!IsCommandAvailable("mdb-export"))
+                missing.Add("mdb-export");
 
             if (missing.Count == 0)
             {
@@ -421,7 +416,7 @@ public static class AccessImportEndpoints
                     Detail: null);
             }
 
-            var detail = $"Access preview/import is unavailable on this server. Missing: {string.Join(", ", missing)}.";
+            var detail = $"Access preview/import is unavailable on this server. Missing runtime tools: {string.Join(", ", missing)}.";
             return new AccessImportRuntimeStatus(
                 Available: false,
                 Platform: OperatingSystem.IsLinux() ? "linux" : "macos",
@@ -436,14 +431,27 @@ public static class AccessImportEndpoints
             Detail: "Access preview/import is unavailable on this server platform.");
     }
 
-    private static bool TryLoadNativeLibrary(string name)
+    private static bool IsCommandAvailable(string command)
     {
         try
         {
-            if (NativeLibrary.TryLoad(name, out var handle))
+            var pathValue = Environment.GetEnvironmentVariable("PATH");
+            if (string.IsNullOrWhiteSpace(pathValue))
+                return false;
+
+            var extensions = OperatingSystem.IsWindows()
+                ? (Environment.GetEnvironmentVariable("PATHEXT")?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    ?? [".exe", ".cmd", ".bat"])
+                : [string.Empty];
+
+            foreach (var directory in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                NativeLibrary.Free(handle);
-                return true;
+                foreach (var extension in extensions)
+                {
+                    var candidate = Path.Combine(directory, command + extension);
+                    if (File.Exists(candidate))
+                        return true;
+                }
             }
         }
         catch
@@ -452,23 +460,6 @@ public static class AccessImportEndpoints
         }
 
         return false;
-    }
-
-    private static bool IsMdbToolsDriverRegistered()
-    {
-        const string path = "/etc/odbcinst.ini";
-        if (!File.Exists(path))
-            return false;
-
-        try
-        {
-            var content = File.ReadAllText(path);
-            return content.Contains("[MDBTools]", StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     private static async Task<(bool Success, string? Path, string? Error, bool DeleteAfter)> ResolveSourceFileAsync(

@@ -4,12 +4,16 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using Api.Config;
 using Api.Models;
+using Api.Services.Access;
 using Domain.Model;
 using Domain.Model.Povracaj;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace Api.Services;
@@ -186,11 +190,13 @@ public sealed class AccessImportService : IAccessImportService
         BuildPreviewAliasToTargetByKey();
     private const int SnapshotDeleteMaxAttempts = 3;
     private static readonly TimeSpan SnapshotDeleteRetryDelay = TimeSpan.FromMilliseconds(250);
+    private const int ForeignKeyWarningSampleLimit = 5;
 
     private readonly TrendplusDbContext _trendDb;
     private readonly AnalyticsDbContext _analyticsDb;
     private readonly IAnalyticsCacheService? _analyticsCache;
     private readonly ILogger<AccessImportService> _logger;
+    private readonly AccessImportOptions _options;
 
     // Populated by ImportTrendplus, consumed by SyncAnalyticsAsync for StoresDim upsert
     private Dictionary<int, (string Name, string? Address, string? Phone, string? Manager)> _importedStores = [];
@@ -198,17 +204,27 @@ public sealed class AccessImportService : IAccessImportService
     // CLI fallback state
     private bool _useCliMode;
     private string? _cliFilePath;
+    private int _pendingTrendWrites;
 
     public AccessImportService(
         TrendplusDbContext trendDb,
         AnalyticsDbContext analyticsDb,
         ILogger<AccessImportService> logger,
+        IOptions<AccessImportOptions>? options = null,
         IAnalyticsCacheService? analyticsCache = null)
     {
         _trendDb = trendDb;
         _analyticsDb = analyticsDb;
         _logger = logger;
+        _options = options?.Value ?? new AccessImportOptions();
         _analyticsCache = analyticsCache;
+    }
+
+    private IAccessDataReaderSession CreateReadSession(string accessFilePath)
+    {
+        return OperatingSystem.IsWindows()
+            ? new WindowsAccessSession(accessFilePath, _options, _logger)
+            : new MdbToolsCliSession(accessFilePath, _options, _logger);
     }
 
     private void ResetAccessReadMode(string accessFilePath)
@@ -347,14 +363,16 @@ public sealed class AccessImportService : IAccessImportService
         };
     }
 
-    public Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default)
+    public async Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default)
     {
         var sourceFileName = Path.GetFileName(accessFilePath ?? string.Empty);
+        var operationId = Guid.NewGuid().ToString("N");
         using var previewScope = _logger.BeginScope(new Dictionary<string, object?>
         {
             ["BatchId"] = 0L,
             ["TableName"] = "all",
-            ["Operation"] = "preview"
+            ["Operation"] = "preview",
+            ["OperationId"] = operationId
         });
 
         try
@@ -367,60 +385,70 @@ public sealed class AccessImportService : IAccessImportService
             var snapshot = CreateSnapshotIfLocked(accessFilePath);
             try
             {
-                ResetAccessReadMode(snapshot.FilePath);
-                using var conn = CreateOdbcConnection(snapshot.FilePath);
-                OpenAccessConnectionOrEnableCli(conn, "preview");
-                var tables = GetUserTables(conn, includeTemporaryTables);
-                var tableRowCounts = GetTableRowCounts(conn, tables);
+                await using var session = CreateReadSession(snapshot.FilePath);
+                using var sessionScope = _logger.BeginScope(new Dictionary<string, object?>
+                {
+                    ["AccessReadMode"] = session.Mode
+                });
+                _logger.LogInformation(
+                    "Access preview started. SourceFileName: {SourceFileName}. Mode: {Mode}. IncludeTemporaryTables: {IncludeTemporaryTables}.",
+                    sourceFileName,
+                    session.Mode,
+                    includeTemporaryTables);
+
+                var tables = (await session.GetTablesAsync(includeTemporaryTables, ct))
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
 
                 var map = new Dictionary<string, TableMatch>(StringComparer.OrdinalIgnoreCase)
                 {
-                    ["tipovi_obuce"] = FindTableDetailed(conn, tables, TipoviCandidates),
-                    ["dobavljaci"] = FindTableDetailed(conn, tables, DobavljaciCandidates),
-                    ["sezone"] = FindTableDetailed(conn, tables, SezoneCandidates,
+                    ["tipovi_obuce"] = await FindTableDetailedAsync(session, tables, TipoviCandidates, ct: ct),
+                    ["dobavljaci"] = await FindTableDetailedAsync(session, tables, DobavljaciCandidates, ct: ct),
+                    ["sezone"] = await FindTableDetailedAsync(session, tables, SezoneCandidates,
                         sigRequired: ["idsezona", "naziv"]),
-                    ["artikli"] = FindTableDetailed(conn, tables, ArtikliCandidates,
+                    ["artikli"] = await FindTableDetailedAsync(session, tables, ArtikliCandidates,
                         sigRequired: ["idartikal", "naziv"],
-                        sigBonus: ["nabavnacena", "prodajnacena", "plu"]),
-                    ["prodaja_zaglavlje"] = FindTableDetailed(conn, tables, ProdajaCandidates),
-                    ["prodaja_stavke"] = FindTableDetailed(conn, tables, ProdajaStavkeCandidates),
-                    ["dnevnik_promena"] = FindTableDetailed(conn, tables, DnevnikPromenaCandidates,
+                        sigBonus: ["nabavnacena", "prodajnacena", "plu"], ct: ct),
+                    ["prodaja_zaglavlje"] = await FindTableDetailedAsync(session, tables, ProdajaCandidates, ct: ct),
+                    ["prodaja_stavke"] = await FindTableDetailedAsync(session, tables, ProdajaStavkeCandidates, ct: ct),
+                    ["dnevnik_promena"] = await FindTableDetailedAsync(session, tables, DnevnikPromenaCandidates,
                         sigRequired: ["iddnevnik", "datum"]),
-                    ["povracaj_zaglavlje"] = FindTableDetailed(conn, tables, PovracajCandidates),
-                    ["povracaj_stavke"] = FindTableDetailed(conn, tables, PovracajStavkeCandidates2),
-                    ["nivelacije"] = FindTableDetailed(conn, tables, NivelacijeCandidates,
-                        sigRequired: ["idartikal", "novacena"]),
-                    ["unos_robe"] = FindTableDetailed(conn, tables, UnosRobeCandidates,
-                        sigRequired: ["idartikal", "kolicina", "iddobavljac"]),
-                    ["povratnice"] = FindTableDetailed(conn, tables, PovratniceCandidates,
+                    ["povracaj_zaglavlje"] = await FindTableDetailedAsync(session, tables, PovracajCandidates, ct: ct),
+                    ["povracaj_stavke"] = await FindTableDetailedAsync(session, tables, PovracajStavkeCandidates2, ct: ct),
+                    ["nivelacije"] = await FindTableDetailedAsync(session, tables, NivelacijeCandidates,
+                        sigRequired: ["idartikal", "novacena"], ct: ct),
+                    ["unos_robe"] = await FindTableDetailedAsync(session, tables, UnosRobeCandidates,
+                        sigRequired: ["idartikal", "kolicina", "iddobavljac"], ct: ct),
+                    ["povratnice"] = await FindTableDetailedAsync(session, tables, PovratniceCandidates,
                         sigRequired: ["idartikal", "kolicina"],
-                        sigBonus: ["razlog", "idpovratnice"]),
-                    ["prenos_robe"] = FindTableDetailed(conn, tables, PrenosRobeCandidates,
+                        sigBonus: ["razlog", "idpovratnice"], ct: ct),
+                    ["prenos_robe"] = await FindTableDetailedAsync(session, tables, PrenosRobeCandidates,
                         sigRequired: ["idartikal", "kolicina"],
-                        sigBonus: ["idobjekatiz", "idobjekatulaz", "idobjekat"]),
-                    ["objekti"] = FindTableDetailed(conn, tables, ObjekatCandidates,
-                        sigRequired: ["idobjekat", "nazivobjekta"]),
+                        sigBonus: ["idobjekatiz", "idobjekatulaz", "idobjekat"], ct: ct),
+                    ["objekti"] = await FindTableDetailedAsync(session, tables, ObjekatCandidates,
+                        sigRequired: ["idobjekat", "nazivobjekta"], ct: ct),
                 };
 
                 var response = new AccessImportPreviewResponse
                 {
                     SourceFileName = sourceFileName,
                     CanImport = map["artikli"].TableName is not null,
-                    AvailableTables = tables.OrderBy(x => x).ToList(),
+                    AvailableTables = tables,
                     TotalAccessTables = tables.Count,
-                    AccessTablesWithRows = tableRowCounts.Values.Count(x => x > 0),
-                    TotalAccessRows = tableRowCounts.Values.Sum(),
                     Tables = []
                 };
 
                 if (!string.IsNullOrWhiteSpace(snapshot.Warning))
                     response.Warnings.Add(snapshot.Warning);
 
+                var previewBuilds = new Dictionary<string, PreviewTableBuildResult>(StringComparer.OrdinalIgnoreCase);
                 foreach (var entry in map)
                 {
-                    var tablePreview = BuildTablePreview(conn, entry.Key, entry.Value, tableRowCounts);
-                    response.Tables.Add(tablePreview);
+                    var build = await BuildTablePreviewAsync(session, entry.Key, entry.Value, ct);
+                    previewBuilds[entry.Key] = build;
+                    response.Tables.Add(build.Preview);
 
+                    var tablePreview = build.Preview;
                     if (entry.Key.Equals("prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase)
                         && tablePreview.Found
                         && IsProdajaLineTableByColumns(tablePreview.AccessColumns))
@@ -450,7 +478,8 @@ public sealed class AccessImportService : IAccessImportService
                             response.CanImport = false;
                     }
 
-                    TryAddSampleDataWarnings(conn, tablePreview, req.Value, response.Warnings);
+                    if (previewBuilds.TryGetValue(req.Key, out var build))
+                        TryAddSampleDataWarnings(build.SampleRows, tablePreview, req.Value, response.Warnings);
                 }
 
                 foreach (var tablePreview in response.Tables.Where(t => t.Found && t.HasRows))
@@ -464,6 +493,8 @@ public sealed class AccessImportService : IAccessImportService
                 response.MappedAccessTables = response.Tables.Count(t => t.Found);
                 response.MappedAccessTablesWithRows = response.Tables.Count(t => t.Found && t.HasRows);
                 response.MappedAccessRows = response.Tables.Where(t => t.Found).Sum(t => t.RowCount);
+                response.TotalAccessRows = response.Tables.Sum(t => t.RowCount);
+                response.AccessTablesWithRows = response.Tables.Count(t => t.HasRows);
                 response.RowCoveragePercent = response.TotalAccessRows == 0
                     ? 100d
                     : Math.Round(response.MappedAccessRows * 100d / response.TotalAccessRows, 2);
@@ -473,11 +504,7 @@ public sealed class AccessImportService : IAccessImportService
                     .Select(x => Normalize(x.TableName))
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                response.UnmappedAccessTablesWithRows = tables
-                    .Where(t => !mappedTableKeys.Contains(Normalize(t)))
-                    .Where(t => tableRowCounts.TryGetValue(t, out var rowCount) && rowCount > 0)
-                    .OrderByDescending(t => tableRowCounts[t])
-                    .ToList();
+                response.UnmappedAccessTablesWithRows = [];
 
                 if (response.UnmappedAccessTablesWithRows.Count > 0)
                 {
@@ -502,7 +529,15 @@ public sealed class AccessImportService : IAccessImportService
                 if (foundMovements.Count > 0)
                     response.Warnings.Add($"Pronadjene tabele kretanja zaliha: {string.Join(", ", foundMovements)}.");
 
-                return Task.FromResult(response);
+                _logger.LogInformation(
+                    "Access preview completed. SourceFileName: {SourceFileName}. Mode: {Mode}. DurationTables: {TotalAccessTables}. MappedTables: {MappedAccessTables}. CanImport: {CanImport}.",
+                    sourceFileName,
+                    session.Mode,
+                    response.TotalAccessTables,
+                    response.MappedAccessTables,
+                    response.CanImport);
+
+                return response;
             }
             finally
             {
@@ -523,8 +558,101 @@ public sealed class AccessImportService : IAccessImportService
                 0L,
                 "all",
                 "preview");
-            return Task.FromResult(CreatePreviewFailureResponse(sourceFileName, ex));
+            return CreatePreviewFailureResponse(sourceFileName, ex);
         }
+    }
+
+    private sealed record PreviewTableBuildResult(
+        AccessImportTablePreview Preview,
+        IReadOnlyList<AccessDataRow> SampleRows);
+
+    private async Task<PreviewTableBuildResult> BuildTablePreviewAsync(
+        IAccessDataReaderSession session,
+        string key,
+        TableMatch tableMatch,
+        CancellationToken ct)
+    {
+        var tableName = tableMatch.TableName;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var preview = new AccessImportTablePreview
+        {
+            Key = key,
+            TableName = tableName,
+            MatchStrategy = tableMatch.Strategy,
+            RowCountMode = "unknown"
+        };
+
+        if (string.IsNullOrWhiteSpace(tableName))
+            return new PreviewTableBuildResult(preview, Array.Empty<AccessDataRow>());
+
+        var columns = tableMatch.Columns ?? await session.GetColumnsAsync(tableName, ct);
+        preview.AccessColumns = columns.ToList();
+        preview.FieldMappings = BuildFieldMappingsPreview(key, preview.AccessColumns);
+        preview.TotalMappings = preview.FieldMappings.Count;
+        preview.MatchedMappings = preview.FieldMappings.Count(m =>
+            !string.IsNullOrWhiteSpace(m.SourceColumn) &&
+            m.Status.Equals("matched", StringComparison.OrdinalIgnoreCase));
+        preview.MappingCoveragePercent = preview.TotalMappings == 0
+            ? 100d
+            : Math.Round(preview.MatchedMappings * 100d / preview.TotalMappings, 2);
+
+        var rowCountResult = await session.TryGetExactRowCountAsync(tableName, ct);
+        IReadOnlyList<AccessDataRow> sampleRows = Array.Empty<AccessDataRow>();
+        if (rowCountResult.IsExact)
+        {
+            preview.RowCount = rowCountResult.Count;
+            preview.RowCountMode = rowCountResult.Mode;
+        }
+        else
+        {
+            var sample = await ReadSampleRowsAsync(session, tableName, _options.PreviewSampleTake, ct);
+            sampleRows = sample.Rows;
+            preview.RowCount = sample.Rows.Count;
+            preview.RowCountMode = sample.IsComplete ? "exact" : "sampled";
+        }
+
+        var mappedSourceColumns = preview.FieldMappings
+            .Where(m => !string.IsNullOrWhiteSpace(m.SourceColumn))
+            .Select(m => Normalize(m.SourceColumn))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        preview.UnmappedAccessColumns = preview.AccessColumns
+            .Where(column => !mappedSourceColumns.Contains(Normalize(column)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        sw.Stop();
+        _logger.LogInformation(
+            "Access preview table analyzed. Step: {Step}. TableKey: {TableKey}. TableName: {TableName}. DurationMs: {DurationMs}. RowCount: {RowCount}. RowCountMode: {RowCountMode}. MatchedMappings: {MatchedMappings}.",
+            "preview-table",
+            key,
+            tableName,
+            sw.ElapsedMilliseconds,
+            preview.RowCount,
+            preview.RowCountMode,
+            preview.MatchedMappings);
+
+        return new PreviewTableBuildResult(preview, sampleRows);
+    }
+
+    private async Task<(List<AccessDataRow> Rows, bool IsComplete)> ReadSampleRowsAsync(
+        IAccessDataReaderSession session,
+        string table,
+        int take,
+        CancellationToken ct)
+    {
+        if (take <= 0)
+            return ([], true);
+
+        var rows = new List<AccessDataRow>(take);
+        await using var enumerator = session.ReadRowsAsync(table, ct).GetAsyncEnumerator(ct);
+
+        while (rows.Count < take && await enumerator.MoveNextAsync())
+            rows.Add(enumerator.Current);
+
+        var isComplete = rows.Count < take || !await enumerator.MoveNextAsync();
+        return (rows, isComplete);
     }
 
     private AccessImportTablePreview BuildTablePreview(
@@ -710,6 +838,7 @@ public sealed class AccessImportService : IAccessImportService
             throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", accessFilePath);
 
         var started = DateTime.UtcNow;
+        var operationId = Guid.NewGuid().ToString("N");
         // Ensure DataImportBatches table exists (handles first-ever deploy)
         await EnsureDataImportBatchesTableAsync(ct);
 
@@ -740,16 +869,33 @@ public sealed class AccessImportService : IAccessImportService
         {
             ["BatchId"] = batch.Id,
             ["TableName"] = "all",
-            ["Operation"] = "access-import"
+            ["Operation"] = "access-import",
+            ["OperationId"] = operationId
         });
 
         try
         {
             await using var tx = await _trendDb.Database.BeginTransactionAsync(ct);
+            var originalAutoDetectChanges = _trendDb.ChangeTracker.AutoDetectChangesEnabled;
             try
             {
-                ImportTrendplus(snapshot.FilePath, overwriteExisting, includeTemporaryTables, result);
-                await _trendDb.SaveChangesAsync(ct);
+                _trendDb.ChangeTracker.AutoDetectChangesEnabled = false;
+                _pendingTrendWrites = 0;
+                await using var session = CreateReadSession(snapshot.FilePath);
+                using var sessionScope = _logger.BeginScope(new Dictionary<string, object?>
+                {
+                    ["AccessReadMode"] = session.Mode
+                });
+                _logger.LogInformation(
+                    "Access import started. BatchId: {BatchId}. SourceFileName: {SourceFileName}. Mode: {Mode}. IncludeAnalytics: {IncludeAnalytics}. OverwriteExisting: {OverwriteExisting}. IncludeTemporaryTables: {IncludeTemporaryTables}.",
+                    batch.Id,
+                    batch.SourceFileName,
+                    session.Mode,
+                    includeAnalytics,
+                    overwriteExisting,
+                    includeTemporaryTables);
+                await ImportTrendplusAsync(session, overwriteExisting, includeTemporaryTables, result, ct);
+                await FlushTrendWritesAsync(force: true, ct);
                 await ResetTrendplusSequencesAsync(ct);
 
                 if (includeAnalytics)
@@ -762,11 +908,21 @@ public sealed class AccessImportService : IAccessImportService
                 batch.SummaryJson = JsonSerializer.Serialize(result);
                 await _trendDb.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
+                _logger.LogInformation(
+                    "Access import completed. BatchId: {BatchId}. SourceFileName: {SourceFileName}. Status: {Status}. IncludeAnalytics: {IncludeAnalytics}.",
+                    batch.Id,
+                    batch.SourceFileName,
+                    result.Status,
+                    includeAnalytics);
             }
             catch
             {
                 await tx.RollbackAsync(ct);
                 throw;
+            }
+            finally
+            {
+                _trendDb.ChangeTracker.AutoDetectChangesEnabled = originalAutoDetectChanges;
             }
 
             return result;
@@ -818,7 +974,7 @@ public sealed class AccessImportService : IAccessImportService
         }
     }
 
-    private sealed record TableMatch(string? TableName, string Strategy);
+    private sealed record TableMatch(string? TableName, string Strategy, IReadOnlyList<string>? Columns = null);
 
     public async Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default)
     {
@@ -917,9 +1073,13 @@ public sealed class AccessImportService : IAccessImportService
         return false;
     }
 
+    private sealed record DeleteBatchHeader(
+        long Id,
+        string SourceFileName);
+
     public async Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default)
     {
-        var batch = await _trendDb.DataImportBatches.FindAsync([batchId], ct);
+        var batch = await GetDeleteBatchHeaderAsync(batchId, ct);
         if (batch is null)
             return new DeleteBatchResult { Found = false };
 
@@ -934,51 +1094,123 @@ public sealed class AccessImportService : IAccessImportService
 
         // Delete transactional / master data
         // Stavke must be deleted before zaglavlja (FK constraint), filtered via parent
-        var pvStavkeDeleted = await _trendDb.PovracajStavke
-            .Where(s => _trendDb.PovracajZaglavlja
-                .Where(z => z.DataOrigin == "access")
-                .Select(z => z.Id)
-                .Contains(s.IdPovracaj))
-            .ExecuteDeleteAsync(ct);
-        var pvDeleted2 = await _trendDb.PovracajZaglavlja.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-        var dnDeleted  = await _trendDb.DnevnikPromena   .Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-        var svDeleted  = await _trendDb.ProdajaStavke
-            .Where(s => _trendDb.ProdajaZaglavlja
-                .Where(z => z.DataOrigin == "access")
-                .Select(z => z.Id)
-                .Contains(s.IdProdaja))
-            .ExecuteDeleteAsync(ct);
-        var pvDeleted  = await _trendDb.ProdajaZaglavlja.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-        var arDeleted  = await _trendDb.Artikli         .Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-        var seDeleted  = await _trendDb.Sezone          .Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-        var doDeleted  = await _trendDb.Dobavljaci      .Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-        var tiDeleted  = await _trendDb.TipoviObuce     .Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
+        var pvStavkeDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.PovracajStavke
+                .Where(s => _trendDb.PovracajZaglavlja
+                    .Where(z => z.DataOrigin == "access")
+                    .Select(z => z.Id)
+                    .Contains(s.IdPovracaj))
+                .ExecuteDeleteAsync(ct),
+            "povracaj_stavke",
+            "delete-batch",
+            batchId);
+        var pvDeleted2 = await ExecuteDeleteCompatAsync(
+            () => _trendDb.PovracajZaglavlja.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+            "povracaj_zaglavlje",
+            "delete-batch",
+            batchId);
+        var dnDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.DnevnikPromena.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+            "DnevnikPromena",
+            "delete-batch",
+            batchId);
+        var svDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.ProdajaStavke
+                .Where(s => _trendDb.ProdajaZaglavlja
+                    .Where(z => z.DataOrigin == "access")
+                    .Select(z => z.Id)
+                    .Contains(s.IdProdaja))
+                .ExecuteDeleteAsync(ct),
+            "prodaja_stavke",
+            "delete-batch",
+            batchId);
+        var pvDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.ProdajaZaglavlja.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+            "prodaja_zaglavlje",
+            "delete-batch",
+            batchId);
+        var arDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.Artikli.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+            "Artikli",
+            "delete-batch",
+            batchId);
+        var seDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.Sezone.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+            "Sezone",
+            "delete-batch",
+            batchId);
+        var doDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.Dobavljaci.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+            "Dobavljaci",
+            "delete-batch",
+            batchId);
+        var tiDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.TipoviObuce.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+            "TipoviObuce",
+            "delete-batch",
+            batchId);
 
         if (includeAnalytics)
         {
-            var accessStoreIds = await _analyticsDb.SalesFacts
-                .Where(x => x.DataOrigin == "access")
-                .Select(x => x.StoreId)
-                .Distinct()
-                .ToListAsync(ct);
+            var accessStoreIds = await LoadAccessStoreIdsCompatAsync(batchId, ct);
 
             // Delete analytics data imported from Access (DataOrigin="access")
             // Note: per-batch FK does not exist in analytics tables, so this removes all Access-origin rows.
-            sfDeleted = await _analyticsDb.SalesFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-            slfDeleted = await _analyticsDb.SalesLineFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-            pdDeleted = await _analyticsDb.ProductsDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-            imDeleted = await _analyticsDb.InventoryMovementFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-            suppDeleted = await _analyticsDb.SuppliersDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-            seasDeleted = await _analyticsDb.SeasonsDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-            typeDeleted = await _analyticsDb.FootwearTypesDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct);
-            storeDeleted = await _analyticsDb.StoresDim
-                .Where(x => (x.DataOrigin == "access" || accessStoreIds.Contains(x.StoreId))
-                            && !_analyticsDb.SalesFacts.Any(sf => sf.StoreId == x.StoreId))
-                .ExecuteDeleteAsync(ct);
+            sfDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.SalesFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+                "SalesFacts",
+                "delete-batch-analytics",
+                batchId);
+            slfDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.SalesLineFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+                "SalesLineFacts",
+                "delete-batch-analytics",
+                batchId);
+            pdDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.ProductsDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+                "ProductsDim",
+                "delete-batch-analytics",
+                batchId);
+            imDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.InventoryMovementFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+                "InventoryMovementFacts",
+                "delete-batch-analytics",
+                batchId);
+            suppDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.SuppliersDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+                "SuppliersDim",
+                "delete-batch-analytics",
+                batchId);
+            seasDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.SeasonsDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+                "SeasonsDim",
+                "delete-batch-analytics",
+                batchId);
+            typeDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.FootwearTypesDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+                "FootwearTypesDim",
+                "delete-batch-analytics",
+                batchId);
+            storeDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.StoresDim
+                    .Where(x => (x.DataOrigin == "access" || accessStoreIds.Contains(x.StoreId))
+                                && !_analyticsDb.SalesFacts.Any(sf => sf.StoreId == x.StoreId))
+                    .ExecuteDeleteAsync(ct),
+                "StoresDim",
+                "delete-batch-analytics",
+                batchId);
         }
 
-        _trendDb.DataImportBatches.Remove(batch);
-        await _trendDb.SaveChangesAsync(ct);
+        await ExecuteDeleteCompatAsync(
+            () => _trendDb.AccessImportLogs.Where(x => x.BatchId == batchId).ExecuteDeleteAsync(ct),
+            "AccessImportLog",
+            "delete-batch-logs",
+            batchId);
+        await ExecuteDeleteCompatAsync(
+            () => _trendDb.DataImportBatches.Where(x => x.Id == batchId).ExecuteDeleteAsync(ct),
+            "DataImportBatches",
+            "delete-batch-record",
+            batchId);
 
         var cacheInvalidated = false;
         if (includeAnalytics && _analyticsCache is not null)
@@ -1017,91 +1249,226 @@ public sealed class AccessImportService : IAccessImportService
         };
     }
 
-    private void ImportTrendplus(string accessFilePath, bool overwriteExisting, bool includeTemporaryTables, AccessImportRunResponse result)
+    private async Task<DeleteBatchHeader?> GetDeleteBatchHeaderAsync(long batchId, CancellationToken ct)
     {
-        ResetAccessReadMode(accessFilePath);
-        using var conn = CreateOdbcConnection(accessFilePath);
-        OpenAccessConnectionOrEnableCli(conn, "import");
-
-        var tables = GetUserTables(conn, includeTemporaryTables);
-        var tipovi        = FindTable(conn, tables, TipoviCandidates);
-        var dobavljaci    = FindTable(conn, tables, DobavljaciCandidates);
-        var sezone        = FindTable(conn, tables, SezoneCandidates,   sigRequired: ["idsezona", "naziv"]);
-        var artikli       = FindTable(conn, tables, ArtikliCandidates,  sigRequired: ["idartikal", "naziv"], sigBonus: ["nabavnacena", "prodajnacena", "plu"]);
-        var prodaja       = FindTable(conn, tables, ProdajaCandidates);
-        var prodajaStavke = FindTable(conn, tables, ProdajaStavkeCandidates);
-        var dnevnik       = FindTable(conn, tables, DnevnikPromenaCandidates, sigRequired: ["iddnevnik", "datum"]);
-        var povracaj      = FindTable(conn, tables, PovracajCandidates);
-        var povracajStavke = FindTable(conn, tables, PovracajStavkeCandidates2);
-        // New movement types
-        var nivelacije    = FindTable(conn, tables, NivelacijeCandidates,  sigRequired: ["idartikal", "novacena"]);
-        var unosRobe      = FindTable(conn, tables, UnosRobeCandidates,    sigRequired: ["idartikal", "kolicina", "iddobavljac"]);
-        var povratnice    = FindTable(conn, tables, PovratniceCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["razlog", "idpovratnice"]);
-        var prenosRobe    = FindTable(conn, tables, PrenosRobeCandidates,  sigRequired: ["idartikal", "kolicina"], sigBonus: ["idobjekatiz", "idobjekatulaz", "idobjekat"]);
-        var objekti       = FindTable(conn, tables, ObjekatCandidates,     sigRequired: ["idobjekat", "nazivobjekta"]);
-        var tableRowCounts = GetTableRowCounts(conn, tables);
-        var sourceRowsByTable = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-        void AddSourceRowCount(string key, string? tableName)
+        try
         {
-            if (string.IsNullOrWhiteSpace(tableName))
-                return;
-
-            if (tableRowCounts.TryGetValue(tableName, out var rowCount))
-                sourceRowsByTable[key] = rowCount;
+            return await _trendDb.DataImportBatches
+                .AsNoTracking()
+                .Where(x => x.Id == batchId)
+                .Select(x => new DeleteBatchHeader(x.Id, x.SourceFileName))
+                .FirstOrDefaultAsync(ct);
         }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogWarning(
+                ex,
+                "Delete batch lookup hit legacy schema (missing columns). BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Falling back to compatibility projection.",
+                batchId,
+                "DataImportBatches",
+                "delete-batch-lookup");
 
-        AddSourceRowCount("tipovi_obuce", tipovi);
-        AddSourceRowCount("dobavljaci", dobavljaci);
-        AddSourceRowCount("sezone", sezone);
-        AddSourceRowCount("objekti", objekti);
-        AddSourceRowCount("artikli", artikli);
-        AddSourceRowCount("dnevnik_promena", dnevnik);
-        AddSourceRowCount("prodaja_zaglavlje", prodaja);
-        AddSourceRowCount("prodaja_stavke", prodajaStavke);
-        AddSourceRowCount("povracaj_zaglavlje", povracaj);
-        AddSourceRowCount("povracaj_stavke", povracajStavke);
-        AddSourceRowCount("nivelacije", nivelacije);
-        AddSourceRowCount("unos_robe", unosRobe);
-        AddSourceRowCount("povratnice", povratnice);
-        AddSourceRowCount("prenos_robe", prenosRobe);
+            return await _trendDb.DataImportBatches
+                .AsNoTracking()
+                .Where(x => x.Id == batchId)
+                .Select(x => new DeleteBatchHeader(x.Id, x.SourceFileName))
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            _logger.LogWarning(
+                ex,
+                "Delete batch lookup could not find DataImportBatches table. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                batchId,
+                "DataImportBatches",
+                "delete-batch-lookup");
+            return null;
+        }
+    }
+
+    private async Task<List<int>> LoadAccessStoreIdsCompatAsync(long batchId, CancellationToken ct)
+    {
+        try
+        {
+            return await _analyticsDb.SalesFacts
+                .Where(x => x.DataOrigin == "access")
+                .Select(x => x.StoreId)
+                .Distinct()
+                .ToListAsync(ct);
+        }
+        catch (PostgresException ex) when (IsLegacySchemaArtifact(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "Access analytics store lookup skipped because legacy schema is missing tables or columns. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                batchId,
+                "SalesFacts",
+                "delete-batch-analytics");
+            return [];
+        }
+    }
+
+    private async Task<int> ExecuteDeleteCompatAsync(Func<Task<int>> deleteAction, string tableName, string operation, long batchId)
+    {
+        try
+        {
+            return await deleteAction();
+        }
+        catch (PostgresException ex) when (IsLegacySchemaArtifact(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "Skipping delete for legacy schema artifact. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                batchId,
+                tableName,
+                operation);
+            return 0;
+        }
+    }
+
+    private static bool IsLegacySchemaArtifact(PostgresException ex)
+        => ex.SqlState is PostgresErrorCodes.UndefinedColumn or PostgresErrorCodes.UndefinedTable;
+
+    private async Task ImportTrendplusAsync(
+        IAccessDataReaderSession session,
+        bool overwriteExisting,
+        bool includeTemporaryTables,
+        AccessImportRunResponse result,
+        CancellationToken ct)
+    {
+        var tables = await session.GetTablesAsync(includeTemporaryTables, ct);
+        var tipovi        = await FindTableAsync(session, tables, TipoviCandidates, ct: ct);
+        var dobavljaci    = await FindTableAsync(session, tables, DobavljaciCandidates, ct: ct);
+        var sezone        = await FindTableAsync(session, tables, SezoneCandidates, sigRequired: ["idsezona", "naziv"], ct: ct);
+        var artikli       = await FindTableAsync(session, tables, ArtikliCandidates, sigRequired: ["idartikal", "naziv"], sigBonus: ["nabavnacena", "prodajnacena", "plu"], ct: ct);
+        var prodaja       = await FindTableAsync(session, tables, ProdajaCandidates, ct: ct);
+        var prodajaStavke = await FindTableAsync(session, tables, ProdajaStavkeCandidates, ct: ct);
+        var dnevnik       = await FindTableAsync(session, tables, DnevnikPromenaCandidates, sigRequired: ["iddnevnik", "datum"], ct: ct);
+        var povracaj      = await FindTableAsync(session, tables, PovracajCandidates, ct: ct);
+        var povracajStavke = await FindTableAsync(session, tables, PovracajStavkeCandidates2, ct: ct);
+        var nivelacije    = await FindTableAsync(session, tables, NivelacijeCandidates, sigRequired: ["idartikal", "novacena"], ct: ct);
+        var unosRobe      = await FindTableAsync(session, tables, UnosRobeCandidates, sigRequired: ["idartikal", "kolicina", "iddobavljac"], ct: ct);
+        var povratnice    = await FindTableAsync(session, tables, PovratniceCandidates, sigRequired: ["idartikal", "kolicina"], sigBonus: ["razlog", "idpovratnice"], ct: ct);
+        var prenosRobe    = await FindTableAsync(session, tables, PrenosRobeCandidates, sigRequired: ["idartikal", "kolicina"], sigBonus: ["idobjekatiz", "idobjekatulaz", "idobjekat"], ct: ct);
+        var objekti       = await FindTableAsync(session, tables, ObjekatCandidates, sigRequired: ["idobjekat", "nazivobjekta"], ct: ct);
 
         if (artikli is null)
             throw new InvalidOperationException("Nije pronaÄ‘ena tabela za artikle u ACCDB fajlu.");
 
-        if (tipovi is not null) ImportTipovi(conn, tipovi, overwriteExisting, result);
-        if (dobavljaci is not null) ImportDobavljaci(conn, dobavljaci, overwriteExisting, result);
-        if (sezone is not null) ImportSezone(conn, sezone, overwriteExisting, result);
-        if (objekti is not null) ImportObjekti(conn, objekti, overwriteExisting, result);
-        ImportArtikli(conn, artikli, overwriteExisting, result);
-        if (dnevnik is not null) ImportDnevnikPromena(conn, dnevnik, overwriteExisting, result);
+        if (tipovi is not null)
+            await RunImportStepAsync("import", "tipovi_obuce", tipovi, result, async innerCt =>
+            {
+                await ImportTipoviAsync(session, tipovi, overwriteExisting, result, innerCt);
+                await FlushTrendWritesAsync(force: true, innerCt);
+            }, ct);
+
+        if (dobavljaci is not null)
+            await RunImportStepAsync("import", "dobavljaci", dobavljaci, result, async innerCt =>
+            {
+                await ImportDobavljaciAsync(session, dobavljaci, overwriteExisting, result, innerCt);
+                await FlushTrendWritesAsync(force: true, innerCt);
+            }, ct);
+
+        if (sezone is not null)
+            await RunImportStepAsync("import", "sezone", sezone, result, async innerCt =>
+            {
+                await ImportSezoneAsync(session, sezone, overwriteExisting, result, innerCt);
+                await FlushTrendWritesAsync(force: true, innerCt);
+            }, ct);
+
+        if (objekti is not null)
+            await RunImportStepAsync("import", "objekti", objekti, result, innerCt =>
+                ImportObjektiAsync(session, objekti, overwriteExisting, result, innerCt), ct);
+
+        await RunImportStepAsync("import", "artikli", artikli, result, async innerCt =>
+        {
+            await ImportArtikliAsync(session, artikli, overwriteExisting, result, innerCt);
+            await FlushTrendWritesAsync(force: true, innerCt);
+        }, ct);
+
+        if (dnevnik is not null)
+            await RunImportStepAsync("import", "dnevnik_promena", dnevnik, result, async innerCt =>
+            {
+                await ImportDnevnikPromenaAsync(session, dnevnik, overwriteExisting, result, innerCt);
+                await FlushTrendWritesAsync(force: true, innerCt);
+            }, ct);
 
         var importedProdajaFromLineTable = false;
-        if (prodaja is not null && IsProdajaLineTable(conn, prodaja))
+        var synthesizedProdajaFromDnevnik = false;
+        if (prodaja is not null && await IsProdajaLineTableAsync(session, prodaja, ct))
         {
             importedProdajaFromLineTable = true;
             result.Warnings.Add($"Tabela '{prodaja}' prepoznata je kao tabela stavki prodaje (IDDnevnik/IDArtikal). Uvozim prodaju kroz vezu sa DnevnikPromena.");
-            ImportProdajaFromLineTable(conn, prodaja, overwriteExisting, result);
+            await RunImportStepAsync("import-line-table", "prodaja_zaglavlje", prodaja, result, async innerCt =>
+            {
+                await ImportProdajaFromLineTableAsync(session, prodaja, overwriteExisting, result, innerCt);
+                await FlushTrendWritesAsync(force: true, innerCt);
+            }, ct);
         }
         else
         {
-            if (prodaja is not null) ImportProdaja(conn, prodaja, overwriteExisting, result);
-            if (prodajaStavke is not null) ImportProdajaStavke(conn, prodajaStavke, overwriteExisting, result);
+            if (prodaja is not null)
+                await RunImportStepAsync("import", "prodaja_zaglavlje", prodaja, result, async innerCt =>
+                {
+                    await ImportProdajaAsync(session, prodaja, overwriteExisting, result, innerCt);
+                    await FlushTrendWritesAsync(force: true, innerCt);
+                }, ct);
+            else if (dnevnik is not null)
+            {
+                synthesizedProdajaFromDnevnik = true;
+                await RunImportStepAsync("synthesize", "prodaja_zaglavlje", dnevnik, result, async innerCt =>
+                {
+                    await SynthesizeProdajaFromDnevnikAsync(overwriteExisting, result, innerCt);
+                    await FlushTrendWritesAsync(force: true, innerCt);
+                }, ct);
+            }
+
+                if (prodajaStavke is not null)
+                await RunImportStepAsync("import", "prodaja_stavke", prodajaStavke, result, async innerCt =>
+                {
+                    await ImportProdajaStavkeAsync(session, prodajaStavke, prodaja, overwriteExisting, result, innerCt);
+                    await FlushTrendWritesAsync(force: true, innerCt);
+                }, ct);
         }
 
-        if (povracaj is not null) ImportPovracaj(conn, povracaj, overwriteExisting, result);
-        if (povracajStavke is not null) ImportPovracajStavke(conn, povracajStavke, overwriteExisting, result);
+        if (povracaj is not null)
+            await RunImportStepAsync("import", "povracaj_zaglavlje", povracaj, result, async innerCt =>
+            {
+                await ImportPovracajAsync(session, povracaj, overwriteExisting, result, innerCt);
+                await FlushTrendWritesAsync(force: true, innerCt);
+            }, ct);
 
-        // Movement types â€” all map to DnevnikPromena with different TipPromene values
-        if (nivelacije is not null)  ImportNivelacije(conn, nivelacije, overwriteExisting, result);
-        if (unosRobe is not null)    ImportUnosRobe(conn, unosRobe, overwriteExisting, result);
-        if (povratnice is not null)  ImportPovratnice(conn, povratnice, overwriteExisting, result);
-        if (prenosRobe is not null)  ImportPrenosRobe(conn, prenosRobe, overwriteExisting, result);
+        if (povracajStavke is not null)
+            await RunImportStepAsync("import", "povracaj_stavke", povracajStavke, result, async innerCt =>
+            {
+                await ImportPovracajStavkeAsync(session, povracajStavke, overwriteExisting, result, innerCt);
+                await FlushTrendWritesAsync(force: true, innerCt);
+            }, ct);
 
-        // If Access DB has no dedicated prodaja tables but tracks sales in DnevnikPromena,
-        // synthesize ProdajaZaglavlje + ProdajaStavke from "Prodaja" type journal entries.
-        if (prodaja is null && dnevnik is not null && !importedProdajaFromLineTable)
-            SynthesizeProdajaFromDnevnik(overwriteExisting, result);
+        if (nivelacije is not null)
+            await RunImportStepAsync("import", "nivelacije", nivelacije, result, innerCt =>
+                ImportNivelacijeAsync(session, nivelacije, overwriteExisting, result, innerCt), ct);
+        if (unosRobe is not null)
+            await RunImportStepAsync("import", "unos_robe", unosRobe, result, innerCt =>
+                ImportUnosRobeAsync(session, unosRobe, overwriteExisting, result, innerCt), ct);
+        if (povratnice is not null)
+            await RunImportStepAsync("import", "povratnice", povratnice, result, innerCt =>
+                ImportPovratniceAsync(session, povratnice, overwriteExisting, result, innerCt), ct);
+        if (prenosRobe is not null)
+            await RunImportStepAsync("import", "prenos_robe", prenosRobe, result, innerCt =>
+                ImportPrenosRobeAsync(session, prenosRobe, overwriteExisting, result, innerCt), ct);
+        await FlushTrendWritesAsync(force: true, ct);
+
+        if (prodaja is null && dnevnik is not null && !importedProdajaFromLineTable && !synthesizedProdajaFromDnevnik)
+            await RunImportStepAsync("synthesize", "prodaja_zaglavlje", dnevnik, result, async innerCt =>
+            {
+                await SynthesizeProdajaFromDnevnikAsync(overwriteExisting, result, innerCt);
+                await FlushTrendWritesAsync(force: true, innerCt);
+            }, ct);
+
+        var sourceRowsByTable = result.CoverageByTable
+            .Where(x => x.Value.SourceRows > 0)
+            .ToDictionary(x => x.Key, x => x.Value.SourceRows, StringComparer.OrdinalIgnoreCase);
 
         var importedRowsByTable = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
@@ -1134,9 +1501,1103 @@ public sealed class AccessImportService : IAccessImportService
         {
             importedRowsByTable.TryGetValue(key, out var importedRows);
             if (importedRows == 0)
-            {
                 result.Warnings.Add($"[coverage] Tabela '{key}' ima {sourceRows} redova u Access bazi, ali 0 upisanih/azuriranih redova. Proveri mapiranje i quality podataka.");
+        }
+    }
+
+    private async Task RunImportStepAsync(
+        string step,
+        string tableKey,
+        string? tableName,
+        AccessImportRunResponse result,
+        Func<CancellationToken, Task> action,
+        CancellationToken ct)
+    {
+        var beforeMetric = result.CoverageByTable.TryGetValue(tableKey, out var existingMetric)
+            ? new AccessImportCoverageMetric
+            {
+                SourceRows = existingMetric.SourceRows,
+                AcceptedRows = existingMetric.AcceptedRows,
+                TargetWrites = existingMetric.TargetWrites
             }
+            : new AccessImportCoverageMetric();
+        var beforeImported = GetImportedRowCount(result, tableKey);
+        var started = DateTime.UtcNow;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        _logger.LogInformation(
+            "Access import step started. Step: {Step}. TableKey: {TableKey}. TableName: {TableName}. StartedAtUtc: {StartedAtUtc}.",
+            step,
+            tableKey,
+            tableName ?? "<none>",
+            started);
+
+        await action(ct);
+
+        sw.Stop();
+        var afterMetric = result.CoverageByTable.TryGetValue(tableKey, out var metric)
+            ? metric
+            : new AccessImportCoverageMetric();
+        var afterImported = GetImportedRowCount(result, tableKey);
+
+        _logger.LogInformation(
+            "Access import step completed. Step: {Step}. TableKey: {TableKey}. TableName: {TableName}. DurationMs: {DurationMs}. SourceRows: {SourceRows}. AcceptedRows: {AcceptedRows}. RowsWritten: {RowsWritten}. BatchSize: {BatchSize}.",
+            step,
+            tableKey,
+            tableName ?? "<none>",
+            sw.ElapsedMilliseconds,
+            Math.Max(0, afterMetric.SourceRows - beforeMetric.SourceRows),
+            Math.Max(0, afterMetric.AcceptedRows - beforeMetric.AcceptedRows),
+            Math.Max(0, afterImported - beforeImported),
+            _options.DbSaveBatchSize);
+    }
+
+    private static int GetImportedRowCount(AccessImportRunResponse result, string key)
+        => key.ToLowerInvariant() switch
+        {
+            "tipovi_obuce" => result.TipoviInserted + result.TipoviUpdated,
+            "dobavljaci" => result.DobavljaciInserted + result.DobavljaciUpdated,
+            "sezone" => result.SezoneInserted + result.SezoneUpdated,
+            "objekti" => result.ObjekatInserted + result.ObjekatUpdated,
+            "artikli" => result.ArtikliInserted + result.ArtikliUpdated,
+            "dnevnik_promena" => result.DnevnikInserted + result.DnevnikUpdated,
+            "prodaja_zaglavlje" => result.ProdajaInserted + result.ProdajaUpdated,
+            "prodaja_stavke" => result.ProdajaStavkeInserted + result.ProdajaStavkeUpdated,
+            "povracaj_zaglavlje" => result.PovracajInserted + result.PovracajUpdated,
+            "povracaj_stavke" => result.PovracajStavkeInserted + result.PovracajStavkeUpdated,
+            "nivelacije" => result.NivelacijeInserted,
+            "unos_robe" => result.UnosRobeInserted,
+            "povratnice" => result.PovratnicaInserted,
+            "prenos_robe" => result.PrenosRobeInserted,
+            _ => 0
+        };
+
+    private async Task ImportTipoviAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existing = ToFirstDictionary(_trendDb.TipoviObuce.AsNoTracking().ToList(), x => x.Id);
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "tipovi_obuce");
+            var naziv = S(row, "naziv", "tip", "tipobuce", "name");
+            if (string.IsNullOrWhiteSpace(naziv)) continue;
+            var id = I(row, "id", "idtipobuce", "tipid");
+            if (!id.HasValue || id.Value <= 0) continue;
+            MarkAccepted(result, "tipovi_obuce");
+
+            if (!existing.TryGetValue(id.Value, out var e))
+            {
+                e = new TipObuce { Id = id.Value, Naziv = naziv!, DataOrigin = "access" };
+                _trendDb.TipoviObuce.Add(e);
+                existing[e.Id] = e;
+                result.TipoviInserted++;
+                TrackTrendWrite();
+            }
+            else if (overwriteExisting)
+            {
+                e.Naziv = naziv!;
+                e.DataOrigin = "access";
+                _trendDb.TipoviObuce.Update(e);
+                result.TipoviUpdated++;
+                TrackTrendWrite();
+            }
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportDobavljaciAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existing = ToFirstDictionary(_trendDb.Dobavljaci.AsNoTracking().ToList(), x => x.Id);
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "dobavljaci");
+            var naziv = S(row, "naziv", "dobavljac", "supplier", "name");
+            if (string.IsNullOrWhiteSpace(naziv)) continue;
+            var id = I(row, "id", "iddobavljac", "supplierid");
+            if (!id.HasValue || id.Value <= 0) continue;
+            MarkAccepted(result, "dobavljaci");
+
+            if (!existing.TryGetValue(id.Value, out var e))
+            {
+                e = new Dobavljac
+                {
+                    Id = id.Value,
+                    Naziv = naziv,
+                    Adresa = S(row, "adresa", "address"),
+                    Telefon = S(row, "telefon", "phone", "brteldob", "brteldobav", "tel", "br_tel", "mobilni", "mobile"),
+                    Napomena = S(row, "napomena", "note"),
+                    DataOrigin = "access"
+                };
+                _trendDb.Dobavljaci.Add(e);
+                existing[e.Id] = e;
+                result.DobavljaciInserted++;
+                TrackTrendWrite();
+            }
+            else if (overwriteExisting)
+            {
+                e.Naziv = naziv;
+                e.Adresa = S(row, "adresa", "address");
+                e.Telefon = S(row, "telefon", "phone", "brteldob", "brteldobav", "tel", "br_tel", "mobilni", "mobile");
+                e.Napomena = S(row, "napomena", "note");
+                e.DataOrigin = "access";
+                _trendDb.Dobavljaci.Update(e);
+                result.DobavljaciUpdated++;
+                TrackTrendWrite();
+            }
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportSezoneAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existing = ToFirstDictionary(_trendDb.Sezone.AsNoTracking().ToList(), x => x.Id);
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "sezone");
+            var naziv = S(row, "naziv", "sezona", "name");
+            if (string.IsNullOrWhiteSpace(naziv)) continue;
+            var id = I(row, "id", "idsezona", "seasonid");
+            if (!id.HasValue || id.Value <= 0) continue;
+            MarkAccepted(result, "sezone");
+
+            var datumOd = DT(row, "datumod", "od", "startdate", "sezonapocetak", "sezonaod", "pocetak") ?? DateTime.UtcNow.Date;
+            var datumDo = DT(row, "datumdo", "do", "enddate", "sezonakraj", "sezonadokraj", "kraj") ?? datumOd.AddMonths(6);
+
+            if (!existing.TryGetValue(id.Value, out var e))
+            {
+                e = new Sezona
+                {
+                    Id = id.Value,
+                    Naziv = naziv!,
+                    DatumOd = datumOd,
+                    DatumDo = datumDo,
+                    DataOrigin = "access"
+                };
+                _trendDb.Sezone.Add(e);
+                existing[e.Id] = e;
+                result.SezoneInserted++;
+                TrackTrendWrite();
+            }
+            else if (overwriteExisting)
+            {
+                e.Naziv = naziv!;
+                e.DatumOd = datumOd;
+                e.DatumDo = datumDo;
+                e.DataOrigin = "access";
+                _trendDb.Sezone.Update(e);
+                result.SezoneUpdated++;
+                TrackTrendWrite();
+            }
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportObjektiAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "objekti");
+            var id = I(row, "id", "idobjekat", "storeid", "idobjekta", "poslovnicaid");
+            if (!id.HasValue || id.Value <= 0) continue;
+            MarkAccepted(result, "objekti");
+            var naziv = S(row, "nazivobjekta", "naziv", "storename", "name", "poslovnica",
+                          "ime", "opisobjekta") ?? $"Objekat {id.Value}";
+            _importedStores[id.Value] = (
+                Name: naziv,
+                Address: S(row, "adresa", "address", "ulica"),
+                Phone: S(row, "telefon", "phone", "tel", "mobilni"),
+                Manager: S(row, "menedzer", "manager", "rukovodilac", "vodja", "direktorfiliajle"));
+            result.ObjekatInserted++;
+        }
+    }
+
+    private async Task ImportArtikliAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existing = ToFirstDictionary(_trendDb.Artikli.AsNoTracking().ToList(), x => x.Id);
+        var usedIds = existing.Keys.ToHashSet();
+        var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "artikli");
+            var naziv = S(row,
+                "naziv", "nazivartikal", "nazivarticle", "nazivproizvoda",
+                "opis", "opisartikal", "opisproizvoda", "description", "desc",
+                "proizvod", "name", "productname", "articlename", "itemname", "ime",
+                "artikal", "article", "item", "roba");
+            if (string.IsNullOrWhiteSpace(naziv)) continue;
+            MarkAccepted(result, "artikli");
+            var id = I(row, "id", "idartikal", "productid");
+
+            Artikli? e = null;
+            var sourceId = id.GetValueOrDefault();
+            if (sourceId > 0 && existing.TryGetValue(sourceId, out var found))
+                e = found;
+
+            var isInsert = false;
+            if (e is null)
+            {
+                var assignedId = sourceId;
+                if (assignedId <= 0 || usedIds.Contains(assignedId))
+                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
+                else
+                    usedIds.Add(assignedId);
+
+                e = new Artikli { Id = assignedId };
+                _trendDb.Artikli.Add(e);
+                existing[assignedId] = e;
+                result.ArtikliInserted++;
+                isInsert = true;
+            }
+            else if (overwriteExisting)
+            {
+                result.ArtikliUpdated++;
+            }
+            else
+            {
+                continue;
+            }
+
+            e.PLU = S(row, "plu", "sku", "sifra", "sifraartikla", "barcode", "barkod", "kod", "code", "artikal");
+            e.Naziv = naziv!;
+            e.IDTipObuce = I(row, "idtipobuce", "tipobuceid", "footweartypeid");
+            e.IDDobavljac = I(row, "iddobavljac", "dobavljacid", "supplierid");
+            e.NabavnaCena = D(row, "nabavnacena", "purchaseprice", "cost");
+            e.NabavnaCenaDin = D(row, "nabavnacenadin", "purchasepricersd");
+            e.PrvaProdajnaCena = D(row, "prvaprodajnacena", "firstsaleprice");
+            e.ProdajnaCena = D(row, "prodajnacena", "saleprice", "price");
+            e.Velicina = S(row, "velicina", "size");
+            e.Boja = S(row, "boja", "color");
+            e.Materijal = S(row, "materijal", "material", "materijal_gornjista", "gornjiste",
+                               "upper", "fabric", "sastav", "sastav_gornjista");
+            e.Kolicina = I(row, "kolicina", "kol", "qty", "quantity", "stock", "stanje", "stanjeartikla",
+                              "stanjeartikal", "lager", "zaliha", "zalihe", "raspolozivo", "inventar",
+                              "stockqty", "totalqty", "total_qty", "raspolozivokolicina");
+            e.MinimalnaKolicina = I(row, "minimalnakolicina", "minimumqty", "minqty", "minstock");
+            e.Komentar = S(row, "komentar", "comment", "napomena", "url");
+            e.IDObjekat = I(row, "idobjekat", "storeid");
+            e.IDSezona = I(row, "idsezona", "seasonid");
+            e.Kategorija = S(row, "kategorija", "category");
+            e.Pol = S(row, "pol", "gender");
+            e.ImagePath = S(row, "imagepath", "imageurl", "slika", "image");
+            e.UpdatedAt = DateTime.UtcNow;
+            e.DataOrigin = "access";
+
+            if (!isInsert)
+                _trendDb.Artikli.Update(e);
+
+            TrackTrendWrite();
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportProdajaAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existing = ToFirstDictionary(_trendDb.ProdajaZaglavlja.AsNoTracking().ToList(), x => x.Id);
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "prodaja_zaglavlje");
+            var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
+            if (!id.HasValue || id.Value <= 0) continue;
+            MarkAccepted(result, "prodaja_zaglavlje");
+
+            if (!existing.TryGetValue(id.Value, out var e))
+            {
+                e = new Domain.Model.Prodaja.ProdajaZaglavlje
+                {
+                    Id = id.Value,
+                    BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
+                    DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
+                    NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
+                    IDObjekat = I(row, "idobjekat", "storeid"),
+                    KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
+                    DataOrigin = "access"
+                };
+                _trendDb.ProdajaZaglavlja.Add(e);
+                existing[e.Id] = e;
+                result.ProdajaInserted++;
+                TrackTrendWrite();
+            }
+            else if (overwriteExisting)
+            {
+                e.BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
+                e.DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow;
+                e.NacinPlacanja = S(row, "nacinplacanja", "paymenttype");
+                e.IDObjekat = I(row, "idobjekat", "storeid");
+                e.KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir");
+                e.DataOrigin = "access";
+                _trendDb.ProdajaZaglavlja.Update(e);
+                result.ProdajaUpdated++;
+                TrackTrendWrite();
+            }
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportProdajaStavkeAsync(IAccessDataReaderSession session, string table, string? parentTable, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existing = ToFirstDictionary(_trendDb.ProdajaStavke.AsNoTracking().ToList(), x => x.Id);
+        var usedIds = existing.Keys.ToHashSet();
+        var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+            var saleIds = (await _trendDb.ProdajaZaglavlja
+                    .AsNoTracking()
+                    .Select(x => x.Id)
+                    .ToListAsync(ct))
+                .ToHashSet();
+            // Include any prodaja_zaglavlje entities that were added to the current DbContext
+            // but not yet flushed to the database (pending parents created earlier in this import).
+            var pendingFromTracker = _trendDb.ChangeTracker
+                .Entries<Domain.Model.Prodaja.ProdajaZaglavlje>()
+                .Where(e => e.State == EntityState.Added)
+                .Select(e => e.Entity.Id)
+                .ToHashSet();
+            if (pendingFromTracker.Count > 0)
+                saleIds.UnionWith(pendingFromTracker);
+        // Pre-scan Access parent IDs if parentTable provided
+        HashSet<int> accessSaleIds = new();
+        if (!string.IsNullOrWhiteSpace(parentTable))
+        {
+            accessSaleIds = await ReadIdsFromAccessTableAsync(session, parentTable, ct);
+            var missingSaleIds = accessSaleIds.Except(saleIds).ToList();
+            if (missingSaleIds.Count > 0)
+            {
+                if (_options.AutoInsertMissingParents)
+                {
+                    _logger.LogInformation("Auto-inserting {Count} missing prodaja_zaglavlje rows before importing prodaja_stavke.", missingSaleIds.Count);
+                    var insertedIds = await EnsureProdajaZaglavljeExistsAsync(missingSaleIds, session, overwriteExisting, result, ct);
+                    // Prefer to merge newly inserted ids returned by the helper so we don't need an extra round-trip.
+                    if (insertedIds is not null && insertedIds.Count > 0)
+                        saleIds.UnionWith(insertedIds);
+                    else
+                        saleIds = (await _trendDb.ProdajaZaglavlja.AsNoTracking().Select(x => x.Id).ToListAsync(ct)).ToHashSet();
+                }
+                else if (!_options.SkipInvalidForeignKeys)
+                {
+                    var sample = string.Join(",", missingSaleIds.Take(20));
+                    throw new InvalidOperationException($"prodaja_stavke FK violation: missing parent prodaja ids count={missingSaleIds.Count}, sample={sample}");
+                }
+                else
+                {
+                    _logger.LogWarning("Found {Count} prodaja parent ids present in Access but missing in DB; will skip orphan lines (SkipInvalidForeignKeys=true).", missingSaleIds.Count);
+                }
+            }
+        }
+        var orphanRows = 0;
+        var orphanSamples = new List<string>(ForeignKeyWarningSampleLimit);
+        var rowIndex = 0;
+
+        var sw = Stopwatch.StartNew();
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            rowIndex++;
+            MarkSourceRow(result, "prodaja_stavke");
+            var idProdaja = I(row, "idprodaja", "saleid", "idzaglavlje", "iddnevnik");
+            var idArtikal = I(row, "idartikal", "productid", "artiklid");
+            if (!idProdaja.HasValue || !idArtikal.HasValue)
+                continue;
+
+            if (!saleIds.Contains(idProdaja.Value))
+            {
+                orphanRows++;
+                var sourceRowJson = SerializeRowForDiagnostics(row);
+                if (orphanSamples.Count < ForeignKeyWarningSampleLimit)
+                    orphanSamples.Add($"row {rowIndex}: id_prodaja={idProdaja.Value}");
+
+                _logger.LogWarning(
+                    "Access import detected orphan prodaja_stavke row. TableName: {TableName}. RowIndex: {RowIndex}. InvalidIdProdaja: {InvalidIdProdaja}. SkipInvalidForeignKeys: {SkipInvalidForeignKeys}. SourceRowJson: {SourceRowJson}.",
+                    table,
+                    rowIndex,
+                    idProdaja.Value,
+                    _options.SkipInvalidForeignKeys,
+                    sourceRowJson);
+
+                if (!_options.SkipInvalidForeignKeys)
+                {
+                    throw new InvalidOperationException(
+                        $"Tabela '{table}' sadrzi prodaja_stavke red sa nepostojecim id_prodaja={idProdaja.Value} na redu {rowIndex}. SourceRow={sourceRowJson}");
+                }
+
+                continue;
+            }
+
+            MarkAccepted(result, "prodaja_stavke");
+
+            var id = I(row, "id", "idstavka", "lineid");
+            var qty = I(row, "kolicina", "qty", "quantity") ?? 0;
+            var cena = D(row, "cena", "unitprice", "price") ?? 0m;
+
+            var sourceId = id.GetValueOrDefault();
+            if (sourceId > 0 && existing.TryGetValue(sourceId, out var e))
+            {
+                if (!overwriteExisting) continue;
+                e.IdProdaja = idProdaja.Value;
+                e.IdArtikal = idArtikal.Value;
+                e.Kolicina = qty;
+                e.Cena = cena;
+                _trendDb.ProdajaStavke.Update(e);
+                result.ProdajaStavkeUpdated++;
+                TrackTrendWrite();
+            }
+            else
+            {
+                var assignedId = sourceId;
+                if (assignedId <= 0 || usedIds.Contains(assignedId))
+                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
+                else
+                    usedIds.Add(assignedId);
+
+                var newLine = new Domain.Model.Prodaja.ProdajaStavka
+                {
+                    Id = assignedId,
+                    IdProdaja = idProdaja.Value,
+                    IdArtikal = idArtikal.Value,
+                    Kolicina = qty,
+                    Cena = cena
+                };
+                _trendDb.ProdajaStavke.Add(newLine);
+                existing[newLine.Id] = newLine;
+                result.ProdajaStavkeInserted++;
+                TrackTrendWrite();
+            }
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+
+        sw.Stop();
+        _logger.LogInformation("Import prodaja_stavke finished. Elapsed={Elapsed}s TotalRows={TotalRows} OrphanRows={OrphanRows} Rate={Rate:F1} rows/s", sw.Elapsed.TotalSeconds, rowIndex, orphanRows, rowIndex / Math.Max(1, sw.Elapsed.TotalSeconds));
+
+        if (orphanRows > 0)
+        {
+            var sampleSuffix = orphanSamples.Count > 0
+                ? $" Primeri: {string.Join("; ", orphanSamples)}."
+                : string.Empty;
+            var summary = _options.SkipInvalidForeignKeys
+                ? $"Tabela '{table}' ima {orphanRows} prodaja_stavke redova sa nepostojecim id_prodaja. Redovi su preskoceni zbog AccessImport:SkipInvalidForeignKeys=true.{sampleSuffix}"
+                : $"Tabela '{table}' ima {orphanRows} prodaja_stavke redova sa nepostojecim id_prodaja. Import je zaustavljen zbog AccessImport:SkipInvalidForeignKeys=false.{sampleSuffix}";
+
+            result.Warnings.Add(summary);
+            _logger.LogWarning(
+                "Access import prodaja_stavke FK validation summary. TableName: {TableName}. OrphanRows: {OrphanRows}. SkipInvalidForeignKeys: {SkipInvalidForeignKeys}. Samples: {Samples}.",
+                table,
+                orphanRows,
+                _options.SkipInvalidForeignKeys,
+                string.Join("; ", orphanSamples));
+        }
+    }
+
+    private async Task<bool> IsProdajaLineTableAsync(IAccessDataReaderSession session, string table, CancellationToken ct)
+    {
+        try
+        {
+            var cols = await session.GetColumnsAsync(table, ct);
+            return IsProdajaLineTableByColumns(cols);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[IsProdajaLineTableAsync] Exception for table '{table}': {ex.GetType().Name}: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task ImportDnevnikPromenaAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existing = ToFirstDictionary(_trendDb.DnevnikPromena.AsNoTracking().ToList(), x => x.Id);
+        var dbExistingIds = existing.Keys.ToHashSet();
+        var usedIds = existing.Keys.ToHashSet();
+        var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+        var supplierByKey = _trendDb.Dobavljaci
+            .AsNoTracking()
+            .Where(x => !string.IsNullOrWhiteSpace(x.Naziv))
+            .AsEnumerable()
+            .GroupBy(x => NormalizeLookup(x.Naziv), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
+
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "dnevnik_promena");
+            var id = I(row, "id", "iddnevnik", "iddnevnikpromene", "iddnevnikpromena", "iddnevprom", "idlog", "logid", "seqno");
+            var tip = S(row, "tippromene", "vrstapromene", "vrsta", "tip", "type", "eventtype", "tipprocene", "promena",
+                         "vrstaknjizenjem", "vrstaknjiz", "document", "doctype") ?? "Unos";
+            var datum = DT(row, "datum", "datumizmene", "datumdokumenta", "datumprocene", "date", "eventdate", "datumpromena") ?? DateTime.UtcNow;
+            var iznos = D(row, "iznos", "cena", "prodajnacena", "saleprice", "amount", "total", "vrednost", "ukupno",
+                          "novacena", "novaprodajnacena", "iznospromene") ?? 0m;
+
+            DnevnikPromena? e = null;
+            var sourceId = id.GetValueOrDefault();
+            if (sourceId > 0 && dbExistingIds.Contains(sourceId) && existing.TryGetValue(sourceId, out var found))
+                e = found;
+
+            var isInsert = false;
+            if (e is null)
+            {
+                var assignedId = sourceId;
+                if (assignedId <= 0 || usedIds.Contains(assignedId))
+                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
+                else
+                    usedIds.Add(assignedId);
+
+                e = new DnevnikPromena { Id = assignedId, DataOrigin = "access" };
+                _trendDb.DnevnikPromena.Add(e);
+                existing[assignedId] = e;
+                result.DnevnikInserted++;
+                isInsert = true;
+            }
+            else if (overwriteExisting)
+            {
+                result.DnevnikUpdated++;
+            }
+            else
+            {
+                continue;
+            }
+            MarkAccepted(result, "dnevnik_promena");
+
+            e.TipPromene = tip;
+            e.Datum = datum;
+            e.Iznos = iznos;
+            e.Kolicina = I(row, "kolicina", "kol", "qty", "quantity", "kolicinaproizvoda");
+            e.BrojRacuna = S(row, "brojracuna", "brracuna", "brrach", "brojfakture", "brfakture", "dokument",
+                              "brdokumenta", "brojdokumenta", "racun", "invoice", "receiptnumber", "documentno",
+                              "brnaloga", "brojnaloga", "nalog", "brojkalkulacije");
+
+            var komentar = S(row, "komentar", "comment", "napomena", "opis", "beleska", "info", "memo");
+            var dobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid", "idd", "iddob");
+            if (!dobavljacId.HasValue)
+            {
+                var dobavljacNaziv = S(row, "dobavljac", "dobavljacnaziv", "supplier", "suppliername", "nazivdobavljaca");
+                dobavljacId = ResolveSupplierIdByName(dobavljacNaziv, supplierByKey);
+            }
+
+            if (!dobavljacId.HasValue)
+            {
+                var extractedSupplier = ExtractSupplierNameFromComment(komentar);
+                dobavljacId = ResolveSupplierIdByName(extractedSupplier, supplierByKey);
+            }
+
+            e.DobavljacId = dobavljacId;
+            e.ArtikalId = I(row, "idartikal", "idartikal", "artikalid", "artiklid", "productid", "idproizvoda",
+                            "artikal", "sifra", "sifraartikla", "kodartikla");
+            e.StaraProdajnaCena = D(row, "staracena", "stara", "staraprodajnacena", "cenabefore", "oldprice", "cenabefore");
+            e.NovaProdajnaCena = D(row, "novacena", "nova", "novaprodajnacena", "cenaafter", "newprice");
+            e.Komentar = komentar;
+            e.KorisnikIme = S(row, "korisnik", "korisnikime", "user", "username", "operater", "radnik", "ime",
+                              "operator", "prodavac", "cashier");
+            e.IDObjekat = I(row, "idobjekat", "storeid", "idobjekta", "objekatid", "idposlovnice", "prodavnicaid");
+            e.RedniBroj = I(row, "rednibr", "rednibrojartikla", "rbrartikla", "rbr", "rbroj",
+                             "sek", "seqno", "seq", "linebr", "redni");
+            e.DataOrigin = "access";
+
+            if (!isInsert)
+                _trendDb.DnevnikPromena.Update(e);
+
+            TrackTrendWrite();
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportProdajaFromLineTableAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existingZaglavlja = ToFirstDictionary(_trendDb.ProdajaZaglavlja.AsNoTracking().ToList(), x => x.Id);
+        var existingBrojevi = BuildDuplicateTolerantLookup(
+            _trendDb.ProdajaZaglavlja
+                .AsNoTracking()
+                .Where(x => x.BrojRacuna != null)
+                .OrderBy(x => x.Id)
+                .ToList(),
+            x => x.BrojRacuna,
+            out var duplicateBrojevi);
+        AddDuplicateKeyWarning(
+            result.Warnings,
+            duplicateBrojevi,
+            "Postoje duplikati broja racuna u postojecoj tabeli prodaje. Import ce koristiti prvi pronadjeni zapis za svaki broj racuna");
+
+        var dnevnikById = _trendDb.DnevnikPromena.AsNoTracking()
+            .OrderBy(x => x.Id)
+            .ToDictionary(x => x.Id, x => x);
+
+        var maxStavkaId = _trendDb.ProdajaStavke.AsNoTracking().Any()
+            ? _trendDb.ProdajaStavke.AsNoTracking().Max(x => x.Id)
+            : 0;
+
+        var existingLineCounts = _trendDb.ProdajaStavke
+            .AsNoTracking()
+            .GroupBy(x => new { x.IdProdaja, x.IdArtikal, x.Kolicina, x.Cena })
+            .Select(g => new
+            {
+                g.Key.IdProdaja,
+                g.Key.IdArtikal,
+                g.Key.Kolicina,
+                g.Key.Cena,
+                Count = g.Count()
+            })
+            .AsEnumerable()
+            .ToDictionary(
+                x => BuildProdajaLineKey(x.IdProdaja, x.IdArtikal, x.Kolicina, x.Cena),
+                x => x.Count,
+                StringComparer.OrdinalIgnoreCase);
+
+        var consumedExistingLineCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "prodaja_zaglavlje");
+            MarkSourceRow(result, "prodaja_stavke");
+
+            var sourceSaleId = I(row, "iddnevnik", "idprodaja", "saleid", "iddnevnikpromene", "iddnevnikpromena");
+            var idArtikal = I(row, "idartikal", "artikalid", "artiklid", "productid");
+            if (!sourceSaleId.HasValue || sourceSaleId.Value <= 0 || !idArtikal.HasValue || idArtikal.Value <= 0)
+                continue;
+
+            MarkAccepted(result, "prodaja_zaglavlje");
+            MarkAccepted(result, "prodaja_stavke");
+
+            var qty = I(row, "kolicina", "qty", "quantity") ?? 1;
+            if (qty <= 0)
+                qty = 1;
+
+            var cena = D(row, "prodajnacena", "cena", "unitprice", "price") ?? 0m;
+            var idObjekat = I(row, "idobjekat", "storeid");
+
+            if (!existingZaglavlja.TryGetValue(sourceSaleId.Value, out var zaglavlje))
+            {
+                dnevnikById.TryGetValue(sourceSaleId.Value, out var dnevnik);
+                zaglavlje = new Domain.Model.Prodaja.ProdajaZaglavlje
+                {
+                    Id = sourceSaleId.Value,
+                    BrojRacuna = dnevnik?.BrojRacuna ?? S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
+                    DatumProdaje = dnevnik?.Datum ?? DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
+                    NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
+                    IDObjekat = idObjekat,
+                    DataOrigin = "access"
+                };
+                _trendDb.ProdajaZaglavlja.Add(zaglavlje);
+                existingZaglavlja[zaglavlje.Id] = zaglavlje;
+                if (!string.IsNullOrWhiteSpace(zaglavlje.BrojRacuna))
+                    existingBrojevi[zaglavlje.BrojRacuna] = zaglavlje;
+                result.ProdajaInserted++;
+                TrackTrendWrite();
+
+                // Persist the newly created parent before inserting child rows while AutoDetectChanges is disabled.
+                await FlushTrendWritesAsync(force: true, ct);
+            }
+            else if (overwriteExisting)
+            {
+                if (string.IsNullOrWhiteSpace(zaglavlje.BrojRacuna))
+                    zaglavlje.BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
+                if (zaglavlje.IDObjekat is null && idObjekat.HasValue)
+                    zaglavlje.IDObjekat = idObjekat.Value;
+                zaglavlje.DataOrigin = "access";
+                _trendDb.ProdajaZaglavlja.Update(zaglavlje);
+                result.ProdajaUpdated++;
+                TrackTrendWrite();
+            }
+
+            var lineKey = BuildProdajaLineKey(zaglavlje.Id, idArtikal.Value, qty, cena);
+            existingLineCounts.TryGetValue(lineKey, out var existingCountForKey);
+            consumedExistingLineCounts.TryGetValue(lineKey, out var consumedCountForKey);
+
+            if (consumedCountForKey < existingCountForKey)
+            {
+                consumedExistingLineCounts[lineKey] = consumedCountForKey + 1;
+                continue;
+            }
+
+            _trendDb.ProdajaStavke.Add(new Domain.Model.Prodaja.ProdajaStavka
+            {
+                Id = ++maxStavkaId,
+                IdProdaja = zaglavlje.Id,
+                IdArtikal = idArtikal.Value,
+                Kolicina = qty,
+                Cena = cena
+            });
+            result.ProdajaStavkeInserted++;
+            TrackTrendWrite();
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportPovracajAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existing = ToFirstDictionary(_trendDb.PovracajZaglavlja.AsNoTracking().ToList(), x => x.Id);
+        var usedIds = existing.Keys.ToHashSet();
+        var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+        var existingByBroj = BuildDuplicateTolerantLookup(
+            _trendDb.PovracajZaglavlja
+                .AsNoTracking()
+                .Where(x => x.BrojZapisnika != null)
+                .OrderBy(x => x.Id)
+                .ToList(),
+            x => x.BrojZapisnika,
+            out var duplicateBrojevi);
+        AddDuplicateKeyWarning(
+            result.Warnings,
+            duplicateBrojevi,
+            "Postoje duplikati broja zapisnika u postojecoj tabeli povracaja. Import ce koristiti prvi pronadjeni zapis za svaki broj zapisnika");
+        var seq = 0;
+
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "povracaj_zaglavlje");
+
+            var id = I(row, "id", "idpovracaj", "returnid");
+            var idDobavljac = I(row, "iddobavljac", "dobavljacid", "supplierid") ?? 0;
+            var datum = DT(row, "datumazapisnika", "datumpovracaja", "datum", "date") ?? DateTime.UtcNow;
+            var broj = S(row, "brojzapisnika", "brozapisnika", "broj", "recordnumber", "returnno")
+                ?? $"ZP-{datum:yyyyMMdd}-{++seq:D4}";
+
+            PovracajZaglavlje? e = null;
+            var sourceId = id.GetValueOrDefault();
+            if (sourceId > 0 && existing.TryGetValue(sourceId, out var foundById))
+                e = foundById;
+            else if (existingByBroj.TryGetValue(broj, out var foundByBroj))
+                e = foundByBroj;
+
+            var isInsert = false;
+            if (e is null)
+            {
+                var assignedId = sourceId;
+                if (assignedId <= 0 || usedIds.Contains(assignedId))
+                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
+                else
+                    usedIds.Add(assignedId);
+
+                e = new PovracajZaglavlje
+                {
+                    Id = assignedId,
+                    BrojZapisnika = broj,
+                    IDDobavljac = idDobavljac,
+                    DatumPovracaja = datum,
+                    DatumKreiranja = datum,
+                    Status = "Kreiran",
+                    DataOrigin = "access"
+                };
+                _trendDb.PovracajZaglavlja.Add(e);
+                existing[e.Id] = e;
+                existingByBroj[broj] = e;
+                result.PovracajInserted++;
+                isInsert = true;
+                TrackTrendWrite();
+            }
+            else if (overwriteExisting)
+            {
+                result.PovracajUpdated++;
+            }
+            else
+            {
+                continue;
+            }
+
+            MarkAccepted(result, "povracaj_zaglavlje");
+
+            e.BrojZapisnika = broj;
+            e.IDDobavljac = idDobavljac;
+            e.DatumPovracaja = datum;
+            e.RazlogPovracaja = S(row, "razlog", "reason", "razlogpovracaja");
+            e.Status = S(row, "status") ?? "Kreiran";
+            e.UkupanIznos = D(row, "ukupaniznos", "total", "iznos") ?? 0m;
+            e.Komentar = S(row, "komentar", "comment", "napomena");
+            e.KreatorKorisnik = S(row, "korisnik", "kreirao", "user", "username", "operater");
+            e.DataOrigin = "access";
+
+            if (!isInsert)
+                _trendDb.PovracajZaglavlja.Update(e);
+
+            TrackTrendWrite();
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportPovracajStavkeAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var existing = ToFirstDictionary(_trendDb.PovracajStavke.AsNoTracking().ToList(), x => x.Id);
+        var usedIds = existing.Keys.ToHashSet();
+        var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+        var povracajIds = _trendDb.PovracajZaglavlja.AsNoTracking().Select(x => x.Id).ToHashSet();
+
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "povracaj_stavke");
+
+            var idPovracaj = I(row, "idpovracaj", "returnid", "idzaglavlje");
+            var idArtikal = I(row, "idartikal", "productid", "artiklid");
+            if (!idPovracaj.HasValue || !idArtikal.HasValue || !povracajIds.Contains(idPovracaj.Value))
+                continue;
+
+            MarkAccepted(result, "povracaj_stavke");
+
+            var id = I(row, "id", "idstavka", "lineid");
+            var qty = I(row, "kolicina", "qty", "quantity") ?? 1;
+            var cena = D(row, "cena", "unitprice", "price", "nabavnacena", "purchaseprice") ?? 0m;
+            var razlog = S(row, "razlog", "reason");
+            var stanje = S(row, "stanjeartikal", "stanjearticle", "condition", "status");
+
+            var sourceId = id.GetValueOrDefault();
+            if (sourceId > 0 && existing.TryGetValue(sourceId, out var e))
+            {
+                if (!overwriteExisting)
+                    continue;
+
+                e.IdPovracaj = idPovracaj.Value;
+                e.IdArtikal = idArtikal.Value;
+                e.Kolicina = qty;
+                e.Cena = cena;
+                e.Razlog = razlog;
+                e.StanjeArtikla = stanje;
+                _trendDb.PovracajStavke.Update(e);
+                result.PovracajStavkeUpdated++;
+                TrackTrendWrite();
+            }
+            else
+            {
+                var assignedId = sourceId;
+                if (assignedId <= 0 || usedIds.Contains(assignedId))
+                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
+                else
+                    usedIds.Add(assignedId);
+
+                var newLine = new PovracajStavka
+                {
+                    Id = assignedId,
+                    IdPovracaj = idPovracaj.Value,
+                    IdArtikal = idArtikal.Value,
+                    Kolicina = qty,
+                    Cena = cena,
+                    Razlog = razlog,
+                    StanjeArtikla = stanje
+                };
+                _trendDb.PovracajStavke.Add(newLine);
+                existing[newLine.Id] = newLine;
+                result.PovracajStavkeInserted++;
+                TrackTrendWrite();
+            }
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportNivelacijeAsync(IAccessDataReaderSession session, string? table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        if (table is null)
+            return;
+
+        var dnevnikById = _trendDb.DnevnikPromena.AsNoTracking()
+            .OrderBy(x => x.Id)
+            .ToDictionary(x => x.Id, x => x);
+
+        var usedIds = GetDnevnikPromenaUsedIds();
+        var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "nivelacije");
+
+            var idArtikal = I(row, "idartikal", "artikalid", "productid", "id_artikal");
+            if (!idArtikal.HasValue)
+                continue;
+
+            var novaCena = D(row, "novacena", "novaprodajnacena", "newprice", "cena");
+            if (!novaCena.HasValue)
+                continue;
+
+            MarkAccepted(result, "nivelacije");
+
+            var staraCena = D(row, "staracena", "staraprodajnacena", "oldprice");
+            var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
+            var iznos = Math.Abs((novaCena.Value - (staraCena ?? 0m)) * kolicina);
+            var srcId = I(row, "iddnevnik", "id", "idlog") ?? 0;
+
+            dnevnikById.TryGetValue(srcId, out var sourceDnevnik);
+            var eventDate = DT(row, "datum", "datumnivelacije", "date")
+                ?? sourceDnevnik?.Datum
+                ?? DateTime.UtcNow;
+
+            var assignedId = srcId > 0 && !usedIds.Contains(srcId)
+                ? srcId
+                : AllocateNextId(usedIds, ref next);
+
+            usedIds.Add(assignedId);
+            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            {
+                Id = assignedId,
+                TipPromene = TipPromeneConstants.Nivelacija,
+                Datum = eventDate,
+                ArtikalId = idArtikal.Value,
+                Kolicina = kolicina,
+                StaraProdajnaCena = staraCena,
+                NovaProdajnaCena = novaCena,
+                Iznos = iznos,
+                IDObjekat = I(row, "idobjekat", "storeid", "idobjekta") ?? sourceDnevnik?.IDObjekat,
+                RedniBroj = I(row, "rednibr", "rbr", "seqno"),
+                BrojRacuna = S(row, "brdokumenta", "iddnevnik"),
+                DobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid") ?? sourceDnevnik?.DobavljacId,
+                DataOrigin = "access"
+            });
+            result.NivelacijeInserted++;
+            TrackTrendWrite();
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportUnosRobeAsync(IAccessDataReaderSession session, string? table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        if (table is null)
+            return;
+
+        var usedIds = GetDnevnikPromenaUsedIds();
+        var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "unos_robe");
+
+            var idArtikal = I(row, "idartikal", "artikalid", "productid");
+            if (!idArtikal.HasValue)
+                continue;
+
+            MarkAccepted(result, "unos_robe");
+
+            var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
+            var nabavnaCena = D(row, "nabavnacena", "purchaseprice", "cena", "nc") ?? 0m;
+            var srcId = I(row, "iddnevnik", "id", "idlog") ?? 0;
+            var assignedId = srcId > 0 && !usedIds.Contains(srcId)
+                ? srcId
+                : AllocateNextId(usedIds, ref next);
+
+            usedIds.Add(assignedId);
+            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            {
+                Id = assignedId,
+                TipPromene = TipPromeneConstants.UlazRobe,
+                Datum = DT(row, "datum", "datumunosarobe", "datumulaza", "date") ?? DateTime.UtcNow,
+                ArtikalId = idArtikal.Value,
+                Kolicina = kolicina,
+                NovaProdajnaCena = nabavnaCena,
+                Iznos = nabavnaCena * kolicina,
+                DobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid"),
+                IDObjekat = I(row, "idobjekat", "storeid"),
+                RedniBroj = I(row, "rednibr", "rbr", "seqno"),
+                BrojRacuna = S(row, "brdokumenta", "iddnevnik"),
+                DataOrigin = "access"
+            });
+            result.UnosRobeInserted++;
+            TrackTrendWrite();
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportPovratniceAsync(IAccessDataReaderSession session, string? table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        if (table is null)
+            return;
+
+        var usedIds = GetDnevnikPromenaUsedIds();
+        var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "povratnice");
+
+            var idArtikal = I(row, "idartikal", "artikalid", "productid");
+            if (!idArtikal.HasValue)
+                continue;
+
+            MarkAccepted(result, "povratnice");
+
+            var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
+            var cena = D(row, "cena", "prodajnacena", "unitprice", "pc") ?? 0m;
+            var srcId = I(row, "iddnevnik", "id", "idpovratnice", "idlog") ?? 0;
+            var assignedId = srcId > 0 && !usedIds.Contains(srcId)
+                ? srcId
+                : AllocateNextId(usedIds, ref next);
+
+            usedIds.Add(assignedId);
+            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            {
+                Id = assignedId,
+                TipPromene = TipPromeneConstants.PovratKupca,
+                Datum = DT(row, "datum", "datumpovratnice", "date") ?? DateTime.UtcNow,
+                ArtikalId = idArtikal.Value,
+                Kolicina = kolicina,
+                NovaProdajnaCena = cena,
+                Iznos = cena * kolicina,
+                IDObjekat = I(row, "idobjekat", "storeid"),
+                RedniBroj = I(row, "rednibr", "rbr"),
+                Komentar = S(row, "razlog", "reason", "napomena"),
+                DataOrigin = "access"
+            });
+            result.PovratnicaInserted++;
+            TrackTrendWrite();
+
+            await FlushTrendWritesAsync(force: false, ct);
+        }
+    }
+
+    private async Task ImportPrenosRobeAsync(IAccessDataReaderSession session, string? table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        if (table is null)
+            return;
+
+        var usedIds = GetDnevnikPromenaUsedIds();
+        var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+
+        await foreach (var row in session.ReadRowsAsync(table, ct))
+        {
+            MarkSourceRow(result, "prenos_robe");
+
+            var idArtikal = I(row, "idartikal", "artikalid", "productid");
+            if (!idArtikal.HasValue)
+                continue;
+
+            MarkAccepted(result, "prenos_robe");
+
+            var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
+            var datum = DT(row, "datum", "datumprenos", "datumtransfera", "date") ?? DateTime.UtcNow;
+            var cena = D(row, "cena", "nabavnacena", "prodajnacena") ?? 0m;
+            var idIz = I(row, "idobjekatiz", "idobjekatizlaza", "fromstore", "idobjekat");
+            var idU = I(row, "idobjekatulaz", "idobjekatdolaz", "tostore", "idobjekatodredista");
+            var brDok = S(row, "iddnevnik", "brdokumenta", "brprenos");
+
+            var idOut = AllocateNextId(usedIds, ref next);
+            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            {
+                Id = idOut,
+                TipPromene = TipPromeneConstants.PrenosIzlaz,
+                Datum = datum,
+                ArtikalId = idArtikal.Value,
+                Kolicina = -kolicina,
+                NovaProdajnaCena = cena,
+                Iznos = cena * kolicina,
+                IDObjekat = idIz,
+                BrojRacuna = brDok,
+                DataOrigin = "access"
+            });
+            result.PrenosRobeInserted++;
+            TrackTrendWrite();
+
+            var idIn = AllocateNextId(usedIds, ref next);
+            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            {
+                Id = idIn,
+                TipPromene = TipPromeneConstants.PrenosUlaz,
+                Datum = datum,
+                ArtikalId = idArtikal.Value,
+                Kolicina = kolicina,
+                NovaProdajnaCena = cena,
+                Iznos = cena * kolicina,
+                IDObjekat = idU,
+                BrojRacuna = brDok,
+                DataOrigin = "access"
+            });
+            result.PrenosRobeInserted++;
+            TrackTrendWrite();
+
+            await FlushTrendWritesAsync(force: false, ct);
         }
     }
 
@@ -1539,18 +3000,23 @@ public sealed class AccessImportService : IAccessImportService
     private static string BuildProdajaLineKey(int idProdaja, int idArtikal, int qty, decimal cena)
         => $"{idProdaja}|{idArtikal}|{qty}|{cena.ToString(CultureInfo.InvariantCulture)}";
 
-    private void SynthesizeProdajaFromDnevnik(bool overwriteExisting, AccessImportRunResponse result)
+    private async Task SynthesizeProdajaFromDnevnikAsync(bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
-        // Collect all DnevnikPromena entries that represent a sale (already in DbContext, not yet saved).
         static bool IsSaleType(string tip) => TipPromeneConstants.IsSale(tip);
 
-        var saleEntries = _trendDb.DnevnikPromena.Local
-            .Where(d => d.DataOrigin == "access" && IsSaleType(d.TipPromene))
+        var saleEntries = await _trendDb.DnevnikPromena
+            .AsNoTracking()
+            .Where(d => d.DataOrigin == "access")
+            .OrderBy(d => d.Id)
+            .ToListAsync(ct);
+        saleEntries = saleEntries
+            .Where(d => IsSaleType(d.TipPromene))
             .ToList();
 
-        if (saleEntries.Count == 0) return;
+        if (saleEntries.Count == 0)
+            return;
 
-        var existingZaglavlja = ToFirstDictionary(_trendDb.ProdajaZaglavlja, x => x.Id);
+        var existingZaglavlja = ToFirstDictionary(_trendDb.ProdajaZaglavlja.AsNoTracking().ToList(), x => x.Id);
         var existingBrojevi = BuildDuplicateTolerantLookup(
             _trendDb.ProdajaZaglavlja
                 .AsNoTracking()
@@ -1564,59 +3030,115 @@ public sealed class AccessImportService : IAccessImportService
             duplicateBrojevi,
             "Postoje duplikati broja racuna u postojecoj tabeli prodaje. Sintetizacija prodaje ce koristiti prvi pronadjeni zapis za svaki broj racuna");
 
-        // Group entries by BrojRacuna (or by Id when no receipt number) to form one zaglavlje per sale.
         var groups = saleEntries
             .GroupBy(d => string.IsNullOrWhiteSpace(d.BrojRacuna)
-                ? $"DN-{d.Id}"  // fallback key when no receipt number
+                ? $"DN-{d.Id}"
                 : d.BrojRacuna!)
             .ToList();
 
-        // Running offset to avoid PK collisions with existing rows.
         int maxId = existingZaglavlja.Count > 0 ? existingZaglavlja.Keys.Max() : 0;
-        int maxStavkaId = _trendDb.ProdajaStavke.Any() ? _trendDb.ProdajaStavke.Select(x => x.Id).Max() : 0;
+        int maxStavkaId = await _trendDb.ProdajaStavke.AsNoTracking().AnyAsync(ct)
+            ? await _trendDb.ProdajaStavke.AsNoTracking().MaxAsync(x => x.Id, ct)
+            : 0;
+        var insertedProdaja = 0;
+        var updatedProdaja = 0;
+        var insertedStavke = 0;
 
         foreach (var grp in groups)
-        {  
+        {
             var first = grp.First();
 
-            // Re-use zaglavlje if it already exists (by ID or BrojRacuna).
             if (!existingZaglavlja.TryGetValue(first.Id, out var zaglavlje) &&
                 !existingBrojevi.TryGetValue(grp.Key, out zaglavlje))
             {
+                var assignedId = first.Id > 0 && !existingZaglavlja.ContainsKey(first.Id)
+                    ? first.Id
+                    : maxId + 1;
+                if (assignedId > maxId)
+                    maxId = assignedId;
+
                 zaglavlje = new Domain.Model.Prodaja.ProdajaZaglavlje
                 {
-                    Id           = ++maxId,
-                    BrojRacuna   = string.IsNullOrWhiteSpace(first.BrojRacuna) ? null : first.BrojRacuna,
+                    Id = assignedId,
+                    BrojRacuna = string.IsNullOrWhiteSpace(first.BrojRacuna) ? null : first.BrojRacuna,
                     DatumProdaje = first.Datum,
                     NacinPlacanja = null,
-                    IDObjekat    = null,
-                    DataOrigin   = "access"
+                    IDObjekat = first.IDObjekat,
+                    KorisnikIme = first.KorisnikIme,
+                    DataOrigin = "access"
                 };
                 _trendDb.ProdajaZaglavlja.Add(zaglavlje);
                 existingZaglavlja[zaglavlje.Id] = zaglavlje;
                 if (zaglavlje.BrojRacuna != null)
                     existingBrojevi[zaglavlje.BrojRacuna] = zaglavlje;
                 result.ProdajaInserted++;
+                insertedProdaja++;
+                TrackTrendWrite();
+
+                // Persist the synthesized parent before dependent stavke are queued in the same import run.
+                await FlushTrendWritesAsync(force: true, ct);
+            }
+            else if (overwriteExisting)
+            {
+                var shouldUpdate = false;
+                if (string.IsNullOrWhiteSpace(zaglavlje.BrojRacuna) && !string.IsNullOrWhiteSpace(first.BrojRacuna))
+                {
+                    zaglavlje.BrojRacuna = first.BrojRacuna;
+                    shouldUpdate = true;
+                }
+                if (zaglavlje.IDObjekat is null && first.IDObjekat.HasValue)
+                {
+                    zaglavlje.IDObjekat = first.IDObjekat.Value;
+                    shouldUpdate = true;
+                }
+                if (string.IsNullOrWhiteSpace(zaglavlje.KorisnikIme) && !string.IsNullOrWhiteSpace(first.KorisnikIme))
+                {
+                    zaglavlje.KorisnikIme = first.KorisnikIme;
+                    shouldUpdate = true;
+                }
+                if (!string.Equals(zaglavlje.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+                {
+                    zaglavlje.DataOrigin = "access";
+                    shouldUpdate = true;
+                }
+
+                if (shouldUpdate)
+                {
+                    _trendDb.ProdajaZaglavlja.Update(zaglavlje);
+                    result.ProdajaUpdated++;
+                    updatedProdaja++;
+                    TrackTrendWrite();
+                }
             }
 
-            // Add a stavka for every journal entry in this group that has an article referenced.
             foreach (var d in grp.Where(d => d.ArtikalId.HasValue && d.ArtikalId.Value > 0))
             {
                 var stavkaCena = (d.NovaProdajnaCena ?? d.StaraProdajnaCena ?? (d.Iznos > 0 ? d.Iznos : null)) ?? 0m;
-                var stavkaQty  = (d.Kolicina.HasValue && d.Kolicina.Value > 0) ? d.Kolicina.Value : 1;
+                var stavkaQty = (d.Kolicina.HasValue && d.Kolicina.Value > 0) ? d.Kolicina.Value : 1;
                 _trendDb.ProdajaStavke.Add(new Domain.Model.Prodaja.ProdajaStavka
                 {
-                    Id         = ++maxStavkaId,
-                    IdProdaja  = zaglavlje.Id,
-                    IdArtikal  = d.ArtikalId!.Value,
-                    Kolicina   = stavkaQty,
-                    Cena       = stavkaCena
+                    Id = ++maxStavkaId,
+                    IdProdaja = zaglavlje.Id,
+                    IdArtikal = d.ArtikalId!.Value,
+                    Kolicina = stavkaQty,
+                    Cena = stavkaCena
                 });
                 result.ProdajaStavkeInserted++;
+                insertedStavke++;
+                TrackTrendWrite();
+                await FlushTrendWritesAsync(force: false, ct);
             }
         }
 
-        result.Warnings.Add($"Sintetizovano {result.ProdajaInserted} prodaja i {result.ProdajaStavkeInserted} stavki iz DnevnikPromena (nije pronaÄ‘ena posebna tabela prodaje).");
+        var summary = $"Sintetizovano {insertedProdaja} prodaja i {insertedStavke} stavki iz DnevnikPromena (nije pronadjena posebna tabela prodaje).";
+        if (updatedProdaja > 0)
+            summary += $" Azurirano zaglavlja: {updatedProdaja}.";
+        result.Warnings.Add(summary);
+        _logger.LogInformation(
+            "Access import synthesized prodaja from dnevnik. ProdajaInserted: {ProdajaInserted}. ProdajaUpdated: {ProdajaUpdated}. ProdajaStavkeInserted: {ProdajaStavkeInserted}.",
+            insertedProdaja,
+            updatedProdaja,
+            insertedStavke);
     }
 
     private void ImportPovracajStavke(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
@@ -2793,6 +4315,89 @@ public sealed class AccessImportService : IAccessImportService
         }
     }
 
+    private async Task<string?> FindTableAsync(
+        IAccessDataReaderSession session,
+        IReadOnlyList<string> tables,
+        string[] candidates,
+        string[]? sigRequired = null,
+        string[]? sigBonus = null,
+        CancellationToken ct = default)
+        => (await FindTableDetailedAsync(session, tables, candidates, sigRequired, sigBonus, ct)).TableName;
+
+    private async Task<TableMatch> FindTableDetailedAsync(
+        IAccessDataReaderSession session,
+        IReadOnlyList<string> tables,
+        string[] candidates,
+        string[]? sigRequired = null,
+        string[]? sigBonus = null,
+        CancellationToken ct = default)
+    {
+        var normalized = tables.Select(t => new { Original = t, Key = Normalize(t) }).ToList();
+
+        foreach (var candidate in candidates)
+        {
+            var key = Normalize(candidate);
+            var exact = normalized.FirstOrDefault(x => x.Key == key);
+            if (exact is not null)
+                return new TableMatch(exact.Original, "exact");
+        }
+
+        foreach (var candidate in candidates)
+        {
+            var key = Normalize(candidate);
+            var contains = normalized.FirstOrDefault(x => x.Key.Contains(key, StringComparison.Ordinal));
+            if (contains is not null)
+                return new TableMatch(contains.Original, "contains");
+        }
+
+        if (sigRequired?.Length > 0)
+        {
+            var semaphore = new SemaphoreSlim(Math.Max(1, _options.MaxMetadataParallelism));
+            try
+            {
+                var requiredKeys = sigRequired.Select(Normalize).ToArray();
+                var bonusKeys = sigBonus?.Select(Normalize).ToArray();
+
+                var matches = await Task.WhenAll(tables.Select(async table =>
+                {
+                    await semaphore.WaitAsync(ct);
+                    try
+                    {
+                        var columns = await session.GetColumnsAsync(table, ct);
+                        var normalizedColumns = columns
+                            .Select(Normalize)
+                            .Where(x => !string.IsNullOrWhiteSpace(x))
+                            .ToHashSet(StringComparer.Ordinal);
+
+                        if (!requiredKeys.All(normalizedColumns.Contains))
+                            return (Table: (string?)null, Score: -1, Columns: (IReadOnlyList<string>?)null);
+
+                        var score = bonusKeys?.Count(normalizedColumns.Contains) ?? 0;
+                        return (Table: (string?)table, Score: score, Columns: (IReadOnlyList<string>?)columns);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                }));
+
+                var best = matches
+                    .Where(x => x.Table is not null)
+                    .OrderByDescending(x => x.Score)
+                    .FirstOrDefault();
+
+                if (best.Table is not null)
+                    return new TableMatch(best.Table, "signature", best.Columns);
+            }
+            finally
+            {
+                semaphore.Dispose();
+            }
+        }
+
+        return new TableMatch(null, "none");
+    }
+
     private string? FindTable(OdbcConnection conn, IReadOnlyList<string> tables, string[] candidates, string[]? sigRequired = null, string[]? sigBonus = null)
         => FindTableDetailed(conn, tables, candidates, sigRequired, sigBonus).TableName;
 
@@ -2860,7 +4465,80 @@ public sealed class AccessImportService : IAccessImportService
             .ToHashSet(StringComparer.Ordinal);
     }
 
-    private static string Normalize(string? s)
+    private async Task<HashSet<int>> ReadIdsFromAccessTableAsync(IAccessDataReaderSession session, string table, CancellationToken ct)
+    {
+        var ids = new HashSet<int>();
+        try
+        {
+            await foreach (var row in session.ReadRowsAsync(table, ct))
+            {
+                var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
+                if (id.HasValue && id.Value > 0)
+                    ids.Add(id.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to pre-scan Access table {Table} for ids.", table);
+        }
+        return ids;
+    }
+
+    private async Task<HashSet<int>> EnsureProdajaZaglavljeExistsAsync(IEnumerable<int> missingIds, IAccessDataReaderSession session, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    {
+        var toInsert = new HashSet<int>(missingIds);
+        if (toInsert.Count == 0) return new HashSet<int>();
+
+        var insertedIds = new HashSet<int>();
+        try
+        {
+            var tables = await session.GetTablesAsync(false, ct);
+            foreach (var t in tables)
+            {
+                if (toInsert.Count == 0) break;
+                await foreach (var row in session.ReadRowsAsync(t, ct))
+                {
+                    var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
+                    if (!id.HasValue) continue;
+                    if (!toInsert.Contains(id.Value)) continue;
+
+                    var e = new Domain.Model.Prodaja.ProdajaZaglavlje
+                    {
+                        Id = id.Value,
+                        BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
+                        DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
+                        NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
+                        IDObjekat = I(row, "idobjekat", "storeid") ?? 0,
+                        KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
+                        DataOrigin = "access"
+                    };
+
+                    _trendDb.ProdajaZaglavlja.Add(e);
+                    result.ProdajaInserted++;
+                    insertedIds.Add(id.Value);
+                    toInsert.Remove(id.Value);
+                    TrackTrendWrite();
+
+                    if (toInsert.Count == 0) break;
+                }
+                await FlushTrendWritesAsync(force: false, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error while attempting to auto-insert missing prodaja_zaglavlje rows.");
+        }
+
+        if (insertedIds.Count > 0)
+        {
+            // Make sure parents exist in PostgreSQL before prodaja_stavke import continues.
+            await FlushTrendWritesAsync(force: true, ct);
+        }
+
+        return insertedIds;
+    }
+
+    internal static string Normalize(string? s)
     {
         if (string.IsNullOrWhiteSpace(s))
             return string.Empty;
@@ -2890,14 +4568,14 @@ public sealed class AccessImportService : IAccessImportService
         return Normalize(s);
     }
 
-    private static string QuoteAccessIdentifier(string identifier)
+    internal static string QuoteAccessIdentifier(string identifier)
     {
         if (string.IsNullOrWhiteSpace(identifier))
             return "[]";
         return $"[{identifier.Replace("]", "]]")}]";
     }
 
-    private static bool TryGetQuotedTableIdentifier(string? tableName, out string quotedIdentifier, out string failureReason)
+    internal static bool TryGetQuotedTableIdentifier(string? tableName, out string quotedIdentifier, out string failureReason)
     {
         quotedIdentifier = string.Empty;
         failureReason = string.Empty;
@@ -2993,7 +4671,7 @@ public sealed class AccessImportService : IAccessImportService
     }
 
     private void TryAddSampleDataWarnings(
-        OdbcConnection conn,
+        IReadOnlyList<AccessDataRow> sampleRows,
         AccessImportTablePreview tablePreview,
         IReadOnlyCollection<string> requiredTargets,
         List<string> warnings)
@@ -3003,8 +4681,6 @@ public sealed class AccessImportService : IAccessImportService
 
         try
         {
-            const int sampleTake = 1000;
-
             var mappings = requiredTargets
                 .Select(t =>
                 {
@@ -3025,7 +4701,7 @@ public sealed class AccessImportService : IAccessImportService
             var idSets = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
             var rows = 0;
 
-            foreach (var row in ReadRows(conn, tablePreview.TableName!).Take(sampleTake))
+            foreach (var row in sampleRows)
             {
                 rows++;
                 foreach (var mapping in mappings)
@@ -3211,6 +4887,49 @@ public sealed class AccessImportService : IAccessImportService
     private static void MarkAccepted(AccessImportRunResponse result, string key, int count = 1)
         => GetCoverageMetric(result, key).AcceptedRows += count;
 
+    private static void MarkSourceRow(AccessImportRunResponse result, string key, int count = 1)
+        => GetCoverageMetric(result, key).SourceRows += count;
+
+    private void TrackTrendWrite()
+    {
+        _pendingTrendWrites++;
+    }
+
+    private async Task FlushTrendWritesAsync(bool force, CancellationToken ct)
+    {
+        if (_pendingTrendWrites <= 0)
+            return;
+
+        if (!force && _pendingTrendWrites < Math.Max(1, _options.DbSaveBatchSize))
+            return;
+
+        var writesToFlush = _pendingTrendWrites;
+        await _trendDb.SaveChangesAsync(ct);
+        _trendDb.ChangeTracker.Clear();
+        _pendingTrendWrites = 0;
+        _logger.LogInformation(
+            "Access import DB flush completed. Step: {Step}. RowsWritten: {RowsWritten}. BatchSize: {BatchSize}. Force: {Force}.",
+            "db-flush",
+            writesToFlush,
+            _options.DbSaveBatchSize,
+            force);
+    }
+
+    private static string SerializeRowForDiagnostics(AccessDataRow row)
+    {
+        var payload = row.ToDictionary()
+            .ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value is DBNull ? null : kvp.Value,
+                StringComparer.OrdinalIgnoreCase);
+
+        var json = JsonSerializer.Serialize(payload);
+        const int maxLength = 4000;
+        return json.Length <= maxLength
+            ? json
+            : json[..maxLength] + "...(truncated)";
+    }
+
     private static void FinalizeCoverageMetrics(
         AccessImportRunResponse result,
         IReadOnlyDictionary<string, int> sourceRowsByTable,
@@ -3261,6 +4980,16 @@ public sealed class AccessImportService : IAccessImportService
         return null;
     }
 
+    private static object? Get(AccessDataRow row, params string[] aliases)
+    {
+        foreach (var alias in aliases)
+        {
+            if (row.TryGetValue(alias, out var value))
+                return value;
+        }
+        return null;
+    }
+
     private static string? S(Dictionary<string, object?> row, params string[] aliases)
     {
         var v = Get(row, aliases);
@@ -3272,7 +5001,18 @@ public sealed class AccessImportService : IAccessImportService
     private static decimal? D(Dictionary<string, object?> row, params string[] aliases) => ConvertToDecimal(Get(row, aliases));
     private static DateTime? DT(Dictionary<string, object?> row, params string[] aliases) => ConvertToDate(Get(row, aliases));
 
-    private static int? ConvertToInt(object? v)
+    private static string? S(AccessDataRow row, params string[] aliases)
+    {
+        var v = Get(row, aliases);
+        var s = v is null ? null : Convert.ToString(v, CultureInfo.InvariantCulture);
+        return string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    }
+
+    private static int? I(AccessDataRow row, params string[] aliases) => ConvertToInt(Get(row, aliases));
+    private static decimal? D(AccessDataRow row, params string[] aliases) => ConvertToDecimal(Get(row, aliases));
+    private static DateTime? DT(AccessDataRow row, params string[] aliases) => ConvertToDate(Get(row, aliases));
+
+    internal static int? ConvertToInt(object? v)
     {
         if (v is null) return null;
         if (v is int i) return i;

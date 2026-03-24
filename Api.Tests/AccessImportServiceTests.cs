@@ -1,5 +1,8 @@
 using Api.Services;
+using Api.Services.Access;
+using Api.Config;
 using System.Data;
+using System.IO;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -262,6 +265,76 @@ public sealed class AccessImportServiceTests
         Assert.False(response.CanImport);
         Assert.Empty(response.Tables);
         Assert.Contains(response.Warnings, warning => warning.StartsWith("Preview failed:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AccessCsvParser_PreservesEscapedQuotes()
+    {
+        const string csv = "\"id\",\"name\"\n\"1\",\"Model \"\"Air\"\"\"";
+
+        var records = MdbToolsCliSession.ReadCsvRecords(new StringReader(csv)).ToList();
+
+        Assert.Equal(2, records.Count);
+        Assert.Equal(new[] { "id", "name" }, records[0]);
+        Assert.Equal(new[] { "1", "Model \"Air\"" }, records[1]);
+    }
+
+    [Fact]
+    public void AccessCsvParser_PreservesMultilineFields()
+    {
+        const string csv = "\"id\",\"description\"\n\"1\",\"red 1\nred 2\"";
+
+        var records = MdbToolsCliSession.ReadCsvRecords(new StringReader(csv)).ToList();
+
+        Assert.Equal(2, records.Count);
+        Assert.Equal(new[] { "id", "description" }, records[0]);
+        Assert.Equal("red 1\nred 2", records[1][1]);
+    }
+
+    [Fact]
+    public void AccessDataSchema_NormalizesAliases()
+    {
+        var schema = new AccessDataSchema(["ID Artikal", "Prodajna-Cena", "Kolicina"]);
+        var row = new AccessDataRow(schema, [42, 999.5m, 3]);
+
+        Assert.True(row.TryGetValue("id_artikal", out var id));
+        Assert.True(row.TryGetValue("prodajnacena", out var cena));
+        Assert.True(row.TryGetValue("kolicina", out var kolicina));
+        Assert.Equal(42, id);
+        Assert.Equal(999.5m, cena);
+        Assert.Equal(3, kolicina);
+    }
+
+    [Fact]
+    public void AccessDataRow_ToDictionary_PreservesOriginalColumns()
+    {
+        var schema = new AccessDataSchema(["IDProdaja", "Cena", "Komentar"]);
+        var row = new AccessDataRow(schema, [101, 55.5m, "test"]);
+
+        var snapshot = row.ToDictionary();
+
+        Assert.Equal(3, snapshot.Count);
+        Assert.Equal(101, snapshot["IDProdaja"]);
+        Assert.Equal(55.5m, snapshot["Cena"]);
+        Assert.Equal("test", snapshot["Komentar"]);
+    }
+
+    [Fact]
+    public void AccessRowCountResult_UnknownDefaultsToUnknownMode()
+    {
+        var result = AccessRowCountResult.Unknown();
+
+        Assert.Equal(0, result.Count);
+        Assert.Equal("unknown", result.Mode);
+        Assert.False(result.IsExact);
+    }
+
+    [Fact]
+    public void AccessImportOptions_SkipInvalidForeignKeys_DefaultsToTrue()
+    {
+        var options = new AccessImportOptions();
+
+        Assert.True(options.SkipInvalidForeignKeys);
     }
 
     #endregion

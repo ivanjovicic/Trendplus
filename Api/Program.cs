@@ -93,6 +93,7 @@ try
     builder.Services.Configure<EbayOptions>(builder.Configuration.GetSection(EbayOptions.Section));
     builder.Services.Configure<GoogleShoppingOptions>(builder.Configuration.GetSection(GoogleShoppingOptions.Section));
     builder.Services.Configure<RuntimeScoringOptions>(builder.Configuration.GetSection(RuntimeScoringOptions.Section));
+    builder.Services.Configure<AccessImportOptions>(builder.Configuration.GetSection(AccessImportOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.OpenTrainingModelTrainingOptions>(
