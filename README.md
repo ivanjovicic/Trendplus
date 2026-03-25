@@ -1,127 +1,150 @@
-# Trendplus - Inventory & Sales Management System
+# Trendplus — Inventory & Sales Management (Developer + Ops Guide)
 
-Modern inventory and sales management system built with **.NET 8** and **React + TypeScript**.
+Trendplus is a production-grade backend and analytics pipeline for retail data: a .NET 8 Web API that ingests legacy point-of-sale databases (Access .mdb/.accdb), normalizes transactional and master data, stores it in PostgreSQL and maintains a synchronized Analytics database for reporting.
 
-## Features
+This README aims to be a single source of truth for developers and operators: quickstart, architecture, Access-import specifics, deployment notes, troubleshooting and developer workflows.
 
-### Core Functionality
-- **Inventory Management** - Create, update, and track products (Artikli)
-- **Sales Management** - Process sales with multiple items per transaction
-- **Supplier Management** - Track suppliers (Dobavlja?i)
-- **Product Categories** - Manage product types (Tipovi obu?e)
+—
 
-### Monitoring
-- **Logs Viewer** - `/api/logs` (gre�ke iz baze)
-- **Performance Dashboard** - `/api/performance` (spore operacije)
-- **Health check** - `/health`
+## Key Highlights
 
-### Unos robe (Goods Receiving) - ENHANCED GRID v2
+- Language & Frameworks: C#, .NET 8, ASP.NET Core Web API
+- Persistence: Entity Framework Core (Npgsql) + PostgreSQL; `pgvector` for vector features
+- Import: Robust Access importer using `unixODBC` + `libmdbodbc` (mdbtools) with a CLI fallback (mdb-export/mdb-tables)
+- Patterns: CQRS + MediatR, background HostedServices (Workers), streaming I/O (IAsyncEnumerable)
+- Resilience & Observability: Polly retries/circuit-breakers, Serilog (console/file), Swagger, health & perf endpoints
+- Messaging & Cache: RabbitMQ broker integration, Redis caching (optional hybrid cache)
+- ML Integration: ONNX runtime and optional Python embedding/model services via HTTP
+- Container-first: Dockerfile with mdbtools preinstalled for Linux containers
 
-The goods receiving page features a **full-width responsive grid** with improved dropdown visibility.
+—
 
-**Grid Features:**
-- Full-width layout (up to 1400px)
-- Increased minimum height (500px)
-- Taller rows (70px)
-- Responsive font sizing
-- Smart dropdown positioning (opens upward near bottom)
-- Horizontal scroll on smaller screens
+## Quickstart (local dev)
 
-**Search for existing articles:**
-- Type article name to search existing inventory
-- Autocomplete dropdown (up to 10 results)
-- Click to select and auto-fill data
-- Green highlight for existing articles
-
-## Architecture
-
-### Backend (.NET 8)
-- `Trendplus2` (Api)
-- `Application` (CQRS + MediatR)
-- `Domain`
-- `Infrastructure`
-- `Workers`
-
-### Frontend (React + TypeScript)
-- `Klijent/clientapp`
-
-## Installation
-
-### Prerequisites
+Prereqs:
 - .NET 8 SDK
-- Node.js 18+
+- Docker (optional, recommended for parity)
+- Node 18+ for frontend dev
 
-### Backend
-```bash
+Run backend locally (dev environment):
+
+```powershell
 cd Trendplus2
 dotnet restore
-dotnet run
+dotnet build
+dotnet run --project Api/Api.csproj
 ```
 
-### Frontend
+Frontend (dev server):
+
 ```bash
 cd Klijent/clientapp
 npm install
 npm run dev
 ```
 
-## Configuration
+Run migrations (from repo root):
 
-### Frontend
-Create `Klijent/clientapp/.env.development`:
-
-```env
-VITE_API_BASE_URL=http://localhost:8080
+```powershell
+dotnet ef database update --project Infrastructure/Infrastructure.csproj --startup-project Api/Api.csproj --context TrendplusDbContext
+dotnet ef database update --project Infrastructure/Infrastructure.csproj --startup-project Api/Api.csproj --context AnalyticsDbContext
 ```
 
-### Backend
-Edit `Trendplus2/appsettings.json`:
+—
 
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=...;Database=trendplus;...",
-    "AnalyticsConnection": "Host=...;Database=analytics;..."
-  }
-}
-```
+## Configuration (important sections)
 
-## Database / Migrations
+- `appsettings.json` / `appsettings.Development.json` — main configuration values. Key sections:
+  - `ConnectionStrings:DefaultConnection` — Trendplus DB
+  - `ConnectionStrings:AnalyticsConnection` — Analytics DB
+  - `AccessImportOptions` — importer tuning (batch size, CLI timeouts, AutoInsertMissingParents)
+  - `Caching:UseRedis` — toggle Redis
+  - `Workers:Enabled` & `Workers:AllowRuntimeToggle` — control background workers
 
-Run migrations from solution root:
+Environment variables commonly used in CI / Docker:
+- `ASPNETCORE_ENVIRONMENT` — `Development` / `Production`
+- `PORT` — server port
+- `DOCUMENT_SIGNING_KEY` — required in production for document export
+
+—
+
+## Access Import: design and operational notes
+
+Problem space:
+- Many customers keep POS exports in legacy Access files. On Linux containers, the ODBC driver is brittle and can return inconsistent metadata.
+
+Approach:
+- Primary read mode: ODBC via `libmdbodbc` (unixODBC). When the provider returns unexpected schema or fails, the importer falls back to `mdbtools` CLI (`mdb-tables`, `mdb-export`).
+- For open/locked ACCDB files we create a timestamped snapshot copy to ensure a consistent read.
+- The importer pre-scans parent IDs (e.g. `prodaja_zaglavlje`) and either validates or optionally auto-inserts missing parents (`AutoInsertMissingParents` flag) to avoid FK violations during `prodaja_stavke` import.
+- Large tables are streamed using `IAsyncEnumerable<AccessDataRow>` to limit memory and throughput spikes.
+
+Operational tips:
+- Docker image includes `mdbtools` and config for `odbcinst.ini` — keep image aligned with host distro.
+- If imports fail with ODBC errors, inspect logs for fallback activation (logger warns) and run `mdb-tools` locally to validate the file.
+
+—
+
+## Architecture overview
+
+- `Api/` — Web API, DI, `AccessImportService`, endpoints
+- `Application/` — business logic, MediatR handlers, validators
+- `Infrastructure/` — EF DbContexts, repositories, migrations, seeders
+- `Domain/` — domain entities and value objects
+- `Workers/` — background hosted services: import processor, analytics aggregator, outbox processor, training workers
+- `Klijent/clientapp/` — React + TypeScript frontend
+
+—
+
+## Docker & Production
+
+Build and run the container (example):
 
 ```bash
-dotnet ef database update --project Infrastructure\Infrastructure.csproj --startup-project Trendplus2\Api.csproj --context TrendplusDbContext
+docker build -t trendplus:latest .
+docker run -e ASPNETCORE_ENVIRONMENT=Production -e PORT=8080 -p 8080:8080 trendplus:latest
 ```
 
-```bash
-dotnet ef database update --project Infrastructure\Infrastructure.csproj --startup-project Trendplus2\Api.csproj --context AnalyticsDbContext
-```
+Notes:
+- Dockerfile includes `mdbtools` and `unixodbc` so Access import works inside container.
+- Ensure PostgreSQL connection strings point to production DB and that DB migrations have run before enabling workers.
 
-## Error Logging
+—
 
-The app includes middleware (`ExceptionLoggingMiddleware`) that logs unhandled exceptions to Serilog and attempts to persist errors to the `ErrorRecords` table.
+## Developer workflows & tests
 
-If the table doesn't exist (migrations not run), errors will still be logged to Serilog but won't be persisted.
+- Build: `dotnet build Api/Api.csproj`
+- Tests: `dotnet test Api.Tests/Api.Tests.csproj`
+- Run only importer preview (quick local check): call the API endpoint `POST /api/access-import/preview` with a sample ACCDB path or use the admin UI.
 
-## API Endpoints
+—
 
-### Products (Artikli)
-- `GET /artikli`
-- `GET /artikli/{id}`
-- `POST /artikli`
-- `PUT /artikli/{id}`
+## Troubleshooting & Diagnostics
 
-### Sales
-- `POST /api/prodaja`
+- If imports return "Could not find DSN nor DBQ": check `odbcinst.ini`, `libmdbodbc` presence and allow CLI fallback.
+- For FK 23503 errors on `prodaja_stavke`: enable `AccessImportOptions:AutoInsertMissingParents` temporarily or inspect source file rows for parent ids.
+- To debug heavy DB IO during import: monitor PostgreSQL `pg_stat_activity` and lower `_options.DbSaveBatchSize` to flush more frequently.
 
-### Suppliers & Categories
-- `GET /dobavljaci`
-- `POST /dobavljaci`
-- `GET /tipovi-obuce`
-- `POST /tipovi-obuce`
+Logs & monitoring:
+- Serilog writes console and file sinks. Check API logs for `AccessReadMode` and `cli-process` messages.
+- Health & perf endpoints: `/health`, `/api/performance`, and `/api/logs`.
 
-### Monitoring
-- `GET /api/logs`
-- `GET /api/performance`
-- `GET /health`
+—
+
+## Contribution & code style
+
+- Follow existing repository conventions (folder layout already in use).
+- Use `dotnet format` and run unit tests before opening PRs. Keep changes small and focused; add unit tests for core logic (import heuristics, schema parsing).
+
+—
+
+## Contact / Maintainers
+
+- Primary maintainer: Ivan Jovičić — email: ivanjovicic1986@gmail.com
+
+—
+
+If you want, I can also:
+- Add a short `CONTRIBUTING.md` and `SECURITY.md`.
+- Create a markdown snippet explaining how to reproduce import failures locally with `mdbtools`.
+- Commit this README update and push to `main`.
