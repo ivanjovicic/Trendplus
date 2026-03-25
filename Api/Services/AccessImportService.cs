@@ -212,6 +212,41 @@ using Npgsql;
         "povratnice",
         "prenos_robe"
     ];
+    private static readonly string[] ArtikliIdAliases = ["id", "idartikal", "productid"];
+    private static readonly string[] ArtikliNazivAliases =
+    [
+        "naziv", "nazivartikal", "nazivarticle", "nazivproizvoda",
+        "opis", "opisartikal", "opisproizvoda", "description", "desc",
+        "proizvod", "name", "productname", "articlename", "itemname", "ime",
+        "artikal", "article", "item", "roba"
+    ];
+    private static readonly string[] ArtikliPluAliases = ["plu", "sku", "sifra", "sifraartikla", "barcode", "barkod", "kod", "code", "artikal"];
+    private static readonly string[] ArtikliTipAliases = ["idtipobuce", "tipobuceid", "footweartypeid"];
+    private static readonly string[] ArtikliDobavljacAliases = ["iddobavljac", "dobavljacid", "supplierid"];
+    private static readonly string[] ArtikliNabavnaCenaAliases = ["nabavnacena", "purchaseprice", "cost"];
+    private static readonly string[] ArtikliNabavnaCenaDinAliases = ["nabavnacenadin", "purchasepricersd"];
+    private static readonly string[] ArtikliPrvaProdajnaCenaAliases = ["prvaprodajnacena", "firstsaleprice"];
+    private static readonly string[] ArtikliProdajnaCenaAliases = ["prodajnacena", "saleprice", "price"];
+    private static readonly string[] ArtikliVelicinaAliases = ["velicina", "size"];
+    private static readonly string[] ArtikliBojaAliases = ["boja", "color"];
+    private static readonly string[] ArtikliMaterijalAliases =
+    [
+        "materijal", "material", "materijal_gornjista", "gornjiste",
+        "upper", "fabric", "sastav", "sastav_gornjista"
+    ];
+    private static readonly string[] ArtikliKolicinaAliases =
+    [
+        "kolicina", "kol", "qty", "quantity", "stock", "stanje", "stanjeartikla",
+        "stanjeartikal", "lager", "zaliha", "zalihe", "raspolozivo", "inventar",
+        "stockqty", "totalqty", "total_qty", "raspolozivokolicina"
+    ];
+    private static readonly string[] ArtikliMinimalnaKolicinaAliases = ["minimalnakolicina", "minimumqty", "minqty", "minstock"];
+    private static readonly string[] ArtikliKomentarAliases = ["komentar", "comment", "napomena", "url"];
+    private static readonly string[] ArtikliObjekatAliases = ["idobjekat", "storeid"];
+    private static readonly string[] ArtikliSezonaAliases = ["idsezona", "seasonid"];
+    private static readonly string[] ArtikliKategorijaAliases = ["kategorija", "category"];
+    private static readonly string[] ArtikliPolAliases = ["pol", "gender"];
+    private static readonly string[] ArtikliImagePathAliases = ["imagepath", "imageurl", "slika", "image"];
 
     private readonly TrendplusDbContext _trendDb;
     private readonly AnalyticsDbContext _analyticsDb;
@@ -2615,10 +2650,14 @@ using Npgsql;
 
         var usedIds = existingIds.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
-        var trackedCurrentBatch = new Dictionary<int, Artikli>();
+        var trackedCurrentBatch = new Dictionary<int, Artikli>(Math.Max(32, _options.DbSaveBatchSize));
+        var modifiedCurrentBatch = new HashSet<int>();
+        ArtikliAliasMap? aliasMap = null;
         var artikliSw = Stopwatch.StartNew();
         var sourceRows = 0;
         var acceptedRows = 0;
+        var trackedReuseHits = 0;
+        var flushCount = 0;
         var insertedBeforeLoop = result.ArtikliInserted;
         var updatedBeforeLoop = result.ArtikliUpdated;
 
@@ -2626,20 +2665,31 @@ using Npgsql;
         {
             sourceRows++;
             MarkSourceRow(result, "artikli");
-            var naziv = S(row,
-                "naziv", "nazivartikal", "nazivarticle", "nazivproizvoda",
-                "opis", "opisartikal", "opisproizvoda", "description", "desc",
-                "proizvod", "name", "productname", "articlename", "itemname", "ime",
-                "artikal", "article", "item", "roba");
+            if (aliasMap is null)
+            {
+                aliasMap = BuildArtikliAliasMap(row.Columns);
+                _logger.LogInformation(
+                    "Access import artikli alias map initialized. TableName: {TableName}. Columns: {ColumnCount}. IdAlias: {IdAlias}. NazivAlias: {NazivAlias}. Operation: {Operation}.",
+                    table,
+                    row.Columns.Count,
+                    aliasMap.IdAlias ?? "<missing>",
+                    aliasMap.NazivAlias ?? "<missing>",
+                    "artikli-alias-map");
+            }
+
+            var naziv = SNormalized(row, aliasMap.NazivAlias);
             if (string.IsNullOrWhiteSpace(naziv)) continue;
             MarkAccepted(result, "artikli");
             acceptedRows++;
-            var id = I(row, "id", "idartikal", "productid");
+            var id = INormalized(row, aliasMap.IdAlias);
 
             Artikli? e = null;
             var sourceId = id.GetValueOrDefault();
             if (sourceId > 0 && trackedCurrentBatch.TryGetValue(sourceId, out var tracked))
+            {
                 e = tracked;
+                trackedReuseHits++;
+            }
 
             var isInsert = false;
             if (e is null)
@@ -2678,16 +2728,20 @@ using Npgsql;
                 result.ArtikliUpdated++;
             }
 
-            ApplyArtikliValues(e, row, naziv!);
+            ApplyArtikliValues(e, row, naziv!, aliasMap);
 
-            if (!isInsert)
+            if (!isInsert && modifiedCurrentBatch.Add(e.Id))
                 _trendDb.Artikli.Update(e);
 
             TrackTrendWrite();
             var shouldClearTrackedBatch = _pendingTrendWrites >= Math.Max(1, _options.DbSaveBatchSize);
             await FlushTrendWritesAsync(force: false, ct);
             if (shouldClearTrackedBatch)
+            {
+                flushCount++;
                 trackedCurrentBatch.Clear();
+                modifiedCurrentBatch.Clear();
+            }
 
             if (acceptedRows == 1 || acceptedRows % ArtikliProgressLogInterval == 0)
             {
@@ -2706,42 +2760,110 @@ using Npgsql;
             }
         }
 
+        var rowsPerSecond = acceptedRows / Math.Max(1d, artikliSw.Elapsed.TotalSeconds);
         _logger.LogInformation(
-            "Access import artikli completed. SourceRows: {SourceRows}. AcceptedRows: {AcceptedRows}. InsertedDelta: {InsertedDelta}. UpdatedDelta: {UpdatedDelta}. ExistingCount: {ExistingCount}. DurationMs: {DurationMs}. TableName: {TableName}. Operation: {Operation}.",
+            "Access import artikli completed. SourceRows: {SourceRows}. AcceptedRows: {AcceptedRows}. InsertedDelta: {InsertedDelta}. UpdatedDelta: {UpdatedDelta}. ExistingCount: {ExistingCount}. TrackedReuseHits: {TrackedReuseHits}. FlushCount: {FlushCount}. RowsPerSecond: {RowsPerSecond}. DurationMs: {DurationMs}. TableName: {TableName}. Operation: {Operation}.",
             sourceRows,
             acceptedRows,
             result.ArtikliInserted - insertedBeforeLoop,
             result.ArtikliUpdated - updatedBeforeLoop,
             existingIds.Count,
+            trackedReuseHits,
+            flushCount,
+            rowsPerSecond,
             artikliSw.ElapsedMilliseconds,
             table,
             "artikli-complete");
     }
 
-    private static void ApplyArtikliValues(Artikli entity, AccessDataRow row, string naziv)
+    private sealed record ArtikliAliasMap(
+        string? IdAlias,
+        string? NazivAlias,
+        string? PluAlias,
+        string? TipAlias,
+        string? DobavljacAlias,
+        string? NabavnaCenaAlias,
+        string? NabavnaCenaDinAlias,
+        string? PrvaProdajnaCenaAlias,
+        string? ProdajnaCenaAlias,
+        string? VelicinaAlias,
+        string? BojaAlias,
+        string? MaterijalAlias,
+        string? KolicinaAlias,
+        string? MinimalnaKolicinaAlias,
+        string? KomentarAlias,
+        string? ObjekatAlias,
+        string? SezonaAlias,
+        string? KategorijaAlias,
+        string? PolAlias,
+        string? ImagePathAlias);
+
+    private static ArtikliAliasMap BuildArtikliAliasMap(IReadOnlyList<string> columns)
     {
-        entity.PLU = S(row, "plu", "sku", "sifra", "sifraartikla", "barcode", "barkod", "kod", "code", "artikal");
+        var normalizedColumns = new HashSet<string>(columns.Count, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < columns.Count; i++)
+        {
+            var normalized = Normalize(columns[i]);
+            if (!string.IsNullOrWhiteSpace(normalized))
+                normalizedColumns.Add(normalized);
+        }
+
+        return new ArtikliAliasMap(
+            IdAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliIdAliases),
+            NazivAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliNazivAliases),
+            PluAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliPluAliases),
+            TipAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliTipAliases),
+            DobavljacAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliDobavljacAliases),
+            NabavnaCenaAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliNabavnaCenaAliases),
+            NabavnaCenaDinAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliNabavnaCenaDinAliases),
+            PrvaProdajnaCenaAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliPrvaProdajnaCenaAliases),
+            ProdajnaCenaAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliProdajnaCenaAliases),
+            VelicinaAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliVelicinaAliases),
+            BojaAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliBojaAliases),
+            MaterijalAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliMaterijalAliases),
+            KolicinaAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliKolicinaAliases),
+            MinimalnaKolicinaAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliMinimalnaKolicinaAliases),
+            KomentarAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliKomentarAliases),
+            ObjekatAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliObjekatAliases),
+            SezonaAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliSezonaAliases),
+            KategorijaAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliKategorijaAliases),
+            PolAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliPolAliases),
+            ImagePathAlias: ResolveNormalizedAlias(normalizedColumns, ArtikliImagePathAliases));
+    }
+
+    private static string? ResolveNormalizedAlias(HashSet<string> normalizedColumns, IReadOnlyList<string> aliases)
+    {
+        for (var i = 0; i < aliases.Count; i++)
+        {
+            var normalized = Normalize(aliases[i]);
+            if (!string.IsNullOrWhiteSpace(normalized) && normalizedColumns.Contains(normalized))
+                return normalized;
+        }
+
+        return null;
+    }
+
+    private static void ApplyArtikliValues(Artikli entity, AccessDataRow row, string naziv, ArtikliAliasMap aliases)
+    {
+        entity.PLU = SNormalized(row, aliases.PluAlias);
         entity.Naziv = naziv;
-        entity.IDTipObuce = I(row, "idtipobuce", "tipobuceid", "footweartypeid");
-        entity.IDDobavljac = I(row, "iddobavljac", "dobavljacid", "supplierid");
-        entity.NabavnaCena = D(row, "nabavnacena", "purchaseprice", "cost");
-        entity.NabavnaCenaDin = D(row, "nabavnacenadin", "purchasepricersd");
-        entity.PrvaProdajnaCena = D(row, "prvaprodajnacena", "firstsaleprice");
-        entity.ProdajnaCena = D(row, "prodajnacena", "saleprice", "price");
-        entity.Velicina = S(row, "velicina", "size");
-        entity.Boja = S(row, "boja", "color");
-        entity.Materijal = S(row, "materijal", "material", "materijal_gornjista", "gornjiste",
-            "upper", "fabric", "sastav", "sastav_gornjista");
-        entity.Kolicina = I(row, "kolicina", "kol", "qty", "quantity", "stock", "stanje", "stanjeartikla",
-            "stanjeartikal", "lager", "zaliha", "zalihe", "raspolozivo", "inventar",
-            "stockqty", "totalqty", "total_qty", "raspolozivokolicina");
-        entity.MinimalnaKolicina = I(row, "minimalnakolicina", "minimumqty", "minqty", "minstock");
-        entity.Komentar = S(row, "komentar", "comment", "napomena", "url");
-        entity.IDObjekat = I(row, "idobjekat", "storeid");
-        entity.IDSezona = I(row, "idsezona", "seasonid");
-        entity.Kategorija = S(row, "kategorija", "category");
-        entity.Pol = S(row, "pol", "gender");
-        entity.ImagePath = S(row, "imagepath", "imageurl", "slika", "image");
+        entity.IDTipObuce = INormalized(row, aliases.TipAlias);
+        entity.IDDobavljac = INormalized(row, aliases.DobavljacAlias);
+        entity.NabavnaCena = DNormalized(row, aliases.NabavnaCenaAlias);
+        entity.NabavnaCenaDin = DNormalized(row, aliases.NabavnaCenaDinAlias);
+        entity.PrvaProdajnaCena = DNormalized(row, aliases.PrvaProdajnaCenaAlias);
+        entity.ProdajnaCena = DNormalized(row, aliases.ProdajnaCenaAlias);
+        entity.Velicina = SNormalized(row, aliases.VelicinaAlias);
+        entity.Boja = SNormalized(row, aliases.BojaAlias);
+        entity.Materijal = SNormalized(row, aliases.MaterijalAlias);
+        entity.Kolicina = INormalized(row, aliases.KolicinaAlias);
+        entity.MinimalnaKolicina = INormalized(row, aliases.MinimalnaKolicinaAlias);
+        entity.Komentar = SNormalized(row, aliases.KomentarAlias);
+        entity.IDObjekat = INormalized(row, aliases.ObjekatAlias);
+        entity.IDSezona = INormalized(row, aliases.SezonaAlias);
+        entity.Kategorija = SNormalized(row, aliases.KategorijaAlias);
+        entity.Pol = SNormalized(row, aliases.PolAlias);
+        entity.ImagePath = SNormalized(row, aliases.ImagePathAlias);
         entity.UpdatedAt = DateTime.UtcNow;
         entity.DataOrigin = "access";
     }
@@ -6173,6 +6295,14 @@ using Npgsql;
         return null;
     }
 
+    private static object? GetNormalized(AccessDataRow row, string? normalizedAlias)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedAlias))
+            return null;
+
+        return row.TryGetValueNormalized(normalizedAlias, out var value) ? value : null;
+    }
+
     private static string? S(Dictionary<string, object?> row, params string[] aliases)
     {
         var v = Get(row, aliases);
@@ -6191,9 +6321,18 @@ using Npgsql;
         return string.IsNullOrWhiteSpace(s) ? null : s.Trim();
     }
 
+    private static string? SNormalized(AccessDataRow row, string? normalizedAlias)
+    {
+        var v = GetNormalized(row, normalizedAlias);
+        var s = v is null ? null : Convert.ToString(v, CultureInfo.InvariantCulture);
+        return string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    }
+
     private static int? I(AccessDataRow row, params string[] aliases) => ConvertToInt(Get(row, aliases));
     private static decimal? D(AccessDataRow row, params string[] aliases) => ConvertToDecimal(Get(row, aliases));
     private static DateTime? DT(AccessDataRow row, params string[] aliases) => ConvertToDate(Get(row, aliases));
+    private static int? INormalized(AccessDataRow row, string? normalizedAlias) => ConvertToInt(GetNormalized(row, normalizedAlias));
+    private static decimal? DNormalized(AccessDataRow row, string? normalizedAlias) => ConvertToDecimal(GetNormalized(row, normalizedAlias));
 
     internal static int? ConvertToInt(object? v)
     {

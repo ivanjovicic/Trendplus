@@ -38,6 +38,9 @@ public sealed class AccessDataRow
     public bool TryGetValue(string alias, out object? value)
         => _schema.TryGetValue(alias, _values, out value);
 
+    public bool TryGetValueNormalized(string normalizedAlias, out object? value)
+        => _schema.TryGetValueNormalizedAlias(normalizedAlias, _values, out value);
+
     public IReadOnlyDictionary<string, object?> ToDictionary()
     {
         var snapshot = new Dictionary<string, object?>(_schema.Columns.Count, StringComparer.OrdinalIgnoreCase);
@@ -78,7 +81,16 @@ public sealed class AccessDataSchema
         if (string.IsNullOrWhiteSpace(normalized))
             return false;
 
-        if (!_normalizedOrdinals.TryGetValue(normalized, out var ordinal))
+        return TryGetValueNormalizedAlias(normalized, values, out value);
+    }
+
+    public bool TryGetValueNormalizedAlias(string normalizedAlias, object?[] values, out object? value)
+    {
+        value = null;
+        if (string.IsNullOrWhiteSpace(normalizedAlias))
+            return false;
+
+        if (!_normalizedOrdinals.TryGetValue(normalizedAlias, out var ordinal))
             return false;
 
         if (ordinal < 0 || ordinal >= values.Length)
