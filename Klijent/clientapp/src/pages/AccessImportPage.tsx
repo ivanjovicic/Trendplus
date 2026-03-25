@@ -114,6 +114,7 @@ export default function AccessImportPage() {
     const [deleteResult, setDeleteResult] = useState<DeleteBatchResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [runtimeStatus, setRuntimeStatus] = useState<AccessImportRuntimeStatusResponse | null>(null);
+    const batchPollInFlightRef = useRef(false);
 
     // --- data loading ---
 
@@ -210,6 +211,8 @@ export default function AccessImportPage() {
         let cancelled = false;
 
         const pollBatch = async () => {
+            if (batchPollInFlightRef.current) return;
+            batchPollInFlightRef.current = true;
             try {
                 const detail = await getAccessImportBatchDetail(runningBatchId, 200);
                 if (cancelled) return;
@@ -235,7 +238,9 @@ export default function AccessImportPage() {
             } catch (e: unknown) {
                 if (cancelled) return;
                 const message = e instanceof Error ? e.message : "Greska pri pracenju batch statusa.";
-                setError(message);
+                console.warn("Access import polling skipped after transient failure:", message);
+            } finally {
+                batchPollInFlightRef.current = false;
             }
         };
 

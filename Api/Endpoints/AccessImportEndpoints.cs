@@ -8,6 +8,7 @@ namespace Trendplus2.Endpoints;
 public static class AccessImportEndpoints
 {
     private const int BatchListFallbackTimeoutSeconds = 8;
+    private const int BatchDetailFallbackTimeoutSeconds = 10;
     private static readonly string[] SchemaAnalysisUnavailableWarnings =
     [
         "Access database schema could not be fully analyzed. The ODBC provider may have returned unexpected results. Try again or contact support if issues persist."
@@ -90,11 +91,14 @@ public static class AccessImportEndpoints
         group.MapGet("/batches/{batchId:long}", async (
             long batchId,
             IBatchLogService logService,
+            ILogger<Program> logger,
             int logTake = 200,
             string? severity = null,
             CancellationToken ct = default) =>
         {
-            var detail = await logService.GetBatchDetailAsync(batchId, logTake, severity, ct);
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchDetailFallbackTimeoutSeconds));
+            var detail = await logService.GetBatchDetailAsync(batchId, logTake, severity, timeoutCts.Token);
             return detail is not null
                 ? Results.Ok(detail)
                 : Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });

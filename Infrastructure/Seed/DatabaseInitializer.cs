@@ -1082,6 +1082,9 @@ public static class DatabaseInitializer
             ALTER TABLE IF EXISTS ""TipoviObuce""
                 ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
 
+            ALTER TABLE IF EXISTS povracaj_zaglavlje
+                ADD COLUMN IF NOT EXISTS data_origin character varying(32) NOT NULL DEFAULT 'existing';
+
             -- DnevnikPromena compatibility columns (older DBs can miss post-2025 fields)
             ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""BrojRacuna"" character varying(100);
             ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""DobavljacId"" integer;
@@ -1105,6 +1108,7 @@ public static class DatabaseInitializer
             CREATE INDEX IF NOT EXISTS ""IX_Dobavljaci_DataOrigin"" ON ""Dobavljaci"" (""DataOrigin"");
             CREATE INDEX IF NOT EXISTS ""IX_Sezone_DataOrigin"" ON ""Sezone"" (""DataOrigin"");
             CREATE INDEX IF NOT EXISTS ""IX_TipoviObuce_DataOrigin"" ON ""TipoviObuce"" (""DataOrigin"");
+            CREATE INDEX IF NOT EXISTS ""IX_povracaj_zaglavlje_data_origin"" ON povracaj_zaglavlje (data_origin);
             CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_DataOrigin"" ON ""DnevnikPromena"" (""DataOrigin"");
             CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
             CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_StartedAtUtc"" ON ""DataImportBatches"" (""StartedAtUtc"");
@@ -1923,6 +1927,16 @@ public static class DatabaseInitializer
         AnalyticsDbContext analyticsDb,
         ILogger logger)
     {
+        var trendConnectionString = trendDb.Database.GetConnectionString()
+            ?? trendDb.Database.GetDbConnection().ConnectionString;
+        var hasPovracajDataOrigin = !string.IsNullOrWhiteSpace(trendConnectionString)
+            && await RelationHasColumnAsync(trendConnectionString, "povracaj_zaglavlje", "data_origin");
+
+        if (!hasPovracajDataOrigin)
+        {
+            logger.LogWarning("povracaj_zaglavlje.data_origin is missing; ReturnFacts backfill will use compatibility mode with DataOrigin='existing'.");
+        }
+
         var lastSourceLineId = await analyticsDb.ReturnFacts
             .OrderByDescending(x => x.SourceLineId)
             .Select(x => x.SourceLineId)
@@ -1932,48 +1946,114 @@ public static class DatabaseInitializer
 
         while (true)
         {
-            var batch = await trendDb.PovracajStavke
+            if (hasPovracajDataOrigin)
+            {
+                var batch = await trendDb.PovracajStavke
+                    .Where(x => x.Id > lastSourceLineId)
+                    .OrderBy(x => x.Id)
+                    .Take(batchSize)
+                    .Include(x => x.Povracaj)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                if (batch.Count == 0)
+                    break;
+
+                foreach (var line in batch)
+                {
+                    if (line.Povracaj is null)
+                        continue;
+
+                    analyticsDb.ReturnFacts.Add(new ReturnFact
+                    {
+                        SourceLineId = line.Id,
+                        ReturnId = line.IdPovracaj,
+                        ProductId = line.IdArtikal,
+                        SupplierId = line.Povracaj.IDDobavljac,
+                        Qty = line.Kolicina,
+                        UnitCost = line.Cena,
+                        LineAmount = line.Kolicina * line.Cena,
+                        ReturnTimestampUtc = DateTime.SpecifyKind(line.Povracaj.DatumPovracaja, DateTimeKind.Utc),
+                        Status = line.Povracaj.Status ?? string.Empty,
+                        HeaderReason = line.Povracaj.RazlogPovracaja,
+                        LineReason = line.Razlog,
+                        ItemCondition = line.StanjeArtikla,
+                        BrojZapisnika = line.Povracaj.BrojZapisnika,
+                        DataOrigin = line.Povracaj.DataOrigin
+                    });
+                }
+
+                await analyticsDb.SaveChangesAsync();
+
+                lastSourceLineId = batch.Last().Id;
+                continue;
+            }
+
+            var compatibilityBatch = await trendDb.PovracajStavke
                 .Where(x => x.Id > lastSourceLineId)
                 .OrderBy(x => x.Id)
                 .Take(batchSize)
-                .Include(x => x.Povracaj)
                 .AsNoTracking()
+                .Select(x => new ReturnBackfillCompatibilityRow(
+                    x.Id,
+                    x.IdPovracaj,
+                    x.IdArtikal,
+                    x.Kolicina,
+                    x.Cena,
+                    x.Razlog,
+                    x.StanjeArtikla,
+                    x.Povracaj.IDDobavljac,
+                    x.Povracaj.DatumPovracaja,
+                    x.Povracaj.Status,
+                    x.Povracaj.RazlogPovracaja,
+                    x.Povracaj.BrojZapisnika))
                 .ToListAsync();
 
-            if (batch.Count == 0)
+            if (compatibilityBatch.Count == 0)
                 break;
 
-            foreach (var line in batch)
+            foreach (var line in compatibilityBatch)
             {
-                if (line.Povracaj is null)
-                    continue;
-
                 analyticsDb.ReturnFacts.Add(new ReturnFact
                 {
-                    SourceLineId = line.Id,
-                    ReturnId = line.IdPovracaj,
-                    ProductId = line.IdArtikal,
-                    SupplierId = line.Povracaj.IDDobavljac,
-                    Qty = line.Kolicina,
-                    UnitCost = line.Cena,
-                    LineAmount = line.Kolicina * line.Cena,
-                    ReturnTimestampUtc = DateTime.SpecifyKind(line.Povracaj.DatumPovracaja, DateTimeKind.Utc),
-                    Status = line.Povracaj.Status ?? string.Empty,
-                    HeaderReason = line.Povracaj.RazlogPovracaja,
-                    LineReason = line.Razlog,
-                    ItemCondition = line.StanjeArtikla,
-                    BrojZapisnika = line.Povracaj.BrojZapisnika,
-                    DataOrigin = line.Povracaj.DataOrigin
+                    SourceLineId = line.SourceLineId,
+                    ReturnId = line.ReturnId,
+                    ProductId = line.ProductId,
+                    SupplierId = line.SupplierId,
+                    Qty = line.Qty,
+                    UnitCost = line.UnitCost,
+                    LineAmount = line.Qty * line.UnitCost,
+                    ReturnTimestampUtc = DateTime.SpecifyKind(line.ReturnTimestampUtc, DateTimeKind.Utc),
+                    Status = line.Status ?? string.Empty,
+                    HeaderReason = line.HeaderReason,
+                    LineReason = line.LineReason,
+                    ItemCondition = line.ItemCondition,
+                    BrojZapisnika = line.BrojZapisnika,
+                    DataOrigin = "existing"
                 });
             }
 
             await analyticsDb.SaveChangesAsync();
 
-            lastSourceLineId = batch.Last().Id;
+            lastSourceLineId = compatibilityBatch.Last().SourceLineId;
         }
 
         logger.LogInformation("âœ” ReturnFacts incremental backfill complete.");
     }
+
+    private sealed record ReturnBackfillCompatibilityRow(
+        int SourceLineId,
+        int ReturnId,
+        int ProductId,
+        int Qty,
+        decimal UnitCost,
+        string? LineReason,
+        string? ItemCondition,
+        int SupplierId,
+        DateTime ReturnTimestampUtc,
+        string? Status,
+        string? HeaderReason,
+        string BrojZapisnika);
 
     private static string NormalizeSqlScriptIdentifier(string sqlFilePath) =>
         sqlFilePath.Replace('\\', '/');

@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+
 const API = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export interface AccessImportTablePreview {
@@ -162,7 +164,7 @@ export async function runAccessImport(
 }
 
 export async function getAccessImportBatches(take = 20): Promise<AccessImportBatchDto[]> {
-    const res = await fetch(`${API}/api/access-import/batches?take=${take}`);
+    const res = await fetchWithTimeout(`${API}/api/access-import/batches?take=${take}`, undefined, 10_000);
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
@@ -170,7 +172,7 @@ export async function getAccessImportBatches(take = 20): Promise<AccessImportBat
 export async function getAccessImportBatchDetail(batchId: number, logTake = 200, severity?: string): Promise<BatchDetailDto> {
     const params = new URLSearchParams({ logTake: String(logTake) });
     if (severity) params.set("severity", severity);
-    const res = await fetch(`${API}/api/access-import/batches/${batchId}?${params}`);
+    const res = await fetchWithTimeout(`${API}/api/access-import/batches/${batchId}?${params}`, undefined, 10_000);
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }

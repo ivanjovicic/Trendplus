@@ -1849,9 +1849,24 @@ public sealed class AccessImportService : IAccessImportService
 
     private async Task ImportArtikliAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
-        var existing = ToFirstDictionary(_trendDb.Artikli.AsNoTracking().ToList(), x => x.Id);
-        var usedIds = existing.Keys.ToHashSet();
+        var preloadSw = System.Diagnostics.Stopwatch.StartNew();
+        var existingIds = (await _trendDb.Artikli
+            .AsNoTracking()
+            .Select(x => x.Id)
+            .ToListAsync(ct))
+            .ToHashSet();
+        preloadSw.Stop();
+
+        _logger.LogInformation(
+            "Access import artikli existing-id preload completed. ExistingCount: {ExistingCount}. DurationMs: {DurationMs}. TableName: {TableName}. Operation: {Operation}.",
+            existingIds.Count,
+            preloadSw.ElapsedMilliseconds,
+            table,
+            "artikli-id-preload");
+
+        var usedIds = existingIds.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+        var trackedCurrentBatch = new Dictionary<int, Artikli>();
 
         await foreach (var row in session.ReadRowsAsync(table, ct))
         {
@@ -1867,64 +1882,85 @@ public sealed class AccessImportService : IAccessImportService
 
             Artikli? e = null;
             var sourceId = id.GetValueOrDefault();
-            if (sourceId > 0 && existing.TryGetValue(sourceId, out var found))
-                e = found;
+            if (sourceId > 0 && trackedCurrentBatch.TryGetValue(sourceId, out var tracked))
+                e = tracked;
 
             var isInsert = false;
             if (e is null)
             {
                 var assignedId = sourceId;
-                if (assignedId <= 0 || usedIds.Contains(assignedId))
-                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
-                else
-                    usedIds.Add(assignedId);
+                if (assignedId > 0 && existingIds.Contains(assignedId))
+                {
+                    if (!overwriteExisting)
+                        continue;
 
-                e = new Artikli { Id = assignedId };
-                _trendDb.Artikli.Add(e);
-                existing[assignedId] = e;
-                result.ArtikliInserted++;
-                isInsert = true;
-            }
-            else if (overwriteExisting)
-            {
-                result.ArtikliUpdated++;
+                    e = new Artikli { Id = assignedId };
+                    _trendDb.Artikli.Attach(e);
+                    trackedCurrentBatch[assignedId] = e;
+                    result.ArtikliUpdated++;
+                }
+                else
+                {
+                    if (assignedId <= 0 || usedIds.Contains(assignedId))
+                        assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
+                    else
+                        usedIds.Add(assignedId);
+
+                    e = new Artikli { Id = assignedId };
+                    _trendDb.Artikli.Add(e);
+                    trackedCurrentBatch[assignedId] = e;
+                    existingIds.Add(assignedId);
+                    result.ArtikliInserted++;
+                    isInsert = true;
+                }
             }
             else
             {
-                continue;
+                if (!overwriteExisting)
+                    continue;
+
+                result.ArtikliUpdated++;
             }
 
-            e.PLU = S(row, "plu", "sku", "sifra", "sifraartikla", "barcode", "barkod", "kod", "code", "artikal");
-            e.Naziv = naziv!;
-            e.IDTipObuce = I(row, "idtipobuce", "tipobuceid", "footweartypeid");
-            e.IDDobavljac = I(row, "iddobavljac", "dobavljacid", "supplierid");
-            e.NabavnaCena = D(row, "nabavnacena", "purchaseprice", "cost");
-            e.NabavnaCenaDin = D(row, "nabavnacenadin", "purchasepricersd");
-            e.PrvaProdajnaCena = D(row, "prvaprodajnacena", "firstsaleprice");
-            e.ProdajnaCena = D(row, "prodajnacena", "saleprice", "price");
-            e.Velicina = S(row, "velicina", "size");
-            e.Boja = S(row, "boja", "color");
-            e.Materijal = S(row, "materijal", "material", "materijal_gornjista", "gornjiste",
-                               "upper", "fabric", "sastav", "sastav_gornjista");
-            e.Kolicina = I(row, "kolicina", "kol", "qty", "quantity", "stock", "stanje", "stanjeartikla",
-                              "stanjeartikal", "lager", "zaliha", "zalihe", "raspolozivo", "inventar",
-                              "stockqty", "totalqty", "total_qty", "raspolozivokolicina");
-            e.MinimalnaKolicina = I(row, "minimalnakolicina", "minimumqty", "minqty", "minstock");
-            e.Komentar = S(row, "komentar", "comment", "napomena", "url");
-            e.IDObjekat = I(row, "idobjekat", "storeid");
-            e.IDSezona = I(row, "idsezona", "seasonid");
-            e.Kategorija = S(row, "kategorija", "category");
-            e.Pol = S(row, "pol", "gender");
-            e.ImagePath = S(row, "imagepath", "imageurl", "slika", "image");
-            e.UpdatedAt = DateTime.UtcNow;
-            e.DataOrigin = "access";
+            ApplyArtikliValues(e, row, naziv!);
 
             if (!isInsert)
                 _trendDb.Artikli.Update(e);
 
             TrackTrendWrite();
+            var shouldClearTrackedBatch = _pendingTrendWrites >= Math.Max(1, _options.DbSaveBatchSize);
             await FlushTrendWritesAsync(force: false, ct);
+            if (shouldClearTrackedBatch)
+                trackedCurrentBatch.Clear();
         }
+    }
+
+    private static void ApplyArtikliValues(Artikli entity, AccessDataRow row, string naziv)
+    {
+        entity.PLU = S(row, "plu", "sku", "sifra", "sifraartikla", "barcode", "barkod", "kod", "code", "artikal");
+        entity.Naziv = naziv;
+        entity.IDTipObuce = I(row, "idtipobuce", "tipobuceid", "footweartypeid");
+        entity.IDDobavljac = I(row, "iddobavljac", "dobavljacid", "supplierid");
+        entity.NabavnaCena = D(row, "nabavnacena", "purchaseprice", "cost");
+        entity.NabavnaCenaDin = D(row, "nabavnacenadin", "purchasepricersd");
+        entity.PrvaProdajnaCena = D(row, "prvaprodajnacena", "firstsaleprice");
+        entity.ProdajnaCena = D(row, "prodajnacena", "saleprice", "price");
+        entity.Velicina = S(row, "velicina", "size");
+        entity.Boja = S(row, "boja", "color");
+        entity.Materijal = S(row, "materijal", "material", "materijal_gornjista", "gornjiste",
+            "upper", "fabric", "sastav", "sastav_gornjista");
+        entity.Kolicina = I(row, "kolicina", "kol", "qty", "quantity", "stock", "stanje", "stanjeartikla",
+            "stanjeartikal", "lager", "zaliha", "zalihe", "raspolozivo", "inventar",
+            "stockqty", "totalqty", "total_qty", "raspolozivokolicina");
+        entity.MinimalnaKolicina = I(row, "minimalnakolicina", "minimumqty", "minqty", "minstock");
+        entity.Komentar = S(row, "komentar", "comment", "napomena", "url");
+        entity.IDObjekat = I(row, "idobjekat", "storeid");
+        entity.IDSezona = I(row, "idsezona", "seasonid");
+        entity.Kategorija = S(row, "kategorija", "category");
+        entity.Pol = S(row, "pol", "gender");
+        entity.ImagePath = S(row, "imagepath", "imageurl", "slika", "image");
+        entity.UpdatedAt = DateTime.UtcNow;
+        entity.DataOrigin = "access";
     }
 
     private async Task ImportProdajaAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
