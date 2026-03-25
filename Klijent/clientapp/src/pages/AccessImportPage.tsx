@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DatabaseZap } from "lucide-react";
 import {
     deleteAccessImportBatch,
-    getAccessImportBatchDetail,
     getAccessImportRuntimeStatus,
     getAccessImportBatches,
     previewAccessImport,
@@ -115,11 +114,18 @@ export default function AccessImportPage() {
     const [error, setError] = useState<string | null>(null);
     const [runtimeStatus, setRuntimeStatus] = useState<AccessImportRuntimeStatusResponse | null>(null);
     const batchPollInFlightRef = useRef(false);
+    const lastPollWarningAtRef = useRef(0);
 
     // --- data loading ---
 
     const refreshBatches = async () => {
-        try { setBatches(await getAccessImportBatches(50)); } catch { /* best effort */ }
+        try {
+            const rows = await getAccessImportBatches(50);
+            setBatches(rows);
+            return rows;
+        } catch {
+            return [] as AccessImportBatchDto[];
+        }
     };
 
     const applySuccessfulImportSideEffects = () => {
@@ -214,38 +220,44 @@ export default function AccessImportPage() {
             if (batchPollInFlightRef.current) return;
             batchPollInFlightRef.current = true;
             try {
-                const detail = await getAccessImportBatchDetail(runningBatchId, 200);
+                const rows = await refreshBatches();
                 if (cancelled) return;
 
+                const polledBatch = rows.find((row) => row.id === runningBatchId);
+                if (!polledBatch) return;
+
                 const nextRunResult = hydrateRunResultFromBatch(
-                    detail.batch,
+                    polledBatch,
                     runResult?.includeAnalytics ?? includeAnalytics,
                 );
 
                 setRunResult(nextRunResult);
-                await refreshBatches();
 
-                const normalizedStatus = detail.batch.status.toLowerCase();
+                const normalizedStatus = polledBatch.status.toLowerCase();
                 if (normalizedStatus === "completed") {
                     setRunningBatchId(null);
                     applySuccessfulImportSideEffects();
                 } else if (normalizedStatus === "failed") {
                     setRunningBatchId(null);
-                    if (detail.batch.errorMessage) {
-                        setError(detail.batch.errorMessage);
+                    if (polledBatch.errorMessage) {
+                        setError(polledBatch.errorMessage);
                     }
                 }
             } catch (e: unknown) {
                 if (cancelled) return;
                 const message = e instanceof Error ? e.message : "Greska pri pracenju batch statusa.";
-                console.warn("Access import polling skipped after transient failure:", message);
+                const now = Date.now();
+                if (now - lastPollWarningAtRef.current >= 30_000) {
+                    console.warn("Access import polling skipped after transient failure:", message);
+                    lastPollWarningAtRef.current = now;
+                }
             } finally {
                 batchPollInFlightRef.current = false;
             }
         };
 
         void pollBatch();
-        const id = window.setInterval(() => { void pollBatch(); }, 3000);
+        const id = window.setInterval(() => { void pollBatch(); }, 5000);
 
         return () => {
             cancelled = true;
