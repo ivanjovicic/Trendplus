@@ -13,11 +13,14 @@ namespace Api.Tests
 {
     public sealed class AccessImportEnqueueTests
     {
-        private sealed class ThrowingJobQueue : IAccessImportJobQueue
+        private sealed class RecordingJobQueue : IAccessImportJobQueue
         {
+            public int EnqueueCallCount { get; private set; }
+
             public Task EnqueueAsync(long batchId, CancellationToken ct = default)
             {
-                throw new InvalidOperationException("simulated enqueue failure");
+                EnqueueCallCount++;
+                return Task.CompletedTask;
             }
 
             public Task<AccessImportQueuedJob?> ClaimNextAsync(CancellationToken ct = default)
@@ -25,7 +28,7 @@ namespace Api.Tests
         }
 
         [Fact]
-        public async Task StartImport_EnqueueFailure_DoesNotThrowAndCreatesBatch()
+        public async Task StartImport_DoesNotEnqueueInlineAndCreatesPendingBatch()
         {
             // Arrange: in-memory Trendplus DB
             var options = new DbContextOptionsBuilder<TrendplusDbContext>()
@@ -37,6 +40,7 @@ namespace Api.Tests
             // create a small temp file to satisfy File.Exists checks
             var tmp = Path.Combine(Path.GetTempPath(), $"test-import-{Guid.NewGuid():N}.accdb");
             File.WriteAllText(tmp, "");
+            var queue = new RecordingJobQueue();
 
             var service = new AccessImportService(
                 trendDb: db,
@@ -45,7 +49,7 @@ namespace Api.Tests
                 options: null,
                 analyticsCache: null,
                 serviceScopeFactory: null,
-                jobQueue: new ThrowingJobQueue());
+                jobQueue: queue);
 
             try
             {
@@ -55,9 +59,12 @@ namespace Api.Tests
                 // Assert
                 Assert.NotNull(result);
                 Assert.True(result.BatchId > 0);
+                Assert.Equal("pending", result.Status);
+                Assert.Equal(0, queue.EnqueueCallCount);
 
-                var count = await db.DataImportBatches.CountAsync();
-                Assert.Equal(1, count);
+                var batch = await db.DataImportBatches.SingleAsync();
+                Assert.Equal("pending", batch.Status);
+                Assert.False(batch.CancellationRequested);
             }
             finally
             {

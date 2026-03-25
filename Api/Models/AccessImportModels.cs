@@ -109,12 +109,20 @@ namespace Api.Models
         public long Id { get; set; }
         public string SourceSystem { get; set; } = string.Empty;
         public string SourceFileName { get; set; } = string.Empty;
+        public DateTime QueuedAtUtc { get; set; }
         public DateTime StartedAtUtc { get; set; }
         public DateTime? CompletedAtUtc { get; set; }
         public DateTime? LastHeartbeatUtc { get; set; }
         public string Status { get; set; } = string.Empty;
         public string? CurrentStep { get; set; }
         public string? CurrentTable { get; set; }
+        public int ProgressPercent { get; set; }
+        public int RowsRead { get; set; }
+        public int RowsAccepted { get; set; }
+        public int RowsWritten { get; set; }
+        public bool CancellationRequested { get; set; }
+        public DateTime? CancellationRequestedAtUtc { get; set; }
+        public int RetryCount { get; set; }
         public string? SummaryJson { get; set; }
         public string? ErrorMessage { get; set; }
 

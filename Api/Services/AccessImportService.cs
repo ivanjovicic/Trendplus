@@ -16,22 +16,20 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Npgsql;
+    public interface IAccessImportService
+    {
+        Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default);
+        Task<AccessImportRunResponse> ImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
+        Task<AccessImportRunResponse> StartImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
+        Task<AccessImportRunResponse> RunExistingBatchAsync(long batchId, string accessFilePath, string sourceFileName, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, bool deleteWorkingFileAfterCompletion = false, CancellationToken ct = default);
+        Task RefreshBatchStatusesAsync(long? batchId = null, CancellationToken ct = default);
+        Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default);
+        Task<AccessImportBatchDto?> GetBatchAsync(long batchId, CancellationToken ct = default);
+        Task<bool> RequestCancellationAsync(long batchId, CancellationToken ct = default);
+        Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default);
+    }
 
-namespace Api.Services;
-
-public interface IAccessImportService
-{
-    Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default);
-    Task<AccessImportRunResponse> ImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
-    Task<AccessImportRunResponse> StartImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
-    Task<AccessImportRunResponse> RunExistingBatchAsync(long batchId, string accessFilePath, string sourceFileName, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, bool deleteWorkingFileAfterCompletion = false, CancellationToken ct = default);
-    Task RefreshBatchStatusesAsync(long? batchId = null, CancellationToken ct = default);
-    Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default);
-    Task<bool> RequestCancellationAsync(long batchId, CancellationToken ct = default);
-    Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default);
-}
-
-public sealed class AccessImportService : IAccessImportService
+    public sealed class AccessImportService : IAccessImportService
 {
     private sealed class FieldAlias
     {
@@ -1021,6 +1019,14 @@ public sealed class AccessImportService : IAccessImportService
                 overwriteExisting: overwriteExisting,
                 includeTemporaryTables: includeTemporaryTables,
                 ct: ct);
+
+            _logger.LogInformation(
+                "Access import batch queued. BatchId: {BatchId}. SourceFileName: {SourceFileName}. IncludeAnalytics: {IncludeAnalytics}. OverwriteExisting: {OverwriteExisting}. IncludeTemporaryTables: {IncludeTemporaryTables}.",
+                result.BatchId,
+                Path.GetFileName(accessFilePath),
+                includeAnalytics,
+                overwriteExisting,
+                includeTemporaryTables);
         }
         catch (InvalidOperationException) when (_options.PreventConcurrentRuns)
         {
@@ -1385,6 +1391,27 @@ public sealed class AccessImportService : IAccessImportService
                 batch.Id);
             return result;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                "Access import interrupted by cancellation. Marking batch {BatchId} as interrupted.",
+                batch.Id);
+
+            try
+            {
+                // Persist interrupted status even if the incoming cancellation token is cancelled
+                await MarkBatchInterruptedAsync(batch.Id, CancellationToken.None);
+            }
+            catch (Exception markEx)
+            {
+                _logger.LogWarning(
+                    markEx,
+                    "Failed to persist interrupted status for Access import batch. BatchId: {BatchId}.",
+                    batch.Id);
+            }
+
+            throw;
+        }
         catch (Exception ex)
         {
             result.Status = "failed";
@@ -1576,6 +1603,104 @@ public sealed class AccessImportService : IAccessImportService
         }
     }
 
+    public async Task<AccessImportBatchDto?> GetBatchAsync(long batchId, CancellationToken ct = default)
+    {
+        if (batchId <= 0)
+            return null;
+
+        try
+        {
+            return await _trendDb.DataImportBatches
+                .AsNoTracking()
+                .Where(x => x.Id == batchId)
+                .Select(x => new AccessImportBatchDto
+                {
+                    Id = x.Id,
+                    SourceSystem = x.SourceSystem,
+                    SourceFileName = x.SourceFileName,
+                    QueuedAtUtc = x.QueuedAtUtc,
+                    StartedAtUtc = x.StartedAtUtc,
+                    CompletedAtUtc = x.CompletedAtUtc,
+                    LastHeartbeatUtc = x.LastHeartbeatUtc,
+                    Status = x.Status,
+                    CurrentStep = x.CurrentStep,
+                    CurrentTable = x.CurrentTable,
+                    ProgressPercent = x.ProgressPercent,
+                    RowsRead = x.RowsRead,
+                    RowsAccepted = x.RowsAccepted,
+                    RowsWritten = x.RowsWritten,
+                    CancellationRequested = x.CancellationRequested,
+                    CancellationRequestedAtUtc = x.CancellationRequestedAtUtc,
+                    RetryCount = x.RetryCount,
+                    SummaryJson = x.SummaryJson,
+                    ErrorMessage = x.ErrorMessage,
+                    DurationSeconds = x.DurationSeconds,
+                    TotalImported = x.TotalImported,
+                    TotalUpdated = x.TotalUpdated,
+                    TotalErrors = x.TotalErrors,
+                    DataOrigin = x.DataOrigin
+                })
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            // Legacy DB compatibility: projection may miss newer metrics columns.
+            _logger.LogWarning(
+                ex,
+                "Access import batch lookup hit legacy schema (missing columns). BatchId: {BatchId}.",
+                batchId);
+
+            return await _trendDb.DataImportBatches
+                .AsNoTracking()
+                .Where(x => x.Id == batchId)
+                .Select(x => new AccessImportBatchDto
+                {
+                    Id = x.Id,
+                    SourceSystem = x.SourceSystem,
+                    SourceFileName = x.SourceFileName,
+                    QueuedAtUtc = x.StartedAtUtc,
+                    StartedAtUtc = x.StartedAtUtc,
+                    CompletedAtUtc = x.CompletedAtUtc,
+                    LastHeartbeatUtc = null,
+                    Status = x.Status,
+                    CurrentStep = null,
+                    CurrentTable = null,
+                    ProgressPercent = 0,
+                    RowsRead = 0,
+                    RowsAccepted = 0,
+                    RowsWritten = 0,
+                    CancellationRequested = false,
+                    CancellationRequestedAtUtc = null,
+                    RetryCount = 0,
+                    SummaryJson = x.SummaryJson,
+                    ErrorMessage = x.ErrorMessage,
+                    DurationSeconds = null,
+                    TotalImported = 0,
+                    TotalUpdated = 0,
+                    TotalErrors = 0,
+                    DataOrigin = "access"
+                })
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            // No DataImportBatches table yet.
+            _logger.LogWarning(
+                ex,
+                "Access import batch lookup could not find DataImportBatches table. BatchId: {BatchId}.",
+                batchId);
+            return null;
+        }
+        catch (Exception ex) when (IsTransientDatabaseTimeout(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "Access import batch lookup hit a transient database issue. BatchId: {BatchId}.",
+                batchId);
+            return null;
+        }
+    }
+
     public async Task<bool> RequestCancellationAsync(long batchId, CancellationToken ct = default)
     {
         if (batchId <= 0)
@@ -1622,6 +1747,56 @@ public sealed class AccessImportService : IAccessImportService
         }
 
         return affected > 0;
+    }
+
+    public async Task MarkBatchInterruptedAsync(long batchId, CancellationToken ct = default)
+    {
+        if (batchId <= 0)
+            return;
+
+        try
+        {
+            var batch = await _trendDb.DataImportBatches.FindAsync(new object[] { batchId }, ct);
+            if (batch is null)
+                return;
+
+            var now = DateTime.UtcNow;
+            batch.Status = "interrupted";
+            batch.CurrentStep = "stopped";
+            batch.CurrentTable = null;
+            batch.CompletedAtUtc = now;
+            batch.LastHeartbeatUtc = now;
+            batch.ProgressPercent = 100;
+            batch.DurationSeconds = (int)Math.Max(0, Math.Round((now - batch.StartedAtUtc).TotalSeconds));
+            if (string.IsNullOrWhiteSpace(batch.ErrorMessage))
+                batch.ErrorMessage = "Import interrupted during worker shutdown.";
+            if (string.IsNullOrWhiteSpace(batch.ErrorDetailsJson))
+            {
+                batch.ErrorDetailsJson = JsonSerializer.Serialize(new
+                {
+                    type = typeof(OperationCanceledException).FullName,
+                    message = "Access import worker shutdown interrupted batch execution."
+                });
+            }
+            batch.TotalErrors = Math.Max(1, batch.TotalErrors);
+
+            await _trendDb.SaveChangesAsync(ct);
+
+            _logger.LogInformation(
+                "Marked Access import batch as interrupted. BatchId: {BatchId}. StartedAtUtc: {StartedAtUtc}. CompletedAtUtc: {CompletedAtUtc}.",
+                batchId,
+                batch.StartedAtUtc,
+                batch.CompletedAtUtc);
+        }
+        catch (PostgresException ex) when (
+            ex.SqlState == PostgresErrorCodes.UndefinedTable ||
+            ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogDebug(
+                ex,
+                "Skipping mark-interrupted because DataImportBatches compatibility columns are not available yet. BatchId: {BatchId}.",
+                batchId);
+        }
     }
 
     private static bool IsTransientDatabaseTimeout(Exception ex)
@@ -4721,6 +4896,13 @@ public sealed class AccessImportService : IAccessImportService
     /// </summary>
     private async Task EnsureDataImportBatchesTableAsync(CancellationToken ct)
     {
+        var providerName = _trendDb.Database.ProviderName ?? string.Empty;
+        if (providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
+        {
+            // In-memory provider used by tests: skip relational DDL/DDL checks
+            return;
+        }
+
         const string createSql = """
             CREATE TABLE IF NOT EXISTS "DataImportBatches" (
                 "Id"              bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -4757,7 +4939,16 @@ public sealed class AccessImportService : IAccessImportService
                 "DataOrigin"      character varying(32) NOT NULL DEFAULT 'access'
             );
             """;
-        await _trendDb.Database.ExecuteSqlRawAsync(createSql, ct);
+        try
+        {
+            await _trendDb.Database.ExecuteSqlRawAsync(createSql, ct);
+        }
+        catch (InvalidOperationException ex) when (ex.Message?.Contains("Relational-specific methods", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            // Non-relational provider (e.g. InMemory) - skip DDL
+            _logger.LogDebug(ex, "Skipping DataImportBatches CREATE because database provider is not relational.");
+            return;
+        }
         const string alterSql = """
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "LastHeartbeatUtc" timestamp with time zone;
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "CurrentStep" character varying(64);
@@ -4782,7 +4973,16 @@ public sealed class AccessImportService : IAccessImportService
             CREATE INDEX IF NOT EXISTS "IX_DataImportBatches_LastHeartbeatUtc" ON "DataImportBatches" ("LastHeartbeatUtc");
             CREATE INDEX IF NOT EXISTS "IX_DataImportBatches_CancellationRequested" ON "DataImportBatches" ("CancellationRequested");
             """;
-        await _trendDb.Database.ExecuteSqlRawAsync(alterSql, ct);
+        try
+        {
+            await _trendDb.Database.ExecuteSqlRawAsync(alterSql, ct);
+        }
+        catch (InvalidOperationException ex) when (ex.Message?.Contains("Relational-specific methods", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            // Non-relational provider (e.g. InMemory) - skip DDL
+            _logger.LogDebug(ex, "Skipping DataImportBatches ALTER because database provider is not relational.");
+            return;
+        }
     }
 
     /// <summary>

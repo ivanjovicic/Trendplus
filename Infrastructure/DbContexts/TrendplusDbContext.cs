@@ -274,6 +274,8 @@ namespace Infrastructure.DbContexts
                 eb.HasKey(e => e.Id);
                 eb.Property(e => e.SourceSystem).IsRequired().HasMaxLength(64);
                 eb.Property(e => e.SourceFileName).IsRequired().HasMaxLength(300);
+                eb.Property(e => e.SourceFilePath).HasMaxLength(800);
+                eb.Property(e => e.QueuedAtUtc).IsRequired();
                 eb.Property(e => e.StartedAtUtc).IsRequired();
                 eb.Property(e => e.CompletedAtUtc);
                 eb.Property(e => e.LastHeartbeatUtc);
@@ -282,6 +284,20 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.CurrentTable).HasMaxLength(300);
                 eb.Property(e => e.SummaryJson);
                 eb.Property(e => e.ErrorMessage).HasMaxLength(4000);
+                eb.Property(e => e.ErrorDetailsJson);
+                eb.Property(e => e.RequestedBy).HasMaxLength(200);
+                eb.Property(e => e.ImportMode).IsRequired().HasMaxLength(16).HasDefaultValue("auto");
+                eb.Property(e => e.IncludeAnalytics).HasDefaultValue(true);
+                eb.Property(e => e.OverwriteExisting).HasDefaultValue(true);
+                eb.Property(e => e.IncludeTemporaryTables).HasDefaultValue(false);
+                eb.Property(e => e.SkipInvalidForeignKeys).HasDefaultValue(true);
+                eb.Property(e => e.CancellationRequested).HasDefaultValue(false);
+                eb.Property(e => e.CancellationRequestedAtUtc);
+                eb.Property(e => e.RetryCount).HasDefaultValue(0);
+                eb.Property(e => e.ProgressPercent).HasDefaultValue(0);
+                eb.Property(e => e.RowsRead).HasDefaultValue(0);
+                eb.Property(e => e.RowsAccepted).HasDefaultValue(0);
+                eb.Property(e => e.RowsWritten).HasDefaultValue(0);
                 eb.Property(e => e.DurationSeconds);
                 eb.Property(e => e.TotalImported).HasDefaultValue(0);
                 eb.Property(e => e.TotalUpdated).HasDefaultValue(0);
@@ -294,8 +310,10 @@ namespace Infrastructure.DbContexts
                   .OnDelete(DeleteBehavior.Cascade);
 
                 eb.HasIndex(e => e.StartedAtUtc);
+                eb.HasIndex(e => e.QueuedAtUtc);
                 eb.HasIndex(e => e.LastHeartbeatUtc);
                 eb.HasIndex(e => e.Status);
+                eb.HasIndex(e => e.CancellationRequested);
             });
 
             modelBuilder.Entity<AccessImportLog>(eb =>

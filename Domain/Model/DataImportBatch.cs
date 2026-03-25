@@ -9,14 +9,34 @@ namespace Domain.Model
 
         public string SourceSystem { get; set; } = "access";
         public string SourceFileName { get; set; } = string.Empty;
+        [MaxLength(800)]
+        public string? SourceFilePath { get; set; }
+        public DateTime QueuedAtUtc { get; set; } = DateTime.UtcNow;
         public DateTime StartedAtUtc { get; set; } = DateTime.UtcNow;
         public DateTime? CompletedAtUtc { get; set; }
         public DateTime? LastHeartbeatUtc { get; set; }
-        public string Status { get; set; } = "running";
+        [MaxLength(32)]
+        public string Status { get; set; } = "pending";
         public string? CurrentStep { get; set; }
         public string? CurrentTable { get; set; }
         public string? SummaryJson { get; set; }
         public string? ErrorMessage { get; set; }
+        public string? ErrorDetailsJson { get; set; }
+        [MaxLength(200)]
+        public string? RequestedBy { get; set; }
+        [MaxLength(16)]
+        public string ImportMode { get; set; } = "auto";
+        public bool IncludeAnalytics { get; set; } = true;
+        public bool OverwriteExisting { get; set; } = true;
+        public bool IncludeTemporaryTables { get; set; }
+        public bool SkipInvalidForeignKeys { get; set; } = true;
+        public bool CancellationRequested { get; set; }
+        public DateTime? CancellationRequestedAtUtc { get; set; }
+        public int RetryCount { get; set; }
+        public int ProgressPercent { get; set; }
+        public int RowsRead { get; set; }
+        public int RowsAccepted { get; set; }
+        public int RowsWritten { get; set; }
 
         // ── Enhanced columns (migration 015) ──
         public int? DurationSeconds { get; set; }

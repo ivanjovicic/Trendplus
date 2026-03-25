@@ -1,4 +1,5 @@
 using Api.Services;
+using Api.Services.Access;
 using Api.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
@@ -80,12 +81,48 @@ public static class AccessImportEndpoints
         group.MapGet("/jobs/{batchId:long}", async (
             long batchId,
             IAccessImportService service,
-            IBatchLogService logService,
             ILogger<Program> logger,
-            int logTake = 0,
-            string? severity = null,
             CancellationToken ct = default) =>
-            await GetBatchDetailResultAsync(batchId, service, logService, logger, logTake, severity, includeLogs: false, ct))
+        {
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchDetailFallbackTimeoutSeconds));
+                var batch = await service.GetBatchAsync(batchId, timeoutCts.Token);
+                if (batch is null)
+                    return Results.NotFound(new { error = $"Job {batchId} nije pronađen." });
+                return Results.Ok(batch);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogWarning("Request cancelled while loading access import job detail. BatchId: {BatchId}.", batchId);
+                return Results.StatusCode(499);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Access import job detail fallback after exceeding {TimeoutSeconds}s. BatchId: {BatchId}.",
+                    BatchDetailFallbackTimeoutSeconds,
+                    batchId);
+                return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs: false, ct);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Access import job detail fallback due to database issue. BatchId: {BatchId}.", batchId);
+                return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs: false, ct);
+            }
+            catch (TimeoutException ex)
+            {
+                logger.LogWarning(ex, "Access import job detail fallback due to timeout. BatchId: {BatchId}.", batchId);
+                return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs: false, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Access import job detail fallback due to unexpected issue. BatchId: {BatchId}.", batchId);
+                return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs: false, ct);
+            }
+        })
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportJobDetail");
 
@@ -148,11 +185,11 @@ public static class AccessImportEndpoints
         group.MapPost("/jobs/{batchId:long}/enqueue", async (
             long batchId,
             IAccessImportJobQueue queue,
-            ITrendplusDbContext db,
+            IAccessImportService service,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
-            var batch = await db.DataImportBatches.FirstOrDefaultAsync(b => b.Id == batchId, ct);
+            var batch = await service.GetBatchAsync(batchId, ct);
             if (batch is null)
             {
                 return Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
@@ -479,8 +516,14 @@ public static class AccessImportEndpoints
     {
         try
         {
-            var rows = await service.GetRecentBatchesAsync(200, ct);
-            var batch = rows.FirstOrDefault(x => x.Id == batchId);
+            // Prefer direct lookup (lighter query) and only then fall back to recent list scan.
+            var batch = await service.GetBatchAsync(batchId, ct);
+            if (batch is null)
+            {
+                var rows = await service.GetRecentBatchesAsync(200, ct);
+                batch = rows.FirstOrDefault(x => x.Id == batchId);
+            }
+
             if (batch is null)
                 return Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
 
@@ -498,7 +541,16 @@ public static class AccessImportEndpoints
         catch
         {
             if (!includeLogs)
-                return Results.Ok(Array.Empty<object>());
+                return Results.Ok(new AccessImportBatchDto
+                {
+                    Id = batchId,
+                    SourceSystem = "access",
+                    SourceFileName = string.Empty,
+                    QueuedAtUtc = DateTime.UtcNow,
+                    StartedAtUtc = DateTime.UtcNow,
+                    Status = "unknown",
+                    DataOrigin = "access"
+                });
 
             return Results.Ok(new BatchDetailDto
             {
@@ -553,7 +605,8 @@ public static class AccessImportEndpoints
         try
         {
             var run = await service.StartImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);
-            return Results.Accepted($"/api/access-import/jobs/{run.BatchId}", run);
+            // Return the full run response for backward compatibility with frontend expecting full AccessImportRunResponse
+            return Results.Accepted($"/api/access-import/batches/{run.BatchId}", run);
         }
         catch (FileNotFoundException ex)
         {
@@ -811,5 +864,3 @@ public static class AccessImportEndpoints
         return false;
     }
 }
-
-

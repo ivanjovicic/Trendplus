@@ -2,6 +2,7 @@ using Api.Models;
 using Domain.Model;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Api.Services;
 
@@ -118,29 +119,80 @@ public sealed class BatchLogService : IBatchLogService
 
     public async Task<BatchDetailDto?> GetBatchDetailAsync(long batchId, int logTake = 200, string? severityFilter = null, CancellationToken ct = default)
     {
-        var batch = await _db.DataImportBatches
-            .AsNoTracking()
-            .Where(b => b.Id == batchId)
-            .Select(b => new AccessImportBatchDto
-            {
-                Id = b.Id,
-                SourceSystem = b.SourceSystem,
-                SourceFileName = b.SourceFileName,
-                StartedAtUtc = b.StartedAtUtc,
-                CompletedAtUtc = b.CompletedAtUtc,
-                LastHeartbeatUtc = b.LastHeartbeatUtc,
-                Status = b.Status,
-                CurrentStep = b.CurrentStep,
-                CurrentTable = b.CurrentTable,
-                SummaryJson = b.SummaryJson,
-                ErrorMessage = b.ErrorMessage,
-                DurationSeconds = b.DurationSeconds,
-                TotalImported = b.TotalImported,
-                TotalUpdated = b.TotalUpdated,
-                TotalErrors = b.TotalErrors,
-                DataOrigin = b.DataOrigin
-            })
-            .FirstOrDefaultAsync(ct);
+        AccessImportBatchDto? batch;
+        try
+        {
+            batch = await _db.DataImportBatches
+                .AsNoTracking()
+                .Where(b => b.Id == batchId)
+                .Select(b => new AccessImportBatchDto
+                {
+                    Id = b.Id,
+                    SourceSystem = b.SourceSystem,
+                    SourceFileName = b.SourceFileName,
+                    QueuedAtUtc = b.QueuedAtUtc,
+                    StartedAtUtc = b.StartedAtUtc,
+                    CompletedAtUtc = b.CompletedAtUtc,
+                    LastHeartbeatUtc = b.LastHeartbeatUtc,
+                    Status = b.Status,
+                    CurrentStep = b.CurrentStep,
+                    CurrentTable = b.CurrentTable,
+                    ProgressPercent = b.ProgressPercent,
+                    RowsRead = b.RowsRead,
+                    RowsAccepted = b.RowsAccepted,
+                    RowsWritten = b.RowsWritten,
+                    CancellationRequested = b.CancellationRequested,
+                    CancellationRequestedAtUtc = b.CancellationRequestedAtUtc,
+                    RetryCount = b.RetryCount,
+                    SummaryJson = b.SummaryJson,
+                    ErrorMessage = b.ErrorMessage,
+                    DurationSeconds = b.DurationSeconds,
+                    TotalImported = b.TotalImported,
+                    TotalUpdated = b.TotalUpdated,
+                    TotalErrors = b.TotalErrors,
+                    DataOrigin = b.DataOrigin
+                })
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogWarning(
+                ex,
+                "Access import batch detail query hit legacy schema. BatchId: {BatchId}. Falling back to compatibility projection.",
+                batchId);
+
+            batch = await _db.DataImportBatches
+                .AsNoTracking()
+                .Where(b => b.Id == batchId)
+                .Select(b => new AccessImportBatchDto
+                {
+                    Id = b.Id,
+                    SourceSystem = b.SourceSystem,
+                    SourceFileName = b.SourceFileName,
+                    QueuedAtUtc = b.StartedAtUtc,
+                    StartedAtUtc = b.StartedAtUtc,
+                    CompletedAtUtc = b.CompletedAtUtc,
+                    LastHeartbeatUtc = null,
+                    Status = b.Status,
+                    CurrentStep = null,
+                    CurrentTable = null,
+                    ProgressPercent = 0,
+                    RowsRead = 0,
+                    RowsAccepted = 0,
+                    RowsWritten = 0,
+                    CancellationRequested = false,
+                    CancellationRequestedAtUtc = null,
+                    RetryCount = 0,
+                    SummaryJson = b.SummaryJson,
+                    ErrorMessage = b.ErrorMessage,
+                    DurationSeconds = b.DurationSeconds,
+                    TotalImported = b.TotalImported,
+                    TotalUpdated = b.TotalUpdated,
+                    TotalErrors = b.TotalErrors,
+                    DataOrigin = b.DataOrigin
+                })
+                .FirstOrDefaultAsync(ct);
+        }
 
         if (batch is null) return null;
 

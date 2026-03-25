@@ -96,9 +96,20 @@ export interface AccessImportBatchDto {
     id: number;
     sourceSystem: string;
     sourceFileName: string;
+    queuedAtUtc: string;
     startedAtUtc: string;
     completedAtUtc: string | null;
+    lastHeartbeatUtc?: string | null;
     status: string;
+    currentStep?: string | null;
+    currentTable?: string | null;
+    progressPercent?: number;
+    rowsRead?: number;
+    rowsAccepted?: number;
+    rowsWritten?: number;
+    cancellationRequested?: boolean;
+    cancellationRequestedAtUtc?: string | null;
+    retryCount?: number;
     summaryJson: string | null;
     errorMessage: string | null;
     // Enhanced (migration 015)
@@ -297,6 +308,11 @@ export interface DeleteBatchResult {
     povracajStavkeDeleted: number;
 }
 
+export interface CancelBatchResult {
+    batchId: number;
+    status: string;
+}
+
 export interface AccessImportRuntimeStatusResponse {
     available: boolean;
     platform: string;
@@ -306,6 +322,12 @@ export interface AccessImportRuntimeStatusResponse {
 
 export async function deleteAccessImportBatch(batchId: number, includeAnalytics = true): Promise<DeleteBatchResult> {
     const res = await fetch(`${API}/api/access-import/batches/${batchId}?includeAnalytics=${includeAnalytics}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+}
+
+export async function cancelAccessImportBatch(batchId: number): Promise<CancelBatchResult> {
+    const res = await fetch(`${API}/api/access-import/batches/${batchId}/cancel`, { method: "POST" });
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }

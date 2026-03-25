@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DatabaseZap } from "lucide-react";
 import {
+    cancelAccessImportBatch,
     isAccessImportRequestCanceledError,
     deleteAccessImportBatch,
     getAccessImportRuntimeStatus,
@@ -22,7 +23,8 @@ import { setDataScope } from "../utils/dataScope";
 import "./AccessImportPage.css";
 
 type Tab = "source" | "preview" | "lastImport" | "batches";
-type BatchStatusFilter = "all" | "Completed" | "Running" | "Pending" | "Failed";
+type BatchStatusFilter = "all" | "completed" | "running" | "pending" | "failed" | "cancelled" | "interrupted";
+const TERMINAL_BATCH_STATUSES = new Set(["completed", "failed", "cancelled", "interrupted"]);
 
 function fmtDate(value: string | null): string {
     if (!value) return "-";
@@ -108,6 +110,7 @@ export default function AccessImportPage() {
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [loadingImport, setLoadingImport] = useState(false);
     const [runningBatchId, setRunningBatchId] = useState<number | null>(null);
+    const [cancellingImport, setCancellingImport] = useState(false);
     const [importElapsed, setImportElapsed] = useState(0);
     const [deletingBatchId, setDeletingBatchId] = useState<number | null>(null);
     const [deleteIncludeAnalytics, setDeleteIncludeAnalytics] = useState(true);
@@ -241,12 +244,11 @@ export default function AccessImportPage() {
                 setRunResult(nextRunResult);
 
                 const normalizedStatus = polledBatch.status.toLowerCase();
-                if (normalizedStatus === "completed") {
+                if (TERMINAL_BATCH_STATUSES.has(normalizedStatus)) {
                     setRunningBatchId(null);
-                    applySuccessfulImportSideEffects();
-                } else if (normalizedStatus === "failed") {
-                    setRunningBatchId(null);
-                    if (polledBatch.errorMessage) {
+                    if (normalizedStatus === "completed") {
+                        applySuccessfulImportSideEffects();
+                    } else if (polledBatch.errorMessage) {
                         setError(polledBatch.errorMessage);
                     }
                 }
@@ -296,15 +298,35 @@ export default function AccessImportPage() {
             setRunResult(data);
             setActiveTab("lastImport");
             await refreshBatches("after-run");
-            if (data.status.toLowerCase() === "running") {
+            const normalizedStatus = data.status.toLowerCase();
+            if (normalizedStatus === "running" || normalizedStatus === "pending") {
                 setRunningBatchId(data.batchId);
-            } else if (data.status.toLowerCase() === "completed") {
+            } else if (normalizedStatus === "completed") {
                 applySuccessfulImportSideEffects();
+            } else if (TERMINAL_BATCH_STATUSES.has(normalizedStatus)) {
+                setRunningBatchId(null);
+                if (data.warnings?.length) {
+                    setError(data.warnings[data.warnings.length - 1]);
+                }
             }
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Greska pri importu.");
         } finally {
             setLoadingImport(false);
+        }
+    };
+
+    const handleCancelImport = async () => {
+        if (runningBatchId === null) return;
+        setError(null);
+        setCancellingImport(true);
+        try {
+            await cancelAccessImportBatch(runningBatchId);
+            await refreshBatches("after-cancel");
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Greska pri slanju zahteva za otkazivanje importa.");
+        } finally {
+            setCancellingImport(false);
         }
     };
 
@@ -327,7 +349,9 @@ export default function AccessImportPage() {
     // --- derived ---
 
     const filteredBatches = useMemo(
-        () => batchStatusFilter === "all" ? batches : batches.filter((b) => b.status === batchStatusFilter),
+        () => batchStatusFilter === "all"
+            ? batches
+            : batches.filter((b) => b.status.toLowerCase() === batchStatusFilter),
         [batches, batchStatusFilter],
     );
 
@@ -433,8 +457,16 @@ export default function AccessImportPage() {
                         <div className="accimport-progress-bar-fill" style={{ width: "100%", animation: "pulse 1.5s ease-in-out infinite" }} />
                     </div>
                     <div className="accimport-progress-meta">
-                        <span>Status: Running</span>
+                        <span>Status: {runResult?.status ?? "running"}</span>
                         <span>Proteklo: {importElapsed}s</span>
+                        <button
+                            type="button"
+                            className="accimport-btn accimport-btn-danger"
+                            onClick={() => void handleCancelImport()}
+                            disabled={runningBatchId === null || cancellingImport}
+                        >
+                            {cancellingImport ? "Saljem cancel..." : "Cancel import"}
+                        </button>
                     </div>
                 </div>
             )}
@@ -895,10 +927,12 @@ export default function AccessImportPage() {
                             <span className="accimport-label">Filter po statusu</span>
                             <select className="accimport-input" value={batchStatusFilter} onChange={(e) => setBatchStatusFilter(e.target.value as BatchStatusFilter)} style={{ minWidth: 160 }}>
                                 <option value="all">Svi statusi</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Running">Running</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Failed">Failed</option>
+                                <option value="completed">Completed</option>
+                                <option value="running">Running</option>
+                                <option value="pending">Pending</option>
+                                <option value="failed">Failed</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="interrupted">Interrupted</option>
                             </select>
                         </div>
                         <div className="accimport-field">
