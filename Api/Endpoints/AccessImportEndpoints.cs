@@ -1,4 +1,6 @@
 using Api.Services;
+using Api.Models;
+using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
 using System.Data.Odbc;
 using System.Runtime.InteropServices;
@@ -9,6 +11,7 @@ public static class AccessImportEndpoints
 {
     private const int BatchListFallbackTimeoutSeconds = 8;
     private const int BatchDetailFallbackTimeoutSeconds = 10;
+    private static readonly TimeSpan BatchListCacheDuration = TimeSpan.FromSeconds(15);
     private static readonly string[] SchemaAnalysisUnavailableWarnings =
     [
         "Access database schema could not be fully analyzed. The ODBC provider may have returned unexpected results. Try again or contact support if issues persist."
@@ -44,49 +47,23 @@ public static class AccessImportEndpoints
 
         group.MapGet("/batches", async (
             IAccessImportService service,
+            IMemoryCache cache,
             ILogger<Program> logger,
             int take = 20,
             CancellationToken ct = default) =>
-        {
-            try
-            {
-                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchListFallbackTimeoutSeconds));
-
-                var rows = await service.GetRecentBatchesAsync(take, timeoutCts.Token);
-                return Results.Ok(rows);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                logger.LogWarning("Request cancelled while loading access import batches.");
-                return Results.StatusCode(499);
-            }
-            catch (OperationCanceledException ex)
-            {
-                logger.LogWarning(
-                    ex,
-                    "Access import batches fallback after exceeding {TimeoutSeconds}s.",
-                    BatchListFallbackTimeoutSeconds);
-                return Results.Ok(Array.Empty<object>());
-            }
-            catch (NpgsqlException ex)
-            {
-                logger.LogWarning(ex, "Access import batches fallback due to database issue.");
-                return Results.Ok(Array.Empty<object>());
-            }
-            catch (TimeoutException ex)
-            {
-                logger.LogWarning(ex, "Access import batches fallback due to timeout.");
-                return Results.Ok(Array.Empty<object>());
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Access import batches fallback due to unexpected error.");
-                return Results.Ok(Array.Empty<object>());
-            }
-        })
+            await GetBatchListResultAsync(service, cache, logger, take, ct))
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportBatches");
+
+        group.MapGet("/jobs", async (
+            IAccessImportService service,
+            IMemoryCache cache,
+            ILogger<Program> logger,
+            int take = 20,
+            CancellationToken ct = default) =>
+            await GetBatchListResultAsync(service, cache, logger, take, ct))
+        .RequireRateLimiting("db-heavy")
+        .WithName("GetAccessImportJobs");
 
         group.MapGet("/batches/{batchId:long}", async (
             long batchId,
@@ -96,17 +73,21 @@ public static class AccessImportEndpoints
             int logTake = 200,
             string? severity = null,
             CancellationToken ct = default) =>
-        {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchDetailFallbackTimeoutSeconds));
-            await service.RefreshBatchStatusesAsync(batchId, timeoutCts.Token);
-            var detail = await logService.GetBatchDetailAsync(batchId, logTake, severity, timeoutCts.Token);
-            return detail is not null
-                ? Results.Ok(detail)
-                : Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
-        })
+            await GetBatchDetailResultAsync(batchId, service, logService, logger, logTake, severity, includeLogs: true, ct))
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportBatchDetail");
+
+        group.MapGet("/jobs/{batchId:long}", async (
+            long batchId,
+            IAccessImportService service,
+            IBatchLogService logService,
+            ILogger<Program> logger,
+            int logTake = 0,
+            string? severity = null,
+            CancellationToken ct = default) =>
+            await GetBatchDetailResultAsync(batchId, service, logService, logger, logTake, severity, includeLogs: false, ct))
+        .RequireRateLimiting("db-heavy")
+        .WithName("GetAccessImportJobDetail");
 
         group.MapGet("/batches/{batchId:long}/logs", async (
             long batchId,
@@ -122,6 +103,79 @@ public static class AccessImportEndpoints
         })
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportBatchLogs");
+
+        group.MapGet("/jobs/{batchId:long}/logs", async (
+            long batchId,
+            IBatchLogService logService,
+            string? severity = null,
+            string? tableName = null,
+            int skip = 0,
+            int take = 100,
+            CancellationToken ct = default) =>
+        {
+            var logs = await logService.GetLogsAsync(batchId, severity, tableName, skip, take, ct);
+            return Results.Ok(logs);
+        })
+        .RequireRateLimiting("db-heavy")
+        .WithName("GetAccessImportJobLogs");
+
+        group.MapPost("/batches/{batchId:long}/cancel", async (
+            long batchId,
+            IAccessImportService service,
+            CancellationToken ct = default) =>
+        {
+            var cancelled = await service.RequestCancellationAsync(batchId, ct);
+            return cancelled
+                ? Results.Accepted($"/api/access-import/batches/{batchId}", new { batchId, status = "cancellation-requested" })
+                : Results.NotFound(new { error = $"Batch {batchId} nije pronaÄ‘en ili nije aktivan." });
+        })
+        .RequireRateLimiting("writes")
+        .WithName("CancelAccessImportBatch");
+
+        group.MapPost("/jobs/{batchId:long}/cancel", async (
+            long batchId,
+            IAccessImportService service,
+            CancellationToken ct = default) =>
+        {
+            var cancelled = await service.RequestCancellationAsync(batchId, ct);
+            return cancelled
+                ? Results.Accepted($"/api/access-import/jobs/{batchId}", new { batchId, status = "cancellation-requested" })
+                : Results.NotFound(new { error = $"Job {batchId} nije pronaÄ‘en ili nije aktivan." });
+        })
+        .RequireRateLimiting("writes")
+        .WithName("CancelAccessImportJob");
+
+        group.MapPost("/jobs/{batchId:long}/enqueue", async (
+            long batchId,
+            IAccessImportJobQueue queue,
+            ITrendplusDbContext db,
+            ILogger<Program> logger,
+            CancellationToken ct = default) =>
+        {
+            var batch = await db.DataImportBatches.FirstOrDefaultAsync(b => b.Id == batchId, ct);
+            if (batch is null)
+            {
+                return Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
+            }
+
+            try
+            {
+                await queue.EnqueueAsync(batchId, ct);
+                logger.LogInformation("Manual enqueue requested for batch {BatchId}.", batchId);
+                return Results.Accepted($"/api/access-import/jobs/{batchId}", new { batchId, enqueued = true });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Manual enqueue failed for batch {BatchId}.", batchId);
+                return Results.Problem(title: "Enqueue failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        })
+        .RequireRateLimiting("writes")
+        .WithName("ManualEnqueueAccessImportJob");
 
         group.MapDelete("/batches/{batchId:long}", async (
             long batchId,
@@ -256,134 +310,339 @@ public static class AccessImportEndpoints
         .DisableAntiforgery()
         .WithName("PreviewAccessImport");
 
+        group.MapPost("/jobs", async (
+            HttpRequest request,
+            IAccessImportService service,
+            ILogger<Program> logger,
+            CancellationToken ct = default) =>
+            await StartAccessImportJobAsync(request, service, logger, ct))
+        .RequireRateLimiting("writes")
+        .DisableAntiforgery()
+        .WithName("CreateAccessImportJob");
+
         group.MapPost("/run", async (
             HttpRequest request,
             IAccessImportService service,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
-        {
-            var runtimeStatus = GetAccessImportRuntimeStatus();
-            if (!runtimeStatus.Available)
-            {
-                return Results.Problem(
-                    title: "Access import runtime missing",
-                    detail: runtimeStatus.Detail ?? "Access import is unavailable on this server because required runtime dependencies are missing.",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
-            }
-
-            var resolved = await ResolveSourceFileAsync(request, ct);
-            if (!resolved.Success)
-                return Results.BadRequest(new { error = resolved.Error });
-
-            var includeAnalytics = true;
-            var overwriteExisting = true;
-            var includeTemporaryTables = false;
-
-            if (request.HasFormContentType)
-            {
-                var form = await request.ReadFormAsync(ct);
-                includeAnalytics = ParseBoolOrDefault(form["includeAnalytics"], true);
-                overwriteExisting = ParseBoolOrDefault(form["overwriteExisting"], true);
-                includeTemporaryTables = ParseBoolOrDefault(form["includeTemporaryTables"], false);
-            }
-
-            try
-            {
-                var run = await service.StartImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);
-                return Results.Accepted($"/api/access-import/batches/{run.BatchId}", run);
-            }
-            catch (FileNotFoundException ex)
-            {
-                return Results.BadRequest(new { error = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Results.BadRequest(new { error = ex.Message });
-            }
-            catch (ArgumentException ex)
-            {
-                return Results.BadRequest(new { error = ex.Message });
-            }
-            catch (OdbcException ex)
-            {
-                return Results.Problem(
-                    title: "Access connection failed",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
-            }
-            catch (DllNotFoundException ex)
-            {
-                logger.LogWarning(ex, "Access import run failed due to missing ODBC runtime dependency.");
-                return Results.Problem(
-                    title: "Access import runtime missing",
-                    detail: "Access import is unavailable on this server because required runtime dependencies are missing.",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
-            }
-            catch (PlatformNotSupportedException ex)
-            {
-                logger.LogWarning(ex, "Access import run is not supported on this platform.");
-                return Results.Problem(
-                    title: "Access import not supported",
-                    detail: "Access import is not supported on this server platform.",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
-            }
-            catch (TypeInitializationException ex) when (ex.InnerException is DllNotFoundException)
-            {
-                logger.LogWarning(ex, "Access import run failed due to missing native dependency.");
-                return Results.Problem(
-                    title: "Access import runtime missing",
-                    detail: "Access import is unavailable on this server because required native runtime dependencies are missing.",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
-            }
-            catch (IndexOutOfRangeException ex)
-            {
-                // Schema issue during import: column missing from ODBC provider schema
-                logger.LogWarning(ex, "Access import schema handling error during import - provider returned non-standard schema.");
-                return Results.BadRequest(new 
-                { 
-                    error = "Access database schema could not be processed. The ODBC provider may have returned unexpected results. Try again or contact support.",
-                    status = "failed"
-                });
-            }
-            catch (Exception ex) when (ex.Message.Contains("does not belong to table", StringComparison.OrdinalIgnoreCase))
-            {
-                // Schema issue: specific ODBC provider column-not-found error during import
-                logger.LogWarning(ex, "Access import schema error - ODBC provider returned non-standard schema structure.");
-                return Results.BadRequest(new 
-                { 
-                    error = "The Access ODBC provider returned an unexpected schema structure. This may be a provider compatibility issue. Please verify your database file and try again.",
-                    status = "failed"
-                });
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Access import run failed unexpectedly. Exception: {ExceptionType}: {Message}", ex.GetType().Name, ex.GetBaseException().Message);
-                
-                // For system failures (unavailable runtime), return 503
-                if (ex is DllNotFoundException or PlatformNotSupportedException)
-                {
-                    return Results.Problem(
-                        title: "Access import not available",
-                        detail: ex.GetBaseException().Message,
-                        statusCode: StatusCodes.Status503ServiceUnavailable);
-                }
-
-                // For data/validation errors, return 400 with diagnostic info
-                return Results.BadRequest(new 
-                { 
-                    error = ex.GetBaseException().Message,
-                    status = "failed"
-                });
-            }
-            finally
-            {
-                if (resolved.DeleteAfter && File.Exists(resolved.Path))
-                    File.Delete(resolved.Path);
-            }
-        })
+            await StartAccessImportJobAsync(request, service, logger, ct))
         .RequireRateLimiting("writes")
         .DisableAntiforgery()
         .WithName("RunAccessImport");
+    }
+
+    private static async Task<IResult> GetBatchListResultAsync(
+        IAccessImportService service,
+        IMemoryCache cache,
+        ILogger logger,
+        int take,
+        CancellationToken ct)
+    {
+        var cacheKey = GetBatchListCacheKey(take);
+        try
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchListFallbackTimeoutSeconds));
+
+            var rows = await service.GetRecentBatchesAsync(take, timeoutCts.Token);
+            cache.Set(cacheKey, rows, BatchListCacheDuration);
+            return Results.Ok(rows);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Request cancelled while loading access import batches.");
+            return Results.StatusCode(499);
+        }
+        catch (OperationCanceledException ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Access import batches fallback after exceeding {TimeoutSeconds}s.",
+                BatchListFallbackTimeoutSeconds);
+
+            if (TryGetCachedBatchRows(cache, cacheKey, out var cachedRows))
+            {
+                logger.LogInformation(
+                    "Serving cached access import batches after timeout fallback. Take: {Take}. CachedCount: {CachedCount}.",
+                    take,
+                    cachedRows.Count);
+                return Results.Ok(cachedRows);
+            }
+
+            return Results.Ok(Array.Empty<object>());
+        }
+        catch (NpgsqlException ex)
+        {
+            logger.LogWarning(ex, "Access import batches fallback due to database issue.");
+
+            if (TryGetCachedBatchRows(cache, cacheKey, out var cachedRows))
+            {
+                logger.LogInformation(
+                    "Serving cached access import batches after database fallback. Take: {Take}. CachedCount: {CachedCount}.",
+                    take,
+                    cachedRows.Count);
+                return Results.Ok(cachedRows);
+            }
+
+            return Results.Ok(Array.Empty<object>());
+        }
+        catch (TimeoutException ex)
+        {
+            logger.LogWarning(ex, "Access import batches fallback due to timeout.");
+
+            if (TryGetCachedBatchRows(cache, cacheKey, out var cachedRows))
+            {
+                logger.LogInformation(
+                    "Serving cached access import batches after explicit timeout fallback. Take: {Take}. CachedCount: {CachedCount}.",
+                    take,
+                    cachedRows.Count);
+                return Results.Ok(cachedRows);
+            }
+
+            return Results.Ok(Array.Empty<object>());
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Access import batches fallback due to unexpected error.");
+
+            if (TryGetCachedBatchRows(cache, cacheKey, out var cachedRows))
+            {
+                logger.LogInformation(
+                    "Serving cached access import batches after unexpected fallback. Take: {Take}. CachedCount: {CachedCount}.",
+                    take,
+                    cachedRows.Count);
+                return Results.Ok(cachedRows);
+            }
+
+            return Results.Ok(Array.Empty<object>());
+        }
+    }
+
+    private static async Task<IResult> GetBatchDetailResultAsync(
+        long batchId,
+        IAccessImportService service,
+        IBatchLogService logService,
+        ILogger logger,
+        int logTake,
+        string? severity,
+        bool includeLogs,
+        CancellationToken ct)
+    {
+        try
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchDetailFallbackTimeoutSeconds));
+            await service.RefreshBatchStatusesAsync(batchId, timeoutCts.Token);
+            var detail = await logService.GetBatchDetailAsync(batchId, Math.Max(0, logTake), severity, timeoutCts.Token);
+
+            if (detail is null)
+                return Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
+
+            return includeLogs ? Results.Ok(detail) : Results.Ok(detail.Batch);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Request cancelled while loading access import batch detail. BatchId: {BatchId}.", batchId);
+            return Results.StatusCode(499);
+        }
+        catch (OperationCanceledException ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Access import batch detail fallback after exceeding {TimeoutSeconds}s. BatchId: {BatchId}.",
+                BatchDetailFallbackTimeoutSeconds,
+                batchId);
+            return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            logger.LogWarning(ex, "Access import batch detail fallback due to database issue. BatchId: {BatchId}.", batchId);
+            return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs, ct);
+        }
+        catch (TimeoutException ex)
+        {
+            logger.LogWarning(ex, "Access import batch detail fallback due to timeout. BatchId: {BatchId}.", batchId);
+            return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Access import batch detail fallback due to unexpected issue. BatchId: {BatchId}.", batchId);
+            return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs, ct);
+        }
+    }
+
+    private static async Task<IResult> BuildBatchDetailFallbackResultAsync(
+        long batchId,
+        IAccessImportService service,
+        bool includeLogs,
+        CancellationToken ct)
+    {
+        try
+        {
+            var rows = await service.GetRecentBatchesAsync(200, ct);
+            var batch = rows.FirstOrDefault(x => x.Id == batchId);
+            if (batch is null)
+                return Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
+
+            if (!includeLogs)
+                return Results.Ok(batch);
+
+            return Results.Ok(new BatchDetailDto
+            {
+                Batch = batch,
+                Logs = [],
+                LogCountBySeverity = [],
+                LogCountByTable = []
+            });
+        }
+        catch
+        {
+            if (!includeLogs)
+                return Results.Ok(Array.Empty<object>());
+
+            return Results.Ok(new BatchDetailDto
+            {
+                Batch = new AccessImportBatchDto
+                {
+                    Id = batchId,
+                    SourceSystem = "access",
+                    SourceFileName = string.Empty,
+                    QueuedAtUtc = DateTime.UtcNow,
+                    StartedAtUtc = DateTime.UtcNow,
+                    Status = "unknown",
+                    DataOrigin = "access"
+                },
+                Logs = [],
+                LogCountBySeverity = [],
+                LogCountByTable = []
+            });
+        }
+    }
+
+    private static async Task<IResult> StartAccessImportJobAsync(
+        HttpRequest request,
+        IAccessImportService service,
+        ILogger logger,
+        CancellationToken ct)
+    {
+        var runtimeStatus = GetAccessImportRuntimeStatus();
+        if (!runtimeStatus.Available)
+        {
+            return Results.Problem(
+                title: "Access import runtime missing",
+                detail: runtimeStatus.Detail ?? "Access import is unavailable on this server because required runtime dependencies are missing.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var resolved = await ResolveSourceFileAsync(request, ct);
+        if (!resolved.Success)
+            return Results.BadRequest(new { error = resolved.Error });
+
+        var includeAnalytics = true;
+        var overwriteExisting = true;
+        var includeTemporaryTables = false;
+
+        if (request.HasFormContentType)
+        {
+            var form = await request.ReadFormAsync(ct);
+            includeAnalytics = ParseBoolOrDefault(form["includeAnalytics"], true);
+            overwriteExisting = ParseBoolOrDefault(form["overwriteExisting"], true);
+            includeTemporaryTables = ParseBoolOrDefault(form["includeTemporaryTables"], false);
+        }
+
+        try
+        {
+            var run = await service.StartImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);
+            return Results.Accepted($"/api/access-import/jobs/{run.BatchId}", run);
+        }
+        catch (FileNotFoundException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (OdbcException ex)
+        {
+            return Results.Problem(
+                title: "Access connection failed",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (DllNotFoundException ex)
+        {
+            logger.LogWarning(ex, "Access import run failed due to missing ODBC runtime dependency.");
+            return Results.Problem(
+                title: "Access import runtime missing",
+                detail: "Access import is unavailable on this server because required runtime dependencies are missing.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            logger.LogWarning(ex, "Access import run is not supported on this platform.");
+            return Results.Problem(
+                title: "Access import not supported",
+                detail: "Access import is not supported on this server platform.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (TypeInitializationException ex) when (ex.InnerException is DllNotFoundException)
+        {
+            logger.LogWarning(ex, "Access import run failed due to missing native dependency.");
+            return Results.Problem(
+                title: "Access import runtime missing",
+                detail: "Access import is unavailable on this server because required native runtime dependencies are missing.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (IndexOutOfRangeException ex)
+        {
+            // Schema issue during import: column missing from ODBC provider schema
+            logger.LogWarning(ex, "Access import schema handling error during import - provider returned non-standard schema.");
+            return Results.BadRequest(new
+            {
+                error = "Access database schema could not be processed. The ODBC provider may have returned unexpected results. Try again or contact support.",
+                status = "failed"
+            });
+        }
+        catch (Exception ex) when (ex.Message.Contains("does not belong to table", StringComparison.OrdinalIgnoreCase))
+        {
+            // Schema issue: specific ODBC provider column-not-found error during import
+            logger.LogWarning(ex, "Access import schema error - ODBC provider returned non-standard schema structure.");
+            return Results.BadRequest(new
+            {
+                error = "The Access ODBC provider returned an unexpected schema structure. This may be a provider compatibility issue. Please verify your database file and try again.",
+                status = "failed"
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Access import run failed unexpectedly. Exception: {ExceptionType}: {Message}", ex.GetType().Name, ex.GetBaseException().Message);
+
+            // For system failures (unavailable runtime), return 503
+            if (ex is DllNotFoundException or PlatformNotSupportedException)
+            {
+                return Results.Problem(
+                    title: "Access import not available",
+                    detail: ex.GetBaseException().Message,
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
+            // For data/validation errors, return 400 with diagnostic info
+            return Results.BadRequest(new
+            {
+                error = ex.GetBaseException().Message,
+                status = "failed"
+            });
+        }
+        finally
+        {
+            if (resolved.DeleteAfter && File.Exists(resolved.Path))
+                File.Delete(resolved.Path);
+        }
     }
 
     private static bool ParseBoolOrDefault(string? raw, bool defaultValue)
@@ -527,4 +786,30 @@ public static class AccessImportEndpoints
 
         return null;
     }
+
+    private static string GetBatchListCacheKey(int take)
+        => $"access-import:batches:{Math.Clamp(take, 1, 200)}";
+
+    private static bool TryGetCachedBatchRows(
+        IMemoryCache cache,
+        string cacheKey,
+        out IReadOnlyList<Api.Models.AccessImportBatchDto> cachedRows)
+    {
+        if (cache.TryGetValue(cacheKey, out List<Api.Models.AccessImportBatchDto>? rows) && rows is not null)
+        {
+            cachedRows = rows;
+            return true;
+        }
+
+        if (cache.TryGetValue(cacheKey, out IReadOnlyList<Api.Models.AccessImportBatchDto>? readonlyRows) && readonlyRows is not null)
+        {
+            cachedRows = readonlyRows;
+            return true;
+        }
+
+        cachedRows = Array.Empty<Api.Models.AccessImportBatchDto>();
+        return false;
+    }
 }
+
+
