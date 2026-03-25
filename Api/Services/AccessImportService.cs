@@ -25,6 +25,7 @@ public interface IAccessImportService
     Task<AccessImportRunResponse> ImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
     Task<AccessImportRunResponse> StartImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
     Task<AccessImportRunResponse> RunExistingBatchAsync(long batchId, string accessFilePath, string sourceFileName, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, bool deleteWorkingFileAfterCompletion = false, CancellationToken ct = default);
+    Task RefreshBatchStatusesAsync(long? batchId = null, CancellationToken ct = default);
     Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default);
     Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default);
 }
@@ -885,6 +886,32 @@ public sealed class AccessImportService : IAccessImportService
             }
             catch (Exception ex)
             {
+                try
+                {
+                    await using var recoveryScope = scopeFactory.CreateAsyncScope();
+                    var recoveryDb = recoveryScope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+                    const string sql = """
+                        UPDATE "DataImportBatches"
+                        SET "Status" = @p0,
+                            "CompletedAtUtc" = @p1,
+                            "ErrorMessage" = COALESCE(NULLIF("ErrorMessage", ''), @p2)
+                        WHERE "Id" = @p3
+                          AND "Status" = 'running'
+                          AND "CompletedAtUtc" IS NULL;
+                        """;
+                    await recoveryDb.Database.ExecuteSqlRawAsync(
+                        sql,
+                        new object[] { "failed", DateTime.UtcNow, ex.GetBaseException().Message, batch.Id },
+                        CancellationToken.None);
+                }
+                catch (Exception recoveryEx)
+                {
+                    _logger.LogWarning(
+                        recoveryEx,
+                        "Failed to mark crashed background Access import batch as failed. BatchId: {BatchId}.",
+                        batch.Id);
+                }
+
                 _logger.LogError(
                     ex,
                     "Background Access import task crashed before completion. BatchId: {BatchId}. SourceFileName: {SourceFileName}.",
@@ -926,6 +953,17 @@ public sealed class AccessImportService : IAccessImportService
 
         var started = DateTime.UtcNow;
         await EnsureDataImportBatchesTableAsync(ct);
+        await RecoverStaleRunningBatchesAsync(batchId: null, ct);
+
+        if (_options.PreventConcurrentRuns)
+        {
+            var activeBatch = await GetActiveRunningBatchAsync(ct);
+            if (activeBatch is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Access import batch {activeBatch.Id} is already running since {activeBatch.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC for file '{activeBatch.SourceFileName}'.");
+            }
+        }
 
         var batch = new DataImportBatch
         {
@@ -1110,11 +1148,17 @@ public sealed class AccessImportService : IAccessImportService
 
     private sealed record TableMatch(string? TableName, string Strategy, IReadOnlyList<string>? Columns = null);
 
+    private sealed record RunningBatchSnapshot(long Id, string SourceFileName, DateTime StartedAtUtc);
+
+    public Task RefreshBatchStatusesAsync(long? batchId = null, CancellationToken ct = default)
+        => RecoverStaleRunningBatchesAsync(batchId, ct);
+
     public async Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
         try
         {
+            await RecoverStaleRunningBatchesAsync(batchId: null, ct);
             return await _trendDb.DataImportBatches
                 .AsNoTracking()
                 .OrderByDescending(x => x.StartedAtUtc)
@@ -1205,6 +1249,121 @@ public sealed class AccessImportService : IAccessImportService
         }
 
         return false;
+    }
+
+    internal static bool IsRunningBatchStale(DateTime startedAtUtc, DateTime utcNow, int staleAfterMinutes)
+    {
+        var safeWindowMinutes = Math.Max(15, staleAfterMinutes);
+        return startedAtUtc <= utcNow.AddMinutes(-safeWindowMinutes);
+    }
+
+    private int GetRunningBatchStaleMinutes()
+        => Math.Max(15, _options.RunningBatchStaleMinutes);
+
+    private static string BuildStaleBatchErrorMessage(int staleAfterMinutes)
+        => $"Access import batch was marked as failed after exceeding the stale recovery window of {staleAfterMinutes} minutes. The background worker likely stopped before completion.";
+
+    private async Task RecoverStaleRunningBatchesAsync(long? batchId, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var staleAfterMinutes = GetRunningBatchStaleMinutes();
+
+        try
+        {
+            var staleQuery = _trendDb.DataImportBatches
+                .AsNoTracking()
+                .Where(x => x.Status == "running" && x.CompletedAtUtc == null);
+
+            if (batchId.HasValue)
+                staleQuery = staleQuery.Where(x => x.Id == batchId.Value);
+
+            var staleCandidates = await staleQuery
+                .Where(x => x.StartedAtUtc <= now.AddMinutes(-staleAfterMinutes))
+                .Select(x => new RunningBatchSnapshot(x.Id, x.SourceFileName, x.StartedAtUtc))
+                .ToListAsync(ct);
+
+            if (staleCandidates.Count == 0)
+                return;
+
+            foreach (var staleBatch in staleCandidates)
+            {
+                var errorMessage = BuildStaleBatchErrorMessage(staleAfterMinutes);
+                var result = new AccessImportRunResponse
+                {
+                    BatchId = staleBatch.Id,
+                    Status = "failed",
+                    SourceFileName = staleBatch.SourceFileName,
+                    StartedAtUtc = staleBatch.StartedAtUtc,
+                    CompletedAtUtc = now
+                };
+                result.Warnings.Add(errorMessage);
+
+                const string sql = """
+                    UPDATE "DataImportBatches"
+                    SET "Status" = @p0,
+                        "CompletedAtUtc" = @p1,
+                        "ErrorMessage" = COALESCE(NULLIF("ErrorMessage", ''), @p2),
+                        "SummaryJson" = COALESCE("SummaryJson", @p3)
+                    WHERE "Id" = @p4
+                      AND "Status" = 'running'
+                      AND "CompletedAtUtc" IS NULL;
+                    """;
+
+                await _trendDb.Database.ExecuteSqlRawAsync(
+                    sql,
+                    new object[]
+                    {
+                        "failed",
+                        now,
+                        errorMessage,
+                        JsonSerializer.Serialize(result),
+                        staleBatch.Id
+                    },
+                    cancellationToken: ct);
+
+                _logger.LogWarning(
+                    "Recovered stale Access import batch. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StartedAtUtc: {StartedAtUtc}. RecoveryWindowMinutes: {RecoveryWindowMinutes}.",
+                    staleBatch.Id,
+                    staleBatch.SourceFileName,
+                    staleBatch.StartedAtUtc,
+                    staleAfterMinutes);
+            }
+        }
+        catch (PostgresException ex) when (
+            ex.SqlState == PostgresErrorCodes.UndefinedTable ||
+            ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogDebug(
+                ex,
+                "Skipping Access import stale batch recovery because DataImportBatches compatibility columns are not fully available yet.");
+        }
+    }
+
+    private async Task<RunningBatchSnapshot?> GetActiveRunningBatchAsync(CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var staleAfterMinutes = GetRunningBatchStaleMinutes();
+
+        try
+        {
+            return await _trendDb.DataImportBatches
+                .AsNoTracking()
+                .Where(x => x.Status == "running" &&
+                            x.CompletedAtUtc == null &&
+                            x.StartedAtUtc > now.AddMinutes(-staleAfterMinutes))
+                .OrderByDescending(x => x.StartedAtUtc)
+                .Select(x => new RunningBatchSnapshot(x.Id, x.SourceFileName, x.StartedAtUtc))
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (
+            ex.SqlState == PostgresErrorCodes.UndefinedTable ||
+            ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogDebug(
+                ex,
+                "Skipping Access import active batch check because DataImportBatches compatibility columns are not fully available yet.");
+            return null;
+        }
     }
 
     private sealed record DeleteBatchHeader(
@@ -4212,19 +4371,23 @@ public sealed class AccessImportService : IAccessImportService
 
         try
         {
-            // 1. Try TABLE_NAME (standard OLEDB)
-            if (schema!.Columns.Contains("TABLE_NAME"))
+            // 1. Try TABLE_NAME (standard OLEDB) using case-insensitive column lookup and ordinal access
+            var tableNameCol = schema.Columns.Cast<DataColumn>()
+                .FirstOrDefault(c => string.Equals(c.ColumnName, "TABLE_NAME", StringComparison.OrdinalIgnoreCase));
+            if (tableNameCol is not null)
             {
-                var value = row["TABLE_NAME"];
+                var value = row[tableNameCol.Ordinal];
                 var name = value is not DBNull ? value?.ToString() : null;
                 if (!string.IsNullOrWhiteSpace(name))
                     return name.Trim();
             }
 
             // 2. Try TABLE (ODBC fallback)
-            if (schema.Columns.Contains("TABLE"))
+            var tableCol = schema.Columns.Cast<DataColumn>()
+                .FirstOrDefault(c => string.Equals(c.ColumnName, "TABLE", StringComparison.OrdinalIgnoreCase));
+            if (tableCol is not null)
             {
-                var value = row["TABLE"];
+                var value = row[tableCol.Ordinal];
                 var name = value is not DBNull ? value?.ToString() : null;
                 if (!string.IsNullOrWhiteSpace(name))
                     return name.Trim();
@@ -4297,7 +4460,11 @@ public sealed class AccessImportService : IAccessImportService
             return true;
         }
 
-        if (!schema!.Columns.Contains("TABLE_TYPE"))
+        // Locate TABLE_TYPE column case-insensitively and use ordinal access; fail-open when missing
+        var tableTypeCol = schema.Columns.Cast<DataColumn>()
+            .FirstOrDefault(c => string.Equals(c.ColumnName, "TABLE_TYPE", StringComparison.OrdinalIgnoreCase));
+
+        if (tableTypeCol is null)
         {
             // Missing column â†’ assume it's a user table (fail-open, safe default)
             return true;
@@ -4305,7 +4472,7 @@ public sealed class AccessImportService : IAccessImportService
 
         try
         {
-            var value = row["TABLE_TYPE"];
+            var value = row[tableTypeCol.Ordinal];
             if (value is null or DBNull)
                 return true; // Null â†’ assume user table
 

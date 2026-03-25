@@ -8,7 +8,9 @@ public sealed class AccessImportOptions
     public int PreviewSampleTake { get; set; } = 50;
     public int MaxMetadataParallelism { get; set; } = 2;
     public int DbSaveBatchSize { get; set; } = 1000;
+    public int RunningBatchStaleMinutes { get; set; } = 240;
     public bool EnableMdbSql { get; set; }
+    public bool PreventConcurrentRuns { get; set; } = true;
     public bool SkipInvalidForeignKeys { get; set; } = true;
     // If true, the importer will attempt to insert missing `prodaja_zaglavlje` rows
     // found in the Access file before importing `prodaja_stavke`. Default: false (opt-in).

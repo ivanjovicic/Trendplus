@@ -90,6 +90,7 @@ public static class AccessImportEndpoints
 
         group.MapGet("/batches/{batchId:long}", async (
             long batchId,
+            IAccessImportService service,
             IBatchLogService logService,
             ILogger<Program> logger,
             int logTake = 200,
@@ -98,6 +99,7 @@ public static class AccessImportEndpoints
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchDetailFallbackTimeoutSeconds));
+            await service.RefreshBatchStatusesAsync(batchId, timeoutCts.Token);
             var detail = await logService.GetBatchDetailAsync(batchId, logTake, severity, timeoutCts.Token);
             return detail is not null
                 ? Results.Ok(detail)

@@ -564,7 +564,7 @@ namespace Workers
             fact.UnitCost = line.Cena;
             fact.LineAmount = line.Kolicina * line.Cena;
             fact.ReturnTimestampUtc = DateTime.SpecifyKind(line.Povracaj.DatumPovracaja, DateTimeKind.Utc);
-            fact.Status = line.Povracaj.Status ?? string.Empty;
+            fact.Status = Infrastructure.Analytics.ReturnFactStatusMapper.Normalize(line.Povracaj.Status);
             fact.HeaderReason = line.Povracaj.RazlogPovracaja;
             fact.LineReason = line.Razlog;
             fact.ItemCondition = line.StanjeArtikla;

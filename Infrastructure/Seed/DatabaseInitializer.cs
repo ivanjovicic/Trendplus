@@ -1,4 +1,5 @@
 using Infrastructure.DbContexts;
+using Infrastructure.Analytics;
 using Domain.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -1974,7 +1975,7 @@ public static class DatabaseInitializer
                         UnitCost = line.Cena,
                         LineAmount = line.Kolicina * line.Cena,
                         ReturnTimestampUtc = DateTime.SpecifyKind(line.Povracaj.DatumPovracaja, DateTimeKind.Utc),
-                        Status = line.Povracaj.Status ?? string.Empty,
+                        Status = ReturnFactStatusMapper.Normalize(line.Povracaj.Status),
                         HeaderReason = line.Povracaj.RazlogPovracaja,
                         LineReason = line.Razlog,
                         ItemCondition = line.StanjeArtikla,
@@ -2024,7 +2025,7 @@ public static class DatabaseInitializer
                     UnitCost = line.UnitCost,
                     LineAmount = line.Qty * line.UnitCost,
                     ReturnTimestampUtc = DateTime.SpecifyKind(line.ReturnTimestampUtc, DateTimeKind.Utc),
-                    Status = line.Status ?? string.Empty,
+                    Status = ReturnFactStatusMapper.Normalize(line.Status),
                     HeaderReason = line.HeaderReason,
                     LineReason = line.LineReason,
                     ItemCondition = line.ItemCondition,

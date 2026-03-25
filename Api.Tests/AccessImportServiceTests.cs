@@ -345,6 +345,44 @@ public sealed class AccessImportServiceTests
         Assert.False(options.AutoInsertMissingParents);
     }
 
+    [Fact]
+    public void AccessImportOptions_RunningBatchStaleMinutes_DefaultsToFourHours()
+    {
+        var options = new AccessImportOptions();
+
+        Assert.Equal(240, options.RunningBatchStaleMinutes);
+    }
+
+    [Fact]
+    public void AccessImportOptions_PreventConcurrentRuns_DefaultsToTrue()
+    {
+        var options = new AccessImportOptions();
+
+        Assert.True(options.PreventConcurrentRuns);
+    }
+
+    [Fact]
+    public void IsRunningBatchStale_ReturnsTrue_WhenBatchExceededRecoveryWindow()
+    {
+        var utcNow = new DateTime(2026, 03, 25, 8, 0, 0, DateTimeKind.Utc);
+        var startedAtUtc = utcNow.AddMinutes(-241);
+
+        var result = AccessImportService.IsRunningBatchStale(startedAtUtc, utcNow, 240);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsRunningBatchStale_ReturnsFalse_WhenBatchIsStillWithinRecoveryWindow()
+    {
+        var utcNow = new DateTime(2026, 03, 25, 8, 0, 0, DateTimeKind.Utc);
+        var startedAtUtc = utcNow.AddMinutes(-30);
+
+        var result = AccessImportService.IsRunningBatchStale(startedAtUtc, utcNow, 240);
+
+        Assert.False(result);
+    }
+
     #endregion
 }
 
