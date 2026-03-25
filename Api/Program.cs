@@ -602,6 +602,22 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         }
     }
 
+    using (var scope = app.Services.CreateScope())
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        try
+        {
+            logger.LogInformation("Running Access import stale batch recovery during startup...");
+            var accessImportService = scope.ServiceProvider.GetRequiredService<IAccessImportService>();
+            await accessImportService.RefreshBatchStatusesAsync(ct: CancellationToken.None);
+            logger.LogInformation("Access import stale batch recovery completed during startup.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Access import stale batch recovery failed during startup.");
+        }
+    }
+
     // Removed duplicate minimal API proxy for /api/release/{gender} because Api.Controllers.ReleaseController already defines this endpoint.
     // Use the existing ReleaseController implementation instead.
 
