@@ -1,6 +1,9 @@
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
 const API = import.meta.env.VITE_API_BASE_URL ?? "";
+const BATCHES_DEBUG_PREFIX = "[access-import][batches]";
+let batchesInFlightPromise: Promise<AccessImportBatchDto[]> | null = null;
+let batchesRequestSeq = 0;
 
 export interface AccessImportTablePreview {
     key: string;
@@ -133,6 +136,24 @@ async function parseError(res: Response): Promise<string> {
     }
 }
 
+export class AccessImportRequestCanceledError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "AccessImportRequestCanceledError";
+    }
+}
+
+export function isAccessImportRequestCanceledError(error: unknown): boolean {
+    if (error instanceof AccessImportRequestCanceledError) return true;
+    if (error instanceof DOMException && error.name === "AbortError") return true;
+    if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        return message.includes("timeout") || message.includes("abort") || message.includes("canceled");
+    }
+
+    return false;
+}
+
 function buildFormData(file: File | null, options?: { useRootFile?: boolean; includeAnalytics?: boolean; overwriteExisting?: boolean }): FormData {
     const fd = new FormData();
     if (file) fd.append("file", file);
@@ -163,18 +184,79 @@ export async function runAccessImport(
     return res.json();
 }
 
-export async function getAccessImportBatches(take = 20): Promise<AccessImportBatchDto[]> {
-    const res = await fetchWithTimeout(`${API}/api/access-import/batches?take=${take}`, undefined, 20_000);
-    if (!res.ok) throw new Error(await parseError(res));
-    return res.json();
+export async function getAccessImportBatches(
+    take = 20,
+    reason = "unspecified",
+): Promise<AccessImportBatchDto[]> {
+    if (batchesInFlightPromise) {
+        console.debug(`${BATCHES_DEBUG_PREFIX} request deduped`, { reason, take });
+        return batchesInFlightPromise;
+    }
+
+    const requestId = ++batchesRequestSeq;
+    const startedAt = performance.now();
+    const url = `${API}/api/access-import/batches?take=${take}`;
+    console.debug(`${BATCHES_DEBUG_PREFIX} request start`, { requestId, reason, take, url });
+
+    const requestPromise = (async () => {
+        try {
+            const res = await fetchWithTimeout(url, undefined, 20_000);
+            if (!res.ok) throw new Error(await parseError(res));
+            const rows = (await res.json()) as AccessImportBatchDto[];
+            const durationMs = Math.round(performance.now() - startedAt);
+            console.debug(`${BATCHES_DEBUG_PREFIX} request finish`, {
+                requestId,
+                reason,
+                durationMs,
+                rowCount: rows.length,
+            });
+            return rows;
+        } catch (error) {
+            const durationMs = Math.round(performance.now() - startedAt);
+            if (isAccessImportRequestCanceledError(error)) {
+                console.debug(`${BATCHES_DEBUG_PREFIX} request canceled`, {
+                    requestId,
+                    reason,
+                    durationMs,
+                    message: error instanceof Error ? error.message : String(error),
+                });
+                throw new AccessImportRequestCanceledError(
+                    error instanceof Error ? error.message : "Access import batches request canceled.",
+                );
+            }
+
+            console.debug(`${BATCHES_DEBUG_PREFIX} request failed`, {
+                requestId,
+                reason,
+                durationMs,
+                message: error instanceof Error ? error.message : String(error),
+            });
+            throw error;
+        } finally {
+            batchesInFlightPromise = null;
+        }
+    })();
+
+    batchesInFlightPromise = requestPromise;
+    return requestPromise;
 }
 
 export async function getAccessImportBatchDetail(batchId: number, logTake = 200, severity?: string): Promise<BatchDetailDto> {
     const params = new URLSearchParams({ logTake: String(logTake) });
     if (severity) params.set("severity", severity);
-    const res = await fetchWithTimeout(`${API}/api/access-import/batches/${batchId}?${params}`, undefined, 20_000);
-    if (!res.ok) throw new Error(await parseError(res));
-    return res.json();
+    try {
+        const res = await fetchWithTimeout(`${API}/api/access-import/batches/${batchId}?${params}`, undefined, 20_000);
+        if (!res.ok) throw new Error(await parseError(res));
+        return res.json();
+    } catch (error) {
+        if (isAccessImportRequestCanceledError(error)) {
+            throw new AccessImportRequestCanceledError(
+                error instanceof Error ? error.message : "Access import batch detail request canceled.",
+            );
+        }
+
+        throw error;
+    }
 }
 
 export async function getAccessImportBatchLogs(

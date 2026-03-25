@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DatabaseZap } from "lucide-react";
 import {
+    isAccessImportRequestCanceledError,
     deleteAccessImportBatch,
     getAccessImportRuntimeStatus,
     getAccessImportBatches,
@@ -118,12 +119,18 @@ export default function AccessImportPage() {
 
     // --- data loading ---
 
-    const refreshBatches = async () => {
+    const refreshBatches = async (reason: string) => {
         try {
-            const rows = await getAccessImportBatches(50);
+            const rows = await getAccessImportBatches(50, reason);
             setBatches(rows);
             return rows;
-        } catch {
+        } catch (error) {
+            if (!isAccessImportRequestCanceledError(error)) {
+                console.debug("[access-import][batches] refresh failed", {
+                    reason,
+                    message: error instanceof Error ? error.message : String(error),
+                });
+            }
             return [] as AccessImportBatchDto[];
         }
     };
@@ -173,7 +180,7 @@ export default function AccessImportPage() {
         );
     };
 
-    useEffect(() => { void refreshBatches(); }, []);
+    useEffect(() => { void refreshBatches("initial-load"); }, []);
 
     useEffect(() => {
         const loadRuntimeStatus = async () => {
@@ -220,7 +227,7 @@ export default function AccessImportPage() {
             if (batchPollInFlightRef.current) return;
             batchPollInFlightRef.current = true;
             try {
-                const rows = await refreshBatches();
+                const rows = await refreshBatches("poll-running-batch");
                 if (cancelled) return;
 
                 const polledBatch = rows.find((row) => row.id === runningBatchId);
@@ -245,6 +252,7 @@ export default function AccessImportPage() {
                 }
             } catch (e: unknown) {
                 if (cancelled) return;
+                if (isAccessImportRequestCanceledError(e)) return;
                 const message = e instanceof Error ? e.message : "Greska pri pracenju batch statusa.";
                 const now = Date.now();
                 if (now - lastPollWarningAtRef.current >= 30_000) {
@@ -287,7 +295,7 @@ export default function AccessImportPage() {
             const data = await runAccessImport(file, { useRootFile, includeAnalytics, overwriteExisting });
             setRunResult(data);
             setActiveTab("lastImport");
-            await refreshBatches();
+            await refreshBatches("after-run");
             if (data.status.toLowerCase() === "running") {
                 setRunningBatchId(data.batchId);
             } else if (data.status.toLowerCase() === "completed") {
@@ -308,7 +316,7 @@ export default function AccessImportPage() {
         try {
             const result = await deleteAccessImportBatch(batchId, deleteIncludeAnalytics);
             setDeleteResult(result);
-            await refreshBatches();
+            await refreshBatches("after-delete");
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Greska pri brisanju batch-a.");
         } finally {
@@ -901,7 +909,7 @@ export default function AccessImportPage() {
                             </label>
                         </div>
                         <div className="accimport-field" style={{ alignItems: "flex-end" }}>
-                            <button className="accimport-btn accimport-btn-secondary" onClick={() => void refreshBatches()}>
+                            <button className="accimport-btn accimport-btn-secondary" onClick={() => void refreshBatches("manual-refresh")}>
                                 Osvezi
                             </button>
                         </div>
