@@ -863,8 +863,39 @@ public sealed class AccessImportService : IAccessImportService
         if (!File.Exists(accessFilePath))
             throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", accessFilePath);
 
+        await EnsureDataImportBatchesTableAsync(ct);
+        await RecoverStaleRunningBatchesAsync(batchId: null, ct);
+
+        if (_options.PreventConcurrentRuns)
+        {
+            var activeBatch = await GetActiveRunningBatchAsync(ct);
+            if (activeBatch is not null)
+            {
+                var runningResponse = await BuildExistingRunningBatchResponseAsync(activeBatch, includeAnalytics, ct);
+                if (runningResponse is not null)
+                    return runningResponse;
+            }
+        }
+
         var workingCopy = CreateBackgroundWorkingCopy(accessFilePath);
-        var (batch, result) = await CreateImportBatchAsync(accessFilePath, includeAnalytics, ct);
+        DataImportBatch batch;
+        AccessImportRunResponse result;
+        try
+        {
+            (batch, result) = await CreateImportBatchAsync(accessFilePath, includeAnalytics, ct);
+        }
+        catch (InvalidOperationException) when (_options.PreventConcurrentRuns)
+        {
+            var activeBatch = await GetActiveRunningBatchAsync(ct);
+            if (activeBatch is not null)
+            {
+                var runningResponse = await BuildExistingRunningBatchResponseAsync(activeBatch, includeAnalytics, ct);
+                if (runningResponse is not null)
+                    return runningResponse;
+            }
+
+            throw;
+        }
         var scopeFactory = _serviceScopeFactory
             ?? throw new InvalidOperationException("Access import background execution is unavailable because IServiceScopeFactory is not configured.");
 
@@ -921,6 +952,56 @@ public sealed class AccessImportService : IAccessImportService
         });
 
         return result;
+    }
+
+    private async Task<AccessImportRunResponse?> BuildExistingRunningBatchResponseAsync(
+        RunningBatchSnapshot activeBatch,
+        bool includeAnalytics,
+        CancellationToken ct)
+    {
+        var batch = await _trendDb.DataImportBatches
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == activeBatch.Id, ct);
+
+        if (batch is null)
+            return null;
+
+        AccessImportRunResponse response;
+        if (!string.IsNullOrWhiteSpace(batch.SummaryJson))
+        {
+            try
+            {
+                response = JsonSerializer.Deserialize<AccessImportRunResponse>(batch.SummaryJson) ?? new AccessImportRunResponse();
+            }
+            catch
+            {
+                response = new AccessImportRunResponse();
+            }
+        }
+        else
+        {
+            response = new AccessImportRunResponse();
+        }
+
+        response.BatchId = batch.Id;
+        response.Status = "running";
+        response.SourceFileName = batch.SourceFileName;
+        response.IncludeAnalytics = includeAnalytics;
+        response.StartedAtUtc = batch.StartedAtUtc;
+        response.CompletedAtUtc = null;
+
+        var warning =
+            $"Access import batch {batch.Id} is already running since {batch.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC for file '{batch.SourceFileName}'.";
+        if (!response.Warnings.Contains(warning, StringComparer.Ordinal))
+            response.Warnings.Add(warning);
+
+        _logger.LogInformation(
+            "Reusing existing running Access import batch instead of creating a new one. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StartedAtUtc: {StartedAtUtc}.",
+            batch.Id,
+            batch.SourceFileName,
+            batch.StartedAtUtc);
+
+        return response;
     }
 
     public Task<AccessImportRunResponse> RunExistingBatchAsync(
