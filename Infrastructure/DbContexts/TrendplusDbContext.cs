@@ -276,7 +276,10 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.SourceFileName).IsRequired().HasMaxLength(300);
                 eb.Property(e => e.StartedAtUtc).IsRequired();
                 eb.Property(e => e.CompletedAtUtc);
+                eb.Property(e => e.LastHeartbeatUtc);
                 eb.Property(e => e.Status).IsRequired().HasMaxLength(32);
+                eb.Property(e => e.CurrentStep).HasMaxLength(64);
+                eb.Property(e => e.CurrentTable).HasMaxLength(300);
                 eb.Property(e => e.SummaryJson);
                 eb.Property(e => e.ErrorMessage).HasMaxLength(4000);
                 eb.Property(e => e.DurationSeconds);
@@ -291,6 +294,7 @@ namespace Infrastructure.DbContexts
                   .OnDelete(DeleteBehavior.Cascade);
 
                 eb.HasIndex(e => e.StartedAtUtc);
+                eb.HasIndex(e => e.LastHeartbeatUtc);
                 eb.HasIndex(e => e.Status);
             });
 

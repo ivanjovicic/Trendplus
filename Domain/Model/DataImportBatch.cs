@@ -11,7 +11,10 @@ namespace Domain.Model
         public string SourceFileName { get; set; } = string.Empty;
         public DateTime StartedAtUtc { get; set; } = DateTime.UtcNow;
         public DateTime? CompletedAtUtc { get; set; }
+        public DateTime? LastHeartbeatUtc { get; set; }
         public string Status { get; set; } = "running";
+        public string? CurrentStep { get; set; }
+        public string? CurrentTable { get; set; }
         public string? SummaryJson { get; set; }
         public string? ErrorMessage { get; set; }
 

@@ -911,7 +911,10 @@ public static class DatabaseInitializer
                 ""SourceFileName""  character varying(300)  NOT NULL,
                 ""StartedAtUtc""    timestamp with time zone NOT NULL,
                 ""CompletedAtUtc""  timestamp with time zone,
+                ""LastHeartbeatUtc"" timestamp with time zone,
                 ""Status""          character varying(32)   NOT NULL,
+                ""CurrentStep""     character varying(64),
+                ""CurrentTable""    character varying(300),
                 ""SummaryJson""     text,
                 ""ErrorMessage""    character varying(4000),
                 ""DurationSeconds"" integer,
@@ -929,6 +932,10 @@ public static class DatabaseInitializer
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalUpdated"" integer NOT NULL DEFAULT 0;
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalErrors"" integer NOT NULL DEFAULT 0;
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'access';
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""LastHeartbeatUtc"" timestamp with time zone;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""CurrentStep"" character varying(64);
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""CurrentTable"" character varying(300);
+            CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_LastHeartbeatUtc"" ON ""DataImportBatches"" (""LastHeartbeatUtc"");
 
             -- TipoviObuce (idempotent bootstrap)
             CREATE TABLE IF NOT EXISTS ""TipoviObuce"" (
@@ -1105,6 +1112,10 @@ public static class DatabaseInitializer
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalUpdated"" integer NOT NULL DEFAULT 0;
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""TotalErrors"" integer NOT NULL DEFAULT 0;
             ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'access';
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""LastHeartbeatUtc"" timestamp with time zone;
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""CurrentStep"" character varying(64);
+            ALTER TABLE IF EXISTS ""DataImportBatches"" ADD COLUMN IF NOT EXISTS ""CurrentTable"" character varying(300);
+            CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_LastHeartbeatUtc"" ON ""DataImportBatches"" (""LastHeartbeatUtc"");
 
             CREATE INDEX IF NOT EXISTS ""IX_Dobavljaci_DataOrigin"" ON ""Dobavljaci"" (""DataOrigin"");
             CREATE INDEX IF NOT EXISTS ""IX_Sezone_DataOrigin"" ON ""Sezone"" (""DataOrigin"");
@@ -1113,6 +1124,7 @@ public static class DatabaseInitializer
             CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_DataOrigin"" ON ""DnevnikPromena"" (""DataOrigin"");
             CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
             CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_StartedAtUtc"" ON ""DataImportBatches"" (""StartedAtUtc"");
+            CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_LastHeartbeatUtc"" ON ""DataImportBatches"" (""LastHeartbeatUtc"");
             CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_Status"" ON ""DataImportBatches"" (""Status"");
         ";
 

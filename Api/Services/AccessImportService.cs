@@ -195,6 +195,8 @@ public sealed class AccessImportService : IAccessImportService
     private const int SnapshotDeleteMaxAttempts = 3;
     private static readonly TimeSpan SnapshotDeleteRetryDelay = TimeSpan.FromMilliseconds(250);
     private const int ForeignKeyWarningSampleLimit = 5;
+    private static readonly TimeSpan BatchHeartbeatPersistInterval = TimeSpan.FromSeconds(5);
+    private const int ArtikliProgressLogInterval = 250;
 
     private readonly TrendplusDbContext _trendDb;
     private readonly AnalyticsDbContext _analyticsDb;
@@ -210,6 +212,11 @@ public sealed class AccessImportService : IAccessImportService
     private bool _useCliMode;
     private string? _cliFilePath;
     private int _pendingTrendWrites;
+    private long? _activeBatchId;
+    private AccessImportRunResponse? _activeBatchResult;
+    private string? _activeBatchStep;
+    private string? _activeBatchTable;
+    private DateTime _lastBatchHeartbeatPersistedUtc;
 
     public AccessImportService(
         TrendplusDbContext trendDb,
@@ -238,6 +245,92 @@ public sealed class AccessImportService : IAccessImportService
     {
         _useCliMode = false;
         _cliFilePath = File.Exists(accessFilePath) ? accessFilePath : null;
+    }
+
+    private void InitializeBatchProgressContext(long batchId, AccessImportRunResponse result)
+    {
+        _activeBatchId = batchId;
+        _activeBatchResult = result;
+        _activeBatchStep = "queued";
+        _activeBatchTable = "all";
+        _lastBatchHeartbeatPersistedUtc = DateTime.MinValue;
+    }
+
+    private void SetBatchProgressContext(string? step, string? table)
+    {
+        _activeBatchStep = step;
+        _activeBatchTable = table;
+    }
+
+    private void ClearBatchProgressContext()
+    {
+        _activeBatchId = null;
+        _activeBatchResult = null;
+        _activeBatchStep = null;
+        _activeBatchTable = null;
+        _lastBatchHeartbeatPersistedUtc = DateTime.MinValue;
+    }
+
+    private async Task PersistBatchProgressAsync(string reason, bool force, CancellationToken ct)
+    {
+        if (_activeBatchId is null || _activeBatchResult is null || _serviceScopeFactory is null)
+            return;
+
+        var now = DateTime.UtcNow;
+        if (!force && now - _lastBatchHeartbeatPersistedUtc < BatchHeartbeatPersistInterval)
+            return;
+
+        try
+        {
+            await using var scope = _serviceScopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            var batch = await db.DataImportBatches.FirstOrDefaultAsync(x => x.Id == _activeBatchId.Value, ct);
+            if (batch is null)
+                return;
+
+            if (!string.Equals(batch.Status, "running", StringComparison.OrdinalIgnoreCase) || batch.CompletedAtUtc is not null)
+                return;
+
+            batch.LastHeartbeatUtc = now;
+            batch.CurrentStep = string.IsNullOrWhiteSpace(_activeBatchStep) ? null : TrimToMaxLength(_activeBatchStep, 64);
+            batch.CurrentTable = string.IsNullOrWhiteSpace(_activeBatchTable) ? null : TrimToMaxLength(_activeBatchTable, 300);
+            batch.DurationSeconds = (int)Math.Max(0, Math.Round((now - batch.StartedAtUtc).TotalSeconds));
+            batch.TotalImported = CountImportedRows(_activeBatchResult);
+            batch.TotalUpdated = CountUpdatedRows(_activeBatchResult);
+            batch.TotalErrors = _activeBatchResult.Warnings.Count;
+            batch.SummaryJson = JsonSerializer.Serialize(_activeBatchResult);
+            await db.SaveChangesAsync(ct);
+
+            _lastBatchHeartbeatPersistedUtc = now;
+            _logger.LogDebug(
+                "Access import batch heartbeat persisted. BatchId: {BatchId}. Step: {Step}. TableName: {TableName}. Reason: {Reason}. Imported: {Imported}. Updated: {Updated}. Errors: {Errors}.",
+                batch.Id,
+                batch.CurrentStep ?? "<none>",
+                batch.CurrentTable ?? "<none>",
+                reason,
+                batch.TotalImported,
+                batch.TotalUpdated,
+                batch.TotalErrors);
+        }
+        catch (PostgresException ex) when (
+            ex.SqlState == PostgresErrorCodes.UndefinedTable ||
+            ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogDebug(
+                ex,
+                "Skipping Access import heartbeat persistence because batch progress columns are not fully available yet. BatchId: {BatchId}.",
+                _activeBatchId.Value);
+        }
+        catch (Exception ex) when (IsTransientDatabaseTimeout(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "Access import heartbeat persistence hit a transient database issue. BatchId: {BatchId}. Step: {Step}. TableName: {TableName}. Reason: {Reason}.",
+                _activeBatchId.Value,
+                _activeBatchStep ?? "<none>",
+                _activeBatchTable ?? "<none>",
+                reason);
+        }
     }
 
     private bool TryEnableCliMode(string operation, Exception? ex = null)
@@ -925,6 +1018,7 @@ public sealed class AccessImportService : IAccessImportService
                         UPDATE "DataImportBatches"
                         SET "Status" = @p0,
                             "CompletedAtUtc" = @p1,
+                            "LastHeartbeatUtc" = @p1,
                             "ErrorMessage" = COALESCE(NULLIF("ErrorMessage", ''), @p2)
                         WHERE "Id" = @p3
                           AND "Status" = 'running'
@@ -995,6 +1089,17 @@ public sealed class AccessImportService : IAccessImportService
         if (!response.Warnings.Contains(warning, StringComparer.Ordinal))
             response.Warnings.Add(warning);
 
+        if (batch.LastHeartbeatUtc.HasValue || !string.IsNullOrWhiteSpace(batch.CurrentStep) || !string.IsNullOrWhiteSpace(batch.CurrentTable))
+        {
+            var heartbeatValue = batch.LastHeartbeatUtc.HasValue
+                ? batch.LastHeartbeatUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC"
+                : "n/a";
+            var progressWarning =
+                $"Current progress: step '{batch.CurrentStep ?? "unknown"}', table '{batch.CurrentTable ?? "unknown"}', last heartbeat {heartbeatValue}.";
+            if (!response.Warnings.Contains(progressWarning, StringComparer.Ordinal))
+                response.Warnings.Add(progressWarning);
+        }
+
         _logger.LogInformation(
             "Reusing existing running Access import batch instead of creating a new one. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StartedAtUtc: {StartedAtUtc}.",
             batch.Id,
@@ -1051,6 +1156,9 @@ public sealed class AccessImportService : IAccessImportService
             SourceSystem = "access",
             SourceFileName = Path.GetFileName(accessFilePath),
             StartedAtUtc = started,
+            LastHeartbeatUtc = started,
+            CurrentStep = "queued",
+            CurrentTable = "all",
             Status = "running"
         };
 
@@ -1096,6 +1204,8 @@ public sealed class AccessImportService : IAccessImportService
             IncludeAnalytics = includeAnalytics,
             StartedAtUtc = batch.StartedAtUtc
         };
+        InitializeBatchProgressContext(batch.Id, result);
+        SetBatchProgressContext("starting", "all");
 
         var operationId = Guid.NewGuid().ToString("N");
         var snapshot = CreateSnapshotIfLocked(accessFilePath);
@@ -1120,6 +1230,9 @@ public sealed class AccessImportService : IAccessImportService
                 batch.ErrorMessage = null;
                 batch.CompletedAtUtc = null;
                 batch.SummaryJson = null;
+                batch.LastHeartbeatUtc = DateTime.UtcNow;
+                batch.CurrentStep = "starting";
+                batch.CurrentTable = "all";
 
                 _trendDb.ChangeTracker.AutoDetectChangesEnabled = false;
                 _pendingTrendWrites = 0;
@@ -1136,6 +1249,7 @@ public sealed class AccessImportService : IAccessImportService
                     includeAnalytics,
                     overwriteExisting,
                     includeTemporaryTables);
+                await PersistBatchProgressAsync("batch-start", force: true, ct);
                 await ImportTrendplusAsync(session, overwriteExisting, includeTemporaryTables, result, ct);
                 await FlushTrendWritesAsync(force: true, ct);
                 await ResetTrendplusSequencesAsync(ct);
@@ -1147,6 +1261,9 @@ public sealed class AccessImportService : IAccessImportService
                 result.CompletedAtUtc = DateTime.UtcNow;
                 batch.Status = "completed";
                 batch.CompletedAtUtc = result.CompletedAtUtc;
+                batch.LastHeartbeatUtc = result.CompletedAtUtc;
+                batch.CurrentStep = null;
+                batch.CurrentTable = null;
                 batch.DurationSeconds = (int)Math.Max(0, Math.Round(((result.CompletedAtUtc ?? DateTime.UtcNow) - batch.StartedAtUtc).TotalSeconds));
                 batch.TotalImported = CountImportedRows(result);
                 batch.TotalUpdated = CountUpdatedRows(result);
@@ -1181,6 +1298,9 @@ public sealed class AccessImportService : IAccessImportService
 
             batch.Status = "failed";
             batch.CompletedAtUtc = result.CompletedAtUtc;
+            batch.LastHeartbeatUtc = result.CompletedAtUtc;
+            batch.CurrentStep = string.IsNullOrWhiteSpace(_activeBatchStep) ? null : TrimToMaxLength(_activeBatchStep, 64);
+            batch.CurrentTable = string.IsNullOrWhiteSpace(_activeBatchTable) ? null : TrimToMaxLength(_activeBatchTable, 300);
             batch.DurationSeconds = (int)Math.Max(0, Math.Round(((result.CompletedAtUtc ?? DateTime.UtcNow) - batch.StartedAtUtc).TotalSeconds));
             batch.TotalImported = CountImportedRows(result);
             batch.TotalUpdated = CountUpdatedRows(result);
@@ -1219,6 +1339,8 @@ public sealed class AccessImportService : IAccessImportService
         }
         finally
         {
+            ClearBatchProgressContext();
+
             if (snapshot.IsSnapshot)
                 TryDeleteFile(snapshot.FilePath, "import-cleanup", batch.SourceFileName, batch.Id, "snapshot");
 
@@ -1229,7 +1351,7 @@ public sealed class AccessImportService : IAccessImportService
 
     private sealed record TableMatch(string? TableName, string Strategy, IReadOnlyList<string>? Columns = null);
 
-    private sealed record RunningBatchSnapshot(long Id, string SourceFileName, DateTime StartedAtUtc);
+    private sealed record RunningBatchSnapshot(long Id, string SourceFileName, DateTime StartedAtUtc, DateTime? LastHeartbeatUtc);
 
     public Task RefreshBatchStatusesAsync(long? batchId = null, CancellationToken ct = default)
         => RecoverStaleRunningBatchesAsync(batchId, ct);
@@ -1251,7 +1373,10 @@ public sealed class AccessImportService : IAccessImportService
                     SourceFileName = x.SourceFileName,
                     StartedAtUtc = x.StartedAtUtc,
                     CompletedAtUtc = x.CompletedAtUtc,
+                    LastHeartbeatUtc = x.LastHeartbeatUtc,
                     Status = x.Status,
+                    CurrentStep = x.CurrentStep,
+                    CurrentTable = x.CurrentTable,
                     SummaryJson = x.SummaryJson,
                     ErrorMessage = x.ErrorMessage,
                     DurationSeconds = x.DurationSeconds,
@@ -1283,7 +1408,10 @@ public sealed class AccessImportService : IAccessImportService
                     SourceFileName = x.SourceFileName,
                     StartedAtUtc = x.StartedAtUtc,
                     CompletedAtUtc = x.CompletedAtUtc,
+                    LastHeartbeatUtc = null,
                     Status = x.Status,
+                    CurrentStep = null,
+                    CurrentTable = null,
                     SummaryJson = x.SummaryJson,
                     ErrorMessage = x.ErrorMessage,
                     DurationSeconds = null,
@@ -1333,9 +1461,13 @@ public sealed class AccessImportService : IAccessImportService
     }
 
     internal static bool IsRunningBatchStale(DateTime startedAtUtc, DateTime utcNow, int staleAfterMinutes)
+        => IsRunningBatchStale(startedAtUtc, lastHeartbeatUtc: null, utcNow, staleAfterMinutes);
+
+    internal static bool IsRunningBatchStale(DateTime startedAtUtc, DateTime? lastHeartbeatUtc, DateTime utcNow, int staleAfterMinutes)
     {
         var safeWindowMinutes = Math.Max(15, staleAfterMinutes);
-        return startedAtUtc <= utcNow.AddMinutes(-safeWindowMinutes);
+        var referenceTime = lastHeartbeatUtc ?? startedAtUtc;
+        return referenceTime <= utcNow.AddMinutes(-safeWindowMinutes);
     }
 
     private int GetRunningBatchStaleMinutes()
@@ -1359,8 +1491,8 @@ public sealed class AccessImportService : IAccessImportService
                 staleQuery = staleQuery.Where(x => x.Id == batchId.Value);
 
             var staleCandidates = await staleQuery
-                .Where(x => x.StartedAtUtc <= now.AddMinutes(-staleAfterMinutes))
-                .Select(x => new RunningBatchSnapshot(x.Id, x.SourceFileName, x.StartedAtUtc))
+                .Where(x => (x.LastHeartbeatUtc ?? x.StartedAtUtc) <= now.AddMinutes(-staleAfterMinutes))
+                .Select(x => new RunningBatchSnapshot(x.Id, x.SourceFileName, x.StartedAtUtc, x.LastHeartbeatUtc))
                 .ToListAsync(ct);
 
             if (staleCandidates.Count == 0)
@@ -1383,6 +1515,7 @@ public sealed class AccessImportService : IAccessImportService
                     UPDATE "DataImportBatches"
                     SET "Status" = @p0,
                         "CompletedAtUtc" = @p1,
+                        "LastHeartbeatUtc" = @p1,
                         "ErrorMessage" = COALESCE(NULLIF("ErrorMessage", ''), @p2),
                         "SummaryJson" = COALESCE("SummaryJson", @p3)
                     WHERE "Id" = @p4
@@ -1403,10 +1536,11 @@ public sealed class AccessImportService : IAccessImportService
                     cancellationToken: ct);
 
                 _logger.LogWarning(
-                    "Recovered stale Access import batch. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StartedAtUtc: {StartedAtUtc}. RecoveryWindowMinutes: {RecoveryWindowMinutes}.",
+                    "Recovered stale Access import batch. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StartedAtUtc: {StartedAtUtc}. LastHeartbeatUtc: {LastHeartbeatUtc}. RecoveryWindowMinutes: {RecoveryWindowMinutes}.",
                     staleBatch.Id,
                     staleBatch.SourceFileName,
                     staleBatch.StartedAtUtc,
+                    staleBatch.LastHeartbeatUtc,
                     staleAfterMinutes);
             }
         }
@@ -1431,9 +1565,9 @@ public sealed class AccessImportService : IAccessImportService
                 .AsNoTracking()
                 .Where(x => x.Status == "running" &&
                             x.CompletedAtUtc == null &&
-                            x.StartedAtUtc > now.AddMinutes(-staleAfterMinutes))
+                            (x.LastHeartbeatUtc ?? x.StartedAtUtc) > now.AddMinutes(-staleAfterMinutes))
                 .OrderByDescending(x => x.StartedAtUtc)
-                .Select(x => new RunningBatchSnapshot(x.Id, x.SourceFileName, x.StartedAtUtc))
+                .Select(x => new RunningBatchSnapshot(x.Id, x.SourceFileName, x.StartedAtUtc, x.LastHeartbeatUtc))
                 .FirstOrDefaultAsync(ct);
         }
         catch (PostgresException ex) when (
@@ -1898,6 +2032,7 @@ public sealed class AccessImportService : IAccessImportService
         var beforeImported = GetImportedRowCount(result, tableKey);
         var started = DateTime.UtcNow;
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        SetBatchProgressContext(step, tableName ?? tableKey);
 
         _logger.LogInformation(
             "Access import step started. Step: {Step}. TableKey: {TableKey}. TableName: {TableName}. StartedAtUtc: {StartedAtUtc}.",
@@ -1905,6 +2040,7 @@ public sealed class AccessImportService : IAccessImportService
             tableKey,
             tableName ?? "<none>",
             started);
+        await PersistBatchProgressAsync("step-start", force: true, ct);
 
         await action(ct);
 
@@ -1924,6 +2060,7 @@ public sealed class AccessImportService : IAccessImportService
             Math.Max(0, afterMetric.AcceptedRows - beforeMetric.AcceptedRows),
             Math.Max(0, afterImported - beforeImported),
             _options.DbSaveBatchSize);
+        await PersistBatchProgressAsync("step-complete", force: true, ct);
     }
 
     private static int GetImportedRowCount(AccessImportRunResponse result, string key)
@@ -2107,9 +2244,15 @@ public sealed class AccessImportService : IAccessImportService
         var usedIds = existingIds.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var trackedCurrentBatch = new Dictionary<int, Artikli>();
+        var artikliSw = Stopwatch.StartNew();
+        var sourceRows = 0;
+        var acceptedRows = 0;
+        var insertedBeforeLoop = result.ArtikliInserted;
+        var updatedBeforeLoop = result.ArtikliUpdated;
 
         await foreach (var row in session.ReadRowsAsync(table, ct))
         {
+            sourceRows++;
             MarkSourceRow(result, "artikli");
             var naziv = S(row,
                 "naziv", "nazivartikal", "nazivarticle", "nazivproizvoda",
@@ -2118,6 +2261,7 @@ public sealed class AccessImportService : IAccessImportService
                 "artikal", "article", "item", "roba");
             if (string.IsNullOrWhiteSpace(naziv)) continue;
             MarkAccepted(result, "artikli");
+            acceptedRows++;
             var id = I(row, "id", "idartikal", "productid");
 
             Artikli? e = null;
@@ -2172,7 +2316,34 @@ public sealed class AccessImportService : IAccessImportService
             await FlushTrendWritesAsync(force: false, ct);
             if (shouldClearTrackedBatch)
                 trackedCurrentBatch.Clear();
+
+            if (acceptedRows == 1 || acceptedRows % ArtikliProgressLogInterval == 0)
+            {
+                _logger.LogInformation(
+                    "Access import artikli progress. SourceRows: {SourceRows}. AcceptedRows: {AcceptedRows}. InsertedDelta: {InsertedDelta}. UpdatedDelta: {UpdatedDelta}. PendingTrendWrites: {PendingTrendWrites}. TrackedBatchSize: {TrackedBatchSize}. TableName: {TableName}. ElapsedMs: {ElapsedMs}. Operation: {Operation}.",
+                    sourceRows,
+                    acceptedRows,
+                    result.ArtikliInserted - insertedBeforeLoop,
+                    result.ArtikliUpdated - updatedBeforeLoop,
+                    _pendingTrendWrites,
+                    trackedCurrentBatch.Count,
+                    table,
+                    artikliSw.ElapsedMilliseconds,
+                    "artikli-progress");
+                await PersistBatchProgressAsync("artikli-progress", force: false, ct);
+            }
         }
+
+        _logger.LogInformation(
+            "Access import artikli completed. SourceRows: {SourceRows}. AcceptedRows: {AcceptedRows}. InsertedDelta: {InsertedDelta}. UpdatedDelta: {UpdatedDelta}. ExistingCount: {ExistingCount}. DurationMs: {DurationMs}. TableName: {TableName}. Operation: {Operation}.",
+            sourceRows,
+            acceptedRows,
+            result.ArtikliInserted - insertedBeforeLoop,
+            result.ArtikliUpdated - updatedBeforeLoop,
+            existingIds.Count,
+            artikliSw.ElapsedMilliseconds,
+            table,
+            "artikli-complete");
     }
 
     private static void ApplyArtikliValues(Artikli entity, AccessDataRow row, string naziv)
@@ -4360,7 +4531,10 @@ public sealed class AccessImportService : IAccessImportService
                 "SourceFileName"  character varying(300)  NOT NULL DEFAULT '',
                 "StartedAtUtc"    timestamp with time zone NOT NULL DEFAULT NOW(),
                 "CompletedAtUtc"  timestamp with time zone,
+                "LastHeartbeatUtc" timestamp with time zone,
                 "Status"          character varying(32)   NOT NULL DEFAULT 'running',
+                "CurrentStep"     character varying(64),
+                "CurrentTable"    character varying(300),
                 "SummaryJson"     text,
                 "ErrorMessage"    character varying(4000),
                 "DurationSeconds" integer,
@@ -4371,6 +4545,13 @@ public sealed class AccessImportService : IAccessImportService
             );
             """;
         await _trendDb.Database.ExecuteSqlRawAsync(createSql, ct);
+        const string alterSql = """
+            ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "LastHeartbeatUtc" timestamp with time zone;
+            ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "CurrentStep" character varying(64);
+            ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "CurrentTable" character varying(300);
+            CREATE INDEX IF NOT EXISTS "IX_DataImportBatches_LastHeartbeatUtc" ON "DataImportBatches" ("LastHeartbeatUtc");
+            """;
+        await _trendDb.Database.ExecuteSqlRawAsync(alterSql, ct);
     }
 
     /// <summary>
@@ -5400,6 +5581,7 @@ public sealed class AccessImportService : IAccessImportService
             writesToFlush,
             _options.DbSaveBatchSize,
             force);
+        await PersistBatchProgressAsync("db-flush", force: true, ct);
     }
 
     private static string SerializeRowForDiagnostics(AccessDataRow row)

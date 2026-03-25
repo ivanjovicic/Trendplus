@@ -383,6 +383,30 @@ public sealed class AccessImportServiceTests
         Assert.False(result);
     }
 
+    [Fact]
+    public void IsRunningBatchStale_UsesLastHeartbeat_WhenAvailable()
+    {
+        var utcNow = new DateTime(2026, 03, 25, 8, 0, 0, DateTimeKind.Utc);
+        var startedAtUtc = utcNow.AddMinutes(-500);
+        var lastHeartbeatUtc = utcNow.AddMinutes(-10);
+
+        var result = AccessImportService.IsRunningBatchStale(startedAtUtc, lastHeartbeatUtc, utcNow, 240);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsRunningBatchStale_ReturnsTrue_WhenLastHeartbeatExceededRecoveryWindow()
+    {
+        var utcNow = new DateTime(2026, 03, 25, 8, 0, 0, DateTimeKind.Utc);
+        var startedAtUtc = utcNow.AddMinutes(-500);
+        var lastHeartbeatUtc = utcNow.AddMinutes(-241);
+
+        var result = AccessImportService.IsRunningBatchStale(startedAtUtc, lastHeartbeatUtc, utcNow, 240);
+
+        Assert.True(result);
+    }
+
     #endregion
 }
 

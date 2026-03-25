@@ -111,7 +111,10 @@ namespace Api.Models
         public string SourceFileName { get; set; } = string.Empty;
         public DateTime StartedAtUtc { get; set; }
         public DateTime? CompletedAtUtc { get; set; }
+        public DateTime? LastHeartbeatUtc { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string? CurrentStep { get; set; }
+        public string? CurrentTable { get; set; }
         public string? SummaryJson { get; set; }
         public string? ErrorMessage { get; set; }
 

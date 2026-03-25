@@ -121,6 +121,17 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
         var handle = StartProcess("mdb-export", $"\"{_sourceFilePath}\" \"{table}\"", ct);
         var completed = false;
         var rowCount = 0;
+        var streamSw = Stopwatch.StartNew();
+        var firstRowLogged = false;
+        var traceArtikli = ShouldTraceArtikli(table);
+
+        _logger.LogInformation(
+            "Access CLI row stream started. Step: {Step}. TableName: {TableName}. Mode: {Mode}. SourceFile: {SourceFile}. TraceArtikli: {TraceArtikli}.",
+            "cli-row-stream",
+            table,
+            Mode,
+            Path.GetFileName(_sourceFilePath),
+            traceArtikli);
 
         try
         {
@@ -141,6 +152,13 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
             _columnCache[table] = columns;
             var schema = new AccessDataSchema(columns);
 
+            _logger.LogInformation(
+                "Access CLI row stream header parsed. Step: {Step}. TableName: {TableName}. ColumnCount: {ColumnCount}. ElapsedMs: {ElapsedMs}.",
+                "cli-row-stream",
+                table,
+                columns.Count,
+                streamSw.ElapsedMilliseconds);
+
             while (!parser.EndOfData)
             {
                 ct.ThrowIfCancellationRequested();
@@ -156,12 +174,39 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
                 }
 
                 rowCount++;
+                if (!firstRowLogged)
+                {
+                    firstRowLogged = true;
+                    _logger.LogInformation(
+                        "Access CLI row stream emitted first row. Step: {Step}. TableName: {TableName}. ElapsedMs: {ElapsedMs}. ColumnCount: {ColumnCount}.",
+                        "cli-row-stream",
+                        table,
+                        streamSw.ElapsedMilliseconds,
+                        columns.Count);
+                }
+
+                if (traceArtikli && rowCount % 250 == 0)
+                {
+                    _logger.LogInformation(
+                        "Access CLI row stream progress. Step: {Step}. TableName: {TableName}. RowsRead: {RowsRead}. ElapsedMs: {ElapsedMs}.",
+                        "cli-row-stream",
+                        table,
+                        rowCount,
+                        streamSw.ElapsedMilliseconds);
+                }
+
                 yield return new AccessDataRow(schema, values);
             }
 
             completed = true;
             _exactRowCountCache[table] = rowCount;
             await handle.FinishAsync(requireSuccess: true, killIfRunning: false);
+            _logger.LogInformation(
+                "Access CLI row stream completed. Step: {Step}. TableName: {TableName}. RowsRead: {RowsRead}. DurationMs: {DurationMs}.",
+                "cli-row-stream",
+                table,
+                rowCount,
+                streamSw.ElapsedMilliseconds);
         }
         finally
         {
@@ -220,6 +265,11 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
         };
 
         var process = new Process { StartInfo = startInfo };
+        _logger.LogInformation(
+            "Access CLI process starting. Step: {Step}. Command: {Command}. Arguments: {Arguments}.",
+            "cli-process",
+            command,
+            args);
         process.Start();
         return new RunningCliProcess(process, command, _options.CliTimeoutSeconds, _logger, ct);
     }
@@ -259,6 +309,17 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
             return string.Empty;
 
         return value.Trim().Trim('"').Trim('\uFEFF');
+    }
+
+    private static bool ShouldTraceArtikli(string table)
+    {
+        if (string.IsNullOrWhiteSpace(table))
+            return false;
+
+        var normalized = AccessImportService.Normalize(table);
+        return normalized.Contains("artikli", StringComparison.Ordinal)
+            || normalized.Contains("artikal", StringComparison.Ordinal)
+            || normalized.Contains("tblart", StringComparison.Ordinal);
     }
 
     private sealed class RunningCliProcess
