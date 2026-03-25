@@ -121,12 +121,11 @@ GROUP BY
     e.new_price;
 
 -- prodaja_stavke nema datum_prodaje kolonu; koristi join preko prodaja_zaglavlje.
--- Zato ovde ide standardni join-support index umesto nevalidnog partial indexa.
-CREATE INDEX IF NOT EXISTS "IX_prodaja_stavke_artikal_prodaja"
-ON prodaja_stavke (id_artikal, id_prodaja);
-
-CREATE INDEX IF NOT EXISTS "IX_prodaja_zaglavlje_id_datum"
-ON prodaja_zaglavlje (id, datum_prodaje);
+-- Zato ovde ne pravimo dodatne indekse nad prodaja_* relacijama:
+-- - u analytics compatibility schemi to mogu biti VIEW objekti (neindexabilni)
+-- - u analytics fact-layeru potrebni indeksi vec postoje na "SalesFacts"/"SalesLineFacts"
+-- - u trendplus bazi odgovarajuci indeksi vec pripadaju migration skriptama 013/014
+-- Ova skripta treba da bude fokusirana samo na view definicije.
 
 CREATE OR REPLACE VIEW vw_sales_post_nivelacija AS
 WITH nivelacija_events AS (
