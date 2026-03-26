@@ -280,6 +280,9 @@ using NpgsqlTypes;
     private string? _activeBatchStep;
     private string? _activeBatchTable;
     private DateTime _lastBatchHeartbeatPersistedUtc;
+    private DateTime _lastTrendFlushUtc;
+    private int _trendFlushCount;
+    private int _batchHeartbeatPersistCount;
 
     public AccessImportService(
         TrendplusDbContext trendDb,
@@ -319,6 +322,9 @@ using NpgsqlTypes;
         _activeBatchStep = "queued";
         _activeBatchTable = "all";
         _lastBatchHeartbeatPersistedUtc = DateTime.MinValue;
+        _lastTrendFlushUtc = DateTime.UtcNow;
+        _trendFlushCount = 0;
+        _batchHeartbeatPersistCount = 0;
     }
 
     private void SetBatchProgressContext(string? step, string? table)
@@ -334,6 +340,9 @@ using NpgsqlTypes;
         _activeBatchStep = null;
         _activeBatchTable = null;
         _lastBatchHeartbeatPersistedUtc = DateTime.MinValue;
+        _lastTrendFlushUtc = DateTime.MinValue;
+        _trendFlushCount = 0;
+        _batchHeartbeatPersistCount = 0;
     }
 
     private void ResetAnalyticsDeltaTracking()
@@ -392,6 +401,9 @@ using NpgsqlTypes;
     private TimeSpan GetBatchHeartbeatPersistInterval()
         => TimeSpan.FromSeconds(Math.Max(1, Math.Max(_options.HeartbeatIntervalSeconds, _options.StatusUpdateThrottleSeconds)));
 
+    private TimeSpan GetTrendFlushInterval()
+        => TimeSpan.FromSeconds(Math.Clamp(_options.StatusUpdateThrottleSeconds, 2, 5));
+
     private async Task PersistBatchProgressAsync(string reason, bool force, CancellationToken ct)
     {
         if (_activeBatchId is null || _activeBatchResult is null || _serviceScopeFactory is null)
@@ -431,6 +443,7 @@ using NpgsqlTypes;
             await db.SaveChangesAsync(ct);
 
             _lastBatchHeartbeatPersistedUtc = now;
+            Interlocked.Increment(ref _batchHeartbeatPersistCount);
             _logger.LogDebug(
                 "Access import batch heartbeat persisted. BatchId: {BatchId}. Step: {Step}. TableName: {TableName}. Reason: {Reason}. Imported: {Imported}. Updated: {Updated}. Errors: {Errors}.",
                 batch.Id,
@@ -459,6 +472,38 @@ using NpgsqlTypes;
                 _activeBatchStep ?? "<none>",
                 _activeBatchTable ?? "<none>",
                 reason);
+        }
+    }
+
+    private async Task RunBatchHeartbeatLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(GetBatchHeartbeatPersistInterval());
+        while (true)
+        {
+            try
+            {
+                if (!await timer.WaitForNextTickAsync(ct))
+                    break;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                break;
+            }
+
+            try
+            {
+                await PersistBatchProgressAsync("heartbeat", force: false, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex) when (IsTransientDatabaseTimeout(ex))
+            {
+                _logger.LogDebug(
+                    ex,
+                    "Access import heartbeat loop skipped one persistence cycle due to transient database issue.");
+            }
         }
     }
 
@@ -1384,6 +1429,8 @@ using NpgsqlTypes;
             ["Operation"] = "access-import",
             ["OperationId"] = operationId
         });
+        using var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var heartbeatTask = RunBatchHeartbeatLoopAsync(heartbeatCts.Token);
 
         try
         {
@@ -1449,11 +1496,13 @@ using NpgsqlTypes;
                 await _trendDb.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
                 _logger.LogInformation(
-                    "Access import completed. BatchId: {BatchId}. SourceFileName: {SourceFileName}. Status: {Status}. IncludeAnalytics: {IncludeAnalytics}.",
+                    "Access import completed. BatchId: {BatchId}. SourceFileName: {SourceFileName}. Status: {Status}. IncludeAnalytics: {IncludeAnalytics}. TrendFlushes: {TrendFlushes}. HeartbeatPersists: {HeartbeatPersists}.",
                     batch.Id,
                     batch.SourceFileName,
                     result.Status,
-                    includeAnalytics);
+                    includeAnalytics,
+                    _trendFlushCount,
+                    _batchHeartbeatPersistCount);
             }
             catch
             {
@@ -1576,6 +1625,32 @@ using NpgsqlTypes;
         }
         finally
         {
+            heartbeatCts.Cancel();
+            try
+            {
+                await heartbeatTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected during shutdown/cancellation.
+            }
+            catch (Exception heartbeatEx)
+            {
+                _logger.LogDebug(heartbeatEx, "Access import heartbeat loop stopped with an exception.");
+            }
+
+            try
+            {
+                await EnsureBatchTerminalStateAsync(batch.Id, result, CancellationToken.None);
+            }
+            catch (Exception terminalStateEx)
+            {
+                _logger.LogWarning(
+                    terminalStateEx,
+                    "Failed terminal-state safety persistence for Access import batch. BatchId: {BatchId}.",
+                    batch.Id);
+            }
+
             ClearBatchProgressContext();
 
             if (snapshot.IsSnapshot)
@@ -2016,6 +2091,54 @@ using NpgsqlTypes;
                 "Skipping mark-interrupted because DataImportBatches compatibility columns are not available yet. BatchId: {BatchId}.",
                 batchId);
         }
+    }
+
+    private async Task EnsureBatchTerminalStateAsync(long batchId, AccessImportRunResponse result, CancellationToken ct)
+    {
+        if (batchId <= 0)
+            return;
+
+        var terminalStatus = Normalize(result.Status) switch
+        {
+            "completed" => "completed",
+            "cancelled" => "cancelled",
+            "interrupted" => "interrupted",
+            _ => "failed"
+        };
+
+        await using var scope = _serviceScopeFactory?.CreateAsyncScope();
+        var db = scope?.ServiceProvider.GetService<TrendplusDbContext>() ?? _trendDb;
+        var batch = await db.DataImportBatches.FirstOrDefaultAsync(x => x.Id == batchId, ct);
+        if (batch is null)
+            return;
+
+        if (!string.Equals(batch.Status, "running", StringComparison.OrdinalIgnoreCase) || batch.CompletedAtUtc is not null)
+            return;
+
+        var now = result.CompletedAtUtc ?? DateTime.UtcNow;
+        batch.Status = terminalStatus;
+        batch.CompletedAtUtc = now;
+        batch.LastHeartbeatUtc = now;
+        batch.CurrentStep = terminalStatus;
+        batch.CurrentTable = null;
+        batch.ProgressPercent = terminalStatus == "completed"
+            ? 100
+            : Math.Clamp(batch.ProgressPercent, 0, 99);
+        UpdateBatchDurationSeconds(batch, now);
+        ApplyBatchMetricsFromResult(batch, result, minTotalErrors: terminalStatus == "completed" ? 0 : 1);
+        if (!string.Equals(terminalStatus, "completed", StringComparison.OrdinalIgnoreCase) &&
+            string.IsNullOrWhiteSpace(batch.ErrorMessage))
+        {
+            batch.ErrorMessage = "Import did not finish cleanly and was finalized by terminal-state safety.";
+        }
+        if (string.IsNullOrWhiteSpace(batch.SummaryJson))
+            batch.SummaryJson = JsonSerializer.Serialize(result);
+
+        await db.SaveChangesAsync(ct);
+        _logger.LogWarning(
+            "Access import batch terminal-state safety updated a stale running batch. BatchId: {BatchId}. FinalStatus: {FinalStatus}.",
+            batchId,
+            terminalStatus);
     }
 
     private static bool IsTransientDatabaseTimeout(Exception ex)
@@ -3437,6 +3560,10 @@ using NpgsqlTypes;
                 StringComparer.OrdinalIgnoreCase);
 
         var consumedExistingLineCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var pendingHeadersByBusinessKey = new Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje>(StringComparer.OrdinalIgnoreCase);
+        var pendingHeaderIdsByBusinessKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var updatedHeaderIds = new HashSet<int>();
+        var flushProbeCounter = 0;
 
         await foreach (var row in session.ReadRowsAsync(table, ct))
         {
@@ -3459,36 +3586,49 @@ using NpgsqlTypes;
 
             var cena = D(row, "prodajnacena", "cena", "unitprice", "price") ?? 0m;
             var idObjekat = I(row, "idobjekat", "storeid");
+            var brojRacunaFromRow = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
 
             if (!existingZaglavlja.TryGetValue(sourceSaleId.Value, out var zaglavlje))
             {
                 dnevnikById.TryGetValue(sourceSaleId.Value, out var dnevnik);
-                zaglavlje = new Domain.Model.Prodaja.ProdajaZaglavlje
+                var brojRacuna = dnevnik?.BrojRacuna ?? brojRacunaFromRow;
+                var businessKey = BuildProdajaHeaderBusinessKey(sourceSaleId.Value, brojRacuna);
+
+                if (!pendingHeadersByBusinessKey.TryGetValue(businessKey, out zaglavlje))
                 {
-                    Id = sourceSaleId.Value,
-                    BrojRacuna = dnevnik?.BrojRacuna ?? S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
-                    DatumProdaje = dnevnik?.Datum ?? DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
-                    NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
-                    IDObjekat = idObjekat,
-                    DataOrigin = "access"
-                };
-                _trendDb.ProdajaZaglavlja.Add(zaglavlje);
-                existingZaglavlja[zaglavlje.Id] = zaglavlje;
-                if (!string.IsNullOrWhiteSpace(zaglavlje.BrojRacuna))
-                    existingBrojevi[zaglavlje.BrojRacuna] = zaglavlje;
-                result.ProdajaInserted++;
-                TrackTrendWrite();
+                    zaglavlje = new Domain.Model.Prodaja.ProdajaZaglavlje
+                    {
+                        Id = sourceSaleId.Value,
+                        BrojRacuna = brojRacuna,
+                        DatumProdaje = dnevnik?.Datum ?? DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
+                        NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
+                        IDObjekat = idObjekat,
+                        DataOrigin = "access"
+                    };
+                    _trendDb.ProdajaZaglavlja.Add(zaglavlje);
+                    pendingHeadersByBusinessKey[businessKey] = zaglavlje;
+                    pendingHeaderIdsByBusinessKey[businessKey] = zaglavlje.Id;
+                    existingZaglavlja[zaglavlje.Id] = zaglavlje;
+                    if (!string.IsNullOrWhiteSpace(zaglavlje.BrojRacuna))
+                        existingBrojevi[zaglavlje.BrojRacuna] = zaglavlje;
+                    result.ProdajaInserted++;
+                    TrackTrendWrite();
+                }
             }
             else if (overwriteExisting)
             {
                 if (string.IsNullOrWhiteSpace(zaglavlje.BrojRacuna))
-                    zaglavlje.BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
+                    zaglavlje.BrojRacuna = brojRacunaFromRow;
                 if (zaglavlje.IDObjekat is null && idObjekat.HasValue)
                     zaglavlje.IDObjekat = idObjekat.Value;
                 zaglavlje.DataOrigin = "access";
-                _trendDb.ProdajaZaglavlja.Update(zaglavlje);
-                result.ProdajaUpdated++;
-                TrackTrendWrite();
+                if (updatedHeaderIds.Add(zaglavlje.Id))
+                {
+                    if (_trendDb.Entry(zaglavlje).State == EntityState.Detached)
+                        _trendDb.ProdajaZaglavlja.Update(zaglavlje);
+                    result.ProdajaUpdated++;
+                    TrackTrendWrite();
+                }
             }
 
             TrackAnalyticsStoreId(zaglavlje.IDObjekat);
@@ -3503,18 +3643,41 @@ using NpgsqlTypes;
                 continue;
             }
 
-            _trendDb.ProdajaStavke.Add(new Domain.Model.Prodaja.ProdajaStavka
+            var line = new Domain.Model.Prodaja.ProdajaStavka
             {
                 Id = ++maxStavkaId,
                 IdProdaja = zaglavlje.Id,
                 IdArtikal = idArtikal.Value,
                 Kolicina = qty,
                 Cena = cena
-            });
+            };
+            if (_trendDb.Entry(zaglavlje).State == EntityState.Added)
+                line.Prodaja = zaglavlje;
+
+            _trendDb.ProdajaStavke.Add(line);
             result.ProdajaStavkeInserted++;
             TrackTrendWrite();
 
-            await FlushTrendWritesAsync(force: false, ct);
+            flushProbeCounter++;
+            if (flushProbeCounter >= 128)
+            {
+                flushProbeCounter = 0;
+                await FlushTrendWritesAsync(force: false, ct);
+
+                // Keep explicit business-key -> persisted id mapping up to date after each flush.
+                foreach (var (businessKey, header) in pendingHeadersByBusinessKey)
+                    pendingHeaderIdsByBusinessKey[businessKey] = header.Id;
+            }
+        }
+
+        foreach (var (businessKey, header) in pendingHeadersByBusinessKey)
+            pendingHeaderIdsByBusinessKey[businessKey] = header.Id;
+
+        if (pendingHeaderIdsByBusinessKey.Count > 0)
+        {
+            _logger.LogDebug(
+                "Access import prodaja header-id map refreshed after buffered ingest. HeaderKeys: {HeaderKeys}.",
+                pendingHeaderIdsByBusinessKey.Count);
         }
     }
 
@@ -4315,6 +4478,14 @@ using NpgsqlTypes;
     private static string BuildProdajaLineKey(int idProdaja, int idArtikal, int qty, decimal cena)
         => $"{idProdaja}|{idArtikal}|{qty}|{cena.ToString(CultureInfo.InvariantCulture)}";
 
+    private static string BuildProdajaHeaderBusinessKey(int sourceSaleId, string? brojRacuna)
+    {
+        var normalizedBroj = string.IsNullOrWhiteSpace(brojRacuna)
+            ? string.Empty
+            : Normalize(brojRacuna);
+        return $"{sourceSaleId}|{normalizedBroj}";
+    }
+
     private async Task SynthesizeProdajaFromDnevnikAsync(bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         static bool IsSaleType(string tip) => TipPromeneConstants.IsSale(tip);
@@ -4358,6 +4529,7 @@ using NpgsqlTypes;
         var insertedProdaja = 0;
         var updatedProdaja = 0;
         var insertedStavke = 0;
+        var flushProbeCounter = 0;
 
         foreach (var grp in groups)
         {
@@ -4440,7 +4612,12 @@ using NpgsqlTypes;
                 insertedStavke++;
                 TrackTrendWrite();
                 TrackAnalyticsProductId(d.ArtikalId.Value);
-                await FlushTrendWritesAsync(force: false, ct);
+                flushProbeCounter++;
+                if (flushProbeCounter >= 128)
+                {
+                    flushProbeCounter = 0;
+                    await FlushTrendWritesAsync(force: false, ct);
+                }
             }
 
             TrackAnalyticsSaleId(zaglavlje.Id);
@@ -4937,286 +5114,16 @@ using NpgsqlTypes;
 
     private async Task SyncAnalyticsAsync(AccessImportRunResponse result, CancellationToken ct)
     {
-        if (_options.EnableFastWritePath && await TrySyncAnalyticsFastAsync(result, ct))
-            return;
-
-        var importedProducts = await _trendDb.Artikli.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
-        var productIds = importedProducts.Select(x => x.Id).ToArray();
-        var existingDims = await _analyticsDb.ProductsDim.Where(x => productIds.Contains(x.ProductId)).ToDictionaryAsync(x => x.ProductId, ct);
-
-        foreach (var p in importedProducts)
+        if (!_options.EnableFastWritePath)
         {
-            if (existingDims.TryGetValue(p.Id, out var dim))
-            {
-                dim.ProductName = p.Naziv;
-                dim.Category = p.Kategorija ?? string.Empty;
-                dim.SubCategory = p.Pol ?? string.Empty;
-                dim.Velicina = p.Velicina;
-                dim.Boja = p.Boja;
-                dim.Materijal = p.Materijal;
-                dim.FootwearTypeId = p.IDTipObuce;
-                dim.SupplierId = p.IDDobavljac;
-                dim.SeasonId = p.IDSezona;
-                dim.PurchasePrice = p.NabavnaCena;
-                dim.PurchasePriceRsd = p.NabavnaCenaDin;
-                dim.FirstSalePrice = p.PrvaProdajnaCena;
-                dim.SalePrice = p.ProdajnaCena;
-                dim.Kolicina = p.Kolicina;
-                dim.Timestamp = DateTime.UtcNow;
-                dim.IsActive = true;
-                dim.DataOrigin = "access";
-                result.ProductsDimUpdated++;
-            }
-            else
-            {
-                _analyticsDb.ProductsDim.Add(new ProductsDim
-                {
-                    ProductId = p.Id,
-                    ProductName = p.Naziv,
-                    Category = p.Kategorija ?? string.Empty,
-                    SubCategory = p.Pol ?? string.Empty,
-                    Brand = string.Empty,
-                    Velicina = p.Velicina,
-                    Boja = p.Boja,
-                    Materijal = p.Materijal,
-                    FootwearTypeId = p.IDTipObuce,
-                    SupplierId = p.IDDobavljac,
-                    SeasonId = p.IDSezona,
-                    PurchasePrice = p.NabavnaCena,
-                    PurchasePriceRsd = p.NabavnaCenaDin,
-                    FirstSalePrice = p.PrvaProdajnaCena,
-                    SalePrice = p.ProdajnaCena,
-                    IsActive = true,
-                    Timestamp = DateTime.UtcNow,
-                    Kolicina = p.Kolicina,
-                    DataOrigin = "access"
-                });
-                result.ProductsDimInserted++;
-            }
+            _logger.LogWarning(
+                "AccessImport:EnableFastWritePath is disabled, but analytics sync requires fast bulk path in this build. Proceeding with fast path.");
         }
 
-        var importedSales = await _trendDb.ProdajaZaglavlja.AsNoTracking().Where(x => x.DataOrigin == "access").Include(x => x.Stavke).ToListAsync(ct);
-        var saleIds = importedSales.Select(x => x.Id).ToArray();
-        var existingFacts = await _analyticsDb.SalesFacts.Where(x => saleIds.Contains(x.SaleId)).ToDictionaryAsync(x => x.SaleId, ct);
-        var existingStores = await _analyticsDb.StoresDim.ToDictionaryAsync(x => x.StoreId, ct);
-
-        // Seed stores discovered by ImportObjekti (even if they have no sales yet)
-        foreach (var (storeId, storeData) in _importedStores)
+        if (!await TrySyncAnalyticsFastAsync(result, ct))
         {
-            if (!existingStores.TryGetValue(storeId, out var e))
-            {
-                var newStore = new StoresDim
-                {
-                    StoreId   = storeId,
-                    StoreName = storeData.Name    ?? $"Objekat {storeId}",
-                    City      = storeData.Address ?? "N/A",
-                    Region    = "N/A",
-                    DataOrigin = "access"
-                };
-                _analyticsDb.StoresDim.Add(newStore);
-                existingStores[storeId] = newStore;
-                result.StoresInserted++;
-            }
-            else
-            {
-                e.StoreName = storeData.Name    ?? e.StoreName;
-                e.City      = storeData.Address ?? e.City;
-                e.DataOrigin = "access";
-                result.StoresUpdated++;
-            }
-        }
-
-        foreach (var s in importedSales)
-        {
-            var storeId = s.IDObjekat ?? 1;
-            if (!existingStores.TryGetValue(storeId, out var existingStore))
-            {
-                _importedStores.TryGetValue(storeId, out var storeData);
-                var newStore = new StoresDim
-                {
-                    StoreId   = storeId,
-                    StoreName = storeData.Name    ?? $"Objekat {storeId}",
-                    City      = storeData.Address ?? "N/A",
-                    Region    = "N/A",
-                    DataOrigin = "access"
-                };
-                _analyticsDb.StoresDim.Add(newStore);
-                existingStores[storeId] = newStore;
-                result.StoresInserted++;
-            }
-            else
-            {
-                existingStore.DataOrigin = "access";
-            }
-
-            var total = s.Stavke.Sum(x => x.Kolicina * x.Cena);
-            var units = s.Stavke.Sum(x => x.Kolicina);
-            if (existingFacts.TryGetValue(s.Id, out var fact))
-            {
-                fact.BrojRacuna = s.BrojRacuna ?? string.Empty;
-                fact.SaleTimestampUtc = DateTime.SpecifyKind(s.DatumProdaje, DateTimeKind.Utc);
-                fact.StoreId = storeId;
-                fact.PaymentType = s.NacinPlacanja ?? string.Empty;
-                fact.TotalAmount = total;
-                fact.TotalUnits = units;
-                fact.TotalLines = s.Stavke.Count;
-                fact.DataOrigin = "access";
-                result.SalesFactsUpdated++;
-            }
-            else
-            {
-                _analyticsDb.SalesFacts.Add(new SalesFact
-                {
-                    SaleId = s.Id,
-                    BrojRacuna = s.BrojRacuna ?? string.Empty,
-                    SaleTimestampUtc = DateTime.SpecifyKind(s.DatumProdaje, DateTimeKind.Utc),
-                    StoreId = storeId,
-                    PaymentType = s.NacinPlacanja ?? string.Empty,
-                    TotalAmount = total,
-                    TotalUnits = units,
-                    TotalLines = s.Stavke.Count,
-                    DataOrigin = "access"
-                });
-                result.SalesFactsInserted++;
-            }
-        }
-
-        var oldLines = await _analyticsDb.SalesLineFacts.Where(x => saleIds.Contains(x.SaleId)).ToListAsync(ct);
-        _analyticsDb.SalesLineFacts.RemoveRange(oldLines);
-
-        var newLines = importedSales
-            .SelectMany(s => s.Stavke.Select(l => new SalesLineFact
-            {
-                SaleId = s.Id,
-                ProductId = l.IdArtikal,
-                Qty = l.Kolicina,
-                UnitPrice = l.Cena,
-                LineTotal = l.Kolicina * l.Cena,
-                NabavnaCena = l.NabavnaCena,
-                DataOrigin = "access"
-            }))
-            .ToList();
-
-        if (newLines.Count > 0)
-        {
-            await _analyticsDb.SalesLineFacts.AddRangeAsync(newLines, ct);
-            result.SalesLineFactsInserted = newLines.Count;
-        }
-
-        // â”€â”€ Suppliers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        var importedSuppliers = await _trendDb.Dobavljaci.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
-
-        // â”€â”€ Seasons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        var importedSeasons = await _trendDb.Sezone.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
-
-        // â”€â”€ Footwear types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        var importedTypes = await _trendDb.TipoviObuce.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
-
-        // â”€â”€ Inventory Movements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        var importedMovements = await _trendDb.DnevnikPromena.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
-        await _analyticsDb.SaveChangesAsync(ct);
-        await UpsertSuppliersDimAsync(importedSuppliers, ct);
-        await UpsertSeasonsDimAsync(importedSeasons, ct);
-        await UpsertFootwearTypesDimAsync(importedTypes, ct);
-        await UpsertInventoryMovementsAsync(importedMovements, ct);
-    }
-
-    private async Task UpsertSuppliersDimAsync(IEnumerable<Dobavljac> suppliers, CancellationToken ct)
-    {
-        var processedSupplierIds = new HashSet<int>();
-
-        foreach (var supplier in suppliers.OrderBy(x => x.Id))
-        {
-            if (!processedSupplierIds.Add(supplier.Id))
-                continue;
-
-            await _analyticsDb.Database.ExecuteSqlInterpolatedAsync($"""
-                INSERT INTO "SuppliersDim" ("SupplierId", "Naziv", "Adresa", "Telefon", "Napomena", "DataOrigin", "UpdatedAt")
-                VALUES ({supplier.Id}, {supplier.Naziv ?? string.Empty}, {supplier.Adresa}, {supplier.Telefon}, {supplier.Napomena}, {supplier.DataOrigin}, {DateTime.UtcNow})
-                ON CONFLICT ("SupplierId") DO UPDATE
-                SET "Naziv" = EXCLUDED."Naziv",
-                    "Adresa" = EXCLUDED."Adresa",
-                    "Telefon" = EXCLUDED."Telefon",
-                    "Napomena" = EXCLUDED."Napomena",
-                    "DataOrigin" = EXCLUDED."DataOrigin",
-                    "UpdatedAt" = EXCLUDED."UpdatedAt";
-                """, ct);
-        }
-    }
-
-    private async Task UpsertSeasonsDimAsync(IEnumerable<Sezona> seasons, CancellationToken ct)
-    {
-        var processedSeasonIds = new HashSet<int>();
-
-        foreach (var season in seasons.OrderBy(x => x.Id))
-        {
-            if (!processedSeasonIds.Add(season.Id))
-                continue;
-
-            var datumOd = DateTime.SpecifyKind(season.DatumOd, DateTimeKind.Utc);
-            var datumDo = DateTime.SpecifyKind(season.DatumDo, DateTimeKind.Utc);
-
-            await _analyticsDb.Database.ExecuteSqlInterpolatedAsync($"""
-                INSERT INTO "SeasonsDim" ("SeasonId", "Naziv", "DatumOd", "DatumDo", "DataOrigin", "UpdatedAt")
-                VALUES ({season.Id}, {season.Naziv}, {datumOd}, {datumDo}, {season.DataOrigin}, {DateTime.UtcNow})
-                ON CONFLICT ("SeasonId") DO UPDATE
-                SET "Naziv" = EXCLUDED."Naziv",
-                    "DatumOd" = EXCLUDED."DatumOd",
-                    "DatumDo" = EXCLUDED."DatumDo",
-                    "DataOrigin" = EXCLUDED."DataOrigin",
-                    "UpdatedAt" = EXCLUDED."UpdatedAt";
-                """, ct);
-        }
-    }
-
-    private async Task UpsertFootwearTypesDimAsync(IEnumerable<TipObuce> types, CancellationToken ct)
-    {
-        var processedTypeIds = new HashSet<int>();
-
-        foreach (var type in types.OrderBy(x => x.Id))
-        {
-            if (!processedTypeIds.Add(type.Id))
-                continue;
-
-            await _analyticsDb.Database.ExecuteSqlInterpolatedAsync($"""
-                INSERT INTO "FootwearTypesDim" ("TypeId", "Naziv", "DataOrigin", "UpdatedAt")
-                VALUES ({type.Id}, {type.Naziv}, {type.DataOrigin}, {DateTime.UtcNow})
-                ON CONFLICT ("TypeId") DO UPDATE
-                SET "Naziv" = EXCLUDED."Naziv",
-                    "DataOrigin" = EXCLUDED."DataOrigin",
-                    "UpdatedAt" = EXCLUDED."UpdatedAt";
-                """, ct);
-        }
-    }
-
-    private async Task UpsertInventoryMovementsAsync(IEnumerable<DnevnikPromena> movements, CancellationToken ct)
-    {
-        var processedMovementIds = new HashSet<int>();
-
-        foreach (var movement in movements.OrderBy(x => x.Id))
-        {
-            if (!processedMovementIds.Add(movement.Id))
-                continue;
-
-            var datum = DateTime.SpecifyKind(movement.Datum, DateTimeKind.Utc);
-
-            await _analyticsDb.Database.ExecuteSqlInterpolatedAsync($"""
-                INSERT INTO "InventoryMovementFacts" ("SourceId", "TipPromene", "Datum", "ArtikalId", "Kolicina", "StaraProdajnaCena", "NovaProdajnaCena", "Iznos", "StoreId", "DobavljacId", "BrojDokumenta", "KorisnikIme", "DataOrigin")
-                VALUES ({movement.Id}, {movement.TipPromene}, {datum}, {movement.ArtikalId}, {movement.Kolicina}, {movement.StaraProdajnaCena}, {movement.NovaProdajnaCena}, {movement.Iznos}, {movement.IDObjekat}, {movement.DobavljacId}, {movement.BrojRacuna}, {movement.KorisnikIme}, {"access"})
-                ON CONFLICT ("SourceId", "DataOrigin") DO UPDATE
-                SET "TipPromene" = EXCLUDED."TipPromene",
-                    "Datum" = EXCLUDED."Datum",
-                    "ArtikalId" = EXCLUDED."ArtikalId",
-                    "Kolicina" = EXCLUDED."Kolicina",
-                    "StaraProdajnaCena" = EXCLUDED."StaraProdajnaCena",
-                    "NovaProdajnaCena" = EXCLUDED."NovaProdajnaCena",
-                    "Iznos" = EXCLUDED."Iznos",
-                    "StoreId" = EXCLUDED."StoreId",
-                    "DobavljacId" = EXCLUDED."DobavljacId",
-                    "BrojDokumenta" = EXCLUDED."BrojDokumenta",
-                    "KorisnikIme" = EXCLUDED."KorisnikIme",
-                    "DataOrigin" = EXCLUDED."DataOrigin";
-                """, ct);
+            throw new InvalidOperationException(
+                "Analytics sync did not execute because there was no prepared batch delta payload.");
         }
     }
 
@@ -5413,7 +5320,9 @@ using NpgsqlTypes;
             storeIds.Length == 0 &&
             _importedStores.Count == 0)
         {
-            return false;
+            _logger.LogInformation(
+                "Access analytics fast sync skipped because the current batch produced no analytics delta.");
+            return true;
         }
 
         try
@@ -5459,10 +5368,10 @@ using NpgsqlTypes;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 ex,
-                "Access analytics fast sync failed. Falling back to legacy path for this batch.");
-            return false;
+                "Access analytics fast sync failed.");
+            throw;
         }
     }
 
@@ -7484,8 +7393,13 @@ using NpgsqlTypes;
         if (_pendingTrendWrites <= 0)
             return;
 
-        if (!force && _pendingTrendWrites < Math.Max(1, _options.DbSaveBatchSize))
-            return;
+        if (!force)
+        {
+            var batchThresholdReached = _pendingTrendWrites >= Math.Max(1, _options.DbSaveBatchSize);
+            var timeThresholdReached = DateTime.UtcNow - _lastTrendFlushUtc >= GetTrendFlushInterval();
+            if (!batchThresholdReached && !timeThresholdReached)
+                return;
+        }
 
         if (_activeBatchId.HasValue)
             await EnsureBatchNotCancelledAsync(_activeBatchId.Value, ct);
@@ -7494,13 +7408,14 @@ using NpgsqlTypes;
         await _trendDb.SaveChangesAsync(ct);
         _trendDb.ChangeTracker.Clear();
         _pendingTrendWrites = 0;
+        _lastTrendFlushUtc = DateTime.UtcNow;
+        Interlocked.Increment(ref _trendFlushCount);
         _logger.LogInformation(
             "Access import DB flush completed. Step: {Step}. RowsWritten: {RowsWritten}. BatchSize: {BatchSize}. Force: {Force}.",
             "db-flush",
             writesToFlush,
             _options.DbSaveBatchSize,
             force);
-        await PersistBatchProgressAsync("db-flush", force: false, ct);
     }
 
     private static string SerializeRowForDiagnostics(AccessDataRow row)
