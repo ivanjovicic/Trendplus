@@ -20,6 +20,7 @@ public sealed class AccessImportOptions
     public int RunningBatchStaleMinutes { get; set; } = 240;
     public bool EnableRuntimeBatchSchemaBootstrap { get; set; } = false;
     public bool EnableMdbSql { get; set; }
+    public bool EnableFastWritePath { get; set; } = true;
     public bool PreventConcurrentRuns { get; set; } = true;
     public bool SkipInvalidForeignKeys { get; set; } = true;
     // If true, the importer will attempt to insert missing `prodaja_zaglavlje` rows

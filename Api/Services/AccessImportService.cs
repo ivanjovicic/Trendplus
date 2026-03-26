@@ -16,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using NpgsqlTypes;
     public interface IAccessImportService
     {
         Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default);
@@ -262,6 +263,13 @@ using Npgsql;
 
     // Populated by ImportTrendplus, consumed by SyncAnalyticsAsync for StoresDim upsert
     private Dictionary<int, (string Name, string? Address, string? Phone, string? Manager)> _importedStores = [];
+    private readonly HashSet<int> _analyticsDeltaProductIds = [];
+    private readonly HashSet<int> _analyticsDeltaSaleIds = [];
+    private readonly HashSet<int> _analyticsDeltaMovementIds = [];
+    private readonly HashSet<int> _analyticsDeltaSupplierIds = [];
+    private readonly HashSet<int> _analyticsDeltaSeasonIds = [];
+    private readonly HashSet<int> _analyticsDeltaTypeIds = [];
+    private readonly HashSet<int> _analyticsDeltaStoreIds = [];
 
     // CLI fallback state
     private bool _useCliMode;
@@ -326,6 +334,59 @@ using Npgsql;
         _activeBatchStep = null;
         _activeBatchTable = null;
         _lastBatchHeartbeatPersistedUtc = DateTime.MinValue;
+    }
+
+    private void ResetAnalyticsDeltaTracking()
+    {
+        _analyticsDeltaProductIds.Clear();
+        _analyticsDeltaSaleIds.Clear();
+        _analyticsDeltaMovementIds.Clear();
+        _analyticsDeltaSupplierIds.Clear();
+        _analyticsDeltaSeasonIds.Clear();
+        _analyticsDeltaTypeIds.Clear();
+        _analyticsDeltaStoreIds.Clear();
+    }
+
+    private void TrackAnalyticsProductId(int productId)
+    {
+        if (productId > 0)
+            _analyticsDeltaProductIds.Add(productId);
+    }
+
+    private void TrackAnalyticsSaleId(int saleId)
+    {
+        if (saleId > 0)
+            _analyticsDeltaSaleIds.Add(saleId);
+    }
+
+    private void TrackAnalyticsMovementId(int movementId)
+    {
+        if (movementId > 0)
+            _analyticsDeltaMovementIds.Add(movementId);
+    }
+
+    private void TrackAnalyticsSupplierId(int? supplierId)
+    {
+        if (supplierId is > 0)
+            _analyticsDeltaSupplierIds.Add(supplierId.Value);
+    }
+
+    private void TrackAnalyticsSeasonId(int? seasonId)
+    {
+        if (seasonId is > 0)
+            _analyticsDeltaSeasonIds.Add(seasonId.Value);
+    }
+
+    private void TrackAnalyticsTypeId(int? typeId)
+    {
+        if (typeId is > 0)
+            _analyticsDeltaTypeIds.Add(typeId.Value);
+    }
+
+    private void TrackAnalyticsStoreId(int? storeId)
+    {
+        if (storeId is > 0)
+            _analyticsDeltaStoreIds.Add(storeId.Value);
     }
 
     private TimeSpan GetBatchHeartbeatPersistInterval()
@@ -1305,6 +1366,8 @@ using Npgsql;
             StartedAtUtc = batch.StartedAtUtc
         };
         InitializeBatchProgressContext(batch.Id, result);
+        ResetAnalyticsDeltaTracking();
+        _importedStores = [];
         SetBatchProgressContext("starting", "all");
 
         var operationId = Guid.NewGuid().ToString("N");
@@ -1368,6 +1431,12 @@ using Npgsql;
 
                 result.Status = "completed";
                 result.CompletedAtUtc = DateTime.UtcNow;
+                if (_trendDb.Entry(batch).State == EntityState.Detached)
+                {
+                    var trackedBatch = await _trendDb.DataImportBatches.FirstOrDefaultAsync(x => x.Id == batch.Id, ct);
+                    if (trackedBatch is not null)
+                        batch = trackedBatch;
+                }
                 batch.Status = "completed";
                 batch.CompletedAtUtc = result.CompletedAtUtc;
                 batch.LastHeartbeatUtc = result.CompletedAtUtc;
@@ -1419,7 +1488,11 @@ using Npgsql;
                 message = ex.Message
             });
             batch.SummaryJson = JsonSerializer.Serialize(result);
-
+            foreach (var entry in _trendDb.ChangeTracker.Entries().Where(e => !ReferenceEquals(e.Entity, batch)).ToList())
+                entry.State = EntityState.Detached;
+            if (_trendDb.Entry(batch).State == EntityState.Detached)
+                _trendDb.DataImportBatches.Attach(batch);
+            _trendDb.Entry(batch).State = EntityState.Modified;
             await _trendDb.SaveChangesAsync(ct);
             _logger.LogWarning(
                 ex,
@@ -1660,7 +1733,7 @@ using Npgsql;
                     CancellationRequested = x.CancellationRequested,
                     CancellationRequestedAtUtc = x.CancellationRequestedAtUtc,
                     RetryCount = x.RetryCount,
-                    SummaryJson = x.SummaryJson,
+                    SummaryJson = null,
                     ErrorMessage = x.ErrorMessage,
                     DurationSeconds = x.DurationSeconds,
                     TotalImported = x.TotalImported,
@@ -1703,7 +1776,7 @@ using Npgsql;
                     CancellationRequested = false,
                     CancellationRequestedAtUtc = null,
                     RetryCount = 0,
-                    SummaryJson = x.SummaryJson,
+                    SummaryJson = null,
                     ErrorMessage = x.ErrorMessage,
                     DurationSeconds = null,
                     TotalImported = 0,
@@ -2612,6 +2685,7 @@ using Npgsql;
             var id = I(row, "id", "idtipobuce", "tipid");
             if (!id.HasValue || id.Value <= 0) continue;
             MarkAccepted(result, "tipovi_obuce");
+            TrackAnalyticsTypeId(id.Value);
 
             if (!existing.TryGetValue(id.Value, out var e))
             {
@@ -2645,6 +2719,7 @@ using Npgsql;
             var id = I(row, "id", "iddobavljac", "supplierid");
             if (!id.HasValue || id.Value <= 0) continue;
             MarkAccepted(result, "dobavljaci");
+            TrackAnalyticsSupplierId(id.Value);
 
             if (!existing.TryGetValue(id.Value, out var e))
             {
@@ -2689,6 +2764,7 @@ using Npgsql;
             var id = I(row, "id", "idsezona", "seasonid");
             if (!id.HasValue || id.Value <= 0) continue;
             MarkAccepted(result, "sezone");
+            TrackAnalyticsSeasonId(id.Value);
 
             var datumOd = DT(row, "datumod", "od", "startdate", "sezonapocetak", "sezonaod", "pocetak") ?? DateTime.UtcNow.Date;
             var datumDo = DT(row, "datumdo", "do", "enddate", "sezonakraj", "sezonadokraj", "kraj") ?? datumOd.AddMonths(6);
@@ -2739,6 +2815,7 @@ using Npgsql;
                 Phone: S(row, "telefon", "phone", "tel", "mobilni"),
                 Manager: S(row, "menedzer", "manager", "rukovodilac", "vodja", "direktorfiliajle"));
             result.ObjekatInserted++;
+            TrackAnalyticsStoreId(id.Value);
         }
     }
 
@@ -2840,6 +2917,11 @@ using Npgsql;
             }
 
             ApplyArtikliValues(e, row, naziv!, aliasMap);
+            TrackAnalyticsProductId(e.Id);
+            TrackAnalyticsTypeId(e.IDTipObuce);
+            TrackAnalyticsSupplierId(e.IDDobavljac);
+            TrackAnalyticsSeasonId(e.IDSezona);
+            TrackAnalyticsStoreId(e.IDObjekat);
 
             if (!isInsert && modifiedCurrentBatch.Add(e.Id))
                 _trendDb.Artikli.Update(e);
@@ -2988,6 +3070,7 @@ using Npgsql;
             var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
             if (!id.HasValue || id.Value <= 0) continue;
             MarkAccepted(result, "prodaja_zaglavlje");
+            TrackAnalyticsSaleId(id.Value);
 
             if (!existing.TryGetValue(id.Value, out var e))
             {
@@ -3018,6 +3101,8 @@ using Npgsql;
                 result.ProdajaUpdated++;
                 TrackTrendWrite();
             }
+
+            TrackAnalyticsStoreId(e.IDObjekat);
 
             await FlushTrendWritesAsync(force: false, ct);
         }
@@ -3123,6 +3208,8 @@ using Npgsql;
             }
 
             MarkAccepted(result, "prodaja_stavke");
+            TrackAnalyticsSaleId(idProdaja.Value);
+            TrackAnalyticsProductId(idArtikal.Value);
 
             var id = I(row, "id", "idstavka", "lineid");
             var qty = I(row, "kolicina", "qty", "quantity") ?? 0;
@@ -3295,6 +3382,10 @@ using Npgsql;
             e.RedniBroj = I(row, "rednibr", "rednibrojartikla", "rbrartikla", "rbr", "rbroj",
                              "sek", "seqno", "seq", "linebr", "redni");
             e.DataOrigin = "access";
+            TrackAnalyticsMovementId(e.Id);
+            TrackAnalyticsProductId(e.ArtikalId ?? 0);
+            TrackAnalyticsSupplierId(e.DobavljacId);
+            TrackAnalyticsStoreId(e.IDObjekat);
 
             if (!isInsert)
                 _trendDb.DnevnikPromena.Update(e);
@@ -3359,6 +3450,8 @@ using Npgsql;
 
             MarkAccepted(result, "prodaja_zaglavlje");
             MarkAccepted(result, "prodaja_stavke");
+            TrackAnalyticsSaleId(sourceSaleId.Value);
+            TrackAnalyticsProductId(idArtikal.Value);
 
             var qty = I(row, "kolicina", "qty", "quantity") ?? 1;
             if (qty <= 0)
@@ -3385,9 +3478,6 @@ using Npgsql;
                     existingBrojevi[zaglavlje.BrojRacuna] = zaglavlje;
                 result.ProdajaInserted++;
                 TrackTrendWrite();
-
-                // Persist the newly created parent before inserting child rows while AutoDetectChanges is disabled.
-                await FlushTrendWritesAsync(force: true, ct);
             }
             else if (overwriteExisting)
             {
@@ -3400,6 +3490,8 @@ using Npgsql;
                 result.ProdajaUpdated++;
                 TrackTrendWrite();
             }
+
+            TrackAnalyticsStoreId(zaglavlje.IDObjekat);
 
             var lineKey = BuildProdajaLineKey(zaglavlje.Id, idArtikal.Value, qty, cena);
             existingLineCounts.TryGetValue(lineKey, out var existingCountForKey);
@@ -3644,6 +3736,10 @@ using Npgsql;
             });
             result.NivelacijeInserted++;
             TrackTrendWrite();
+            TrackAnalyticsMovementId(assignedId);
+            TrackAnalyticsProductId(idArtikal.Value);
+            TrackAnalyticsSupplierId(I(row, "iddobavljac", "dobavljacid", "supplierid") ?? sourceDnevnik?.DobavljacId);
+            TrackAnalyticsStoreId(I(row, "idobjekat", "storeid", "idobjekta") ?? sourceDnevnik?.IDObjekat);
 
             await FlushTrendWritesAsync(force: false, ct);
         }
@@ -3692,6 +3788,10 @@ using Npgsql;
             });
             result.UnosRobeInserted++;
             TrackTrendWrite();
+            TrackAnalyticsMovementId(assignedId);
+            TrackAnalyticsProductId(idArtikal.Value);
+            TrackAnalyticsSupplierId(I(row, "iddobavljac", "dobavljacid", "supplierid"));
+            TrackAnalyticsStoreId(I(row, "idobjekat", "storeid"));
 
             await FlushTrendWritesAsync(force: false, ct);
         }
@@ -3739,6 +3839,9 @@ using Npgsql;
             });
             result.PovratnicaInserted++;
             TrackTrendWrite();
+            TrackAnalyticsMovementId(assignedId);
+            TrackAnalyticsProductId(idArtikal.Value);
+            TrackAnalyticsStoreId(I(row, "idobjekat", "storeid"));
 
             await FlushTrendWritesAsync(force: false, ct);
         }
@@ -3785,6 +3888,9 @@ using Npgsql;
             });
             result.PrenosRobeInserted++;
             TrackTrendWrite();
+            TrackAnalyticsMovementId(idOut);
+            TrackAnalyticsProductId(idArtikal.Value);
+            TrackAnalyticsStoreId(idIz);
 
             var idIn = AllocateNextId(usedIds, ref next);
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
@@ -3802,6 +3908,9 @@ using Npgsql;
             });
             result.PrenosRobeInserted++;
             TrackTrendWrite();
+            TrackAnalyticsMovementId(idIn);
+            TrackAnalyticsProductId(idArtikal.Value);
+            TrackAnalyticsStoreId(idU);
 
             await FlushTrendWritesAsync(force: false, ct);
         }
@@ -4253,6 +4362,7 @@ using Npgsql;
         foreach (var grp in groups)
         {
             var first = grp.First();
+            TrackAnalyticsStoreId(first.IDObjekat);
 
             if (!existingZaglavlja.TryGetValue(first.Id, out var zaglavlje) &&
                 !existingBrojevi.TryGetValue(grp.Key, out zaglavlje))
@@ -4280,9 +4390,6 @@ using Npgsql;
                 result.ProdajaInserted++;
                 insertedProdaja++;
                 TrackTrendWrite();
-
-                // Persist the synthesized parent before dependent stavke are queued in the same import run.
-                await FlushTrendWritesAsync(force: true, ct);
             }
             else if (overwriteExisting)
             {
@@ -4332,8 +4439,11 @@ using Npgsql;
                 result.ProdajaStavkeInserted++;
                 insertedStavke++;
                 TrackTrendWrite();
+                TrackAnalyticsProductId(d.ArtikalId.Value);
                 await FlushTrendWritesAsync(force: false, ct);
             }
+
+            TrackAnalyticsSaleId(zaglavlje.Id);
         }
 
         var summary = $"Sintetizovano {insertedProdaja} prodaja i {insertedStavke} stavki iz DnevnikPromena (nije pronadjena posebna tabela prodaje).";
@@ -4827,6 +4937,9 @@ using Npgsql;
 
     private async Task SyncAnalyticsAsync(AccessImportRunResponse result, CancellationToken ct)
     {
+        if (_options.EnableFastWritePath && await TrySyncAnalyticsFastAsync(result, ct))
+            return;
+
         var importedProducts = await _trendDb.Artikli.AsNoTracking().Where(x => x.DataOrigin == "access").ToListAsync(ct);
         var productIds = importedProducts.Select(x => x.Id).ToArray();
         var existingDims = await _analyticsDb.ProductsDim.Where(x => productIds.Contains(x.ProductId)).ToDictionaryAsync(x => x.ProductId, ct);
@@ -5105,6 +5218,1058 @@ using Npgsql;
                     "DataOrigin" = EXCLUDED."DataOrigin";
                 """, ct);
         }
+    }
+
+    private sealed record ProductsDimSyncRow(
+        int ProductId,
+        string? Plu,
+        string ProductName,
+        string Category,
+        string SubCategory,
+        string Brand,
+        string? Velicina,
+        string? Boja,
+        string? Materijal,
+        int? FootwearTypeId,
+        int? SupplierId,
+        int? SeasonId,
+        decimal? PurchasePrice,
+        decimal? PurchasePriceRsd,
+        decimal? FirstSalePrice,
+        decimal? SalePrice,
+        bool IsActive,
+        DateTime Timestamp,
+        int? Kolicina,
+        int? MinimalnaKolicina,
+        string DataOrigin);
+
+    private sealed record StoreDimSyncRow(
+        int StoreId,
+        string StoreName,
+        string? City,
+        string Region,
+        string? Telefon,
+        string? Menedzer,
+        string DataOrigin);
+
+    private sealed record SalesFactSyncRow(
+        int SaleId,
+        string BrojRacuna,
+        DateTime SaleTimestampUtc,
+        int StoreId,
+        string PaymentType,
+        decimal TotalAmount,
+        int TotalUnits,
+        int TotalLines,
+        string DataOrigin);
+
+    private sealed record SaleHeaderSyncRow(
+        int Id,
+        string? BrojRacuna,
+        DateTime DatumProdaje,
+        int? IDObjekat,
+        string? NacinPlacanja);
+
+    private sealed record SaleLineSourceSyncRow(
+        int IdProdaja,
+        int IdArtikal,
+        int Kolicina,
+        decimal Cena,
+        decimal? NabavnaCena);
+
+    private sealed record SalesLineFactSyncRow(
+        int SaleId,
+        int ProductId,
+        int Qty,
+        decimal UnitPrice,
+        decimal LineTotal,
+        decimal? NabavnaCena,
+        string DataOrigin);
+
+    private sealed record SupplierDimSyncRow(
+        int SupplierId,
+        string Naziv,
+        string? Adresa,
+        string? Telefon,
+        string? Napomena,
+        string DataOrigin,
+        DateTime UpdatedAt);
+
+    private sealed record SeasonDimSyncRow(
+        int SeasonId,
+        string Naziv,
+        DateTime DatumOd,
+        DateTime DatumDo,
+        string DataOrigin,
+        DateTime UpdatedAt);
+
+    private sealed record FootwearTypeDimSyncRow(
+        int TypeId,
+        string Naziv,
+        string DataOrigin,
+        DateTime UpdatedAt);
+
+    private sealed record InventoryMovementSyncRow(
+        int SourceId,
+        string TipPromene,
+        DateTime Datum,
+        int? ArtikalId,
+        int? Kolicina,
+        decimal? StaraProdajnaCena,
+        decimal? NovaProdajnaCena,
+        decimal Iznos,
+        int? StoreId,
+        int? DobavljacId,
+        string? BrojDokumenta,
+        string? KorisnikIme,
+        string DataOrigin);
+
+    private string GetAnalyticsConnectionString()
+    {
+        var connectionString = _analyticsDb.Database.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString))
+            connectionString = _analyticsDb.Database.GetDbConnection().ConnectionString;
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("Analytics DB connection string is not configured.");
+        return connectionString;
+    }
+
+    private static async Task ExecuteAnalyticsNonQueryAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        string sql,
+        CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand(sql, connection, transaction);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    private static void WriteNullableInt(NpgsqlBinaryImporter importer, int? value)
+    {
+        if (value.HasValue)
+            importer.Write(value.Value, NpgsqlDbType.Integer);
+        else
+            importer.WriteNull();
+    }
+
+    private static void WriteNullableDecimal(NpgsqlBinaryImporter importer, decimal? value)
+    {
+        if (value.HasValue)
+            importer.Write(value.Value, NpgsqlDbType.Numeric);
+        else
+            importer.WriteNull();
+    }
+
+    private static void WriteNullableString(NpgsqlBinaryImporter importer, string? value)
+    {
+        if (value is null)
+            importer.WriteNull();
+        else
+            importer.Write(value, NpgsqlDbType.Text);
+    }
+
+    private sealed record AnalyticsFastPayload(
+        IReadOnlyList<ProductsDimSyncRow> Products,
+        IReadOnlyList<StoreDimSyncRow> Stores,
+        IReadOnlyList<SalesFactSyncRow> SalesFacts,
+        IReadOnlyList<SalesLineFactSyncRow> SalesLineFacts,
+        IReadOnlyList<SupplierDimSyncRow> Suppliers,
+        IReadOnlyList<SeasonDimSyncRow> Seasons,
+        IReadOnlyList<FootwearTypeDimSyncRow> Types,
+        IReadOnlyList<InventoryMovementSyncRow> Movements,
+        IReadOnlyCollection<int> SaleIds,
+        IReadOnlyCollection<int> ExistingProductIds,
+        IReadOnlyCollection<int> ExistingStoreIds,
+        IReadOnlyCollection<int> ExistingSaleIds)
+    {
+        public bool IsEmpty =>
+            Products.Count == 0 &&
+            Stores.Count == 0 &&
+            SalesFacts.Count == 0 &&
+            SalesLineFacts.Count == 0 &&
+            Suppliers.Count == 0 &&
+            Seasons.Count == 0 &&
+            Types.Count == 0 &&
+            Movements.Count == 0 &&
+            SaleIds.Count == 0;
+    }
+
+    private async Task<bool> TrySyncAnalyticsFastAsync(AccessImportRunResponse result, CancellationToken ct)
+    {
+        var productIds = _analyticsDeltaProductIds.Where(x => x > 0).Distinct().ToArray();
+        var saleIds = _analyticsDeltaSaleIds.Where(x => x > 0).Distinct().ToArray();
+        var movementIds = _analyticsDeltaMovementIds.Where(x => x > 0).Distinct().ToArray();
+        var supplierIds = _analyticsDeltaSupplierIds.Where(x => x > 0).Distinct().ToArray();
+        var seasonIds = _analyticsDeltaSeasonIds.Where(x => x > 0).Distinct().ToArray();
+        var typeIds = _analyticsDeltaTypeIds.Where(x => x > 0).Distinct().ToArray();
+        var storeIds = _analyticsDeltaStoreIds.Where(x => x > 0).Distinct().ToArray();
+
+        if (productIds.Length == 0 &&
+            saleIds.Length == 0 &&
+            movementIds.Length == 0 &&
+            supplierIds.Length == 0 &&
+            seasonIds.Length == 0 &&
+            typeIds.Length == 0 &&
+            storeIds.Length == 0 &&
+            _importedStores.Count == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            var sw = Stopwatch.StartNew();
+            _logger.LogInformation(
+                "Access analytics fast sync started. Products: {Products}. Sales: {Sales}. Movements: {Movements}. Suppliers: {Suppliers}. Seasons: {Seasons}. Types: {Types}. Stores: {Stores}.",
+                productIds.Length,
+                saleIds.Length,
+                movementIds.Length,
+                supplierIds.Length,
+                seasonIds.Length,
+                typeIds.Length,
+                Math.Max(storeIds.Length, _importedStores.Count));
+
+            var payload = await BuildAnalyticsFastPayloadAsync(
+                productIds,
+                saleIds,
+                movementIds,
+                supplierIds,
+                seasonIds,
+                typeIds,
+                storeIds,
+                ct);
+            if (payload.IsEmpty)
+                return true;
+
+            await ApplyAnalyticsFastPayloadAsync(payload, result, ct);
+
+            sw.Stop();
+            _logger.LogInformation(
+                "Access analytics fast sync completed. DurationMs: {DurationMs}. Products: {Products}. Sales: {Sales}. SalesLines: {SalesLines}. Movements: {Movements}.",
+                sw.ElapsedMilliseconds,
+                payload.Products.Count,
+                payload.SalesFacts.Count,
+                payload.SalesLineFacts.Count,
+                payload.Movements.Count);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Access analytics fast sync failed. Falling back to legacy path for this batch.");
+            return false;
+        }
+    }
+
+    private async Task<AnalyticsFastPayload> BuildAnalyticsFastPayloadAsync(
+        int[] productIds,
+        int[] saleIds,
+        int[] movementIds,
+        int[] supplierIds,
+        int[] seasonIds,
+        int[] typeIds,
+        int[] storeIds,
+        CancellationToken ct)
+    {
+        var products = productIds.Length == 0
+            ? new List<ProductsDimSyncRow>()
+            : await _trendDb.Artikli
+                .AsNoTracking()
+                .Where(x => productIds.Contains(x.Id))
+                .Select(x => new ProductsDimSyncRow(
+                    x.Id,
+                    x.PLU,
+                    x.Naziv ?? string.Empty,
+                    x.Kategorija ?? string.Empty,
+                    x.Pol ?? string.Empty,
+                    string.Empty,
+                    x.Velicina,
+                    x.Boja,
+                    x.Materijal,
+                    x.IDTipObuce,
+                    x.IDDobavljac,
+                    x.IDSezona,
+                    x.NabavnaCena,
+                    x.NabavnaCenaDin,
+                    x.PrvaProdajnaCena,
+                    x.ProdajnaCena,
+                    true,
+                    DateTime.UtcNow,
+                    x.Kolicina,
+                    x.MinimalnaKolicina,
+                    "access"))
+                .ToListAsync(ct);
+
+        var sales = saleIds.Length == 0
+            ? new List<SaleHeaderSyncRow>()
+            : await _trendDb.ProdajaZaglavlja
+                .AsNoTracking()
+                .Where(x => saleIds.Contains(x.Id))
+                .Select(x => new SaleHeaderSyncRow(
+                    x.Id,
+                    x.BrojRacuna,
+                    x.DatumProdaje,
+                    x.IDObjekat,
+                    x.NacinPlacanja))
+                .ToListAsync(ct);
+
+        var salesLinesRaw = saleIds.Length == 0
+            ? new List<SaleLineSourceSyncRow>()
+            : await _trendDb.ProdajaStavke
+                .AsNoTracking()
+                .Where(x => saleIds.Contains(x.IdProdaja))
+                .Select(x => new SaleLineSourceSyncRow(
+                    x.IdProdaja,
+                    x.IdArtikal,
+                    x.Kolicina,
+                    x.Cena,
+                    x.NabavnaCena))
+                .ToListAsync(ct);
+
+        var salesLineFacts = salesLinesRaw
+            .Select(x => new SalesLineFactSyncRow(
+                x.IdProdaja,
+                x.IdArtikal,
+                x.Kolicina,
+                x.Cena,
+                x.Kolicina * x.Cena,
+                x.NabavnaCena,
+                "access"))
+            .ToList();
+
+        var salesLineBySale = salesLineFacts
+            .GroupBy(x => x.SaleId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var salesFacts = new List<SalesFactSyncRow>(sales.Count);
+        foreach (var sale in sales)
+        {
+            salesLineBySale.TryGetValue(sale.Id, out var linesForSale);
+            var lines = linesForSale ?? new List<SalesLineFactSyncRow>();
+            var storeId = sale.IDObjekat ?? 1;
+            TrackAnalyticsStoreId(storeId);
+            salesFacts.Add(new SalesFactSyncRow(
+                sale.Id,
+                sale.BrojRacuna ?? string.Empty,
+                DateTime.SpecifyKind(sale.DatumProdaje, DateTimeKind.Utc),
+                storeId,
+                sale.NacinPlacanja ?? string.Empty,
+                lines.Sum(x => x.LineTotal),
+                lines.Sum(x => x.Qty),
+                lines.Count,
+                "access"));
+        }
+
+        var effectiveStoreIds = _analyticsDeltaStoreIds
+            .Where(x => x > 0)
+            .Concat(storeIds)
+            .Concat(salesFacts.Select(x => x.StoreId))
+            .Distinct()
+            .ToArray();
+        var stores = effectiveStoreIds
+            .Select(storeId =>
+            {
+                _importedStores.TryGetValue(storeId, out var storeData);
+                return new StoreDimSyncRow(
+                    storeId,
+                    storeData.Name ?? $"Objekat {storeId}",
+                    storeData.Address ?? "N/A",
+                    "N/A",
+                    storeData.Phone,
+                    storeData.Manager,
+                    "access");
+            })
+            .ToList();
+
+        var suppliers = supplierIds.Length == 0
+            ? new List<SupplierDimSyncRow>()
+            : await _trendDb.Dobavljaci
+                .AsNoTracking()
+                .Where(x => supplierIds.Contains(x.Id))
+                .Select(x => new SupplierDimSyncRow(
+                    x.Id,
+                    x.Naziv ?? string.Empty,
+                    x.Adresa,
+                    x.Telefon,
+                    x.Napomena,
+                    string.IsNullOrWhiteSpace(x.DataOrigin) ? "access" : x.DataOrigin,
+                    DateTime.UtcNow))
+                .ToListAsync(ct);
+
+        var seasons = seasonIds.Length == 0
+            ? new List<SeasonDimSyncRow>()
+            : await _trendDb.Sezone
+                .AsNoTracking()
+                .Where(x => seasonIds.Contains(x.Id))
+                .Select(x => new SeasonDimSyncRow(
+                    x.Id,
+                    x.Naziv ?? string.Empty,
+                    DateTime.SpecifyKind(x.DatumOd, DateTimeKind.Utc),
+                    DateTime.SpecifyKind(x.DatumDo, DateTimeKind.Utc),
+                    string.IsNullOrWhiteSpace(x.DataOrigin) ? "access" : x.DataOrigin,
+                    DateTime.UtcNow))
+                .ToListAsync(ct);
+
+        var types = typeIds.Length == 0
+            ? new List<FootwearTypeDimSyncRow>()
+            : await _trendDb.TipoviObuce
+                .AsNoTracking()
+                .Where(x => typeIds.Contains(x.Id))
+                .Select(x => new FootwearTypeDimSyncRow(
+                    x.Id,
+                    x.Naziv ?? string.Empty,
+                    string.IsNullOrWhiteSpace(x.DataOrigin) ? "access" : x.DataOrigin,
+                    DateTime.UtcNow))
+                .ToListAsync(ct);
+
+        var movements = movementIds.Length == 0
+            ? new List<InventoryMovementSyncRow>()
+            : await _trendDb.DnevnikPromena
+                .AsNoTracking()
+                .Where(x => movementIds.Contains(x.Id))
+                .Select(x => new InventoryMovementSyncRow(
+                    x.Id,
+                    x.TipPromene ?? string.Empty,
+                    DateTime.SpecifyKind(x.Datum, DateTimeKind.Utc),
+                    x.ArtikalId,
+                    x.Kolicina,
+                    x.StaraProdajnaCena,
+                    x.NovaProdajnaCena,
+                    x.Iznos,
+                    x.IDObjekat,
+                    x.DobavljacId,
+                    x.BrojRacuna,
+                    x.KorisnikIme,
+                    "access"))
+                .ToListAsync(ct);
+
+        var productIdList = products.Select(x => x.ProductId).Distinct().ToArray();
+        var storeIdList = stores.Select(x => x.StoreId).Distinct().ToArray();
+        var saleIdList = salesFacts.Select(x => x.SaleId).Distinct().ToArray();
+
+        var existingProductIds = productIdList.Length == 0
+            ? new HashSet<int>()
+            : (await _analyticsDb.ProductsDim.AsNoTracking()
+                .Where(x => productIdList.Contains(x.ProductId))
+                .Select(x => x.ProductId)
+                .ToListAsync(ct))
+            .ToHashSet();
+        var existingStoreIds = storeIdList.Length == 0
+            ? new HashSet<int>()
+            : (await _analyticsDb.StoresDim.AsNoTracking()
+                .Where(x => storeIdList.Contains(x.StoreId))
+                .Select(x => x.StoreId)
+                .ToListAsync(ct))
+            .ToHashSet();
+        var existingSaleIds = saleIdList.Length == 0
+            ? new HashSet<int>()
+            : (await _analyticsDb.SalesFacts.AsNoTracking()
+                .Where(x => saleIdList.Contains(x.SaleId))
+                .Select(x => x.SaleId)
+                .ToListAsync(ct))
+            .ToHashSet();
+
+        return new AnalyticsFastPayload(
+            products,
+            stores,
+            salesFacts,
+            salesLineFacts,
+            suppliers,
+            seasons,
+            types,
+            movements,
+            saleIdList,
+            existingProductIds,
+            existingStoreIds,
+            existingSaleIds);
+    }
+
+    private async Task ApplyAnalyticsFastPayloadAsync(
+        AnalyticsFastPayload payload,
+        AccessImportRunResponse result,
+        CancellationToken ct)
+    {
+        var analyticsConnectionString = GetAnalyticsConnectionString();
+        await using var connection = new NpgsqlConnection(analyticsConnectionString);
+        await connection.OpenAsync(ct);
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+
+        if (payload.Stores.Count > 0)
+            await UpsertStoresDimBulkAsync(connection, transaction, payload.Stores, ct);
+        if (payload.Products.Count > 0)
+            await UpsertProductsDimBulkAsync(connection, transaction, payload.Products, ct);
+        if (payload.SalesFacts.Count > 0)
+            await UpsertSalesFactsBulkAsync(connection, transaction, payload.SalesFacts, ct);
+        if (payload.SaleIds.Count > 0)
+            await ReplaceSalesLineFactsBulkAsync(connection, transaction, payload.SaleIds, payload.SalesLineFacts, ct);
+        if (payload.Suppliers.Count > 0)
+            await UpsertSuppliersDimBulkAsync(connection, transaction, payload.Suppliers, ct);
+        if (payload.Seasons.Count > 0)
+            await UpsertSeasonsDimBulkAsync(connection, transaction, payload.Seasons, ct);
+        if (payload.Types.Count > 0)
+            await UpsertFootwearTypesDimBulkAsync(connection, transaction, payload.Types, ct);
+        if (payload.Movements.Count > 0)
+            await UpsertInventoryMovementsBulkAsync(connection, transaction, payload.Movements, ct);
+
+        await transaction.CommitAsync(ct);
+
+        var productIdSet = payload.Products.Select(x => x.ProductId).ToHashSet();
+        result.ProductsDimInserted += productIdSet.Count(x => !payload.ExistingProductIds.Contains(x));
+        result.ProductsDimUpdated += productIdSet.Count(x => payload.ExistingProductIds.Contains(x));
+
+        var saleIdSet = payload.SalesFacts.Select(x => x.SaleId).ToHashSet();
+        result.SalesFactsInserted += saleIdSet.Count(x => !payload.ExistingSaleIds.Contains(x));
+        result.SalesFactsUpdated += saleIdSet.Count(x => payload.ExistingSaleIds.Contains(x));
+        result.SalesLineFactsInserted = payload.SalesLineFacts.Count;
+
+        var storeIdSet = payload.Stores.Select(x => x.StoreId).ToHashSet();
+        result.StoresInserted += storeIdSet.Count(x => !payload.ExistingStoreIds.Contains(x));
+        result.StoresUpdated += storeIdSet.Count(x => payload.ExistingStoreIds.Contains(x));
+    }
+
+    private async Task UpsertProductsDimBulkAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyList<ProductsDimSyncRow> rows,
+        CancellationToken ct)
+    {
+        if (rows.Count == 0)
+            return;
+
+        const string createTempSql = """
+            CREATE TEMP TABLE temp_products_dim (
+                "ProductId" integer NOT NULL,
+                "PLU" text NULL,
+                "ProductName" text NOT NULL,
+                "Category" text NOT NULL,
+                "SubCategory" text NOT NULL,
+                "Brand" text NOT NULL,
+                "Velicina" text NULL,
+                "Boja" text NULL,
+                "Materijal" text NULL,
+                "FootwearTypeId" integer NULL,
+                "SupplierId" integer NULL,
+                "SeasonId" integer NULL,
+                "PurchasePrice" numeric(18,2) NULL,
+                "PurchasePriceRsd" numeric(18,2) NULL,
+                "FirstSalePrice" numeric(18,2) NULL,
+                "SalePrice" numeric(18,2) NULL,
+                "IsActive" boolean NOT NULL,
+                "Timestamp" timestamp with time zone NOT NULL,
+                "Kolicina" integer NULL,
+                "MinimalnaKolicina" integer NULL,
+                "DataOrigin" text NOT NULL
+            ) ON COMMIT DROP;
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+
+        using (var importer = connection.BeginBinaryImport("""
+            COPY temp_products_dim (
+                "ProductId","PLU","ProductName","Category","SubCategory","Brand","Velicina","Boja","Materijal",
+                "FootwearTypeId","SupplierId","SeasonId","PurchasePrice","PurchasePriceRsd","FirstSalePrice","SalePrice",
+                "IsActive","Timestamp","Kolicina","MinimalnaKolicina","DataOrigin")
+            FROM STDIN (FORMAT BINARY)
+            """))
+        {
+            foreach (var row in rows)
+            {
+                importer.StartRow();
+                importer.Write(row.ProductId, NpgsqlDbType.Integer);
+                WriteNullableString(importer, row.Plu);
+                importer.Write(row.ProductName, NpgsqlDbType.Text);
+                importer.Write(row.Category, NpgsqlDbType.Text);
+                importer.Write(row.SubCategory, NpgsqlDbType.Text);
+                importer.Write(row.Brand, NpgsqlDbType.Text);
+                WriteNullableString(importer, row.Velicina);
+                WriteNullableString(importer, row.Boja);
+                WriteNullableString(importer, row.Materijal);
+                WriteNullableInt(importer, row.FootwearTypeId);
+                WriteNullableInt(importer, row.SupplierId);
+                WriteNullableInt(importer, row.SeasonId);
+                WriteNullableDecimal(importer, row.PurchasePrice);
+                WriteNullableDecimal(importer, row.PurchasePriceRsd);
+                WriteNullableDecimal(importer, row.FirstSalePrice);
+                WriteNullableDecimal(importer, row.SalePrice);
+                importer.Write(row.IsActive, NpgsqlDbType.Boolean);
+                importer.Write(row.Timestamp, NpgsqlDbType.TimestampTz);
+                WriteNullableInt(importer, row.Kolicina);
+                WriteNullableInt(importer, row.MinimalnaKolicina);
+                importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+            }
+
+            importer.Complete();
+        }
+
+        const string mergeSql = """
+            INSERT INTO "ProductsDim" (
+                "ProductId","PLU","ProductName","Category","SubCategory","Brand","Velicina","Boja","Materijal",
+                "FootwearTypeId","SupplierId","SeasonId","PurchasePrice","PurchasePriceRsd","FirstSalePrice","SalePrice",
+                "IsActive","Timestamp","Kolicina","MinimalnaKolicina","DataOrigin")
+            SELECT
+                "ProductId","PLU","ProductName","Category","SubCategory","Brand","Velicina","Boja","Materijal",
+                "FootwearTypeId","SupplierId","SeasonId","PurchasePrice","PurchasePriceRsd","FirstSalePrice","SalePrice",
+                "IsActive","Timestamp","Kolicina","MinimalnaKolicina","DataOrigin"
+            FROM temp_products_dim
+            ON CONFLICT ("ProductId") DO UPDATE
+            SET
+                "PLU" = EXCLUDED."PLU",
+                "ProductName" = EXCLUDED."ProductName",
+                "Category" = EXCLUDED."Category",
+                "SubCategory" = EXCLUDED."SubCategory",
+                "Brand" = EXCLUDED."Brand",
+                "Velicina" = EXCLUDED."Velicina",
+                "Boja" = EXCLUDED."Boja",
+                "Materijal" = EXCLUDED."Materijal",
+                "FootwearTypeId" = EXCLUDED."FootwearTypeId",
+                "SupplierId" = EXCLUDED."SupplierId",
+                "SeasonId" = EXCLUDED."SeasonId",
+                "PurchasePrice" = EXCLUDED."PurchasePrice",
+                "PurchasePriceRsd" = EXCLUDED."PurchasePriceRsd",
+                "FirstSalePrice" = EXCLUDED."FirstSalePrice",
+                "SalePrice" = EXCLUDED."SalePrice",
+                "IsActive" = EXCLUDED."IsActive",
+                "Timestamp" = EXCLUDED."Timestamp",
+                "Kolicina" = EXCLUDED."Kolicina",
+                "MinimalnaKolicina" = EXCLUDED."MinimalnaKolicina",
+                "DataOrigin" = EXCLUDED."DataOrigin";
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+    }
+
+    private async Task UpsertStoresDimBulkAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyList<StoreDimSyncRow> rows,
+        CancellationToken ct)
+    {
+        if (rows.Count == 0)
+            return;
+
+        const string createTempSql = """
+            CREATE TEMP TABLE temp_stores_dim (
+                "StoreId" integer NOT NULL,
+                "StoreName" text NOT NULL,
+                "City" text NULL,
+                "Region" text NOT NULL,
+                "Telefon" text NULL,
+                "Menedzer" text NULL,
+                "DataOrigin" text NOT NULL
+            ) ON COMMIT DROP;
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+
+        using (var importer = connection.BeginBinaryImport("""
+            COPY temp_stores_dim ("StoreId","StoreName","City","Region","Telefon","Menedzer","DataOrigin")
+            FROM STDIN (FORMAT BINARY)
+            """))
+        {
+            foreach (var row in rows)
+            {
+                importer.StartRow();
+                importer.Write(row.StoreId, NpgsqlDbType.Integer);
+                importer.Write(row.StoreName, NpgsqlDbType.Text);
+                WriteNullableString(importer, row.City);
+                importer.Write(row.Region, NpgsqlDbType.Text);
+                WriteNullableString(importer, row.Telefon);
+                WriteNullableString(importer, row.Menedzer);
+                importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+            }
+
+            importer.Complete();
+        }
+
+        const string mergeSql = """
+            INSERT INTO "StoresDim" ("StoreId","StoreName","City","Region","Telefon","Menedzer","DataOrigin")
+            SELECT "StoreId","StoreName","City","Region","Telefon","Menedzer","DataOrigin"
+            FROM temp_stores_dim
+            ON CONFLICT ("StoreId") DO UPDATE
+            SET
+                "StoreName" = EXCLUDED."StoreName",
+                "City" = EXCLUDED."City",
+                "Region" = EXCLUDED."Region",
+                "Telefon" = EXCLUDED."Telefon",
+                "Menedzer" = EXCLUDED."Menedzer",
+                "DataOrigin" = EXCLUDED."DataOrigin";
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+    }
+
+    private async Task UpsertSalesFactsBulkAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyList<SalesFactSyncRow> rows,
+        CancellationToken ct)
+    {
+        if (rows.Count == 0)
+            return;
+
+        const string createTempSql = """
+            CREATE TEMP TABLE temp_sales_facts (
+                "SaleId" integer NOT NULL,
+                "BrojRacuna" text NOT NULL,
+                "SaleTimestampUtc" timestamp with time zone NOT NULL,
+                "StoreId" integer NOT NULL,
+                "PaymentType" text NOT NULL,
+                "TotalAmount" numeric(18,2) NOT NULL,
+                "TotalUnits" integer NOT NULL,
+                "TotalLines" integer NOT NULL,
+                "DataOrigin" text NOT NULL
+            ) ON COMMIT DROP;
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+
+        using (var importer = connection.BeginBinaryImport("""
+            COPY temp_sales_facts (
+                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin")
+            FROM STDIN (FORMAT BINARY)
+            """))
+        {
+            foreach (var row in rows)
+            {
+                importer.StartRow();
+                importer.Write(row.SaleId, NpgsqlDbType.Integer);
+                importer.Write(row.BrojRacuna, NpgsqlDbType.Text);
+                importer.Write(row.SaleTimestampUtc, NpgsqlDbType.TimestampTz);
+                importer.Write(row.StoreId, NpgsqlDbType.Integer);
+                importer.Write(row.PaymentType, NpgsqlDbType.Text);
+                importer.Write(row.TotalAmount, NpgsqlDbType.Numeric);
+                importer.Write(row.TotalUnits, NpgsqlDbType.Integer);
+                importer.Write(row.TotalLines, NpgsqlDbType.Integer);
+                importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+            }
+
+            importer.Complete();
+        }
+
+        const string mergeSql = """
+            INSERT INTO "SalesFacts" (
+                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin")
+            SELECT
+                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin"
+            FROM temp_sales_facts
+            ON CONFLICT ("SaleId") DO UPDATE
+            SET
+                "BrojRacuna" = EXCLUDED."BrojRacuna",
+                "SaleTimestampUtc" = EXCLUDED."SaleTimestampUtc",
+                "StoreId" = EXCLUDED."StoreId",
+                "PaymentType" = EXCLUDED."PaymentType",
+                "TotalAmount" = EXCLUDED."TotalAmount",
+                "TotalUnits" = EXCLUDED."TotalUnits",
+                "TotalLines" = EXCLUDED."TotalLines",
+                "DataOrigin" = EXCLUDED."DataOrigin";
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+    }
+
+    private async Task ReplaceSalesLineFactsBulkAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyCollection<int> saleIds,
+        IReadOnlyList<SalesLineFactSyncRow> rows,
+        CancellationToken ct)
+    {
+        if (saleIds.Count == 0)
+            return;
+
+        await using (var deleteCmd = new NpgsqlCommand(
+                         """DELETE FROM "SalesLineFacts" WHERE "SaleId" = ANY(@saleIds);""",
+                         connection,
+                         transaction))
+        {
+            deleteCmd.Parameters.Add("saleIds", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = saleIds.ToArray();
+            await deleteCmd.ExecuteNonQueryAsync(ct);
+        }
+
+        if (rows.Count == 0)
+            return;
+
+        const string createTempSql = """
+            CREATE TEMP TABLE temp_sales_line_facts (
+                "SaleId" integer NOT NULL,
+                "ProductId" integer NOT NULL,
+                "Qty" integer NOT NULL,
+                "UnitPrice" numeric(18,2) NOT NULL,
+                "LineTotal" numeric(18,2) NOT NULL,
+                "NabavnaCena" numeric(18,2) NULL,
+                "DataOrigin" text NOT NULL
+            ) ON COMMIT DROP;
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+
+        using (var importer = connection.BeginBinaryImport("""
+            COPY temp_sales_line_facts ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin")
+            FROM STDIN (FORMAT BINARY)
+            """))
+        {
+            foreach (var row in rows)
+            {
+                importer.StartRow();
+                importer.Write(row.SaleId, NpgsqlDbType.Integer);
+                importer.Write(row.ProductId, NpgsqlDbType.Integer);
+                importer.Write(row.Qty, NpgsqlDbType.Integer);
+                importer.Write(row.UnitPrice, NpgsqlDbType.Numeric);
+                importer.Write(row.LineTotal, NpgsqlDbType.Numeric);
+                WriteNullableDecimal(importer, row.NabavnaCena);
+                importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+            }
+
+            importer.Complete();
+        }
+
+        const string insertSql = """
+            INSERT INTO "SalesLineFacts" ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin")
+            SELECT "SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin"
+            FROM temp_sales_line_facts;
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, insertSql, ct);
+    }
+
+    private async Task UpsertSuppliersDimBulkAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyList<SupplierDimSyncRow> rows,
+        CancellationToken ct)
+    {
+        if (rows.Count == 0)
+            return;
+
+        const string createTempSql = """
+            CREATE TEMP TABLE temp_suppliers_dim (
+                "SupplierId" integer NOT NULL,
+                "Naziv" text NOT NULL,
+                "Adresa" text NULL,
+                "Telefon" text NULL,
+                "Napomena" text NULL,
+                "DataOrigin" text NOT NULL,
+                "UpdatedAt" timestamp with time zone NOT NULL
+            ) ON COMMIT DROP;
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+
+        using (var importer = connection.BeginBinaryImport("""
+            COPY temp_suppliers_dim ("SupplierId","Naziv","Adresa","Telefon","Napomena","DataOrigin","UpdatedAt")
+            FROM STDIN (FORMAT BINARY)
+            """))
+        {
+            foreach (var row in rows)
+            {
+                importer.StartRow();
+                importer.Write(row.SupplierId, NpgsqlDbType.Integer);
+                importer.Write(row.Naziv, NpgsqlDbType.Text);
+                WriteNullableString(importer, row.Adresa);
+                WriteNullableString(importer, row.Telefon);
+                WriteNullableString(importer, row.Napomena);
+                importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+                importer.Write(row.UpdatedAt, NpgsqlDbType.TimestampTz);
+            }
+
+            importer.Complete();
+        }
+
+        const string mergeSql = """
+            INSERT INTO "SuppliersDim" ("SupplierId","Naziv","Adresa","Telefon","Napomena","DataOrigin","UpdatedAt")
+            SELECT "SupplierId","Naziv","Adresa","Telefon","Napomena","DataOrigin","UpdatedAt"
+            FROM temp_suppliers_dim
+            ON CONFLICT ("SupplierId") DO UPDATE
+            SET
+                "Naziv" = EXCLUDED."Naziv",
+                "Adresa" = EXCLUDED."Adresa",
+                "Telefon" = EXCLUDED."Telefon",
+                "Napomena" = EXCLUDED."Napomena",
+                "DataOrigin" = EXCLUDED."DataOrigin",
+                "UpdatedAt" = EXCLUDED."UpdatedAt";
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+    }
+
+    private async Task UpsertSeasonsDimBulkAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyList<SeasonDimSyncRow> rows,
+        CancellationToken ct)
+    {
+        if (rows.Count == 0)
+            return;
+
+        const string createTempSql = """
+            CREATE TEMP TABLE temp_seasons_dim (
+                "SeasonId" integer NOT NULL,
+                "Naziv" text NOT NULL,
+                "DatumOd" timestamp with time zone NOT NULL,
+                "DatumDo" timestamp with time zone NOT NULL,
+                "DataOrigin" text NOT NULL,
+                "UpdatedAt" timestamp with time zone NOT NULL
+            ) ON COMMIT DROP;
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+
+        using (var importer = connection.BeginBinaryImport("""
+            COPY temp_seasons_dim ("SeasonId","Naziv","DatumOd","DatumDo","DataOrigin","UpdatedAt")
+            FROM STDIN (FORMAT BINARY)
+            """))
+        {
+            foreach (var row in rows)
+            {
+                importer.StartRow();
+                importer.Write(row.SeasonId, NpgsqlDbType.Integer);
+                importer.Write(row.Naziv, NpgsqlDbType.Text);
+                importer.Write(row.DatumOd, NpgsqlDbType.TimestampTz);
+                importer.Write(row.DatumDo, NpgsqlDbType.TimestampTz);
+                importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+                importer.Write(row.UpdatedAt, NpgsqlDbType.TimestampTz);
+            }
+
+            importer.Complete();
+        }
+
+        const string mergeSql = """
+            INSERT INTO "SeasonsDim" ("SeasonId","Naziv","DatumOd","DatumDo","DataOrigin","UpdatedAt")
+            SELECT "SeasonId","Naziv","DatumOd","DatumDo","DataOrigin","UpdatedAt"
+            FROM temp_seasons_dim
+            ON CONFLICT ("SeasonId") DO UPDATE
+            SET
+                "Naziv" = EXCLUDED."Naziv",
+                "DatumOd" = EXCLUDED."DatumOd",
+                "DatumDo" = EXCLUDED."DatumDo",
+                "DataOrigin" = EXCLUDED."DataOrigin",
+                "UpdatedAt" = EXCLUDED."UpdatedAt";
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+    }
+
+    private async Task UpsertFootwearTypesDimBulkAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyList<FootwearTypeDimSyncRow> rows,
+        CancellationToken ct)
+    {
+        if (rows.Count == 0)
+            return;
+
+        const string createTempSql = """
+            CREATE TEMP TABLE temp_footwear_types_dim (
+                "TypeId" integer NOT NULL,
+                "Naziv" text NOT NULL,
+                "DataOrigin" text NOT NULL,
+                "UpdatedAt" timestamp with time zone NOT NULL
+            ) ON COMMIT DROP;
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+
+        using (var importer = connection.BeginBinaryImport("""
+            COPY temp_footwear_types_dim ("TypeId","Naziv","DataOrigin","UpdatedAt")
+            FROM STDIN (FORMAT BINARY)
+            """))
+        {
+            foreach (var row in rows)
+            {
+                importer.StartRow();
+                importer.Write(row.TypeId, NpgsqlDbType.Integer);
+                importer.Write(row.Naziv, NpgsqlDbType.Text);
+                importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+                importer.Write(row.UpdatedAt, NpgsqlDbType.TimestampTz);
+            }
+
+            importer.Complete();
+        }
+
+        const string mergeSql = """
+            INSERT INTO "FootwearTypesDim" ("TypeId","Naziv","DataOrigin","UpdatedAt")
+            SELECT "TypeId","Naziv","DataOrigin","UpdatedAt"
+            FROM temp_footwear_types_dim
+            ON CONFLICT ("TypeId") DO UPDATE
+            SET
+                "Naziv" = EXCLUDED."Naziv",
+                "DataOrigin" = EXCLUDED."DataOrigin",
+                "UpdatedAt" = EXCLUDED."UpdatedAt";
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+    }
+
+    private async Task UpsertInventoryMovementsBulkAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyList<InventoryMovementSyncRow> rows,
+        CancellationToken ct)
+    {
+        if (rows.Count == 0)
+            return;
+
+        const string createTempSql = """
+            CREATE TEMP TABLE temp_inventory_movement_facts (
+                "SourceId" integer NOT NULL,
+                "TipPromene" text NOT NULL,
+                "Datum" timestamp with time zone NOT NULL,
+                "ArtikalId" integer NULL,
+                "Kolicina" integer NULL,
+                "StaraProdajnaCena" numeric(18,2) NULL,
+                "NovaProdajnaCena" numeric(18,2) NULL,
+                "Iznos" numeric(18,2) NOT NULL,
+                "StoreId" integer NULL,
+                "DobavljacId" integer NULL,
+                "BrojDokumenta" text NULL,
+                "KorisnikIme" text NULL,
+                "DataOrigin" text NOT NULL
+            ) ON COMMIT DROP;
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+
+        using (var importer = connection.BeginBinaryImport("""
+            COPY temp_inventory_movement_facts (
+                "SourceId","TipPromene","Datum","ArtikalId","Kolicina","StaraProdajnaCena","NovaProdajnaCena",
+                "Iznos","StoreId","DobavljacId","BrojDokumenta","KorisnikIme","DataOrigin")
+            FROM STDIN (FORMAT BINARY)
+            """))
+        {
+            foreach (var row in rows)
+            {
+                importer.StartRow();
+                importer.Write(row.SourceId, NpgsqlDbType.Integer);
+                importer.Write(row.TipPromene, NpgsqlDbType.Text);
+                importer.Write(row.Datum, NpgsqlDbType.TimestampTz);
+                WriteNullableInt(importer, row.ArtikalId);
+                WriteNullableInt(importer, row.Kolicina);
+                WriteNullableDecimal(importer, row.StaraProdajnaCena);
+                WriteNullableDecimal(importer, row.NovaProdajnaCena);
+                importer.Write(row.Iznos, NpgsqlDbType.Numeric);
+                WriteNullableInt(importer, row.StoreId);
+                WriteNullableInt(importer, row.DobavljacId);
+                WriteNullableString(importer, row.BrojDokumenta);
+                WriteNullableString(importer, row.KorisnikIme);
+                importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+            }
+
+            importer.Complete();
+        }
+
+        const string mergeSql = """
+            INSERT INTO "InventoryMovementFacts" (
+                "SourceId","TipPromene","Datum","ArtikalId","Kolicina","StaraProdajnaCena","NovaProdajnaCena",
+                "Iznos","StoreId","DobavljacId","BrojDokumenta","KorisnikIme","DataOrigin")
+            SELECT
+                "SourceId","TipPromene","Datum","ArtikalId","Kolicina","StaraProdajnaCena","NovaProdajnaCena",
+                "Iznos","StoreId","DobavljacId","BrojDokumenta","KorisnikIme","DataOrigin"
+            FROM temp_inventory_movement_facts
+            ON CONFLICT ("SourceId", "DataOrigin") DO UPDATE
+            SET
+                "TipPromene" = EXCLUDED."TipPromene",
+                "Datum" = EXCLUDED."Datum",
+                "ArtikalId" = EXCLUDED."ArtikalId",
+                "Kolicina" = EXCLUDED."Kolicina",
+                "StaraProdajnaCena" = EXCLUDED."StaraProdajnaCena",
+                "NovaProdajnaCena" = EXCLUDED."NovaProdajnaCena",
+                "Iznos" = EXCLUDED."Iznos",
+                "StoreId" = EXCLUDED."StoreId",
+                "DobavljacId" = EXCLUDED."DobavljacId",
+                "BrojDokumenta" = EXCLUDED."BrojDokumenta",
+                "KorisnikIme" = EXCLUDED."KorisnikIme";
+            """;
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
     }
 
     private async Task ResetTrendplusSequencesAsync(CancellationToken ct)
@@ -5821,6 +6986,8 @@ using Npgsql;
                     insertedIds.Add(id.Value);
                     toInsert.Remove(id.Value);
                     TrackTrendWrite();
+                    TrackAnalyticsSaleId(e.Id);
+                    TrackAnalyticsStoreId(e.IDObjekat);
 
                     if (toInsert.Count == 0) break;
                 }
@@ -6333,7 +7500,7 @@ using Npgsql;
             writesToFlush,
             _options.DbSaveBatchSize,
             force);
-        await PersistBatchProgressAsync("db-flush", force: true, ct);
+        await PersistBatchProgressAsync("db-flush", force: false, ct);
     }
 
     private static string SerializeRowForDiagnostics(AccessDataRow row)
