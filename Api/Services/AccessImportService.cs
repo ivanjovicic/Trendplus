@@ -5747,7 +5747,68 @@ using NpgsqlTypes;
                 "MinimalnaKolicina" = EXCLUDED."MinimalnaKolicina",
                 "DataOrigin" = EXCLUDED."DataOrigin";
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+        const string mergeSqlLegacy = """
+            WITH source_rows AS (
+                SELECT DISTINCT ON ("ProductId")
+                    "ProductId","PLU","ProductName","Category","SubCategory","Brand","Velicina","Boja","Materijal",
+                    "FootwearTypeId","SupplierId","SeasonId","PurchasePrice","PurchasePriceRsd","FirstSalePrice","SalePrice",
+                    "IsActive","Timestamp","Kolicina","MinimalnaKolicina","DataOrigin"
+                FROM temp_products_dim
+                ORDER BY "ProductId", "Timestamp" DESC
+            ),
+            updated AS (
+                UPDATE "ProductsDim" AS pd
+                SET
+                    "PLU" = src."PLU",
+                    "ProductName" = src."ProductName",
+                    "Category" = src."Category",
+                    "SubCategory" = src."SubCategory",
+                    "Brand" = src."Brand",
+                    "Velicina" = src."Velicina",
+                    "Boja" = src."Boja",
+                    "Materijal" = src."Materijal",
+                    "FootwearTypeId" = src."FootwearTypeId",
+                    "SupplierId" = src."SupplierId",
+                    "SeasonId" = src."SeasonId",
+                    "PurchasePrice" = src."PurchasePrice",
+                    "PurchasePriceRsd" = src."PurchasePriceRsd",
+                    "FirstSalePrice" = src."FirstSalePrice",
+                    "SalePrice" = src."SalePrice",
+                    "IsActive" = src."IsActive",
+                    "Timestamp" = src."Timestamp",
+                    "Kolicina" = src."Kolicina",
+                    "MinimalnaKolicina" = src."MinimalnaKolicina",
+                    "DataOrigin" = src."DataOrigin"
+                FROM source_rows AS src
+                WHERE pd."ProductId" = src."ProductId"
+                RETURNING pd."ProductId"
+            )
+            INSERT INTO "ProductsDim" (
+                "ProductId","PLU","ProductName","Category","SubCategory","Brand","Velicina","Boja","Materijal",
+                "FootwearTypeId","SupplierId","SeasonId","PurchasePrice","PurchasePriceRsd","FirstSalePrice","SalePrice",
+                "IsActive","Timestamp","Kolicina","MinimalnaKolicina","DataOrigin")
+            SELECT
+                src."ProductId",src."PLU",src."ProductName",src."Category",src."SubCategory",src."Brand",src."Velicina",src."Boja",src."Materijal",
+                src."FootwearTypeId",src."SupplierId",src."SeasonId",src."PurchasePrice",src."PurchasePriceRsd",src."FirstSalePrice",src."SalePrice",
+                src."IsActive",src."Timestamp",src."Kolicina",src."MinimalnaKolicina",src."DataOrigin"
+            FROM source_rows AS src
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM "ProductsDim" AS pd
+                WHERE pd."ProductId" = src."ProductId");
+            """;
+        try
+        {
+            await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+        }
+        catch (PostgresException ex)
+            when (ex.SqlState == PostgresErrorCodes.InvalidColumnReference
+                  && ex.MessageText.Contains("ON CONFLICT specification", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "ProductsDim upsert fell back to legacy merge because the analytics database lacks a unique constraint on ProductId.");
+            await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSqlLegacy, ct);
+        }
     }
 
     private async Task UpsertStoresDimBulkAsync(
