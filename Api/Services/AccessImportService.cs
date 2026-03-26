@@ -5615,26 +5615,46 @@ using NpgsqlTypes;
         var analyticsConnectionString = GetAnalyticsConnectionString();
         await using var connection = new NpgsqlConnection(analyticsConnectionString);
         await connection.OpenAsync(ct);
-        await using var transaction = await connection.BeginTransactionAsync(ct);
+
+        // Execute each analytics step in its own transaction to isolate failures.
+        async Task RunStepAsync(Func<NpgsqlTransaction, Task> step, string stepName)
+        {
+            await using var stepTx = await connection.BeginTransactionAsync(ct);
+            try
+            {
+                await step(stepTx);
+                await stepTx.CommitAsync(ct);
+            }
+            catch (PostgresException ex)
+            {
+                _logger.LogError(ex, "Analytics step '{Step}' failed. Rolling back step.", stepName);
+                try { await stepTx.RollbackAsync(ct); } catch { }
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Analytics step '{Step}' failed with exception. Rolling back step.", stepName);
+                try { await stepTx.RollbackAsync(ct); } catch { }
+                throw;
+            }
+        }
 
         if (payload.Stores.Count > 0)
-            await UpsertStoresDimBulkAsync(connection, transaction, payload.Stores, ct);
+            await RunStepAsync(tx => UpsertStoresDimBulkAsync(connection, tx, payload.Stores, ct), "UpsertStoresDimBulkAsync");
         if (payload.Products.Count > 0)
-            await UpsertProductsDimBulkAsync(connection, transaction, payload.Products, ct);
+            await RunStepAsync(tx => UpsertProductsDimBulkAsync(connection, tx, payload.Products, ct), "UpsertProductsDimBulkAsync");
         if (payload.SalesFacts.Count > 0)
-            await UpsertSalesFactsBulkAsync(connection, transaction, payload.SalesFacts, ct);
+            await RunStepAsync(tx => UpsertSalesFactsBulkAsync(connection, tx, payload.SalesFacts, ct), "UpsertSalesFactsBulkAsync");
         if (payload.SaleIds.Count > 0)
-            await ReplaceSalesLineFactsBulkAsync(connection, transaction, payload.SaleIds, payload.SalesLineFacts, ct);
+            await RunStepAsync(tx => ReplaceSalesLineFactsBulkAsync(connection, tx, payload.SaleIds, payload.SalesLineFacts, ct), "ReplaceSalesLineFactsBulkAsync");
         if (payload.Suppliers.Count > 0)
-            await UpsertSuppliersDimBulkAsync(connection, transaction, payload.Suppliers, ct);
+            await RunStepAsync(tx => UpsertSuppliersDimBulkAsync(connection, tx, payload.Suppliers, ct), "UpsertSuppliersDimBulkAsync");
         if (payload.Seasons.Count > 0)
-            await UpsertSeasonsDimBulkAsync(connection, transaction, payload.Seasons, ct);
+            await RunStepAsync(tx => UpsertSeasonsDimBulkAsync(connection, tx, payload.Seasons, ct), "UpsertSeasonsDimBulkAsync");
         if (payload.Types.Count > 0)
-            await UpsertFootwearTypesDimBulkAsync(connection, transaction, payload.Types, ct);
+            await RunStepAsync(tx => UpsertFootwearTypesDimBulkAsync(connection, tx, payload.Types, ct), "UpsertFootwearTypesDimBulkAsync");
         if (payload.Movements.Count > 0)
-            await UpsertInventoryMovementsBulkAsync(connection, transaction, payload.Movements, ct);
-
-        await transaction.CommitAsync(ct);
+            await RunStepAsync(tx => UpsertInventoryMovementsBulkAsync(connection, tx, payload.Movements, ct), "UpsertInventoryMovementsBulkAsync");
 
         var productIdSet = payload.Products.Select(x => x.ProductId).ToHashSet();
         result.ProductsDimInserted += productIdSet.Count(x => !payload.ExistingProductIds.Contains(x));
