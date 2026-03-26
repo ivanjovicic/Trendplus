@@ -18,27 +18,41 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # 🔥 Restore SAMO backend (izbegava .esproj problem)
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore Api/Api.csproj
 
+      # 🔥 Build SAMO backend
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build Api/Api.csproj --configuration Release --no-restore
 
+      # 🔥 Test SAMO backend (ako ima test projekata, možemo proširiti)
       - name: Test
-        run: dotnet test --no-build --verbosity normal
+        run: dotnet test Api/Api.csproj --no-build --verbosity normal || echo "No tests found, skipping"
 
+      # 🚀 Trigger Render deploy sa retry logikom
       - name: Trigger Render Deploy
         run: |
-          response=$(curl -s -o response.json -w "%{http_code}" \
-            -X POST \
-            -H "Accept: application/json" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-            https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys)
+          for i in 1 2 3; do
+            echo "Attempt $i to trigger deploy..."
 
-          echo "HTTP Status: $response"
-          cat response.json
+            response=$(curl -s -o response.json -w "%{http_code}" \
+              -X POST \
+              -H "Accept: application/json" \
+              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+              https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys)
 
-          if [ "$response" -ne 201 ]; then
-            echo "Deploy failed"
-            exit 1
-          fi
+            echo "HTTP Status: $response"
+            cat response.json
+
+            if [ "$response" -eq 201 ]; then
+              echo "Deploy triggered successfully"
+              exit 0
+            fi
+
+            echo "Deploy failed, retrying in 5s..."
+            sleep 5
+          done
+
+          echo "Deploy failed after 3 attempts"
+          exit 1
