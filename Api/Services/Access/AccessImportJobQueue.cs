@@ -2,6 +2,7 @@ using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
+using System.Data;
 
 namespace Api.Services.Access;
 
@@ -94,24 +95,27 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
                     COALESCE(b."IncludeTemporaryTables", FALSE);
                 """;
 
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-            if (!await reader.ReadAsync(ct))
+            AccessImportQueuedJob? job = null;
+            await using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow, ct))
             {
-                await tx.CommitAsync(ct);
-                return null;
+                if (await reader.ReadAsync(ct))
+                {
+                    job = new AccessImportQueuedJob
+                    {
+                        BatchId = reader.GetInt64(0),
+                        SourceFilePath = reader.GetString(1),
+                        SourceFileName = reader.GetString(2),
+                        IncludeAnalytics = reader.GetBoolean(3),
+                        OverwriteExisting = reader.GetBoolean(4),
+                        IncludeTemporaryTables = reader.GetBoolean(5)
+                    };
+                }
             }
 
-            var job = new AccessImportQueuedJob
-            {
-                BatchId = reader.GetInt64(0),
-                SourceFilePath = reader.GetString(1),
-                SourceFileName = reader.GetString(2),
-                IncludeAnalytics = reader.GetBoolean(3),
-                OverwriteExisting = reader.GetBoolean(4),
-                IncludeTemporaryTables = reader.GetBoolean(5)
-            };
-
             await tx.CommitAsync(ct);
+            if (job is null)
+                return null;
+
             _logger.LogInformation(
                 "Access import job claimed. BatchId: {BatchId}. SourceFileName: {SourceFileName}.",
                 job.BatchId,

@@ -17,7 +17,6 @@ using Infrastructure.Resilience;
 using Infrastructure.Services;
 using Infrastructure.Services.Documents;
 using Infrastructure.Services.Caching;
-using Infrastructure.Seed;
 using MediatR;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +36,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
 using Api.Services.Access;
+using Api.Services.Startup;
 using Api.Config;
 using System.Threading.RateLimiting;
 using Application.Documents.Interfaces;
@@ -313,6 +313,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddHostedService<Workers.DocumentGenerationWorker>();
     builder.Services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
     builder.Services.AddHostedService<AccessImportBackgroundWorker>();
+    builder.Services.AddHostedService<DeferredStartupTasksHostedService>();
     // builder.Services.AddHostedService<Workers.DatabaseKeepAliveWorker>();
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
     Console.WriteLine($"Background workers runtime toggle: {(workersRuntimeToggleAllowed ? "ALLOWED" : "LOCKED")}");
@@ -494,47 +495,6 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     var app = builder.Build();
 
-    // ================= DATABASE INITIALIZATION =================
-    using (var scope = app.Services.CreateScope())
-    {
-        var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        var configuration = services.GetRequiredService<IConfiguration>();
-
-        // Wake up Neon databases before init (they may be sleeping)
-        try
-        {
-            var trendDb = services.GetRequiredService<ITrendplusDbContext>();
-            var analyticsDb = services.GetRequiredService<IAnalyticsDbContext>();
-            logger.LogInformation("[NeonWarmup] Waking up databases before init...");
-            await ((Microsoft.EntityFrameworkCore.DbContext)trendDb).Database.ExecuteSqlRawAsync("SELECT 1");
-            await ((Microsoft.EntityFrameworkCore.DbContext)analyticsDb).Database.ExecuteSqlRawAsync("SELECT 1");
-            logger.LogInformation("[NeonWarmup] Databases are awake.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "[NeonWarmup] Warmup ping failed, will retry during init.");
-        }
-
-        const int maxRetries = 5;
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
-                await DatabaseInitializer.InitializeDatabasesAsync(services, configuration, logger);
-                logger.LogInformation("Database initialization succeeded on attempt {Attempt}", attempt);
-                break;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Database initialization failed (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                if (attempt < maxRetries)
-                    await Task.Delay(TimeSpan.FromSeconds(attempt * 5));
-                // Don't throw - allow app to start even if seeding fails
-            }
-        }
-    }
-
     // ================= MIDDLEWARE PIPELINE =================
 
     // 1. Global exception handler (first in pipeline)
@@ -580,46 +540,6 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     });
 
     app.UseAuthorization();
-
-    // ================= WARMUP =================
-    using (var scope = app.Services.CreateScope())
-    {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        try
-        {
-            logger.LogInformation("Waking up Neon databases...");
-            var trendDb = scope.ServiceProvider.GetRequiredService<ITrendplusDbContext>();
-            var analyticsDb = scope.ServiceProvider.GetRequiredService<IAnalyticsDbContext>();
-            
-            await trendDb.Database.ExecuteSqlRawAsync("SELECT 1");
-            var conn = analyticsDb.GetDbConnection();
-            if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT 1";
-            await cmd.ExecuteScalarAsync();
-            logger.LogInformation("Databases are awake.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to warmup databases.");
-        }
-    }
-
-    using (var scope = app.Services.CreateScope())
-    {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        try
-        {
-            logger.LogInformation("Running Access import stale batch recovery during startup...");
-            var accessImportService = scope.ServiceProvider.GetRequiredService<IAccessImportService>();
-            await accessImportService.RefreshBatchStatusesAsync(ct: CancellationToken.None);
-            logger.LogInformation("Access import stale batch recovery completed during startup.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Access import stale batch recovery failed during startup.");
-        }
-    }
 
     // Removed duplicate minimal API proxy for /api/release/{gender} because Api.Controllers.ReleaseController already defines this endpoint.
     // Use the existing ReleaseController implementation instead.
