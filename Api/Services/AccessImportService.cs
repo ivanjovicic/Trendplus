@@ -5245,10 +5245,19 @@ using NpgsqlTypes;
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
         string sql,
-        CancellationToken ct)
+        CancellationToken ct,
+        ILogger logger)
     {
         await using var cmd = new NpgsqlCommand(sql, connection, transaction);
-        await cmd.ExecuteNonQueryAsync(ct);
+        try
+        {
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        catch (PostgresException ex)
+        {
+            logger.LogError(ex, "SQL FAILED: {Sql}", sql);
+            throw;
+        }
     }
 
     private static void WriteNullableInt(NpgsqlBinaryImporter importer, int? value)
@@ -5675,7 +5684,7 @@ using NpgsqlTypes;
                 "DataOrigin" text NOT NULL
             ) ON COMMIT DROP;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
 
         using (var importer = connection.BeginBinaryImport("""
             COPY temp_products_dim (
@@ -5799,7 +5808,7 @@ using NpgsqlTypes;
             """;
         try
         {
-            await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+            await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
         }
         catch (PostgresException ex)
             when (ex.SqlState == PostgresErrorCodes.InvalidColumnReference
@@ -5807,7 +5816,7 @@ using NpgsqlTypes;
         {
             _logger.LogWarning(
                 "ProductsDim upsert fell back to legacy merge because the analytics database lacks a unique constraint on ProductId.");
-            await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSqlLegacy, ct);
+            await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSqlLegacy, ct, _logger);
         }
     }
 
@@ -5831,7 +5840,7 @@ using NpgsqlTypes;
                 "DataOrigin" text NOT NULL
             ) ON COMMIT DROP;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
 
         using (var importer = connection.BeginBinaryImport("""
             COPY temp_stores_dim ("StoreId","StoreName","City","Region","Telefon","Menedzer","DataOrigin")
@@ -5866,7 +5875,7 @@ using NpgsqlTypes;
                 "Menedzer" = EXCLUDED."Menedzer",
                 "DataOrigin" = EXCLUDED."DataOrigin";
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
     }
 
     private async Task UpsertSalesFactsBulkAsync(
@@ -5891,7 +5900,7 @@ using NpgsqlTypes;
                 "DataOrigin" text NOT NULL
             ) ON COMMIT DROP;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
 
         using (var importer = connection.BeginBinaryImport("""
             COPY temp_sales_facts (
@@ -5933,7 +5942,7 @@ using NpgsqlTypes;
                 "TotalLines" = EXCLUDED."TotalLines",
                 "DataOrigin" = EXCLUDED."DataOrigin";
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
     }
 
     private async Task ReplaceSalesLineFactsBulkAsync(
@@ -5969,7 +5978,7 @@ using NpgsqlTypes;
                 "DataOrigin" text NOT NULL
             ) ON COMMIT DROP;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
 
         using (var importer = connection.BeginBinaryImport("""
             COPY temp_sales_line_facts ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin")
@@ -5996,7 +6005,7 @@ using NpgsqlTypes;
             SELECT "SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin"
             FROM temp_sales_line_facts;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, insertSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, insertSql, ct, _logger);
     }
 
     private async Task UpsertSuppliersDimBulkAsync(
@@ -6019,7 +6028,7 @@ using NpgsqlTypes;
                 "UpdatedAt" timestamp with time zone NOT NULL
             ) ON COMMIT DROP;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
 
         using (var importer = connection.BeginBinaryImport("""
             COPY temp_suppliers_dim ("SupplierId","Naziv","Adresa","Telefon","Napomena","DataOrigin","UpdatedAt")
@@ -6054,7 +6063,7 @@ using NpgsqlTypes;
                 "DataOrigin" = EXCLUDED."DataOrigin",
                 "UpdatedAt" = EXCLUDED."UpdatedAt";
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
     }
 
     private async Task UpsertSeasonsDimBulkAsync(
@@ -6076,7 +6085,7 @@ using NpgsqlTypes;
                 "UpdatedAt" timestamp with time zone NOT NULL
             ) ON COMMIT DROP;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
 
         using (var importer = connection.BeginBinaryImport("""
             COPY temp_seasons_dim ("SeasonId","Naziv","DatumOd","DatumDo","DataOrigin","UpdatedAt")
@@ -6109,7 +6118,7 @@ using NpgsqlTypes;
                 "DataOrigin" = EXCLUDED."DataOrigin",
                 "UpdatedAt" = EXCLUDED."UpdatedAt";
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
     }
 
     private async Task UpsertFootwearTypesDimBulkAsync(
@@ -6129,7 +6138,7 @@ using NpgsqlTypes;
                 "UpdatedAt" timestamp with time zone NOT NULL
             ) ON COMMIT DROP;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
 
         using (var importer = connection.BeginBinaryImport("""
             COPY temp_footwear_types_dim ("TypeId","Naziv","DataOrigin","UpdatedAt")
@@ -6158,7 +6167,7 @@ using NpgsqlTypes;
                 "DataOrigin" = EXCLUDED."DataOrigin",
                 "UpdatedAt" = EXCLUDED."UpdatedAt";
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
     }
 
     private async Task UpsertInventoryMovementsBulkAsync(
