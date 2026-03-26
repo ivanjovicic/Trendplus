@@ -5260,6 +5260,33 @@ using NpgsqlTypes;
         }
     }
 
+    private static async Task<bool> HasProductsDimProductIdUniqueIndexAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_index i
+                JOIN pg_class t ON t.oid = i.indrelid
+                JOIN pg_namespace ns ON ns.oid = t.relnamespace
+                JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(i.indkey)
+                WHERE t.relname = 'ProductsDim'
+                  AND ns.nspname = ANY (current_schemas(false))
+                  AND i.indisunique
+                  AND i.indisvalid
+                  AND i.indpred IS NULL
+                  AND i.indnkeyatts = 1
+                  AND a.attname = 'ProductId'
+            );
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, connection, transaction);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is true;
+    }
+
     private static void WriteNullableInt(NpgsqlBinaryImporter importer, int? value)
     {
         if (value.HasValue)
@@ -5744,6 +5771,14 @@ using NpgsqlTypes;
         }
 
         const string mergeSql = """
+            WITH source_rows AS (
+                SELECT DISTINCT ON ("ProductId")
+                    "ProductId","PLU","ProductName","Category","SubCategory","Brand","Velicina","Boja","Materijal",
+                    "FootwearTypeId","SupplierId","SeasonId","PurchasePrice","PurchasePriceRsd","FirstSalePrice","SalePrice",
+                    "IsActive","Timestamp","Kolicina","MinimalnaKolicina","DataOrigin"
+                FROM temp_products_dim
+                ORDER BY "ProductId", "Timestamp" DESC
+            )
             INSERT INTO "ProductsDim" (
                 "ProductId","PLU","ProductName","Category","SubCategory","Brand","Velicina","Boja","Materijal",
                 "FootwearTypeId","SupplierId","SeasonId","PurchasePrice","PurchasePriceRsd","FirstSalePrice","SalePrice",
@@ -5752,7 +5787,7 @@ using NpgsqlTypes;
                 "ProductId","PLU","ProductName","Category","SubCategory","Brand","Velicina","Boja","Materijal",
                 "FootwearTypeId","SupplierId","SeasonId","PurchasePrice","PurchasePriceRsd","FirstSalePrice","SalePrice",
                 "IsActive","Timestamp","Kolicina","MinimalnaKolicina","DataOrigin"
-            FROM temp_products_dim
+            FROM source_rows
             ON CONFLICT ("ProductId") DO UPDATE
             SET
                 "PLU" = EXCLUDED."PLU",
@@ -5826,13 +5861,11 @@ using NpgsqlTypes;
                 FROM "ProductsDim" AS pd
                 WHERE pd."ProductId" = src."ProductId");
             """;
-        try
+        if (await HasProductsDimProductIdUniqueIndexAsync(connection, transaction, ct))
         {
             await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
         }
-        catch (PostgresException ex)
-            when (ex.SqlState == PostgresErrorCodes.InvalidColumnReference
-                  && ex.MessageText.Contains("ON CONFLICT specification", StringComparison.OrdinalIgnoreCase))
+        else
         {
             _logger.LogWarning(
                 "ProductsDim upsert fell back to legacy merge because the analytics database lacks a unique constraint on ProductId.");
@@ -6216,7 +6249,7 @@ using NpgsqlTypes;
                 "DataOrigin" text NOT NULL
             ) ON COMMIT DROP;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
 
         using (var importer = connection.BeginBinaryImport("""
             COPY temp_inventory_movement_facts (
@@ -6268,7 +6301,7 @@ using NpgsqlTypes;
                 "BrojDokumenta" = EXCLUDED."BrojDokumenta",
                 "KorisnikIme" = EXCLUDED."KorisnikIme";
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
     }
 
     private async Task ResetTrendplusSequencesAsync(CancellationToken ct)

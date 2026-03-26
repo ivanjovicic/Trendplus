@@ -28,7 +28,8 @@ namespace Infrastructure.DbContexts
                 .HasDefaultValue("existing");
 
             modelBuilder.Entity<ProductsDim>()
-                .HasIndex(x => x.ProductId);
+                .HasIndex(x => x.ProductId)
+                .IsUnique();
 
             modelBuilder.Entity<ProductsDim>()
                 .HasIndex(x => x.Timestamp);
