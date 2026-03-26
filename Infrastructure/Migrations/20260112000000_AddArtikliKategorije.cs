@@ -2,9 +2,13 @@
 
 #nullable disable
 
+using Infrastructure.DbContexts;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(TrendplusDbContext))]
+    [Migration("20260112000000_AddArtikliKategorije")]
     public partial class AddArtikliKategorije : Migration
     {
         /// <inheritdoc />

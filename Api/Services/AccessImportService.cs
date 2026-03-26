@@ -23,9 +23,11 @@ using Npgsql;
         Task<AccessImportRunResponse> StartImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
         Task<AccessImportRunResponse> RunExistingBatchAsync(long batchId, string accessFilePath, string sourceFileName, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, bool deleteWorkingFileAfterCompletion = false, CancellationToken ct = default);
         Task RefreshBatchStatusesAsync(long? batchId = null, CancellationToken ct = default);
+        Task<List<AccessImportBatchDto>> GetRecentBatchStatusesAsync(int take = 20, CancellationToken ct = default);
         Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default);
         Task<AccessImportBatchDto?> GetBatchAsync(long batchId, CancellationToken ct = default);
         Task<bool> RequestCancellationAsync(long batchId, CancellationToken ct = default);
+        Task MarkBatchInterruptedAsync(long batchId, CancellationToken ct = default);
         Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default);
     }
 
@@ -255,6 +257,8 @@ using Npgsql;
     private readonly AccessImportOptions _options;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
     private readonly IAccessImportJobQueue? _jobQueue;
+    private static readonly SemaphoreSlim BatchSchemaBootstrapLock = new(1, 1);
+    private static volatile bool _batchSchemaBootstrapCompleted;
 
     // Populated by ImportTrendplus, consumed by SyncAnalyticsAsync for StoresDim upsert
     private Dictionary<int, (string Name, string? Address, string? Phone, string? Manager)> _importedStores = [];
@@ -1029,9 +1033,6 @@ using Npgsql;
         if (_jobQueue is null)
             throw new InvalidOperationException("Access import background job queue is not configured.");
 
-        await EnsureDataImportBatchesTableAsync(ct);
-        await RecoverStaleRunningBatchesAsync(batchId: null, ct);
-
         if (_options.PreventConcurrentRuns)
         {
             var activeBatch = await GetActiveRunningBatchAsync(ct);
@@ -1183,8 +1184,7 @@ using Npgsql;
             throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", sourceFilePath);
 
         var now = DateTime.UtcNow;
-        await EnsureDataImportBatchesTableAsync(ct);
-        await RecoverStaleRunningBatchesAsync(batchId: null, ct);
+        await EnsureDataImportBatchesTableIfEnabledAsync(ct);
 
         if (_options.PreventConcurrentRuns)
         {
@@ -1221,7 +1221,18 @@ using Npgsql;
         };
 
         _trendDb.DataImportBatches.Add(batch);
-        await _trendDb.SaveChangesAsync(ct);
+        try
+        {
+            await _trendDb.SaveChangesAsync(ct);
+        }
+        catch (PostgresException ex) when (
+            ex.SqlState == PostgresErrorCodes.UndefinedTable ||
+            ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            throw new InvalidOperationException(
+                "Access import batch schema is not ready. Apply Trendplus migrations before starting imports.",
+                ex);
+        }
 
         var result = new AccessImportRunResponse
         {
@@ -1363,13 +1374,8 @@ using Npgsql;
                 batch.CurrentStep = null;
                 batch.CurrentTable = null;
                 batch.ProgressPercent = 100;
-                batch.DurationSeconds = (int)Math.Max(0, Math.Round(((result.CompletedAtUtc ?? DateTime.UtcNow) - batch.StartedAtUtc).TotalSeconds));
-                batch.RowsRead = CountSourceRows(result);
-                batch.RowsAccepted = CountAcceptedRows(result);
-                batch.RowsWritten = CountImportedRows(result) + CountUpdatedRows(result);
-                batch.TotalImported = CountImportedRows(result);
-                batch.TotalUpdated = CountUpdatedRows(result);
-                batch.TotalErrors = result.Warnings.Count;
+                UpdateBatchDurationSeconds(batch, result.CompletedAtUtc ?? DateTime.UtcNow);
+                ApplyBatchMetricsFromResult(batch, result);
                 batch.SummaryJson = JsonSerializer.Serialize(result);
                 await _trendDb.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
@@ -1404,13 +1410,8 @@ using Npgsql;
             batch.CurrentStep = "cancelled";
             batch.CurrentTable = null;
             batch.ProgressPercent = 100;
-            batch.DurationSeconds = (int)Math.Max(0, Math.Round(((result.CompletedAtUtc ?? DateTime.UtcNow) - batch.StartedAtUtc).TotalSeconds));
-            batch.RowsRead = CountSourceRows(result);
-            batch.RowsAccepted = CountAcceptedRows(result);
-            batch.RowsWritten = CountImportedRows(result) + CountUpdatedRows(result);
-            batch.TotalImported = CountImportedRows(result);
-            batch.TotalUpdated = CountUpdatedRows(result);
-            batch.TotalErrors = result.Warnings.Count;
+            UpdateBatchDurationSeconds(batch, result.CompletedAtUtc ?? DateTime.UtcNow);
+            ApplyBatchMetricsFromResult(batch, result);
             batch.ErrorMessage = "Cancellation requested by user.";
             batch.ErrorDetailsJson = JsonSerializer.Serialize(new
             {
@@ -1459,13 +1460,8 @@ using Npgsql;
             batch.CurrentStep = string.IsNullOrWhiteSpace(_activeBatchStep) ? null : TrimToMaxLength(_activeBatchStep, 64);
             batch.CurrentTable = string.IsNullOrWhiteSpace(_activeBatchTable) ? null : TrimToMaxLength(_activeBatchTable, 300);
             batch.ProgressPercent = 100;
-            batch.DurationSeconds = (int)Math.Max(0, Math.Round(((result.CompletedAtUtc ?? DateTime.UtcNow) - batch.StartedAtUtc).TotalSeconds));
-            batch.RowsRead = CountSourceRows(result);
-            batch.RowsAccepted = CountAcceptedRows(result);
-            batch.RowsWritten = CountImportedRows(result) + CountUpdatedRows(result);
-            batch.TotalImported = CountImportedRows(result);
-            batch.TotalUpdated = CountUpdatedRows(result);
-            batch.TotalErrors = Math.Max(1, result.Warnings.Count);
+            UpdateBatchDurationSeconds(batch, result.CompletedAtUtc ?? DateTime.UtcNow);
+            ApplyBatchMetricsFromResult(batch, result, minTotalErrors: 1);
             batch.RetryCount = Math.Max(0, batch.RetryCount) + 1;
             batch.ErrorMessage = ex.GetBaseException().Message;
             batch.ErrorDetailsJson = JsonSerializer.Serialize(new
@@ -1533,6 +1529,108 @@ using Npgsql;
 
     public Task RefreshBatchStatusesAsync(long? batchId = null, CancellationToken ct = default)
         => RecoverStaleRunningBatchesAsync(batchId, ct);
+
+    public async Task<List<AccessImportBatchDto>> GetRecentBatchStatusesAsync(int take = 20, CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 200);
+        try
+        {
+            return await _trendDb.DataImportBatches
+                .AsNoTracking()
+                .OrderByDescending(x => x.StartedAtUtc)
+                .Take(take)
+                .Select(x => new AccessImportBatchDto
+                {
+                    Id = x.Id,
+                    SourceSystem = x.SourceSystem,
+                    SourceFileName = x.SourceFileName,
+                    QueuedAtUtc = x.QueuedAtUtc,
+                    StartedAtUtc = x.StartedAtUtc,
+                    CompletedAtUtc = x.CompletedAtUtc,
+                    LastHeartbeatUtc = x.LastHeartbeatUtc,
+                    Status = x.Status,
+                    CurrentStep = x.CurrentStep,
+                    CurrentTable = x.CurrentTable,
+                    ProgressPercent = x.ProgressPercent,
+                    RowsRead = x.RowsRead,
+                    RowsAccepted = x.RowsAccepted,
+                    RowsWritten = x.RowsWritten,
+                    CancellationRequested = x.CancellationRequested,
+                    CancellationRequestedAtUtc = x.CancellationRequestedAtUtc,
+                    RetryCount = x.RetryCount,
+                    SummaryJson = null,
+                    ErrorMessage = x.ErrorMessage,
+                    DurationSeconds = x.DurationSeconds,
+                    TotalImported = x.TotalImported,
+                    TotalUpdated = x.TotalUpdated,
+                    TotalErrors = x.TotalErrors,
+                    DataOrigin = x.DataOrigin
+                })
+                .ToListAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogWarning(
+                ex,
+                "Access import lightweight batches query hit legacy schema (missing columns). BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Falling back to compatibility projection.",
+                0L,
+                "DataImportBatches",
+                "list-batches-lightweight");
+
+            return await _trendDb.DataImportBatches
+                .AsNoTracking()
+                .OrderByDescending(x => x.StartedAtUtc)
+                .Take(take)
+                .Select(x => new AccessImportBatchDto
+                {
+                    Id = x.Id,
+                    SourceSystem = x.SourceSystem,
+                    SourceFileName = x.SourceFileName,
+                    QueuedAtUtc = x.StartedAtUtc,
+                    StartedAtUtc = x.StartedAtUtc,
+                    CompletedAtUtc = x.CompletedAtUtc,
+                    LastHeartbeatUtc = null,
+                    Status = x.Status,
+                    CurrentStep = null,
+                    CurrentTable = null,
+                    ProgressPercent = 0,
+                    RowsRead = 0,
+                    RowsAccepted = 0,
+                    RowsWritten = 0,
+                    CancellationRequested = false,
+                    CancellationRequestedAtUtc = null,
+                    RetryCount = 0,
+                    SummaryJson = null,
+                    ErrorMessage = x.ErrorMessage,
+                    DurationSeconds = null,
+                    TotalImported = 0,
+                    TotalUpdated = 0,
+                    TotalErrors = 0,
+                    DataOrigin = "access"
+                })
+                .ToListAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            _logger.LogWarning(
+                ex,
+                "Access import lightweight batches table query is missing. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Returning empty list as compatibility fallback.",
+                0L,
+                "DataImportBatches",
+                "list-batches-lightweight");
+            return [];
+        }
+        catch (Exception ex) when (IsTransientDatabaseTimeout(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "Access import lightweight batches query hit a transient timeout/connectivity issue. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}. Returning empty list.",
+                0L,
+                "DataImportBatches",
+                "list-batches-lightweight");
+            return [];
+        }
+    }
 
     public async Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default)
     {
@@ -1741,7 +1839,7 @@ using Npgsql;
         if (batchId <= 0)
             return false;
 
-        await EnsureDataImportBatchesTableAsync(ct);
+        await EnsureDataImportBatchesTableIfEnabledAsync(ct);
 
         var now = DateTime.UtcNow;
         const string sql = """
@@ -1769,10 +1867,24 @@ using Npgsql;
               AND "Status" IN ('pending', 'running');
             """;
 
-        var affected = await _trendDb.Database.ExecuteSqlRawAsync(
-            sql,
-            new object[] { batchId, now, "Cancellation requested by user." },
-            ct);
+        int affected;
+        try
+        {
+            affected = await _trendDb.Database.ExecuteSqlRawAsync(
+                sql,
+                new object[] { batchId, now, "Cancellation requested by user." },
+                ct);
+        }
+        catch (PostgresException ex) when (
+            ex.SqlState == PostgresErrorCodes.UndefinedTable ||
+            ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogWarning(
+                ex,
+                "Access import cancellation request skipped because DataImportBatches schema is missing/incompatible. BatchId: {BatchId}.",
+                batchId);
+            return false;
+        }
 
         if (affected > 0)
         {
@@ -1801,7 +1913,6 @@ using Npgsql;
             batch.CurrentTable = null;
             batch.CompletedAtUtc = now;
             batch.LastHeartbeatUtc = now;
-            batch.ProgressPercent = 100;
             batch.DurationSeconds = (int)Math.Max(0, Math.Round((now - batch.StartedAtUtc).TotalSeconds));
             if (string.IsNullOrWhiteSpace(batch.ErrorMessage))
                 batch.ErrorMessage = "Import interrupted during worker shutdown.";
@@ -5012,6 +5123,26 @@ using Npgsql;
         await _trendDb.Database.ExecuteSqlRawAsync(sql, ct);
     }
 
+    private async Task EnsureDataImportBatchesTableIfEnabledAsync(CancellationToken ct)
+    {
+        if (!_options.EnableRuntimeBatchSchemaBootstrap || _batchSchemaBootstrapCompleted)
+            return;
+
+        await BatchSchemaBootstrapLock.WaitAsync(ct);
+        try
+        {
+            if (_batchSchemaBootstrapCompleted)
+                return;
+
+            await EnsureDataImportBatchesTableAsync(ct);
+            _batchSchemaBootstrapCompleted = true;
+        }
+        finally
+        {
+            BatchSchemaBootstrapLock.Release();
+        }
+    }
+
     /// <summary>
     /// Ensures "DataImportBatches" table exists. Handles first deploy to a fresh DB
     /// where DatabaseInitializer may have failed due to a Neon cold-start.
@@ -6128,6 +6259,19 @@ using Npgsql;
 
     private static int CountAcceptedRows(AccessImportRunResponse result)
         => result.CoverageByTable.Values.Sum(x => Math.Max(0, x.AcceptedRows));
+
+    private static void UpdateBatchDurationSeconds(DataImportBatch batch, DateTime completedAtUtc)
+        => batch.DurationSeconds = (int)Math.Max(0, Math.Round((completedAtUtc - batch.StartedAtUtc).TotalSeconds));
+
+    private static void ApplyBatchMetricsFromResult(DataImportBatch batch, AccessImportRunResponse result, int minTotalErrors = 0)
+    {
+        batch.RowsRead = CountSourceRows(result);
+        batch.RowsAccepted = CountAcceptedRows(result);
+        batch.RowsWritten = CountImportedRows(result) + CountUpdatedRows(result);
+        batch.TotalImported = CountImportedRows(result);
+        batch.TotalUpdated = CountUpdatedRows(result);
+        batch.TotalErrors = Math.Max(minTotalErrors, result.Warnings.Count);
+    }
 
     private static int ComputeProgressPercent(
         string? status,

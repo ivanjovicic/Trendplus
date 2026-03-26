@@ -1,6 +1,5 @@
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using System.Data;
 
@@ -62,10 +61,13 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
     {
         try
         {
-            await _db.Database.OpenConnectionAsync(ct);
-            await using var tx = await _db.Database.BeginTransactionAsync(ct);
-            await using var cmd = _db.Database.GetDbConnection().CreateCommand();
-            cmd.Transaction = tx.GetDbTransaction();
+            var connectionString = _db.Database.GetConnectionString();
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new InvalidOperationException("Trendplus connection string is not configured for access import job claiming.");
+
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync(ct);
+            await using var cmd = connection.CreateCommand();
             cmd.CommandText = """
                 WITH next_job AS (
                     SELECT "Id"
@@ -112,7 +114,6 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
                 }
             }
 
-            await tx.CommitAsync(ct);
             if (job is null)
                 return null;
 
@@ -130,10 +131,6 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
                 ex,
                 "Access import job queue claim skipped because DataImportBatches queue columns are not fully available yet.");
             return null;
-        }
-        finally
-        {
-            await _db.Database.CloseConnectionAsync();
         }
     }
 }

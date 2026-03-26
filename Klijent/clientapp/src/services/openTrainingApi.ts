@@ -1,6 +1,6 @@
-﻿const BASE = import.meta.env.VITE_API_URL ?? "";
+const BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface OpenTrainingStats {
     datasetCount:          number;
@@ -102,7 +102,7 @@ export interface RecomputeLabelsResult {
     computedAtUtc:   string;
 }
 
-// ── API calls ─────────────────────────────────────────────────────────────────
+// -- API calls -----------------------------------------------------------------
 
 export async function fetchOpenTrainingStats(): Promise<OpenTrainingStats> {
     const res = await fetch(`${BASE}/api/open-training/stats`);
@@ -170,3 +170,4 @@ export async function recomputeLabels(
     }
     return res.json();
 }
+

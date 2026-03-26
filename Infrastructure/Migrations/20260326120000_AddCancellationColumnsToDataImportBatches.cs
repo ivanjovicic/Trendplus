@@ -1,46 +1,36 @@
-using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+using Infrastructure.DbContexts;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+
 namespace Infrastructure.Migrations
 {
+    [DbContext(typeof(TrendplusDbContext))]
+    [Migration("20260326120000_AddCancellationColumnsToDataImportBatches")]
     public partial class AddCancellationColumnsToDataImportBatches : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "CancellationRequested",
-                table: "DataImportBatches",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
+            migrationBuilder.Sql(
+                """
+                ALTER TABLE IF EXISTS "DataImportBatches"
+                ADD COLUMN IF NOT EXISTS "CancellationRequested" boolean NOT NULL DEFAULT FALSE;
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "CancellationRequestedAtUtc",
-                table: "DataImportBatches",
-                type: "timestamp with time zone",
-                nullable: true);
+                ALTER TABLE IF EXISTS "DataImportBatches"
+                ADD COLUMN IF NOT EXISTS "CancellationRequestedAtUtc" timestamp with time zone;
 
-            migrationBuilder.CreateIndex(
-                name: "IX_DataImportBatches_CancellationRequested",
-                table: "DataImportBatches",
-                column: "CancellationRequested");
+                CREATE INDEX IF NOT EXISTS "IX_DataImportBatches_CancellationRequested"
+                ON "DataImportBatches" ("CancellationRequested");
+                """);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_DataImportBatches_CancellationRequested",
-                table: "DataImportBatches");
-
-            migrationBuilder.DropColumn(
-                name: "CancellationRequestedAtUtc",
-                table: "DataImportBatches");
-
-            migrationBuilder.DropColumn(
-                name: "CancellationRequested",
-                table: "DataImportBatches");
+            migrationBuilder.Sql("""DROP INDEX IF EXISTS "IX_DataImportBatches_CancellationRequested";""");
+            migrationBuilder.Sql("""ALTER TABLE IF EXISTS "DataImportBatches" DROP COLUMN IF EXISTS "CancellationRequestedAtUtc";""");
+            migrationBuilder.Sql("""ALTER TABLE IF EXISTS "DataImportBatches" DROP COLUMN IF EXISTS "CancellationRequested";""");
         }
     }
 }

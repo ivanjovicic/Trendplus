@@ -18,6 +18,7 @@ public sealed class AccessImportOptions
     public string StorageRoot { get; set; } = "tmp/access-import-jobs";
     public bool EnableSnapshotCopy { get; set; } = true;
     public int RunningBatchStaleMinutes { get; set; } = 240;
+    public bool EnableRuntimeBatchSchemaBootstrap { get; set; } = false;
     public bool EnableMdbSql { get; set; }
     public bool PreventConcurrentRuns { get; set; } = true;
     public bool SkipInvalidForeignKeys { get; set; } = true;

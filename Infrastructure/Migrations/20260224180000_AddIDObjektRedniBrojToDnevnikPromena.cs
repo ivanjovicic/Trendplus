@@ -2,9 +2,13 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+using Infrastructure.DbContexts;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(TrendplusDbContext))]
+    [Migration("20260224180000_AddIDObjektRedniBrojToDnevnikPromena")]
     public partial class AddIDObjektRedniBrojToDnevnikPromena : Migration
     {
         /// <inheritdoc />

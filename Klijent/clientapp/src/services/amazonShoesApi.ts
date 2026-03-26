@@ -45,7 +45,7 @@ export type CategorySummary = {
 
 // ── API base ─────────────────────────────────────────────────────────────────
 
-const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 
 async function get<T>(path: string): Promise<T> {
     const resp = await fetch(`${API_BASE}${path}`);
@@ -102,3 +102,4 @@ export async function deleteAmazonShoeCategory(category: string): Promise<{ dele
     if (!resp.ok) throw new Error(`DELETE ${resp.status}`);
     return resp.json();
 }
+

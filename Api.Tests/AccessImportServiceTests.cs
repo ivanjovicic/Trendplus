@@ -354,6 +354,14 @@ public sealed class AccessImportServiceTests
     }
 
     [Fact]
+    public void AccessImportOptions_EnableRuntimeBatchSchemaBootstrap_DefaultsToFalse()
+    {
+        var options = new AccessImportOptions();
+
+        Assert.False(options.EnableRuntimeBatchSchemaBootstrap);
+    }
+
+    [Fact]
     public void AccessImportOptions_PreventConcurrentRuns_DefaultsToTrue()
     {
         var options = new AccessImportOptions();

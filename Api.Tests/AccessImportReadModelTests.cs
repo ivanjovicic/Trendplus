@@ -1,35 +1,33 @@
 using System;
 using System.Threading.Tasks;
+using Api.Services;
 using Domain.Model;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using Api.Services;
 using Xunit;
 
 namespace Api.Tests
 {
-    public sealed class AccessImportCancellationTests
+    public sealed class AccessImportReadModelTests
     {
         [Fact]
-        public async Task MarkBatchInterruptedAsync_PersistsInterruptedStatus()
+        public async Task GetRecentBatchStatusesAsync_DoesNotReturnSummaryJson()
         {
             var options = new DbContextOptionsBuilder<TrendplusDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
             await using var db = new TrendplusDbContext(options);
-
-            var batch = new DataImportBatch
+            db.DataImportBatches.Add(new DataImportBatch
             {
                 SourceSystem = "access",
-                SourceFileName = "test.accdb",
+                SourceFileName = "sample.accdb",
                 Status = "running",
-                StartedAtUtc = DateTime.UtcNow.AddMinutes(-30),
-                ProgressPercent = 47
-            };
-
-            db.DataImportBatches.Add(batch);
+                StartedAtUtc = DateTime.UtcNow.AddMinutes(-2),
+                QueuedAtUtc = DateTime.UtcNow.AddMinutes(-3),
+                SummaryJson = "{\"heavy\":\"payload\"}"
+            });
             await db.SaveChangesAsync();
 
             var service = new AccessImportService(
@@ -41,15 +39,9 @@ namespace Api.Tests
                 serviceScopeFactory: null,
                 jobQueue: null);
 
-            await service.MarkBatchInterruptedAsync(batch.Id);
-
-            var updated = await db.DataImportBatches.FirstAsync(x => x.Id == batch.Id);
-            Assert.Equal("interrupted", updated.Status);
-            Assert.Equal("stopped", updated.CurrentStep);
-            Assert.Null(updated.CurrentTable);
-            Assert.Equal(47, updated.ProgressPercent);
-            Assert.NotNull(updated.CompletedAtUtc);
-            Assert.NotNull(updated.LastHeartbeatUtc);
+            var rows = await service.GetRecentBatchStatusesAsync(20);
+            Assert.Single(rows);
+            Assert.Null(rows[0].SummaryJson);
         }
     }
 }

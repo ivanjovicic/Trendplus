@@ -70,17 +70,19 @@ public static class AccessImportEndpoints
             long batchId,
             IAccessImportService service,
             IBatchLogService logService,
+            IMemoryCache cache,
             ILogger<Program> logger,
             int logTake = 200,
             string? severity = null,
             CancellationToken ct = default) =>
-            await GetBatchDetailResultAsync(batchId, service, logService, logger, logTake, severity, includeLogs: true, ct))
+            await GetBatchDetailResultAsync(batchId, service, logService, cache, logger, logTake, severity, includeLogs: true, ct))
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportBatchDetail");
 
         group.MapGet("/jobs/{batchId:long}", async (
             long batchId,
             IAccessImportService service,
+            IMemoryCache cache,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
@@ -91,6 +93,7 @@ public static class AccessImportEndpoints
                 var batch = await service.GetBatchAsync(batchId, timeoutCts.Token);
                 if (batch is null)
                     return Results.NotFound(new { error = $"Job {batchId} nije pronađen." });
+                CacheBatchSnapshot(cache, batch);
                 return Results.Ok(batch);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -105,22 +108,22 @@ public static class AccessImportEndpoints
                     "Access import job detail fallback after exceeding {TimeoutSeconds}s. BatchId: {BatchId}.",
                     BatchDetailFallbackTimeoutSeconds,
                     batchId);
-                return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs: false, ct);
+                return await BuildBatchDetailFallbackResultAsync(batchId, cache, includeLogs: false, ct);
             }
             catch (NpgsqlException ex)
             {
                 logger.LogWarning(ex, "Access import job detail fallback due to database issue. BatchId: {BatchId}.", batchId);
-                return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs: false, ct);
+                return await BuildBatchDetailFallbackResultAsync(batchId, cache, includeLogs: false, ct);
             }
             catch (TimeoutException ex)
             {
                 logger.LogWarning(ex, "Access import job detail fallback due to timeout. BatchId: {BatchId}.", batchId);
-                return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs: false, ct);
+                return await BuildBatchDetailFallbackResultAsync(batchId, cache, includeLogs: false, ct);
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Access import job detail fallback due to unexpected issue. BatchId: {BatchId}.", batchId);
-                return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs: false, ct);
+                return await BuildBatchDetailFallbackResultAsync(batchId, cache, includeLogs: false, ct);
             }
         })
         .RequireRateLimiting("db-heavy")
@@ -381,8 +384,9 @@ public static class AccessImportEndpoints
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchListFallbackTimeoutSeconds));
 
-            var rows = await service.GetRecentBatchesAsync(take, timeoutCts.Token);
+            var rows = await service.GetRecentBatchStatusesAsync(take, timeoutCts.Token);
             cache.Set(cacheKey, rows, BatchListCacheDuration);
+            CacheBatchSnapshots(cache, rows);
             return Results.Ok(rows);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -406,7 +410,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<object>());
+            return Results.Ok(Array.Empty<AccessImportBatchDto>());
         }
         catch (NpgsqlException ex)
         {
@@ -421,7 +425,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<object>());
+            return Results.Ok(Array.Empty<AccessImportBatchDto>());
         }
         catch (TimeoutException ex)
         {
@@ -436,7 +440,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<object>());
+            return Results.Ok(Array.Empty<AccessImportBatchDto>());
         }
         catch (Exception ex)
         {
@@ -451,7 +455,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<object>());
+            return Results.Ok(Array.Empty<AccessImportBatchDto>());
         }
     }
 
@@ -459,6 +463,7 @@ public static class AccessImportEndpoints
         long batchId,
         IAccessImportService service,
         IBatchLogService logService,
+        IMemoryCache cache,
         ILogger logger,
         int logTake,
         string? severity,
@@ -469,12 +474,13 @@ public static class AccessImportEndpoints
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchDetailFallbackTimeoutSeconds));
-            await service.RefreshBatchStatusesAsync(batchId, timeoutCts.Token);
             var detail = await logService.GetBatchDetailAsync(batchId, Math.Max(0, logTake), severity, timeoutCts.Token);
 
             if (detail is null)
                 return Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
 
+            CacheBatchSnapshot(cache, detail.Batch);
+            CacheBatchDetailSnapshot(cache, batchId, detail);
             return includeLogs ? Results.Ok(detail) : Results.Ok(detail.Batch);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -489,86 +495,71 @@ public static class AccessImportEndpoints
                 "Access import batch detail fallback after exceeding {TimeoutSeconds}s. BatchId: {BatchId}.",
                 BatchDetailFallbackTimeoutSeconds,
                 batchId);
-            return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs, ct);
+            return await BuildBatchDetailFallbackResultAsync(batchId, cache, includeLogs, ct);
         }
         catch (NpgsqlException ex)
         {
             logger.LogWarning(ex, "Access import batch detail fallback due to database issue. BatchId: {BatchId}.", batchId);
-            return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs, ct);
+            return await BuildBatchDetailFallbackResultAsync(batchId, cache, includeLogs, ct);
         }
         catch (TimeoutException ex)
         {
             logger.LogWarning(ex, "Access import batch detail fallback due to timeout. BatchId: {BatchId}.", batchId);
-            return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs, ct);
+            return await BuildBatchDetailFallbackResultAsync(batchId, cache, includeLogs, ct);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Access import batch detail fallback due to unexpected issue. BatchId: {BatchId}.", batchId);
-            return await BuildBatchDetailFallbackResultAsync(batchId, service, includeLogs, ct);
+            return await BuildBatchDetailFallbackResultAsync(batchId, cache, includeLogs, ct);
         }
     }
 
-    private static async Task<IResult> BuildBatchDetailFallbackResultAsync(
+    private static Task<IResult> BuildBatchDetailFallbackResultAsync(
         long batchId,
-        IAccessImportService service,
+        IMemoryCache cache,
         bool includeLogs,
         CancellationToken ct)
     {
-        try
+        ct.ThrowIfCancellationRequested();
+
+        if (includeLogs && TryGetCachedBatchDetail(cache, batchId, out var cachedDetail))
+            return Task.FromResult<IResult>(Results.Ok(cachedDetail));
+
+        if (TryGetCachedBatch(cache, batchId, out var cachedBatch))
         {
-            // Prefer direct lookup (lighter query) and only then fall back to recent list scan.
-            var batch = await service.GetBatchAsync(batchId, ct);
-            if (batch is null)
-            {
-                var rows = await service.GetRecentBatchesAsync(200, ct);
-                batch = rows.FirstOrDefault(x => x.Id == batchId);
-            }
-
-            if (batch is null)
-                return Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
-
             if (!includeLogs)
-                return Results.Ok(batch);
+                return Task.FromResult<IResult>(Results.Ok(cachedBatch));
 
-            return Results.Ok(new BatchDetailDto
+            return Task.FromResult<IResult>(Results.Ok(new BatchDetailDto
             {
-                Batch = batch,
+                Batch = cachedBatch,
                 Logs = [],
                 LogCountBySeverity = [],
                 LogCountByTable = []
-            });
+            }));
         }
-        catch
-        {
-            if (!includeLogs)
-                return Results.Ok(new AccessImportBatchDto
-                {
-                    Id = batchId,
-                    SourceSystem = "access",
-                    SourceFileName = string.Empty,
-                    QueuedAtUtc = DateTime.UtcNow,
-                    StartedAtUtc = DateTime.UtcNow,
-                    Status = "unknown",
-                    DataOrigin = "access"
-                });
 
-            return Results.Ok(new BatchDetailDto
-            {
-                Batch = new AccessImportBatchDto
-                {
-                    Id = batchId,
-                    SourceSystem = "access",
-                    SourceFileName = string.Empty,
-                    QueuedAtUtc = DateTime.UtcNow,
-                    StartedAtUtc = DateTime.UtcNow,
-                    Status = "unknown",
-                    DataOrigin = "access"
-                },
-                Logs = [],
-                LogCountBySeverity = [],
-                LogCountByTable = []
-            });
-        }
+        var syntheticBatch = new AccessImportBatchDto
+        {
+            Id = batchId,
+            SourceSystem = "access",
+            SourceFileName = string.Empty,
+            QueuedAtUtc = DateTime.UtcNow,
+            StartedAtUtc = DateTime.UtcNow,
+            Status = "unknown",
+            DataOrigin = "access"
+        };
+
+        if (!includeLogs)
+            return Task.FromResult<IResult>(Results.Ok(syntheticBatch));
+
+        return Task.FromResult<IResult>(Results.Ok(new BatchDetailDto
+        {
+            Batch = syntheticBatch,
+            Logs = [],
+            LogCountBySeverity = [],
+            LogCountByTable = []
+        }));
     }
 
     private static async Task<IResult> StartAccessImportJobAsync(
@@ -843,6 +834,12 @@ public static class AccessImportEndpoints
     private static string GetBatchListCacheKey(int take)
         => $"access-import:batches:{Math.Clamp(take, 1, 200)}";
 
+    private static string GetBatchCacheKey(long batchId)
+        => $"access-import:batch:{batchId}";
+
+    private static string GetBatchDetailCacheKey(long batchId)
+        => $"access-import:batch-detail:{batchId}";
+
     private static bool TryGetCachedBatchRows(
         IMemoryCache cache,
         string cacheKey,
@@ -863,4 +860,46 @@ public static class AccessImportEndpoints
         cachedRows = Array.Empty<Api.Models.AccessImportBatchDto>();
         return false;
     }
+
+    private static bool TryGetCachedBatch(IMemoryCache cache, long batchId, out AccessImportBatchDto batch)
+    {
+        if (cache.TryGetValue(GetBatchCacheKey(batchId), out AccessImportBatchDto? cachedBatch) && cachedBatch is not null)
+        {
+            batch = cachedBatch;
+            return true;
+        }
+
+        batch = new AccessImportBatchDto();
+        return false;
+    }
+
+    private static bool TryGetCachedBatchDetail(IMemoryCache cache, long batchId, out BatchDetailDto detail)
+    {
+        if (cache.TryGetValue(GetBatchDetailCacheKey(batchId), out BatchDetailDto? cachedDetail) && cachedDetail is not null)
+        {
+            detail = cachedDetail;
+            return true;
+        }
+
+        detail = new BatchDetailDto
+        {
+            Batch = new AccessImportBatchDto(),
+            Logs = [],
+            LogCountBySeverity = [],
+            LogCountByTable = []
+        };
+        return false;
+    }
+
+    private static void CacheBatchSnapshots(IMemoryCache cache, IReadOnlyList<AccessImportBatchDto> rows)
+    {
+        foreach (var row in rows)
+            CacheBatchSnapshot(cache, row);
+    }
+
+    private static void CacheBatchSnapshot(IMemoryCache cache, AccessImportBatchDto batch)
+        => cache.Set(GetBatchCacheKey(batch.Id), batch, BatchListCacheDuration);
+
+    private static void CacheBatchDetailSnapshot(IMemoryCache cache, long batchId, BatchDetailDto detail)
+        => cache.Set(GetBatchDetailCacheKey(batchId), detail, BatchListCacheDuration);
 }

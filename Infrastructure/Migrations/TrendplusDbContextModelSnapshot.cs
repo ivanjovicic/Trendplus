@@ -22,6 +22,58 @@ namespace Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Domain.Model.AccessImportLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BatchId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("RowIndex")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("info");
+
+                    b.Property<string>("SourceRowJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TableName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("Severity");
+
+                    b.HasIndex("BatchId", "TableName");
+
+                    b.ToTable("AccessImportLog", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Model.Artikli", b =>
                 {
                     b.Property<int>("Id")
@@ -164,17 +216,112 @@ namespace Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<bool>("CancellationRequested")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("CancellationRequestedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("CompletedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CurrentStep")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CurrentTable")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("DataOrigin")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("access");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ErrorDetailsJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("ErrorMessage")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<string>("ImportMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("auto");
+
+                    b.Property<bool>("IncludeAnalytics")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IncludeTemporaryTables")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("LastHeartbeatUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("OverwriteExisting")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("ProgressPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("QueuedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("RetryCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("RowsAccepted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("RowsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("RowsWritten")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<bool>("SkipInvalidForeignKeys")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("SourceFileName")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<string>("SourceFilePath")
+                        .HasMaxLength(800)
+                        .HasColumnType("character varying(800)");
 
                     b.Property<string>("SourceSystem")
                         .IsRequired()
@@ -192,7 +339,28 @@ namespace Infrastructure.Migrations
                     b.Property<string>("SummaryJson")
                         .HasColumnType("text");
 
+                    b.Property<int>("TotalErrors")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("TotalImported")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("TotalUpdated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CancellationRequested");
+
+                    b.HasIndex("LastHeartbeatUtc");
+
+                    b.HasIndex("QueuedAtUtc");
 
                     b.HasIndex("StartedAtUtc");
 
@@ -229,16 +397,13 @@ namespace Infrastructure.Migrations
                     b.Property<int?>("DobavljacId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("IDObjekat")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("Iznos")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("Kolicina")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("IDObjekat")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("RedniBroj")
                         .HasColumnType("integer");
 
                     b.Property<string>("Komentar")
@@ -252,6 +417,9 @@ namespace Infrastructure.Migrations
                     b.Property<decimal?>("NovaProdajnaCena")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("RedniBroj")
+                        .HasColumnType("integer");
+
                     b.Property<decimal?>("StaraProdajnaCena")
                         .HasColumnType("decimal(18,2)");
 
@@ -264,8 +432,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("DataOrigin");
 
-                    b.HasIndex("IDObjekat", "Datum")
-                        .HasDatabaseName("IX_DnevnikPromena_IDObjekat_Datum");
+                    b.HasIndex("IDObjekat", "Datum");
 
                     b.ToTable("DnevnikPromena", (string)null);
                 });
@@ -300,6 +467,267 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Dobavljaci", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Model.Documents.DocumentAudit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DetailsJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Roles")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId", "CreatedAtUtc");
+
+                    b.ToTable("DocumentAudits", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Model.Documents.DocumentRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<string>("FileUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("FiltersJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("IncludeFiltersAndMetadata")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsAsync")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPreview")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Locale")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime?>("NextAttemptAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Orientation")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("RequestJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RequestedByRoles")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RequestedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RequestedByUserName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RowCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Sha256")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("StoragePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("TableKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TableTitle")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TemplateName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("TemplateVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Status", "NextAttemptAtUtc");
+
+                    b.ToTable("Documents", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Model.Documents.DocumentTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("FooterContent")
+                        .HasColumnType("text");
+
+                    b.Property<string>("HeaderContent")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Locale")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name", "Version")
+                        .IsUnique();
+
+                    b.HasIndex("Type", "IsActive");
+
+                    b.ToTable("DocumentTemplates", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Model.ErrorRecord", b =>
@@ -588,15 +1016,15 @@ namespace Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("id_objekat");
 
-                    b.Property<string>("NacinPlacanja")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("nacin_placanja");
-
                     b.Property<string>("KorisnikIme")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("korisnik_ime");
+
+                    b.Property<string>("NacinPlacanja")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nacin_placanja");
 
                     b.HasKey("Id");
 
@@ -692,6 +1120,17 @@ namespace Infrastructure.Migrations
                     b.ToTable("TipoviObuce", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Model.AccessImportLog", b =>
+                {
+                    b.HasOne("Domain.Model.DataImportBatch", "Batch")
+                        .WithMany("LogEntries")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+                });
+
             modelBuilder.Entity("Domain.Model.Povracaj.PovracajStavka", b =>
                 {
                     b.HasOne("Domain.Model.Povracaj.PovracajZaglavlje", "Povracaj")
@@ -728,6 +1167,11 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Domain.Model.Artikli", b =>
                 {
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("Domain.Model.DataImportBatch", b =>
+                {
+                    b.Navigation("LogEntries");
                 });
 
             modelBuilder.Entity("Domain.Model.Povracaj.PovracajZaglavlje", b =>

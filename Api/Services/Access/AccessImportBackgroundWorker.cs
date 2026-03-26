@@ -43,6 +43,8 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
         var runningJobs = new List<Task>(capacity: maxConcurrentJobs);
         var paused = false;
 
+        await RecoverStaleBatchesAtStartupAsync(stoppingToken);
+
         while (!stoppingToken.IsCancellationRequested)
         {
             if (!_options.WorkerEnabled)
@@ -137,6 +139,24 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
 
         _healthService.ReportStopped(WorkerName, "Graceful shutdown");
         _logger.LogInformation("Access import background worker stopped.");
+    }
+
+    private async Task RecoverStaleBatchesAtStartupAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            await using var scope = _serviceProvider.CreateAsyncScope();
+            var service = scope.ServiceProvider.GetRequiredService<IAccessImportService>();
+            await service.RefreshBatchStatusesAsync(batchId: null, stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // graceful shutdown path
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Access import stale-batch recovery at startup failed. Worker will continue.");
+        }
     }
 
     private async Task ProcessJobAsync(AccessImportQueuedJob job, CancellationToken stoppingToken)
@@ -293,10 +313,9 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
                 SET "Status" = 'failed',
                     "CompletedAtUtc" = NOW(),
                     "LastHeartbeatUtc" = NOW(),
-                    "CurrentStep" = COALESCE(NULLIF("CurrentStep", ''), 'failed'),
+                    "CurrentStep" = 'failed',
                     "ErrorMessage" = COALESCE(NULLIF("ErrorMessage", ''), @p1),
-                    "ErrorDetailsJson" = COALESCE("ErrorDetailsJson", @p2),
-                    "ProgressPercent" = 100
+                    "ErrorDetailsJson" = COALESCE("ErrorDetailsJson", @p2)
                 WHERE "Id" = @p0
                   AND "CompletedAtUtc" IS NULL;
                 """;
@@ -329,36 +348,8 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
         try
         {
             await using var scope = _serviceProvider.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
-
-            const string sql = """
-                UPDATE "DataImportBatches"
-                SET "Status" = 'interrupted',
-                    "CompletedAtUtc" = NOW(),
-                    "LastHeartbeatUtc" = NOW(),
-                    "CurrentStep" = 'stopped',
-                    "CurrentTable" = NULL,
-                    "ProgressPercent" = 100,
-                    "ErrorMessage" = COALESCE(NULLIF("ErrorMessage", ''), @p1),
-                    "ErrorDetailsJson" = COALESCE("ErrorDetailsJson", @p2)
-                WHERE "Id" = @p0
-                  AND "CompletedAtUtc" IS NULL
-                  AND "Status" = 'running';
-                """;
-
-            await db.Database.ExecuteSqlRawAsync(
-                sql,
-                new object[]
-                {
-                    batchId,
-                    "Import interrupted during worker shutdown.",
-                    System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        type = typeof(OperationCanceledException).FullName,
-                        message = "Access import worker shutdown interrupted batch execution."
-                    })
-                },
-                CancellationToken.None);
+            var service = scope.ServiceProvider.GetRequiredService<IAccessImportService>();
+            await service.MarkBatchInterruptedAsync(batchId, CancellationToken.None);
         }
         catch (Exception ex)
         {

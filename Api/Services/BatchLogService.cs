@@ -185,11 +185,11 @@ public sealed class BatchLogService : IBatchLogService
                     RetryCount = 0,
                     SummaryJson = b.SummaryJson,
                     ErrorMessage = b.ErrorMessage,
-                    DurationSeconds = b.DurationSeconds,
-                    TotalImported = b.TotalImported,
-                    TotalUpdated = b.TotalUpdated,
-                    TotalErrors = b.TotalErrors,
-                    DataOrigin = b.DataOrigin
+                    DurationSeconds = null,
+                    TotalImported = 0,
+                    TotalUpdated = 0,
+                    TotalErrors = 0,
+                    DataOrigin = "access"
                 })
                 .FirstOrDefaultAsync(ct);
         }

@@ -575,6 +575,12 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     
     Console.WriteLine("Application stopped gracefully");
 }
+catch (HostAbortedException ex)
+{
+    // Expected when EF Core tools resolve the application service provider at design time.
+    Console.WriteLine("Application host aborted by design-time tooling.");
+    Console.WriteLine($"Info: {ex.Message}");
+}
 catch (Exception ex)
 {
     Console.WriteLine($"=== APPLICATION STARTUP FAILED ===");
