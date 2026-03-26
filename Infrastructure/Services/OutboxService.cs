@@ -17,7 +17,7 @@ namespace Infrastructure.Services
             _db = db;
         }
 
-        public async Task PublishAsync<T>(string eventType, T payload, string? correlationId = null, CancellationToken ct = default)
+        public Task PublishAsync<T>(string eventType, T payload, string? correlationId = null, CancellationToken ct = default)
         {
             var message = new OutboxMessage
             {
@@ -34,6 +34,8 @@ namespace Infrastructure.Services
 
             _db.OutboxMessages.Add(message);
             // Note: SaveChangesAsync should be called by the caller in the same transaction
+
+            return Task.CompletedTask;
         }
     }
 }
