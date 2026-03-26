@@ -1,6 +1,14 @@
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
-const API = import.meta.env.VITE_API_BASE_URL ?? "";
+const ACCESS_IMPORT_RENDER_BASE = "https://trendplus-api.onrender.com";
+const RAW_API = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const API = RAW_API.includes("trendplus.fly.dev") ? ACCESS_IMPORT_RENDER_BASE : RAW_API;
+if (RAW_API.includes("trendplus.fly.dev")) {
+    console.warn(
+        "[access-import] VITE_API_BASE_URL points to Fly; forcing Render base for access-import calls.",
+        { rawApi: RAW_API, forcedApi: API }
+    );
+}
 const BATCHES_DEBUG_PREFIX = "[access-import][batches]";
 let batchesInFlightPromise: Promise<AccessImportBatchDto[]> | null = null;
 let batchesRequestSeq = 0;
