@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+﻿import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Area,
@@ -383,11 +383,11 @@ function ScoreBar({ label, score, max = 100 }: { label: string; score: number; m
   const color = pct >= 70 ? PAL.green : pct >= 40 ? PAL.yellow : PAL.red;
   return (
     <div>
-      <div className="flex justify-between text-[11px] text-[#8A95B0] mb-0.5">
+      <div className="flex justify-between text-[11px] text-[var(--text-primary)] mb-0.5">
         <span>{label}</span>
         <span style={{ color }}>{score.toFixed(0)}/{max}</span>
       </div>
-      <div className="h-1.5 rounded-full bg-[#2A3045] overflow-hidden">
+      <div className="h-1.5 rounded-full bg-[var(--surface-elevated)] overflow-hidden">
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
@@ -493,7 +493,7 @@ function OverviewTab({
                 {changelog.categoryChanges.slice(0, 8).map((c) => (
                   <div
                     key={c.kategorija}
-                    className="rounded-lg border border-border bg-[#0D0F14] px-3 py-1.5 text-xs"
+                    className="rounded-lg border border-border bg-[var(--surface-elevated)] px-3 py-1.5 text-xs"
                   >
                     <span className="text-contrast font-medium">{c.kategorija}</span>
                     {changeBadge(c.changePct)}
@@ -557,33 +557,33 @@ function OverviewTab({
       />
 
       {/* Quick Recommended Actions */}
-      <div className="rounded-xl border border-[#2A3045] bg-[#161A23] p-5">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-base">🧭</span>
-          <h3 className="text-sm font-bold text-[#c9d3e4]">Preporučene akcije</h3>
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">Preporučene akcije</h3>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {kpi && kpi.oosCount > 3 && (
-            <div className="rounded-lg border border-[#E05C5C]/20 bg-[#E05C5C]/5 px-3 py-2 text-xs text-[#E05C5C]">
+            <div className="rounded-lg border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 text-xs text-[var(--text-primary)]">
               🔴 <strong>{kpi.oosCount}</strong> artikala bez zalihe — proveri tab "Nabavka 2.0"
             </div>
           )}
           {marginAlerts && marginAlerts.summary.negativeMarginCount > 0 && (
-            <div className="rounded-lg border border-[#F97316]/20 bg-[#F97316]/5 px-3 py-2 text-xs text-[#F97316]">
+            <div className="rounded-lg border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 text-xs text-[var(--text-primary)]">
               🟠 <strong>{marginAlerts.summary.negativeMarginCount}</strong> artikala pod negativnom maržom
             </div>
           )}
           {changelog && changelog.revenueChangePct < -15 && (
-            <div className="rounded-lg border border-[#F5C542]/20 bg-[#F5C542]/5 px-3 py-2 text-xs text-[#F5C542]">
+            <div className="rounded-lg border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 text-xs text-[var(--text-primary)]">
               🟡 Prihod pao <strong>{Math.abs(changelog.revenueChangePct).toFixed(0)}%</strong> nedelja-na-nedelju
             </div>
           )}
           {changelog && changelog.revenueChangePct >= 10 && (
-            <div className="rounded-lg border border-[#4CAF82]/20 bg-[#4CAF82]/5 px-3 py-2 text-xs text-[#4CAF82]">
+            <div className="rounded-lg border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 text-xs text-[var(--text-primary)]">
               🟢 Rast prihoda +{changelog.revenueChangePct.toFixed(0)}% ove nedelje! 
             </div>
           )}
-          <div className="rounded-lg border border-[#4F8EF7]/20 bg-[#4F8EF7]/5 px-3 py-2 text-xs text-[#4F8EF7]">
+          <div className="rounded-lg border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 text-xs text-[var(--text-primary)]">
             💡 Koristi "Matrica V×M" za identifikaciju ★ zvezda i mrtvih tegova
           </div>
         </div>
@@ -612,7 +612,7 @@ function SupplierTab({
 
   if (loading) return <Skeleton rows={8} />;
   if (!data.length && !v1Data.length)
-    return <p className="text-[#8A95B0] text-sm">Nema podataka o dobavljačima za izabrani period.</p>;
+    return <p className="text-[var(--text-primary)] text-sm">Nema podataka o dobavljačima za izabrani period.</p>;
 
   // Fallback to v1 if v2 failed
   if (!data.length && v1Data.length) {
@@ -627,7 +627,7 @@ function SupplierTab({
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
         {/* Leaderboard */}
-        <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-[#2A3045]">
+        <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-[var(--border-default)]">
           <div className="mb-3 p-3">
             <AnalyticsTableToolbar
               tableKey="insight-supplier-scorecard-v2"
@@ -641,7 +641,7 @@ function SupplierTab({
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+              <tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
                 <th className="px-3 py-2 text-left">#</th>
                 <th className="px-3 py-2 text-left">Dobavljač</th>
                 <th className="px-3 py-2 text-right">Prihod</th>
@@ -667,15 +667,15 @@ function SupplierTab({
                       s
                     );
                   }}
-                  className={`cursor-pointer border-b border-[#2A3045] transition hover:bg-[#1E2332] ${
-                    displayed?.dobavljacId === s.dobavljacId ? "bg-[#1f2940] ring-1 ring-inset ring-[#32579e]" : ""
+                  className={`cursor-pointer border-b border-[var(--border-default)] transition hover:bg-[var(--surface-light)] ${
+                    displayed?.dobavljacId === s.dobavljacId ? "bg-[var(--surface-elevated)] ring-1 ring-inset ring-[#32579e]" : ""
                   }`}
                 >
-                  <td className="px-3 py-2 text-[#8A95B0]">{i + 1}</td>
-                  <td className="px-3 py-2 font-medium text-[#E8ECF4]">{s.dobavljacNaziv}</td>
-                  <td className="px-3 py-2 text-right text-[#E8ECF4]">{fmtRsd(s.totalRevenue)}</td>
+                  <td className="px-3 py-2 text-[var(--text-primary)]">{i + 1}</td>
+                  <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{s.dobavljacNaziv}</td>
+                  <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtRsd(s.totalRevenue)}</td>
                   <td className="px-3 py-2 text-right" style={{ color: s.marginPct >= 30 ? PAL.green : s.marginPct >= 15 ? PAL.yellow : PAL.red }}>{fmtPct(s.marginPct)}</td>
-                  <td className="px-3 py-2 text-right text-[#4F8EF7]">{s.velocity.toFixed(2)}</td>
+                  <td className="px-3 py-2 text-right text-[var(--text-primary)]">{s.velocity.toFixed(2)}</td>
                   <td className="px-3 py-2 text-right" style={{ color: s.unsoldStock > 50 ? PAL.orange : PAL.textSecondary }}>{s.unsoldStock}</td>
                   <td className="px-3 py-2 text-center"><Badge label={TIER_LABELS[s.tier] ?? s.tier} color={TIER_COLORS[s.tier] ?? PAL.textSecondary} /></td>
                   <td className="px-3 py-2 text-right font-bold" style={{ color: s.compositeScore >= 70 ? PAL.green : s.compositeScore >= 40 ? PAL.yellow : PAL.red }}>{s.compositeScore.toFixed(0)}</td>
@@ -687,9 +687,9 @@ function SupplierTab({
 
         {/* Scorecard Detail */}
         {displayed && (
-          <div className="lg:col-span-2 rounded-xl border border-[#2A3045] bg-[#161A23] p-4 space-y-4">
+          <div className="lg:col-span-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-[#c9d3e4]">{displayed.dobavljacNaziv}</h3>
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">{displayed.dobavljacNaziv}</h3>
               <Badge label={TIER_LABELS[displayed.tier] ?? displayed.tier} color={TIER_COLORS[displayed.tier] ?? PAL.textSecondary} />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -706,8 +706,8 @@ function SupplierTab({
               <ScoreBar label="Diverzifikacija" score={displayed.diversityScore} />
               <ScoreBar label="Pouzdanost" score={displayed.reliabilityScore} />
             </div>
-            <div className="rounded-lg bg-[#1E2332] px-3 py-2 flex items-center justify-between">
-              <span className="text-xs text-[#8A95B0]">Kompozitni Skor</span>
+            <div className="rounded-lg bg-[var(--surface-elevated)] px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-[var(--text-primary)]">Kompozitni Skor</span>
               <span className="text-lg font-bold" style={{ color: displayed.compositeScore >= 70 ? PAL.green : displayed.compositeScore >= 40 ? PAL.yellow : PAL.red }}>
                 {displayed.compositeScore.toFixed(1)}
               </span>
@@ -739,11 +739,11 @@ function SupplierTab({
 function SupplierTabV1({ data, loading, analyticsContext }: { data: SupplierScore[]; loading: boolean; analyticsContext: InsightAnalyticsContext }) {
   const [selected, setSelected] = useState<SupplierScore | null>(null);
   if (loading) return <Skeleton rows={8} />;
-  if (!data.length) return <p className="text-[#8A95B0] text-sm">Nema podataka.</p>;
+  if (!data.length) return <p className="text-[var(--text-primary)] text-sm">Nema podataka.</p>;
   const displayed = selected ?? data[0];
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
-      <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-[#2A3045]">
+      <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-[var(--border-default)]">
         <div className="mb-3 p-3">
           <AnalyticsTableToolbar
             tableKey="insight-supplier-scorecard-v1"
@@ -756,7 +756,7 @@ function SupplierTabV1({ data, loading, analyticsContext }: { data: SupplierScor
           />
         </div>
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+          <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
             <th className="px-3 py-2 text-left">#</th><th className="px-3 py-2 text-left">Dobavljač</th>
             <th className="px-3 py-2 text-right">Prihod</th><th className="px-3 py-2 text-right">Marža%</th>
             <th className="px-3 py-2 text-center">Risk</th><th className="px-3 py-2 text-right">Skor</th>
@@ -774,20 +774,20 @@ function SupplierTabV1({ data, loading, analyticsContext }: { data: SupplierScor
                   s
                 );
               }}
-                className={`cursor-pointer border-b border-[#2A3045] transition hover:bg-[#1E2332] ${displayed.dobavljacId === s.dobavljacId ? "bg-[#1f2940]" : ""}`}>
-                <td className="px-3 py-2 text-[#8A95B0]">{i + 1}</td>
-                <td className="px-3 py-2 text-[#E8ECF4]">{s.dobavljacNaziv}</td>
+                className={`cursor-pointer border-b border-[var(--border-default)] transition hover:bg-[var(--surface-light)] ${displayed.dobavljacId === s.dobavljacId ? "bg-[var(--surface-elevated)]" : ""}`}>
+                <td className="px-3 py-2 text-[var(--text-primary)]">{i + 1}</td>
+                <td className="px-3 py-2 text-[var(--text-primary)]">{s.dobavljacNaziv}</td>
                 <td className="px-3 py-2 text-right">{fmtRsd(s.totalRevenue)}</td>
-                <td className="px-3 py-2 text-right text-[#4CAF82]">{fmtPct(s.marginPct)}</td>
+                <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtPct(s.marginPct)}</td>
                 <td className="px-3 py-2 text-center"><Badge label={s.riskLevel} color={s.riskLevel === "LOW" ? PAL.green : s.riskLevel === "MED" ? PAL.yellow : PAL.red} /></td>
-                <td className="px-3 py-2 text-right font-bold text-[#4F8EF7]">{s.compositeScore.toFixed(0)}</td>
+                <td className="px-3 py-2 text-right font-bold text-[var(--text-primary)]">{s.compositeScore.toFixed(0)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="lg:col-span-2 rounded-xl border border-[#2A3045] bg-[#161A23] p-4 space-y-3">
-        <h3 className="text-sm font-bold text-[#c9d3e4]">{displayed.dobavljacNaziv}</h3>
+      <div className="lg:col-span-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4 space-y-3">
+        <h3 className="text-sm font-bold text-[var(--text-primary)]">{displayed.dobavljacNaziv}</h3>
         <div className="grid grid-cols-2 gap-2">
           <MiniStat label="Prihod" value={fmtRsd(displayed.totalRevenue)} />
           <MiniStat label="Marža" value={fmtPct(displayed.marginPct)} color={PAL.green} />
@@ -822,7 +822,7 @@ function CategoryTab({
   const [subTab, setSubTab] = useState<"kategorije" | "pol" | "cene" | "korpa">("kategorije");
 
   if (loading) return <Skeleton rows={6} />;
-  if (!byCategory.length) return <p className="text-[#8A95B0] text-sm">Nema podataka.</p>;
+  if (!byCategory.length) return <p className="text-[var(--text-primary)] text-sm">Nema podataka.</p>;
 
   const subTabs = [
     { key: "kategorije" as const, label: "Po Tipu Obuće" },
@@ -834,14 +834,14 @@ function CategoryTab({
   return (
     <div className="space-y-5">
       <SectionHeader title="Kategorije & Segmentacija" subtitle="Prihodi, marže, velocity i cross-sell analitika" />
-      <div className="rounded-xl border border-[#4F8EF7]/20 bg-[#4F8EF7]/5 px-4 py-3 text-xs text-[#8A95B0]">
-        Primarni read model za cenovne i category signale sada dolazi iz <span className="font-semibold text-[#7ea5ff]">analytics_intel</span>.
+      <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-4 py-3 text-xs text-[var(--text-primary)]">
+        Primarni read model za cenovne i category signale sada dolazi iz <span className="font-semibold text-[var(--text-primary)]">analytics_intel</span>.
         Basket afinitet i raspodela po polu ostaju na legacy advanced sloju kao dopuna.
       </div>
       <div className="flex gap-2 flex-wrap">
         {subTabs.map(t => (
           <button key={t.key} onClick={() => setSubTab(t.key)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subTab === t.key ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0] hover:text-[#c9d3e4]"}`}>
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subTab === t.key ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)]"}`}>
             {t.label}
           </button>
         ))}
@@ -850,7 +850,7 @@ function CategoryTab({
       {subTab === "kategorije" && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div>
-            <h4 className="mb-2 text-xs font-semibold text-[#c9d3e4]">Prihod po kategoriji</h4>
+            <h4 className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Prihod po kategoriji</h4>
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={byCategory.slice(0, 8)} layout="vertical" barSize={18}>
@@ -865,7 +865,7 @@ function CategoryTab({
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+          <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
             <div className="mb-3 p-3">
               <AnalyticsTableToolbar
                 tableKey="insight-category-performance"
@@ -878,7 +878,7 @@ function CategoryTab({
               />
             </div>
             <table className="w-full text-xs">
-              <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+              <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
                 <th className="px-3 py-2 text-left">Kategorija</th>
                 <th className="px-3 py-2 text-right">Udeo%</th>
                 <th className="px-3 py-2 text-right">Marža%</th>
@@ -890,15 +890,15 @@ function CategoryTab({
                 {byCategory.map((cat, i) => (
                   <tr
                     key={i}
-                    className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                    className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                     onClick={() => analyticsContext.openSnapshotDetail("insight-category-performance", cat.kategorija, cat.kategorija, "Insight Studio - kategorije", categoryColumns, cat)}
                   >
-                    <td className="px-3 py-2 font-medium text-[#E8ECF4]">{cat.kategorija}</td>
-                    <td className="px-3 py-2 text-right text-[#8A95B0]">{fmtPct(cat.revShare)}</td>
-                    <td className="px-3 py-2 text-right text-[#4CAF82]">{fmtPct(cat.marginPct)}</td>
+                    <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{cat.kategorija}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtPct(cat.revShare)}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtPct(cat.marginPct)}</td>
                     <td className="px-3 py-2 text-right" style={{ color: cat.profitLift >= 0 ? PAL.green : PAL.red }}>{cat.profitLift >= 0 ? "+" : ""}{fmtPct(cat.profitLift)}</td>
-                    <td className="px-3 py-2 text-right text-[#4F8EF7]">{cat.velocity.toFixed(3)}</td>
-                    <td className="px-3 py-2 text-right text-[#8A95B0]">{cat.uniqueSKU}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{cat.velocity.toFixed(3)}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{cat.uniqueSKU}</td>
                   </tr>
                 ))}
               </tbody>
@@ -921,7 +921,7 @@ function CategoryTab({
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-[#2A3045] self-start">
+          <div className="overflow-x-auto rounded-xl border border-[var(--border-default)] self-start">
             <div className="mb-3 p-3">
               <AnalyticsTableToolbar
                 tableKey="insight-gender-breakdown"
@@ -934,7 +934,7 @@ function CategoryTab({
               />
             </div>
             <table className="w-full text-xs">
-              <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+              <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
                 <th className="px-3 py-2 text-left">Pol</th><th className="px-3 py-2 text-right">Prihod</th>
                 <th className="px-3 py-2 text-right">Udeo%</th><th className="px-3 py-2 text-right">Kom</th>
               </tr></thead>
@@ -942,15 +942,15 @@ function CategoryTab({
                 {byGender.map((g, i) => (
                   <tr
                     key={i}
-                    className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                    className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                     onClick={() => analyticsContext.openSnapshotDetail("insight-gender-breakdown", g.pol, g.pol, "Insight Studio - po polu", genderColumns, g)}
                   >
-                    <td className="px-3 py-2 text-[#E8ECF4] flex items-center gap-2">
+                    <td className="px-3 py-2 text-[var(--text-primary)] flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />{g.pol}
                     </td>
                     <td className="px-3 py-2 text-right">{fmtRsd(g.totalRevenue)}</td>
-                    <td className="px-3 py-2 text-right text-[#4F8EF7] font-semibold">{fmtPct(g.revShare)}</td>
-                    <td className="px-3 py-2 text-right text-[#8A95B0]">{fmtNum(g.totalUnits)}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)] font-semibold">{fmtPct(g.revShare)}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtNum(g.totalUnits)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -961,8 +961,8 @@ function CategoryTab({
 
       {subTab === "cene" && priceSensitivity && (
         <div className="space-y-4">
-          <h4 className="text-xs font-semibold text-[#c9d3e4]">Cenovna osetljivost — po cenovnim opsezima</h4>
-          <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+          <h4 className="text-xs font-semibold text-[var(--text-primary)]">Cenovna osetljivost — po cenovnim opsezima</h4>
+          <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
             <div className="mb-3 p-3">
               <AnalyticsTableToolbar
                 tableKey="insight-price-sensitivity"
@@ -975,7 +975,7 @@ function CategoryTab({
               />
             </div>
             <table className="w-full text-xs">
-              <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+              <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
                 <th className="px-3 py-2 text-left">Opseg</th>
                 <th className="px-3 py-2 text-right">SKU</th>
                 <th className="px-3 py-2 text-right">Prodato</th>
@@ -990,17 +990,17 @@ function CategoryTab({
                 {priceSensitivity.bands.map((b, i) => (
                   <tr
                     key={i}
-                    className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                    className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                     onClick={() => analyticsContext.openSnapshotDetail("insight-price-sensitivity", b.priceBand, b.priceBand, "Insight Studio - cenovna osetljivost", priceSensitivityColumns, b)}
                   >
-                    <td className="px-3 py-2 font-medium text-[#E8ECF4]">{b.priceBand}</td>
-                    <td className="px-3 py-2 text-right text-[#8A95B0]">{b.skuCount}</td>
-                    <td className="px-3 py-2 text-right text-[#E8ECF4]">{fmtNum(b.totalUnits)}</td>
-                    <td className="px-3 py-2 text-right text-[#4F8EF7]">{b.avgVelocityPerSku.toFixed(1)}</td>
-                    <td className="px-3 py-2 text-right text-[#8A95B0]">{fmtRsd(b.avgPrice)}</td>
+                    <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{b.priceBand}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{b.skuCount}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtNum(b.totalUnits)}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{b.avgVelocityPerSku.toFixed(1)}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtRsd(b.avgPrice)}</td>
                     <td className="px-3 py-2 text-right" style={{ color: b.avgMarginPct >= 20 ? PAL.green : b.avgMarginPct >= 10 ? PAL.yellow : PAL.red }}>{fmtPct(b.avgMarginPct)}</td>
-                    <td className="px-3 py-2 text-right text-[#8A95B0]">{fmtNum(b.totalStock)}</td>
-                    <td className="px-3 py-2 text-right text-[#8A95B0]">{b.markdownCount}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtNum(b.totalStock)}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text-primary)]">{b.markdownCount}</td>
                     <td className="px-3 py-2 text-center"><Badge label={b.elasticity} color={b.elasticity === "Elastic" ? PAL.green : b.elasticity === "Inelastic" ? PAL.red : PAL.yellow} /></td>
                   </tr>
                 ))}
@@ -1013,23 +1013,23 @@ function CategoryTab({
       {subTab === "korpa" && basketAffinity && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <h4 className="text-xs font-semibold text-[#c9d3e4]">Basket Afinitet — koji se tipovi prodaju zajedno?</h4>
-            <span className="text-[10px] text-[#8A95B0]">({basketAffinity.totalMultiItemTransactions} multi-item transakcija)</span>
+            <h4 className="text-xs font-semibold text-[var(--text-primary)]">Basket Afinitet — koji se tipovi prodaju zajedno?</h4>
+            <span className="text-[10px] text-[var(--text-primary)]">({basketAffinity.totalMultiItemTransactions} multi-item transakcija)</span>
           </div>
           {basketAffinity.pairs.length > 0 ? (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {basketAffinity.pairs.slice(0, 12).map((p, i) => (
-                <div key={i} className="rounded-lg border border-[#2A3045] bg-[#161A23] px-3 py-2 flex items-center gap-3">
+                <div key={i} className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 flex items-center gap-3">
                   <span className="text-xl">🤝</span>
                   <div className="flex-1">
-                    <div className="text-xs text-[#E8ECF4]">{p.categoryA} + {p.categoryB}</div>
-                    <div className="text-[10px] text-[#8A95B0]">{p.coOccurrences}× zajedno · {fmtPct(p.supportPct)} support</div>
+                    <div className="text-xs text-[var(--text-primary)]">{p.categoryA} + {p.categoryB}</div>
+                    <div className="text-[10px] text-[var(--text-primary)]">{p.coOccurrences}× zajedno · {fmtPct(p.supportPct)} support</div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-[#8A95B0] text-sm">Nema dovoljno multi-item transakcija.</p>
+            <p className="text-[var(--text-primary)] text-sm">Nema dovoljno multi-item transakcija.</p>
           )}
         </div>
       )}
@@ -1052,7 +1052,7 @@ function MatrixTab({
 
   if (loading) return <Skeleton rows={6} />;
   if (!matrixData || !matrixData.items.length)
-    return <p className="text-[#8A95B0] text-sm">Nema podataka za velocity-margin matricu.</p>;
+    return <p className="text-[var(--text-primary)] text-sm">Nema podataka za velocity-margin matricu.</p>;
 
   const { items, medianMargin, medianVelocity, quadrantCounts } = matrixData;
   const filtered = quadFilter === "ALL" ? items : items.filter(x => x.quadrant === quadFilter);
@@ -1071,30 +1071,30 @@ function MatrixTab({
       <SectionHeader title="Velocity × Margin Matrica" subtitle="Svaki artikal pozicioniran po brzini prodaje i profitabilnosti" />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-[#4CAF82]/20 bg-[#4CAF82]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "STAR" ? "ALL" : "STAR")}>
-          <div className="text-[10px] uppercase text-[#4CAF82]">⭐ Zvezde</div>
-          <div className="text-xl font-bold text-[#4CAF82]">{quadrantCounts.stars}</div>
-          <div className="text-[10px] text-[#8A95B0]">Visoka vel. + visoka marža</div>
+        <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "STAR" ? "ALL" : "STAR")}>
+          <div className="text-[10px] uppercase text-[var(--text-primary)]">⭐ Zvezde</div>
+          <div className="text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.stars}</div>
+          <div className="text-[10px] text-[var(--text-primary)]">Visoka vel. + visoka marža</div>
         </div>
-        <div className="rounded-xl border border-[#9B72CF]/20 bg-[#9B72CF]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "NICHE_GEM" ? "ALL" : "NICHE_GEM")}>
-          <div className="text-[10px] uppercase text-[#9B72CF]">💎 Niša Dragulje</div>
-          <div className="text-xl font-bold text-[#9B72CF]">{quadrantCounts.nicheGems}</div>
-          <div className="text-[10px] text-[#8A95B0]">Niska vel. + visoka marža</div>
+        <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "NICHE_GEM" ? "ALL" : "NICHE_GEM")}>
+          <div className="text-[10px] uppercase text-[var(--text-primary)]">💎 Niša Dragulje</div>
+          <div className="text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.nicheGems}</div>
+          <div className="text-[10px] text-[var(--text-primary)]">Niska vel. + visoka marža</div>
         </div>
-        <div className="rounded-xl border border-[#F5C542]/20 bg-[#F5C542]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "VOLUME_TRAP" ? "ALL" : "VOLUME_TRAP")}>
-          <div className="text-[10px] uppercase text-[#F5C542]">⚡ Volume Trap</div>
-          <div className="text-xl font-bold text-[#F5C542]">{quadrantCounts.volumeTraps}</div>
-          <div className="text-[10px] text-[#8A95B0]">Visoka vel. + niska marža</div>
+        <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "VOLUME_TRAP" ? "ALL" : "VOLUME_TRAP")}>
+          <div className="text-[10px] uppercase text-[var(--text-primary)]">⚡ Volume Trap</div>
+          <div className="text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.volumeTraps}</div>
+          <div className="text-[10px] text-[var(--text-primary)]">Visoka vel. + niska marža</div>
         </div>
-        <div className="rounded-xl border border-[#E05C5C]/20 bg-[#E05C5C]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "DEAD_WEIGHT" ? "ALL" : "DEAD_WEIGHT")}>
-          <div className="text-[10px] uppercase text-[#E05C5C]">⚠ Mrtav Teg</div>
-          <div className="text-xl font-bold text-[#E05C5C]">{quadrantCounts.deadWeight}</div>
-          <div className="text-[10px] text-[#8A95B0]">Niska vel. + niska marža</div>
+        <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "DEAD_WEIGHT" ? "ALL" : "DEAD_WEIGHT")}>
+          <div className="text-[10px] uppercase text-[var(--text-primary)]">⚠ Mrtav Teg</div>
+          <div className="text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.deadWeight}</div>
+          <div className="text-[10px] text-[var(--text-primary)]">Niska vel. + niska marža</div>
         </div>
       </div>
 
       {/* Scatter chart */}
-      <div className="rounded-xl border border-[#2A3045] bg-[#161A23] p-4">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
         <div className="h-[350px]">
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
@@ -1111,10 +1111,10 @@ function MatrixTab({
                   if (!payload?.length) return null;
                   const d = payload[0].payload;
                   return (
-                    <div className="bg-[#1E2332] border border-[#2A3045] rounded-lg px-3 py-2 text-xs shadow-xl">
-                      <div className="font-semibold text-[#E8ECF4]">{d.name}</div>
-                      <div className="text-[#8A95B0]">{d.kat}</div>
-                      <div className="text-[#4F8EF7]">Vel: {d.x.toFixed(3)} · Marža: {d.y.toFixed(1)}%</div>
+                    <div className="bg-[var(--surface-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs shadow-xl">
+                      <div className="font-semibold text-[var(--text-primary)]">{d.name}</div>
+                      <div className="text-[var(--text-primary)]">{d.kat}</div>
+                      <div className="text-[var(--text-primary)]">Vel: {d.x.toFixed(3)} · Marža: {d.y.toFixed(1)}%</div>
                       <Badge label={QUAD_LABELS[d.quad] ?? d.quad} color={QUAD_COLORS[d.quad] ?? PAL.textSecondary} />
                     </div>
                   );
@@ -1134,17 +1134,17 @@ function MatrixTab({
           const qItems = items.filter(x => x.quadrant === q).slice(0, 5);
           if (!qItems.length) return null;
           return (
-            <div key={q} className="rounded-xl border border-[#2A3045] bg-[#161A23] p-3">
+            <div key={q} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Badge label={QUAD_LABELS[q]} color={QUAD_COLORS[q]} />
-                <span className="text-[10px] text-[#8A95B0]">Top 5</span>
+                <span className="text-[10px] text-[var(--text-primary)]">Top 5</span>
               </div>
               <div className="space-y-1">
                 {qItems.map((it, i) => (
                   <div key={it.artikalId} className="flex items-center justify-between text-xs py-0.5">
-                    <span className="text-[#8A95B0] w-4">{i + 1}.</span>
-                    <span className="flex-1 text-[#E8ECF4] truncate">{it.naziv}</span>
-                    <span className="text-[#8A95B0] ml-2">V:{it.velocity.toFixed(2)}</span>
+                    <span className="text-[var(--text-primary)] w-4">{i + 1}.</span>
+                    <span className="flex-1 text-[var(--text-primary)] truncate">{it.naziv}</span>
+                    <span className="text-[var(--text-primary)] ml-2">V:{it.velocity.toFixed(2)}</span>
                     <span className="ml-2" style={{ color: it.marginPct >= 20 ? PAL.green : PAL.orange }}>{fmtPct(it.marginPct)}</span>
                   </div>
                 ))}
@@ -1171,26 +1171,26 @@ function DailyTab({
 }) {
   const [subView, setSubView] = useState<"analiza" | "heatmap">("analiza");
 
-  const zColorClass = !data ? "text-[#8A95B0]" : data.isExtremeOutlier ? "text-[#E05C5C]" : data.isOutlier ? "text-[#F5C542]" : "text-[#4CAF82]";
+  const zColorClass = !data ? "text-[var(--text-primary)]" : data.isExtremeOutlier ? "text-[var(--text-primary)]" : data.isOutlier ? "text-[var(--text-primary)]" : "text-[var(--text-primary)]";
 
   return (
     <div className="space-y-5">
       <SectionHeader title="Analiza Dana & Tjedna Potražnja" subtitle="Z-score detekcija anomalija i heatmap nedeljne aktivnosti" />
-      <div className="rounded-xl border border-[#E05C5C]/20 bg-[#E05C5C]/5 px-4 py-3 text-xs text-[#8A95B0]">
+      <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-4 py-3 text-xs text-[var(--text-primary)]">
         Primarni prikaz koristi intelligence inventory signal layer. Legacy depletion forecast ostaje fallback ako signal cache nije spreman.
       </div>
       <div className="flex gap-2">
-        <button onClick={() => setSubView("analiza")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "analiza" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>📊 Dnevna Analiza</button>
-        <button onClick={() => setSubView("heatmap")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "heatmap" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>🔥 Heatmap</button>
+        <button onClick={() => setSubView("analiza")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "analiza" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📊 Dnevna Analiza</button>
+        <button onClick={() => setSubView("heatmap")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "heatmap" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>🔥 Heatmap</button>
       </div>
 
       {subView === "analiza" && (
         <>
           <div className="flex items-center gap-3 flex-wrap">
-            <label className="text-sm text-[#8A95B0]">Dan:</label>
+            <label className="text-sm text-[var(--text-primary)]">Dan:</label>
             <input type="date" value={selectedDate} onChange={e => onDateChange(e.target.value)}
-              className="rounded-lg border border-[#2A3045] bg-[#1E2332] px-3 py-1.5 text-sm text-[#E8ECF4] focus:border-[#4F8EF7] focus:outline-none" />
-            {loading && <span className="text-xs text-[#8A95B0] animate-pulse">Učitavanje…</span>}
+              className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1.5 text-sm text-[var(--text-primary)] focus:border-[var(--border-default)] focus:outline-none" />
+            {loading && <span className="text-xs text-[var(--text-primary)] animate-pulse">Učitavanje…</span>}
           </div>
           {data && (
             <>
@@ -1198,8 +1198,8 @@ function DailyTab({
                 <MiniStat label="Prihod tog dana" value={fmtRsd(data.targetRevenue)} />
                 <MiniStat label="Prosek perioda" value={fmtRsd(data.meanRevenue)} />
                 <MiniStat label="Z-Score" value={data.zScore.toFixed(2)} color={data.isExtremeOutlier ? PAL.red : data.isOutlier ? PAL.yellow : PAL.green} />
-                <div className="rounded-xl border border-[#2A3045] bg-[#161A23] p-3">
-                  <div className="text-[10px] uppercase text-[#8A95B0]">Outlier?</div>
+                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
+                  <div className="text-[10px] uppercase text-[var(--text-primary)]">Outlier?</div>
                   <div className={`text-sm font-bold ${zColorClass}`}>{data.isExtremeOutlier ? "⚡ Ekstremni" : data.isOutlier ? "⚠ Da" : "✓ Ne"}</div>
                 </div>
               </div>
@@ -1222,13 +1222,13 @@ function DailyTab({
               </div>
               {data.top5Articles.length > 0 && (
                 <div>
-                  <h4 className="mb-2 text-xs font-semibold text-[#c9d3e4]">Top 5 artikala — {data.analysisDate}</h4>
+                  <h4 className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Top 5 artikala — {data.analysisDate}</h4>
                   <div className="space-y-1.5">
                     {data.top5Articles.map((a, i) => (
-                      <div key={a.artikalId} className="flex items-center gap-3 rounded-lg bg-[#161A23] border border-[#2A3045] px-3 py-2">
-                        <span className="text-[#4F8EF7] font-bold w-5 text-center">{i + 1}</span>
-                        <div className="flex-1 min-w-0"><div className="text-sm text-[#E8ECF4] truncate">{a.naziv}</div><div className="text-[10px] text-[#8A95B0]">{a.kategorija}</div></div>
-                        <div className="text-right"><div className="text-sm font-semibold text-[#4CAF82]">{fmtRsd(a.revenue)}</div><div className="text-[10px] text-[#8A95B0]">{a.units} kom</div></div>
+                      <div key={a.artikalId} className="flex items-center gap-3 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)] px-3 py-2">
+                        <span className="text-[var(--text-primary)] font-bold w-5 text-center">{i + 1}</span>
+                        <div className="flex-1 min-w-0"><div className="text-sm text-[var(--text-primary)] truncate">{a.naziv}</div><div className="text-[10px] text-[var(--text-primary)]">{a.kategorija}</div></div>
+                        <div className="text-right"><div className="text-sm font-semibold text-[var(--text-primary)]">{fmtRsd(a.revenue)}</div><div className="text-[10px] text-[var(--text-primary)]">{a.units} kom</div></div>
                       </div>
                     ))}
                   </div>
@@ -1236,7 +1236,7 @@ function DailyTab({
               )}
             </>
           )}
-          {!data && !loading && <p className="text-[#8A95B0] text-sm">Izaberite dan za analizu.</p>}
+          {!data && !loading && <p className="text-[var(--text-primary)] text-sm">Izaberite dan za analizu.</p>}
         </>
       )}
 
@@ -1244,22 +1244,22 @@ function DailyTab({
         <>
           {heatmapLoading ? <Skeleton rows={7} /> : heatmap ? (
             <div className="space-y-4">
-              <h4 className="text-xs font-semibold text-[#c9d3e4]">Prosečan prihod po danu u nedelji</h4>
+              <h4 className="text-xs font-semibold text-[var(--text-primary)]">Prosečan prihod po danu u nedelji</h4>
               <div className="grid grid-cols-7 gap-2">
                 {heatmap.byDay.map(d => {
                   const maxRev = Math.max(...heatmap.byDay.map(x => x.avgRevenue));
                   const intensity = maxRev > 0 ? d.avgRevenue / maxRev : 0;
                   return (
-                    <div key={d.day} className="rounded-lg border border-[#2A3045] p-3 text-center transition hover:scale-105"
+                    <div key={d.day} className="rounded-lg border border-[var(--border-default)] p-3 text-center transition hover:scale-105"
                       style={{ background: `rgba(79, 142, 247, ${0.05 + intensity * 0.4})` }}>
-                      <div className="text-xs font-bold text-[#c9d3e4]">{d.dayName}</div>
-                      <div className="text-sm font-bold text-[#E8ECF4] mt-1">{fmtRsd(d.avgRevenue)}</div>
-                      <div className="text-[10px] text-[#8A95B0]">{d.avgUnits.toFixed(0)} kom</div>
+                      <div className="text-xs font-bold text-[var(--text-primary)]">{d.dayName}</div>
+                      <div className="text-sm font-bold text-[var(--text-primary)] mt-1">{fmtRsd(d.avgRevenue)}</div>
+                      <div className="text-[10px] text-[var(--text-primary)]">{d.avgUnits.toFixed(0)} kom</div>
                     </div>
                   );
                 })}
               </div>
-              <h4 className="text-xs font-semibold text-[#c9d3e4] mt-4">Trend po danima</h4>
+              <h4 className="text-xs font-semibold text-[var(--text-primary)] mt-4">Trend po danima</h4>
               <div className="h-[180px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={heatmap.byDay} barSize={36}>
@@ -1278,7 +1278,7 @@ function DailyTab({
                 </ResponsiveContainer>
               </div>
             </div>
-          ) : <p className="text-[#8A95B0] text-sm">Nema podataka za heatmapu.</p>}
+          ) : <p className="text-[var(--text-primary)] text-sm">Nema podataka za heatmapu.</p>}
         </>
       )}
     </div>
@@ -1305,18 +1305,18 @@ function AbcLifecycleTab({
     <div className="space-y-5">
       <SectionHeader title="ABC Klasifikacija & Životni Ciklus Proizvoda" subtitle="Pareto analiza prihoda i klasifikacija faze životnog ciklusa" />
       <div className="flex gap-2">
-        <button onClick={() => setSubView("abc")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "abc" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>📊 ABC</button>
-        <button onClick={() => setSubView("lifecycle")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "lifecycle" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>🔄 Životni Ciklus</button>
+        <button onClick={() => setSubView("abc")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "abc" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📊 ABC</button>
+        <button onClick={() => setSubView("lifecycle")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "lifecycle" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>🔄 Životni Ciklus</button>
       </div>
 
       {subView === "abc" && (
-        abcLoading ? <Skeleton rows={8} /> : !abcData.length ? <p className="text-[#8A95B0] text-sm">Nema podataka.</p> : (
+        abcLoading ? <Skeleton rows={8} /> : !abcData.length ? <p className="text-[var(--text-primary)] text-sm">Nema podataka.</p> : (
           <AbcContent data={abcData} showAll={showAll} setShowAll={setShowAll} analyticsContext={analyticsContext} />
         )
       )}
 
       {subView === "lifecycle" && (
-        lifecycleLoading ? <Skeleton rows={8} /> : !lifecycle ? <p className="text-[#8A95B0] text-sm">Nema podataka životnog ciklusa.</p> : (
+        lifecycleLoading ? <Skeleton rows={8} /> : !lifecycle ? <p className="text-[var(--text-primary)] text-sm">Nema podataka životnog ciklusa.</p> : (
           <LifecycleContent data={lifecycle} analyticsContext={analyticsContext} />
         )
       )}
@@ -1339,8 +1339,8 @@ function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: Abc
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="rounded-xl border border-[#2A3045] bg-[#161A23] p-4">
-          <h4 className="mb-2 text-xs font-semibold text-[#c9d3e4]">ABC Distribucija</h4>
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
+          <h4 className="mb-2 text-xs font-semibold text-[var(--text-primary)]">ABC Distribucija</h4>
           <div className="h-[180px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -1356,24 +1356,24 @@ function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: Abc
             {donutData.map((d, i) => (
               <div key={i} className="text-center">
                 <div className="text-xs font-bold" style={{ color: [PAL.green, PAL.yellow, PAL.red][i] }}>{d.count} SKU</div>
-                <div className="text-[10px] text-[#8A95B0]">{total > 0 ? ((d.value / total) * 100).toFixed(0) : 0}% prih.</div>
+                <div className="text-[10px] text-[var(--text-primary)]">{total > 0 ? ((d.value / total) * 100).toFixed(0) : 0}% prih.</div>
               </div>
             ))}
           </div>
         </div>
         <div className="lg:col-span-2 space-y-2">
-          <div className="rounded-xl border border-[#2A3045] bg-[#1E2332] px-4 py-3 text-sm text-[#8A95B0]">
-            <span className="font-semibold text-[#4CAF82]">Klasa A</span> — top artikli (~70% prihoda). Prioritet u nabavci, nikad out-of-stock.
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">
+            <span className="font-semibold text-[var(--text-primary)]">Klasa A</span> — top artikli (~70% prihoda). Prioritet u nabavci, nikad out-of-stock.
           </div>
-          <div className="rounded-xl border border-[#2A3045] bg-[#1E2332] px-4 py-3 text-sm text-[#8A95B0]">
-            <span className="font-semibold text-[#F5C542]">Klasa B</span> — srednji artikli (70-90% kum.). Pratiti trendove i pravovremeno dopunjavati.
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">
+            <span className="font-semibold text-[var(--text-primary)]">Klasa B</span> — srednji artikli (70-90% kum.). Pratiti trendove i pravovremeno dopunjavati.
           </div>
-          <div className="rounded-xl border border-[#2A3045] bg-[#1E2332] px-4 py-3 text-sm text-[#8A95B0]">
-            <span className="font-semibold text-[#E05C5C]">Klasa C</span> — dugi rep. Razmotriti likvidaciju ili specijalne promocije.
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">
+            <span className="font-semibold text-[var(--text-primary)]">Klasa C</span> — dugi rep. Razmotriti likvidaciju ili specijalne promocije.
           </div>
         </div>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+      <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
         <div className="mb-3 p-3">
           <AnalyticsTableToolbar
             tableKey="insight-abc-classification"
@@ -1386,7 +1386,7 @@ function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: Abc
           />
         </div>
         <table className="w-full text-xs">
-          <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+          <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
             <th className="px-3 py-2 text-left">Artikal</th><th className="px-3 py-2 text-left">Kat.</th>
             <th className="px-3 py-2 text-right">Prihod</th><th className="px-3 py-2 text-right">Udeo%</th>
             <th className="px-3 py-2 text-right">Kum.%</th><th className="px-3 py-2 text-right">Kom</th>
@@ -1396,15 +1396,15 @@ function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: Abc
             {displayed.map(item => (
               <tr
                 key={item.artikalId}
-                className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                 onClick={() => analyticsContext.openSnapshotDetail("insight-abc-classification", String(item.artikalId), item.naziv, "Insight Studio - ABC klasifikacija", abcColumns, item)}
               >
-                <td className="px-3 py-2 text-[#E8ECF4] max-w-[160px] truncate">{item.naziv}</td>
-                <td className="px-3 py-2 text-[#8A95B0]">{item.kategorija}</td>
+                <td className="px-3 py-2 text-[var(--text-primary)] max-w-[160px] truncate">{item.naziv}</td>
+                <td className="px-3 py-2 text-[var(--text-primary)]">{item.kategorija}</td>
                 <td className="px-3 py-2 text-right">{fmtRsd(item.totalRevenue)}</td>
-                <td className="px-3 py-2 text-right text-[#8A95B0]">{item.revPct.toFixed(1)}%</td>
-                <td className="px-3 py-2 text-right text-[#8A95B0]">{item.cumulativePct.toFixed(1)}%</td>
-                <td className="px-3 py-2 text-right text-[#8A95B0]">{item.totalUnits}</td>
+                <td className="px-3 py-2 text-right text-[var(--text-primary)]">{item.revPct.toFixed(1)}%</td>
+                <td className="px-3 py-2 text-right text-[var(--text-primary)]">{item.cumulativePct.toFixed(1)}%</td>
+                <td className="px-3 py-2 text-right text-[var(--text-primary)]">{item.totalUnits}</td>
                 <td className="px-3 py-2 text-center"><Badge label={item.abcClass} color={ABC_COLORS[item.abcClass]} /></td>
               </tr>
             ))}
@@ -1412,7 +1412,7 @@ function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: Abc
         </table>
       </div>
       {data.length > 15 && (
-        <button onClick={() => setShowAll(!showAll)} className="text-xs text-[#4F8EF7] hover:underline">
+        <button onClick={() => setShowAll(!showAll)} className="text-xs text-[var(--text-primary)] hover:underline">
           {showAll ? "Prikaži manje" : `Prikaži svih ${data.length} →`}
         </button>
       )}
@@ -1429,11 +1429,11 @@ function LifecycleContent({ data, analyticsContext }: { data: LifecycleResult; a
           <div key={s} className="rounded-xl border px-3 py-2" style={{ borderColor: `${STAGE_COLORS[s]}33`, background: `${STAGE_COLORS[s]}08` }}>
             <div className="text-[10px] uppercase" style={{ color: STAGE_COLORS[s] }}>{STAGE_LABELS[s]}</div>
             <div className="text-xl font-bold" style={{ color: STAGE_COLORS[s] }}>{data.summary[s.toLowerCase() as keyof typeof data.summary]}</div>
-            <div className="text-[10px] text-[#8A95B0]">artikala</div>
+            <div className="text-[10px] text-[var(--text-primary)]">artikala</div>
           </div>
         ))}
       </div>
-      <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+      <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
         <div className="mb-3 p-3">
           <AnalyticsTableToolbar
             tableKey="insight-lifecycle"
@@ -1446,7 +1446,7 @@ function LifecycleContent({ data, analyticsContext }: { data: LifecycleResult; a
           />
         </div>
         <table className="w-full text-xs">
-          <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+          <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
             <th className="px-3 py-2 text-left">Artikal</th><th className="px-3 py-2 text-left">Kat.</th>
             <th className="px-3 py-2 text-right">Prodato</th><th className="px-3 py-2 text-right">Trend</th>
             <th className="px-3 py-2 text-right">Zaliha</th><th className="px-3 py-2 text-center">Faza</th>
@@ -1455,14 +1455,14 @@ function LifecycleContent({ data, analyticsContext }: { data: LifecycleResult; a
             {data.items.slice(0, 30).map(it => (
               <tr
                 key={it.artikalId}
-                className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                 onClick={() => analyticsContext.openSnapshotDetail("insight-lifecycle", String(it.artikalId), it.naziv, "Insight Studio - zivotni ciklus", lifecycleColumns, it)}
               >
-                <td className="px-3 py-2 text-[#E8ECF4] max-w-[160px] truncate">{it.naziv}</td>
-                <td className="px-3 py-2 text-[#8A95B0]">{it.kategorija}</td>
+                <td className="px-3 py-2 text-[var(--text-primary)] max-w-[160px] truncate">{it.naziv}</td>
+                <td className="px-3 py-2 text-[var(--text-primary)]">{it.kategorija}</td>
                 <td className="px-3 py-2 text-right">{it.totalUnits}</td>
                 <td className="px-3 py-2 text-right" style={{ color: it.trendPct >= 0 ? PAL.green : PAL.red }}>{it.trendPct >= 0 ? "+" : ""}{it.trendPct.toFixed(0)}%</td>
-                <td className="px-3 py-2 text-right text-[#8A95B0]">{it.currentStock}</td>
+                <td className="px-3 py-2 text-right text-[var(--text-primary)]">{it.currentStock}</td>
                 <td className="px-3 py-2 text-center"><Badge label={STAGE_LABELS[it.stage]} color={STAGE_COLORS[it.stage]} /></td>
               </tr>
             ))}
@@ -1495,12 +1495,12 @@ function StockTab({
     <div className="space-y-5">
       <SectionHeader title="Stanje Zaliha & Prognoza Iscrpljenja" subtitle="Aging analiza + automatski forecast datuma OOS-a" />
       <div className="flex gap-2">
-        <button onClick={() => setSubView("aging")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "aging" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>📦 Aging</button>
-        <button onClick={() => setSubView("depletion")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "depletion" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>📉 Deplecija</button>
+        <button onClick={() => setSubView("aging")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "aging" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📦 Aging</button>
+        <button onClick={() => setSubView("depletion")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "depletion" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📉 Deplecija</button>
       </div>
 
       {subView === "aging" && (
-        agingLoading ? <Skeleton rows={8} /> : !agingItems.length ? <p className="text-[#8A95B0] text-sm">Nema zaliha.</p> : (
+        agingLoading ? <Skeleton rows={8} /> : !agingItems.length ? <p className="text-[var(--text-primary)] text-sm">Nema zaliha.</p> : (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
@@ -1509,8 +1509,8 @@ function StockTab({
                 { name: "Pazi (>30d)", value: agingSummary?.watch ?? 0, fill: PAL.yellow },
                 { name: "Aktivno (<30d)", value: agingSummary?.active ?? 0, fill: PAL.green },
               ].map(b => (
-                <div key={b.name} className="rounded-xl border border-[#2A3045] bg-[#161A23] p-3">
-                  <div className="text-[10px] text-[#8A95B0] uppercase">{b.name}</div>
+                <div key={b.name} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
+                  <div className="text-[10px] text-[var(--text-primary)] uppercase">{b.name}</div>
                   <div className="text-2xl font-bold" style={{ color: b.fill }}>{b.value}</div>
                 </div>
               ))}
@@ -1521,13 +1521,13 @@ function StockTab({
             <div className="flex gap-2 flex-wrap">
               {["Sve", "Kritično", "Upozorenje", "Pazi", "Aktivno"].map(c => (
                 <button key={c} onClick={() => { setFilter(c); setShowAll(false); }}
-                  className={`rounded-lg px-3 py-1 text-xs font-medium transition ${filter === c ? "ring-1 ring-current" : "text-[#8A95B0]"}`}
+                  className={`rounded-lg px-3 py-1 text-xs font-medium transition ${filter === c ? "ring-1 ring-current" : "text-[var(--text-primary)]"}`}
                   style={filter === c && c !== "Sve" ? { color: AGING_COLORS[c], background: `${AGING_COLORS[c]}18` } : undefined}>
                   {c}
                 </button>
               ))}
             </div>
-            <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
               <div className="mb-3 p-3">
                 <AnalyticsTableToolbar
                   tableKey="insight-aging-stock"
@@ -1540,7 +1540,7 @@ function StockTab({
                 />
               </div>
               <table className="w-full text-xs">
-                <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+                <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
                   <th className="px-3 py-2 text-left">Artikal</th><th className="px-3 py-2 text-left">Kat.</th>
                   <th className="px-3 py-2 text-right">Zaliha</th><th className="px-3 py-2 text-right">Posl. prod.</th>
                   <th className="px-3 py-2 text-right">Dana</th><th className="px-3 py-2 text-center">Status</th>
@@ -1551,13 +1551,13 @@ function StockTab({
                     return (showAll ? f : f.slice(0, 20)).map(item => (
                       <tr
                         key={item.id}
-                        className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                        className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                         onClick={() => analyticsContext.openSnapshotDetail("insight-aging-stock", String(item.id), item.naziv, "Insight Studio - aging stock", agingColumns, item)}
                       >
-                        <td className="px-3 py-2 text-[#E8ECF4] max-w-[160px] truncate">{item.naziv}</td>
-                        <td className="px-3 py-2 text-[#8A95B0]">{item.kategorija}</td>
+                        <td className="px-3 py-2 text-[var(--text-primary)] max-w-[160px] truncate">{item.naziv}</td>
+                        <td className="px-3 py-2 text-[var(--text-primary)]">{item.kategorija}</td>
                         <td className="px-3 py-2 text-right">{item.kolicina}</td>
-                        <td className="px-3 py-2 text-right text-[#8A95B0]">{item.lastSaleDate}</td>
+                        <td className="px-3 py-2 text-right text-[var(--text-primary)]">{item.lastSaleDate}</td>
                         <td className="px-3 py-2 text-right font-semibold" style={{ color: AGING_COLORS[item.agingCategory] }}>{item.daysWithoutSale}d</td>
                         <td className="px-3 py-2 text-center"><Badge label={item.agingCategory} color={AGING_COLORS[item.agingCategory]} /></td>
                       </tr>
@@ -1569,7 +1569,7 @@ function StockTab({
             {(() => {
               const f = filter === "Sve" ? agingItems : agingItems.filter(x => x.agingCategory === filter);
               return f.length > 20 && (
-                <button onClick={() => setShowAll(!showAll)} className="text-xs text-[#4F8EF7] hover:underline">
+                <button onClick={() => setShowAll(!showAll)} className="text-xs text-[var(--text-primary)] hover:underline">
                   {showAll ? "Manje" : `Svih ${f.length} →`}
                 </button>
               );
@@ -1579,7 +1579,7 @@ function StockTab({
       )}
 
       {subView === "depletion" && (
-        depletionLoading ? <Skeleton rows={8} /> : !depletion ? <p className="text-[#8A95B0] text-sm">Nema podataka deplecije.</p> : (
+        depletionLoading ? <Skeleton rows={8} /> : !depletion ? <p className="text-[var(--text-primary)] text-sm">Nema podataka deplecije.</p> : (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <MiniStat label="Kritičan OOS" value={depletion.criticalCount} color={PAL.red} />
@@ -1589,7 +1589,7 @@ function StockTab({
             {depletion.criticalCount > 0 && (
               <AlertBanner severity="danger">⚡ {depletion.criticalCount} artikala ce biti OOS u narednih 7 dana! At-risk prihod: {fmtRsd(depletion.totalAtRiskRevenue)}</AlertBanner>
             )}
-            <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
               <div className="mb-3 p-3">
                 <AnalyticsTableToolbar
                   tableKey="insight-stock-depletion"
@@ -1602,7 +1602,7 @@ function StockTab({
                 />
               </div>
               <table className="w-full text-xs">
-                <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+                <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
                   <th className="px-3 py-2 text-left">Artikal</th><th className="px-3 py-2 text-left">Kat.</th>
                   <th className="px-3 py-2 text-right">Zaliha</th><th className="px-3 py-2 text-right">Avg/dan</th>
                   <th className="px-3 py-2 text-right">Dana do OOS</th><th className="px-3 py-2 text-right">Datum OOS</th>
@@ -1612,16 +1612,16 @@ function StockTab({
                   {depletion.forecasts.slice(0, 30).map(f => (
                     <tr
                       key={f.artikalId}
-                      className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                      className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                       onClick={() => analyticsContext.openSnapshotDetail("insight-stock-depletion", String(f.artikalId), f.naziv, "Insight Studio - stock depletion", depletionColumns, f)}
                     >
-                      <td className="px-3 py-2 text-[#E8ECF4] max-w-[140px] truncate">{f.naziv}</td>
-                      <td className="px-3 py-2 text-[#8A95B0]">{f.kategorija}</td>
+                      <td className="px-3 py-2 text-[var(--text-primary)] max-w-[140px] truncate">{f.naziv}</td>
+                      <td className="px-3 py-2 text-[var(--text-primary)]">{f.kategorija}</td>
                       <td className="px-3 py-2 text-right">{f.currentStock}</td>
-                      <td className="px-3 py-2 text-right text-[#8A95B0]">{f.avgDailySales.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right text-[var(--text-primary)]">{f.avgDailySales.toFixed(2)}</td>
                       <td className="px-3 py-2 text-right font-bold" style={{ color: SEVERITY_COLORS[f.severity] }}>{f.daysUntilOOS > 365 ? "∞" : `${f.daysUntilOOS}d`}</td>
-                      <td className="px-3 py-2 text-right text-[#8A95B0]">{f.daysUntilOOS > 365 ? "—" : f.depletionDate}</td>
-                      <td className="px-3 py-2 text-right text-[#F97316]">{fmtRsd(f.atRiskRevenue)}</td>
+                      <td className="px-3 py-2 text-right text-[var(--text-primary)]">{f.daysUntilOOS > 365 ? "—" : f.depletionDate}</td>
+                      <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtRsd(f.atRiskRevenue)}</td>
                       <td className="px-3 py-2 text-center"><Badge label={f.severity} color={SEVERITY_COLORS[f.severity]} /></td>
                     </tr>
                   ))}
@@ -1671,38 +1671,38 @@ function ReorderTab2({
     <div className="space-y-5">
       <SectionHeader title="Nabavka 2.0 — Smart Reorder Engine" subtitle="Prioritizacija nabavke sa ROI projekcijom, verovatnoćom reordera i margin forecast-om" />
 
-      <div className="rounded-xl border border-[#4CAF82]/20 bg-[#4CAF82]/5 px-4 py-3 text-xs text-[#8A95B0]">
+      <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-4 py-3 text-xs text-[var(--text-primary)]">
         Reorder prioriteti sada se prvenstveno izvode iz demand, inventory, price i trend intelligence signala, a legacy plan ostaje rezervni fallback.
       </div>
 
       {/* Summary KPIs */}
       {summary && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-          <div className="rounded-xl border border-[#E05C5C]/30 bg-[#E05C5C]/10 p-3">
-            <div className="text-[10px] text-[#E05C5C] uppercase">Kritično</div>
-            <div className="text-2xl font-bold text-[#E05C5C]">{summary.criticalCount}</div>
+          <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
+            <div className="text-[10px] text-[var(--text-primary)] uppercase">Kritično</div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">{summary.criticalCount}</div>
           </div>
-          <div className="rounded-xl border border-[#F97316]/30 bg-[#F97316]/10 p-3">
-            <div className="text-[10px] text-[#F97316] uppercase">Hitno</div>
-            <div className="text-2xl font-bold text-[#F97316]">{summary.urgentCount}</div>
+          <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
+            <div className="text-[10px] text-[var(--text-primary)] uppercase">Hitno</div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">{summary.urgentCount}</div>
           </div>
-          <div className="rounded-xl border border-[#F5C542]/30 bg-[#F5C542]/10 p-3">
-            <div className="text-[10px] text-[#F5C542] uppercase">Preporučuje se</div>
-            <div className="text-2xl font-bold text-[#F5C542]">{summary.recommendedCount}</div>
+          <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
+            <div className="text-[10px] text-[var(--text-primary)] uppercase">Preporučuje se</div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">{summary.recommendedCount}</div>
           </div>
-          <div className="rounded-xl border border-[#4F8EF7]/30 bg-[#4F8EF7]/10 p-3">
-            <div className="text-[10px] text-[#4F8EF7] uppercase">Trošak nabavke</div>
-            <div className="text-lg font-bold text-[#4F8EF7]">{fmtRsd("totalReorderCost" in summary ? (summary as {totalReorderCost: number}).totalReorderCost : ("totalReorderValue" in summary ? (summary as {totalReorderValue: number}).totalReorderValue : 0))}</div>
+          <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
+            <div className="text-[10px] text-[var(--text-primary)] uppercase">Trošak nabavke</div>
+            <div className="text-lg font-bold text-[var(--text-primary)]">{fmtRsd("totalReorderCost" in summary ? (summary as {totalReorderCost: number}).totalReorderCost : ("totalReorderValue" in summary ? (summary as {totalReorderValue: number}).totalReorderValue : 0))}</div>
           </div>
           {useSmart && (
             <>
-              <div className="rounded-xl border border-[#4CAF82]/30 bg-[#4CAF82]/10 p-3">
-                <div className="text-[10px] text-[#4CAF82] uppercase">Očekivani prihod</div>
-                <div className="text-lg font-bold text-[#4CAF82]">{fmtRsd(smartData!.summary.expectedRevenueFromReorder)}</div>
+              <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
+                <div className="text-[10px] text-[var(--text-primary)] uppercase">Očekivani prihod</div>
+                <div className="text-lg font-bold text-[var(--text-primary)]">{fmtRsd(smartData!.summary.expectedRevenueFromReorder)}</div>
               </div>
-              <div className="rounded-xl border border-[#9B72CF]/30 bg-[#9B72CF]/10 p-3">
-                <div className="text-[10px] text-[#9B72CF] uppercase">Očekivani profit</div>
-                <div className="text-lg font-bold text-[#9B72CF]">{fmtRsd(smartData!.summary.expectedProfitFromReorder)}</div>
+              <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
+                <div className="text-[10px] text-[var(--text-primary)] uppercase">Očekivani profit</div>
+                <div className="text-lg font-bold text-[var(--text-primary)]">{fmtRsd(smartData!.summary.expectedProfitFromReorder)}</div>
               </div>
             </>
           )}
@@ -1712,9 +1712,9 @@ function ReorderTab2({
       {/* Sub navigation for smart reorder */}
       {useSmart && (
         <div className="flex gap-2">
-          <button onClick={() => setSubView("artikli")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "artikli" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>📋 Po artiklima</button>
-          <button onClick={() => setSubView("kategorije")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "kategorije" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>📊 Po kategorijama</button>
-          <button onClick={() => setSubView("dobavljaci")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "dobavljaci" ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0]"}`}>🏭 Po dobavljačima</button>
+          <button onClick={() => setSubView("artikli")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "artikli" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📋 Po artiklima</button>
+          <button onClick={() => setSubView("kategorije")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "kategorije" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📊 Po kategorijama</button>
+          <button onClick={() => setSubView("dobavljaci")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "dobavljaci" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>🏭 Po dobavljačima</button>
         </div>
       )}
 
@@ -1723,13 +1723,13 @@ function ReorderTab2({
           <div className="flex gap-2 flex-wrap">
             {urgencies.map(u => (
               <button key={u} onClick={() => { setUrgencyFilter(u); setShowAll(false); }}
-                className={`rounded-lg px-3 py-1 text-xs font-medium transition ${urgencyFilter === u ? "ring-1 ring-current" : "text-[#8A95B0]"}`}
+                className={`rounded-lg px-3 py-1 text-xs font-medium transition ${urgencyFilter === u ? "ring-1 ring-current" : "text-[var(--text-primary)]"}`}
                 style={urgencyFilter === u && u !== "Sve" ? { color: URGENCY_COLORS[u], background: `${URGENCY_COLORS[u]}18` } : undefined}>
                 {u}
               </button>
             ))}
           </div>
-          <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+          <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
             <div className="mb-3 p-3">
               <AnalyticsTableToolbar
                 tableKey="insight-smart-reorder-items"
@@ -1742,7 +1742,7 @@ function ReorderTab2({
               />
             </div>
             <table className="w-full text-xs">
-              <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+              <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
                 <th className="px-3 py-2 text-left">Artikal</th>
                 <th className="px-2 py-2 text-left">Kat.</th>
                 <th className="px-2 py-2 text-left">Dobavljač</th>
@@ -1758,14 +1758,14 @@ function ReorderTab2({
                 {displayed.map(item => (
                   <tr
                     key={item.artikalId}
-                    className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                    className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                     onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-items", String(item.artikalId), item.naziv, "Insight Studio - smart reorder po artiklima", reorderItemColumns, item)}
                   >
-                    <td className="px-3 py-2 text-[#E8ECF4] max-w-[130px] truncate">{item.naziv}</td>
-                    <td className="px-2 py-2 text-[#8A95B0]">{item.kategorija}</td>
-                    <td className="px-2 py-2 text-[#8A95B0]">{item.dobavljacNaziv}</td>
+                    <td className="px-3 py-2 text-[var(--text-primary)] max-w-[130px] truncate">{item.naziv}</td>
+                    <td className="px-2 py-2 text-[var(--text-primary)]">{item.kategorija}</td>
+                    <td className="px-2 py-2 text-[var(--text-primary)]">{item.dobavljacNaziv}</td>
                     <td className="px-2 py-2 text-right">{item.currentStock}</td>
-                    <td className="px-2 py-2 text-right text-[#8A95B0]">{item.avgDailySales.toFixed(2)}</td>
+                    <td className="px-2 py-2 text-right text-[var(--text-primary)]">{item.avgDailySales.toFixed(2)}</td>
                     <td className="px-2 py-2 text-right font-semibold" style={{ color: item.doh < 7 ? PAL.red : item.doh < 14 ? PAL.orange : item.doh < 30 ? PAL.yellow : PAL.green }}>
                       {item.doh > 900 ? "∞" : `${item.doh.toFixed(0)}d`}
                     </td>
@@ -1773,7 +1773,7 @@ function ReorderTab2({
                       {item.needsReorder ? `+${item.recommendedQty}` : "—"}
                     </td>
                     {useSmart && (() => { const s = item as unknown as { marginPct?: number }; return <td className="px-2 py-2 text-right" style={{ color: s.marginPct !== undefined && s.marginPct >= 20 ? PAL.green : PAL.orange }}>{s.marginPct !== undefined ? fmtPct(s.marginPct) : "—"}</td>; })()}
-                    {useSmart && (() => { const s = item as unknown as { reorderProbability?: number }; return <td className="px-2 py-2 text-right text-[#4F8EF7]">{s.reorderProbability !== undefined ? fmtPct(s.reorderProbability) : "—"}</td>; })()}
+                    {useSmart && (() => { const s = item as unknown as { reorderProbability?: number }; return <td className="px-2 py-2 text-right text-[var(--text-primary)]">{s.reorderProbability !== undefined ? fmtPct(s.reorderProbability) : "—"}</td>; })()}
                     <td className="px-2 py-2 text-center"><Badge label={item.urgency} color={URGENCY_COLORS[item.urgency]} /></td>
                   </tr>
                 ))}
@@ -1781,7 +1781,7 @@ function ReorderTab2({
             </table>
           </div>
           {filteredReorder.length > 20 && (
-            <button onClick={() => setShowAll(!showAll)} className="text-xs text-[#4F8EF7] hover:underline">
+            <button onClick={() => setShowAll(!showAll)} className="text-xs text-[var(--text-primary)] hover:underline">
               {showAll ? "Manje" : `Svih ${filteredReorder.length} →`}
             </button>
           )}
@@ -1789,7 +1789,7 @@ function ReorderTab2({
       )}
 
       {subView === "kategorije" && useSmart && (
-        <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+        <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
           <div className="mb-3 p-3">
             <AnalyticsTableToolbar
               tableKey="insight-smart-reorder-categories"
@@ -1802,7 +1802,7 @@ function ReorderTab2({
             />
           </div>
           <table className="w-full text-xs">
-            <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+            <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
               <th className="px-3 py-2 text-left">Kategorija</th>
               <th className="px-3 py-2 text-right">Artikala</th>
               <th className="px-3 py-2 text-right">Kritično</th>
@@ -1815,15 +1815,15 @@ function ReorderTab2({
               {smartData!.byCategoryPlan.map((c, i) => (
                 <tr
                   key={i}
-                  className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                  className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                   onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-categories", c.kategorija, c.kategorija, "Insight Studio - smart reorder po kategorijama", reorderCategoryColumns, c)}
                 >
-                  <td className="px-3 py-2 font-medium text-[#E8ECF4]">{c.kategorija}</td>
-                  <td className="px-3 py-2 text-right text-[#8A95B0]">{c.totalItems}</td>
+                  <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{c.kategorija}</td>
+                  <td className="px-3 py-2 text-right text-[var(--text-primary)]">{c.totalItems}</td>
                   <td className="px-3 py-2 text-right" style={{ color: c.criticalCount > 0 ? PAL.red : PAL.textSecondary }}>{c.criticalCount}</td>
                   <td className="px-3 py-2 text-right" style={{ color: c.urgentCount > 0 ? PAL.orange : PAL.textSecondary }}>{c.urgentCount}</td>
-                  <td className="px-3 py-2 text-right text-[#4F8EF7]">{fmtRsd(c.totalReorderCost)}</td>
-                  <td className="px-3 py-2 text-right text-[#4CAF82]">{fmtRsd(c.expectedRevenue)}</td>
+                  <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtRsd(c.totalReorderCost)}</td>
+                  <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtRsd(c.expectedRevenue)}</td>
                   <td className="px-3 py-2 text-right" style={{ color: c.avgMargin >= 20 ? PAL.green : PAL.yellow }}>{fmtPct(c.avgMargin)}</td>
                 </tr>
               ))}
@@ -1833,7 +1833,7 @@ function ReorderTab2({
       )}
 
       {subView === "dobavljaci" && useSmart && (
-        <div className="overflow-x-auto rounded-xl border border-[#2A3045]">
+        <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
           <div className="mb-3 p-3">
             <AnalyticsTableToolbar
               tableKey="insight-smart-reorder-suppliers"
@@ -1846,7 +1846,7 @@ function ReorderTab2({
             />
           </div>
           <table className="w-full text-xs">
-            <thead><tr className="border-b border-[#2A3045] bg-[#1E2332] text-[10px] uppercase tracking-wider text-[#8A95B0]">
+            <thead><tr className="border-b border-[var(--border-default)] bg-[var(--surface-elevated)] text-[10px] uppercase tracking-wider text-[var(--text-primary)]">
               <th className="px-3 py-2 text-left">Dobavljač</th>
               <th className="px-3 py-2 text-right">Artikala</th>
               <th className="px-3 py-2 text-right">Kritično</th>
@@ -1857,14 +1857,14 @@ function ReorderTab2({
               {smartData!.bySupplierPlan.map((s, i) => (
                 <tr
                   key={i}
-                  className="cursor-pointer border-b border-[#2A3045] hover:bg-[#1E2332] transition"
+                  className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
                   onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-suppliers", s.dobavljac, s.dobavljac, "Insight Studio - smart reorder po dobavljacima", reorderSupplierColumns, s)}
                 >
-                  <td className="px-3 py-2 font-medium text-[#E8ECF4]">{s.dobavljac}</td>
-                  <td className="px-3 py-2 text-right text-[#8A95B0]">{s.totalItems}</td>
+                  <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{s.dobavljac}</td>
+                  <td className="px-3 py-2 text-right text-[var(--text-primary)]">{s.totalItems}</td>
                   <td className="px-3 py-2 text-right" style={{ color: s.criticalCount > 0 ? PAL.red : PAL.textSecondary }}>{s.criticalCount}</td>
-                  <td className="px-3 py-2 text-right text-[#4F8EF7]">{fmtRsd(s.totalReorderCost)}</td>
-                  <td className="px-3 py-2 text-right text-[#4CAF82]">{fmtPct(s.avgReorderProbability)}</td>
+                  <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtRsd(s.totalReorderCost)}</td>
+                  <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtPct(s.avgReorderProbability)}</td>
                 </tr>
               ))}
             </tbody>
@@ -2181,25 +2181,25 @@ export default function InsightStudioPage() {
         <div className="flex items-center gap-2">
           <span className="text-xl">🔬</span>
           <h1 className="text-xl font-bold text-white">Insight Studio</h1>
-          <span className="rounded bg-gradient-to-r from-[#4F8EF7]/20 to-[#9B72CF]/20 px-2 py-0.5 text-[10px] font-semibold text-[#7ea5ff] uppercase tracking-wider">
+          <span className="rounded bg-gradient-to-r from-[var(--surface-elevated)]/20 to-[var(--surface-elevated-dark)]/20 px-2 py-0.5 text-[10px] font-semibold text-[var(--text-primary)] uppercase tracking-wider">
             Analitika 2 — Pro
           </span>
         </div>
-        <p className="text-[11px] text-[#8A95B0]">
+        <p className="text-[11px] text-[var(--text-primary)]">
           Napredna analiza profitabilnosti, V×M matrica, lifecycle, deplecija i reorder 2.0
         </p>
       </div>
 
       {/* ── Period Filter ──────────────────────────────────────── */}
-      <div className="flex items-center gap-2 flex-wrap rounded-xl border border-[#2A3045] bg-[#161A23] px-4 py-2.5">
-        <span className="text-xs text-[#8A95B0] mr-1">Period:</span>
+      <div className="flex items-center gap-2 flex-wrap rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-2.5">
+        <span className="text-xs text-[var(--text-primary)] mr-1">Period:</span>
         {PERIOD_PRESETS.map(p => (
           <button key={p.days} onClick={() => handlePeriodChange(p.days)}
-            className={`rounded-lg px-3 py-1 text-xs font-medium transition ${periodDays === p.days ? "bg-[#1f2940] text-[#7ea5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0] hover:text-[#c9d3e4] hover:bg-[#20222a]"}`}>
+            className={`rounded-lg px-3 py-1 text-xs font-medium transition ${periodDays === p.days ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-light)]"}`}>
             {p.label}
           </button>
         ))}
-        <span className="ml-auto text-[11px] text-[#4A5270]">{fromDate} → {toDate}</span>
+        <span className="ml-auto text-[11px] text-[var(--text-primary)]">{fromDate} → {toDate}</span>
       </div>
 
       {/* ── KPI Command Row (always visible) ──────────────────── */}
@@ -2220,11 +2220,11 @@ export default function InsightStudioPage() {
       )}
 
       {/* ── Tab Navigation ──────────────────────────────────────── */}
-      <div className="flex gap-1 flex-wrap rounded-xl border border-[#2A3045] bg-[#161A23] p-1.5 overflow-x-auto">
+      <div className="flex gap-1 flex-wrap rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-1.5 overflow-x-auto">
         {TABS.map(t => (
           <button key={t.key} onClick={() => handleTabChange(t.key)}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition whitespace-nowrap ${
-              activeTab === t.key ? "bg-[#1f2940] text-[#d8e5ff] ring-1 ring-[#32579e]" : "text-[#8A95B0] hover:text-[#c9d3e4] hover:bg-[#20222a]"
+              activeTab === t.key ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-light)]"
             }`}>
             <span>{t.icon}</span><span>{t.label}</span>
           </button>
@@ -2232,7 +2232,7 @@ export default function InsightStudioPage() {
       </div>
 
       {/* ── Tab Content ──────────────────────────────────────────── */}
-      <div className="rounded-xl border border-[#2A3045] bg-[#0D0F14] p-5">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         {activeTab === "pregled" && (
           <OverviewTab
             kpi={kpi}
@@ -2281,3 +2281,4 @@ export default function InsightStudioPage() {
     </div>
   );
 }
+

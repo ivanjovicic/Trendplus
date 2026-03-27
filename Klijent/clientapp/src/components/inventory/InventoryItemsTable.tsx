@@ -1,4 +1,4 @@
-import { formatCurrency, formatNumber, getCoverageText, getStockState } from "./inventoryUtils";
+﻿import { formatCurrency, formatNumber, getCoverageText, getStockState } from "./inventoryUtils";
 import type { InventoryRow } from "./types";
 
 type InventoryItemsTableProps = {
@@ -23,19 +23,19 @@ export function InventoryItemsTable({
   onNextPage,
 }: InventoryItemsTableProps) {
   return (
-    <section className="rounded-[28px] border border-[#232935] bg-[#12161f] p-5">
+    <section className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-white">Tabela artikala</h2>
-          <p className="text-sm text-[#90a0ba]">Klik na red otvara detalj sa preporukom akcije i operativnim kontekstom.</p>
+          <p className="text-sm text-[var(--text-primary)]">Klik na red otvara detalj sa preporukom akcije i operativnim kontekstom.</p>
         </div>
-        <div className="text-sm text-[#96a5bf]">Prikazano <span className="font-semibold text-white">{rows.length}</span> od <span className="font-semibold text-white">{formatNumber(totalCount)}</span> artikala</div>
+        <div className="text-sm text-[var(--text-primary)]">Prikazano <span className="font-semibold text-white">{rows.length}</span> od <span className="font-semibold text-white">{formatNumber(totalCount)}</span> artikala</div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-[#242d3b]">
+      <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border-default)]">
         <div className="overflow-x-auto">
           <table aria-label="Lista artikala na stanju" className="min-w-full text-sm">
-            <thead className="bg-[#0f131a] text-left text-[#90a0ba]">
+            <thead className="bg-[var(--surface-elevated)] text-left text-[var(--text-primary)]">
               <tr>
                 <th className="px-4 py-3">Artikal</th>
                 <th className="px-4 py-3">Status</th>
@@ -50,23 +50,23 @@ export function InventoryItemsTable({
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-[#8797b4]">Ucitavam tabelu...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-[var(--text-primary)]">Ucitavam tabelu...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-[#8797b4]">Nema artikala za zadate filtere.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-[var(--text-primary)]">Nema artikala za zadate filtere.</td></tr>
               ) : rows.map((row) => {
                 const stock = getStockState(row.quantity, row.minimum);
-                const stockBorder = row.stockState === "critical" ? "border-l-4 border-l-[#7d2940]" : row.stockState === "warning" ? "border-l-4 border-l-[#7c5822]" : "border-l-4 border-l-[#1f6c49]";
+                const stockBorder = row.stockState === "critical" ? "border-l-4 border-l-[var(--border-default)]" : row.stockState === "warning" ? "border-l-4 border-l-[var(--border-default)]" : "border-l-4 border-l-[var(--border-default)]";
                 return (
-                  <tr key={row.id} role="button" tabIndex={0} aria-label={`Otvori detalje za ${row.naziv} - ${row.stockStateLabel}`} className={`cursor-pointer border-t border-[#1c2230] bg-[#11161d] text-[#dbe6fb] transition-all duration-200 hover:bg-[#151c26] hover:border-t-[#293243] focus:outline-none focus-visible:bg-[#151c26] focus-visible:border-t-[#44d0ff] focus-visible:ring-2 focus-visible:ring-[#44d0ff] focus-visible:ring-opacity-30 ${stockBorder}`} onClick={() => onOpenDetail(row)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDetail(row); } }}>
-                    <td className="px-4 py-3"><div className="flex flex-col"><span className="font-semibold text-white">{row.naziv}</span><span className="text-xs text-[#8fa1be]">{row.plu ?? "Bez PLU"} | {getCoverageText(row)}</span></div></td>
+                  <tr key={row.id} role="button" tabIndex={0} aria-label={`Otvori detalje za ${row.naziv} - ${row.stockStateLabel}`} className={`cursor-pointer border-t border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)] transition-all duration-200 hover:bg-[var(--surface-light)] hover:border-t-[#293243] focus:outline-none focus-visible:bg-[var(--surface-elevated)] focus-visible:border-t-[#44d0ff] focus-visible:ring-2 focus-visible:ring-[#44d0ff] focus-visible:ring-opacity-30 ${stockBorder}`} onClick={() => onOpenDetail(row)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDetail(row); } }}>
+                    <td className="px-4 py-3"><div className="flex flex-col"><span className="font-semibold text-white">{row.naziv}</span><span className="text-xs text-[var(--text-primary)]">{row.plu ?? "Bez PLU"} | {getCoverageText(row)}</span></div></td>
                     <td className="px-4 py-3"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${stock.badge}`}>{row.stockStateLabel}</span></td>
                     <td className="px-4 py-3 text-right font-semibold text-white">{formatNumber(row.quantity)}</td>
-                    <td className="px-4 py-3 text-right text-[#c7d4e8]">{formatNumber(row.minimum)}</td>
-                    <td className="px-4 py-3 text-right text-[#f7c983]">{formatNumber(row.reorderGap)}</td>
-                    <td className="px-4 py-3 text-right text-[#b8d7f0]">{formatCurrency(row.unitCost)}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-[#9fe0ff]">{formatCurrency(row.estimatedValueAmount)}</td>
-                    <td className="px-4 py-3 text-[#c7d4e8]">{row.storeName}</td>
-                    <td className="px-4 py-3 text-[#c7d4e8]">{row.supplierName}</td>
+                    <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatNumber(row.minimum)}</td>
+                    <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatNumber(row.reorderGap)}</td>
+                    <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatCurrency(row.unitCost)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-[var(--text-primary)]">{formatCurrency(row.estimatedValueAmount)}</td>
+                    <td className="px-4 py-3 text-[var(--text-primary)]">{row.storeName}</td>
+                    <td className="px-4 py-3 text-[var(--text-primary)]">{row.supplierName}</td>
                   </tr>
                 );
               })}
@@ -76,12 +76,13 @@ export function InventoryItemsTable({
       </div>
 
       <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="text-sm text-[#90a0ba]">Strana <span className="font-semibold text-white">{pageNumber}</span> od <span className="font-semibold text-white">{totalPages}</span></div>
+        <div className="text-sm text-[var(--text-primary)]">Strana <span className="font-semibold text-white">{pageNumber}</span> od <span className="font-semibold text-white">{totalPages}</span></div>
         <div className="flex items-center gap-2">
-          <button type="button" aria-label="Idi na prethodnu stranu tabele artikala" onClick={onPreviousPage} disabled={pageNumber <= 1 || loading} className="rounded-xl border border-[#33405a] bg-[#182131] px-3 py-2 text-xs font-semibold text-[#dbe6fb] transition-all duration-200 hover:border-[#45536d] hover:bg-[#1f2938] hover:shadow-md focus:outline-none focus-visible:border-[#44d0ff] focus-visible:ring-2 focus-visible:ring-[#44d0ff] focus-visible:ring-opacity-30 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[#33405a] disabled:hover:bg-[#182131] disabled:hover:shadow-none">Prethodna</button>
-          <button type="button" aria-label="Idi na sledecu stranu tabele artikala" onClick={onNextPage} disabled={pageNumber >= totalPages || loading} className="rounded-xl border border-[#33405a] bg-[#182131] px-3 py-2 text-xs font-semibold text-[#dbe6fb] transition-all duration-200 hover:border-[#45536d] hover:bg-[#1f2938] hover:shadow-md focus:outline-none focus-visible:border-[#44d0ff] focus-visible:ring-2 focus-visible:ring-[#44d0ff] focus-visible:ring-opacity-30 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[#33405a] disabled:hover:bg-[#182131] disabled:hover:shadow-none">Sledeca</button>
+          <button type="button" aria-label="Idi na prethodnu stranu tabele artikala" onClick={onPreviousPage} disabled={pageNumber <= 1 || loading} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] transition-all duration-200 hover:border-[var(--border-default)] hover:bg-[var(--surface-light)] hover:shadow-md focus:outline-none focus-visible:border-[var(--border-default)] focus-visible:ring-2 focus-visible:ring-[#44d0ff] focus-visible:ring-opacity-30 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[var(--border-default)] disabled:hover:bg-[var(--surface-light)] disabled:hover:shadow-none">Prethodna</button>
+          <button type="button" aria-label="Idi na sledecu stranu tabele artikala" onClick={onNextPage} disabled={pageNumber >= totalPages || loading} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] transition-all duration-200 hover:border-[var(--border-default)] hover:bg-[var(--surface-light)] hover:shadow-md focus:outline-none focus-visible:border-[var(--border-default)] focus-visible:ring-2 focus-visible:ring-[#44d0ff] focus-visible:ring-opacity-30 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[var(--border-default)] disabled:hover:bg-[var(--surface-light)] disabled:hover:shadow-none">Sledeca</button>
         </div>
       </div>
     </section>
   );
 }
+

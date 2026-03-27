@@ -114,9 +114,9 @@ export default function ArtikalEditPage() {
         return (
             <div className="space-y-4">
                 <Breadcrumb artikalId={artikalId} />
-                <div className="rounded-xl border border-[#2f323b] bg-[#161A23] p-6">
+                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-6">
                     <p className="text-sm text-red-400">{error}</p>
-                    <Link to="/artikli" className="mt-3 inline-flex items-center gap-1 text-xs text-[#4F8EF7] hover:underline">
+                    <Link to="/artikli" className="mt-3 inline-flex items-center gap-1 text-xs text-[var(--text-primary)] hover:underline">
                         ← Nazad na listu
                     </Link>
                 </div>
@@ -128,8 +128,8 @@ export default function ArtikalEditPage() {
         return (
             <div className="space-y-4">
                 <Breadcrumb artikalId={artikalId} />
-                <div className="rounded-xl border border-[#2f323b] bg-[#161A23] p-6">
-                    <p className="text-sm text-[#8A95B0]">Učitavanje artikla...</p>
+                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-6">
+                    <p className="text-sm text-[var(--text-primary)]">Učitavanje artikla...</p>
                 </div>
             </div>
         );
@@ -154,14 +154,15 @@ export default function ArtikalEditPage() {
 
 function Breadcrumb({ artikalId }: { artikalId: number }) {
     return (
-        <nav className="flex items-center gap-1.5 text-xs text-[#8A95B0]">
-            <Link to="/" className="hover:text-[#c9d3e4]">Početna</Link>
+        <nav className="flex items-center gap-1.5 text-xs text-[var(--text-primary)]">
+            <Link to="/" className="hover:text-[var(--text-primary)]">Početna</Link>
             <ChevronRight size={12} className="opacity-40" />
-            <Link to="/artikli" className="hover:text-[#c9d3e4]">Artikli</Link>
+            <Link to="/artikli" className="hover:text-[var(--text-primary)]">Artikli</Link>
             <ChevronRight size={12} className="opacity-40" />
-            <span className="text-[#c9d3e4] font-medium">Izmena #{artikalId}</span>
+            <span className="text-[var(--text-primary)] font-medium">Izmena #{artikalId}</span>
         </nav>
     );
 }
+
 
 

@@ -1,4 +1,4 @@
-import { TrendingDown, TrendingUp } from "lucide-react";
+﻿import { TrendingDown, TrendingUp } from "lucide-react";
 import type { ForecastDto, ForecastRowDto, StoreOption } from "../../types/analytics";
 import { TONE } from "./toneMap";
 import type { InventoryRow } from "./types";
@@ -96,14 +96,14 @@ export function DemandForecastPanel({
                 );
               })}
               {highOosItems.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#2b3446] bg-[#10151d] px-4 py-6 text-center text-sm text-[#8797b4]">Nema visokog OOS rizika za trenutne filtere.</div>
+                <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-6 text-center text-sm text-[var(--text-primary)]">Nema visokog OOS rizika za trenutne filtere.</div>
               ) : null}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#243040] bg-[#10141b] p-4">
+          <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
-              <TrendingUp size={14} className="text-[#9ff0c7]" />
+              <TrendingUp size={14} className="text-[var(--text-primary)]" />
               Overstock rizik (28 dana)
             </h3>
             <div className="mt-3 space-y-2">
@@ -112,22 +112,22 @@ export function DemandForecastPanel({
                 const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? `Objekat #${item.storeId}`;
 
                 return (
-                  <div key={`${item.skuId}-${item.storeId}-${item.sizeCode}`} className="flex items-start justify-between gap-3 rounded-xl border border-[#283142] bg-[#141b26] px-3 py-2">
+                  <div key={`${item.skuId}-${item.storeId}-${item.sizeCode}`} className="flex items-start justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-white">{name}</div>
-                      <div className="truncate text-xs text-[#90a0ba]">{store} | vel. {item.sizeCode}</div>
+                      <div className="truncate text-xs text-[var(--text-primary)]">{store} | vel. {item.sizeCode}</div>
                     </div>
                     <div className="shrink-0 text-right">
-                      <div className="inline-flex rounded-full border border-[#36543f] bg-[#17261d] px-2.5 py-1 text-xs font-semibold text-[#aef3bf]">
+                      <div className="inline-flex rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)]">
                         {Math.round(item.overstockRisk * 100)}% over
                       </div>
-                      <div className="mt-1 text-xs text-[#7f8fa9]">28d: {item.forecast28d.toFixed(1)}</div>
+                      <div className="mt-1 text-xs text-[var(--text-primary)]">28d: {item.forecast28d.toFixed(1)}</div>
                     </div>
                   </div>
                 );
               })}
               {overstockItems.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#2b3446] bg-[#10151d] px-4 py-6 text-center text-sm text-[#8797b4]">Nema overstock signala za trenutne filtere.</div>
+                <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-6 text-center text-sm text-[var(--text-primary)]">Nema overstock signala za trenutne filtere.</div>
               ) : null}
             </div>
           </div>
@@ -136,3 +136,4 @@ export function DemandForecastPanel({
     </section>
   );
 }
+

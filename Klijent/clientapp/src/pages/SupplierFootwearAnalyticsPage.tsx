@@ -786,7 +786,7 @@ export default function SupplierFootwearAnalyticsPage() {
                     Nepoznat dobavljac je detektovan u {fmtNum(unknownSupplierSummary.unknownRows)} redova
                     ({fmtRsd(unknownSupplierSummary.postRevenue)} post prometa, {fmtPct(unknownSupplierSummary.postSharePct)} udela).
                     Najčešći razlog je nedostajući `IDDobavljac` ili nepostojeći zapis u tabeli `Dobavljaci`.{" "}
-                    <Link to="/analytics/data-quality?type=missingSupplier" className="text-[#fcd34d] underline underline-offset-2">
+                    <Link to="/analytics/data-quality?type=missingSupplier" className="text-[var(--text-primary)] underline underline-offset-2">
                         Otvori data quality
                     </Link>
                 </div>
@@ -1023,4 +1023,5 @@ export default function SupplierFootwearAnalyticsPage() {
         </div>
     );
 }
+
 

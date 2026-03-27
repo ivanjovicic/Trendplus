@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { GaugeCircle, Check, AlertCircle, X, TrendingUp, TrendingDown } from "lucide-react";
 import { getArtikli, nivelacijaCena } from "../services/artikliApi";
 import { Artikal } from "../types/Artikal";
@@ -138,18 +138,18 @@ export default function NivelacijaCenaPage() {
             />
 
             <InventoryPanel className="max-w-5xl">
-                <h2 className="mb-4 text-xl font-semibold text-[#f3f6ff]">Izmena cena po artiklu</h2>
+                <h2 className="mb-4 text-xl font-semibold text-[var(--text-primary)]">Izmena cena po artiklu</h2>
 
-                {loading && <p className="text-sm text-[#9aabc7]">Učitavanje artikala...</p>}
+                {loading && <p className="text-sm text-[var(--text-primary)]">Učitavanje artikala...</p>}
                 {error && (
-                  <div className="flex items-start gap-2 rounded-xl border border-[#7f1d1d] bg-[#2b0a0a] px-3 py-2 text-sm text-[#f87171]">
+                  <div className="flex items-start gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)]">
                     <AlertCircle size={16} className="mt-0.5 shrink-0" />
                     <span className="flex-1">{error}</span>
                     <button type="button" onClick={() => setError(null)} className="shrink-0 hover:text-white"><X size={14} /></button>
                   </div>
                 )}
                 {success && (
-                  <div className="flex items-start gap-2 rounded-xl border border-[#14532d] bg-[#0d2118] px-3 py-2 text-sm text-[#4ade80]">
+                  <div className="flex items-start gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)]">
                     <Check size={16} className="mt-0.5 shrink-0" />
                     <span className="flex-1">{success}</span>
                     <button type="button" onClick={() => setSuccess(null)} className="shrink-0 hover:text-white"><X size={14} /></button>
@@ -157,10 +157,10 @@ export default function NivelacijaCenaPage() {
                 )}
 
                 <div className="mt-4">
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Pretra�i artikal</label>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Pretra�i artikal</label>
                     <div className="relative">
                         <input
-                            className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                            className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
                             value={query}
                             onChange={e => {
                                 setQuery(e.target.value);
@@ -170,16 +170,16 @@ export default function NivelacijaCenaPage() {
                         />
 
                         {filtered.length > 0 && !selected && (
-                            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-[#2f323b] bg-[#13151c] shadow-xl">
+                            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] shadow-xl">
                                 {filtered.map(a => (
                                     <button
                                         key={a.id}
                                         type="button"
                                         onClick={() => selectArtikal(a)}
-                                        className="block w-full border-b border-[#242833] px-3 py-2 text-left hover:bg-[#1b1f29]"
+                                        className="block w-full border-b border-[var(--border-default)] px-3 py-2 text-left hover:bg-[var(--surface-light)]"
                                     >
-                                        <div className="text-sm font-semibold text-[#e7eeff]">{a.naziv}</div>
-                                        <div className="text-xs text-[#8ea0bd]">
+                                        <div className="text-sm font-semibold text-[var(--text-primary)]">{a.naziv}</div>
+                                        <div className="text-xs text-[var(--text-primary)]">
                                             ID: {a.id} | Trenutna prodajna: {a.prodajnaCena}
                                         </div>
                                     </button>
@@ -191,9 +191,9 @@ export default function NivelacijaCenaPage() {
 
                 {selected && (
                     <div className="mt-6">
-                        <div className="mb-3 rounded-xl border border-[#2e3f68] bg-[#1b2742] p-3">
-                            <div className="font-semibold text-[#e7eeff]">{selected.naziv}</div>
-                            <div className="text-sm text-[#9fc0ff]">
+                        <div className="mb-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
+                            <div className="font-semibold text-[var(--text-primary)]">{selected.naziv}</div>
+                            <div className="text-sm text-[var(--text-primary)]">
                                 Trenutno: prodajna {selected.prodajnaCena} | nabavna {selected.nabavnaCena ?? "-"} | prva {selected.prvaProdajnaCena ?? "-"}
                             </div>
                             {(() => {
@@ -205,7 +205,7 @@ export default function NivelacijaCenaPage() {
                                 <div className={`mt-2 flex items-center gap-1.5 text-sm font-semibold ${up ? "text-emerald-300" : "text-rose-300"}`}>
                                   {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                                   {up ? "+" : ""}{delta.toFixed(2)} RSD ({up ? "+" : ""}{pct.toFixed(1)}%)
-                                  <span className="text-xs font-normal text-[#8A95B0]">— nova vs stara cena</span>
+                                  <span className="text-xs font-normal text-[var(--text-primary)]">— nova vs stara cena</span>
                                 </div>
                               );
                             })()}
@@ -213,9 +213,9 @@ export default function NivelacijaCenaPage() {
 
                         <div className="grid gap-3 md:grid-cols-3">
                             <div>
-                                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Nova prodajna cena</label>
+                                <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Nova prodajna cena</label>
                                 <input
-                                    className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                                    className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
                                     type="number"
                                     step={0.01}
                                     min={0}
@@ -228,7 +228,7 @@ export default function NivelacijaCenaPage() {
                                             key={percent}
                                             type="button"
                                             onClick={() => applyPercentAdjustment(percent)}
-                                            className="rounded-lg border border-[#2f323b] bg-[#1a1b1f] px-2 py-1 text-xs text-[#c7d6ef] hover:border-[#4f8cff]"
+                                            className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-1 text-xs text-[var(--text-primary)] hover:border-[var(--border-default)]"
                                         >
                                             {percent > 0 ? "+" : ""}{percent}%
                                         </button>
@@ -237,9 +237,9 @@ export default function NivelacijaCenaPage() {
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Nova nabavna cena</label>
+                                <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Nova nabavna cena</label>
                                 <input
-                                    className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                                    className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
                                     type="number"
                                     step={0.01}
                                     min={0}
@@ -251,9 +251,9 @@ export default function NivelacijaCenaPage() {
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Nova prva prodajna cena</label>
+                                <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Nova prva prodajna cena</label>
                                 <input
-                                    className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                                    className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
                                     type="number"
                                     step={0.01}
                                     min={0}
@@ -266,7 +266,7 @@ export default function NivelacijaCenaPage() {
                         </div>
 
                         <button
-                            className="mt-4 rounded-xl border border-[#3760b7] bg-[#2d4f95] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7] disabled:opacity-60"
+                            className="mt-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--surface-light)] disabled:opacity-60"
                             disabled={!canSave}
                             onClick={save}
                         >
@@ -278,3 +278,4 @@ export default function NivelacijaCenaPage() {
         </InventoryPageShell>
     );
 }
+

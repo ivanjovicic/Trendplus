@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AlertTriangle, Lightbulb, Siren, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -206,7 +206,7 @@ export default function PreNivelacijaPriorityPage() {
         <button
           type="button"
           onClick={() => setPage(1)}
-          className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-3 py-2 text-xs font-semibold text-white"
+          className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-white"
         >
           Osvezi
         </button>
@@ -226,9 +226,9 @@ export default function PreNivelacijaPriorityPage() {
       <InventoryPanel>
         <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Dobavljac</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Dobavljac</label>
             <select
-              className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
               value={filters.supplierId ?? ""}
               onChange={(e) =>
                 setFilters((f) => ({
@@ -247,9 +247,9 @@ export default function PreNivelacijaPriorityPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Sezona</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Sezona</label>
             <select
-              className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
               value={filters.seasonId ?? ""}
               onChange={(e) =>
                 setFilters((f) => ({
@@ -268,9 +268,9 @@ export default function PreNivelacijaPriorityPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Tip obuce</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Tip obuce</label>
             <select
-              className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
               value={filters.footwearTypeId ?? ""}
               onChange={(e) =>
                 setFilters((f) => ({
@@ -289,32 +289,32 @@ export default function PreNivelacijaPriorityPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Stock min</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Stock min</label>
             <input
               type="number"
               value={filters.stockMin ?? 1}
               onChange={(e) => setFilters((f) => ({ ...f, stockMin: Number(e.target.value) }))}
-              className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">No-sale days min</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">No-sale days min</label>
             <input
               type="number"
               value={filters.noSaleDaysMin ?? 14}
               onChange={(e) => setFilters((f) => ({ ...f, noSaleDaysMin: Number(e.target.value) }))}
-              className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[#93a7c8]">Min score</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Min score</label>
             <input
               type="number"
               value={filters.minScore ?? 40}
               onChange={(e) => setFilters((f) => ({ ...f, minScore: Number(e.target.value) }))}
-              className="w-full rounded-lg border border-[#2f323b] bg-[#14161d] px-2 py-2 text-sm text-[#dbe6fb]"
+              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
             />
           </div>
         </div>
@@ -332,8 +332,8 @@ export default function PreNivelacijaPriorityPage() {
               onClick={() => setTab(x.key as Tab)}
               className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
                 tab === x.key
-                  ? "border-[#3760b7] bg-[#2d4f95] text-white"
-                  : "border-[#3c4458] bg-[#222734] text-[#dbe6fb]"
+                  ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-white"
+                  : "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]"
               }`}
             >
               {x.label}
@@ -358,9 +358,9 @@ export default function PreNivelacijaPriorityPage() {
                 defaultOrientation="landscape"
               />
             </div>
-            <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
-              <table className="min-w-full divide-y divide-[#2f323b] text-sm">
-                <thead className="bg-[#14161d] text-[#93a7c8]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
+              <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
+                <thead className="bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                   <tr>
                     <th className="px-3 py-2 text-left">SKU</th>
                     <th className="px-3 py-2 text-left">Dobavljac</th>
@@ -371,14 +371,14 @@ export default function PreNivelacijaPriorityPage() {
                     <th className="px-3 py-2 text-right">Score</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
+                <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                   {data.candidates.map((row) => (
                     <tr
                       key={row.artikalId}
                       className={`cursor-pointer hover:brightness-110 ${
                       row.priorityBand === "high" ? "bg-rose-950/20" :
                       row.priorityBand === "medium" ? "bg-amber-950/15" :
-                      "hover:bg-[#1f2330]"
+                      "hover:bg-[var(--surface-light)]"
                     }`}
                       onClick={() => openSnapshotDetail("pre-nivelacija-candidates", String(row.artikalId), row.sku, row.supplierName, candidateColumns, row)}
                       onKeyDown={(e) => {
@@ -404,7 +404,7 @@ export default function PreNivelacijaPriorityPage() {
               </table>
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-xs text-[#93a7c8]">
+              <p className="text-xs text-[var(--text-primary)]">
                 Formula: {data.formulaDescription}
               </p>
               <div className="flex items-center gap-2">
@@ -412,12 +412,12 @@ export default function PreNivelacijaPriorityPage() {
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={data.page <= 1}
-                  className="rounded-md border border-[#3c4458] bg-[#222734] p-1.5 text-[#dbe6fb] disabled:opacity-50"
+                  className="rounded-md border border-[var(--border-default)] bg-[var(--surface-elevated)] p-1.5 text-[var(--text-primary)] disabled:opacity-50"
                   title="Prethodna"
                 >
                   <ChevronLeft size={14} />
                 </button>
-                <span className="text-xs text-[#93a7c8]">
+                <span className="text-xs text-[var(--text-primary)]">
                   {data.page} / {Math.max(1, Math.ceil(data.totalCandidates / data.pageSize))}
                 </span>
                 <button
@@ -429,7 +429,7 @@ export default function PreNivelacijaPriorityPage() {
                     })
                   }
                   disabled={data.page >= Math.max(1, Math.ceil(data.totalCandidates / data.pageSize))}
-                  className="rounded-md border border-[#3c4458] bg-[#222734] p-1.5 text-[#dbe6fb] disabled:opacity-50"
+                  className="rounded-md border border-[var(--border-default)] bg-[var(--surface-elevated)] p-1.5 text-[var(--text-primary)] disabled:opacity-50"
                   title="Sledeca"
                 >
                   <ChevronRight size={14} />
@@ -452,9 +452,9 @@ export default function PreNivelacijaPriorityPage() {
                 defaultOrientation="landscape"
               />
             </div>
-            <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
-              <table className="min-w-full divide-y divide-[#2f323b] text-sm">
-                <thead className="bg-[#14161d] text-[#93a7c8]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
+              <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
+                <thead className="bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                   <tr>
                     <th className="px-3 py-2 text-left">Dobavljac</th>
                     <th className="px-3 py-2 text-right">Action score</th>
@@ -464,11 +464,11 @@ export default function PreNivelacijaPriorityPage() {
                     <th className="px-3 py-2 text-right">WoW risk</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
+                <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                   {data.supplierLeaderboard.map((s, idx) => (
                     <tr
                       key={`${s.supplierName}-${idx}`}
-                      className="cursor-pointer hover:bg-[#1f2330]"
+                      className="cursor-pointer hover:bg-[var(--surface-light)]"
                       onClick={() => openSnapshotDetail("pre-nivelacija-suppliers", String(s.supplierId ?? idx), s.supplierName, "Supplier action board", supplierColumns, s)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -483,7 +483,7 @@ export default function PreNivelacijaPriorityPage() {
                       <td className="px-3 py-2 text-right">{s.highPrioritySkuCount}</td>
                       <td className="px-3 py-2 text-right">{s.stockUnitsAtRisk}</td>
                       <td className="px-3 py-2 text-right">{fmtRsd(s.estimatedAvoidableMarkdownLoss)}</td>
-                      <td className={`px-3 py-2 text-right ${s.weekOverWeekRiskDeltaPct > 20 ? "text-rose-300" : "text-[#dbe6fb]"}`}>
+                      <td className={`px-3 py-2 text-right ${s.weekOverWeekRiskDeltaPct > 20 ? "text-rose-300" : "text-[var(--text-primary)]"}`}>
                         {fmtPct(s.weekOverWeekRiskDeltaPct)}
                       </td>
                     </tr>
@@ -491,7 +491,7 @@ export default function PreNivelacijaPriorityPage() {
                 </tbody>
               </table>
             </div>
-            <div className="h-[320px] rounded-xl border border-[#2f323b] bg-[#14161d] p-3">
+            <div className="h-[320px] rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart>
                   <CartesianGrid stroke="#2f323b" />
@@ -520,9 +520,9 @@ export default function PreNivelacijaPriorityPage() {
                 defaultOrientation="landscape"
               />
             </div>
-            <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
-              <table className="min-w-full divide-y divide-[#2f323b] text-sm">
-                <thead className="bg-[#14161d] text-[#93a7c8]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
+              <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
+                <thead className="bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                   <tr>
                     <th className="px-3 py-2 text-left">SKU</th>
                     <th className="px-3 py-2 text-right">Highlight rev</th>
@@ -532,11 +532,11 @@ export default function PreNivelacijaPriorityPage() {
                     <th className="px-3 py-2 text-right">Confidence</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
+                <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                   {data.candidates.slice(0, 20).map((row) => (
                     <tr
                       key={row.artikalId}
-                      className="cursor-pointer hover:bg-[#1f2330]"
+                      className="cursor-pointer hover:bg-[var(--surface-light)]"
                       onClick={() => openSnapshotDetail("pre-nivelacija-simulator", String(row.artikalId), row.sku, "Scenario simulator", simulatorColumns, row)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -564,17 +564,17 @@ export default function PreNivelacijaPriorityPage() {
 
             <div className="grid gap-3 xl:grid-cols-3">
               {queueSections.map((section) => (
-                <div key={section.label} className="rounded-xl border border-[#2f323b] bg-[#14161d] p-3">
-                  <h3 className="mb-2 text-sm font-semibold text-[#dbe6fb]">{section.label}</h3>
+                <div key={section.label} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
+                  <h3 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">{section.label}</h3>
                   <div className="space-y-2">
                     {section.items.slice(0, 8).map((item) => {
                       const key = queueKey(item);
                       const state = queueState[key] ?? (item.status as QueueStatus);
                       return (
-                        <div key={key} className="rounded-lg border border-[#2a2f3b] bg-[#1a1b1f] p-2">
+                        <div key={key} className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] p-2">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-xs text-[#dbe6fb]">{item.sku}</p>
-                            <span className="text-[11px] text-[#93a7c8]">{item.preNivelacijaScore.toFixed(1)}</span>
+                            <p className="truncate text-xs text-[var(--text-primary)]">{item.sku}</p>
+                            <span className="text-[11px] text-[var(--text-primary)]">{item.preNivelacijaScore.toFixed(1)}</span>
                           </div>
                           <div className="mt-2 flex items-center gap-2">
                             {(["Unassigned", "Assigned", "Done"] as QueueStatus[]).map((status) => (
@@ -584,8 +584,8 @@ export default function PreNivelacijaPriorityPage() {
                                 onClick={() => setQueueState((s) => ({ ...s, [key]: status }))}
                                 className={`rounded px-2 py-1 text-[10px] ${
                                   state === status
-                                    ? "bg-[#2d4f95] text-white"
-                                    : "bg-[#222734] text-[#9aabc7]"
+                                    ? "bg-[var(--surface-elevated)] text-white"
+                                    : "bg-[var(--surface-elevated)] text-[var(--text-primary)]"
                                 }`}
                               >
                                 {status}
@@ -624,3 +624,4 @@ export default function PreNivelacijaPriorityPage() {
     </InventoryPageShell>
   );
 }
+

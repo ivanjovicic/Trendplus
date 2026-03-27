@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
 import PovracajWizard from "../components/povracaj/PovracajWizard";
 import { getPovracaji } from "../services/povracajApi";
@@ -90,7 +90,7 @@ export default function PovracajPage() {
           <button
             type="button"
             onClick={() => setShowWizard(true)}
-            className="rounded-xl border border-[#3760b7] bg-[#2d4f95] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3760b7]"
+            className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--surface-light)]"
           >
             + Novi povracaj
           </button>
@@ -117,22 +117,22 @@ export default function PovracajPage() {
           <PovracajWizard onSuccess={handleSuccess} onCancel={handleCancel} />
         ) : (
           <>
-            <h2 className="mb-3 text-lg font-semibold text-[#f3f6ff]">Kreirani povracaji</h2>
+            <h2 className="mb-3 text-lg font-semibold text-[var(--text-primary)]">Kreirani povracaji</h2>
 
             <div className="mb-3 grid gap-2 md:grid-cols-[1fr_220px]">
               <label className="relative">
-                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#7f8ea9]" />
+                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-primary)]" />
                 <input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Pretraga po broju zapisnika ili dobavljacu..."
-                  className="w-full rounded-xl border border-[#2f323b] bg-[#14161d] py-2 pl-9 pr-3 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                  className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] py-2 pl-9 pr-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
                 />
               </label>
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="rounded-xl border border-[#2f323b] bg-[#14161d] px-3 py-2 text-sm text-[#e3ebff] outline-none transition focus:border-[#4f8cff]"
+                className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
               >
                 <option value="all">Svi statusi</option>
                 {availableStatuses.map((status) => (
@@ -143,27 +143,27 @@ export default function PovracajPage() {
               </select>
             </div>
 
-            {loading && <p className="py-8 text-center text-sm text-[#9aabc7]">Ucitavanje...</p>}
+            {loading && <p className="py-8 text-center text-sm text-[var(--text-primary)]">Ucitavanje...</p>}
             {error && <p className="py-8 text-center text-sm font-medium text-rose-300">{error}</p>}
 
             {!loading && !error && items.length === 0 && (
               <div className="py-10 text-center">
-                <p className="mb-2 text-base text-[#dbe6fb]">Nema kreiranih povracaja</p>
-                <p className="text-sm text-[#9aabc7]">Kliknite na dugme "Novi povracaj" da kreirate zapisnik.</p>
+                <p className="mb-2 text-base text-[var(--text-primary)]">Nema kreiranih povracaja</p>
+                <p className="text-sm text-[var(--text-primary)]">Kliknite na dugme "Novi povracaj" da kreirate zapisnik.</p>
               </div>
             )}
 
             {!loading && !error && items.length > 0 && visibleItems.length === 0 && (
-              <div className="rounded-xl border border-[#2f323b] bg-[#14161d] px-4 py-8 text-center text-sm text-[#9aabc7]">
+              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
                 Nema rezultata za izabrani filter.
               </div>
             )}
 
             {!loading && !error && visibleItems.length > 0 && (
               <>
-                <div className="overflow-x-auto rounded-xl border border-[#2f323b]">
-                  <table className="min-w-full divide-y divide-[#2f323b] text-sm">
-                    <thead className="bg-[#14161d] text-[#93a7c8]">
+                <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
+                  <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
+                    <thead className="bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                       <tr>
                         <th className="px-3 py-3 text-left">Broj</th>
                         <th className="px-3 py-3 text-left">Datum</th>
@@ -173,9 +173,9 @@ export default function PovracajPage() {
                         <th className="px-3 py-3 text-center">Stavke</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#262a34] bg-[#1a1b1f] text-[#dbe6fb]">
+                    <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                       {visibleItems.map((p) => (
-                        <tr key={p.id} className="hover:bg-[#1f2330]">
+                        <tr key={p.id} className="hover:bg-[var(--surface-light)]">
                           <td className="px-3 py-3 font-mono font-semibold">{p.brojZapisnika}</td>
                           <td className="whitespace-nowrap px-3 py-3">{formatDate(p.datumPovracaja)}</td>
                           <td className="px-3 py-3">{p.dobavljacNaziv ?? `#${p.dobavljacId}`}</td>
@@ -189,22 +189,22 @@ export default function PovracajPage() {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3">
-                  <div className="text-sm text-[#9aabc7]">Prikazano: {visibleItems.length} / {totalCount}</div>
+                  <div className="text-sm text-[var(--text-primary)]">Prikazano: {visibleItems.length} / {totalCount}</div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       disabled={pageNumber <= 1}
                       onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb] disabled:opacity-40"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] disabled:opacity-40"
                     >
                       <ChevronLeft size={14} /> Prethodna
                     </button>
-                    <span className="text-sm text-[#9aabc7]">{pageNumber} / {totalPages}</span>
+                    <span className="text-sm text-[var(--text-primary)]">{pageNumber} / {totalPages}</span>
                     <button
                       type="button"
                       disabled={pageNumber >= totalPages}
                       onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[#3c4458] bg-[#222734] px-3 py-2 text-sm text-[#dbe6fb] disabled:opacity-40"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] disabled:opacity-40"
                     >
                       Sledeca <ChevronRight size={14} />
                     </button>
@@ -218,3 +218,4 @@ export default function PovracajPage() {
     </InventoryPageShell>
   );
 }
+
