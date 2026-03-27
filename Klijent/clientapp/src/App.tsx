@@ -38,6 +38,7 @@ import GoogleShoppingTrendsPage from "./pages/GoogleShoppingTrendsPage";
 import OpenTrainingPage from "./pages/OpenTrainingPage";
 import RuntimeScoringPage from "./pages/RuntimeScoringPage";
 import AccessImportPage from "./pages/AccessImportPage";
+import TransferPage from "./pages/TransferPage";
 import ProdajaPrePostNivelacijePage from "./pages/ProdajaPrePostNivelacijePage";
 import InsightStudioPage from "./pages/InsightStudioPage";
 import PreNivelacijaPriorityPage from "./pages/PreNivelacijaPriorityPage";
@@ -111,6 +112,7 @@ function AppShell() {
                 <Route path="/open-training" element={<OpenTrainingPage />} />
                 <Route path="/runtime-scoring" element={<RuntimeScoringPage />} />
                 <Route path="/access-import" element={<AccessImportPage />} />
+                <Route path="/transfers" element={<TransferPage />} />
                 <Route path="/admin/common-products" element={<CommonProductsPage />} />
                 <Route path="/settings/themes" element={<ThemeSettingsPage />} />
                 <Route path="/settings/themes" element={<ThemeSettingsPage />} />

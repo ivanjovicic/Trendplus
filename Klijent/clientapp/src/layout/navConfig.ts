@@ -59,6 +59,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: ShoppingCart,
     items: [
       { to: "/unos", label: "Centar unosa", icon: ClipboardList },
+      { to: "/transfers", label: "Prenosi", icon: Boxes },
       { to: "/prodaja", label: "Prodaja", icon: ShoppingCart },
       { to: "/unos-robe", label: "Unos robe", icon: PackagePlus },
       { to: "/povracaj", label: "Povraćaj robe", icon: Undo2 },
