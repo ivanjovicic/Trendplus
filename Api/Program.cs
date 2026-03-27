@@ -35,6 +35,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
+using Api.Endpoints;
 using Api.Services.Access;
 using Api.Services.Startup;
 using Api.Config;
@@ -413,6 +414,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IAccessImportService, AccessImportService>();
     builder.Services.AddScoped<IAccessImportJobQueue, AccessImportJobQueue>();
     builder.Services.AddScoped<IBatchLogService, BatchLogService>();
+    builder.Services.AddScoped<ITransferService, TransferService>();
     builder.Services.AddScoped<IPreNivelacijaScoringService, PreNivelacijaScoringService>();
     builder.Services.AddScoped<IShopifyImportService, ShopifyImportService>();
 
@@ -566,6 +568,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapAnalyticsTableEndpoints();
     app.MapDataQualityEndpoints();
     app.MapDocumentEndpoints();
+    // Transfer endpoints
+    app.MapTransferEndpoints();
     
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");
