@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { Building2, Plus, Pencil, Trash2, X, Check, AlertCircle } from "lucide-react";
-import { createDobavljac } from "../services/dobavljaciApi";
+import { createDobavljac, getDobavljaci } from "../services/dobavljaciApi";
 
 interface Dobavljac {
     id: number;
@@ -39,9 +39,8 @@ export default function DobavljaciPage() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${API}/api/dobavljaci`);
-            if (!res.ok) throw new Error("Ne mogu da dohvatim dobavljače");
-            setDobavljaci(await res.json());
+            const list = await getDobavljaci();
+            setDobavljaci(list ?? []);
         } catch (e: unknown) {
             setError((e as Error)?.message ?? "Greška pri učitavanju");
         } finally {

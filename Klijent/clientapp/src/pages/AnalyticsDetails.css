@@ -1,17 +1,17 @@
 .analytics-details {
-  --bg: #070b16;
-  --panel: rgba(15, 23, 45, 0.78);
-  --panel-2: rgba(10, 17, 34, 0.85);
+  --bg: var(--surface-default, #070b16);
+  --panel: var(--surface-elevated, rgba(15, 23, 45, 0.78));
+  --panel-2: var(--surface-elevated, rgba(10, 17, 34, 0.85));
   --line: rgba(140, 164, 220, 0.28);
-  --text: #e7eeff;
-  --muted: #9fb2de;
-  --good: #33c48f;
-  --warn: #f6bd62;
-  --critical: #ff6d6d;
+  --text: var(--text-primary, #e7eeff);
+  --muted: var(--text-secondary, #9fb2de);
+  --good: var(--success, #33c48f);
+  --warn: var(--warning, #f6bd62);
+  --critical: var(--error, #ff6d6d);
   background:
     radial-gradient(1200px 620px at 8% -10%, rgba(62, 214, 164, 0.18), transparent 55%),
     radial-gradient(920px 540px at 92% -6%, rgba(96, 155, 255, 0.2), transparent 55%),
-    linear-gradient(180deg, #050914 0%, #0a1020 100%);
+    linear-gradient(180deg, var(--surface-gradient-start, #050914) 0%, var(--surface-gradient-end, #0a1020) 100%);
   color: var(--text);
   min-height: calc(100vh - 56px);
   padding: 20px;
@@ -48,14 +48,14 @@
   height: 38px;
   border-radius: 10px;
   border: 1px solid var(--line);
-  background: rgba(10, 17, 34, 0.9);
+  background: var(--panel, rgba(10, 17, 34, 0.9));
   color: var(--text);
   padding: 0 12px;
 }
 
 .ad-controls button,
 .ad-custom button {
-  background: linear-gradient(135deg, #36d2a0, #3f7cff);
+  background: var(--accent-gradient, linear-gradient(135deg, #36d2a0, #3f7cff));
   border-color: rgba(255, 255, 255, 0.2);
   cursor: pointer;
   font-weight: 600;
@@ -71,7 +71,7 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 14px;
-  box-shadow: 0 18px 30px rgba(3, 7, 18, 0.35);
+  box-shadow: var(--elevation-4, 0 18px 30px rgba(3, 7, 18, 0.35));
   backdrop-filter: blur(8px);
 }
 
@@ -141,7 +141,7 @@
 
 .ad-kpi-card span { color: var(--muted); font-size: 12px; }
 .ad-kpi-card strong { font-size: 21px; line-height: 1.1; }
-.ad-kpi-card small { color: #bdcbef; font-size: 11px; }
+.ad-kpi-card small { color: var(--text-secondary, #bdcbef); font-size: 11px; }
 
 .ad-risk-card {
   border-radius: 12px;
@@ -154,13 +154,13 @@
 
 .ad-risk-card span { color: var(--muted); font-size: 12px; }
 .ad-risk-card strong { font-size: 18px; line-height: 1.15; }
-.ad-risk-card small { font-size: 11px; color: #b9c8eb; }
+.ad-risk-card small { font-size: 11px; color: var(--text-secondary, #b9c8eb); }
 .ad-risk-card.good { border-color: rgba(51, 196, 143, 0.45); }
 .ad-risk-card.warning { border-color: rgba(246, 189, 98, 0.5); }
 .ad-risk-card.critical { border-color: rgba(255, 109, 109, 0.5); }
 
 .ad-chart { width: 100%; min-height: 260px; }
-.ad-meta { display: flex; gap: 14px; color: #c6d4f5; font-size: 12px; margin-top: 8px; }
+.ad-meta { display: flex; gap: 14px; color: var(--text-secondary, #c6d4f5); font-size: 12px; margin-top: 8px; }
 
 .ad-insight-list { display: grid; gap: 8px; }
 .ad-insight {
@@ -170,7 +170,7 @@
   background: var(--panel-2);
 }
 .ad-insight strong { font-size: 13px; display: block; margin-bottom: 4px; }
-.ad-insight p { margin: 0; font-size: 12px; color: #cad7f8; }
+.ad-insight p { margin: 0; font-size: 12px; color: var(--text-secondary, #cad7f8); }
 .ad-insight.good { border-color: rgba(51, 196, 143, 0.45); }
 .ad-insight.warning { border-color: rgba(246, 189, 98, 0.5); }
 .ad-insight.critical { border-color: rgba(255, 109, 109, 0.5); }
@@ -186,9 +186,9 @@
 }
 
 .ad-row:last-child { border-bottom: 0; }
-.up { color: #7ff1be; }
-.down { color: #ffb4b4; }
-.warning { color: #ffd58f; }
+.up { color: var(--success, #7ff1be); }
+.down { color: var(--error, #ffb4b4); }
+.warning { color: var(--warning, #ffd58f); }
 
 .ad-top-head {
   display: flex;
@@ -201,8 +201,8 @@
 .ad-tabs button {
   border-radius: 999px;
   border: 1px solid rgba(140, 164, 220, 0.3);
-  background: rgba(10, 17, 34, 0.9);
-  color: #d4e1ff;
+  background: var(--panel, rgba(10, 17, 34, 0.9));
+  color: var(--text-primary, #d4e1ff);
   padding: 6px 10px;
   font-size: 12px;
   cursor: pointer;
@@ -290,11 +290,11 @@
   width: min(1080px, 100%);
   max-height: calc(100vh - 32px);
   overflow: auto;
-  background: rgba(11, 19, 36, 0.95);
+  background: var(--panel, rgba(11, 19, 36, 0.95));
   border: 1px solid rgba(140, 164, 220, 0.32);
   border-radius: 14px;
   padding: 14px;
-  box-shadow: 0 28px 50px rgba(1, 4, 12, 0.55);
+  box-shadow: var(--elevation-5, 0 28px 50px rgba(1, 4, 12, 0.55));
 }
 
 .ad-modal-head {
@@ -322,8 +322,8 @@
 .ad-empty {
   border-radius: 10px;
   border: 1px dashed rgba(140, 164, 220, 0.45);
-  background: rgba(10, 17, 34, 0.75);
-  color: #c9d8f8;
+  background: var(--panel, rgba(10, 17, 34, 0.75));
+  color: var(--text-secondary, #c9d8f8);
   padding: 10px;
   font-size: 12px;
 }

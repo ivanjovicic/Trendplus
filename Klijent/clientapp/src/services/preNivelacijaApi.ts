@@ -1,6 +1,6 @@
 import type { PreNivelacijaPriorityResponse } from "../types/preNivelacija";
 
-const API = import.meta.env.VITE_API_BASE_URL;
+import { makeUrl } from "./analyticsApi";
 
 export interface PreNivelacijaQuery {
   supplierId?: number;
@@ -28,8 +28,7 @@ export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Pro
   params.set("page", String(query.page ?? 1));
   params.set("pageSize", String(query.pageSize ?? 20));
 
-  const url = `${API}/api/analytics/pre-nivelacija-prioriteti?${params.toString()}`;
-  const res = await fetch(url);
+  const res = await fetch(makeUrl(`/api/analytics/pre-nivelacija-prioriteti`, params));
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Neuspesno ucitavanje pre-nivelacija prioriteta: ${text}`);

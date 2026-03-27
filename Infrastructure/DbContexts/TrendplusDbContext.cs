@@ -33,6 +33,10 @@ namespace Infrastructure.DbContexts
                   .IsRequired(false);
                 
                 eb.HasIndex(e => e.ImagePath);
+                eb.HasIndex(e => e.IDObjekat);
+                eb.HasIndex(e => e.IDDobavljac);
+                eb.HasIndex(e => e.DataOrigin);
+                eb.HasIndex(e => new { e.IDObjekat, e.IDDobavljac });
                 
                 // Navigation to multiple images
                 eb.HasMany(e => e.Images)
@@ -201,6 +205,9 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.IDObjekat).HasColumnName("id_objekat");
                 eb.Property(e => e.KorisnikIme).HasColumnName("korisnik_ime").HasMaxLength(200);
                 eb.Property(e => e.DataOrigin).HasColumnName("data_origin").IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+
+                eb.HasIndex(e => new { e.DatumProdaje, e.IDObjekat });
+                eb.HasIndex(e => new { e.DataOrigin, e.DatumProdaje });
                 
                 eb.HasMany(e => e.Stavke)
                   .WithOne(s => s.Prodaja)
@@ -220,6 +227,9 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Kolicina).HasColumnName("kolicina").IsRequired();
                 eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
                 eb.Property(e => e.NabavnaCena).HasColumnName("nabavna_cena").HasColumnType("decimal(18,2)");
+
+                eb.HasIndex(e => e.IdArtikal);
+                eb.HasIndex(e => new { e.IdProdaja, e.IdArtikal });
             });
 
             // Povracaj mapping

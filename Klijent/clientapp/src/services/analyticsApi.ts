@@ -38,6 +38,7 @@ import type {
 } from "../types/analytics";
 import type { DocumentOperationResponse } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
+import { appendDataScopeToParams } from "../utils/dataScope";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
 const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
@@ -47,8 +48,13 @@ const inFlightRequests = new Map<string, Promise<unknown>>();
 
 export function makeUrl(path: string, params?: URLSearchParams) {
   const baseUrl = apiUrl(path);
-  return params && Array.from(params.keys()).length > 0
-    ? `${baseUrl}?${params.toString()}`
+  const finalParams = params ? new URLSearchParams(params.toString()) : new URLSearchParams();
+  if (path.startsWith("/api/analytics")) {
+    appendDataScopeToParams(finalParams);
+  }
+
+  return finalParams && Array.from(finalParams.keys()).length > 0
+    ? `${baseUrl}?${finalParams.toString()}`
     : baseUrl;
 }
 
@@ -66,7 +72,14 @@ function appendFilterParams(
 }
 
 async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage?: string): Promise<T> {
-  const url = makeUrl(path, params);
+  // Ensure analytics endpoints include the global dataScope param so the header select affects charts/tables
+  const finalParams = params ? new URLSearchParams(params.toString()) : new URLSearchParams();
+  if (path.startsWith("/api/analytics")) {
+    appendDataScopeToParams(finalParams);
+  }
+
+  const hasParams = Array.from(finalParams.keys()).length > 0;
+  const url = makeUrl(path, hasParams ? finalParams : undefined);
   const cacheTtlMs = resolveClientCacheTtl(path);
 
   if (cacheTtlMs > 0) {

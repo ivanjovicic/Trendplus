@@ -134,7 +134,7 @@ export default function SeasonalImageCarousel() {
                                     left: 0,
                                     right: 0,
                                     bottom: 0,
-                                    background: "rgba(0, 0, 0, 0.5)",
+                                    background: "var(--overlay, rgba(0, 0, 0, 0.5))",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
@@ -147,19 +147,19 @@ export default function SeasonalImageCarousel() {
                                     width: "60px",
                                     height: "60px",
                                     borderRadius: "50%",
-                                    background: "rgba(255, 255, 255, 0.95)",
+                                    background: "var(--surface-inverse, rgba(255, 255, 255, 0.95))",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
-                                    border: "2px solid rgba(255, 255, 255, 0.5)"
+                                    boxShadow: "var(--elevation-3, 0 4px 20px rgba(0, 0, 0, 0.3))",
+                                    border: "2px solid var(--surface-inverse-outline, rgba(255, 255, 255, 0.5))"
                                 }}>
                                     <svg 
                                         width="30" 
                                         height="30" 
                                         viewBox="0 0 24 24" 
                                         fill="none" 
-                                        stroke="#374151" 
+                                        stroke="var(--icon-stroke, #374151)" 
                                         strokeWidth="2.5" 
                                         strokeLinecap="round" 
                                         strokeLinejoin="round"
@@ -177,8 +177,8 @@ export default function SeasonalImageCarousel() {
                                     position: "absolute",
                                     bottom: 8,
                                     left: 8,
-                                    background: "rgba(0,0,0,0.75)",
-                                    color: "white",
+                                    background: "var(--overlay-strong, rgba(0,0,0,0.75))",
+                                    color: "var(--text-on-dark, white)",
                                     padding: "4px 10px",
                                     borderRadius: 6,
                                     fontSize: "0.7rem",
@@ -257,7 +257,7 @@ export default function SeasonalImageCarousel() {
                                 alignItems: "center",
                                 justifyContent: "center",
                                 fontWeight: "bold",
-                                color: "#333",
+                                color: "var(--text-primary-dark, #333)",
                                 transition: "all 0.2s",
                                 zIndex: 10000
                             }}
@@ -309,7 +309,7 @@ export default function SeasonalImageCarousel() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{
-                                            color: "#2563eb",
+                                            color: "var(--link, #2563eb)",
                                             fontWeight: "600",
                                             textDecoration: "none"
                                         }}
@@ -328,7 +328,7 @@ export default function SeasonalImageCarousel() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{
-                                            color: "#2563eb",
+                                            color: "var(--link, #2563eb)",
                                             fontWeight: "600",
                                             textDecoration: "none"
                                         }}

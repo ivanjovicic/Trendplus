@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API_BASE_URL;
+import { makeUrl } from "./analyticsApi";
 
 export interface ColorSalesStat {
   boja: string;
@@ -60,12 +60,7 @@ export async function getColorSalesStats(
   if (query.toDate) params.set("toDate", query.toDate);
   if (query.storeId != null) params.set("storeId", String(query.storeId));
 
-  const qs = params.toString();
-  const url = qs
-    ? `${API}/api/analytics/color-sales-stats?${qs}`
-    : `${API}/api/analytics/color-sales-stats`;
-
-  const response = await fetch(url);
+  const response = await fetch(makeUrl("/api/analytics/color-sales-stats", params));
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Greska pri ucitavanju statistike boja artikala: ${text}`);

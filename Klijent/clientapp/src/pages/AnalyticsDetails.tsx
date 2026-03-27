@@ -109,6 +109,43 @@ function topRows(data: TopProductsAdvancedResult | null, tab: TopTab): TopProduc
   return data.byMarginImpact;
 }
 
+function getErrorText(reason: unknown, fallback: string): string {
+  if (reason instanceof Error && reason.message.trim()) return reason.message;
+  if (typeof reason === "string" && reason.trim()) return reason;
+  return fallback;
+}
+
+function isTransientCancellationMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return normalized.includes("the operation was canceled")
+    || normalized.includes("operation was canceled")
+    || normalized.includes("request timeout")
+    || normalized.includes("aborterror");
+}
+
+function compactErrorMessages(messages: string[]): string[] {
+  const unique = Array.from(new Set(messages.map((item) => item.trim()).filter(Boolean)));
+  if (unique.length === 0) return [];
+
+  const stable: string[] = [];
+  let transientCancelCount = 0;
+
+  for (const message of unique) {
+    if (isTransientCancellationMessage(message)) {
+      transientCancelCount += 1;
+      continue;
+    }
+
+    stable.push(message);
+  }
+
+  if (transientCancelCount > 0) {
+    stable.push("Neki analytics upiti su privremeno prekinuti. Pokusajte osvezavanje.");
+  }
+
+  return stable;
+}
+
 export default function AnalyticsDetails() {
   const [preset, setPreset] = useState<DatePreset>("30d");
   const [fromDate, setFromDate] = useState(() => presetRange("30d")?.from ?? inDate(new Date()));
@@ -145,17 +182,17 @@ export default function AnalyticsDetails() {
     ]);
     const errs: string[] = [];
     if (rs[0].status === "fulfilled") setHealthText(`Analytics baza: ${rs[0].value.tables.salesFacts} prodaja, ${rs[0].value.tables.salesLineFacts} stavki, ${rs[0].value.tables.productsDim} proizvoda.`);
-    else errs.push("Health check nije dostupan.");
-    if (rs[1].status === "fulfilled") setSummary(rs[1].value); else errs.push("Sazetak nije ucitan.");
-    if (rs[2].status === "fulfilled") setDaily(rs[2].value); else errs.push("Dnevna serija nije ucitana.");
-    if (rs[3].status === "fulfilled") setInventory(rs[3].value); else errs.push("Zalihe nisu ucitane.");
-    if (rs[4].status === "fulfilled") setTop(rs[4].value); else errs.push("Top lista nije ucitana.");
-    if (rs[5].status === "fulfilled") setAdv(rs[5].value); else errs.push("Advanced snapshot nije ucitan.");
+    else errs.push(getErrorText(rs[0].reason, "Health check nije dostupan."));
+    if (rs[1].status === "fulfilled") setSummary(rs[1].value); else errs.push(getErrorText(rs[1].reason, "Sazetak nije ucitan."));
+    if (rs[2].status === "fulfilled") setDaily(rs[2].value); else errs.push(getErrorText(rs[2].reason, "Dnevna serija nije ucitana."));
+    if (rs[3].status === "fulfilled") setInventory(rs[3].value); else errs.push(getErrorText(rs[3].reason, "Zalihe nisu ucitane."));
+    if (rs[4].status === "fulfilled") setTop(rs[4].value); else errs.push(getErrorText(rs[4].reason, "Top lista nije ucitana."));
+    if (rs[5].status === "fulfilled") setAdv(rs[5].value); else errs.push(getErrorText(rs[5].reason, "Advanced snapshot nije ucitan."));
     setValidC(rs[6].status === "fulfilled" ? rs[6].value : null);
     setValidF(rs[7].status === "fulfilled" ? rs[7].value : null);
     setValidL(rs[8].status === "fulfilled" ? rs[8].value : null);
     setValidN(rs[9].status === "fulfilled" ? rs[9].value : null);
-    setErrors(errs);
+    setErrors(compactErrorMessages(errs));
     setLoading(false);
   }, [fromDate, toDate]);
 
@@ -318,13 +355,16 @@ export default function AnalyticsDetails() {
                 <div className="ad-chart">
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={trend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2a3556" />
-                      <XAxis dataKey="date" tick={{ fill: "#9fb2de", fontSize: 12 }} />
-                      <YAxis tick={{ fill: "#9fb2de", fontSize: 12 }} />
-                      <Tooltip formatter={(v: number | string | undefined, n?: string) => [fmtCur(Number(v ?? 0)), n ?? "vrednost"]} contentStyle={{ background: "#0f1730", border: "1px solid #32406b" }} />
-                      <Line type="monotone" dataKey="revenue" stroke="#40d69f" strokeWidth={2.2} dot={false} name="Promet" />
-                      <Line type="monotone" dataKey="ma7" stroke="#6ca8ff" strokeWidth={2} dot={false} name="MA7" />
-                      <Line type="monotone" dataKey="ma30" stroke="#ffbe5a" strokeWidth={2} dot={false} name="MA30" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #2a3556)" />
+                      <XAxis dataKey="date" tick={{ fill: "var(--text-secondary, #9fb2de)", fontSize: 12 }} />
+                      <YAxis tick={{ fill: "var(--text-secondary, #9fb2de)", fontSize: 12 }} />
+                      <Tooltip
+                        formatter={(v: number | string | undefined, n?: string) => [fmtCur(Number(v ?? 0)), n ?? "vrednost"]}
+                        contentStyle={{ background: "var(--surface-elev-1, #0f1730)", border: "1px solid var(--border, #32406b)" }}
+                      />
+                      <Line type="monotone" dataKey="revenue" stroke="var(--series-revenue, #40d69f)" strokeWidth={2.2} dot={false} name="Promet" />
+                      <Line type="monotone" dataKey="ma7" stroke="var(--series-ma7, #6ca8ff)" strokeWidth={2} dot={false} name="MA7" />
+                      <Line type="monotone" dataKey="ma30" stroke="var(--series-ma30, #ffbe5a)" strokeWidth={2} dot={false} name="MA30" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

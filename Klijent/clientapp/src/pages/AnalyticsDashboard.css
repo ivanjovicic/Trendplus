@@ -52,7 +52,7 @@
 
 .section-note {
   margin: 0 0 10px;
-  color: #aebce3;
+  color: var(--text-secondary, #aebce3);
   font-size: 12px;
 }
 
@@ -65,7 +65,7 @@
   height: 16px;
   border-radius: 999px;
   border: 1px solid rgba(138, 160, 214, 0.6);
-  color: #dce7ff;
+  color: var(--text-primary, #dce7ff);
   font-size: 10px;
   font-weight: 700;
   cursor: help;
@@ -79,8 +79,8 @@
   width: 240px;
   border-radius: 8px;
   border: 1px solid rgba(126, 154, 219, 0.4);
-  background: rgba(9, 16, 33, 0.96);
-  color: #d6e2ff;
+  background: var(--surface-darker, rgba(9, 16, 33, 0.96));
+  color: var(--text-primary, #d6e2ff);
   font-size: 11px;
   line-height: 1.35;
   padding: 8px;
@@ -109,7 +109,7 @@
   height: 38px;
   border-radius: 10px;
   border: 1px solid var(--panel-border);
-  background: rgba(9, 17, 36, 0.92);
+  background: var(--panel, rgba(9, 17, 36, 0.92));
   color: var(--text);
   padding: 0 12px;
   font-size: 13px;
@@ -118,9 +118,9 @@
 .analytics-controls button,
 .analytics-custom-range button {
   cursor: pointer;
-  background: linear-gradient(135deg, #2fd39b, #347cfe);
+  background: var(--accent-gradient, linear-gradient(135deg, #2fd39b, #347cfe));
   border-color: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  color: var(--text-on-primary, #fff);
   font-weight: 600;
 }
 
@@ -137,7 +137,7 @@
 .analytics-section > h2 {
   margin: 0 0 12px;
   font-size: 18px;
-  color: #d7e2ff;
+  color: var(--text-primary, #d7e2ff);
 }
 
 .analytics-panel {
@@ -197,8 +197,8 @@
   align-items: center;
   border-radius: 999px;
   border: 1px solid rgba(138, 160, 214, 0.26);
-  background: rgba(8, 15, 31, 0.76);
-  color: #d6e3ff;
+  background: var(--chip-bg, rgba(8, 15, 31, 0.76));
+  color: var(--text-primary, #d6e3ff);
   font-size: 12px;
   padding: 6px 10px;
 }
@@ -215,7 +215,7 @@
   border-radius: 10px;
   border: 1px solid rgba(49, 196, 141, 0.45);
   background: rgba(49, 196, 141, 0.12);
-  color: #d8ffef;
+  color: var(--success, #d8ffef);
   padding: 10px 12px;
   font-size: 13px;
 }

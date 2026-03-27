@@ -188,6 +188,37 @@ function getErrorText(reason: unknown, fallback: string): string {
   return fallback;
 }
 
+function isTransientCancellationMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return normalized.includes("the operation was canceled")
+    || normalized.includes("operation was canceled")
+    || normalized.includes("request timeout")
+    || normalized.includes("aborterror");
+}
+
+function compactErrorMessages(messages: string[]): string[] {
+  const unique = Array.from(new Set(messages.map((item) => item.trim()).filter(Boolean)));
+  if (unique.length === 0) return [];
+
+  const stable: string[] = [];
+  let transientCancelCount = 0;
+
+  for (const message of unique) {
+    if (isTransientCancellationMessage(message)) {
+      transientCancelCount += 1;
+      continue;
+    }
+
+    stable.push(message);
+  }
+
+  if (transientCancelCount > 0) {
+    stable.push("Neki analytics upiti su privremeno prekinuti. Osvezite stranicu za kompletne podatke.");
+  }
+
+  return stable;
+}
+
 function InfoTip({ text }: { text: string }) {
   return (
     <span className="info-tip" role="note" tabIndex={0} aria-label={text}>
@@ -309,9 +340,6 @@ export default function AnalyticsDashboard() {
       setValidFreshness(bootstrapR.value.validationFreshness);
       setValidLostSales(bootstrapR.value.validationLostSales);
       nextErrors.push(...bootstrapR.value.errors);
-      if (!bootstrapR.value.summary) nextErrors.push("Sazetak prodaje nije ucitan.");
-      if (bootstrapR.value.dailySales.length === 0) nextErrors.push("Dnevni trend prodaje nije ucitan.");
-      if (!bootstrapR.value.topAdvanced) nextErrors.push("Napredna tabela top proizvoda nije ucitana.");
     } else {
       setSummary(null);
       setInventory(null);
@@ -333,7 +361,7 @@ export default function AnalyticsDashboard() {
       nextErrors.push(getErrorText(bootstrapR.reason, "Analytics dashboard bootstrap nije ucitan."));
     }
 
-    setErrors(nextErrors);
+    setErrors(compactErrorMessages(nextErrors));
     setLoading(false);
   }, [fromDate, isInvalidFilterRange, storeId, supplierId, toDate]);
 

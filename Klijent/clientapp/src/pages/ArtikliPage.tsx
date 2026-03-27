@@ -3,6 +3,8 @@ import { useLocation } from "react-router-dom";
 import CreateArtikalForm from "../components/CreateArtikalForm";
 import UnosArtikalaForm from "../components/UnosArtikalaForm";
 import { createArtikal } from "../services/artikliApi";
+import { getTipoviObuce } from "../services/tipoviObuceApi";
+import { getDobavljaci } from "../services/dobavljaciApi";
 import { ArtikalFormData } from "../types/artikalformdata";
 
 export default function ArtikliPage() {
@@ -27,27 +29,19 @@ export default function ArtikliPage() {
 
   React.useEffect(() => {
     let aborted = false;
-    const controller = new AbortController();
 
     const pollOptions = async () => {
       let delay = 1000;
       while (!aborted) {
         try {
-          const [tipRes, dobRes] = await Promise.all([
-            fetch(`${API}/api/tipovi-obuce`, { signal: controller.signal }),
-            fetch(`${API}/api/dobavljaci`, { signal: controller.signal }),
-          ]);
-
-          if (tipRes.ok && dobRes.ok) {
-            const [tipJson, dobJson] = await Promise.all([tipRes.json(), dobRes.json()]);
-            if (aborted) return;
-            setTipovi(tipJson ?? []);
-            setDobavljaci(dobJson ?? []);
-            setLoadingOptions(false);
-            return;
-          }
+          const [tipJson, dobJson] = await Promise.all([getTipoviObuce(), getDobavljaci()]);
+          if (aborted) return;
+          setTipovi(tipJson ?? []);
+          setDobavljaci(dobJson ?? []);
+          setLoadingOptions(false);
+          return;
         } catch (e) {
-          if ((e as any)?.name === "AbortError") return;
+          // if service failed, fallthrough to retry/backoff
         }
 
         await new Promise((r) => setTimeout(r, delay));
@@ -59,9 +53,8 @@ export default function ArtikliPage() {
 
     return () => {
       aborted = true;
-      controller.abort();
     };
-  }, [API]);
+  }, []);
 
   const handleSubmit = async (data: ArtikalFormData): Promise<number | void> => {
     const dto = {

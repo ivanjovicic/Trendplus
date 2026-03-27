@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API_BASE_URL;
+import { makeUrl } from "./analyticsApi";
 
 export interface SupplierSalesStat {
   dobavljacId: number | null;
@@ -61,12 +61,7 @@ export async function getSupplierSalesStats(
   if (query.toDate) params.set("toDate", query.toDate);
   if (query.storeId != null) params.set("storeId", String(query.storeId));
 
-  const qs = params.toString();
-  const url = qs
-    ? `${API}/api/analytics/supplier-sales-stats?${qs}`
-    : `${API}/api/analytics/supplier-sales-stats`;
-
-  const response = await fetch(url);
+  const response = await fetch(makeUrl("/api/analytics/supplier-sales-stats", params));
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Greska pri ucitavanju statistike dobavljaca: ${text}`);

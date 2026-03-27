@@ -4,6 +4,8 @@ import { ChevronRight } from "lucide-react";
 import CreateArtikalForm from "../components/CreateArtikalForm";
 import { ArtikalFormData } from "../types/artikalformdata";
 import { getArtikal, updateArtikal } from "../services/artikliApi";
+import { getTipoviObuce } from "../services/tipoviObuceApi";
+import { getDobavljaci } from "../services/dobavljaciApi";
 
 export default function ArtikalEditPage() {
     const { id } = useParams<{ id: string }>();
@@ -40,20 +42,13 @@ export default function ArtikalEditPage() {
 
                 const fetchLookups = async () => {
                     try {
-                        const [tipRes, dobRes] = await Promise.all([
-                            fetch(`${API}/api/tipovi-obuce`, { signal: controller.signal }),
-                            fetch(`${API}/api/dobavljaci`, { signal: controller.signal }),
-                        ]);
+                        const [tipJson, dobJson] = await Promise.all([getTipoviObuce(), getDobavljaci()]);
+                        if (aborted) return;
 
-                        if (tipRes.ok && dobRes.ok) {
-                            const [tipJson, dobJson] = await Promise.all([tipRes.json(), dobRes.json()]);
-                            if (aborted) return;
-
-                            setTipovi(tipJson ?? []);
-                            setDobavljaci(dobJson ?? []);
-                            localStorage.setItem("cached_tipovi_obuce", JSON.stringify(tipJson));
-                            localStorage.setItem("cached_dobavljaci", JSON.stringify(dobJson));
-                        }
+                        setTipovi(tipJson ?? []);
+                        setDobavljaci(dobJson ?? []);
+                        localStorage.setItem("cached_tipovi_obuce", JSON.stringify(tipJson));
+                        localStorage.setItem("cached_dobavljaci", JSON.stringify(dobJson));
                     } catch (e) {
                         console.warn("Lookup fetch failed", e);
                     }

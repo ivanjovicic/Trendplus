@@ -54,10 +54,10 @@ const COMPONENT_COLORS: Record<string, string> = {
 // â”€â”€ Source colors (dark-mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SOURCE_COLOR: Record<string, { bg: string; text: string; border: string }> = {
-    zalando:   { bg: "#2A1700", text: "#F97316", border: "#7C3416" },
-    aboutyou:  { bg: "#1E1230", text: "#C084FC", border: "#6D28D9" },
-    deichmann: { bg: "#2A0A10", text: "#F87171", border: "#7C2D2D" },
-    humanic:   { bg: "#0A1F14", text: "#4CAF82", border: "#1A5C35" },
+    zalando:   { bg: "var(--source-zalando-bg, #2A1700)", text: "var(--source-zalando-text, #F97316)", border: "var(--source-zalando-border, #7C3416)" },
+    aboutyou:  { bg: "var(--source-aboutyou-bg, #1E1230)", text: "var(--source-aboutyou-text, #C084FC)", border: "var(--source-aboutyou-border, #6D28D9)" },
+    deichmann: { bg: "var(--source-deichmann-bg, #2A0A10)", text: "var(--source-deichmann-text, #F87171)", border: "var(--source-deichmann-border, #7C2D2D)" },
+    humanic:   { bg: "var(--source-humanic-bg, #0A1F14)", text: "var(--source-humanic-text, #4CAF82)", border: "var(--source-humanic-border, #1A5C35)" },
 };
 const SOURCE_EMOJI: Record<string, string> = {
     zalando: "ðŸŸ ", aboutyou: "ðŸŸ£", deichmann: "ðŸ”´", humanic: "ðŸŸ¢",
@@ -80,9 +80,9 @@ const COMPONENT_LABELS: Record<string, string> = {
 function momentumColor(mn: number | null): string {
     if (mn === null) return PAL.textMuted;
     if (mn > 0.3)  return PAL.green;
-    if (mn > 0)    return "#86EFAC";
+    if (mn > 0)    return "var(--green-light, #86EFAC)";
     if (mn < -0.3) return PAL.red;
-    if (mn < 0)    return "#FCA5A5";
+    if (mn < 0)    return "var(--red-light, #FCA5A5)";
     return PAL.textMuted;
 }
 
@@ -287,7 +287,7 @@ function DashboardRow({
                             </span>
                         )}
                         {(item.sources ?? []).map((src) => {
-                            const c = SOURCE_COLOR[src] ?? { bg: "#1A2235", text: PAL.textSecondary, border: PAL.border };
+                            const c = SOURCE_COLOR[src] ?? { bg: "var(--surface-darker, #1A2235)", text: PAL.textSecondary, border: PAL.border };
                             return (
                                 <span key={src} style={{ fontSize: 10, background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: 5, padding: "1px 6px", fontWeight: 600 }}>
                                     {SOURCE_EMOJI[src] ?? "ðŸ›"} {src}
@@ -597,7 +597,7 @@ export function TrendDashboard() {
                                 padding: "7px 16px",
                                 borderRadius: 8,
                                 border: `1.5px solid ${loading ? PAL.border : PAL.blue}`,
-                                background: loading ? "#1A2235" : PAL.blue + "22",
+                                background: loading ? "var(--surface-darker, #1A2235)" : PAL.blue + "22",
                                 color: loading ? PAL.textMuted : PAL.blue,
                                 fontWeight: 700,
                                 fontSize: 13,
@@ -677,7 +677,7 @@ export function TrendDashboard() {
                                     onClick={() => toggleMarket(m)}
                                     style={{
                                         fontSize: 11,
-                                        background: active ? "#1A2A40" : "transparent",
+                                        background: active ? "var(--surface-active, #1A2A40)" : "transparent",
                                         color: active ? PAL.blue : PAL.textMuted,
                                         border: `1px solid ${active ? PAL.blue + "55" : PAL.borderLight}`,
                                         borderRadius: 6,
@@ -787,7 +787,7 @@ export function TrendDashboard() {
                             </div>
                         )}
                         {!hasActiveFilters && data?.message?.includes("not yet initialized") && (
-                            <div style={{ marginTop: 14, fontSize: 12, background: "#0A1F14", border: `1px solid #1A5C35`, borderRadius: 8, padding: "8px 16px", color: PAL.green, display: "inline-block" }}>
+                            <div style={{ marginTop: 14, fontSize: 12, background: "var(--surface-darker, #0A1F14)", border: `1px solid var(--source-humanic-border, #1A5C35)`, borderRadius: 8, padding: "8px 16px", color: PAL.green, display: "inline-block" }}>
                                 Pokreni: <code>Database/Analytics/004_AddScraperScoringTables.sql</code>
                             </div>
                         )}
@@ -799,7 +799,7 @@ export function TrendDashboard() {
                     <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                             <thead>
-                                <tr style={{ background: "#0F1320" }}>
+                                <tr style={{ background: "var(--surface-darker, #0F1320)" }}>
                                     <th style={{ padding: "9px 4px", fontWeight: 700, color: PAL.textMuted, fontSize: 11, textAlign: "center", borderBottom: `1px solid ${PAL.border}` }}>#</th>
                                     <th style={{ padding: "9px 4px", borderBottom: `1px solid ${PAL.border}` }}></th>
                                     <th style={{ padding: "9px 6px", fontWeight: 700, color: PAL.textMuted, fontSize: 11, textAlign: "left", borderBottom: `1px solid ${PAL.border}` }}>
@@ -851,7 +851,7 @@ export function TrendDashboard() {
                         gap: 14,
                         flexWrap: "wrap",
                         alignItems: "center",
-                        background: "#0F1320",
+                        background: "var(--surface-darker, #0F1320)",
                     }}>
                         <span style={{ fontSize: 11, color: PAL.textMuted, fontWeight: 600 }}>Score bar:</span>
                         {Object.entries(COMPONENT_LABELS).map(([k, label]) => (

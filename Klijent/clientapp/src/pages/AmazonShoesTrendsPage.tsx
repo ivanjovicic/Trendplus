@@ -306,29 +306,29 @@ export default function AmazonShoesTrendsPage() {
 
             {/* ── Header ── */}
             <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: 26, fontWeight: 800, color: "#111827", margin: 0 }}>
+                <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--text-strong, #111827)", margin: 0 }}>
                     🛍 Amazon Shoe Trends
                 </h1>
-                <p style={{ color: "#6b7280", marginTop: 4, marginBottom: 0, fontSize: 14 }}>
+                <p style={{ color: "var(--text-muted, #6b7280)", marginTop: 4, marginBottom: 0, fontSize: 14 }}>
                     Fetch top-rated shoes from Amazon via SerpAPI and track them over time. Data is stored in the Analytics DB.
                 </p>
             </div>
 
             {/* ── Sync card ── */}
-            <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,.06)" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 12 }}>🔄 Sync from Amazon</div>
+            <div style={{ background: "var(--surface-card, #fff)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,.06)" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong, #111827)", marginBottom: 12 }}>🔄 Sync from Amazon</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
 
                     {/* Type */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Tip cipele</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, #6b7280)", marginBottom: 4 }}>Tip cipele</label>
                         <div style={{ position: "relative" }}>
                             <input
                                 value={syncType}
                                 onChange={(e) => setSyncType(e.target.value)}
                                 list="shoe-type-list"
                                 placeholder="e.g. sneakers"
-                                style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, width: 200 }}
+                                style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 200 }}
                             />
                             <datalist id="shoe-type-list">
                                 {SHOE_TYPES.map((t) => <option key={t} value={t} />)}
@@ -338,11 +338,11 @@ export default function AmazonShoesTrendsPage() {
 
                     {/* Gender */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Pol</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, #6b7280)", marginBottom: 4 }}>Pol</label>
                         <select
                             value={syncGender}
                             onChange={(e) => setSyncGender(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, minWidth: 120, background: "white" }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, minWidth: 120, background: "var(--surface-card, #fff)" }}
                         >
                             {GENDER_OPTIONS.map((g) => (
                                 <option key={g.value} value={g.value}>{g.label}</option>
@@ -352,23 +352,23 @@ export default function AmazonShoesTrendsPage() {
 
                     {/* Min price */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Min price</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, #6b7280)", marginBottom: 4 }}>Min price</label>
                         <input
                             type="number" min={0} placeholder="e.g. 20"
                             value={syncMinPrice}
                             onChange={(e) => setSyncMinPrice(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, width: 100 }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 100 }}
                         />
                     </div>
 
                     {/* Max price */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Max price</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, #6b7280)", marginBottom: 4 }}>Max price</label>
                         <input
                             type="number" min={0} placeholder="e.g. 150"
                             value={syncMaxPrice}
                             onChange={(e) => setSyncMaxPrice(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, width: 100 }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 100 }}
                         />
                     </div>
 
@@ -377,8 +377,8 @@ export default function AmazonShoesTrendsPage() {
                         disabled={syncing || !syncType.trim()}
                         style={{
                             padding: "8px 20px", borderRadius: 8,
-                            background: syncing ? "#e5e7eb" : "#4f46e5",
-                            color: syncing ? "#9ca3af" : "white",
+                            background: syncing ? "var(--border-muted, #e5e7eb)" : "var(--accent, #4f46e5)",
+                            color: syncing ? "var(--text-muted, #9ca3af)" : "var(--text-on-accent, white)",
                             border: "none", fontWeight: 700, fontSize: 13,
                             cursor: syncing ? "not-allowed" : "pointer",
                             transition: "all .15s",
@@ -391,10 +391,10 @@ export default function AmazonShoesTrendsPage() {
                 {syncMsg && (
                     <div style={{
                         marginTop: 10, padding: "7px 12px", borderRadius: 8,
-                        background: syncMsg.ok ? "#ecfdf5" : "#fff1f2",
-                        color: syncMsg.ok ? "#065f46" : "#be123c",
+                        background: syncMsg.ok ? "var(--success-bg, #ecfdf5)" : "var(--error-bg, #fff1f2)",
+                        color: syncMsg.ok ? "var(--success-text, #065f46)" : "var(--error-text, #be123c)",
                         fontSize: 13, fontWeight: 600,
-                        border: `1px solid ${syncMsg.ok ? "#a7f3d0" : "#fecdd3"}`,
+                        border: `1px solid ${syncMsg.ok ? "var(--success-border, #a7f3d0)" : "var(--error-border, #fecdd3)"}`,
                     }}>
                         {syncMsg.text}
                     </div>

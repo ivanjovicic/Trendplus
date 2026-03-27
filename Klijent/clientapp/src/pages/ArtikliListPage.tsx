@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PackageSearch, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, X, PackageX } from "lucide-react";
 import { getArtikliPaged } from "../services/artikliApi";
 import { getSezone } from "../services/sezoneApi";
+import { getDobavljaci } from "../services/dobavljaciApi";
 import type { Sezona } from "../types/Sezona";
 import type { Dobavljac } from "../types/Dobavljaci";
 import { getDataScope, setDataScope as persistDataScope } from "../utils/dataScope";
@@ -114,11 +115,10 @@ export default function ArtikliListPage() {
 
   useEffect(() => {
     let aborted = false;
-    const API = import.meta.env.VITE_API_BASE_URL as string;
     const loadDobavljaci = async () => {
       try {
-        const res = await fetch(`${API}/api/dobavljaci`);
-        if (res.ok && !aborted) setDobavljaci(await res.json());
+        const list = await getDobavljaci();
+        if (!aborted) setDobavljaci(list ?? []);
       } catch {
         // best-effort
       }

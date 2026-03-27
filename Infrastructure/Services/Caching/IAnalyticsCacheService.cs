@@ -59,40 +59,58 @@ public static class AnalyticsCacheKeys
 {
     public const string Prefix = "analytics:";
 
-    private static string FilterSuffix(int? storeId, int? supplierId) =>
-        $"store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}";
+    private static string NormalizeDataScope(string? dataScope)
+    {
+        var normalized = (dataScope ?? "all").Trim().ToLowerInvariant();
+        return normalized is "all" or "existing" or "imported" ? normalized : "all";
+    }
+
+    private static string FormatInstant(DateTime? value)
+    {
+        if (!value.HasValue)
+            return "all";
+
+        var normalized = value.Value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
+            : value.Value.ToUniversalTime();
+
+        return normalized.ToString("yyyyMMddHHmm");
+    }
+
+    private static string FilterSuffix(int? storeId, int? supplierId, string? dataScope = null) =>
+        $"store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}";
     
     // Sales Summary
-    public static string SalesSummary(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}summary:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string SalesSummary(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}summary:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Daily Sales
-    public static string DailySales(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}daily:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string DailySales(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}daily:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Top Products
-    public static string TopProducts(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}top:{top}:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string TopProducts(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}top:{top}:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Category Data
-    public static string CategoryData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}category:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string CategoryData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}category:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Gender Data
-    public static string GenderData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}gender:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string GenderData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}gender:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Supplier Data
-    public static string SupplierData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}supplier:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string SupplierData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}supplier:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Inventory
     public static string Inventory(int threshold) => 
         $"{Prefix}inventory:{threshold}";
     
     // Quick Insights
-    public static string QuickInsights(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}insights:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string QuickInsights(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}insights:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Comparison
     public static string Comparison(DateTime? from, DateTime? to) => 
@@ -102,44 +120,44 @@ public static class AnalyticsCacheKeys
     public const string Health = $"{Prefix}health";
 
     // Transaction Stats
-    public static string TransactionStats(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}transaction-stats:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string TransactionStats(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}transaction-stats:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     // By Payment
-    public static string ByPayment(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}by-payment:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string ByPayment(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}by-payment:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     // By Weekday
-    public static string ByWeekday(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}by-weekday:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string ByWeekday(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}by-weekday:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     // By Hour
-    public static string ByHour(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}by-hour:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string ByHour(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}by-hour:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     // Category Trends
-    public static string CategoryTrends(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) => 
-        $"{Prefix}category-trends:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string CategoryTrends(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
+        $"{Prefix}category-trends:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     // Reorder Suggestions
     public static string ReorderSuggestions(int? supplierId = null) =>
         $"{Prefix}reorder-suggestions:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}";
 
     // Dashboard Advanced Snapshot
-    public static string DashboardAdvanced(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) =>
-        $"{Prefix}dashboard-advanced:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string DashboardAdvanced(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) =>
+        $"{Prefix}dashboard-advanced:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     // Top Products (advanced tabs)
-    public static string TopProductsAdvanced(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) =>
-        $"{Prefix}top-advanced:{top}:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string TopProductsAdvanced(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) =>
+        $"{Prefix}top-advanced:{top}:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
-    public static string SupplierFilters(DateTime? from, DateTime? to, int? storeId = null) =>
-        $"{Prefix}filters:suppliers:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}";
+    public static string SupplierFilters(DateTime? from, DateTime? to, int? storeId = null, string? dataScope = null) =>
+        $"{Prefix}filters:suppliers:{FormatInstant(from)}:{FormatInstant(to)}:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}";
 
     public const string Stores = $"{Prefix}filters:stores";
 
-    public static string DashboardBootstrap(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null) =>
-        $"{Prefix}dashboard-bootstrap:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}:{FilterSuffix(storeId, supplierId)}";
+    public static string DashboardBootstrap(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) =>
+        $"{Prefix}dashboard-bootstrap:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     public static string InventoryForecast(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200) =>
         $"{Prefix}inventory-forecast:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode)}:top:{top}";
@@ -158,7 +176,7 @@ public static class AnalyticsCacheKeys
     public const string ValidationFreshness = $"{Prefix}validation:freshness";
     public const string ValidationLostSales = $"{Prefix}validation:lost-sales";
     public static string ValidationNegativeQty(DateTime? from, DateTime? to) =>
-        $"{Prefix}validation:negative-qty:{from?.ToString("yyyyMMdd") ?? "all"}:{to?.ToString("yyyyMMdd") ?? "all"}";
+        $"{Prefix}validation:negative-qty:{FormatInstant(from)}:{FormatInstant(to)}";
 }
 
 /// <summary>

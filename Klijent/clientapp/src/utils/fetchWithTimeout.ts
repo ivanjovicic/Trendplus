@@ -1,16 +1,36 @@
+export class FetchTimeoutError extends Error {
+  readonly timeoutMs: number;
+
+  constructor(timeoutMs: number) {
+    super(`Request timeout after ${Math.ceil(timeoutMs / 1000)}s`);
+    this.name = "TimeoutError";
+    this.timeoutMs = timeoutMs;
+  }
+}
+
 export async function fetchWithTimeout(
   input: RequestInfo | URL,
   init?: RequestInit,
   timeoutMs = 15_000
 ): Promise<Response> {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
   const externalSignal = init?.signal;
+  let didTimeout = false;
+  let wasExternallyAborted = false;
 
-  const abortFromExternalSignal = () => controller.abort();
+  const timeoutId = window.setTimeout(() => {
+    didTimeout = true;
+    controller.abort(new DOMException("Request timed out", "TimeoutError"));
+  }, timeoutMs);
+
+  const abortFromExternalSignal = () => {
+    wasExternallyAborted = true;
+    controller.abort(externalSignal?.reason);
+  };
 
   if (externalSignal) {
     if (externalSignal.aborted) {
+      wasExternallyAborted = true;
       controller.abort();
     } else {
       externalSignal.addEventListener("abort", abortFromExternalSignal, { once: true });
@@ -23,8 +43,12 @@ export async function fetchWithTimeout(
       signal: controller.signal,
     });
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error(`Request timeout after ${Math.ceil(timeoutMs / 1000)}s`);
+    if (didTimeout) {
+      throw new FetchTimeoutError(timeoutMs);
+    }
+
+    if (wasExternallyAborted && error instanceof DOMException && error.name === "AbortError") {
+      throw error;
     }
 
     throw error;
