@@ -80,6 +80,7 @@ const CHART_TOOLTIP_CONTENT_STYLE: React.CSSProperties = {
   border: `1px solid ${CHART_TOOLTIP_BORDER}`,
   color: CHART_TOOLTIP_TEXT,
   borderRadius: "8px",
+  boxShadow: "var(--tooltip-box-shadow)",
 };
 
 const DEFAULT_WEEKDAYS = ["Nedelja", "Ponedeljak", "Utorak", "Sreda", "Cetvrtak", "Petak", "Subota"];
@@ -717,13 +718,7 @@ export default function AnalyticsDashboard() {
                   <XAxis dataKey="date" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                   <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                   <Tooltip 
-                    contentStyle={{ 
-                        background: CHART_TOOLTIP_BG, 
-                        border: `1px solid ${CHART_TOOLTIP_BORDER}`, 
-                        color: CHART_TOOLTIP_TEXT,
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                    }} 
+                    contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                     formatter={(value: number | string | undefined, name?: string) => [
                         name === "totalRevenue" ? formatCurrency(typeof value === "number" ? value : Number(value ?? 0)) : formatNumber(typeof value === "number" ? value : Number(value ?? 0)), 
                         name === "totalRevenue" ? "Promet" : "Transakcije"

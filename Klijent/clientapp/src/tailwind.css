@@ -378,6 +378,79 @@ select:focus {
   --focus-ring: #44d0ff;
 }
 
+/* Additional semantic tokens for components */
+:root {
+  --overlay: rgba(0, 0, 0, 0.5);
+  --overlay-strong: rgba(0, 0, 0, 0.75);
+  --modal-overlay: rgba(0, 0, 0, 0.88);
+  --surface-inverse: rgba(255, 255, 255, 0.95);
+  --surface-inverse-outline: rgba(255, 255, 255, 0.5);
+  --icon-stroke: #374151;
+  --text-on-dark: #ffffff;
+  --link: #2563eb;
+  --tooltip-box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Interaction & shadow tokens */
+:root {
+  --box-shadow-xs: 0 1px 2px rgba(0,0,0,0.06);
+  --box-shadow-sm: 0 4px 6px -1px rgba(0,0,0,0.1);
+  --box-shadow-md: 0 10px 20px rgba(0,0,0,0.12);
+  --modal-box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+  --toast-box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  --surface-muted: rgba(0,0,0,0.05);
+}
+
+/* Modal helper classes */
+.modal-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+}
+.modal-content {
+  background: var(--surface-default);
+  border-radius: 12px;
+  box-shadow: var(--modal-box-shadow);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  color: var(--text-muted);
+}
+.modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+.modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-default); display:flex; gap:0.75rem; justify-content:flex-end; }
+
+/* Toast helper */
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px; }
+.toast-item { padding: 16px 20px; border-radius: 8px; margin-bottom: 12px; display:flex; align-items:center; gap:12px; box-shadow: var(--toast-box-shadow); animation: slideIn 0.3s ease-out; font-weight:600; }
+.toast-close { background: transparent; border: none; cursor: pointer; font-size: 1.25rem; padding: 0; opacity: 0.6; }
+
+/* Muted surface helper for small cards */
+.surface-muted { background: var(--surface-muted); }
+
 body {
   background-color: var(--surface-default);
   color: var(--text-primary);

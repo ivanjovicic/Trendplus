@@ -47,6 +47,123 @@
     filter: brightness(1.05);
 }
 
+/* Zoom overlay and center control */
+.zoom-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.zoom-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--surface-inverse);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md, 0 4px 20px rgba(0, 0, 0, 0.3));
+    border: 2px solid var(--surface-inverse-outline);
+}
+
+.zoom-circle svg { stroke: var(--icon-stroke); }
+
+.photographer-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: var(--overlay-strong);
+    color: var(--text-on-dark);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    z-index: 10;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+}
+
+/* Modal styles */
+.carousel-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--modal-overlay);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    cursor: pointer;
+}
+
+.carousel-modal-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.carousel-modal-image {
+    max-width: 85vw;
+    max-height: 75vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.carousel-modal-attribution {
+    background: var(--surface-inverse);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    max-width: 600px;
+}
+
+.carousel-close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: var(--text-primary-dark, #333);
+    transition: all 0.2s;
+    z-index: 10000;
+}
+
+.carousel-close-button:hover { transform: scale(1.1); background: #fff; }
+
+.carousel-hint-text { margin: 0; color: rgba(255, 255, 255, 0.7); font-size: 0.8rem; text-align: center; }
+
+.carousel-link { color: var(--link); font-weight: 600; text-decoration: none; }
+.carousel-link:hover { text-decoration: underline; }
+
 /* ===============================
    NEW NAVIGATION BUTTONS
 ================================ */

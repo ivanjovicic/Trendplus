@@ -351,7 +351,7 @@ export default function UnosArtikalaForm({
                                                 maxHeight: '400px',
                                                 overflowY: 'auto',
                                                 zIndex: 1500,
-                                                boxShadow: '0 10px 20px rgba(0, 0, 0, 0.2)',
+                                                boxShadow: 'var(--box-shadow-lg, 0 10px 20px rgba(0, 0, 0, 0.2))',
                                                 minWidth: '300px',
                                             }}>
                                                 {filteredArtikli.map((art) => (

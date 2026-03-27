@@ -71,26 +71,9 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
     };
 
     return (
-        <div
-            style={{
-                position: "fixed",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 9999,
-                padding: "1rem",
-            }}
-        >
+        <div className="modal-root">
             {/* Backdrop */}
-            <div
-                style={{
-                    background: "rgba(0,0,0,0.5)",
-                    position: "absolute",
-                    inset: 0,
-                }}
-                onClick={onClose}
-            />
+            <div className="modal-backdrop" onClick={onClose} />
 
             {/* Modal Content */}
             <div
@@ -99,80 +82,20 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                 aria-modal="true"
                 aria-labelledby="modal-title"
                 tabIndex={-1}
-                style={{
-                    background: "var(--surface-default, #ffffff)",
-                    borderRadius: "12px",
-                    boxShadow: "0 20px 25px -5px rgba(0,0,0,0.3)",
-                    zIndex: 10000,
-                    ...sizeStyles[size],
-                    maxHeight: "90vh",
-                    display: "flex",
-                    flexDirection: "column",
-                }}
+                className="modal-content"
+                style={{ ...sizeStyles[size], maxHeight: "90vh" }}
             >
                 {/* Header */}
-                <div
-                    style={{
-                        padding: "1.5rem",
-                        borderBottom: "1px solid var(--border-default, #e5e7eb)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                    }}
-                >
-                    <h3
-                        id="modal-title"
-                        style={{
-                            fontSize: "1.25rem",
-                            fontWeight: 600,
-                            margin: 0,
-                        }}
-                    >
-                        {title}
-                    </h3>
-                    <button
-                        ref={closeButtonRef}
-                        onClick={onClose}
-                        style={{
-                            background: "none",
-                            border: "none",
-                            fontSize: "1.5rem",
-                            cursor: "pointer",
-                            color: "var(--text-muted, #6b7280)",
-                            padding: "0.25rem",
-                            lineHeight: 1,
-                        }}
-                        aria-label="Zatvori"
-                    >
-                        x
-                    </button>
+                <div className="modal-header">
+                    <h3 id="modal-title" style={{ fontSize: "1.25rem", fontWeight: 600, margin: 0 }}>{title}</h3>
+                    <button ref={closeButtonRef} onClick={onClose} className="modal-close-button" aria-label="Zatvori">x</button>
                 </div>
 
                 {/* Body */}
-                <div
-                    style={{
-                        padding: "1.5rem",
-                        overflowY: "auto",
-                        flex: 1,
-                    }}
-                >
-                    {children}
-                </div>
+                <div className="modal-body">{children}</div>
 
                 {/* Footer */}
-                {footer && (
-                    <div
-                        style={{
-                            padding: "1rem 1.5rem",
-                            borderTop: "1px solid var(--border-default, #e5e7eb)",
-                            display: "flex",
-                            gap: "0.75rem",
-                            justifyContent: "flex-end",
-                        }}
-                    >
-                        {footer}
-                    </div>
-                )}
+                {footer && <div className="modal-footer">{footer}</div>}
             </div>
         </div>
     );

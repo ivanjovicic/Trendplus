@@ -148,7 +148,7 @@ function CategoryPanel({
 function ShoeCard({ shoe }: { shoe: AmazonShoeProduct }) {
     return (
         <div className="bg-surface border border-muted rounded-xl overflow-hidden flex flex-col transition-shadow transform-gpu cursor-default"
-            onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "0 8px 24px rgba(0,0,0,.12)"; el.style.transform = "translateY(-2px)"; }}
+            onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "var(--box-shadow-md, 0 8px 24px rgba(0,0,0,.12))"; el.style.transform = "translateY(-2px)"; }}
             onMouseLeave={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = ""; el.style.transform = ""; }}
         >
             {/* Image */}
@@ -315,7 +315,7 @@ export default function AmazonShoesTrendsPage() {
             </div>
 
             {/* ── Sync card ── */}
-            <div style={{ background: "var(--surface-card, #fff)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,.06)" }}>
+            <div style={{ background: "var(--surface-card, #fff)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px rgba(0,0,0,.06))" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong, #111827)", marginBottom: 12 }}>🔄 Sync from Amazon</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
 

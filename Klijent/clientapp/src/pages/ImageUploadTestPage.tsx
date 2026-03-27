@@ -65,7 +65,7 @@ export default function ImageUploadTestPage() {
                     padding: "1.5rem",
                     borderRadius: "12px",
                     border: "1px solid #e5e7eb",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                    boxShadow: "var(--box-shadow-md, 0 2px 8px rgba(0,0,0,0.06))",
                     marginBottom: "1.5rem",
                 }}
             >
@@ -92,7 +92,7 @@ export default function ImageUploadTestPage() {
                     padding: "1.5rem",
                     borderRadius: "12px",
                     border: "1px solid #e5e7eb",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                    boxShadow: "var(--box-shadow-md, 0 2px 8px rgba(0,0,0,0.06))",
                 }}
             >
                 <ImageUpload

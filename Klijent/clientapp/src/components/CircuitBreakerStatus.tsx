@@ -61,26 +61,25 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
                     {stats.state}
                 </span>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-3">
-                <div className="p-2 rounded" style={{ background: 'rgba(0,0,0,0.05)' }}>
+                <div className="p-2 rounded surface-muted">
                     <div className="text-xs text-muted">Total Requests</div>
                     <div className="font-semibold text-foreground">{stats.totalRequests}</div>
                 </div>
-                <div className="p-2 rounded" style={{ background: 'rgba(0,0,0,0.05)' }}>
+                <div className="p-2 rounded surface-muted">
                     <div className="text-xs text-muted">Failures</div>
                     <div className={stats.failures > 0 ? "font-semibold text-accent-error" : "font-semibold text-foreground"}>
                         {stats.failures}
                     </div>
                 </div>
-                <div className="p-2 rounded" style={{ background: 'rgba(0,0,0,0.05)' }}>
+                <div className="p-2 rounded surface-muted">
                     <div className="text-xs text-muted">Rejected</div>
                     <div className={stats.rejectedRequests > 0 ? "font-semibold text-accent-warning" : "font-semibold text-foreground"}>
                         {stats.rejectedRequests}
                     </div>
                 </div>
                 {stats.state === "OPEN" && (
-                    <div className="p-2 rounded" style={{ background: 'rgba(0,0,0,0.05)' }}>
+                    <div className="p-2 rounded surface-muted">
                         <div className="text-xs text-muted">Retry In</div>
                         <div className="font-semibold text-accent-error">{displayCountdown}s</div>
                     </div>

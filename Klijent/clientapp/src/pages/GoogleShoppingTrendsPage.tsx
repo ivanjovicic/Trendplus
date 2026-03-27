@@ -186,8 +186,8 @@ function CategoryPanel({
 function GoogleShoeCard({ shoe }: { shoe: GoogleShoppingProduct }) {
     return (
         <div
-            style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", transition: "box-shadow .15s, transform .15s" }}
-            onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "0 8px 24px rgba(0,0,0,.12)"; el.style.transform = "translateY(-2px)"; }}
+            style={{ background: "var(--surface-card, white)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", transition: "box-shadow .15s, transform .15s" }}
+            onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "var(--box-shadow-md, 0 8px 24px rgba(0,0,0,.12))"; el.style.transform = "translateY(-2px)"; }}
             onMouseLeave={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = ""; el.style.transform = ""; }}
         >
             {/* Google colour strip */}
@@ -366,7 +366,7 @@ export default function GoogleShoppingTrendsPage() {
             </div>
 
             {/* ── Sync card ── */}
-            <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,.06)" }}>
+            <div style={{ background: "var(--surface-card, white)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px rgba(0,0,0,.06))" }}>
                 {/* Google colour bar */}
                 <div style={{ height: 4, borderRadius: 4, background: GOOGLE_GRADIENT, marginBottom: 14 }} />
 
@@ -428,8 +428,8 @@ export default function GoogleShoppingTrendsPage() {
                         disabled={syncing || !syncType.trim()}
                         style={{
                             padding: "8px 20px", borderRadius: 8,
-                            background: syncing ? "#e5e7eb" : G_BLUE,
-                            color: syncing ? "#9ca3af" : "white",
+                            background: syncing ? "var(--border-muted, #e5e7eb)" : "var(--brand-google, #4285F4)",
+                            color: syncing ? "var(--text-muted, #9ca3af)" : "white",
                             border: "none", fontWeight: 700, fontSize: 13,
                             cursor: syncing ? "not-allowed" : "pointer",
                             transition: "all .15s",

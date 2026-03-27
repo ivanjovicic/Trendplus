@@ -60,7 +60,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             display: "flex",
             alignItems: "center",
             gap: "12px",
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            boxShadow: "var(--toast-box-shadow)",
             animation: "slideIn 0.3s ease-out",
             fontWeight: 600,
         };
@@ -104,36 +104,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return (
         <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
             {children}
-            <div style={{
-                position: "fixed",
-                top: "20px",
-                right: "20px",
-                zIndex: 9999,
-                minWidth: "300px",
-                maxWidth: "500px",
-            }}>
+            <div className="toast-container">
                 {toasts.map((toast) => (
-                    <div
-                        key={toast.id}
-                        style={getToastStyles(toast.type)}
-                    >
+                    <div key={toast.id} className="toast-item" style={getToastStyles(toast.type)}>
                         <span style={{ fontSize: "1.25rem", width: 22, textAlign: "center" }}>{getIcon(toast.type)}</span>
                         <span style={{ flex: 1 }}>{toast.message}</span>
-                        <button
-                            onClick={() => removeToast(toast.id)}
-                            style={{
-                                background: "transparent",
-                                border: "none",
-                                cursor: "pointer",
-                                fontSize: "1.25rem",
-                                padding: 0,
-                                opacity: 0.6,
-                                color: "var(--text-muted, rgba(15,23,42,0.7))",
-                            }}
-                            aria-label="Zatvori"
-                        >
-                            ×
-                        </button>
+                        <button onClick={() => removeToast(toast.id)} className="toast-close" aria-label="Zatvori">Ã—</button>
                     </div>
                 ))}
             </div>

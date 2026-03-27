@@ -458,7 +458,7 @@ export default function CreateArtikalForm({
                                     step="0.01"
                                     value={nabavnaCena}
                                     onChange={(e) => setNabavnaCena(e.target.value)}
-                                    style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderColor: 'var(--warning)' }}
+                                    style={{ background: 'var(--surface-card, white)', boxShadow: 'var(--box-shadow-xs)', borderColor: 'var(--warning)' }}
                                 />
                             </div>
 
@@ -471,7 +471,7 @@ export default function CreateArtikalForm({
                                     step="0.01"
                                     value={nabavnaCenaDin}
                                     onChange={(e) => setNabavnaCenaDin(e.target.value)}
-                                    style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderColor: 'var(--warning)' }}
+                                    style={{ background: 'var(--surface-card, white)', boxShadow: 'var(--box-shadow-xs)', borderColor: 'var(--warning)' }}
                                 />
                             </div>
 
@@ -484,7 +484,7 @@ export default function CreateArtikalForm({
                                     step="0.01"
                                     value={prvaProdajnaCena}
                                     onChange={(e) => setPrvaProdajnaCena(e.target.value)}
-                                    style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderColor: 'var(--warning)' }}
+                                    style={{ background: 'var(--surface-card, white)', boxShadow: 'var(--box-shadow-xs)', borderColor: 'var(--warning)' }}
                                 />
                             </div>
 
@@ -494,7 +494,7 @@ export default function CreateArtikalForm({
                                     className="input-big"
                                     value={selectedSezona ?? ""}
                                     onChange={(e) => setSelectedSezona(e.target.value ? Number(e.target.value) : null)}
-                                    style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderColor: 'var(--warning)' }}
+                                    style={{ background: 'var(--surface-card, white)', boxShadow: 'var(--box-shadow-xs)', borderColor: 'var(--warning)' }}
                                 >
                                     <option value="">-- izaberite sezonu --</option>
                                     {sezone.map((s) => (
@@ -511,14 +511,14 @@ export default function CreateArtikalForm({
                                     value={komentar}
                                     onChange={(e) => setKomentar(e.target.value)}
                                     rows={3}
-                                    style={{ background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.04)', borderColor: 'var(--warning)' }}
+                                    style={{ background: 'var(--surface-card, white)', boxShadow: 'var(--box-shadow-xs)', borderColor: 'var(--warning)' }}
                                 />
                             </div>
 
                             {/* IMAGE UPLOAD SECTION - Only in edit mode */}
                             {mode === "edit" && artikalId && (
                                 <div className="form-full mt-4">
-                                    <div className="bg-white p-6 rounded-lg border-2" style={{ borderColor: 'var(--warning)' }}>
+                                        <div className="bg-white p-6 rounded-lg border-2" style={{ borderColor: 'var(--warning)' }}>
                                         <h4 className="text-base font-semibold mb-4 text-accent-warning flex items-center gap-2">
                                             <span>📸</span>
                                             Slika artikla
@@ -616,7 +616,7 @@ export default function CreateArtikalForm({
                                 handleCreateTip();
                             }
                         }}
-                        style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
+                        style={{ boxShadow: "var(--box-shadow-xs, 0 1px 2px rgba(0,0,0,0.05))" }}
                     />
                 </div>
             </Modal>
@@ -648,7 +648,7 @@ export default function CreateArtikalForm({
                                 handleCreateDob();
                             }
                         }}
-                        style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
+                        style={{ boxShadow: "var(--box-shadow-xs, 0 1px 2px rgba(0,0,0,0.05))" }}
                     />
                 </div>
             </Modal>
