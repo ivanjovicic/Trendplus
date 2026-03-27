@@ -28,8 +28,12 @@ const themeElevation = "var(--surface-elevated, #222734)";
 const textPrimary = "var(--text-primary, #dbe6fb)";
 const textSecondary = "var(--text-secondary, #9aa9c6)";
 const textMuted = "var(--text-muted, #9aabc7)";
+const successColor = "var(--success, #10b981)";
+const borderAccent = "var(--border-hover, #4763a6)";
 const primaryAccent = "var(--primary, #3760b7)";
 const dangerAccent = "var(--error, #ef4444)";
+const textOnPrimary = "var(--text-on-primary, #ffffff)";
+const textOnError = "var(--text-on-error, #ffffff)";
 
 export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
@@ -255,16 +259,16 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
             >
               Otkazi
             </button>
-            <button
-              type="button"
-              className="rounded-lg border px-4 py-2 text-sm font-semibold"
-              style={{
-                borderColor: primaryAccent,
-                backgroundColor: primaryAccent,
-                color: "#fff",
-              }}
-              onClick={handleNext}
-            >
+              <button
+                type="button"
+                className="rounded-lg border px-4 py-2 text-sm font-semibold"
+                style={{
+                  borderColor: primaryAccent,
+                  backgroundColor: primaryAccent,
+                  color: textOnPrimary,
+                }}
+                onClick={handleNext}
+              >
               Dalje
             </button>
           </div>
@@ -285,8 +289,12 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
             </label>
             <input
               type="text"
-              className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm text-[var(--text-primary)]"
-              style={{ borderColor: themeBorder, backgroundColor: themeSurfaceLight }}
+              className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm"
+              style={{
+                borderColor: themeBorder,
+                backgroundColor: themeSurfaceLight,
+                color: textPrimary,
+              }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -339,11 +347,25 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
 
               {selectedStavke.length > 0 && (
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--text-primary)]">Izabrani artikli ({selectedStavke.length})</h3>
-                  <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
-                    <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
-                      <thead className="bg-[var(--surface-elevated)] text-[var(--text-primary)]">
-                        <tr>
+              <h3
+                className="mb-2 text-sm font-semibold uppercase tracking-wide"
+                style={{ color: textSecondary }}
+              >
+                Izabrani artikli ({selectedStavke.length})
+              </h3>
+              <div
+                className="overflow-x-auto rounded-xl border"
+                style={{ borderColor: themeBorder }}
+              >
+                <table
+                  className="min-w-full text-sm"
+                  style={{ borderColor: themeBorder, color: textPrimary }}
+                >
+                  <thead
+                    className="bg-[var(--surface-elevated)]"
+                    style={{ backgroundColor: themeSurface, color: textSecondary }}
+                  >
+                    <tr>
                           <th className="px-3 py-2 text-left">Artikal</th>
                           <th className="px-3 py-2 text-left">Kolicina</th>
                           <th className="px-3 py-2 text-left">Cena</th>
@@ -353,7 +375,10 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
                           <th className="px-3 py-2"></th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]">
+                      <tbody
+                        className="divide-y"
+                        style={{ backgroundColor: themeSurfaceLight, color: textPrimary }}
+                      >
                         {selectedStavke.map((stavka) => (
                           <tr key={stavka.idArtikal} className="hover:bg-[var(--surface-light)]">
                             <td className="px-3 py-2">{stavka.artikalNaziv}</td>
@@ -361,29 +386,52 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
                               <input
                                 type="number"
                                 value={stavka.kolicina}
-                                onChange={(e) => handleUpdateStavka(stavka.idArtikal, "kolicina", Number(e.target.value))}
+                                onChange={(e) =>
+                                  handleUpdateStavka(stavka.idArtikal, "kolicina", Number(e.target.value))
+                                }
                                 min={1}
-                                className="w-20 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-1 text-sm text-[var(--text-primary)]"
+                                className="w-20 rounded-lg border bg-transparent px-2 py-1 text-sm"
+                                style={{
+                                  borderColor: themeBorder,
+                                  backgroundColor: themeSurfaceLight,
+                                  color: textPrimary,
+                                }}
                               />
                             </td>
                             <td className="px-3 py-2">
                               <input
                                 type="number"
                                 value={stavka.cena}
-                                onChange={(e) => handleUpdateStavka(stavka.idArtikal, "cena", Number(e.target.value))}
+                                onChange={(e) =>
+                                  handleUpdateStavka(stavka.idArtikal, "cena", Number(e.target.value))
+                                }
                                 step={0.01}
-                                className="w-24 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-1 text-sm text-[var(--text-primary)]"
+                                className="w-24 rounded-lg border bg-transparent px-2 py-1 text-sm"
+                                style={{
+                                  borderColor: themeBorder,
+                                  backgroundColor: themeSurfaceLight,
+                                  color: textPrimary,
+                                }}
                               />
                             </td>
                             <td className="px-3 py-2">
                               <select
                                 value={stavka.stanjeArtikla || ""}
-                                onChange={(e) => handleUpdateStavka(stavka.idArtikal, "stanjeArtikla", e.target.value)}
-                                className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-1 text-sm text-[var(--text-primary)]"
+                                onChange={(e) =>
+                                  handleUpdateStavka(stavka.idArtikal, "stanjeArtikla", e.target.value)
+                                }
+                                className="rounded-lg border bg-transparent px-2 py-1 text-sm"
+                                style={{
+                                  borderColor: themeBorder,
+                                  backgroundColor: themeSurfaceLight,
+                                  color: textPrimary,
+                                }}
                               >
                                 <option value="">-- stanje --</option>
                                 {STANJA_OPTIONS.map((stanje) => (
-                                  <option key={stanje} value={stanje}>{stanje}</option>
+                                  <option key={stanje} value={stanje}>
+                                    {stanje}
+                                  </option>
                                 ))}
                               </select>
                             </td>
@@ -391,16 +439,31 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
                               <input
                                 type="text"
                                 value={stavka.razlog || ""}
-                                onChange={(e) => handleUpdateStavka(stavka.idArtikal, "razlog", e.target.value)}
-                                className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-1 text-sm text-[var(--text-primary)]"
+                                onChange={(e) =>
+                                  handleUpdateStavka(stavka.idArtikal, "razlog", e.target.value)
+                                }
+                                className="rounded-lg border bg-transparent px-2 py-1 text-sm"
+                                style={{
+                                  borderColor: themeBorder,
+                                  backgroundColor: themeSurfaceLight,
+                                  color: textPrimary,
+                                }}
                               />
                             </td>
-                            <td className="px-3 py-2 text-right font-semibold text-emerald-300">{(stavka.kolicina * stavka.cena).toFixed(2)} RSD</td>
+                            <td className="px-3 py-2 text-right font-semibold" style={{ color: successColor }}>
+                              {(stavka.kolicina * stavka.cena).toFixed(2)} RSD
+                            </td>
                             <td className="px-3 py-2">
                               <button
                                 type="button"
                                 onClick={() => handleToggleArtikal({ id: stavka.idArtikal })}
-                                className="rounded-md border border-rose-700 bg-rose-900/40 px-2 py-1 text-xs font-semibold text-rose-200"
+                                className="rounded-md border px-2 py-1 text-xs font-semibold"
+                                style={{
+                                  borderColor: dangerAccent,
+                                  backgroundColor: "var(--error, #ef4444)",
+                                  color: textOnError,
+                                  opacity: 0.9,
+                                }}
                               >
                                 X
                               </button>
@@ -409,9 +472,17 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="bg-[var(--surface-elevated)] font-semibold text-[var(--text-primary)]">
-                          <td colSpan={5} className="px-3 py-2 text-right">UKUPNO:</td>
-                          <td className="px-3 py-2 text-right text-emerald-300">{ukupanIznos.toFixed(2)} RSD</td>
+                      <tr
+                        className="font-semibold"
+                        style={{ backgroundColor: themeSurface, color: textPrimary }}
+                      >
+                        <td colSpan={5} className="px-3 py-2 text-right">UKUPNO:</td>
+                        <td
+                          className="px-3 py-2 text-right"
+                          style={{ color: successColor }}
+                        >
+                          {ukupanIznos.toFixed(2)} RSD
+                        </td>
                           <td></td>
                         </tr>
                       </tfoot>
@@ -425,17 +496,27 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
           <div className="flex justify-between gap-2">
             <button
               type="button"
-              className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-2 text-sm text-[var(--text-primary)]"
+              className="rounded-lg border px-4 py-2 text-sm"
+              style={{
+                borderColor: borderAccent,
+                backgroundColor: themeElevation,
+                color: textPrimary,
+              }}
               onClick={handleBack}
             >
               Nazad
             </button>
-            <button
-              type="button"
-              className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              onClick={handleSubmit}
-              disabled={saving || selectedStavke.length === 0}
-            >
+              <button
+                type="button"
+                className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                style={{
+                  borderColor: primaryAccent,
+                  backgroundColor: primaryAccent,
+                  color: textOnPrimary,
+                }}
+                onClick={handleSubmit}
+                disabled={saving || selectedStavke.length === 0}
+              >
               {saving ? "Cuvam..." : "Kreiraj povracaj"}
             </button>
           </div>

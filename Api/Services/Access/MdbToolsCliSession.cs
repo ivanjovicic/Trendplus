@@ -27,6 +27,7 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
     public string Mode => "cli";
 
     public string SourceFilePath => _sourceFilePath;
+    public bool SupportsPredicatePushdown => false;
 
     public async Task<IReadOnlyList<string>> GetTablesAsync(bool includeTemporaryTables = false, CancellationToken ct = default)
     {
@@ -115,9 +116,21 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
                 : AccessRowCountResult.Unknown());
     }
 
-    public async IAsyncEnumerable<AccessDataRow> ReadRowsAsync(string table, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+    public IAsyncEnumerable<AccessDataRow> ReadRowsAsync(string table, CancellationToken ct = default)
+        => ReadRowsAsync(table, query: null, ct);
+
+    public async IAsyncEnumerable<AccessDataRow> ReadRowsAsync(
+        string table,
+        AccessReadQuery? query,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
         ThrowIfDisposed();
+        if (query is not null)
+        {
+            _logger.LogDebug(
+                "Access CLI session does not support predicate pushdown. Falling back to full stream and in-memory filtering. TableName: {TableName}.",
+                table);
+        }
         var handle = StartProcess("mdb-export", $"\"{_sourceFilePath}\" \"{table}\"", ct);
         var completed = false;
         var rowCount = 0;

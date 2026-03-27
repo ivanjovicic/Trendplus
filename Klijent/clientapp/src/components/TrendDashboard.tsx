@@ -26,15 +26,19 @@ const PAL = {
     red:           "#E05C5C",
     purple:        "#9B72CF",
     cyan:          "#22D3EE",
-    bg:            "#0D0F14",
-    card:          "#161A23",
-    cardHover:     "#1C2133",
-    border:        "#2A3045",
-    borderLight:   "#212840",
-    textPrimary:   "#E8ECF4",
-    textSecondary: "#8A95B0",
-    textMuted:     "#4A5477",
+    bg:            "var(--surface-default, #0D0F14)",
+    card:          "var(--surface-elevated, #161A23)",
+    cardHover:     "var(--surface-elevated, #1C2133)",
+    border:        "var(--border-default, #2A3045)",
+    borderLight:   "var(--border-default, #212840)",
+    textPrimary:   "var(--text-primary, #E8ECF4)",
+    textSecondary: "var(--text-secondary, #8A95B0)",
+    textMuted:     "var(--text-muted, #4A5477)",
 };
+
+const TOP1_BG = "var(--surface-darker, #1A1800)";
+const TOP2_BG = "var(--surface-elevated, #111822)";
+const TOP3_BG = "var(--surface-default, #140F1F)";
 
 // â”€â”€ Component score colors (dark-mode palette) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -178,9 +182,9 @@ function DashboardRow({
     const grade = scoreGrade(item.finalScore);
 
     const rowBg = isTop3
-        ? globalRank === 1 ? "#1A1800"
-        : globalRank === 2 ? "#111822"
-        : "#140F1F"
+        ? globalRank === 1 ? TOP1_BG
+        : globalRank === 2 ? TOP2_BG
+        : TOP3_BG
         : PAL.card;
 
     return (

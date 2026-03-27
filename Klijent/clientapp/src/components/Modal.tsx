@@ -100,7 +100,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                 aria-labelledby="modal-title"
                 tabIndex={-1}
                 style={{
-                    background: "#fff",
+                    background: "var(--surface-default, #ffffff)",
                     borderRadius: "12px",
                     boxShadow: "0 20px 25px -5px rgba(0,0,0,0.3)",
                     zIndex: 10000,
@@ -114,7 +114,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                 <div
                     style={{
                         padding: "1.5rem",
-                        borderBottom: "1px solid #e5e7eb",
+                        borderBottom: "1px solid var(--border-default, #e5e7eb)",
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
@@ -138,7 +138,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                             border: "none",
                             fontSize: "1.5rem",
                             cursor: "pointer",
-                            color: "#6b7280",
+                            color: "var(--text-muted, #6b7280)",
                             padding: "0.25rem",
                             lineHeight: 1,
                         }}
@@ -164,7 +164,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                     <div
                         style={{
                             padding: "1rem 1.5rem",
-                            borderTop: "1px solid #e5e7eb",
+                            borderTop: "1px solid var(--border-default, #e5e7eb)",
                             display: "flex",
                             gap: "0.75rem",
                             justifyContent: "flex-end",

@@ -96,7 +96,10 @@ export default function ImageUpload({
     return (
         <div style={{ marginBottom: "1rem" }}>
             {label && (
-                <label className="field-label" style={{ fontWeight: 600, color: "#374151" }}>
+                <label
+                    className="field-label"
+                    style={{ fontWeight: 600, color: "var(--text-secondary, #374151)" }}
+                >
                     {label}
                 </label>
             )}
@@ -121,42 +124,42 @@ export default function ImageUpload({
                     marginTop: "8px",
                     padding: "2rem",
                     border: isDragging
-                        ? "3px dashed #3b82f6"
-                        : "2px dashed #d1d5db",
+                        ? "3px dashed var(--focus-ring, #3b82f6)"
+                        : "2px dashed var(--border-default, #d1d5db)",
                     borderRadius: "12px",
                     background: isDragging
-                        ? "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)"
-                        : "linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)",
+                        ? "linear-gradient(135deg, var(--surface-elevated, #eff6ff) 0%, var(--surface-light, #dbeafe) 100%)"
+                        : "linear-gradient(135deg, var(--surface-default, #f9fafb) 0%, var(--surface-light, #ffffff) 100%)",
                     textAlign: "center",
                     cursor: "pointer",
                     transition: "all 0.2s ease",
                     position: "relative",
                     overflow: "hidden",
                 }}
-                onMouseEnter={(e) => {
-                    if (!isDragging) {
-                        e.currentTarget.style.borderColor = "#9ca3af";
-                        e.currentTarget.style.background =
-                            "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)";
-                    }
-                }}
-                onMouseLeave={(e) => {
-                    if (!isDragging) {
-                        e.currentTarget.style.borderColor = "#d1d5db";
-                        e.currentTarget.style.background =
-                            "linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)";
-                    }
-                }}
+                    onMouseEnter={(e) => {
+                        if (!isDragging) {
+                            e.currentTarget.style.borderColor = "var(--border-hover, #9ca3af)";
+                            e.currentTarget.style.background =
+                                "linear-gradient(135deg, var(--surface-elevated, #f3f4f6) 0%, var(--surface-default, #e5e7eb) 100%)";
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (!isDragging) {
+                            e.currentTarget.style.borderColor = "var(--border-default, #d1d5db)";
+                            e.currentTarget.style.background =
+                                "linear-gradient(135deg, var(--surface-default, #f9fafb) 0%, var(--surface-light, #ffffff) 100%)";
+                        }
+                    }}
             >
                 {isDragging ? (
                     <>
                         <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📥</div>
                         <p
                             style={{
-                                fontSize: "1.125rem",
-                                fontWeight: 600,
-                                color: "#2563eb",
-                                margin: 0,
+                            fontSize: "1.125rem",
+                            fontWeight: 600,
+                            color: "var(--focus-ring, #2563eb)",
+                            margin: 0,
                             }}
                         >
                             Pusti sliku ovde
@@ -167,28 +170,28 @@ export default function ImageUpload({
                         <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📷</div>
                         <p
                             style={{
-                                fontSize: "1rem",
-                                fontWeight: 600,
-                                color: "#374151",
-                                marginBottom: "0.5rem",
+                            fontSize: "1rem",
+                            fontWeight: 600,
+                            color: "var(--text-secondary, #374151)",
+                            marginBottom: "0.5rem",
                             }}
                         >
                             {buttonText}
                         </p>
                         <p
                             style={{
-                                fontSize: "0.875rem",
-                                color: "#6b7280",
-                                margin: 0,
+                            fontSize: "0.875rem",
+                            color: "var(--text-muted, #6b7280)",
+                            margin: 0,
                             }}
                         >
                             ili prevuci sliku ovde
                         </p>
                         <p
                             style={{
-                                fontSize: "0.75rem",
-                                color: "#9ca3af",
-                                marginTop: "0.5rem",
+                            fontSize: "0.75rem",
+                            color: "var(--text-muted, #9ca3af)",
+                            marginTop: "0.5rem",
                             }}
                         >
                             Podržani formati: JPG, PNG, GIF, WEBP (max 10MB)
@@ -203,8 +206,8 @@ export default function ImageUpload({
                     style={{
                         marginTop: "1rem",
                         padding: "1rem",
-                        background: "var(--surface-light)",
-                        border: "2px solid #e5e7eb",
+                        background: "var(--surface-light, #f3f4f6)",
+                        border: "2px solid var(--border-default, #e5e7eb)",
                         borderRadius: "12px",
                         animation: "fadeIn 0.3s ease-in",
                     }}
@@ -217,7 +220,13 @@ export default function ImageUpload({
                             marginBottom: "0.75rem",
                         }}
                     >
-                        <span style={{ fontSize: "0.875rem", color: "#6b7280", fontWeight: 600 }}>
+                        <span
+                            style={{
+                                fontSize: "0.875rem",
+                                color: "var(--text-muted, #6b7280)",
+                                fontWeight: 600,
+                            }}
+                        >
                             ✓ Izabrana slika: {fileName}
                         </span>
                         <button
@@ -227,7 +236,7 @@ export default function ImageUpload({
                                 handleClear();
                             }}
                             style={{
-                                background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                                background: "var(--error, #dc2626)",
                                 color: "white",
                                 padding: "6px 12px",
                                 borderRadius: "6px",
@@ -250,7 +259,7 @@ export default function ImageUpload({
                             maxWidth: "100%",
                             maxHeight: "400px",
                             borderRadius: "8px",
-                            border: "1px solid #d1d5db",
+                            border: "1px solid var(--border-default, #d1d5db)",
                             objectFit: "contain",
                             display: "block",
                             margin: "0 auto",
@@ -266,14 +275,20 @@ export default function ImageUpload({
                         marginTop: "0.5rem",
                         padding: "0.75rem",
                         background: "var(--surface-elevated)",
-                        border: "1px solid #86efac",
+                        border: "1px solid var(--success, #86efac)",
                         borderRadius: "8px",
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
                     }}
                 >
-                    <span style={{ fontSize: "0.875rem", color: "#15803d", fontWeight: 600 }}>
+                    <span
+                        style={{
+                            fontSize: "0.875rem",
+                            color: "var(--success, #15803d)",
+                            fontWeight: 600,
+                        }}
+                    >
                         ✓ {fileName}
                     </span>
                     <button

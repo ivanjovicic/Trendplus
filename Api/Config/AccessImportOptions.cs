@@ -26,4 +26,36 @@ public sealed class AccessImportOptions
     // If true, the importer will attempt to insert missing `prodaja_zaglavlje` rows
     // found in the Access file before importing `prodaja_stavke`. Default: false (opt-in).
     public bool AutoInsertMissingParents { get; set; } = false;
+    public AccessIncrementalOptions Incremental { get; set; } = new();
+}
+
+public sealed class AccessIncrementalOptions
+{
+    // Global feature toggle.
+    public bool Enabled { get; set; }
+
+    // full | shadow | incremental
+    public string Mode { get; set; } = "full";
+
+    public int DefaultBatchSize { get; set; } = 2000;
+    public int DefaultOverlapSeconds { get; set; } = 60;
+
+    // Per-table incremental profiles.
+    public List<AccessIncrementalTableProfile> Profiles { get; set; } = [];
+}
+
+public sealed class AccessIncrementalTableProfile
+{
+    public bool Enabled { get; set; } = true;
+
+    public string TableKey { get; set; } = string.Empty;
+
+    // timestamp | id | none | timestamp_then_id | id_or_composite
+    public string CursorMode { get; set; } = "id";
+
+    public int? BatchSize { get; set; }
+    public int? OverlapSeconds { get; set; }
+
+    public List<string> CursorTimestampAliases { get; set; } = [];
+    public List<string> CursorIdAliases { get; set; } = [];
 }

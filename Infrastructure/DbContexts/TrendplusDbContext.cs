@@ -298,6 +298,13 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.RowsRead).HasDefaultValue(0);
                 eb.Property(e => e.RowsAccepted).HasDefaultValue(0);
                 eb.Property(e => e.RowsWritten).HasDefaultValue(0);
+                eb.Property(e => e.IsIncremental).HasDefaultValue(false);
+                eb.Property(e => e.CursorSnapshot).HasColumnType("jsonb");
+                eb.Property(e => e.ProcessedRowCount).HasDefaultValue(0);
+                eb.Property(e => e.SkippedRowCount).HasDefaultValue(0);
+                eb.Property(e => e.RowsInserted).HasDefaultValue(0);
+                eb.Property(e => e.RowsUpdated).HasDefaultValue(0);
+                eb.Property(e => e.RowsUnchanged).HasDefaultValue(0);
                 eb.Property(e => e.DurationSeconds);
                 eb.Property(e => e.TotalImported).HasDefaultValue(0);
                 eb.Property(e => e.TotalUpdated).HasDefaultValue(0);
@@ -316,6 +323,29 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => e.CancellationRequested);
             });
 
+            modelBuilder.Entity<AccessImportCursor>(eb =>
+            {
+                eb.ToTable("AccessImportCursors");
+                eb.HasKey(e => e.TableKey);
+                eb.Property(e => e.TableKey).HasMaxLength(128);
+                eb.Property(e => e.CursorMode).IsRequired().HasMaxLength(32);
+                eb.Property(e => e.CursorTimestampUtc);
+                eb.Property(e => e.CursorId);
+                eb.Property(e => e.CursorTieBreakerId);
+                eb.Property(e => e.OverlapSeconds).HasDefaultValue(60);
+                eb.Property(e => e.LastSuccessfulBatchId);
+                eb.Property(e => e.LastRunStartedAtUtc);
+                eb.Property(e => e.LastRunCompletedAtUtc);
+                eb.Property(e => e.LeaseOwner).HasMaxLength(200);
+                eb.Property(e => e.LeaseAcquiredAtUtc);
+                eb.Property(e => e.LeaseExpiresAtUtc);
+                eb.Property(e => e.LastError).HasMaxLength(2000);
+                eb.Property(e => e.UpdatedAtUtc).HasDefaultValueSql("NOW()");
+
+                eb.HasIndex(e => e.LastSuccessfulBatchId);
+                eb.HasIndex(e => e.LeaseExpiresAtUtc);
+            });
+
             // Transfers
             modelBuilder.Entity<Domain.Transfers.Transfer>(eb =>
             {
@@ -326,8 +356,14 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.SourceId).IsRequired();
                 eb.Property(e => e.DestinationId).IsRequired();
                 eb.Property(e => e.Reserve).IsRequired().HasDefaultValue(false);
+                eb.Property(e => e.Notes).HasMaxLength(2000);
                 eb.Property(e => e.CreatedAt).IsRequired();
+                eb.Property(e => e.UpdatedAt).IsRequired();
+                eb.Property(e => e.ConfirmedAt);
+                eb.Property(e => e.CompletedAt);
+                eb.Property(e => e.CancelledAt);
                 eb.Property(e => e.CreatedBy).HasMaxLength(200);
+                eb.Property(e => e.UpdatedBy).HasMaxLength(200);
 
                 eb.HasMany(e => e.Items)
                   .WithOne()
@@ -345,6 +381,8 @@ namespace Infrastructure.DbContexts
                 eb.HasKey(e => e.Id);
                 eb.Property(e => e.SkuId).IsRequired();
                 eb.Property(e => e.Quantity).HasColumnType("decimal(18,4)").IsRequired();
+                eb.Property(e => e.ReservedQuantity).HasColumnType("decimal(18,4)").HasDefaultValue(0m);
+                eb.Property(e => e.ProcessedQuantity).HasColumnType("decimal(18,4)").HasDefaultValue(0m);
                 eb.Property(e => e.Unit).HasMaxLength(32);
                 eb.HasIndex(e => e.SkuId);
                 eb.HasIndex("TransferId");
@@ -400,6 +438,7 @@ namespace Infrastructure.DbContexts
         public DbSet<PovracajZaglavlje> PovracajZaglavlja { get; set; } = null!;
         public DbSet<PovracajStavka> PovracajStavke { get; set; } = null!;
         public DbSet<DataImportBatch> DataImportBatches { get; set; } = null!;
+        public DbSet<AccessImportCursor> AccessImportCursors { get; set; } = null!;
         public DbSet<AccessImportLog> AccessImportLogs { get; set; } = null!;
         public DbSet<Domain.Transfers.Transfer> Transfers { get; set; } = null!;
         public DbSet<Domain.Transfers.TransferItem> TransferItems { get; set; } = null!;

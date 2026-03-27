@@ -12,6 +12,14 @@ interface Props {
     multiple?: boolean;
 }
 
+const FOCUS_RING = "var(--focus-ring, #2563eb)";
+const BORDER_DEFAULT = "var(--border-default, #d1d5db)";
+const SURFACE_DEFAULT = "var(--surface-default, #ffffff)";
+const SURFACE_ELEVATED = "var(--surface-elevated, #f3f4f6)";
+const SURFACE_LIGHT = "var(--surface-light, #ffffff)";
+const TEXT_MUTED = "var(--text-muted, #6b7280)";
+const FOCUS_RING_SHADOW = "var(--focus-ring-shadow, rgba(37, 99, 235, 0.08))";
+
 export default function SearchableSelect({ label, value, onChange, options = popularBrands as any, placeholder, multiple = false }: Props) {
     const [query, setQuery] = useState("");
     const [isOpen, setIsOpen] = useState(false);
@@ -158,8 +166,8 @@ export default function SearchableSelect({ label, value, onChange, options = pop
                     width: "100%",
                     padding: "0.75rem",
                     borderRadius: 8,
-                    border: `1px solid ${inputHasSelection ? '#2563eb' : '#d1d5db'}`,
-                    boxShadow: inputHasSelection ? '0 0 0 4px rgba(37,99,235,0.06)' : undefined,
+                    border: `1px solid ${inputHasSelection ? FOCUS_RING : BORDER_DEFAULT}`,
+                    boxShadow: inputHasSelection ? `0 0 0 4px ${FOCUS_RING_SHADOW}` : undefined,
                     fontSize: 14
                 }}
                 aria-haspopup="listbox"
@@ -169,27 +177,27 @@ export default function SearchableSelect({ label, value, onChange, options = pop
             {/* DROPDOWN */}
             {(isOpen || query.length > 0) && (
                 <div
-                    role="listbox"
-                    style={{
-                        position: "absolute",
-                        top: "100%",
-                        left: 0,
-                        right: 0,
-                        background: "white",
-                        border: "1px solid #d1d5db",
-                        borderRadius: 8,
-                        marginTop: 4,
-                        maxHeight: 240,
-                        overflowY: "auto",
-                        zIndex: 20,
-                        boxShadow: "0 8px 16px rgba(37,99,235,0.08)"
-                    }}
-                >
-                    {filtered.length === 0 && (
-                        <div style={{ padding: 10, color: "#6b7280" }}>
-                            No results — press Enter to use "{query}"
-                        </div>
-                    )}
+                role="listbox"
+                style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    background: SURFACE_DEFAULT,
+                    border: `1px solid ${BORDER_DEFAULT}`,
+                    borderRadius: 8,
+                    marginTop: 4,
+                    maxHeight: 240,
+                    overflowY: "auto",
+                    zIndex: 20,
+                    boxShadow: `0 8px 16px ${FOCUS_RING_SHADOW}`,
+                }}
+            >
+                {filtered.length === 0 && (
+                    <div style={{ padding: 10, color: TEXT_MUTED }}>
+                        No results — press Enter to use "{query}"
+                    </div>
+                )}
 
                     {filtered.map((opt, idx) => {
                         const isActive = activeIndex === idx;
@@ -212,16 +220,30 @@ export default function SearchableSelect({ label, value, onChange, options = pop
                                     alignItems: 'center',
                                     padding: "10px 14px",
                                     cursor: "pointer",
-                                    background: isActive ? "#2563eb" : isSelected ? '#eef6ff' : 'transparent',
-                                    color: isActive ? "white" : 'inherit',
+                                    background: isActive
+                                        ? FOCUS_RING
+                                        : isSelected
+                                            ? SURFACE_ELEVATED
+                                            : "transparent",
+                                    color: isActive
+                                        ? "var(--text-on-primary, #ffffff)"
+                                        : isSelected
+                                            ? "var(--text-primary, #0f172a)"
+                                            : "var(--text-primary, #0f172a)",
                                     fontWeight: isActive ? 700 : (isSelected ? 600 : 500),
-                                    borderBottom: "1px solid #f3f4f6"
+                                    borderBottom: `1px solid ${SURFACE_LIGHT}`,
                                 }}
                             >
                                 <span>{opt.label}</span>
                                 {/* selection indicator */}
                                 {isSelected && (
-                                    <span style={{ fontSize: 12, color: isActive ? 'white' : '#2563eb', fontWeight: 700 }}>
+                                    <span
+                                        style={{
+                                            fontSize: 12,
+                                            color: isActive ? "var(--text-on-primary, #ffffff)" : FOCUS_RING,
+                                            fontWeight: 700,
+                                        }}
+                                    >
                                         ✓
                                     </span>
                                 )}

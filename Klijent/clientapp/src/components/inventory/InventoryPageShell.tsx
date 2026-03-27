@@ -17,14 +17,14 @@ export function InventoryPageShell({
 }) {
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-[var(--border-default)] bg-gradient-to-br from-[var(--surface-elevated)] via-[#171922] to-[var(--surface-elevated-dark)] p-4 shadow-[0_16px_40px_-30px_rgba(0,0,0,0.9)] sm:p-5">
+      <section className="rounded-2xl border border-[var(--border-default)] bg-gradient-to-br from-[var(--surface-elevated)] via-[var(--surface-elevated-light)] to-[var(--surface-elevated-dark)] p-4 shadow-[0_16px_40px_-30px_var(--card-shadow)] sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] p-2 text-[var(--text-primary)]">
                 <Icon size={16} />
               </span>
-              <h1 className="text-lg font-semibold text-white sm:text-xl">{title}</h1>
+              <h1 className="text-lg font-semibold text-[var(--text-primary)] sm:text-xl">{title}</h1>
             </div>
             {subtitle ? <p className="mt-2 max-w-3xl text-sm text-[var(--text-primary)]">{subtitle}</p> : null}
           </div>

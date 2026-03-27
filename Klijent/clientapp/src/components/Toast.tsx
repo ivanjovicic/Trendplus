@@ -67,24 +67,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
         const typeStyles = {
             success: {
-                background: "#f0fdf4",
-                color: "#059669",
-                border: "2px solid #059669",
+                background: "var(--surface-elevated, #f0fdf4)",
+                color: "var(--success, #059669)",
+                border: "2px solid var(--success, #059669)",
             },
             error: {
-                background: "#fef2f2",
-                color: "#dc2626",
-                border: "2px solid #dc2626",
+                background: "var(--surface-elevated, #fef2f2)",
+                color: "var(--error, #dc2626)",
+                border: "2px solid var(--error, #dc2626)",
             },
             warning: {
-                background: "#fef3c7",
-                color: "#f59e0b",
-                border: "2px solid #f59e0b",
+                background: "var(--surface-elevated, #fef3c7)",
+                color: "var(--warning, #f59e0b)",
+                border: "2px solid var(--warning, #f59e0b)",
             },
             info: {
-                background: "#eff6ff",
-                color: "#2563eb",
-                border: "2px solid #2563eb",
+                background: "var(--surface-elevated, #eff6ff)",
+                color: "var(--focus-ring, #2563eb)",
+                border: "2px solid var(--focus-ring, #2563eb)",
             },
         };
 
@@ -128,6 +128,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                 fontSize: "1.25rem",
                                 padding: 0,
                                 opacity: 0.6,
+                                color: "var(--text-muted, rgba(15,23,42,0.7))",
                             }}
                             aria-label="Zatvori"
                         >

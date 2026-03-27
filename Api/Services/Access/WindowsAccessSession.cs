@@ -31,6 +31,7 @@ public sealed class WindowsAccessSession : IAccessDataReaderSession
     public string Mode => "windows";
 
     public string SourceFilePath => _sourceFilePath;
+    public bool SupportsPredicatePushdown => true;
 
     public async Task<IReadOnlyList<string>> GetTablesAsync(bool includeTemporaryTables = false, CancellationToken ct = default)
     {
@@ -134,7 +135,13 @@ public sealed class WindowsAccessSession : IAccessDataReaderSession
         return AccessRowCountResult.Exact(count);
     }
 
-    public async IAsyncEnumerable<AccessDataRow> ReadRowsAsync(string table, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+    public IAsyncEnumerable<AccessDataRow> ReadRowsAsync(string table, CancellationToken ct = default)
+        => ReadRowsAsync(table, query: null, ct);
+
+    public async IAsyncEnumerable<AccessDataRow> ReadRowsAsync(
+        string table,
+        AccessReadQuery? query,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
         ThrowIfDisposed();
         await EnsureOpenedAsync(ct);
@@ -142,7 +149,17 @@ public sealed class WindowsAccessSession : IAccessDataReaderSession
         if (!AccessImportService.TryGetQuotedTableIdentifier(table, out var quotedTable, out var failureReason))
             throw new ArgumentException($"Invalid Access table '{table}': {failureReason}", nameof(table));
 
-        using var cmd = new OdbcCommand($"SELECT * FROM {quotedTable}", _connection);
+        var sql = await BuildSelectSqlAsync(table, quotedTable, query, ct);
+        using var cmd = new OdbcCommand(sql.CommandText, _connection);
+        for (var i = 0; i < sql.Parameters.Count; i++)
+        {
+            var value = sql.Parameters[i];
+            if (value is DateTime dtValue)
+                cmd.Parameters.Add($"@p{i}", OdbcType.DateTime).Value = dtValue;
+            else
+                cmd.Parameters.AddWithValue($"@p{i}", value);
+        }
+
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
         if (reader is null)
             yield break;
@@ -165,6 +182,122 @@ public sealed class WindowsAccessSession : IAccessDataReaderSession
 
             yield return new AccessDataRow(schema, values);
         }
+    }
+
+    private async Task<(string CommandText, List<object> Parameters)> BuildSelectSqlAsync(
+        string table,
+        string quotedTable,
+        AccessReadQuery? query,
+        CancellationToken ct)
+    {
+        var columns = await GetColumnsAsync(table, ct);
+        return BuildSelectSqlFromColumns(columns, quotedTable, query);
+    }
+
+    internal static (string CommandText, List<object> Parameters) BuildSelectSqlFromColumns(
+        IReadOnlyList<string> columns,
+        string quotedTable,
+        AccessReadQuery? query)
+    {
+        if (query is null)
+            return ($"SELECT * FROM {quotedTable}", []);
+
+        var mode = string.IsNullOrWhiteSpace(query.CursorMode)
+            ? "id"
+            : query.CursorMode.Trim().ToLowerInvariant();
+        if (string.Equals(mode, "none", StringComparison.OrdinalIgnoreCase))
+            return ($"SELECT * FROM {quotedTable}", []);
+
+        var idColumn = ResolveColumn(columns, query.IdAliases);
+        var tsColumn = ResolveColumn(columns, query.TimestampAliases);
+        var overlapSeconds = Math.Clamp(query.OverlapSeconds, 0, 3600);
+        var effectiveTimestamp = query.CursorTimestampUtc?.AddSeconds(-overlapSeconds);
+        var parameters = new List<object>();
+
+        string whereSql;
+        string orderSql;
+
+        switch (mode)
+        {
+            case "timestamp":
+                if (!effectiveTimestamp.HasValue || string.IsNullOrWhiteSpace(tsColumn))
+                    return ($"SELECT * FROM {quotedTable}", []);
+
+                parameters.Add(effectiveTimestamp.Value);
+                whereSql = $"{AccessImportService.QuoteAccessIdentifier(tsColumn)} > ?";
+                orderSql = $" ORDER BY {AccessImportService.QuoteAccessIdentifier(tsColumn)}";
+                break;
+
+            case "timestamp_then_id":
+                if (effectiveTimestamp.HasValue && !string.IsNullOrWhiteSpace(tsColumn))
+                {
+                    if (!string.IsNullOrWhiteSpace(idColumn))
+                    {
+                        var tieBreakerId = query.CursorTieBreakerId ?? query.CursorId;
+                        if (tieBreakerId.HasValue)
+                        {
+                            parameters.Add(effectiveTimestamp.Value);
+                            parameters.Add(effectiveTimestamp.Value);
+                            parameters.Add(tieBreakerId.Value);
+                            whereSql =
+                                $"({AccessImportService.QuoteAccessIdentifier(tsColumn)} > ? OR ({AccessImportService.QuoteAccessIdentifier(tsColumn)} = ? AND {AccessImportService.QuoteAccessIdentifier(idColumn)} > ?))";
+                            orderSql =
+                                $" ORDER BY {AccessImportService.QuoteAccessIdentifier(tsColumn)}, {AccessImportService.QuoteAccessIdentifier(idColumn)}";
+                            break;
+                        }
+                    }
+
+                    parameters.Add(effectiveTimestamp.Value);
+                    whereSql = $"{AccessImportService.QuoteAccessIdentifier(tsColumn)} > ?";
+                    orderSql = $" ORDER BY {AccessImportService.QuoteAccessIdentifier(tsColumn)}";
+                    break;
+                }
+
+                if (!query.CursorId.HasValue || string.IsNullOrWhiteSpace(idColumn))
+                    return ($"SELECT * FROM {quotedTable}", []);
+
+                parameters.Add(query.CursorId.Value);
+                whereSql = $"{AccessImportService.QuoteAccessIdentifier(idColumn)} > ?";
+                orderSql = $" ORDER BY {AccessImportService.QuoteAccessIdentifier(idColumn)}";
+                break;
+
+            case "id_or_composite":
+            case "id":
+            default:
+                if (!query.CursorId.HasValue || string.IsNullOrWhiteSpace(idColumn))
+                    return ($"SELECT * FROM {quotedTable}", []);
+
+                parameters.Add(query.CursorId.Value);
+                whereSql = $"{AccessImportService.QuoteAccessIdentifier(idColumn)} > ?";
+                orderSql = $" ORDER BY {AccessImportService.QuoteAccessIdentifier(idColumn)}";
+                break;
+        }
+
+        return ($"SELECT * FROM {quotedTable} WHERE {whereSql}{orderSql}", parameters);
+    }
+
+    private static string? ResolveColumn(IReadOnlyList<string> columns, IReadOnlyList<string> normalizedAliases)
+    {
+        if (columns.Count == 0 || normalizedAliases.Count == 0)
+            return null;
+
+        var normalizedToSource = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < columns.Count; i++)
+        {
+            var source = columns[i];
+            var normalized = AccessImportService.Normalize(source);
+            if (!string.IsNullOrWhiteSpace(normalized) && !normalizedToSource.ContainsKey(normalized))
+                normalizedToSource[normalized] = source;
+        }
+
+        for (var i = 0; i < normalizedAliases.Count; i++)
+        {
+            var alias = AccessImportService.Normalize(normalizedAliases[i]);
+            if (!string.IsNullOrWhiteSpace(alias) && normalizedToSource.TryGetValue(alias, out var source))
+                return source;
+        }
+
+        return null;
     }
 
     public async ValueTask DisposeAsync()

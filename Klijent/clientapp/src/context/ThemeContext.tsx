@@ -29,10 +29,29 @@ const STATUS_VARS: Record<string, string> = {
   "--info": "#3b82f6",
 };
 
+const COMMON_VARS: Record<string, string> = {
+  "--text-on-primary": "#ffffff",
+  "--text-on-success": "#0f5132",
+  "--text-on-error": "#ffffff",
+  "--text-on-warning": "#713f12",
+  "--text-on-info": "#1e3a8a",
+  "--focus-ring-shadow": "rgba(37, 99, 235, 0.08)",
+  "--surface-elevated-dark": "#0f1116",
+  "--surface-elevated-light": "#1f2430",
+  "--surface-border-strong": "#1f2733",
+  "--card-shadow": "rgba(0,0,0,0.9)",
+  "--muted": "#9ca3af",
+  "--accent-primary": "#2563eb",
+  "--success-soft": "rgba(16, 185, 129, 0.15)",
+  "--warning-soft": "rgba(245, 158, 11, 0.15)",
+  "--error-soft": "rgba(239, 68, 68, 0.15)",
+};
+
 function withBaseVars(overrides: Record<string, string>): Record<string, string> {
   return {
     ...GRAY_VARS,
     ...STATUS_VARS,
+    ...COMMON_VARS,
     ...overrides,
   };
 }
@@ -53,6 +72,7 @@ const THEMES: Record<ThemeName, Theme> = {
       "--border-default": "#283042",
       "--border-hover": "#344a66",
       "--focus-ring": "#44d0ff",
+      "--card-shadow": "rgba(0,0,0,0.9)",
     }),
   },
   light: {
@@ -70,6 +90,7 @@ const THEMES: Record<ThemeName, Theme> = {
       "--border-default": "#d3dce9",
       "--border-hover": "#a7b9d3",
       "--focus-ring": "#2563eb",
+      "--card-shadow": "rgba(16,24,40,0.06)",
     }),
   },
   "high-contrast": {
@@ -87,6 +108,7 @@ const THEMES: Record<ThemeName, Theme> = {
       "--border-default": "#ffffff",
       "--border-hover": "#ffe066",
       "--focus-ring": "#ffe066",
+      "--card-shadow": "rgba(0,0,0,0.9)",
       "--success": "#00ff88",
       "--error": "#ff5c5c",
       "--warning": "#ffd166",
@@ -153,4 +175,3 @@ export function useTheme() {
   }
   return context;
 }
-

@@ -73,14 +73,14 @@ export default function RedisToggleFlag() {
   }, [busy]);
 
   const tone = error
-    ? { bg: "#7f1d1d", border: "#f87171", text: "#fee2e2" }
+    ? { bg: "var(--error, #7f1d1d)", border: "var(--error, #f87171)", text: "var(--text-on-error, #fee2e2)" }
     : !status
-    ? { bg: "#1f2937", border: "#6b7280", text: "#e5e7eb" }
+    ? { bg: "var(--surface-elevated, #1f2937)", border: "var(--border-default, #6b7280)", text: "var(--text-muted, #e5e7eb)" }
     : status.enabled && status.available
-    ? { bg: "#064e3b", border: "#34d399", text: "#d1fae5" }
+    ? { bg: "var(--success, #064e3b)", border: "var(--success, #34d399)", text: "var(--text-on-success, #d1fae5)" }
     : status.enabled && !status.available
-    ? { bg: "#78350f", border: "#fbbf24", text: "#fef3c7" }
-    : { bg: "#1f2937", border: "#9ca3af", text: "#e5e7eb" };
+    ? { bg: "var(--warning, #78350f)", border: "var(--warning, #fbbf24)", text: "var(--text-muted, #fef3c7)" }
+    : { bg: "var(--surface-elevated, #1f2937)", border: "var(--border-hover, #9ca3af)", text: "var(--text-muted, #e5e7eb)" };
 
   const label = error
     ? "Redis: greska"
@@ -125,9 +125,9 @@ export default function RedisToggleFlag() {
         style={{
           padding: "5px 10px",
           borderRadius: 8,
-          border: "1px solid #4b5563",
-          background: busy ? "#374151" : "#1f2937",
-          color: "white",
+          border: `1px solid var(--border-default, #4b5563)`,
+          background: busy ? "var(--surface-elevated, #374151)" : "var(--surface-default, #1f2937)",
+          color: "var(--text-primary, #ffffff)",
           fontSize: 12,
           fontWeight: 600,
           cursor: busy || !status || endpointMissing ? "not-allowed" : "pointer",

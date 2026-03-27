@@ -413,6 +413,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IRuntimeScoringEngine, RuntimeScoringEngine>();
     builder.Services.AddScoped<IAccessImportService, AccessImportService>();
     builder.Services.AddScoped<IAccessImportJobQueue, AccessImportJobQueue>();
+    builder.Services.AddScoped<IAccessImportCursorRepository, AccessImportCursorRepository>();
     builder.Services.AddScoped<IBatchLogService, BatchLogService>();
     builder.Services.AddScoped<ITransferService, TransferService>();
     builder.Services.AddScoped<IPreNivelacijaScoringService, PreNivelacijaScoringService>();

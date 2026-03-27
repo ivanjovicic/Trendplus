@@ -6,11 +6,24 @@ public interface IAccessDataReaderSession : IAsyncDisposable
 {
     string Mode { get; }
     string SourceFilePath { get; }
+    bool SupportsPredicatePushdown { get; }
 
     Task<IReadOnlyList<string>> GetTablesAsync(bool includeTemporaryTables = false, CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetColumnsAsync(string table, CancellationToken ct = default);
     Task<AccessRowCountResult> TryGetExactRowCountAsync(string table, CancellationToken ct = default);
     IAsyncEnumerable<AccessDataRow> ReadRowsAsync(string table, CancellationToken ct = default);
+    IAsyncEnumerable<AccessDataRow> ReadRowsAsync(string table, AccessReadQuery? query, CancellationToken ct = default);
+}
+
+public sealed class AccessReadQuery
+{
+    public string CursorMode { get; init; } = "id";
+    public DateTime? CursorTimestampUtc { get; init; }
+    public long? CursorId { get; init; }
+    public long? CursorTieBreakerId { get; init; }
+    public int OverlapSeconds { get; init; }
+    public IReadOnlyList<string> TimestampAliases { get; init; } = [];
+    public IReadOnlyList<string> IdAliases { get; init; } = [];
 }
 
 public sealed record AccessRowCountResult(int Count, string Mode)

@@ -3,6 +3,7 @@ using System.Data.Odbc;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Api.Config;
@@ -250,6 +251,70 @@ using NpgsqlTypes;
     private static readonly string[] ArtikliKategorijaAliases = ["kategorija", "category"];
     private static readonly string[] ArtikliPolAliases = ["pol", "gender"];
     private static readonly string[] ArtikliImagePathAliases = ["imagepath", "imageurl", "slika", "image"];
+    private static readonly string[] DefaultCursorTimestampAliases = ["updatedat", "lastmodified", "datumizmene", "datumpromene", "modifiedat"];
+    private static readonly IReadOnlyDictionary<string, string[]> IncrementalIdAliasesByTable =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["tipovi_obuce"] = ["id", "idtipobuce", "tipid"],
+            ["dobavljaci"] = ["id", "iddobavljac", "supplierid"],
+            ["sezone"] = ["id", "idsezona", "seasonid"],
+            ["artikli"] = ArtikliIdAliases,
+            ["dnevnik_promena"] = ["id", "iddnevnik", "iddnevnikpromene", "iddnevnikpromena", "idlog", "seqno"],
+            ["prodaja_zaglavlje"] = ["id", "idprodaja", "saleid", "iddnevnik"],
+            ["prodaja_stavke"] = ["id", "idstavka", "lineid"],
+            ["povracaj_zaglavlje"] = ["id", "idpovracaj", "returnid"],
+            ["povracaj_stavke"] = ["id", "idstavka", "lineid"]
+        };
+
+    private sealed class ActiveIncrementalTableScope
+    {
+        public required long BatchId { get; init; }
+        public required string TableKey { get; init; }
+        public required string SourceTableName { get; init; }
+        public required string CursorMode { get; init; }
+        public required string[] TimestampAliases { get; init; }
+        public required string[] IdAliases { get; init; }
+        public required bool ApplyFilter { get; init; }
+        public required bool CommitOnSuccess { get; init; }
+        public required int OverlapSeconds { get; init; }
+        public required DateTime? CursorTimestampUtc { get; init; }
+        public required long? CursorId { get; init; }
+        public required long? CursorTieBreakerId { get; init; }
+        public required int WriteBatchSize { get; init; }
+        public required int LeaseDurationSeconds { get; init; }
+        public required DateTime LastLeaseRenewedUtc { get; set; }
+        public bool LeaseAcquired { get; set; }
+        public long RowsScanned { get; set; }
+        public long RowsFilteredOut { get; set; }
+        public long RowsPassedFilter { get; set; }
+        public long RowsAccepted { get; set; }
+        public DateTime? MaxSeenTimestampUtc { get; set; }
+        public long? MaxSeenId { get; set; }
+        public long? MaxSeenTieBreakerId { get; set; }
+        public bool MissingCursorAliasLogged { get; set; }
+    }
+
+    private sealed class IncrementalTableSnapshot
+    {
+        public string TableKey { get; init; } = string.Empty;
+        public string SourceTableName { get; init; } = string.Empty;
+        public string CursorMode { get; init; } = string.Empty;
+        public bool AppliedFilter { get; init; }
+        public bool CommittedCursor { get; init; }
+        public DateTime? CursorBeforeTimestampUtc { get; init; }
+        public long? CursorBeforeId { get; init; }
+        public long? CursorBeforeTieBreakerId { get; init; }
+        public DateTime? CursorAfterTimestampUtc { get; init; }
+        public long? CursorAfterId { get; init; }
+        public long? CursorAfterTieBreakerId { get; init; }
+        public long RowsScanned { get; init; }
+        public long RowsFilteredOut { get; init; }
+        public long RowsPassedFilter { get; init; }
+        public long RowsAccepted { get; init; }
+        public string Status { get; init; } = "completed";
+        public string? Error { get; init; }
+        public DateTime UpdatedAtUtc { get; init; }
+    }
 
     private readonly TrendplusDbContext _trendDb;
     private readonly AnalyticsDbContext _analyticsDb;
@@ -258,6 +323,10 @@ using NpgsqlTypes;
     private readonly AccessImportOptions _options;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
     private readonly IAccessImportJobQueue? _jobQueue;
+    private readonly IAccessImportCursorRepository? _cursorRepository;
+    private readonly string _incrementalLeaseOwner = $"{Environment.MachineName}:{Environment.ProcessId}:{Guid.NewGuid():N}";
+    private ActiveIncrementalTableScope? _activeIncrementalScope;
+    private readonly Dictionary<string, IncrementalTableSnapshot> _incrementalTableSnapshots = new(StringComparer.OrdinalIgnoreCase);
     private static readonly SemaphoreSlim BatchSchemaBootstrapLock = new(1, 1);
     private static volatile bool _batchSchemaBootstrapCompleted;
 
@@ -291,7 +360,8 @@ using NpgsqlTypes;
         IOptions<AccessImportOptions>? options = null,
         IAnalyticsCacheService? analyticsCache = null,
         IServiceScopeFactory? serviceScopeFactory = null,
-        IAccessImportJobQueue? jobQueue = null)
+        IAccessImportJobQueue? jobQueue = null,
+        IAccessImportCursorRepository? cursorRepository = null)
     {
         _trendDb = trendDb;
         _analyticsDb = analyticsDb;
@@ -300,6 +370,7 @@ using NpgsqlTypes;
         _analyticsCache = analyticsCache;
         _serviceScopeFactory = serviceScopeFactory;
         _jobQueue = jobQueue;
+        _cursorRepository = cursorRepository;
     }
 
     private IAccessDataReaderSession CreateReadSession(string accessFilePath)
@@ -325,6 +396,7 @@ using NpgsqlTypes;
         _lastTrendFlushUtc = DateTime.UtcNow;
         _trendFlushCount = 0;
         _batchHeartbeatPersistCount = 0;
+        _incrementalTableSnapshots.Clear();
     }
 
     private void SetBatchProgressContext(string? step, string? table)
@@ -343,6 +415,7 @@ using NpgsqlTypes;
         _lastTrendFlushUtc = DateTime.MinValue;
         _trendFlushCount = 0;
         _batchHeartbeatPersistCount = 0;
+        _incrementalTableSnapshots.Clear();
     }
 
     private void ResetAnalyticsDeltaTracking()
@@ -354,6 +427,555 @@ using NpgsqlTypes;
         _analyticsDeltaSeasonIds.Clear();
         _analyticsDeltaTypeIds.Clear();
         _analyticsDeltaStoreIds.Clear();
+    }
+
+    private bool IsIncrementalFeatureEnabled()
+        => _options.Incremental.Enabled;
+
+    private bool IsIncrementalWriteMode()
+        => IsIncrementalFeatureEnabled()
+           && string.Equals(_options.Incremental.Mode, "incremental", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsIncrementalShadowMode()
+        => IsIncrementalFeatureEnabled()
+           && string.Equals(_options.Incremental.Mode, "shadow", StringComparison.OrdinalIgnoreCase);
+
+    private static string NormalizeCursorMode(string? mode)
+    {
+        if (string.IsNullOrWhiteSpace(mode))
+            return "id";
+
+        var normalized = mode.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "timestamp" or "id" or "none" or "timestamp_then_id" or "id_or_composite" => normalized,
+            _ => "id"
+        };
+    }
+
+    internal static bool ShouldSkipLinkedTablesByDnevnikTrigger(
+        bool incrementalWriteMode,
+        bool dnevnikTablePresent,
+        int dnevnikImportedDelta)
+        => incrementalWriteMode
+           && dnevnikTablePresent
+           && dnevnikImportedDelta <= 0;
+
+    private AccessIncrementalTableProfile? ResolveIncrementalProfile(string tableKey)
+    {
+        if (!IsIncrementalFeatureEnabled())
+            return null;
+
+        if (_options.Incremental.Profiles is null || _options.Incremental.Profiles.Count == 0)
+            return null;
+
+        var normalizedTableKey = Normalize(tableKey);
+        return _options.Incremental.Profiles
+            .FirstOrDefault(x =>
+                x.Enabled &&
+                Normalize(x.TableKey).Equals(normalizedTableKey, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string[] BuildNormalizedAliasArray(IEnumerable<string>? aliases, IReadOnlyList<string> fallbackAliases)
+    {
+        var selected = aliases is null
+            ? fallbackAliases
+            : aliases.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+        var normalized = selected
+            .Select(Normalize)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return normalized.Length == 0
+            ? fallbackAliases.Select(Normalize)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray()
+            : normalized;
+    }
+
+    private static string[] ResolveIncrementalIdAliases(string tableKey, AccessIncrementalTableProfile profile)
+    {
+        var fallback = IncrementalIdAliasesByTable.TryGetValue(tableKey, out var aliases)
+            ? aliases
+            : ["id"];
+        return BuildNormalizedAliasArray(profile.CursorIdAliases, fallback);
+    }
+
+    private static string[] ResolveIncrementalTimestampAliases(AccessIncrementalTableProfile profile)
+        => BuildNormalizedAliasArray(profile.CursorTimestampAliases, DefaultCursorTimestampAliases);
+
+    private static int ResolveIncrementalOverlapSeconds(AccessIncrementalTableProfile profile, AccessIncrementalOptions incrementalOptions)
+    {
+        var raw = profile.OverlapSeconds ?? incrementalOptions.DefaultOverlapSeconds;
+        return Math.Clamp(raw, 0, 3600);
+    }
+
+    private int ResolveIncrementalWriteBatchSize(AccessIncrementalTableProfile profile)
+    {
+        var raw = profile.BatchSize ?? _options.DbSaveBatchSize;
+        return Math.Max(1, raw);
+    }
+
+    private async Task<ActiveIncrementalTableScope?> BeginIncrementalTableScopeAsync(
+        long batchId,
+        string tableKey,
+        string? tableName,
+        CancellationToken ct)
+    {
+        if (!IsIncrementalFeatureEnabled())
+            return null;
+
+        if (_cursorRepository is null)
+            return null;
+
+        var profile = ResolveIncrementalProfile(tableKey);
+        if (profile is null)
+            return null;
+
+        var normalizedMode = NormalizeCursorMode(profile.CursorMode);
+        if (string.Equals(normalizedMode, "none", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var cursor = await _cursorRepository.GetOrCreateAsync(tableKey, normalizedMode, ct);
+        var leaseDurationSeconds = Math.Clamp(Math.Max(_options.HeartbeatIntervalSeconds, _options.StatusUpdateThrottleSeconds) * 3, 30, 600);
+        var leaseAcquired = await _cursorRepository.TryAcquireLeaseAsync(
+            tableKey,
+            _incrementalLeaseOwner,
+            TimeSpan.FromSeconds(leaseDurationSeconds),
+            ct);
+
+        if (!leaseAcquired)
+        {
+            throw new InvalidOperationException(
+                $"Incremental import lease is busy for table '{tableKey}'. Retry after the current worker finishes.");
+        }
+
+        await _cursorRepository.MarkRunStartedAsync(tableKey, ct);
+
+        return new ActiveIncrementalTableScope
+        {
+            BatchId = batchId,
+            TableKey = tableKey,
+            SourceTableName = tableName ?? tableKey,
+            CursorMode = normalizedMode,
+            TimestampAliases = ResolveIncrementalTimestampAliases(profile),
+            IdAliases = ResolveIncrementalIdAliases(tableKey, profile),
+            ApplyFilter = IsIncrementalWriteMode(),
+            CommitOnSuccess = IsIncrementalWriteMode(),
+            OverlapSeconds = ResolveIncrementalOverlapSeconds(profile, _options.Incremental),
+            CursorTimestampUtc = cursor.CursorTimestampUtc,
+            CursorId = cursor.CursorId,
+            CursorTieBreakerId = cursor.CursorTieBreakerId,
+            WriteBatchSize = ResolveIncrementalWriteBatchSize(profile),
+            LeaseDurationSeconds = leaseDurationSeconds,
+            LastLeaseRenewedUtc = DateTime.UtcNow,
+            LeaseAcquired = true
+        };
+    }
+
+    private async Task CompleteIncrementalTableScopeAsync(ActiveIncrementalTableScope scope, CancellationToken ct)
+    {
+        if (_cursorRepository is null)
+            return;
+
+        var hasCursorProgress =
+            scope.MaxSeenTimestampUtc.HasValue ||
+            scope.MaxSeenId.HasValue ||
+            scope.MaxSeenTieBreakerId.HasValue;
+
+        if (scope.CommitOnSuccess && hasCursorProgress)
+        {
+            var nextTimestamp = scope.MaxSeenTimestampUtc;
+            var nextId = scope.MaxSeenId;
+            var nextTieBreakerId = scope.MaxSeenTieBreakerId;
+
+            await _cursorRepository.CommitCursorAsync(
+                scope.TableKey,
+                nextTimestamp,
+                nextId,
+                nextTieBreakerId,
+                scope.BatchId,
+                ct);
+        }
+
+        await _cursorRepository.MarkRunCompletedAsync(scope.TableKey, ct);
+
+        _logger.LogInformation(
+            "Access incremental scope completed. BatchId: {BatchId}. TableKey: {TableKey}. SourceTable: {SourceTable}. Mode: {Mode}. ApplyFilter: {ApplyFilter}. CommitOnSuccess: {CommitOnSuccess}. RowsScanned: {RowsScanned}. RowsPassedFilter: {RowsPassedFilter}. RowsFilteredOut: {RowsFilteredOut}. RowsAccepted: {RowsAccepted}. NextCursorTimestampUtc: {NextCursorTimestampUtc}. NextCursorId: {NextCursorId}.",
+            scope.BatchId,
+            scope.TableKey,
+            scope.SourceTableName,
+            scope.CursorMode,
+            scope.ApplyFilter,
+            scope.CommitOnSuccess,
+            scope.RowsScanned,
+            scope.RowsPassedFilter,
+            scope.RowsFilteredOut,
+            scope.RowsAccepted,
+            scope.MaxSeenTimestampUtc,
+            scope.MaxSeenId);
+    }
+
+    private async Task MarkIncrementalTableScopeFailedAsync(ActiveIncrementalTableScope scope, Exception ex)
+    {
+        if (_cursorRepository is null)
+            return;
+
+        try
+        {
+            await _cursorRepository.MarkFailureAsync(scope.TableKey, ex.GetBaseException().Message, CancellationToken.None);
+        }
+        catch (Exception innerEx)
+        {
+            _logger.LogDebug(
+                innerEx,
+                "Access incremental scope failure marker could not be persisted. BatchId: {BatchId}. TableKey: {TableKey}.",
+                scope.BatchId,
+                scope.TableKey);
+        }
+    }
+
+    private async Task ReleaseIncrementalTableScopeAsync(ActiveIncrementalTableScope scope)
+    {
+        if (_cursorRepository is null || !scope.LeaseAcquired)
+            return;
+
+        try
+        {
+            await _cursorRepository.ReleaseLeaseAsync(scope.TableKey, _incrementalLeaseOwner, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(
+                ex,
+                "Access incremental scope lease release failed. BatchId: {BatchId}. TableKey: {TableKey}.",
+                scope.BatchId,
+                scope.TableKey);
+        }
+    }
+
+    private void CaptureIncrementalSnapshot(ActiveIncrementalTableScope scope, string status, string? error = null)
+    {
+        var committedCursor =
+            scope.CommitOnSuccess &&
+            string.Equals(status, "completed", StringComparison.OrdinalIgnoreCase) &&
+            (scope.MaxSeenTimestampUtc.HasValue || scope.MaxSeenId.HasValue || scope.MaxSeenTieBreakerId.HasValue);
+
+        _incrementalTableSnapshots[scope.TableKey] = new IncrementalTableSnapshot
+        {
+            TableKey = scope.TableKey,
+            SourceTableName = scope.SourceTableName,
+            CursorMode = scope.CursorMode,
+            AppliedFilter = scope.ApplyFilter,
+            CommittedCursor = committedCursor,
+            CursorBeforeTimestampUtc = scope.CursorTimestampUtc,
+            CursorBeforeId = scope.CursorId,
+            CursorBeforeTieBreakerId = scope.CursorTieBreakerId,
+            CursorAfterTimestampUtc = scope.MaxSeenTimestampUtc,
+            CursorAfterId = scope.MaxSeenId,
+            CursorAfterTieBreakerId = scope.MaxSeenTieBreakerId,
+            RowsScanned = scope.RowsScanned,
+            RowsFilteredOut = scope.RowsFilteredOut,
+            RowsPassedFilter = scope.RowsPassedFilter,
+            RowsAccepted = scope.RowsAccepted,
+            Status = status,
+            Error = string.IsNullOrWhiteSpace(error) ? null : TrimToMaxLength(error, 1000),
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+    }
+
+    private string? BuildBatchCursorSnapshotJson()
+    {
+        if (_incrementalTableSnapshots.Count == 0)
+            return null;
+
+        var payload = new
+        {
+            mode = _options.Incremental.Mode,
+            capturedAtUtc = DateTime.UtcNow,
+            tables = _incrementalTableSnapshots.Values
+                .OrderBy(x => x.TableKey, StringComparer.OrdinalIgnoreCase)
+                .ToArray()
+        };
+
+        return JsonSerializer.Serialize(payload);
+    }
+
+    private static int? ReadCursorInt(AccessDataRow row, IReadOnlyList<string> normalizedAliases)
+    {
+        for (var i = 0; i < normalizedAliases.Count; i++)
+        {
+            var value = INormalized(row, normalizedAliases[i]);
+            if (value.HasValue)
+                return value;
+        }
+
+        return null;
+    }
+
+    private static DateTime? ReadCursorTimestamp(AccessDataRow row, IReadOnlyList<string> normalizedAliases)
+    {
+        for (var i = 0; i < normalizedAliases.Count; i++)
+        {
+            var value = ConvertToDate(GetNormalized(row, normalizedAliases[i]));
+            if (value.HasValue)
+                return value;
+        }
+
+        return null;
+    }
+
+    private bool ShouldIncludeRowForIncrementalScope(ActiveIncrementalTableScope scope, AccessDataRow row)
+    {
+        scope.RowsScanned++;
+        if (!scope.ApplyFilter)
+            return true;
+
+        var effectiveCursorTimestamp = scope.CursorTimestampUtc?.AddSeconds(-scope.OverlapSeconds);
+        var rowTimestamp = ReadCursorTimestamp(row, scope.TimestampAliases);
+        var rowId = ReadCursorInt(row, scope.IdAliases);
+
+        bool include;
+        switch (scope.CursorMode)
+        {
+            case "timestamp":
+                include = !effectiveCursorTimestamp.HasValue || !rowTimestamp.HasValue || rowTimestamp.Value >= effectiveCursorTimestamp.Value;
+                break;
+            case "timestamp_then_id":
+                include = EvaluateTimestampThenIdCursor(scope, rowTimestamp, rowId, effectiveCursorTimestamp);
+                break;
+            case "id_or_composite":
+            case "id":
+            default:
+                include = !scope.CursorId.HasValue || !rowId.HasValue || rowId.Value > scope.CursorId.Value;
+                break;
+        }
+
+        if (include)
+            scope.RowsPassedFilter++;
+        else
+            scope.RowsFilteredOut++;
+
+        if (!rowId.HasValue && !rowTimestamp.HasValue && !scope.MissingCursorAliasLogged)
+        {
+            scope.MissingCursorAliasLogged = true;
+            _logger.LogWarning(
+                "Access incremental scope could not resolve cursor aliases for table {TableKey}. Falling back to pass-through rows for this step.",
+                scope.TableKey);
+        }
+
+        return include;
+    }
+
+    private static bool EvaluateTimestampThenIdCursor(
+        ActiveIncrementalTableScope scope,
+        DateTime? rowTimestamp,
+        int? rowId,
+        DateTime? effectiveCursorTimestamp)
+    {
+        if (!effectiveCursorTimestamp.HasValue)
+            return true;
+
+        if (!rowTimestamp.HasValue)
+        {
+            if (!scope.CursorId.HasValue || !rowId.HasValue)
+                return true;
+            return rowId.Value > scope.CursorId.Value;
+        }
+
+        if (rowTimestamp.Value > effectiveCursorTimestamp.Value)
+            return true;
+        if (rowTimestamp.Value < effectiveCursorTimestamp.Value)
+            return false;
+
+        if (!scope.CursorTieBreakerId.HasValue || !rowId.HasValue)
+            return true;
+
+        return rowId.Value > scope.CursorTieBreakerId.Value;
+    }
+
+    private void TrackIncrementalAcceptedRow(string tableKey, AccessDataRow row)
+    {
+        var scope = _activeIncrementalScope;
+        if (scope is null)
+            return;
+        if (!scope.TableKey.Equals(tableKey, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        scope.RowsAccepted++;
+
+        var rowTimestamp = ReadCursorTimestamp(row, scope.TimestampAliases);
+        var rowId = ReadCursorInt(row, scope.IdAliases);
+        if (rowId.HasValue)
+            scope.MaxSeenId = !scope.MaxSeenId.HasValue ? rowId.Value : Math.Max(scope.MaxSeenId.Value, rowId.Value);
+
+        if (!rowTimestamp.HasValue)
+            return;
+
+        if (!scope.MaxSeenTimestampUtc.HasValue || rowTimestamp.Value > scope.MaxSeenTimestampUtc.Value)
+        {
+            scope.MaxSeenTimestampUtc = rowTimestamp.Value;
+            scope.MaxSeenTieBreakerId = rowId;
+            return;
+        }
+
+        if (rowTimestamp.Value == scope.MaxSeenTimestampUtc.Value && rowId.HasValue)
+        {
+            scope.MaxSeenTieBreakerId = !scope.MaxSeenTieBreakerId.HasValue
+                ? rowId.Value
+                : Math.Max(scope.MaxSeenTieBreakerId.Value, rowId.Value);
+        }
+    }
+
+    private async IAsyncEnumerable<AccessDataRow> ReadRowsForTableAsync(
+        IAccessDataReaderSession session,
+        string sourceTableName,
+        string tableKey,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        var scope = _activeIncrementalScope;
+        var appliesToScope = scope is not null
+            && scope.TableKey.Equals(tableKey, StringComparison.OrdinalIgnoreCase);
+        var canPushDown = false;
+        if (appliesToScope && scope!.ApplyFilter && session.SupportsPredicatePushdown)
+        {
+            var columns = await session.GetColumnsAsync(sourceTableName, ct);
+            canPushDown = CanApplyAccessReadPushdown(
+                scope.CursorMode,
+                scope.CursorTimestampUtc,
+                scope.CursorId,
+                scope.CursorTieBreakerId,
+                scope.TimestampAliases,
+                scope.IdAliases,
+                columns);
+
+            if (!canPushDown)
+            {
+                _logger.LogInformation(
+                    "Access incremental predicate pushdown is unavailable for this table. Falling back to in-memory filtering. TableKey: {TableKey}. SourceTableName: {SourceTableName}. Mode: {Mode}.",
+                    tableKey,
+                    sourceTableName,
+                    scope.CursorMode);
+            }
+        }
+
+        var readQuery = canPushDown ? BuildAccessReadQuery(scope!) : null;
+        var leaseProbeCounter = 0;
+
+        await foreach (var row in session.ReadRowsAsync(sourceTableName, readQuery, ct))
+        {
+            leaseProbeCounter++;
+            if (appliesToScope && leaseProbeCounter >= 128)
+            {
+                leaseProbeCounter = 0;
+                await TryRenewIncrementalLeaseAsync(scope!, ct);
+            }
+
+            if (appliesToScope && canPushDown)
+            {
+                scope!.RowsScanned++;
+                scope.RowsPassedFilter++;
+                yield return row;
+                continue;
+            }
+
+            if (appliesToScope && !ShouldIncludeRowForIncrementalScope(scope!, row))
+            {
+                continue;
+            }
+
+            yield return row;
+        }
+    }
+
+    private static AccessReadQuery BuildAccessReadQuery(ActiveIncrementalTableScope scope)
+        => new()
+        {
+            CursorMode = scope.CursorMode,
+            CursorTimestampUtc = scope.CursorTimestampUtc,
+            CursorId = scope.CursorId,
+            CursorTieBreakerId = scope.CursorTieBreakerId,
+            OverlapSeconds = scope.OverlapSeconds,
+            TimestampAliases = scope.TimestampAliases,
+            IdAliases = scope.IdAliases
+        };
+
+    internal static bool CanApplyAccessReadPushdown(
+        string cursorMode,
+        DateTime? cursorTimestampUtc,
+        long? cursorId,
+        long? cursorTieBreakerId,
+        IReadOnlyList<string> timestampAliases,
+        IReadOnlyList<string> idAliases,
+        IReadOnlyList<string> sourceColumns)
+    {
+        var normalizedMode = NormalizeCursorMode(cursorMode);
+        if (string.Equals(normalizedMode, "none", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var hasTimestampColumn = HasAnyAliasInColumns(sourceColumns, timestampAliases);
+        var hasIdColumn = HasAnyAliasInColumns(sourceColumns, idAliases);
+
+        return normalizedMode switch
+        {
+            "timestamp" => cursorTimestampUtc.HasValue && hasTimestampColumn,
+            "timestamp_then_id" => (cursorTimestampUtc.HasValue && hasTimestampColumn) ||
+                                   (cursorId.HasValue && hasIdColumn) ||
+                                   (cursorTieBreakerId.HasValue && hasIdColumn),
+            "id_or_composite" => cursorId.HasValue && hasIdColumn,
+            "id" => cursorId.HasValue && hasIdColumn,
+            _ => cursorId.HasValue && hasIdColumn
+        };
+    }
+
+    private static bool HasAnyAliasInColumns(
+        IReadOnlyList<string> sourceColumns,
+        IReadOnlyList<string> normalizedAliases)
+    {
+        if (sourceColumns.Count == 0 || normalizedAliases.Count == 0)
+            return false;
+
+        var normalizedSourceColumns = new HashSet<string>(sourceColumns.Count, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < sourceColumns.Count; i++)
+        {
+            var normalized = Normalize(sourceColumns[i]);
+            if (!string.IsNullOrWhiteSpace(normalized))
+                normalizedSourceColumns.Add(normalized);
+        }
+
+        for (var i = 0; i < normalizedAliases.Count; i++)
+        {
+            var normalizedAlias = Normalize(normalizedAliases[i]);
+            if (!string.IsNullOrWhiteSpace(normalizedAlias) && normalizedSourceColumns.Contains(normalizedAlias))
+                return true;
+        }
+
+        return false;
+    }
+
+    private async Task TryRenewIncrementalLeaseAsync(ActiveIncrementalTableScope scope, CancellationToken ct)
+    {
+        if (_cursorRepository is null || !scope.LeaseAcquired)
+            return;
+
+        var renewIntervalSeconds = Math.Clamp(scope.LeaseDurationSeconds / 2, 10, 120);
+        var now = DateTime.UtcNow;
+        if (now - scope.LastLeaseRenewedUtc < TimeSpan.FromSeconds(renewIntervalSeconds))
+            return;
+
+        var renewed = await _cursorRepository.RenewLeaseAsync(
+            scope.TableKey,
+            _incrementalLeaseOwner,
+            TimeSpan.FromSeconds(scope.LeaseDurationSeconds),
+            ct);
+        if (!renewed)
+        {
+            throw new InvalidOperationException(
+                $"Incremental import lease was lost for table '{scope.TableKey}'. Aborting to preserve single-writer safety.");
+        }
+
+        scope.LastLeaseRenewedUtc = now;
     }
 
     private void TrackAnalyticsProductId(int productId)
@@ -403,6 +1025,11 @@ using NpgsqlTypes;
 
     private TimeSpan GetTrendFlushInterval()
         => TimeSpan.FromSeconds(Math.Clamp(_options.StatusUpdateThrottleSeconds, 2, 5));
+
+    private int GetActiveTrendWriteBatchSize()
+        => _activeIncrementalScope?.WriteBatchSize is > 0
+            ? _activeIncrementalScope.WriteBatchSize
+            : Math.Max(1, _options.DbSaveBatchSize);
 
     private async Task PersistBatchProgressAsync(string reason, bool force, CancellationToken ct)
     {
@@ -1323,7 +1950,15 @@ using NpgsqlTypes;
             RowsAccepted = 0,
             RowsWritten = 0,
             RetryCount = 0,
-            CancellationRequested = false
+            CancellationRequested = false,
+            IsIncremental = IsIncrementalFeatureEnabled(),
+            CursorSnapshot = IsIncrementalFeatureEnabled()
+                ? JsonSerializer.Serialize(new
+                {
+                    mode = _options.Incremental.Mode,
+                    createdAtUtc = now
+                })
+                : null
         };
 
         _trendDb.DataImportBatches.Add(batch);
@@ -1492,6 +2127,7 @@ using NpgsqlTypes;
                 batch.ProgressPercent = 100;
                 UpdateBatchDurationSeconds(batch, result.CompletedAtUtc ?? DateTime.UtcNow);
                 ApplyBatchMetricsFromResult(batch, result);
+                batch.CursorSnapshot = BuildBatchCursorSnapshotJson();
                 batch.SummaryJson = JsonSerializer.Serialize(result);
                 await _trendDb.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
@@ -1536,6 +2172,7 @@ using NpgsqlTypes;
                 type = ex.GetType().FullName,
                 message = ex.Message
             });
+            batch.CursorSnapshot = BuildBatchCursorSnapshotJson();
             batch.SummaryJson = JsonSerializer.Serialize(result);
             foreach (var entry in _trendDb.ChangeTracker.Entries().Where(e => !ReferenceEquals(e.Entity, batch)).ToList())
                 entry.State = EntityState.Detached;
@@ -1592,6 +2229,7 @@ using NpgsqlTypes;
                 baseType = ex.GetBaseException().GetType().FullName,
                 message = ex.GetBaseException().Message
             });
+            batch.CursorSnapshot = BuildBatchCursorSnapshotJson();
             batch.SummaryJson = JsonSerializer.Serialize(result);
 
             try
@@ -2133,6 +2771,8 @@ using NpgsqlTypes;
         }
         if (string.IsNullOrWhiteSpace(batch.SummaryJson))
             batch.SummaryJson = JsonSerializer.Serialize(result);
+        if (string.IsNullOrWhiteSpace(batch.CursorSnapshot))
+            batch.CursorSnapshot = BuildBatchCursorSnapshotJson();
 
         await db.SaveChangesAsync(ct);
         _logger.LogWarning(
@@ -2605,16 +3245,32 @@ using NpgsqlTypes;
             await FlushTrendWritesAsync(force: true, innerCt);
         }, ct);
 
+        var dnevnikImportedBefore = result.DnevnikInserted + result.DnevnikUpdated;
         if (dnevnik is not null)
             await RunImportStepAsync("import", "dnevnik_promena", dnevnik, result, async innerCt =>
             {
                 await ImportDnevnikPromenaAsync(session, dnevnik, overwriteExisting, result, innerCt);
                 await FlushTrendWritesAsync(force: true, innerCt);
             }, ct);
+        var dnevnikImportedDelta = (result.DnevnikInserted + result.DnevnikUpdated) - dnevnikImportedBefore;
+        var skipLinkedByDnevnikTrigger = ShouldSkipLinkedTablesByDnevnikTrigger(
+            IsIncrementalWriteMode(),
+            dnevnik is not null,
+            dnevnikImportedDelta);
+
+        if (skipLinkedByDnevnikTrigger)
+        {
+            _logger.LogInformation(
+                "Access import skipped linked sales/returns tables because dnevnik_promena produced no incremental delta. DnevnikImportedDelta: {DnevnikImportedDelta}. BatchId: {BatchId}.",
+                dnevnikImportedDelta,
+                result.BatchId);
+            result.Warnings.Add(
+                "Preskočen je import tabela prodaja/povraćaj jer u dnevnik_promena nema novih izmena za incremental batch.");
+        }
 
         var importedProdajaFromLineTable = false;
         var synthesizedProdajaFromDnevnik = false;
-        if (prodaja is not null && await IsProdajaLineTableAsync(session, prodaja, ct))
+        if (!skipLinkedByDnevnikTrigger && prodaja is not null && await IsProdajaLineTableAsync(session, prodaja, ct))
         {
             importedProdajaFromLineTable = true;
             result.Warnings.Add($"Tabela '{prodaja}' prepoznata je kao tabela stavki prodaje (IDDnevnik/IDArtikal). Uvozim prodaju kroz vezu sa DnevnikPromena.");
@@ -2624,7 +3280,7 @@ using NpgsqlTypes;
                 await FlushTrendWritesAsync(force: true, innerCt);
             }, ct);
         }
-        else
+        else if (!skipLinkedByDnevnikTrigger)
         {
             if (prodaja is not null)
                 await RunImportStepAsync("import", "prodaja_zaglavlje", prodaja, result, async innerCt =>
@@ -2650,14 +3306,14 @@ using NpgsqlTypes;
                 }, ct);
         }
 
-        if (povracaj is not null)
+        if (!skipLinkedByDnevnikTrigger && povracaj is not null)
             await RunImportStepAsync("import", "povracaj_zaglavlje", povracaj, result, async innerCt =>
             {
                 await ImportPovracajAsync(session, povracaj, overwriteExisting, result, innerCt);
                 await FlushTrendWritesAsync(force: true, innerCt);
             }, ct);
 
-        if (povracajStavke is not null)
+        if (!skipLinkedByDnevnikTrigger && povracajStavke is not null)
             await RunImportStepAsync("import", "povracaj_stavke", povracajStavke, result, async innerCt =>
             {
                 await ImportPovracajStavkeAsync(session, povracajStavke, overwriteExisting, result, innerCt);
@@ -2678,7 +3334,11 @@ using NpgsqlTypes;
                 ImportPrenosRobeAsync(session, prenosRobe, overwriteExisting, result, innerCt), ct);
         await FlushTrendWritesAsync(force: true, ct);
 
-        if (prodaja is null && dnevnik is not null && !importedProdajaFromLineTable && !synthesizedProdajaFromDnevnik)
+        if (!skipLinkedByDnevnikTrigger &&
+            prodaja is null &&
+            dnevnik is not null &&
+            !importedProdajaFromLineTable &&
+            !synthesizedProdajaFromDnevnik)
             await RunImportStepAsync("synthesize", "prodaja_zaglavlje", dnevnik, result, async innerCt =>
             {
                 await SynthesizeProdajaFromDnevnikAsync(overwriteExisting, result, innerCt);
@@ -2746,35 +3406,65 @@ using NpgsqlTypes;
         var started = DateTime.UtcNow;
         var sw = System.Diagnostics.Stopwatch.StartNew();
         SetBatchProgressContext(step, tableName ?? tableKey);
+        ActiveIncrementalTableScope? incrementalScope = null;
 
-        _logger.LogInformation(
-            "Access import step started. Step: {Step}. TableKey: {TableKey}. TableName: {TableName}. StartedAtUtc: {StartedAtUtc}.",
-            step,
-            tableKey,
-            tableName ?? "<none>",
-            started);
-        await PersistBatchProgressAsync("step-start", force: true, ct);
+        try
+        {
+            incrementalScope = await BeginIncrementalTableScopeAsync(result.BatchId, tableKey, tableName, ct);
+            _activeIncrementalScope = incrementalScope;
 
-        await action(ct);
-        await EnsureBatchNotCancelledAsync(result.BatchId, ct);
+            _logger.LogInformation(
+                "Access import step started. Step: {Step}. TableKey: {TableKey}. TableName: {TableName}. StartedAtUtc: {StartedAtUtc}. IncrementalFilter: {IncrementalFilter}. IncrementalCommit: {IncrementalCommit}.",
+                step,
+                tableKey,
+                tableName ?? "<none>",
+                started,
+                incrementalScope?.ApplyFilter ?? false,
+                incrementalScope?.CommitOnSuccess ?? false);
+            await PersistBatchProgressAsync("step-start", force: true, ct);
 
-        sw.Stop();
-        var afterMetric = result.CoverageByTable.TryGetValue(tableKey, out var metric)
-            ? metric
-            : new AccessImportCoverageMetric();
-        var afterImported = GetImportedRowCount(result, tableKey);
+            await action(ct);
+            await EnsureBatchNotCancelledAsync(result.BatchId, ct);
 
-        _logger.LogInformation(
-            "Access import step completed. Step: {Step}. TableKey: {TableKey}. TableName: {TableName}. DurationMs: {DurationMs}. SourceRows: {SourceRows}. AcceptedRows: {AcceptedRows}. RowsWritten: {RowsWritten}. BatchSize: {BatchSize}.",
-            step,
-            tableKey,
-            tableName ?? "<none>",
-            sw.ElapsedMilliseconds,
-            Math.Max(0, afterMetric.SourceRows - beforeMetric.SourceRows),
-            Math.Max(0, afterMetric.AcceptedRows - beforeMetric.AcceptedRows),
-            Math.Max(0, afterImported - beforeImported),
-            _options.DbSaveBatchSize);
-        await PersistBatchProgressAsync("step-complete", force: true, ct);
+            if (incrementalScope is not null)
+            {
+                await CompleteIncrementalTableScopeAsync(incrementalScope, ct);
+                CaptureIncrementalSnapshot(incrementalScope, "completed");
+            }
+
+            sw.Stop();
+            var afterMetric = result.CoverageByTable.TryGetValue(tableKey, out var metric)
+                ? metric
+                : new AccessImportCoverageMetric();
+            var afterImported = GetImportedRowCount(result, tableKey);
+
+            _logger.LogInformation(
+                "Access import step completed. Step: {Step}. TableKey: {TableKey}. TableName: {TableName}. DurationMs: {DurationMs}. SourceRows: {SourceRows}. AcceptedRows: {AcceptedRows}. RowsWritten: {RowsWritten}. BatchSize: {BatchSize}.",
+                step,
+                tableKey,
+                tableName ?? "<none>",
+                sw.ElapsedMilliseconds,
+                Math.Max(0, afterMetric.SourceRows - beforeMetric.SourceRows),
+                Math.Max(0, afterMetric.AcceptedRows - beforeMetric.AcceptedRows),
+                Math.Max(0, afterImported - beforeImported),
+                GetActiveTrendWriteBatchSize());
+            await PersistBatchProgressAsync("step-complete", force: true, ct);
+        }
+        catch (Exception ex)
+        {
+            if (incrementalScope is not null)
+            {
+                await MarkIncrementalTableScopeFailedAsync(incrementalScope, ex);
+                CaptureIncrementalSnapshot(incrementalScope, "failed", ex.GetBaseException().Message);
+            }
+            throw;
+        }
+        finally
+        {
+            if (incrementalScope is not null)
+                await ReleaseIncrementalTableScopeAsync(incrementalScope);
+            _activeIncrementalScope = null;
+        }
     }
 
     private static int GetImportedRowCount(AccessImportRunResponse result, string key)
@@ -2800,7 +3490,7 @@ using NpgsqlTypes;
     private async Task ImportTipoviAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var existing = ToFirstDictionary(_trendDb.TipoviObuce.AsNoTracking().ToList(), x => x.Id);
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "tipovi_obuce", ct))
         {
             MarkSourceRow(result, "tipovi_obuce");
             var naziv = S(row, "naziv", "tip", "tipobuce", "name");
@@ -2808,6 +3498,7 @@ using NpgsqlTypes;
             var id = I(row, "id", "idtipobuce", "tipid");
             if (!id.HasValue || id.Value <= 0) continue;
             MarkAccepted(result, "tipovi_obuce");
+            TrackIncrementalAcceptedRow("tipovi_obuce", row);
             TrackAnalyticsTypeId(id.Value);
 
             if (!existing.TryGetValue(id.Value, out var e))
@@ -2834,7 +3525,7 @@ using NpgsqlTypes;
     private async Task ImportDobavljaciAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var existing = ToFirstDictionary(_trendDb.Dobavljaci.AsNoTracking().ToList(), x => x.Id);
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "dobavljaci", ct))
         {
             MarkSourceRow(result, "dobavljaci");
             var naziv = S(row, "naziv", "dobavljac", "supplier", "name");
@@ -2842,6 +3533,7 @@ using NpgsqlTypes;
             var id = I(row, "id", "iddobavljac", "supplierid");
             if (!id.HasValue || id.Value <= 0) continue;
             MarkAccepted(result, "dobavljaci");
+            TrackIncrementalAcceptedRow("dobavljaci", row);
             TrackAnalyticsSupplierId(id.Value);
 
             if (!existing.TryGetValue(id.Value, out var e))
@@ -2879,7 +3571,7 @@ using NpgsqlTypes;
     private async Task ImportSezoneAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var existing = ToFirstDictionary(_trendDb.Sezone.AsNoTracking().ToList(), x => x.Id);
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "sezone", ct))
         {
             MarkSourceRow(result, "sezone");
             var naziv = S(row, "naziv", "sezona", "name");
@@ -2887,6 +3579,7 @@ using NpgsqlTypes;
             var id = I(row, "id", "idsezona", "seasonid");
             if (!id.HasValue || id.Value <= 0) continue;
             MarkAccepted(result, "sezone");
+            TrackIncrementalAcceptedRow("sezone", row);
             TrackAnalyticsSeasonId(id.Value);
 
             var datumOd = DT(row, "datumod", "od", "startdate", "sezonapocetak", "sezonaod", "pocetak") ?? DateTime.UtcNow.Date;
@@ -2924,12 +3617,13 @@ using NpgsqlTypes;
 
     private async Task ImportObjektiAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "objekti", ct))
         {
             MarkSourceRow(result, "objekti");
             var id = I(row, "id", "idobjekat", "storeid", "idobjekta", "poslovnicaid");
             if (!id.HasValue || id.Value <= 0) continue;
             MarkAccepted(result, "objekti");
+            TrackIncrementalAcceptedRow("objekti", row);
             var naziv = S(row, "nazivobjekta", "naziv", "storename", "name", "poslovnica",
                           "ime", "opisobjekta") ?? $"Objekat {id.Value}";
             _importedStores[id.Value] = (
@@ -2972,7 +3666,7 @@ using NpgsqlTypes;
         var insertedBeforeLoop = result.ArtikliInserted;
         var updatedBeforeLoop = result.ArtikliUpdated;
 
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "artikli", ct))
         {
             sourceRows++;
             MarkSourceRow(result, "artikli");
@@ -2991,6 +3685,7 @@ using NpgsqlTypes;
             var naziv = SNormalized(row, aliasMap.NazivAlias);
             if (string.IsNullOrWhiteSpace(naziv)) continue;
             MarkAccepted(result, "artikli");
+            TrackIncrementalAcceptedRow("artikli", row);
             acceptedRows++;
             var id = INormalized(row, aliasMap.IdAlias);
 
@@ -3050,7 +3745,7 @@ using NpgsqlTypes;
                 _trendDb.Artikli.Update(e);
 
             TrackTrendWrite();
-            var shouldClearTrackedBatch = _pendingTrendWrites >= Math.Max(1, _options.DbSaveBatchSize);
+            var shouldClearTrackedBatch = _pendingTrendWrites >= GetActiveTrendWriteBatchSize();
             await FlushTrendWritesAsync(force: false, ct);
             if (shouldClearTrackedBatch)
             {
@@ -3187,12 +3882,13 @@ using NpgsqlTypes;
     private async Task ImportProdajaAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var existing = ToFirstDictionary(_trendDb.ProdajaZaglavlja.AsNoTracking().ToList(), x => x.Id);
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "prodaja_zaglavlje", ct))
         {
             MarkSourceRow(result, "prodaja_zaglavlje");
             var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
             if (!id.HasValue || id.Value <= 0) continue;
             MarkAccepted(result, "prodaja_zaglavlje");
+            TrackIncrementalAcceptedRow("prodaja_zaglavlje", row);
             TrackAnalyticsSaleId(id.Value);
 
             if (!existing.TryGetValue(id.Value, out var e))
@@ -3284,7 +3980,7 @@ using NpgsqlTypes;
         var rowIndex = 0;
 
         var sw = Stopwatch.StartNew();
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "prodaja_stavke", ct))
         {
             rowIndex++;
             MarkSourceRow(result, "prodaja_stavke");
@@ -3331,6 +4027,7 @@ using NpgsqlTypes;
             }
 
             MarkAccepted(result, "prodaja_stavke");
+            TrackIncrementalAcceptedRow("prodaja_stavke", row);
             TrackAnalyticsSaleId(idProdaja.Value);
             TrackAnalyticsProductId(idArtikal.Value);
 
@@ -3431,7 +4128,7 @@ using NpgsqlTypes;
             .GroupBy(x => NormalizeLookup(x.Naziv), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "dnevnik_promena", ct))
         {
             MarkSourceRow(result, "dnevnik_promena");
             var id = I(row, "id", "iddnevnik", "iddnevnikpromene", "iddnevnikpromena", "iddnevprom", "idlog", "logid", "seqno");
@@ -3470,6 +4167,7 @@ using NpgsqlTypes;
                 continue;
             }
             MarkAccepted(result, "dnevnik_promena");
+            TrackIncrementalAcceptedRow("dnevnik_promena", row);
 
             e.TipPromene = tip;
             e.Datum = datum;
@@ -3565,7 +4263,7 @@ using NpgsqlTypes;
         var updatedHeaderIds = new HashSet<int>();
         var flushProbeCounter = 0;
 
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "prodaja_stavke", ct))
         {
             MarkSourceRow(result, "prodaja_zaglavlje");
             MarkSourceRow(result, "prodaja_stavke");
@@ -3576,7 +4274,9 @@ using NpgsqlTypes;
                 continue;
 
             MarkAccepted(result, "prodaja_zaglavlje");
+            TrackIncrementalAcceptedRow("prodaja_zaglavlje", row);
             MarkAccepted(result, "prodaja_stavke");
+            TrackIncrementalAcceptedRow("prodaja_stavke", row);
             TrackAnalyticsSaleId(sourceSaleId.Value);
             TrackAnalyticsProductId(idArtikal.Value);
 
@@ -3700,7 +4400,7 @@ using NpgsqlTypes;
             "Postoje duplikati broja zapisnika u postojecoj tabeli povracaja. Import ce koristiti prvi pronadjeni zapis za svaki broj zapisnika");
         var seq = 0;
 
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "povracaj_zaglavlje", ct))
         {
             MarkSourceRow(result, "povracaj_zaglavlje");
 
@@ -3753,6 +4453,7 @@ using NpgsqlTypes;
             }
 
             MarkAccepted(result, "povracaj_zaglavlje");
+            TrackIncrementalAcceptedRow("povracaj_zaglavlje", row);
 
             e.BrojZapisnika = broj;
             e.IDDobavljac = idDobavljac;
@@ -3779,7 +4480,7 @@ using NpgsqlTypes;
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var povracajIds = _trendDb.PovracajZaglavlja.AsNoTracking().Select(x => x.Id).ToHashSet();
 
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "povracaj_stavke", ct))
         {
             MarkSourceRow(result, "povracaj_stavke");
 
@@ -3789,6 +4490,7 @@ using NpgsqlTypes;
                 continue;
 
             MarkAccepted(result, "povracaj_stavke");
+            TrackIncrementalAcceptedRow("povracaj_stavke", row);
 
             var id = I(row, "id", "idstavka", "lineid");
             var qty = I(row, "kolicina", "qty", "quantity") ?? 1;
@@ -3852,7 +4554,7 @@ using NpgsqlTypes;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "nivelacije", ct))
         {
             MarkSourceRow(result, "nivelacije");
 
@@ -3865,6 +4567,7 @@ using NpgsqlTypes;
                 continue;
 
             MarkAccepted(result, "nivelacije");
+            TrackIncrementalAcceptedRow("nivelacije", row);
 
             var staraCena = D(row, "staracena", "staraprodajnacena", "oldprice");
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
@@ -3916,7 +4619,7 @@ using NpgsqlTypes;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "unos_robe", ct))
         {
             MarkSourceRow(result, "unos_robe");
 
@@ -3925,6 +4628,7 @@ using NpgsqlTypes;
                 continue;
 
             MarkAccepted(result, "unos_robe");
+            TrackIncrementalAcceptedRow("unos_robe", row);
 
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
             var nabavnaCena = D(row, "nabavnacena", "purchaseprice", "cena", "nc") ?? 0m;
@@ -3968,7 +4672,7 @@ using NpgsqlTypes;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "povratnice", ct))
         {
             MarkSourceRow(result, "povratnice");
 
@@ -3977,6 +4681,7 @@ using NpgsqlTypes;
                 continue;
 
             MarkAccepted(result, "povratnice");
+            TrackIncrementalAcceptedRow("povratnice", row);
 
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
             var cena = D(row, "cena", "prodajnacena", "unitprice", "pc") ?? 0m;
@@ -4018,7 +4723,7 @@ using NpgsqlTypes;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
-        await foreach (var row in session.ReadRowsAsync(table, ct))
+        await foreach (var row in ReadRowsForTableAsync(session, table, "prenos_robe", ct))
         {
             MarkSourceRow(result, "prenos_robe");
 
@@ -4027,6 +4732,7 @@ using NpgsqlTypes;
                 continue;
 
             MarkAccepted(result, "prenos_robe");
+            TrackIncrementalAcceptedRow("prenos_robe", row);
 
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
             var datum = DT(row, "datum", "datumprenos", "datumtransfera", "date") ?? DateTime.UtcNow;
@@ -7470,6 +8176,11 @@ using NpgsqlTypes;
         batch.TotalImported = CountImportedRows(result);
         batch.TotalUpdated = CountUpdatedRows(result);
         batch.TotalErrors = Math.Max(minTotalErrors, result.Warnings.Count);
+        batch.ProcessedRowCount = batch.RowsWritten;
+        batch.SkippedRowCount = Math.Max(0, batch.RowsRead - batch.RowsAccepted);
+        batch.RowsInserted = batch.TotalImported;
+        batch.RowsUpdated = batch.TotalUpdated;
+        batch.RowsUnchanged = Math.Max(0, batch.RowsAccepted - batch.RowsWritten);
     }
 
     private static int ComputeProgressPercent(
@@ -7516,9 +8227,10 @@ using NpgsqlTypes;
         if (_pendingTrendWrites <= 0)
             return;
 
+        var activeBatchSize = GetActiveTrendWriteBatchSize();
         if (!force)
         {
-            var batchThresholdReached = _pendingTrendWrites >= Math.Max(1, _options.DbSaveBatchSize);
+            var batchThresholdReached = _pendingTrendWrites >= activeBatchSize;
             var timeThresholdReached = DateTime.UtcNow - _lastTrendFlushUtc >= GetTrendFlushInterval();
             if (!batchThresholdReached && !timeThresholdReached)
                 return;
@@ -7537,7 +8249,7 @@ using NpgsqlTypes;
             "Access import DB flush completed. Step: {Step}. RowsWritten: {RowsWritten}. BatchSize: {BatchSize}. Force: {Force}.",
             "db-flush",
             writesToFlush,
-            _options.DbSaveBatchSize,
+            activeBatchSize,
             force);
     }
 

@@ -37,6 +37,13 @@ namespace Domain.Model
         public int RowsRead { get; set; }
         public int RowsAccepted { get; set; }
         public int RowsWritten { get; set; }
+        public bool IsIncremental { get; set; }
+        public string? CursorSnapshot { get; set; }
+        public int ProcessedRowCount { get; set; }
+        public int SkippedRowCount { get; set; }
+        public int RowsInserted { get; set; }
+        public int RowsUpdated { get; set; }
+        public int RowsUnchanged { get; set; }
 
         // ── Enhanced columns (migration 015) ──
         public int? DurationSeconds { get; set; }
