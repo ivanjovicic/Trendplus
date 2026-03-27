@@ -316,6 +316,53 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => e.CancellationRequested);
             });
 
+            // Transfers
+            modelBuilder.Entity<Domain.Transfers.Transfer>(eb =>
+            {
+                eb.ToTable("Transfers");
+                eb.HasKey(e => e.Id);
+
+                eb.Property(e => e.Status).IsRequired().HasMaxLength(32).HasDefaultValue("draft");
+                eb.Property(e => e.SourceId).IsRequired();
+                eb.Property(e => e.DestinationId).IsRequired();
+                eb.Property(e => e.Reserve).IsRequired().HasDefaultValue(false);
+                eb.Property(e => e.CreatedAt).IsRequired();
+                eb.Property(e => e.CreatedBy).HasMaxLength(200);
+
+                eb.HasMany(e => e.Items)
+                  .WithOne()
+                  .HasForeignKey("TransferId")
+                  .OnDelete(DeleteBehavior.Cascade);
+
+                eb.HasIndex(e => e.Status);
+                eb.HasIndex(e => new { e.SourceId, e.DestinationId });
+                eb.HasIndex(e => e.CreatedAt);
+            });
+
+            modelBuilder.Entity<Domain.Transfers.TransferItem>(eb =>
+            {
+                eb.ToTable("TransferItems");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.SkuId).IsRequired();
+                eb.Property(e => e.Quantity).HasColumnType("decimal(18,4)").IsRequired();
+                eb.Property(e => e.Unit).HasMaxLength(32);
+                eb.HasIndex(e => e.SkuId);
+                eb.HasIndex("TransferId");
+            });
+
+            modelBuilder.Entity<Infrastructure.Model.StockReservation>(eb =>
+            {
+                eb.ToTable("StockReservations");
+                eb.HasKey(e => e.Id);
+                eb.Property(e => e.TransferId).IsRequired();
+                eb.Property(e => e.SkuId).IsRequired();
+                eb.Property(e => e.Quantity).HasColumnType("decimal(18,4)").IsRequired();
+                eb.Property(e => e.ExpiresAt);
+                eb.Property(e => e.CreatedAt).IsRequired();
+                eb.HasIndex(e => e.TransferId);
+                eb.HasIndex(e => e.SkuId);
+            });
+
             modelBuilder.Entity<AccessImportLog>(eb =>
             {
                 eb.ToTable("AccessImportLog");
@@ -354,6 +401,9 @@ namespace Infrastructure.DbContexts
         public DbSet<PovracajStavka> PovracajStavke { get; set; } = null!;
         public DbSet<DataImportBatch> DataImportBatches { get; set; } = null!;
         public DbSet<AccessImportLog> AccessImportLogs { get; set; } = null!;
+        public DbSet<Domain.Transfers.Transfer> Transfers { get; set; } = null!;
+        public DbSet<Domain.Transfers.TransferItem> TransferItems { get; set; } = null!;
+        public DbSet<Infrastructure.Model.StockReservation> StockReservations { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {
