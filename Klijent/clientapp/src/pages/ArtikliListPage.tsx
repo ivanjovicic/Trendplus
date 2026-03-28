@@ -480,7 +480,7 @@ export default function ArtikliListPage() {
                     <td className="px-3 py-3">{a.dobavljacNaziv ?? "-"}</td>
                     <td className="px-3 py-3">
                       <Link
-                        to={`/artikli/${a.id}`}
+                        to={`/artikli/${a.id}/edit`}
                         className="rounded-md border border-info bg-info/10 px-2 py-1 text-xs font-semibold text-info hover:bg-info/20"
                       >
                         Izmeni

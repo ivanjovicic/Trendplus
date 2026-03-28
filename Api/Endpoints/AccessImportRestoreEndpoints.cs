@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Infrastructure.DbContexts;
 
 namespace Api.Endpoints
 {
@@ -9,7 +10,7 @@ namespace Api.Endpoints
     {
         public static void MapAccessImportRestoreEndpoints(this WebApplication app)
         {
-            app.MapPost("/api/access-import/cleanup/archive/restore-script", async (HttpRequest req, Api.Infrastructure.DbContexts.TrendplusDbContext _trendDb) =>
+            app.MapPost("/api/access-import/cleanup/archive/restore-script", async (HttpRequest req, TrendplusDbContext _trendDb) =>
             {
                 var body = await JsonSerializer.DeserializeAsync<RestoreRequest>(req.Body);
                 var ids = body?.Ids ?? Array.Empty<int>();

@@ -328,13 +328,14 @@ export default function UnosArtikalaForm({
                                             value={searchQuery[index] || stavka.naziv}
                                             onChange={(e) => handleSearchChange(index, e.target.value)}
                                             onFocus={() => setShowDropdown(prev => ({ ...prev, [index]: true }))}
-                                            className="input-big"
+                                            className="input-big placeholder:text-muted"
                                             style={{
                                                 marginBottom: 0,
                                                 padding: inputPadding,
                                                 fontSize: fontSize,
-                                                background: stavka.isExisting ? 'var(--success-10)' : 'var(--surface-default)',
+                                                background: stavka.isExisting ? 'var(--success-10)' : 'var(--surface-elevated)',
                                                 borderColor: stavka.isExisting ? 'var(--success)' : undefined,
+                                                boxShadow: stavka.isExisting ? undefined : 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))',
                                                 width: '100%'
                                             }}
                                         />
@@ -382,12 +383,14 @@ export default function UnosArtikalaForm({
                                         <select
                                             value={stavka.tipObuceId ?? ""}
                                             onChange={(e) => updateStavka(index, 'tipObuceId', e.target.value ? Number(e.target.value) : null)}
-                                            className="input-big"
+                                            className="input-big placeholder:text-muted"
                                             style={{
                                                 marginBottom: 0,
                                                 padding: inputPadding,
                                                 fontSize: fontSize,
-                                                width: '100%'
+                                                width: '100%',
+                                                background: 'var(--surface-elevated)',
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
                                             }}
                                         >
                                             <option value="">-- izaberite --</option>
@@ -400,12 +403,14 @@ export default function UnosArtikalaForm({
                                         <select
                                             value={stavka.sezonaId ?? ""}
                                             onChange={(e) => updateStavka(index, 'sezonaId', e.target.value ? Number(e.target.value) : null)}
-                                            className="input-big"
+                                            className="input-big placeholder:text-muted"
                                             style={{
                                                 marginBottom: 0,
                                                 padding: inputPadding,
                                                 fontSize: fontSize,
-                                                width: '100%'
+                                                width: '100%',
+                                                background: 'var(--surface-elevated)',
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
                                             }}
                                         >
                                             <option value="">-- izaberite --</option>
@@ -420,13 +425,15 @@ export default function UnosArtikalaForm({
                                             min={1}
                                             value={stavka.kolicina}
                                             onChange={(e) => updateStavka(index, 'kolicina', Number(e.target.value))}
-                                            className="input-big"
+                                            className="input-big placeholder:text-muted"
                                             style={{
                                                 marginBottom: 0,
                                                 padding: inputPadding,
                                                 fontSize: fontSize,
                                                 textAlign: 'center',
-                                                width: '100%'
+                                                width: '100%',
+                                                background: 'var(--surface-elevated)',
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
                                             }}
                                         />
                                     </td>
@@ -437,13 +444,15 @@ export default function UnosArtikalaForm({
                                             step={0.01}
                                             value={stavka.nabavnaCena}
                                             onChange={(e) => updateStavka(index, 'nabavnaCena', Number(e.target.value))}
-                                            className="input-big"
+                                            className="input-big placeholder:text-muted"
                                             style={{
                                                 marginBottom: 0,
                                                 padding: inputPadding,
                                                 fontSize: fontSize,
                                                 textAlign: 'right',
-                                                width: '100%'
+                                                width: '100%',
+                                                background: 'var(--surface-elevated)',
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
                                             }}
                                         />
                                     </td>
@@ -454,13 +463,15 @@ export default function UnosArtikalaForm({
                                             step={0.01}
                                             value={stavka.prodajnaCena}
                                             onChange={(e) => updateStavka(index, 'prodajnaCena', Number(e.target.value))}
-                                            className="input-big"
+                                            className="input-big placeholder:text-muted"
                                             style={{
                                                 marginBottom: 0,
                                                 padding: inputPadding,
                                                 fontSize: fontSize,
                                                 textAlign: 'right',
-                                                width: '100%'
+                                                width: '100%',
+                                                background: 'var(--surface-elevated)',
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
                                             }}
                                         />
                                     </td>
@@ -470,12 +481,14 @@ export default function UnosArtikalaForm({
                                             placeholder="Opciono..."
                                             value={stavka.komentar}
                                             onChange={(e) => updateStavka(index, 'komentar', e.target.value)}
-                                            className="input-big"
+                                            className="input-big placeholder:text-muted"
                                             style={{
                                                 marginBottom: 0,
                                                 padding: inputPadding,
                                                 fontSize: fontSize,
-                                                width: '100%'
+                                                width: '100%',
+                                                background: 'var(--surface-elevated)',
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
                                             }}
                                         />
                                     </td>
