@@ -245,7 +245,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                         setBrojRacuna(event.target.value);
                         setValidationMessage(null);
                     }}
-                    className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
+                    className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary shadow-sm placeholder:text-muted"
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
                     {invoiceSuggestions.map((suggestion) => (
@@ -314,7 +314,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                         }}
                         onFocus={() => setShowSearchResults(true)}
                         onKeyDown={handleKeyDown}
-                        className="w-full rounded-xl border border-border bg-surface py-2 pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-primary"
+                        className="w-full rounded-xl border border-border bg-surface-elevated py-2 pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-primary shadow-sm placeholder:text-muted"
                     />
                 </div>
 
