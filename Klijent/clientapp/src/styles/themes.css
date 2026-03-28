@@ -1,0 +1,46 @@
+:root {
+  --surface-elevated: #ffffff;
+  --surface-elevated-light: #ffffff;
+  --surface-elevated-dark: #ffffff;
+  --border-default: #d3dce9;
+  --card-shadow: rgba(16,24,40,0.06);
+  --text-primary: #0f172a;
+  --text-muted: #6b7280;
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] {
+  --surface-elevated: #0b1220;
+  --surface-elevated-light: #0f1726;
+  --surface-elevated-dark: #07101a;
+  --border-default: #1f2937;
+  --card-shadow: rgba(0,0,0,0.6);
+  --text-primary: #e6eef8;
+  --text-muted: #9ca3af;
+}
+
+.card-theme {
+  background: linear-gradient(135deg,
+    var(--surface-elevated) 0%,
+    var(--surface-elevated-light) 50%,
+    var(--surface-elevated-dark) 100%);
+  border: 1px solid var(--border-default);
+  box-shadow: 0 16px 40px -30px var(--card-shadow);
+  color: var(--text-primary);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.card-title { color: var(--text-primary); }
+.card-desc { color: var(--text-muted); }
