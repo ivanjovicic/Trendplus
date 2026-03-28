@@ -14,14 +14,14 @@ public static class AccessImportEndpoints
     private const int BatchListFallbackTimeoutSeconds = 8;
     private const int BatchDetailFallbackTimeoutSeconds = 10;
     private static readonly TimeSpan BatchListCacheDuration = TimeSpan.FromSeconds(15);
-    private static readonly string[] SchemaAnalysisUnavailableWarnings =
-    [
+    private static readonly string[] SchemaAnalysisUnavailableWarnings = new[]
+    {
         "Access database schema could not be fully analyzed. The ODBC provider may have returned unexpected results. Try again or contact support if issues persist."
-    ];
-    private static readonly string[] UnexpectedSchemaStructureWarnings =
-    [
+    };
+    private static readonly string[] UnexpectedSchemaStructureWarnings = new[]
+    {
         "The Access ODBC provider returned an unexpected schema structure. Unable to enumerate tables. This may be a provider compatibility issue."
-    ];
+    };
 
     private sealed record AccessImportRuntimeStatus(
         bool Available,
@@ -780,9 +780,9 @@ public static class AccessImportEndpoints
             return Task.FromResult<IResult>(Results.Ok(new BatchDetailDto
             {
                 Batch = cachedBatch,
-                Logs = [],
-                LogCountBySeverity = [],
-                LogCountByTable = []
+                Logs = new List<AccessImportLogDto>(),
+                LogCountBySeverity = new Dictionary<string,int>(),
+                LogCountByTable = new Dictionary<string,int>()
             }));
         }
 
@@ -803,9 +803,9 @@ public static class AccessImportEndpoints
         return Task.FromResult<IResult>(Results.Ok(new BatchDetailDto
         {
             Batch = syntheticBatch,
-            Logs = [],
-            LogCountBySeverity = [],
-            LogCountByTable = []
+            Logs = new List<AccessImportLogDto>(),
+            LogCountBySeverity = new Dictionary<string,int>(),
+            LogCountByTable = new Dictionary<string,int>()
         }));
     }
 

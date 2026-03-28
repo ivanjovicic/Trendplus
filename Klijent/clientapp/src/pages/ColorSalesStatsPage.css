@@ -71,7 +71,7 @@
 .color-decision-field select:focus,
 .color-decision-field input:focus {
   border-color: var(--accent-primary, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  box-shadow: var(--focus-ring, 0 0 0 3px rgba(59, 130, 246, 0.18));
   outline: none;
 }
 
@@ -112,15 +112,15 @@
 }
 
 .color-decision-message.loading {
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(96, 165, 250, 0.3);
-  color: #bfdbfe;
+  background: var(--accent-soft, rgba(59, 130, 246, 0.12));
+  border: 1px solid var(--accent-border, rgba(96, 165, 250, 0.3));
+  color: var(--accent-text, #bfdbfe);
 }
 
 .color-decision-message.error {
-  background: rgba(127, 29, 29, 0.3);
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  color: #fecaca;
+  background: var(--error-soft, rgba(127, 29, 29, 0.3));
+  border: 1px solid var(--error-border, rgba(248, 113, 113, 0.35));
+  color: var(--error-text, #fecaca);
 }
 
 .color-decision-kpis {
@@ -258,11 +258,11 @@
 }
 
 .color-decision-table tr:hover {
-  background: rgba(30, 41, 59, 0.6);
+  background: var(--muted-row-bg, rgba(30, 41, 59, 0.6));
 }
 
 .color-decision-table tr.expanded-row {
-  background: rgba(37, 99, 235, 0.12);
+  background: var(--accent-soft, rgba(37, 99, 235, 0.12));
 }
 
 .align-right {
@@ -284,20 +284,20 @@
 }
 
 .color-decision-status.status-boost {
-  background: rgba(52, 211, 153, 0.15);
-  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: var(--success-soft, rgba(52, 211, 153, 0.15));
+  border: 1px solid var(--success-border, rgba(52, 211, 153, 0.45));
   color: #6ee7b7;
 }
 
 .color-decision-status.status-keep {
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: var(--warning-soft, rgba(251, 191, 36, 0.15));
+  border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.45));
   color: #fcd34d;
 }
 
 .color-decision-status.status-reduce {
-  background: rgba(248, 113, 113, 0.15);
-  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: var(--error-soft, rgba(248, 113, 113, 0.15));
+  border: 1px solid var(--error-border, rgba(248, 113, 113, 0.45));
   color: #fca5a5;
 }
 

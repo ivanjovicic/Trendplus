@@ -118,13 +118,16 @@ export default function TransferPage() {
 
   const addLine = useCallback((item: InventoryListItem) => {
     const available = Number(item.kolicina ?? 0);
+    if (available <= 0) {
+      setStatusText(`Nema dostupnih zaliha za '${item.naziv}'.`);
+      return;
+    }
+
     setLines((prev) => {
       const existing = prev.find((x) => x.skuId === item.id);
       if (existing) {
         return prev.map((x) =>
-          x.skuId === item.id
-            ? { ...x, quantity: Math.min(x.quantity + 1, Math.max(available, 1)) }
-            : x
+          x.skuId === item.id ? { ...x, quantity: Math.min(x.quantity + 1, available) } : x
         );
       }
 
@@ -135,7 +138,7 @@ export default function TransferPage() {
           skuName: item.naziv,
           skuCode: item.plu ?? undefined,
           available,
-          quantity: available > 0 ? 1 : 0,
+          quantity: 1,
         },
       ];
     });
@@ -181,9 +184,13 @@ export default function TransferPage() {
         return;
       }
 
-      addLine(picked);
-      setScannerInput("");
-      setStatusText(`Skenirano i dodato: ${picked.naziv} (${picked.plu ?? `SKU #${picked.id}`}).`);
+      if (Number(picked.kolicina ?? 0) <= 0) {
+        setStatusText(`Artikal '${picked.naziv}' nema dostupnih zaliha za prenos.`);
+      } else {
+        addLine(picked);
+        setScannerInput("");
+        setStatusText(`Skenirano i dodato: ${picked.naziv} (${picked.plu ?? `SKU #${picked.id}`}).`);
+      }
     } catch (err) {
       setStatusText(err instanceof Error ? err.message : "Skeniranje artikla nije uspelo.");
     } finally {
@@ -461,7 +468,7 @@ export default function TransferPage() {
                           <button
                             type="button"
                             className="rounded-lg border border-[var(--border-default)] px-3 py-1 text-xs font-semibold"
-                            disabled={!isDraftEditable}
+                            disabled={!isDraftEditable || (Number(item.kolicina ?? 0) <= 0)}
                             onClick={() => addLine(item)}
                           >
                             Dodaj
@@ -514,13 +521,13 @@ export default function TransferPage() {
                         )}
                       </td>
                       <td className="px-3 py-2 text-right">{line.available}</td>
-                      <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2 text-right">
                         <input
                           type="number"
-                          min={0}
+                          min={line.available > 0 ? 1 : 0}
                           step={1}
                           className="w-24 rounded-lg border border-[var(--border-default)] bg-[var(--surface-default)] px-2 py-1 text-right"
-                          disabled={working || !isDraftEditable}
+                          disabled={working || !isDraftEditable || line.available <= 0}
                           value={line.quantity}
                           onChange={(e) => updateLineQuantity(line.skuId, Number(e.target.value))}
                         />
