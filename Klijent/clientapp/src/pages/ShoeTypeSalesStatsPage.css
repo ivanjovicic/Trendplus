@@ -1,8 +1,8 @@
 .shoetype-decision-page {
-  background: var(--surface-elevated, #111827);
-  border: 1px solid var(--border-default, #1f2937);
+  background: var(--surface-elevated, #ffffff);
+  border: 1px solid var(--border-default, #e5e7eb);
   border-radius: 14px;
-  color: var(--text-primary, #e5e7eb);
+  color: var(--text-primary, #111827);
   padding: 16px;
 }
 
@@ -36,20 +36,21 @@
 }
 
 .shoetype-decision-filters {
-  background: var(--surface-darker, #0b1220);
-  border: 1px solid var(--border-default, #1f2937);
+  background: var(--surface-darker, #ffffff);
+  border: 1px solid var(--border-default, #e5e7eb);
   border-radius: 10px;
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  margin-bottom: 14px;
-  padding: 12px;
+.shoetype-decision-table th {
 }
-
-.shoetype-decision-field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  background: var(--surface-card, #ffffff);
+  border-bottom: 1px solid var(--border-default, #e5e7eb);
+  padding: 10px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
 }
 
 .shoetype-decision-field span {
@@ -60,10 +61,10 @@
 
 .shoetype-decision-field select,
 .shoetype-decision-field input {
-  background: var(--surface-card, #111827);
-  border: 1px solid var(--border-strong, #374151);
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-strong, #d1d5db);
   border-radius: 8px;
-  color: var(--text-primary, #e5e7eb);
+  color: var(--text-primary, #111827);
   font-size: 13px;
   padding: 8px 10px;
 }
@@ -95,8 +96,8 @@
 
 .shoetype-decision-actions button.secondary {
   background: transparent;
-  border: 1px solid var(--border-strong, #374151);
-  color: var(--text-primary, #e5e7eb);
+  border: 1px solid var(--border-strong, #d1d5db);
+  color: var(--text-primary, #111827);
 }
 
 .shoetype-decision-actions button:disabled {
@@ -167,7 +168,7 @@
 }
 
 .shoetype-decision-card {
-  background: var(--surface-darker, #0b1220);
+  background: var(--surface-darker, #ffffff);
   border: 1px solid var(--border-default, #1f2937);
   border-radius: 10px;
   padding: 12px;
@@ -226,8 +227,8 @@
 }
 
 .shoetype-decision-table th {
-  background: var(--surface-card, #111827);
-  border-bottom: 1px solid var(--border-default, #1f2937);
+  background: var(--surface-card, #ffffff);
+  border-bottom: 1px solid var(--border-default, #e5e7eb);
   padding: 10px 12px;
   position: sticky;
   top: 0;
@@ -370,7 +371,7 @@
 }
 
 .shoetype-decision-detail-grid article {
-  background: var(--surface-card, #111827);
+  background: var(--surface-card, #ffffff);
   border: 1px solid var(--border-default, #1f2937);
   border-radius: 8px;
   padding: 9px;

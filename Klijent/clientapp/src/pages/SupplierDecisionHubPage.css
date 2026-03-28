@@ -1,8 +1,8 @@
 .sdh-decision-page {
-  background: var(--surface-elevated, #111827);
-  border: 1px solid var(--border-default, #1f2937);
+  background: var(--surface-elevated, #ffffff);
+  border: 1px solid var(--border-default, #e5e7eb);
   border-radius: 14px;
-  color: var(--text-primary, #e5e7eb);
+  color: var(--text-primary, #111827);
   padding: 16px;
 }
 
@@ -30,8 +30,8 @@
 }
 
 .sdh-decision-filters {
-  background: var(--surface-darker, #0b1220);
-  border: 1px solid var(--border-default, #1f2937);
+  background: var(--surface-darker, #ffffff);
+  border: 1px solid var(--border-default, #e5e7eb);
   border-radius: 10px;
   display: grid;
   gap: 10px;
@@ -55,10 +55,10 @@
 .sdh-decision-field select,
 .sdh-decision-field input[type="date"],
 .sdh-decision-field input[type="number"] {
-  background: var(--surface-card, #111827);
-  border: 1px solid var(--border-strong, #374151);
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-strong, #d1d5db);
   border-radius: 8px;
-  color: var(--text-primary, #e5e7eb);
+  color: var(--text-primary, #111827);
   font-size: 13px;
   padding: 8px 10px;
 }
@@ -151,7 +151,7 @@
 }
 
 .sdh-decision-kpi strong {
-  color: var(--text-primary, #f8fafc);
+  color: var(--text-primary, #111827);
   display: block;
   font-size: 22px;
   font-weight: 700;
@@ -165,14 +165,14 @@
 }
 
 .sdh-decision-card {
-  background: var(--surface-darker, #0b1220);
-  border: 1px solid var(--border-default, #1f2937);
+  background: var(--surface-darker, #ffffff);
+  border: 1px solid var(--border-default, #e5e7eb);
   border-radius: 10px;
   padding: 12px;
 }
 
 .sdh-decision-card h2 {
-  color: var(--text-primary, #f8fafc);
+  color: var(--text-primary, #111827);
   font-size: 16px;
   margin: 0 0 4px;
 }
@@ -224,8 +224,8 @@
 }
 
 .sdh-decision-table th {
-  background: var(--surface-card, #111827);
-  border-bottom: 1px solid var(--border-default, #1f2937);
+  background: var(--surface-card, #ffffff);
+  border-bottom: 1px solid var(--border-default, #e5e7eb);
   padding: 10px 12px;
   position: sticky;
   top: 0;
@@ -249,8 +249,8 @@
 }
 
 .sdh-decision-table td {
-  border-bottom: 1px solid var(--border-default, #1f2937);
-  color: var(--text-primary, #e5e7eb);
+  border-bottom: 1px solid var(--border-default, #e5e7eb);
+  color: var(--text-primary, #111827);
   font-size: 13px;
   padding: 10px 12px;
 }
@@ -368,7 +368,7 @@
 }
 
 .sdh-decision-detail-grid article {
-  background: var(--surface-card, #111827);
+  background: var(--surface-card, #ffffff);
   border: 1px solid var(--border-default, #1f2937);
   border-radius: 8px;
   padding: 9px;

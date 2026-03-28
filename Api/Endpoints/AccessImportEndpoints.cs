@@ -3,6 +3,7 @@ using Api.Services.Access;
 using Api.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
+using Microsoft.EntityFrameworkCore;
 using System.Data.Odbc;
 using System.Runtime.InteropServices;
 
@@ -230,6 +231,252 @@ public static class AccessImportEndpoints
         })
         .RequireRateLimiting("writes")
         .WithName("DeleteAccessImportBatch");
+
+        // --- Cleanup endpoints: preview & execute deletion of rows NOT originating from Access ---
+        group.MapPost("/cleanup/preview", async (
+            TrendplusDbContext trendDb,
+            AnalyticsDbContext analyticsDb,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                var result = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+                result["artikli"] = await trendDb.Artikli.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).LongCountAsync(ct);
+                result["dobavljaci"] = await trendDb.Dobavljaci.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).LongCountAsync(ct);
+                result["sezone"] = await trendDb.Sezone.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).LongCountAsync(ct);
+                result["tipovi_obuce"] = await trendDb.TipoviObuce.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).LongCountAsync(ct);
+
+                // Sales header/lines
+                result["prodaja_zaglavlje"] = await trendDb.ProdajaZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).LongCountAsync(ct);
+                result["prodaja_stavke"] = await trendDb.ProdajaStavke.Where(s => trendDb.ProdajaZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdProdaja)).LongCountAsync(ct);
+
+                // Returns / journal
+                result["dnevnik_promena"] = await trendDb.DnevnikPromena.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).LongCountAsync(ct);
+                result["povracaj_zaglavlje"] = await trendDb.PovracajZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).LongCountAsync(ct);
+                result["povracaj_stavke"] = await trendDb.PovracajStavke.Where(s => trendDb.PovracajZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdPovracaj)).LongCountAsync(ct);
+
+                // Analytics
+                result["sales_facts"] = await analyticsDb.SalesFacts.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).LongCountAsync(ct);
+                result["products_dim"] = await analyticsDb.ProductsDim.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).LongCountAsync(ct);
+
+                return Results.Ok(new { preview = result });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(title: "Cleanup preview failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        })
+        .RequireRateLimiting("db-heavy")
+        .WithName("PreviewCleanupNonAccess");
+
+        // List archived deleted rows (recent)
+        group.MapGet("/cleanup/archive", async (
+            TrendplusDbContext trendDb,
+            int take = 200,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                var conn = trendDb.Database.GetDbConnection();
+                await conn.OpenAsync(ct);
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT id, batch_id, table_name, primary_key, deleted_at, deleted_by, reason FROM deleted_rows_archive ORDER BY deleted_at DESC LIMIT @p0";
+                var p = cmd.CreateParameter(); p.ParameterName = "@p0"; p.Value = take; cmd.Parameters.Add(p);
+                var list = new List<object>();
+                using var rdr = await cmd.ExecuteReaderAsync(ct);
+                while (await rdr.ReadAsync(ct))
+                {
+                    list.Add(new
+                    {
+                        id = rdr.GetInt64(0),
+                        batchId = rdr.IsDBNull(1) ? (long?)null : rdr.GetInt64(1),
+                        table = rdr.IsDBNull(2) ? null : rdr.GetString(2),
+                        primaryKey = rdr.IsDBNull(3) ? null : rdr.GetString(3),
+                        deletedAt = rdr.IsDBNull(4) ? (DateTime?)null : rdr.GetDateTime(4),
+                        deletedBy = rdr.IsDBNull(5) ? null : rdr.GetString(5),
+                        reason = rdr.IsDBNull(6) ? null : rdr.GetString(6)
+                    });
+                }
+                await conn.CloseAsync();
+                return Results.Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(title: "Archive list failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        })
+        .RequireRateLimiting("db-heavy")
+        .WithName("ListDeletedArchive");
+
+        // Export archived rows (full JSON) for selected ids
+        group.MapPost("/cleanup/archive/export", async (
+            TrendplusDbContext trendDb,
+            HttpRequest request,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                var body = await request.ReadFromJsonAsync<Dictionary<string, long[]>>(cancellationToken: ct);
+                if (body == null || !body.TryGetValue("ids", out var ids) || ids.Length == 0)
+                    return Results.BadRequest(new { error = "Provide JSON body { \"ids\": [1,2,3] }" });
+
+                var conn = trendDb.Database.GetDbConnection();
+                await conn.OpenAsync(ct);
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = $"SELECT id, table_name, primary_key, row_json, deleted_at, deleted_by, reason FROM deleted_rows_archive WHERE id = ANY(@p0) ORDER BY deleted_at DESC";
+                var p = cmd.CreateParameter(); p.ParameterName = "@p0"; p.Value = ids; cmd.Parameters.Add(p);
+                var list = new List<object>();
+                using var rdr = await cmd.ExecuteReaderAsync(ct);
+                while (await rdr.ReadAsync(ct))
+                {
+                    list.Add(new
+                    {
+                        id = rdr.GetInt64(0),
+                        table = rdr.IsDBNull(1) ? null : rdr.GetString(1),
+                        primaryKey = rdr.IsDBNull(2) ? null : rdr.GetString(2),
+                        row = rdr.IsDBNull(3) ? null : rdr.GetString(3),
+                        deletedAt = rdr.IsDBNull(4) ? (DateTime?)null : rdr.GetDateTime(4),
+                        deletedBy = rdr.IsDBNull(5) ? null : rdr.GetString(5),
+                        reason = rdr.IsDBNull(6) ? null : rdr.GetString(6)
+                    });
+                }
+                await conn.CloseAsync();
+                return Results.Ok(new { rows = list });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(title: "Archive export failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        })
+        .RequireRateLimiting("db-heavy")
+        .WithName("ExportDeletedArchive");
+
+        group.MapPost("/cleanup/execute", async (
+            TrendplusDbContext trendDb,
+            AnalyticsDbContext analyticsDb,
+            HttpRequest request,
+            ILogger<Program> logger,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                var body = await request.ReadFromJsonAsync<Dictionary<string, object?>>(cancellationToken: ct);
+                var confirm = body != null && body.TryGetValue("confirm", out var c) && (c is bool b && b);
+                if (!confirm)
+                    return Results.BadRequest(new { error = "Action must be confirmed. Send JSON body { \"confirm\": true }." });
+
+                // Execute deletes in a transaction to ensure integrity
+                await using var tx = await trendDb.Database.BeginTransactionAsync(ct);
+                var deleted = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+                // Child tables first - archive rows before delete
+                // povracaj_stavke (parent povracaj_zaglavlje uses data_origin column)
+                await trendDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'povracaj_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM povracaj_stavke t
+                    WHERE t.id_povracaj IN (SELECT id FROM povracaj_zaglavlje WHERE data_origin IS NULL OR data_origin <> 'access')
+                ", cancellationToken: ct);
+                deleted["povracaj_stavke"] = await trendDb.PovracajStavke.Where(s => trendDb.PovracajZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdPovracaj)).ExecuteDeleteAsync(ct);
+
+                await trendDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'povracaj_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM povracaj_zaglavlje t
+                    WHERE t.data_origin IS NULL OR t.data_origin <> 'access'
+                ", cancellationToken: ct);
+                deleted["povracaj_zaglavlje"] = await trendDb.PovracajZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+
+                // prodaja (prodaja_stavke -> prodaja_zaglavlje.data_origin)
+                await trendDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'prodaja_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM prodaja_stavke t
+                    WHERE t.id_prodaja IN (SELECT id FROM prodaja_zaglavlje WHERE data_origin IS NULL OR data_origin <> 'access')
+                ", cancellationToken: ct);
+                deleted["prodaja_stavke"] = await trendDb.ProdajaStavke.Where(s => trendDb.ProdajaZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdProdaja)).ExecuteDeleteAsync(ct);
+
+                await trendDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'prodaja_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM prodaja_zaglavlje t
+                    WHERE t.data_origin IS NULL OR t.data_origin <> 'access'
+                ", cancellationToken: ct);
+                deleted["prodaja_zaglavlje"] = await trendDb.ProdajaZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+
+                // dnevnik_promena
+                await trendDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'DnevnikPromena', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM "DnevnikPromena" t
+                    WHERE t."DataOrigin" IS NULL OR t."DataOrigin" <> 'access'
+                ", cancellationToken: ct);
+                deleted["dnevnik_promena"] = await trendDb.DnevnikPromena.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+
+                // Master data - artikli, sezone, dobavljaci, tipovi
+                await trendDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'Artikli', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM "Artikli" t
+                    WHERE t."DataOrigin" IS NULL OR t."DataOrigin" <> 'access'
+                ", cancellationToken: ct);
+                deleted["artikli"] = await trendDb.Artikli.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+
+                await trendDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'Sezone', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM "Sezone" t
+                    WHERE t."DataOrigin" IS NULL OR t."DataOrigin" <> 'access'
+                ", cancellationToken: ct);
+                deleted["sezone"] = await trendDb.Sezone.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+
+                await trendDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'Dobavljaci', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM "Dobavljaci" t
+                    WHERE t."DataOrigin" IS NULL OR t."DataOrigin" <> 'access'
+                ", cancellationToken: ct);
+                deleted["dobavljaci"] = await trendDb.Dobavljaci.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+
+                await trendDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'TipoviObuce', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM "TipoviObuce" t
+                    WHERE t."DataOrigin" IS NULL OR t."DataOrigin" <> 'access'
+                ", cancellationToken: ct);
+                deleted["tipovi_obuce"] = await trendDb.TipoviObuce.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+
+                // Analytics - archive then delete
+                await analyticsDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'SalesFacts', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM "SalesFacts" t
+                    WHERE t."DataOrigin" IS NULL OR t."DataOrigin" <> 'access'
+                ", cancellationToken: ct);
+                deleted["sales_facts"] = await analyticsDb.SalesFacts.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+
+                await analyticsDb.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                    SELECT NULL, 'ProductsDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                    FROM "ProductsDim" t
+                    WHERE t."DataOrigin" IS NULL OR t."DataOrigin" <> 'access'
+                ", cancellationToken: ct);
+                deleted["products_dim"] = await analyticsDb.ProductsDim.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+
+                await tx.CommitAsync(ct);
+
+                logger.LogInformation("Cleanup executed: {@Deleted}", deleted);
+                return Results.Ok(new { executed = true, deleted });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(title: "Cleanup execution failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        })
+        .RequireRateLimiting("writes")
+        .DisableAntiforgery()
+        .WithName("ExecuteCleanupNonAccess");
 
         group.MapGet("/scope-options", () =>
         {

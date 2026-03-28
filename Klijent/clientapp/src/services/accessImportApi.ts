@@ -345,3 +345,20 @@ export async function getAccessImportRuntimeStatus(): Promise<AccessImportRuntim
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
+
+export async function previewCleanupNonAccess(): Promise<Record<string, number>> {
+    const res = await fetch(`${API}/api/access-import/cleanup/preview`, { method: "POST" });
+    if (!res.ok) throw new Error(await parseError(res));
+    const body = await res.json();
+    return body?.preview ?? {};
+}
+
+export async function executeCleanupNonAccess(confirm = true): Promise<{ executed: boolean; deleted: Record<string, number> }> {
+    const res = await fetch(`${API}/api/access-import/cleanup/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm }),
+    });
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+}

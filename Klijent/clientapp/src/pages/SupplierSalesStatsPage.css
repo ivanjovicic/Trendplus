@@ -1,8 +1,8 @@
 .supplier-decision-page {
-  background: var(--surface-elevated, #111827);
-  border: 1px solid var(--border-default, #1f2937);
+  background: var(--surface-elevated, #ffffff);
+  border: 1px solid var(--border-default, #e5e7eb);
   border-radius: 14px;
-  color: var(--text-primary, #e5e7eb);
+  color: var(--text-primary, #111827);
   padding: 16px;
 }
 
@@ -13,12 +13,12 @@
   justify-content: space-between;
   margin-bottom: 14px;
 }
-
-.supplier-decision-title {
-  color: var(--text-primary, #f9fafb);
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 4px;
+.supplier-decision-page {
+  background: var(--surface-elevated, #ffffff);
+  border: 1px solid var(--border-default, #e5e7eb);
+  border-radius: 14px;
+  color: var(--text-primary, #111827);
+  padding: 16px;
 }
 
 .supplier-decision-subtitle {
@@ -36,8 +36,8 @@
 }
 
 .supplier-decision-filters {
-  background: var(--surface-darker, #0b1220);
-  border: 1px solid var(--border-default, #1f2937);
+  background: var(--surface-darker, #ffffff);
+  border: 1px solid var(--border-default, #e5e7eb);
   border-radius: 10px;
   display: grid;
   gap: 10px;
@@ -52,18 +52,18 @@
   gap: 5px;
 }
 
-.supplier-decision-field span {
-  color: var(--text-secondary, #94a3b8);
+.supplier-decision-card {
+  background: var(--surface-card, #ffffff);
   font-size: 12px;
   font-weight: 600;
 }
 
 .supplier-decision-field select,
 .supplier-decision-field input {
-  background: var(--surface-card, #111827);
-  border: 1px solid var(--border-strong, #374151);
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-strong, #d1d5db);
   border-radius: 8px;
-  color: var(--text-primary, #e5e7eb);
+  color: var(--text-primary, #111827);
   font-size: 13px;
   padding: 8px 10px;
 }
@@ -145,7 +145,7 @@
 }
 
 .supplier-decision-kpi strong {
-  color: var(--text-primary, #f8fafc);
+  color: var(--text-primary, #111827);
   display: block;
   font-size: 22px;
   font-weight: 700;
@@ -179,8 +179,8 @@
   margin: 0 0 4px;
 }
 
-.supplier-decision-card p {
-  color: var(--text-secondary, #9ca3af);
+.supplier-decision-card {
+  background: var(--surface-card, #ffffff);
   font-size: 12px;
   margin: 0 0 12px;
 }

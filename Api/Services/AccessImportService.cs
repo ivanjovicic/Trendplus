@@ -2953,6 +2953,13 @@ using NpgsqlTypes;
 
         // Delete transactional / master data
         // Stavke must be deleted before zaglavlja (FK constraint), filtered via parent
+        // Archive prv: povracaj_stavke rows that belong to access-origin parents
+        await _trendDb.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+            SELECT @p0, 'povracaj_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+            FROM povracaj_stavke t
+            WHERE t.id_povracaj IN (SELECT id FROM povracaj_zaglavlje WHERE data_origin = 'access')
+        ", batchId);
         var pvStavkeDeleted = await ExecuteDeleteCompatAsync(
             () => _trendDb.PovracajStavke
                 .Where(s => _trendDb.PovracajZaglavlja
@@ -2963,16 +2970,34 @@ using NpgsqlTypes;
             "povracaj_stavke",
             "delete-batch",
             batchId);
+        await _trendDb.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+            SELECT @p0, 'povracaj_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+            FROM povracaj_zaglavlje t
+            WHERE t.data_origin = 'access'
+        ", batchId);
         var pvDeleted2 = await ExecuteDeleteCompatAsync(
             () => _trendDb.PovracajZaglavlja.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
             "povracaj_zaglavlje",
             "delete-batch",
             batchId);
+        await _trendDb.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+            SELECT @p0, 'DnevnikPromena', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+            FROM "DnevnikPromena" t
+            WHERE t."DataOrigin" = 'access'
+        ", batchId);
         var dnDeleted = await ExecuteDeleteCompatAsync(
             () => _trendDb.DnevnikPromena.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
             "DnevnikPromena",
             "delete-batch",
             batchId);
+        await _trendDb.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+            SELECT @p0, 'prodaja_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+            FROM prodaja_stavke t
+            WHERE t.id_prodaja IN (SELECT id FROM prodaja_zaglavlje WHERE data_origin = 'access')
+        ", batchId);
         var svDeleted = await ExecuteDeleteCompatAsync(
             () => _trendDb.ProdajaStavke
                 .Where(s => _trendDb.ProdajaZaglavlja
@@ -2983,26 +3008,56 @@ using NpgsqlTypes;
             "prodaja_stavke",
             "delete-batch",
             batchId);
+        await _trendDb.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+            SELECT @p0, 'prodaja_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+            FROM prodaja_zaglavlje t
+            WHERE t.data_origin = 'access'
+        ", batchId);
         var pvDeleted = await ExecuteDeleteCompatAsync(
             () => _trendDb.ProdajaZaglavlja.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
             "prodaja_zaglavlje",
             "delete-batch",
             batchId);
+        await _trendDb.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+            SELECT @p0, 'Artikli', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+            FROM "Artikli" t
+            WHERE t."DataOrigin" = 'access'
+        ", batchId);
         var arDeleted = await ExecuteDeleteCompatAsync(
             () => _trendDb.Artikli.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
             "Artikli",
             "delete-batch",
             batchId);
+        await _trendDb.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+            SELECT @p0, 'Sezone', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+            FROM "Sezone" t
+            WHERE t."DataOrigin" = 'access'
+        ", batchId);
         var seDeleted = await ExecuteDeleteCompatAsync(
             () => _trendDb.Sezone.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
             "Sezone",
             "delete-batch",
             batchId);
+        await _trendDb.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+            SELECT @p0, 'Dobavljaci', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+            FROM "Dobavljaci" t
+            WHERE t."DataOrigin" = 'access'
+        ", batchId);
         var doDeleted = await ExecuteDeleteCompatAsync(
             () => _trendDb.Dobavljaci.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
             "Dobavljaci",
             "delete-batch",
             batchId);
+        await _trendDb.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+            SELECT @p0, 'TipoviObuce', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+            FROM "TipoviObuce" t
+            WHERE t."DataOrigin" = 'access'
+        ", batchId);
         var tiDeleted = await ExecuteDeleteCompatAsync(
             () => _trendDb.TipoviObuce.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
             "TipoviObuce",
@@ -3015,41 +3070,90 @@ using NpgsqlTypes;
 
             // Delete analytics data imported from Access (DataOrigin="access")
             // Note: per-batch FK does not exist in analytics tables, so this removes all Access-origin rows.
+            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                SELECT @p0, 'SalesFacts', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+                FROM "SalesFacts" t
+                WHERE t."DataOrigin" = 'access'
+            ", batchId);
             sfDeleted = await ExecuteDeleteCompatAsync(
                 () => _analyticsDb.SalesFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
                 "SalesFacts",
                 "delete-batch-analytics",
                 batchId);
+            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                SELECT @p0, 'SalesLineFacts', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+                FROM "SalesLineFacts" t
+                WHERE t."DataOrigin" = 'access'
+            ", batchId);
             slfDeleted = await ExecuteDeleteCompatAsync(
                 () => _analyticsDb.SalesLineFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
                 "SalesLineFacts",
                 "delete-batch-analytics",
                 batchId);
+            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                SELECT @p0, 'ProductsDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+                FROM "ProductsDim" t
+                WHERE t."DataOrigin" = 'access'
+            ", batchId);
             pdDeleted = await ExecuteDeleteCompatAsync(
                 () => _analyticsDb.ProductsDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
                 "ProductsDim",
                 "delete-batch-analytics",
                 batchId);
+            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                SELECT @p0, 'InventoryMovementFacts', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+                FROM "InventoryMovementFacts" t
+                WHERE t."DataOrigin" = 'access'
+            ", batchId);
             imDeleted = await ExecuteDeleteCompatAsync(
                 () => _analyticsDb.InventoryMovementFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
                 "InventoryMovementFacts",
                 "delete-batch-analytics",
                 batchId);
+            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                SELECT @p0, 'SuppliersDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+                FROM "SuppliersDim" t
+                WHERE t."DataOrigin" = 'access'
+            ", batchId);
             suppDeleted = await ExecuteDeleteCompatAsync(
                 () => _analyticsDb.SuppliersDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
                 "SuppliersDim",
                 "delete-batch-analytics",
                 batchId);
+            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                SELECT @p0, 'SeasonsDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+                FROM "SeasonsDim" t
+                WHERE t."DataOrigin" = 'access'
+            ", batchId);
             seasDeleted = await ExecuteDeleteCompatAsync(
                 () => _analyticsDb.SeasonsDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
                 "SeasonsDim",
                 "delete-batch-analytics",
                 batchId);
+            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                SELECT @p0, 'FootwearTypesDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+                FROM "FootwearTypesDim" t
+                WHERE t."DataOrigin" = 'access'
+            ", batchId);
             typeDeleted = await ExecuteDeleteCompatAsync(
                 () => _analyticsDb.FootwearTypesDim.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
                 "FootwearTypesDim",
                 "delete-batch-analytics",
                 batchId);
+            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                SELECT @p0, 'StoresDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
+                FROM "StoresDim" t
+                WHERE (t."DataOrigin" = 'access' OR t."StoreId" = ANY(@p1))
+                  AND NOT EXISTS (SELECT 1 FROM "SalesFacts" sf WHERE sf."StoreId" = t."StoreId")
+            ", batchId, accessStoreIds.ToArray());
             storeDeleted = await ExecuteDeleteCompatAsync(
                 () => _analyticsDb.StoresDim
                     .Where(x => (x.DataOrigin == "access" || accessStoreIds.Contains(x.StoreId))

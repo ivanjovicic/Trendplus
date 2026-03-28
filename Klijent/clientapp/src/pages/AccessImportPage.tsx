@@ -8,6 +8,8 @@ import {
     getAccessImportBatches,
     previewAccessImport,
     runAccessImport,
+    previewCleanupNonAccess,
+    executeCleanupNonAccess,
     type AccessImportBatchDto,
     type AccessImportCoverageMetric,
     type AccessImportPreviewResponse,
@@ -21,8 +23,9 @@ import { InventoryKpiRow, InventoryPageShell } from "../components/inventory/Inv
 import { clearProdajaLookupCache } from "../services/prodajaApi";
 import { setDataScope } from "../utils/dataScope";
 import "./AccessImportPage.css";
+import { getRestoreScript } from "../services/accessImportRestoreApi";
 
-type Tab = "source" | "preview" | "lastImport" | "batches";
+type Tab = "source" | "preview" | "lastImport" | "batches" | "cleanup";
 type BatchStatusFilter = "all" | "completed" | "running" | "pending" | "failed" | "cancelled" | "interrupted";
 const TERMINAL_BATCH_STATUSES = new Set(["completed", "failed", "cancelled", "interrupted"]);
 
@@ -117,6 +120,13 @@ export default function AccessImportPage() {
     const [deleteResult, setDeleteResult] = useState<DeleteBatchResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [runtimeStatus, setRuntimeStatus] = useState<AccessImportRuntimeStatusResponse | null>(null);
+    const [cleanupPreview, setCleanupPreview] = useState<Record<string, number> | null>(null);
+    const [cleanupLoadingPreview, setCleanupLoadingPreview] = useState(false);
+    const [cleanupExecuting, setCleanupExecuting] = useState(false);
+    const [cleanupResult, setCleanupResult] = useState<{ executed: boolean; deleted: Record<string, number> } | null>(null);
+    const [archiveIdsInput, setArchiveIdsInput] = useState<string>("");
+    const [generatingRestoreScript, setGeneratingRestoreScript] = useState(false);
+    const [restoreScript, setRestoreScript] = useState<string | null>(null);
     const batchPollInFlightRef = useRef(false);
     const lastPollWarningAtRef = useRef(0);
 
@@ -346,6 +356,36 @@ export default function AccessImportPage() {
         }
     };
 
+    const handleCleanupPreview = async () => {
+        setError(null);
+        setCleanupLoadingPreview(true);
+        try {
+            const data = await previewCleanupNonAccess();
+            setCleanupPreview(data);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Greska pri pregledanju podataka za brisanje.");
+        } finally {
+            setCleanupLoadingPreview(false);
+        }
+    };
+
+    const handleCleanupExecute = async () => {
+        if (!window.confirm("Potvrdite brisanje svih zapisa koji NISU iz Access-a. Ova akcija je nepovratna.")) return;
+        setError(null);
+        setCleanupExecuting(true);
+        setCleanupResult(null);
+        try {
+            const res = await executeCleanupNonAccess(true);
+            setCleanupResult(res);
+            // optionally refresh batches / caches
+            await refreshBatches("after-cleanup");
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Greska pri brisanju podataka.");
+        } finally {
+            setCleanupExecuting(false);
+        }
+    };
+
     // --- derived ---
 
     const filteredBatches = useMemo(
@@ -427,6 +467,7 @@ export default function AccessImportPage() {
                     ["preview", "2) Analiza & Import"],
                     ["lastImport", "3) Rezultat"],
                     ["batches", "4) Istorija"],
+                    ["cleanup", "5) Cleanup"],
                 ] as const).map(([key, label]) => (
                     <button
                         key={key}
@@ -915,6 +956,102 @@ export default function AccessImportPage() {
                             )}
                         </>
                     )}
+                </>
+            )}
+
+            {/* ============ TAB: Cleanup (delete non-Access rows) ============ */}
+            {activeTab === "cleanup" && (
+                <>
+                    <div className="accimport-filterbar">
+                        <div className="accimport-field" style={{ gridColumn: "1 / -1" }}>
+                            <span className="accimport-label">Pregled zapisa koji NISU importovani iz Access-a</span>
+                            <div className="accimport-actions">
+                                <button className="accimport-btn accimport-btn-secondary" onClick={() => void handleCleanupPreview()} disabled={cleanupLoadingPreview || cleanupExecuting}>
+                                    {cleanupLoadingPreview ? "Pregledavam..." : "Preview za brisanje"}
+                                </button>
+                                <button className="accimport-btn accimport-btn-danger" onClick={() => void handleCleanupExecute()} disabled={cleanupExecuting || cleanupLoadingPreview}>
+                                    {cleanupExecuting ? "Brisem..." : "Obrisi ne-Access zapise"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {cleanupPreview === null && !cleanupLoadingPreview && (
+                        <div className="accimport-empty-state">Pokreni preview da vidiš koliko zapisa bi bilo obrisano.</div>
+                    )}
+
+                    {cleanupLoadingPreview && <div className="accimport-empty-state">Prikupljam statistiku...</div>}
+
+                    {cleanupPreview && (
+                        <div className="accimport-card">
+                            <h3 className="accimport-card-title">Preview brisanja</h3>
+                            <div className="accimport-result-grid">
+                                {Object.keys(cleanupPreview).map((k) => (
+                                    <div key={k} className="accimport-kpi" style={{ minWidth: 140 }}>
+                                        <div className="accimport-kpi-label">{k}</div>
+                                        <div className="accimport-kpi-value">{cleanupPreview[k].toLocaleString("sr-RS")}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {cleanupResult && (
+                        <div className="accimport-delete-banner">
+                            <strong>Cleanup izvršen:</strong>
+                            {Object.keys(cleanupResult.deleted).map((k) => (
+                                <span key={k}> {k}: {cleanupResult.deleted[k]},</span>
+                            ))}
+                            <button className="accimport-delete-banner-close" onClick={() => setCleanupResult(null)}>&times;</button>
+                        </div>
+                    )}
+
+                    <div className="accimport-card" style={{ marginTop: 12 }}>
+                        <h3 className="accimport-card-title">Restore iz arhive</h3>
+                        <div style={{ display: "grid", gap: 8 }}>
+                            <div>
+                                <div className="accimport-label">Archive IDs (comma-separated)</div>
+                                <input className="accimport-input" value={archiveIdsInput} onChange={(e) => setArchiveIdsInput(e.target.value)} placeholder="npr. 12,13,14" />
+                            </div>
+                            <div style={{ display: "flex", gap: 8 }}>
+                                <button className="accimport-btn accimport-btn-secondary" onClick={async () => {
+                                    setRestoreScript(null);
+                                    const raw = archiveIdsInput.split(',').map(s => s.trim()).filter(Boolean).map(s => Number(s)).filter(n => !Number.isNaN(n));
+                                    if (raw.length === 0) { setError('Unesi bar jedan validan archive id.'); return; }
+                                    setError(null);
+                                    setGeneratingRestoreScript(true);
+                                    try {
+                                        const script = await getRestoreScript(raw);
+                                        setRestoreScript(script);
+                                    } catch (e: unknown) {
+                                        setError(e instanceof Error ? e.message : 'Greska pri generisanju restore skripte.');
+                                    } finally {
+                                        setGeneratingRestoreScript(false);
+                                    }
+                                }} disabled={generatingRestoreScript}>{generatingRestoreScript ? 'Generisem...' : 'Generisi restore skriptu'}</button>
+                                {restoreScript && (
+                                    <button className="accimport-btn" onClick={() => {
+                                        const blob = new Blob([restoreScript], { type: 'text/sql' });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = 'restore_from_archive.sql';
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        a.remove();
+                                        URL.revokeObjectURL(url);
+                                    }}>Preuzmi skriptu</button>
+                                )}
+                            </div>
+
+                            {restoreScript && (
+                                <div>
+                                    <div className="accimport-label">Generisana skripta</div>
+                                    <textarea className="accimport-input" style={{ minHeight: 220, fontFamily: 'monospace', whiteSpace: 'pre' }} value={restoreScript} readOnly />
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </>
             )}
 
