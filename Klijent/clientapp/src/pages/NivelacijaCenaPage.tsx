@@ -37,7 +37,7 @@ export default function NivelacijaCenaPage() {
                 const data = await getArtikli();
                 setArtikli(data);
             } catch (e: any) {
-                setError(e?.message ?? "Gre�ka pri ucitavanju artikala");
+                setError(e?.message ?? "Greška pri učitavanju artikala");
             } finally {
                 setLoading(false);
             }
@@ -114,9 +114,9 @@ export default function NivelacijaCenaPage() {
                     : prev
             );
 
-            setSuccess("Cena je uspe�no izmenjena (trag sacuvan u DnevnikPromena).");
+            setSuccess("Cena je uspešno izmenjena (trag sačuvan u DnevnikPromena).");
         } catch (e: any) {
-            setError(e?.message ?? "Gre�ka pri snimanju");
+            setError(e?.message ?? "Greška pri snimanju");
         } finally {
             setIsSaving(false);
         }
@@ -133,7 +133,7 @@ export default function NivelacijaCenaPage() {
                     { label: "Artikli", value: `${artikli.length}` },
                     { label: "Selektovan SKU", value: selected ? `#${selected.id}` : "Nije izabran", tone: selected ? "positive" : "warning" },
                     { label: "Status snimanja", value: isSaving ? "Snimanje" : "Idle", tone: isSaving ? "warning" : "neutral" },
-                    { label: "Rezultat", value: success ? "Uspeh" : error ? "Gre�ka" : "-", tone: success ? "positive" : error ? "danger" : "neutral" },
+                    { label: "Rezultat", value: success ? "Uspeh" : error ? "Greška" : "-", tone: success ? "positive" : error ? "danger" : "neutral" },
                 ]}
             />
 
@@ -157,7 +157,7 @@ export default function NivelacijaCenaPage() {
                 )}
 
                 <div className="mt-4">
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Pretra�i artikal</label>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Pretraži artikal</label>
                     <div className="relative">
                         <input
                             className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
@@ -270,7 +270,7 @@ export default function NivelacijaCenaPage() {
                             disabled={!canSave}
                             onClick={save}
                         >
-                            {isSaving ? "Snima se..." : hasPriceChanged ? "Sacuvaj cenu" : "Promenite cenu za snimanje"}
+                            {isSaving ? "Snima se..." : hasPriceChanged ? "Sačuvaj cenu" : "Promenite cenu za snimanje"}
                         </button>
                     </div>
                 )}
