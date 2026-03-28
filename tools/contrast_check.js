@@ -1,4 +1,25 @@
-const puppeteer = require('puppeteer');
+let puppeteer;
+try {
+  puppeteer = require('puppeteer');
+} catch (e) {
+  try {
+    puppeteer = require('puppeteer-core');
+  } catch (e2) {
+    // try to resolve from Klijent/clientapp node_modules
+    try {
+      const path = require('path');
+      puppeteer = require(path.resolve(__dirname, '..', 'Klijent', 'clientapp', 'node_modules', 'puppeteer'));
+    } catch (e3) {
+      try {
+        const path = require('path');
+        puppeteer = require(path.resolve(__dirname, '..', 'Klijent', 'clientapp', 'node_modules', 'puppeteer-core'));
+      } catch (e4) {
+        console.error('puppeteer not found. Install with: npm install puppeteer (in Klijent/clientapp or repo root)');
+        process.exit(1);
+      }
+    }
+  }
+}
 
 const BASE = 'http://127.0.0.1:5174';
 const ROUTES = [
@@ -61,7 +82,10 @@ function contrastRatio(rgb1, rgb2){
 }
 
 (async ()=>{
-  const browser = await puppeteer.launch({args:['--no-sandbox','--disable-setuid-sandbox']});
+  const exePath = process.env.PUPPETEER_EXECUTABLE_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  const launchOpts = {args:['--no-sandbox','--disable-setuid-sandbox'], headless: true};
+  launchOpts.executablePath = launchOpts.executablePath || exePath;
+  const browser = await puppeteer.launch(launchOpts);
   const page = await browser.newPage();
   page.setDefaultNavigationTimeout(30000);
 
@@ -69,7 +93,7 @@ function contrastRatio(rgb1, rgb2){
   for (const route of ROUTES) {
     const url = BASE + route;
     try {
-      const res = await page.goto(url, {waitUntil: 'networkidle'});
+      const res = await page.goto(url, {waitUntil: 'networkidle0'});
       if (!res || res.status() >= 400) {
         results.push({route, error: `HTTP ${res ? res.status() : 'no response'}`});
         continue;
@@ -81,7 +105,7 @@ function contrastRatio(rgb1, rgb2){
         // also mark data-theme=light if used by app
         root.setAttribute('data-theme', 'light');
       }, LIGHT_VARS);
-      await page.waitForTimeout(400);
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
       // Collect visible text elements
       const issues = await page.evaluate(()=>{

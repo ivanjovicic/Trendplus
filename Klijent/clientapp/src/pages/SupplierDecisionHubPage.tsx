@@ -1,404 +1,451 @@
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import SupplierDetailDrawer from "../components/supplierDecisionHub/SupplierDetailDrawer";
-import SupplierDecisionFilters, {
-  type SupplierDecisionFilterFormState,
-} from "../components/supplierDecisionHub/SupplierDecisionFilters";
-import SupplierDecisionKpis from "../components/supplierDecisionHub/SupplierDecisionKpis";
-import SupplierDecisionQuadrant from "../components/supplierDecisionHub/SupplierDecisionQuadrant";
-import SupplierDecisionTable from "../components/supplierDecisionHub/SupplierDecisionTable";
-import SupplierRecommendationRail from "../components/supplierDecisionHub/SupplierRecommendationRail";
 import {
-  getSupplierDecisionDetails,
-  getSupplierDecisionQuadrant,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import { getSezone } from "../services/sezoneApi";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
+import {
   getSupplierDecisionRanking,
   getSupplierDecisionSummary,
-  type QuadrantResponse,
+  type RankingItem,
   type RankingResponse,
   type SummaryResponse,
-  type SupplierDecisionDetailsResponse,
   type SupplierDecisionHubFilters,
-  type SupplierDecisionHubSortField,
 } from "../services/supplierDecisionHubApi";
-import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
-import { getSezone } from "../services/sezoneApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { Sezona } from "../types/Sezona";
-import { formatDateRange } from "../components/supplierDecisionHub/utils";
 import "./SupplierDecisionHubPage.css";
 
-const PAGE_SIZE = 12;
+type PeriodPreset = "30d" | "90d" | "custom";
+type SortDir = "asc" | "desc";
+type SortField = "supplierName" | "revenue" | "sharePct" | "preMarkdownMarginPct" | "qualityTrendPct" | "status";
+type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
 
-const rankingColumns: AnalyticsTableColumn<RankingResponse["items"][number]>[] = [
-  { key: "supplierId", header: "Dobavljac ID", dataType: "number" },
+type ActiveFilters = {
+  fromDate: string;
+  toDate: string;
+  seasonId: number | null;
+  minRevenue: number | null;
+  onlyHighConfidence: boolean;
+};
+
+type DecisionRow = RankingItem & {
+  sharePct: number;
+  marginContribution: number;
+  qualityTrendPct: number;
+  decisionScore: number;
+  status: DecisionStatus;
+  statusReason: string;
+  normalizedConfidence: number;
+};
+
+const STATUS_PRIORITY: Record<DecisionStatus, number> = {
+  Pojacaj: 3,
+  Zadrzi: 2,
+  Smanji: 1,
+};
+const BOOST_SCORE_THRESHOLD = 68;
+const KEEP_SCORE_THRESHOLD = 43;
+const BOOST_MIN_CONFIDENCE_PCT = 55;
+
+const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
   { key: "supplierName", header: "Dobavljac", dataType: "text" },
   { key: "revenue", header: "Prihod", dataType: "currency" },
-  { key: "units", header: "Komadi", dataType: "number" },
-  { key: "fullPriceRevenueShare", header: "Udeo bez snizenja", dataType: "percent" },
-  { key: "fullPriceSellthrough", header: "Sell-through bez snizenja", dataType: "percent" },
-  { key: "preMarkdownMarginPct", header: "Marza", dataType: "percent" },
-  { key: "markdownRevenueShare", header: "Udeo snizenja", dataType: "percent" },
-  { key: "deadStockRate", header: "Dead stock", dataType: "percent" },
-  { key: "unsoldStockValue", header: "Unsold stock value", dataType: "currency" },
-  { key: "repeatWinnerRate", header: "Repeat winner rate", dataType: "percent" },
-  { key: "mlSupplierScore", header: "AI procena", dataType: "number" },
-  { key: "supplierQualityIndex", header: "Indeks kvaliteta", dataType: "number" },
-  { key: "confidenceScore", header: "Pouzdanost", dataType: "number" },
-  { key: "recommendationCode", header: "Preporuka", dataType: "text" },
+  { key: "sharePct", header: "Udeo %", dataType: "percent" },
+  { key: "preMarkdownMarginPct", header: "Marza %", dataType: "percent" },
+  { key: "qualityTrendPct", header: "Kvalitet trend %", dataType: "percent" },
+  { key: "status", header: "Preporuka", dataType: "text" },
+  { key: "decisionScore", header: "Decision score", dataType: "number" },
 ];
 
-function createDefaultFormState(): SupplierDecisionFilterFormState {
-  return {
-    fromDate: "",
-    toDate: "",
-    category: "",
-    gender: "",
-    seasonId: "",
-    minRevenue: "",
-    onlyHighConfidence: false,
-    excludeOosBeforeMarkdown: false,
-  };
+function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
+function toDateInput(date: Date): string { return date.toISOString().slice(0, 10); }
+function fmtRsd(value: number): string { return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`; }
+function fmtPct(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
+}
+function fmtSignedPct(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return `${value > 0 ? "+" : ""}${fmtPct(value, digits)}`;
+}
+function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string { if (field !== activeField) return ""; return dir === "asc" ? " ^" : " v"; }
+function statusClass(status: DecisionStatus): string {
+  if (status === "Pojacaj") return "sdh-decision-status status-boost";
+  if (status === "Smanji") return "sdh-decision-status status-reduce";
+  return "sdh-decision-status status-keep";
+}
+function trendClass(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "trend-neutral";
+  if (value > 0) return "trend-up";
+  if (value < 0) return "trend-down";
+  return "trend-neutral";
+}
+function getPresetRange(preset: Exclude<PeriodPreset, "custom">) {
+  const to = new Date();
+  const from = new Date(to);
+  if (preset === "30d") from.setDate(from.getDate() - 29);
+  if (preset === "90d") from.setDate(from.getDate() - 89);
+  return { fromDate: toDateInput(from), toDate: toDateInput(to) };
+}
+function buildPreviousRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
+  const currentFrom = new Date(`${fromDate}T00:00:00Z`);
+  const currentTo = new Date(`${toDate}T23:59:59Z`);
+  const durationMs = currentTo.getTime() - currentFrom.getTime() + 1000;
+  const previousTo = new Date(currentFrom.getTime() - 1000);
+  const previousFrom = new Date(previousTo.getTime() - durationMs + 1000);
+  return { fromDate: previousFrom.toISOString().slice(0, 10), toDate: previousTo.toISOString().slice(0, 10) };
 }
 
-function normalizeFilters(formState: SupplierDecisionFilterFormState): SupplierDecisionHubFilters {
-  return {
-    fromDate: formState.fromDate || undefined,
-    toDate: formState.toDate || undefined,
-    category: formState.category.trim() || undefined,
-    gender: formState.gender || undefined,
-    seasonId: formState.seasonId ? Number(formState.seasonId) : undefined,
-    minRevenue: formState.minRevenue ? Number(formState.minRevenue) : undefined,
-    onlyHighConfidence: formState.onlyHighConfidence,
-    excludeOosBeforeMarkdown: formState.excludeOosBeforeMarkdown,
-  };
+function normalizeConfidence(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value <= 1) return value * 100;
+  return clamp(value, 0, 100);
+}
+
+function recommendationToStatus(code: string, confidence: number): DecisionStatus {
+  if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return confidence >= BOOST_MIN_CONFIDENCE_PCT ? "Pojacaj" : "Zadrzi";
+  if (code === "ASSORTMENT_REDUCE" || code === "PRICE_NEGOTIATE") return "Smanji";
+  return "Zadrzi";
+}
+
+function buildStatusReason(status: DecisionStatus, code: string, qualityTrendPct: number, confidence: number): string {
+  const lowConfidence = confidence < BOOST_MIN_CONFIDENCE_PCT;
+  if (status === "Pojacaj") {
+    if (lowConfidence) return "Signal za rast postoji, ali je pouzdanost granicna; siriti postepeno.";
+    if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "Dobavljac drzi zdrav signal bez preterane zavisnosti od markdown-a.";
+    return "Pozitivan zbirni signal za veci fokus.";
+  }
+  if (status === "Zadrzi") {
+    if (lowConfidence) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
+    if (qualityTrendPct < 0) return "Signal kvaliteta slabi; zadrzati uz pojacan nadzor.";
+    return "Stabilan signal bez jasnog razloga za promenu prioriteta.";
+  }
+  if (code === "ASSORTMENT_REDUCE") return "Visoka zavisnost od markdown-a i rizik zaliha; smanjiti fokus.";
+  if (code === "PRICE_NEGOTIATE") return "Potreban je bolji cenovni ulaz pre daljeg sirenja.";
+  return "Nizak signal doprinosa i rizik po profitabilnost.";
+}
+
+function buildStatusTooltip(row: DecisionRow): string {
+  return `${row.status}: ${row.statusReason} | Udeo ${fmtPct(row.sharePct, 1)} | Marza ${fmtPct(row.preMarkdownMarginPct * 100, 1)} | Kvalitet trend ${fmtSignedPct(row.qualityTrendPct, 1)} | Pouzdanost ${fmtPct(row.normalizedConfidence, 0)}`;
 }
 
 export default function SupplierDecisionHubPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [formState, setFormState] = useState<SupplierDecisionFilterFormState>(() =>
-    createDefaultFormState()
-  );
-  const [appliedFilters, setAppliedFilters] = useState<SupplierDecisionHubFilters>(() =>
-    normalizeFilters(createDefaultFormState())
-  );
+  const requestIdRef = useRef(0);
+  const initialRange = useMemo(() => getPresetRange("90d"), []);
+
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
+  const [fromDate, setFromDate] = useState(initialRange.fromDate);
+  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [seasonId, setSeasonId] = useState<number | null>(null);
+  const [minRevenue, setMinRevenue] = useState<number | null>(null);
+  const [onlyHighConfidence, setOnlyHighConfidence] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({ fromDate: initialRange.fromDate, toDate: initialRange.toDate, seasonId: null, minRevenue: null, onlyHighConfidence: false });
+
   const [seasons, setSeasons] = useState<Sezona[]>([]);
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
-  const [quadrant, setQuadrant] = useState<QuadrantResponse | null>(null);
+  const [previousSummary, setPreviousSummary] = useState<SummaryResponse | null>(null);
   const [ranking, setRanking] = useState<RankingResponse | null>(null);
-  const [details, setDetails] = useState<SupplierDecisionDetailsResponse | null>(null);
-  const [loadingOverview, setLoadingOverview] = useState(true);
-  const [loadingRanking, setLoadingRanking] = useState(true);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  const [overviewError, setOverviewError] = useState<string | null>(null);
-  const [rankingError, setRankingError] = useState<string | null>(null);
-  const [detailsError, setDetailsError] = useState<string | null>(null);
-  const [dateError, setDateError] = useState<string | null>(null);
-  const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] =
-    useState<SupplierDecisionHubSortField>("supplierQualityIndex");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>("status");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [expandedSupplierId, setExpandedSupplierId] = useState<number | null>(null);
+
+  const invalidRange = useMemo(() => (!fromDate || !toDate ? false : new Date(fromDate) > new Date(toDate)), [fromDate, toDate]);
 
   useEffect(() => {
-    let cancelled = false;
-
     const loadSeasons = async () => {
-      try {
-        const result = await getSezone();
-        if (!cancelled) {
-          setSeasons(result);
-        }
-      } catch {
-        if (!cancelled) {
-          setSeasons([]);
-        }
-      }
+      try { setSeasons(await getSezone()); } catch { setSeasons([]); }
     };
-
     void loadSeasons();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async (filters: ActiveFilters) => {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const baseFilters: SupplierDecisionHubFilters = {
+        fromDate: filters.fromDate,
+        toDate: filters.toDate,
+        seasonId: filters.seasonId ?? undefined,
+        minRevenue: filters.minRevenue ?? undefined,
+        onlyHighConfidence: filters.onlyHighConfidence,
+      };
+      const prevRange = buildPreviousRange(filters.fromDate, filters.toDate);
+      const prevFilters: SupplierDecisionHubFilters = { ...baseFilters, fromDate: prevRange.fromDate, toDate: prevRange.toDate };
 
-    const loadOverview = async () => {
-      setLoadingOverview(true);
-      setOverviewError(null);
-      try {
-        const [summaryResponse, quadrantResponse] = await Promise.all([
-          getSupplierDecisionSummary(appliedFilters),
-          getSupplierDecisionQuadrant(appliedFilters),
-        ]);
-        if (!cancelled) {
-          setSummary(summaryResponse);
-          setQuadrant(quadrantResponse);
-        }
-      } catch {
-        if (!cancelled) {
-          setSummary(null);
-          setQuadrant(null);
-          setOverviewError("Nije moguće učitati zbirnu analitiku dobavljača.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingOverview(false);
-        }
-      }
-    };
-
-    void loadOverview();
-    return () => {
-      cancelled = true;
-    };
-  }, [appliedFilters]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadRanking = async () => {
-      setLoadingRanking(true);
-      setRankingError(null);
-      try {
-        const response = await getSupplierDecisionRanking(appliedFilters, {
-          page,
-          pageSize: PAGE_SIZE,
-          sortBy,
-          sortDir,
-        });
-        if (!cancelled) {
-          setRanking(response);
-        }
-      } catch {
-        if (!cancelled) {
-          setRanking(null);
-          setRankingError("Nije moguće učitati rang listu dobavljača.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingRanking(false);
-        }
-      }
-    };
-
-    void loadRanking();
-    return () => {
-      cancelled = true;
-    };
-  }, [appliedFilters, page, sortBy, sortDir]);
-
-  useEffect(() => {
-    if (selectedSupplierId == null) {
-      setDetails(null);
-      setDetailsError(null);
-      setLoadingDetails(false);
-      return;
+      const [summaryResult, rankingResult, previousResult] = await Promise.allSettled([
+        getSupplierDecisionSummary(baseFilters),
+        getSupplierDecisionRanking(baseFilters, { page: 1, pageSize: 200, sortBy: "supplierQualityIndex", sortDir: "desc" }),
+        getSupplierDecisionSummary(prevFilters),
+      ]);
+      if (requestId !== requestIdRef.current) return;
+      if (summaryResult.status === "rejected" || rankingResult.status === "rejected") throw new Error("Neuspesno ucitavanje supplier decision podataka.");
+      setSummary(summaryResult.value);
+      setRanking(rankingResult.value);
+      setPreviousSummary(previousResult.status === "fulfilled" ? previousResult.value : null);
+      setExpandedSupplierId(null);
+    } catch (reason) {
+      if (requestId !== requestIdRef.current) return;
+      setSummary(null);
+      setPreviousSummary(null);
+      setRanking(null);
+      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju supplier decision hub-a.");
+    } finally {
+      if (requestId === requestIdRef.current) setLoading(false);
     }
+  }, []);
 
-    let cancelled = false;
+  useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
 
-    const loadDetails = async () => {
-      setLoadingDetails(true);
-      setDetailsError(null);
-      try {
-        const response = await getSupplierDecisionDetails(selectedSupplierId, appliedFilters);
-        if (!cancelled) {
-          setDetails(response);
-        }
-      } catch {
-        if (!cancelled) {
-          setDetails(null);
-          setDetailsError("Nije moguće učitati detalje izabranog dobavljača.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingDetails(false);
-        }
+  const decisionRows = useMemo<DecisionRow[]>(() => {
+    const rows = ranking?.items ?? [];
+    if (rows.length === 0) return [];
+    const totalRevenue = rows.reduce((sum, item) => sum + item.revenue, 0);
+    const topShare = rows.reduce((max, item) => Math.max(max, totalRevenue > 0 ? (item.revenue / totalRevenue) * 100 : 0), 0);
+
+    return rows.map((item) => {
+      const sharePct = totalRevenue > 0 ? (item.revenue / totalRevenue) * 100 : 0;
+      const marginContribution = item.revenue * item.preMarkdownMarginPct;
+      const qualityTrendPct = (item.fullPriceRevenueShare - item.markdownRevenueShare) * 100;
+      const normalizedConfidence = normalizeConfidence(item.confidenceScore);
+      const qualityIndex = clamp(item.supplierQualityIndex <= 1 ? item.supplierQualityIndex * 100 : item.supplierQualityIndex, 0, 100);
+      const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
+      const trendNorm = clamp(((qualityTrendPct + 40) / 80) * 100, 0, 100);
+      const decisionScore = Math.round(qualityIndex * 0.40 + normalizedConfidence * 0.25 + shareNorm * 0.20 + trendNorm * 0.15);
+
+      let status = recommendationToStatus(item.recommendationCode, normalizedConfidence);
+      if (status === "Pojacaj" && decisionScore < BOOST_SCORE_THRESHOLD) status = "Zadrzi";
+      if (
+        status === "Zadrzi" &&
+        decisionScore < KEEP_SCORE_THRESHOLD &&
+        (qualityTrendPct < 0 || normalizedConfidence < BOOST_MIN_CONFIDENCE_PCT)
+      ) {
+        status = "Smanji";
       }
-    };
+      const statusReason = buildStatusReason(status, item.recommendationCode, qualityTrendPct, normalizedConfidence);
 
-    void loadDetails();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSupplierId, appliedFilters]);
+      return { ...item, sharePct, marginContribution, qualityTrendPct, decisionScore, status, statusReason, normalizedConfidence };
+    });
+  }, [ranking?.items]);
 
-  const heroPeriod = useMemo(
-    () =>
-      formatDateRange(
-        summary?.from ?? appliedFilters.fromDate,
-        summary?.to ?? appliedFilters.toDate
-      ),
-    [appliedFilters.fromDate, appliedFilters.toDate, summary?.from, summary?.to]
-  );
+  const sortedRows = useMemo(() => {
+    const rows = [...decisionRows];
+    return rows.sort((a, b) => {
+      let compare = 0;
+      if (sortField === "supplierName") compare = a.supplierName.localeCompare(b.supplierName, "sr");
+      else if (sortField === "revenue") compare = a.revenue - b.revenue;
+      else if (sortField === "sharePct") compare = a.sharePct - b.sharePct;
+      else if (sortField === "preMarkdownMarginPct") compare = a.preMarkdownMarginPct - b.preMarkdownMarginPct;
+      else if (sortField === "qualityTrendPct") compare = a.qualityTrendPct - b.qualityTrendPct;
+      else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+      if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      return sortDir === "asc" ? compare : -compare;
+    });
+  }, [decisionRows, sortDir, sortField]);
 
-  const handleApplyFilters = () => {
-    if (formState.fromDate && formState.toDate && formState.fromDate > formState.toDate) {
-      setDateError("Datum 'od' mora biti pre ili jednak datumu 'do'.");
-      return;
-    }
-    setDateError(null);
-    setPage(1);
-    setAppliedFilters(normalizeFilters(formState));
+  const totalRevenue = useMemo(() => sortedRows.reduce((sum, row) => sum + row.revenue, 0), [sortedRows]);
+  const top5SharePct = useMemo(() => {
+    if (sortedRows.length === 0 || totalRevenue <= 0) return 0;
+    const top5 = [...sortedRows].sort((a, b) => b.revenue - a.revenue).slice(0, 5).reduce((sum, row) => sum + row.revenue, 0);
+    return (top5 / totalRevenue) * 100;
+  }, [sortedRows, totalRevenue]);
+  const totalMarginContribution = useMemo(() => sortedRows.reduce((sum, row) => sum + row.marginContribution, 0), [sortedRows]);
+  const fullPriceDeltaPctPoints = useMemo(() => {
+    if (!summary || !previousSummary) return null;
+    return (summary.fullPriceRevenueShare - previousSummary.fullPriceRevenueShare) * 100;
+  }, [previousSummary, summary]);
+  const supplierCounts = useMemo(() => ({
+    boost: sortedRows.filter((row) => row.status === "Pojacaj").length,
+    keep: sortedRows.filter((row) => row.status === "Zadrzi").length,
+    reduce: sortedRows.filter((row) => row.status === "Smanji").length,
+  }), [sortedRows]);
+  const concentrationData = useMemo(() => {
+    const top = [...sortedRows].sort((a, b) => b.sharePct - a.sharePct).slice(0, 8).map((row) => ({ name: row.supplierName, sharePct: row.sharePct }));
+    const topShare = top.reduce((sum, row) => sum + row.sharePct, 0);
+    const rest = clamp(100 - topShare, 0, 100);
+    return rest > 0.1 ? [...top, { name: "Ostali", sharePct: rest }] : top;
+  }, [sortedRows]);
+  const selectedRow = useMemo(() => (expandedSupplierId == null ? null : sortedRows.find((row) => row.supplierId === expandedSupplierId) ?? null), [expandedSupplierId, sortedRows]);
+
+  const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => [
+    { key: "periodPreset", label: "Period", value: periodPreset },
+    { key: "fromDate", label: "Od", value: activeFilters.fromDate },
+    { key: "toDate", label: "Do", value: activeFilters.toDate },
+    { key: "seasonId", label: "Sezona", value: activeFilters.seasonId ?? "" },
+    { key: "minRevenue", label: "Min prihod", value: activeFilters.minRevenue ?? "" },
+    { key: "onlyHighConfidence", label: "Only high confidence", value: activeFilters.onlyHighConfidence },
+  ], [activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.toDate, periodPreset]);
+
+  const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
+    { key: "summaryFrom", label: "Summary od", value: summary?.from ?? "" },
+    { key: "summaryTo", label: "Summary do", value: summary?.to ?? "" },
+    { key: "supplierCount", label: "Dobavljaca", value: summary?.supplierCount ?? 0 },
+    { key: "capitalAtRisk", label: "Kapital u riziku", value: summary?.capitalAtRisk ?? 0 },
+  ], [summary?.capitalAtRisk, summary?.from, summary?.supplierCount, summary?.to]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) { setSortDir((current) => (current === "asc" ? "desc" : "asc")); return; }
+    setSortField(field);
+    setSortDir(field === "supplierName" ? "asc" : "desc");
   };
-
+  const handlePresetChange = (value: PeriodPreset) => {
+    setPeriodPreset(value);
+    if (value === "custom") return;
+    const range = getPresetRange(value);
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
+  };
+  const handleApplyFilters = () => { if (!invalidRange) setActiveFilters({ fromDate, toDate, seasonId, minRevenue, onlyHighConfidence }); };
   const handleResetFilters = () => {
-    const defaults = createDefaultFormState();
-    setFormState(defaults);
-    setPage(1);
-    setSortBy("supplierQualityIndex");
-    setSortDir("desc");
-    setDateError(null);
-    setAppliedFilters(normalizeFilters(defaults));
+    const range = getPresetRange("90d");
+    setPeriodPreset("90d");
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
+    setSeasonId(null);
+    setMinRevenue(null);
+    setOnlyHighConfidence(false);
+    setActiveFilters({ fromDate: range.fromDate, toDate: range.toDate, seasonId: null, minRevenue: null, onlyHighConfidence: false });
   };
 
-  const handleSortChange = (nextSortBy: SupplierDecisionHubSortField) => {
-    setPage(1);
-    if (sortBy === nextSortBy) {
-      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortBy(nextSortBy);
-    setSortDir("desc");
-  };
-
-  const handleSelectSupplier = (supplierId: number) => {
-    startTransition(() => {
-      setSelectedSupplierId(supplierId);
-    });
-  };
-
-  const analyticsFilters = useMemo<AnalyticsNamedValue[]>(
-    () => [
-      { key: "fromDate", label: "Od datuma", value: appliedFilters.fromDate ?? "" },
-      { key: "toDate", label: "Do datuma", value: appliedFilters.toDate ?? "" },
-      { key: "category", label: "Kategorija", value: appliedFilters.category ?? "" },
-      { key: "gender", label: "Pol", value: appliedFilters.gender ?? "" },
-      { key: "seasonId", label: "Sezona", value: appliedFilters.seasonId ?? "" },
-      { key: "minRevenue", label: "Min prihod", value: appliedFilters.minRevenue ?? "" },
-      { key: "onlyHighConfidence", label: "Samo visoka pouzdanost", value: appliedFilters.onlyHighConfidence ?? false },
-      { key: "excludeOosBeforeMarkdown", label: "Iskljuci OOS pre markdown", value: appliedFilters.excludeOosBeforeMarkdown ?? false },
-      { key: "page", label: "Strana", value: page },
-      { key: "sortBy", label: "Sort", value: sortBy },
-      { key: "sortDir", label: "Sort smer", value: sortDir },
-    ],
-    [appliedFilters.category, appliedFilters.excludeOosBeforeMarkdown, appliedFilters.fromDate, appliedFilters.gender, appliedFilters.minRevenue, appliedFilters.onlyHighConfidence, appliedFilters.seasonId, appliedFilters.toDate, page, sortBy, sortDir]
-  );
-
-  const analyticsMetadata = useMemo<AnalyticsNamedValue[]>(
-    () => [
-      { key: "periodFrom", label: "Period od", value: summary?.from ?? "" },
-      { key: "periodTo", label: "Period do", value: summary?.to ?? "" },
-      { key: "supplierCount", label: "Broj dobavljaca", value: summary?.supplierCount ?? 0 },
-      { key: "fullPriceRevenueShare", label: "Udeo bez snizenja", value: summary?.fullPriceRevenueShare ?? "" },
-      { key: "fullPriceSellthrough", label: "Sell-through bez snizenja", value: summary?.fullPriceSellthrough ?? "" },
-      { key: "markdownRevenueShare", label: "Udeo snizenja", value: summary?.markdownRevenueShare ?? "" },
-      { key: "preMarkdownMarginPct", label: "Marza pre markdown", value: summary?.preMarkdownMarginPct ?? "" },
-    ],
-    [summary?.from, summary?.fullPriceRevenueShare, summary?.fullPriceSellthrough, summary?.markdownRevenueShare, summary?.preMarkdownMarginPct, summary?.supplierCount, summary?.to]
-  );
-
-  const openSupplierDetail = (item: RankingResponse["items"][number]) => {
-    saveAnalyticsDetailSnapshot(
-      buildAnalyticsDetailSnapshot({
-        table: "supplier-decision-hub",
-        recordId: String(item.supplierId),
-        title: item.supplierName,
-        subtitle: "Rangiranje dobavljaca",
-        columns: rankingColumns,
-        row: item,
-        metadata: [...analyticsFilters, ...analyticsMetadata],
-      })
-    );
-
-    navigate(`/analitika/supplier-decision-hub/${item.supplierId}`, {
-      state: { backgroundLocation: location },
-    });
+  const openSupplierDetail = (row: DecisionRow) => {
+    saveAnalyticsDetailSnapshot(buildAnalyticsDetailSnapshot({
+      table: "supplier-decision-hub",
+      recordId: String(row.supplierId),
+      title: row.supplierName,
+      subtitle: "Supplier decision support",
+      columns: decisionColumns,
+      row,
+      metadata: [...toolbarFilters, ...toolbarMetadata],
+    }));
+    navigate(`/analitika/supplier-decision-hub/${row.supplierId}`, { state: { backgroundLocation: location } });
   };
 
   return (
-    <div className="supplier-decision-page">
-      <section className="supplier-decision-hero">
-        <div className="supplier-decision-hero-copy">
-          <div className="supplier-decision-overline">Analitika nabavke</div>
-          <h1>Centar odluka o dobavljačima</h1>
-          <p>
-            Stranica razdvaja prodaju pre sniženja od prodaje koja zavisi od spuštanja
-            cene, otkriva dobavljače za širenje saradnje i izdvaja lažno loše rezultate
-            nastale zbog nedostatka zaliha.
-          </p>
-          <div className="supplier-decision-hero-meta">
-            <span>Obuhvaćen period: {heroPeriod}</span>
-            <span>Dobavljača u uzorku: {summary?.supplierCount ?? 0}</span>
-          </div>
+    <div className="sdh-decision-page">
+      <header className="sdh-decision-header">
+        <div>
+          <h1 className="sdh-decision-title">Supplier Decision Hub</h1>
+          <p className="sdh-decision-subtitle">Executive decision-support: ko nosi prihod, gde je zdrav odnos full-price i markdown prodaje i koji dobavljaci zasluzuju veci fokus u nabavci.</p>
         </div>
-        <SupplierDecisionFilters
-          value={formState}
-          seasons={seasons}
-          pending={loadingOverview || loadingRanking}
-          onChange={setFormState}
-          onApply={handleApplyFilters}
-          onReset={handleResetFilters}
-        />
+      </header>
+
+      <section className="sdh-decision-filters">
+        <label className="sdh-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="custom">Custom</option></select></label>
+        <label className="sdh-decision-field"><span>Od</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
+        <label className="sdh-decision-field"><span>Do</span><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
+        <label className="sdh-decision-field"><span>Sezona</span><select value={seasonId ?? ""} onChange={(e) => setSeasonId(e.target.value ? Number(e.target.value) : null)}><option value="">Sve</option>{seasons.map((season) => <option key={season.id} value={season.id}>{season.naziv}</option>)}</select></label>
+        <label className="sdh-decision-field"><span>Min prihod</span><input type="number" value={minRevenue ?? ""} onChange={(e) => setMinRevenue(e.target.value ? Number(e.target.value) : null)} placeholder="npr. 500000" /></label>
+        <label className="sdh-decision-field check"><span>Samo visoka pouzdanost</span><input type="checkbox" checked={onlyHighConfidence} onChange={(e) => setOnlyHighConfidence(e.target.checked)} /></label>
+        <div className="sdh-decision-actions"><button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button><button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button></div>
       </section>
 
-      {dateError ? <div className="supplier-decision-error">{dateError}</div> : null}
-      {overviewError ? <div className="supplier-decision-error">{overviewError}</div> : null}
-      {rankingError ? <div className="supplier-decision-error">{rankingError}</div> : null}
+      {invalidRange ? <div className="sdh-decision-message error">Datum od ne moze biti posle datuma do.</div> : null}
+      {error ? <div className="sdh-decision-message error">{error}</div> : null}
+      {loading ? <div className="sdh-decision-message loading">Ucitavam supplier decision signal...</div> : null}
 
-      <section className="supplier-decision-section">
-        <div className="supplier-decision-section-title">KPI pregled</div>
-        <SupplierDecisionKpis summary={summary} loading={loadingOverview} />
-      </section>
+      {!loading && summary && ranking ? (
+        <>
+          <section className="sdh-decision-kpis">
+            <article className="sdh-decision-kpi"><span>Ukupan prihod</span><strong>{fmtRsd(totalRevenue)}</strong></article>
+            <article className="sdh-decision-kpi"><span>Udeo top 5 dobavljaca</span><strong>{fmtPct(top5SharePct)}</strong></article>
+            <article className="sdh-decision-kpi"><span>Ukupan marzni doprinos</span><strong>{fmtRsd(totalMarginContribution)}</strong></article>
+            <article className="sdh-decision-kpi"><span>Kapital u riziku</span><strong className="trend-down">{fmtRsd(summary.capitalAtRisk)}</strong></article>
+            <article className="sdh-decision-kpi"><span>Promena full-price udela vs prethodni period</span><strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPct(fullPriceDeltaPctPoints)}</strong></article>
+          </section>
 
-      <section className="supplier-decision-section">
-        <div className="supplier-decision-section-title">Kvadrant odluka</div>
-        <SupplierDecisionQuadrant
-          items={quadrant?.items ?? []}
-          loading={loadingOverview}
-          onSelectSupplier={handleSelectSupplier}
-        />
-      </section>
+          <section className="sdh-decision-panels">
+            <article className="sdh-decision-card">
+              <h2>Koncentracija prihoda po dobavljacima</h2><p>Brza procena zavisnosti od top dobavljaca.</p>
+              {concentrationData.length > 0 ? (
+                <div className="sdh-decision-chart-wrap">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
+                      <Tooltip formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
+                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : <div className="sdh-decision-empty">Nema podataka za grafikon koncentracije.</div>}
+            </article>
 
-      <section className="supplier-decision-section">
-        <div className="supplier-decision-section-title">Direktne preporuke</div>
-        <SupplierRecommendationRail
-          topGrowSuppliers={summary?.topGrowSuppliers ?? []}
-          topRiskSuppliers={summary?.topRiskSuppliers ?? []}
-          onSelectSupplier={handleSelectSupplier}
-        />
-      </section>
+            <article className="sdh-decision-card">
+              <div className="sdh-decision-table-head">
+                <div><h2>Prioritetna lista dobavljaca</h2><p>Pojacaj: {supplierCounts.boost} | Zadrzi: {supplierCounts.keep} | Smanji: {supplierCounts.reduce}</p></div>
+                <AnalyticsTableToolbar tableKey="supplier-decision-hub" tableTitle="Supplier decision hub - compact" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
+              </div>
+              <div className="sdh-decision-table-wrap">
+                <table className="sdh-decision-table">
+                  <thead>
+                    <tr>
+                      <th><button type="button" onClick={() => handleSort("supplierName")}>Dobavljac{sortMarker("supplierName", sortField, sortDir)}</button></th>
+                      <th className="align-right"><button type="button" onClick={() => handleSort("revenue")}>Prihod{sortMarker("revenue", sortField, sortDir)}</button></th>
+                      <th className="align-right"><button type="button" onClick={() => handleSort("sharePct")}>Udeo{sortMarker("sharePct", sortField, sortDir)}</button></th>
+                      <th className="align-right"><button type="button" onClick={() => handleSort("preMarkdownMarginPct")}>Marza{sortMarker("preMarkdownMarginPct", sortField, sortDir)}</button></th>
+                      <th className="align-right"><button type="button" onClick={() => handleSort("qualityTrendPct")}>Kvalitet trend{sortMarker("qualityTrendPct", sortField, sortDir)}</button></th>
+                      <th><button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button></th>
+                      <th className="align-center">Detalj</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedRows.length === 0 ? (
+                      <tr><td colSpan={7} className="sdh-decision-empty-row">Nema podataka za izabrane filtere.</td></tr>
+                    ) : (
+                      sortedRows.map((row) => {
+                        const expanded = expandedSupplierId === row.supplierId;
+                        return (
+                          <tr key={row.supplierId} className={expanded ? "expanded-row" : ""}>
+                            <td>{row.supplierName}</td>
+                            <td className="align-right">{fmtRsd(row.revenue)}</td>
+                            <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
+                            <td className="align-right">{fmtPct(row.preMarkdownMarginPct * 100, 2)}</td>
+                            <td className={`align-right ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPct(row.qualityTrendPct, 2)}</td>
+                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{row.status}</span></td>
+                            <td className="align-center"><button type="button" className="sdh-decision-detail-btn" onClick={() => setExpandedSupplierId(expanded ? null : row.supplierId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </section>
 
-      <section className="supplier-decision-section">
-        <div className="supplier-decision-section-title">Rangiranje dobavljača</div>
-        <SupplierDecisionTable
-          items={ranking?.items ?? []}
-          columns={rankingColumns}
-          analyticsFilters={analyticsFilters}
-          analyticsMetadata={analyticsMetadata}
-          loading={loadingRanking}
-          page={ranking?.page ?? page}
-          pageSize={ranking?.pageSize ?? PAGE_SIZE}
-          totalCount={ranking?.totalCount ?? 0}
-          sortBy={sortBy}
-          sortDir={sortDir}
-          onPageChange={setPage}
-          onSortChange={handleSortChange}
-          onSelectSupplier={handleSelectSupplier}
-          onOpenDetail={openSupplierDetail}
-        />
-      </section>
-
-      <SupplierDetailDrawer
-        open={selectedSupplierId != null}
-        loading={loadingDetails}
-        error={detailsError}
-        details={details}
-        onClose={() => setSelectedSupplierId(null)}
-      />
+          {selectedRow ? (
+            <section className="sdh-decision-detail">
+              <div className="sdh-decision-detail-head"><h3>Detalj odluke: {selectedRow.supplierName}</h3><button type="button" onClick={() => openSupplierDetail(selectedRow)}>Otvori puni detalj</button></div>
+              <div className="sdh-decision-detail-grid">
+                <article><span>Prihod</span><strong>{fmtRsd(selectedRow.revenue)}</strong></article>
+                <article><span>Komadi</span><strong>{selectedRow.units.toLocaleString("sr-RS")} kom</strong></article>
+                <article><span>Full-price share</span><strong>{fmtPct(selectedRow.fullPriceRevenueShare * 100, 2)}</strong></article>
+                <article><span>Markdown share</span><strong>{fmtPct(selectedRow.markdownRevenueShare * 100, 2)}</strong></article>
+                <article><span>Dead stock</span><strong>{fmtPct(selectedRow.deadStockRate * 100, 2)}</strong></article>
+                <article><span>Unsold stock value</span><strong>{fmtRsd(selectedRow.unsoldStockValue)}</strong></article>
+                <article><span>Repeat winner rate</span><strong>{fmtPct(selectedRow.repeatWinnerRate * 100, 2)}</strong></article>
+                <article><span>AI score / Quality index</span><strong>{selectedRow.mlSupplierScore.toFixed(1)} / {selectedRow.supplierQualityIndex.toFixed(1)}</strong></article>
+                <article><span>Pouzdanost</span><strong>{fmtPct(selectedRow.normalizedConfidence, 1)}</strong></article>
+              </div>
+              <p className="sdh-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>
+            </section>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }

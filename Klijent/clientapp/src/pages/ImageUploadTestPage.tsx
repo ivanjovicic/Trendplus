@@ -61,7 +61,7 @@ export default function ImageUploadTestPage() {
             {/* Product ID Input */}
             <div
                 style={{
-                    background: "white",
+                    background: "var(--surface-default, #ffffff)",
                     padding: "1.5rem",
                     borderRadius: "12px",
                     border: "1px solid var(--c-e5e7eb, #e5e7eb)",
@@ -88,7 +88,7 @@ export default function ImageUploadTestPage() {
             {/* Image Upload Component */}
             <div
                 style={{
-                    background: "white",
+                    background: "var(--surface-default, #ffffff)",
                     padding: "1.5rem",
                     borderRadius: "12px",
                     border: "1px solid var(--c-e5e7eb, #e5e7eb)",
@@ -174,7 +174,7 @@ export default function ImageUploadTestPage() {
                                 style={{
                                     marginTop: "1rem",
                                     background: "linear-gradient(135deg, var(--c-dc2626, #dc2626) 0%, var(--c-b91c1c, #b91c1c) 100%)",
-                                    color: "white",
+                                    color: "var(--text-on-primary, #ffffff)",
                                     padding: "10px 20px",
                                     borderRadius: "8px",
                                     border: "none",

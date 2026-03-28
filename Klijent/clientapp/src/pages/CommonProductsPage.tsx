@@ -85,7 +85,7 @@ export default function CommonProductsPage() {
           flexWrap: 'wrap',
           padding: 12,
           borderRadius: 12,
-          background: 'var(--surface-card, #fff)',
+          background: 'var(--surface-card, #ffffff)',
           border: '1px solid var(--border-muted, #e5e7eb)'
         }}>
           <div style={{ minWidth: 160 }}>
@@ -145,7 +145,7 @@ export default function CommonProductsPage() {
       {!loading && items?.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
           {items.map((m, idx) => (
-            <div key={idx} style={{ border: '1px solid var(--border-muted, #e5e7eb)', borderRadius: 12, padding: 16, background: 'var(--surface-card, #fff)' }}>
+            <div key={idx} style={{ border: '1px solid var(--border-muted, #e5e7eb)', borderRadius: 12, padding: 16, background: 'var(--surface-card, #ffffff)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div style={{ fontWeight: 700 }}>{m.brand} • {m.type}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted, #6b7280)' }}>Score: <b>{m.score}</b>/100</div>

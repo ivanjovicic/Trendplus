@@ -17,16 +17,32 @@ export function InventoryPageShell({
 }) {
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-[var(--border-default)] bg-gradient-to-br from-[var(--surface-elevated)] via-[var(--surface-elevated-light)] to-[var(--surface-elevated-dark)] p-4 shadow-[0_16px_40px_-30px_var(--card-shadow)] sm:p-5">
+      <section
+        className="rounded-2xl border p-4 sm:p-5"
+        style={{
+          background: "linear-gradient(135deg, var(--surface-elevated, #ffffff) 0%, var(--surface-elevated-light, #ffffff) 50%, var(--surface-elevated-dark, #ffffff) 100%)",
+          borderColor: "var(--border-default, #d3dce9)",
+          boxShadow: "0 16px 40px -30px var(--card-shadow, rgba(16,24,40,0.06))",
+        }}
+      >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] p-2 text-[var(--text-primary)]">
+              <span
+                className="rounded-lg p-2"
+                style={{
+                  border: "1px solid var(--border-default, #d3dce9)",
+                  background: "var(--surface-elevated, #ffffff)",
+                  color: "var(--text-primary, #0f172a)",
+                }}
+              >
                 <Icon size={16} />
               </span>
-              <h1 className="text-lg font-semibold text-[var(--text-primary)] sm:text-xl">{title}</h1>
+              <h1 className="text-lg font-semibold sm:text-xl" style={{ color: "var(--text-primary, #0f172a)" }}>{title}</h1>
             </div>
-            {subtitle ? <p className="mt-2 max-w-3xl text-sm text-[var(--text-primary)]">{subtitle}</p> : null}
+            {subtitle ? (
+              <p className="mt-2 max-w-3xl text-sm" style={{ color: "var(--text-primary, #0f172a)" }}>{subtitle}</p>
+            ) : null}
           </div>
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </div>

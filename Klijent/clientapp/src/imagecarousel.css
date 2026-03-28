@@ -157,7 +157,7 @@
     z-index: 10000;
 }
 
-.carousel-close-button:hover { transform: scale(1.1); background: var(--c-fff, #fff); }
+.carousel-close-button:hover { transform: scale(1.1); background: var(--c-fff, #ffffff); }
 
 .carousel-hint-text { margin: 0; color: rgba(255, 255, 255, 0.7); font-size: 0.8rem; text-align: center; }
 

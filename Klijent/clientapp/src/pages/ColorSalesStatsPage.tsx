@@ -1,77 +1,89 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { getStores } from "../services/analyticsApi";
 import {
   getColorSalesStats,
   type ColorSalesStat,
   type ColorSalesStatsResponse,
-  type SezonaOption,
 } from "../services/colorSalesStatsApi";
+import type { StoreOption } from "../types/analytics";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./ColorSalesStatsPage.css";
 
+type PeriodPreset = "30d" | "90d" | "custom";
 type SortDir = "asc" | "desc";
-type SortField =
-  | "boja"
-  | "preNivelacijePromet"
-  | "preNivelacijeKolicina"
-  | "posleNivelacijePromet"
-  | "posleNivelacijeKolicina"
-  | "ukupanPromet"
-  | "ukupnaKolicina"
-  | "promenaPrometa"
-  | "marginPct"
-  | "brojArtikalaSaNivelacijom";
+type SortField = "boja" | "ukupanPromet" | "sharePct" | "marginContribution" | "trendPct" | "status";
+type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
 
-const columns: Array<{ field: SortField; label: string; align?: "left" | "right" | "center" }> = [
-  { field: "boja", label: "Boja" },
-  { field: "preNivelacijePromet", label: "Pre promet", align: "right" },
-  { field: "preNivelacijeKolicina", label: "Pre kom", align: "right" },
-  { field: "posleNivelacijePromet", label: "Posle promet", align: "right" },
-  { field: "posleNivelacijeKolicina", label: "Posle kom", align: "right" },
-  { field: "ukupanPromet", label: "Ukupan promet", align: "right" },
-  { field: "ukupnaKolicina", label: "Ukupna kolicina", align: "right" },
-  { field: "promenaPrometa", label: "Promena prometa %", align: "right" },
-  { field: "marginPct", label: "Marza %", align: "right" },
-  { field: "brojArtikalaSaNivelacijom", label: "Artikli sa/ukupno", align: "center" },
-];
+type ActiveFilters = {
+  fromDate: string;
+  toDate: string;
+  storeId: number | null;
+};
 
-const analyticsColumns: AnalyticsTableColumn<ColorSalesStat>[] = [
+type DecisionColor = ColorSalesStat & {
+  sharePct: number;
+  marginContribution: number;
+  trendPct: number | null;
+  reliabilityPct: number;
+  coveragePct: number;
+  decisionScore: number;
+  status: DecisionStatus;
+  statusReason: string;
+};
+
+const STATUS_PRIORITY: Record<DecisionStatus, number> = {
+  Pojacaj: 3,
+  Zadrzi: 2,
+  Smanji: 1,
+};
+
+const UNKNOWN_COLORS = new Set([
+  "",
+  "NEPOZNATO",
+  "UNKNOWN",
+  "N/A",
+]);
+
+const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "boja", header: "Boja", dataType: "text" },
-  { key: "preNivelacijePromet", header: "Pre promet", dataType: "currency" },
-  { key: "preNivelacijeKolicina", header: "Pre kom", dataType: "number" },
-  { key: "posleNivelacijePromet", header: "Posle promet", dataType: "currency" },
-  { key: "posleNivelacijeKolicina", header: "Posle kom", dataType: "number" },
-  { key: "ukupanPromet", header: "Ukupan promet", dataType: "currency" },
-  { key: "ukupnaKolicina", header: "Ukupna kolicina", dataType: "number" },
-  { key: "promenaPrometa", header: "Promena prometa %", dataType: "percent" },
-  { key: "marginPct", header: "Marza %", dataType: "percent" },
-  {
-    key: "artikliSaNivelacijom",
-    header: "Artikli sa/ukupno",
-    dataType: "text",
-    getValue: (row) => `${row.brojArtikalaSaNivelacijom} / ${row.brojArtikalaUkupno}`,
-  },
+  { key: "ukupanPromet", header: "Promet", dataType: "currency" },
+  { key: "sharePct", header: "Udeo %", dataType: "percent" },
+  { key: "marginContribution", header: "Marzni doprinos", dataType: "currency" },
+  { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "status", header: "Preporuka", dataType: "text" },
+  { key: "decisionScore", header: "Decision score", dataType: "number" },
 ];
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
 
 function toDateInput(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function toDateOnly(value: string | null | undefined): string {
-  if (!value) return "";
-  return value.slice(0, 10);
+function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: string; toDate: string } {
+  const to = new Date();
+  const from = new Date(to);
+  if (preset === "30d") from.setDate(from.getDate() - 29);
+  if (preset === "90d") from.setDate(from.getDate() - 89);
+
+  return {
+    fromDate: toDateInput(from),
+    toDate: toDateInput(to),
+  };
 }
 
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
@@ -81,178 +93,386 @@ function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDat
   };
 }
 
+function buildPreviousRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
+  const currentFrom = new Date(`${fromDate}T00:00:00Z`);
+  const currentTo = new Date(`${toDate}T23:59:59Z`);
+  const durationMs = currentTo.getTime() - currentFrom.getTime() + 1000;
+
+  const previousTo = new Date(currentFrom.getTime() - 1000);
+  const previousFrom = new Date(previousTo.getTime() - durationMs + 1000);
+
+  return {
+    fromDate: previousFrom.toISOString(),
+    toDate: previousTo.toISOString(),
+  };
+}
+
 function fmtRsd(value: number): string {
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RSD`;
+  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`;
+}
+
+function fmtPct(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
+}
+
+function fmtSignedPct(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${fmtPct(value, digits)}`;
 }
 
 function fmtQty(value: number): string {
   return `${value.toLocaleString("sr-RS")} kom`;
 }
 
-function fmtSignedPct(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
-}
-
-function metricTone(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value) || value === 0) return "tone-neutral";
-  return value > 0 ? "tone-positive" : "tone-negative";
-}
-
-function compareValues(a: string | number, b: string | number, dir: SortDir): number {
-  const result =
-    typeof a === "string" && typeof b === "string"
-      ? a.localeCompare(b, "sr")
-      : Number(a) - Number(b);
-  return dir === "asc" ? result : -result;
+function normalizeName(value: string | null | undefined): string {
+  return (value ?? "").trim().toUpperCase();
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
   if (field !== activeField) return "";
-  return dir === "asc" ? " ▲" : " ▼";
+  return dir === "asc" ? " ^" : " v";
 }
 
-function SortButton(props: {
-  field: SortField;
-  label: string;
-  activeField: SortField;
-  dir: SortDir;
-  align?: "left" | "right" | "center";
-  onClick: (field: SortField) => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`color-sales-sort-btn ${props.align ? `align-${props.align}` : ""}`}
-      onClick={() => props.onClick(props.field)}
-    >
-      {props.label}
-      {sortMarker(props.field, props.activeField, props.dir)}
-    </button>
-  );
+function statusClass(status: DecisionStatus): string {
+  if (status === "Pojacaj") return "color-decision-status status-boost";
+  if (status === "Smanji") return "color-decision-status status-reduce";
+  return "color-decision-status status-keep";
+}
+
+function trendClass(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "trend-neutral";
+  if (value > 0) return "trend-up";
+  if (value < 0) return "trend-down";
+  return "trend-neutral";
+}
+
+type StatusReasonSignals = {
+  trendPct: number | null;
+  marginPct: number;
+  avgMargin: number;
+  reliabilityPct: number;
+};
+
+type StatusTooltipData = {
+  status: DecisionStatus;
+  statusReason: string;
+  sharePct: number;
+  marginPct: number;
+  trendPct: number | null;
+  reliabilityPct: number;
+};
+
+function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals): string {
+  const lowReliability = signals.reliabilityPct < 35;
+  const positiveTrend = (signals.trendPct ?? 0) > 0;
+  const negativeTrend = (signals.trendPct ?? 0) < 0;
+  const strongMargin = signals.marginPct >= signals.avgMargin;
+
+  if (status === "Pojacaj") {
+    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
+    if (positiveTrend && strongMargin) return "Jak promet, zdrava marza i rastuci trend.";
+    if (positiveTrend) return "Dobar promet i pozitivan trend; kandidat za veci fokus.";
+    return "Stabilan doprinos i solidna marza; opravdan fokus u nabavci.";
+  }
+
+  if (status === "Zadrzi") {
+    if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
+    if (negativeTrend && !strongMargin) return "Trend slabi i marza je ispod proseka; zadrzati uz pojacan nadzor.";
+    return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
+  }
+
+  if (negativeTrend) return "Pad trenda uz nizak doprinos; smanjiti fokus i rasteretiti asortiman.";
+  return "Nizak doprinos bez jasnog potencijala rasta; kandidat za smanjenje fokusa.";
+}
+
+function buildStatusTooltip(data: StatusTooltipData): string {
+  return `${data.status}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
+}
+
+function buildStoreLabel(store: StoreOption): string {
+  const extras = [store.city, store.region].filter(Boolean).join(", ");
+  return extras ? `${store.storeName} (${extras})` : store.storeName;
+}
+
+function colorKey(item: { boja: string }): string {
+  return normalizeName(item.boja);
 }
 
 export default function ColorSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const requestIdRef = useRef(0);
+
+  const initialRange = useMemo(() => getPresetRange("90d"), []);
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
+  const [fromDate, setFromDate] = useState(initialRange.fromDate);
+  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [storeId, setStoreId] = useState<number | null>(null);
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
+    fromDate: initialRange.fromDate,
+    toDate: initialRange.toDate,
+    storeId: null,
+  });
+
+  const [stores, setStores] = useState<StoreOption[]>([]);
   const [data, setData] = useState<ColorSalesStatsResponse | null>(null);
+  const [previousPeriodRevenue, setPreviousPeriodRevenue] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sezonaId, setSezonaId] = useState<number | null>(null);
-  const [fromDate, setFromDate] = useState<string>(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 89);
-    return toDateInput(date);
-  });
-  const [toDate, setToDate] = useState<string>(() => toDateInput(new Date()));
-  const [sortField, setSortField] = useState<SortField>("boja");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortField, setSortField] = useState<SortField>("status");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [expandedColorKey, setExpandedColorKey] = useState<string | null>(null);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
     return new Date(fromDate) > new Date(toDate);
   }, [fromDate, toDate]);
 
-  const sezone = data?.sezone ?? [];
+  useEffect(() => {
+    const loadStores = async () => {
+      try {
+        setStores(await getStores(true));
+      } catch {
+        setStores([]);
+      }
+    };
 
-  const applySeason = useCallback((season: SezonaOption | undefined) => {
-    if (!season) return;
-    setFromDate(toDateOnly(season.datumOd));
-    setToDate(toDateOnly(season.datumDo));
+    void loadStores();
   }, []);
 
-  const load = useCallback(async () => {
-    if (invalidRange) {
-      setError("Datum od ne moze biti posle datuma do.");
-      return;
-    }
-
+  const load = useCallback(async (filters: ActiveFilters) => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
 
     try {
-      const query =
-        sezonaId != null
-          ? { sezonaId }
-          : { ...toUtcRange(fromDate, toDate) };
+      const currentRange = toUtcRange(filters.fromDate, filters.toDate);
+      const previousRange = buildPreviousRange(filters.fromDate, filters.toDate);
 
-      const response = await getColorSalesStats(query);
-      setData(response);
-    } catch (e) {
+      const [currentResult, previousResult] = await Promise.allSettled([
+        getColorSalesStats({
+          ...currentRange,
+          storeId: filters.storeId,
+        }),
+        getColorSalesStats({
+          ...previousRange,
+          storeId: filters.storeId,
+        }),
+      ]);
+
+      if (requestId !== requestIdRef.current) return;
+
+      if (currentResult.status === "rejected") {
+        throw currentResult.reason;
+      }
+
+      setData(currentResult.value);
+
+      if (previousResult.status === "fulfilled") {
+        setPreviousPeriodRevenue(previousResult.value.totals.ukupanPromet);
+      } else {
+        setPreviousPeriodRevenue(null);
+      }
+    } catch (reason) {
+      if (requestId !== requestIdRef.current) return;
       setData(null);
-      setError(e instanceof Error ? e.message : "Greska pri ucitavanju statistike boja artikala.");
+      setPreviousPeriodRevenue(null);
+      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju podataka po boji.");
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [fromDate, invalidRange, sezonaId, toDate]);
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(activeFilters);
+  }, [activeFilters, load]);
 
-  const sortedColors = useMemo(() => {
-    const source = data?.colors ?? [];
-    const getValue = (item: ColorSalesStat, field: SortField): string | number => {
-      if (field === "boja") return item.boja;
-      if (field === "brojArtikalaSaNivelacijom") return item.brojArtikalaSaNivelacijom;
-      return item[field] ?? 0;
-    };
+  const decisionRows = useMemo<DecisionColor[]>(() => {
+    const rows = data?.colors ?? [];
+    if (rows.length === 0) return [];
 
-    return [...source].sort((a, b) => compareValues(getValue(a, sortField), getValue(b, sortField), sortDir));
-  }, [data?.colors, sortDir, sortField]);
+    const totalRevenue = rows.reduce((sum, item) => sum + item.ukupanPromet, 0);
+    const topShare = rows.reduce((max, item) => {
+      const share = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : 0;
+      return Math.max(max, share);
+    }, 0);
 
-  const top10Chart = useMemo(
-    () =>
-      [...(data?.colors ?? [])]
-        .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
-        .slice(0, 10)
-        .map((item) => ({
-          boja: item.boja,
-          preNivelacijePromet: item.preNivelacijePromet,
-          posleNivelacijePromet: item.posleNivelacijePromet,
-        })),
-    [data?.colors]
+    const marginValues = rows.map((item) => item.marginPct);
+    const minMargin = Math.min(...marginValues);
+    const maxMargin = Math.max(...marginValues);
+    const marginSpan = maxMargin - minMargin;
+    const avgMargin = marginValues.reduce((sum, value) => sum + value, 0) / marginValues.length;
+
+    return rows.map((item) => {
+      const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : 0;
+      const marginContribution = item.ukupanPromet * (item.marginPct / 100);
+      const trendPct = item.promenaPrometa;
+      const coveragePct = item.brojArtikalaUkupno > 0
+        ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
+        : 0;
+
+      const knownColor = !UNKNOWN_COLORS.has(normalizeName(item.boja));
+      const reliabilityPct = clamp(coveragePct * 0.8 + (knownColor ? 20 : 0), 0, 100);
+
+      const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
+      const marginNorm = marginSpan > 0
+        ? clamp(((item.marginPct - minMargin) / marginSpan) * 100, 0, 100)
+        : 50;
+      const trendNorm = trendPct == null ? 50 : clamp(((trendPct + 30) / 60) * 100, 0, 100);
+
+      const decisionScore = Math.round(
+        shareNorm * 0.35 +
+        marginNorm * 0.30 +
+        trendNorm * 0.20 +
+        reliabilityPct * 0.15
+      );
+
+      let status: DecisionStatus = "Smanji";
+      if (decisionScore >= 70) status = "Pojacaj";
+      else if (decisionScore >= 45) status = "Zadrzi";
+      if (reliabilityPct < 35 && status === "Pojacaj") status = "Zadrzi";
+
+      const statusReason = buildStatusReason(status, {
+        trendPct,
+        marginPct: item.marginPct,
+        avgMargin,
+        reliabilityPct,
+      });
+
+      return {
+        ...item,
+        sharePct,
+        marginContribution,
+        trendPct,
+        reliabilityPct,
+        coveragePct,
+        decisionScore,
+        status,
+        statusReason,
+      };
+    });
+  }, [data?.colors]);
+
+  const sortedRows = useMemo(() => {
+    const rows = [...decisionRows];
+    return rows.sort((a, b) => {
+      let compare = 0;
+
+      if (sortField === "boja") {
+        compare = a.boja.localeCompare(b.boja, "sr");
+      } else if (sortField === "ukupanPromet") {
+        compare = a.ukupanPromet - b.ukupanPromet;
+      } else if (sortField === "sharePct") {
+        compare = a.sharePct - b.sharePct;
+      } else if (sortField === "marginContribution") {
+        compare = a.marginContribution - b.marginContribution;
+      } else if (sortField === "trendPct") {
+        compare = (a.trendPct ?? -9999) - (b.trendPct ?? -9999);
+      } else if (sortField === "status") {
+        compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+      }
+
+      if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      if (compare === 0) compare = a.ukupanPromet - b.ukupanPromet;
+      return sortDir === "asc" ? compare : -compare;
+    });
+  }, [decisionRows, sortDir, sortField]);
+
+  const selectedRow = useMemo(
+    () => sortedRows.find((row) => colorKey(row) === expandedColorKey) ?? null,
+    [expandedColorKey, sortedRows]
   );
 
-  const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => {
-    if (sezonaId != null) {
-      return [{ key: "sezonaId", label: "Sezona", value: sezonaId }];
+  useEffect(() => {
+    if (!selectedRow && sortedRows.length > 0 && expandedColorKey != null) {
+      setExpandedColorKey(null);
+    }
+  }, [expandedColorKey, selectedRow, sortedRows.length]);
+
+  const totalRevenue = data?.totals.ukupanPromet ?? 0;
+  const top5SharePct = useMemo(() => {
+    if (sortedRows.length === 0 || totalRevenue <= 0) return 0;
+    const top5Revenue = [...sortedRows]
+      .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
+      .slice(0, 5)
+      .reduce((sum, row) => sum + row.ukupanPromet, 0);
+    return (top5Revenue / totalRevenue) * 100;
+  }, [sortedRows, totalRevenue]);
+
+  const totalMarginContribution = useMemo(
+    () => sortedRows.reduce((sum, row) => sum + row.marginContribution, 0),
+    [sortedRows]
+  );
+
+  const periodGrowthPct = useMemo(() => {
+    if (previousPeriodRevenue == null || previousPeriodRevenue <= 0) return null;
+    return ((totalRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100;
+  }, [previousPeriodRevenue, totalRevenue]);
+
+  const concentrationData = useMemo(() => {
+    if (sortedRows.length === 0) return [] as Array<{ name: string; sharePct: number }>;
+
+    const ranked = [...sortedRows].sort((a, b) => b.sharePct - a.sharePct);
+    const topRows = ranked.slice(0, 6).map((row) => ({
+      name: row.boja,
+      sharePct: Number(row.sharePct.toFixed(2)),
+    }));
+
+    const remaining = ranked.slice(6).reduce((sum, row) => sum + row.sharePct, 0);
+    if (remaining > 0.1) {
+      topRows.push({ name: "Ostale", sharePct: Number(remaining.toFixed(2)) });
     }
 
-    return [
-      { key: "fromDate", label: "Od", value: fromDate },
-      { key: "toDate", label: "Do", value: toDate },
-    ];
-  }, [fromDate, sezonaId, toDate]);
+    return topRows;
+  }, [sortedRows]);
+
+  const counts = useMemo(() => {
+    const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
+    const keep = sortedRows.filter((row) => row.status === "Zadrzi").length;
+    const reduce = sortedRows.filter((row) => row.status === "Smanji").length;
+    return { boost, keep, reduce };
+  }, [sortedRows]);
+
+  const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "fromDate", label: "Od", value: activeFilters.fromDate },
+      { key: "toDate", label: "Do", value: activeFilters.toDate },
+      { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+    ],
+    [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate]
+  );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-      { key: "brojBoja", label: "Boja", value: data?.totals.brojBoja ?? 0 },
+      { key: "bojaCount", label: "Broj boja", value: data?.totals.brojBoja ?? 0 },
+      { key: "boost", label: "Pojacaj", value: counts.boost },
+      { key: "keep", label: "Zadrzi", value: counts.keep },
+      { key: "reduce", label: "Smanji", value: counts.reduce },
     ],
-    [data?.generatedAt, data?.totals.brojBoja]
+    [counts.boost, counts.keep, counts.reduce, data?.generatedAt, data?.totals.brojBoja]
   );
 
-  const openColorDetail = (color: ColorSalesStat) => {
-    const recordId = encodeURIComponent(color.boja);
-    const params = new URLSearchParams();
+  const openDetail = useCallback((row: DecisionColor) => {
+    const recordId = encodeURIComponent(row.boja);
 
-    if (sezonaId != null) {
-      params.set("sezonaId", String(sezonaId));
-    } else {
-      params.set("fromDate", `${fromDate}T00:00:00Z`);
-      params.set("toDate", `${toDate}T23:59:59Z`);
-    }
+    const params = new URLSearchParams();
+    params.set("fromDate", `${activeFilters.fromDate}T00:00:00Z`);
+    params.set("toDate", `${activeFilters.toDate}T23:59:59Z`);
+    if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
 
     saveAnalyticsDetailSnapshot(
       buildAnalyticsDetailSnapshot({
         table: "color-sales-stats",
         recordId,
-        title: color.boja,
-        subtitle: "Prodaja po boji",
-        columns: analyticsColumns,
-        row: color,
+        title: row.boja,
+        subtitle: "Color decision detail",
+        columns: decisionColumns,
+        row,
         metadata: toolbarFilters,
       })
     );
@@ -260,268 +480,308 @@ export default function ColorSalesStatsPage() {
     navigate(`/analitika/color-sales-stats/${recordId}?${params.toString()}`, {
       state: { backgroundLocation: location },
     });
+  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, location, navigate, toolbarFilters]);
+
+  const applyPreset = (preset: PeriodPreset) => {
+    setPeriodPreset(preset);
+    if (preset === "custom") return;
+    const range = getPresetRange(preset);
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
+  };
+
+  const applyFilters = () => {
+    if (invalidRange) {
+      setError("Datum od ne moze biti posle datuma do.");
+      return;
+    }
+
+    setActiveFilters({
+      fromDate,
+      toDate,
+      storeId,
+    });
+  };
+
+  const resetFilters = () => {
+    const range = getPresetRange("90d");
+    setPeriodPreset("90d");
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
+    setStoreId(null);
+    setActiveFilters({
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      storeId: null,
+    });
   };
 
   const handleSort = (field: SortField) => {
-    const textField = field === "boja";
-    setSortField((prevField) => {
-      if (prevField === field) {
-        setSortDir((prevDir) => (prevDir === "asc" ? "desc" : "asc"));
-        return prevField;
+    setSortField((previousField) => {
+      if (previousField === field) {
+        setSortDir((previousDir) => (previousDir === "asc" ? "desc" : "asc"));
+        return previousField;
       }
 
-      setSortDir(textField ? "asc" : "desc");
+      setSortDir(field === "boja" ? "asc" : "desc");
       return field;
     });
   };
 
-  const handleSeasonChange = (value: string) => {
-    if (!value) {
-      setSezonaId(null);
-      return;
-    }
-
-    const nextSeasonId = Number(value);
-    setSezonaId(nextSeasonId);
-    applySeason(sezone.find((item) => item.id === nextSeasonId));
-  };
-
-  const handleCustomFromDate = (value: string) => {
-    setSezonaId(null);
-    setFromDate(value);
-  };
-
-  const handleCustomToDate = (value: string) => {
-    setSezonaId(null);
-    setToDate(value);
-  };
-
   return (
-    <div className="color-sales-page">
-      <header className="color-sales-header">
+    <div className="color-decision-page">
+      <header className="color-decision-header">
         <div>
-          <h1 className="color-sales-title">Statistika prodaje po boji artikla</h1>
-          <p className="color-sales-subtitle">
-            Prikaz prometa i kolicine pre i posle nivelacije grupisano po boji artikla za izabrani period.
+          <h1 className="color-decision-title">Prodaja po boji artikla</h1>
+          <p className="color-decision-subtitle">
+            Decision-support pogled za izbor boja koje treba pojacati u nabavci.
           </p>
         </div>
         {data?.generatedAt ? (
-          <div className="color-sales-generated">
+          <div className="color-decision-generated">
             Generisano: {new Date(data.generatedAt).toLocaleString("sr-RS")}
           </div>
         ) : null}
       </header>
 
-      <section className="color-sales-filterbar">
-        <div className="color-sales-field">
-          <label className="color-sales-label">Sezona</label>
+      <section className="color-decision-filters">
+        <label className="color-decision-field">
+          <span>Period</span>
+          <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
+            <option value="30d">Poslednjih 30 dana</option>
+            <option value="90d">Poslednjih 90 dana</option>
+            <option value="custom">Prilagodjeno</option>
+          </select>
+        </label>
+
+        <label className="color-decision-field">
+          <span>Od</span>
+          <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+        </label>
+
+        <label className="color-decision-field">
+          <span>Do</span>
+          <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+        </label>
+
+        <label className="color-decision-field">
+          <span>Objekat</span>
           <select
-            className="color-sales-input"
-            value={sezonaId ?? ""}
-            onChange={(e) => handleSeasonChange(e.target.value)}
+            value={storeId ?? ""}
+            onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
           >
-            <option value="">Prilagodjeni period</option>
-            {sezone.map((season) => (
-              <option key={season.id} value={season.id}>
-                {season.naziv}
+            <option value="">Svi objekti</option>
+            {stores.map((store) => (
+              <option key={store.storeId} value={store.storeId}>
+                {buildStoreLabel(store)}
               </option>
             ))}
           </select>
-        </div>
+        </label>
 
-        <div className="color-sales-field">
-          <label className="color-sales-label">Od</label>
-          <input
-            className="color-sales-input"
-            type="date"
-            value={fromDate}
-            onChange={(e) => handleCustomFromDate(e.target.value)}
-          />
-        </div>
-
-        <div className="color-sales-field">
-          <label className="color-sales-label">Do</label>
-          <input
-            className="color-sales-input"
-            type="date"
-            value={toDate}
-            onChange={(e) => handleCustomToDate(e.target.value)}
-          />
-        </div>
-
-        <div className="color-sales-actions">
-          <button
-            type="button"
-            className="color-sales-btn color-sales-btn-primary"
-            onClick={() => void load()}
-            disabled={loading}
-          >
-            Primeni
-          </button>
-          <button
-            type="button"
-            className="color-sales-btn color-sales-btn-secondary"
-            onClick={() => {
-              const today = new Date();
-              const start = new Date();
-              start.setDate(start.getDate() - 89);
-              setSezonaId(null);
-              setFromDate(toDateInput(start));
-              setToDate(toDateInput(today));
-            }}
-            disabled={loading}
-          >
-            Poslednjih 90 dana
-          </button>
+        <div className="color-decision-actions">
+          <button type="button" onClick={applyFilters} disabled={loading}>Primeni</button>
+          <button type="button" className="secondary" onClick={resetFilters} disabled={loading}>Reset</button>
         </div>
       </section>
 
-      <div className="color-sales-note">
-        Ako izaberes sezonu, datumi se automatski popunjavaju iz sifarnika sezona. Za prilagodjeni period ostavi
-        sezonu praznom i unesi datume rucno.
-      </div>
-
-      {invalidRange ? <div className="color-sales-error">Datum od ne moze biti posle datuma do.</div> : null}
-      {error ? <div className="color-sales-error">{error}</div> : null}
-      {loading ? <div className="color-sales-loading">Ucitavam statistiku boja artikala...</div> : null}
+      {invalidRange ? (
+        <div className="color-decision-message error">Datum od ne moze biti posle datuma do.</div>
+      ) : null}
+      {error ? <div className="color-decision-message error">{error}</div> : null}
+      {loading ? <div className="color-decision-message loading">Ucitavam boje...</div> : null}
 
       {!loading && data ? (
         <>
-          <section className="color-sales-kpis">
-            <article className="color-sales-kpi">
-              <span className="color-sales-kpi-label">Ukupan promet</span>
-              <strong className="color-sales-kpi-value">{fmtRsd(data.totals.ukupanPromet)}</strong>
-              <span className="color-sales-kpi-meta">{data.totals.brojBoja} boja</span>
+          <section className="color-decision-kpis">
+            <article className="color-decision-kpi">
+              <span>Ukupan promet</span>
+              <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
-            <article className="color-sales-kpi">
-              <span className="color-sales-kpi-label">Pre nivelacije</span>
-              <strong className="color-sales-kpi-value">{fmtRsd(data.totals.prePromet)}</strong>
-              <span className="color-sales-kpi-meta">{fmtQty(data.totals.preKolicina)}</span>
+            <article className="color-decision-kpi">
+              <span>Udeo top 5 boja</span>
+              <strong>{fmtPct(top5SharePct)}</strong>
             </article>
-            <article className="color-sales-kpi">
-              <span className="color-sales-kpi-label">Posle nivelacije</span>
-              <strong className="color-sales-kpi-value">{fmtRsd(data.totals.poslePromet)}</strong>
-              <span className="color-sales-kpi-meta">{fmtQty(data.totals.posleKolicina)}</span>
+            <article className="color-decision-kpi">
+              <span>Ukupan marzni doprinos</span>
+              <strong>{fmtRsd(totalMarginContribution)}</strong>
             </article>
-            <article className="color-sales-kpi">
-              <span className="color-sales-kpi-label">Promena prometa</span>
-              <strong className={`color-sales-kpi-value ${metricTone(data.totals.promenaPrometaPct)}`}>
-                {fmtSignedPct(data.totals.promenaPrometaPct)}
-              </strong>
-              <span className="color-sales-kpi-meta">{fmtQty(data.totals.ukupnaKolicina)}</span>
+            <article className="color-decision-kpi">
+              <span>Rast/PAD vs prethodni period</span>
+              <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
 
-          <section className="color-sales-card">
-            <h2 className="color-sales-section-title">Top 10 boja: pre vs posle promet</h2>
-            {top10Chart.length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={top10Chart} margin={{ top: 12, right: 16, bottom: 12, left: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis
-                    dataKey="boja"
-                    tick={{ fill: "var(--muted)", fontSize: 12 }}
-                    angle={-20}
-                    height={70}
-                    textAnchor="end"
-                  />
-                  <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} />
-                  <Tooltip
-                    formatter={(value) => fmtRsd(Number(value))}
-                    labelStyle={{ color: "var(--foreground)" }}
-                  />
-                  <Legend />
-                  <Bar dataKey="preNivelacijePromet" name="Pre snizenja" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="posleNivelacijePromet" name="Posle snizenja" fill="var(--success)" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="color-sales-empty">Nema dovoljno podataka za grafikon.</div>
-            )}
-          </section>
+          <section className="color-decision-panels">
+            <article className="color-decision-card">
+              <h2>Koncentracija prometa po bojama</h2>
+              <p>Top boje koje nose najveci deo prodaje.</p>
+              {concentrationData.length > 0 ? (
+                <div className="color-decision-chart-wrap">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
+                      <Tooltip formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
+                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="color-decision-empty">Nema podataka za grafikon koncentracije.</div>
+              )}
+            </article>
 
-          <section className="color-sales-card">
-            <div className="color-sales-table-head">
-              <div>
-                <h2 className="color-sales-section-title">Tabela po boji artikla</h2>
-                <span className="color-sales-table-meta">
-                  Period: {toDateOnly(data.fromDate) || fromDate} - {toDateOnly(data.toDate) || toDate}
-                </span>
+            <article className="color-decision-card">
+              <div className="color-decision-table-head">
+                <div>
+                  <h2>Prioritetna lista boja</h2>
+                  <p>
+                    Pojacaj: {counts.boost} | Zadrzi: {counts.keep} | Smanji: {counts.reduce}
+                  </p>
+                </div>
+                <AnalyticsTableToolbar
+                  tableKey="color-sales-stats"
+                  tableTitle="Color decision support"
+                  columns={decisionColumns}
+                  rows={sortedRows}
+                  filters={toolbarFilters}
+                  metadata={toolbarMetadata}
+                  defaultOrientation="landscape"
+                />
               </div>
-              <AnalyticsTableToolbar
-                tableKey="color-sales-stats"
-                tableTitle="Statistika prodaje po boji artikla"
-                columns={analyticsColumns}
-                rows={sortedColors}
-                filters={toolbarFilters}
-                metadata={toolbarMetadata}
-                defaultOrientation="landscape"
-              />
-            </div>
 
-            <div className="color-sales-table-wrap">
-              <table className="color-sales-table">
-                <thead>
-                  <tr>
-                    {columns.map((column) => (
-                      <th key={column.field} className={column.align ? `align-${column.align}` : ""}>
-                        <SortButton
-                          field={column.field}
-                          label={column.label}
-                          activeField={sortField}
-                          dir={sortDir}
-                          align={column.align}
-                          onClick={handleSort}
-                        />
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedColors.length === 0 ? (
+              <div className="color-decision-table-wrap">
+                <table className="color-decision-table">
+                  <thead>
                     <tr>
-                      <td colSpan={columns.length} className="color-sales-empty-row">
-                        Nema prodaje za izabrane filtere.
-                      </td>
+                      <th>
+                        <button type="button" onClick={() => handleSort("boja")}>
+                          Boja{sortMarker("boja", sortField, sortDir)}
+                        </button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("ukupanPromet")}>
+                          Promet{sortMarker("ukupanPromet", sortField, sortDir)}
+                        </button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("sharePct")}>
+                          Udeo{sortMarker("sharePct", sortField, sortDir)}
+                        </button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("marginContribution")}>
+                          Marzni doprinos{sortMarker("marginContribution", sortField, sortDir)}
+                        </button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("trendPct")}>
+                          Trend{sortMarker("trendPct", sortField, sortDir)}
+                        </button>
+                      </th>
+                      <th>
+                        <button type="button" onClick={() => handleSort("status")}>
+                          Preporuka{sortMarker("status", sortField, sortDir)}
+                        </button>
+                      </th>
+                      <th className="align-center">Detalj</th>
                     </tr>
-                  ) : (
-                    sortedColors.map((color) => (
-                      <tr
-                        key={color.boja}
-                        className="cursor-pointer"
-                        onClick={() => openColorDetail(color)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            openColorDetail(color);
-                          }
-                        }}
-                        tabIndex={0}
-                        aria-label={`Otvori detalj boje ${color.boja}`}
-                      >
-                        <td>{color.boja}</td>
-                        <td className="align-right">{fmtRsd(color.preNivelacijePromet)}</td>
-                        <td className="align-right">{fmtQty(color.preNivelacijeKolicina)}</td>
-                        <td className="align-right">{fmtRsd(color.posleNivelacijePromet)}</td>
-                        <td className="align-right">{fmtQty(color.posleNivelacijeKolicina)}</td>
-                        <td className="align-right">{fmtRsd(color.ukupanPromet)}</td>
-                        <td className="align-right">{fmtQty(color.ukupnaKolicina)}</td>
-                        <td className={`align-right ${metricTone(color.promenaPrometa)}`}>
-                          {fmtSignedPct(color.promenaPrometa)}
-                        </td>
-                        <td className={`align-right ${metricTone(color.marginPct)}`}>
-                          {fmtSignedPct(color.marginPct)}
-                        </td>
-                        <td className="align-center">
-                          {color.brojArtikalaSaNivelacijom} / {color.brojArtikalaUkupno}
+                  </thead>
+                  <tbody>
+                    {sortedRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="color-decision-empty-row">
+                          Nema podataka za izabrane filtere.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : (
+                      sortedRows.map((row) => {
+                        const rowKey = colorKey(row);
+                        const expanded = expandedColorKey === rowKey;
+                        return (
+                          <tr key={rowKey} className={expanded ? "expanded-row" : ""}>
+                            <td>{row.boja}</td>
+                            <td className="align-right">{fmtRsd(row.ukupanPromet)}</td>
+                            <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
+                            <td className="align-right">{fmtRsd(row.marginContribution)}</td>
+                            <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
+                            <td>
+                              <span
+                                className={statusClass(row.status)}
+                                title={buildStatusTooltip(row)}
+                                aria-label={buildStatusTooltip(row)}
+                              >
+                                {row.status}
+                              </span>
+                            </td>
+                            <td className="align-center">
+                              <button
+                                type="button"
+                                className="color-decision-detail-btn"
+                                onClick={() => setExpandedColorKey(expanded ? null : rowKey)}
+                              >
+                                {expanded ? "Sakrij" : "Detalji"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
           </section>
+
+          {selectedRow ? (
+            <section className="color-decision-detail">
+              <div className="color-decision-detail-head">
+                <h3>Detalj odluke: {selectedRow.boja}</h3>
+                <button type="button" onClick={() => openDetail(selectedRow)}>Otvori puni detalj</button>
+              </div>
+
+              <div className="color-decision-detail-grid">
+                <article>
+                  <span>Pre nivelacije promet</span>
+                  <strong>{fmtRsd(selectedRow.preNivelacijePromet)}</strong>
+                </article>
+                <article>
+                  <span>Posle nivelacije promet</span>
+                  <strong>{fmtRsd(selectedRow.posleNivelacijePromet)}</strong>
+                </article>
+                <article>
+                  <span>Pre nivo kolicina</span>
+                  <strong>{fmtQty(selectedRow.preNivelacijeKolicina)}</strong>
+                </article>
+                <article>
+                  <span>Posle nivo kolicina</span>
+                  <strong>{fmtQty(selectedRow.posleNivelacijeKolicina)}</strong>
+                </article>
+                <article>
+                  <span>Artikli sa nivelacijom</span>
+                  <strong>{selectedRow.brojArtikalaSaNivelacijom} / {selectedRow.brojArtikalaUkupno}</strong>
+                </article>
+                <article>
+                  <span>Pouzdanost podataka</span>
+                  <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
+                </article>
+                <article>
+                  <span>Marza %</span>
+                  <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
+                </article>
+                <article>
+                  <span>Decision score</span>
+                  <strong>{selectedRow.decisionScore}</strong>
+                </article>
+              </div>
+
+              <p className="color-decision-reason">
+                <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
+              </p>
+            </section>
+          ) : null}
         </>
       ) : null}
     </div>

@@ -127,7 +127,7 @@ textarea.input-big {
 
     cursor: pointer;
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-600) 100%);
-    color: white;
+    color: var(--c-ffffff, #ffffff);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
     transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
 }
@@ -211,7 +211,7 @@ textarea.input-big {
 
 /* Autocomplete dropdown */
 .dropdown {
-    background: #fff;
+    background: var(--c-fff, #ffffff);
     border: 2px solid rgba(37,99,235,0.35);
     border-radius: 10px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.15);
@@ -261,14 +261,14 @@ textarea.input-big {
 
 .button-danger {
     background: linear-gradient(135deg, var(--error, #ef4444) 0%, var(--danger, #dc2626) 100%);
-    color: #fff;
+    color: var(--c-fff, #ffffff);
     border: 1px solid rgba(220,38,38,0.35);
     box-shadow: 0 4px 12px rgba(220,38,38,0.20);
 }
 
 .button-success {
     background: linear-gradient(135deg, var(--success, #10b981) 0%, var(--success, #059669) 100%);
-    color: #fff;
+    color: var(--c-fff, #ffffff);
     border: 1px solid rgba(5,150,105,0.35);
     box-shadow: 0 4px 12px rgba(5,150,105,0.20);
 }

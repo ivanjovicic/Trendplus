@@ -1,627 +1,666 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertTriangle, Lightbulb, Siren, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
-  Legend,
   ResponsiveContainer,
-  Scatter,
-  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
-  ZAxis,
 } from "recharts";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
-import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
-import { getPreNivelacijaPrioriteti, type PreNivelacijaQuery } from "../services/preNivelacijaApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
+import { getPreNivelacijaPrioriteti } from "../services/preNivelacijaApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import type { PreNivelacijaPriorityResponse, PreNivelacijaQueueItem } from "../types/preNivelacija";
+import type { PreNivelacijaPriorityResponse, PreNivelacijaSkuCandidate } from "../types/preNivelacija";
+import "./PreNivelacijaPriorityPage.css";
 
-type Tab = "candidates" | "suppliers" | "simulator" | "alerts";
-type QueueStatus = "Unassigned" | "Assigned" | "Done";
+type SortDir = "asc" | "desc";
+type SortField =
+  | "sku"
+  | "supplierName"
+  | "preNivelacijaScore"
+  | "stockUnits"
+  | "daysSinceLastSale"
+  | "revenueDelta"
+  | "status";
+type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
 
-function fmtRsd(value: number) {
-  return `${new Intl.NumberFormat("sr-RS", { maximumFractionDigits: 0 }).format(value)} RSD`;
-}
+type ActiveFilters = {
+  supplierId: number | null;
+  seasonId: number | null;
+  footwearTypeId: number | null;
+  minScore: number;
+  noSaleDaysMin: number;
+};
 
-function fmtPct(value: number, digits = 1) {
-  return `${value.toFixed(digits)}%`;
-}
+type DecisionCandidate = PreNivelacijaSkuCandidate & {
+  revenueDelta: number;
+  marginDelta: number;
+  reliabilityPct: number;
+  decisionScore: number;
+  status: DecisionStatus;
+  statusReason: string;
+};
 
-function priorityColor(band: string) {
-  if (band === "high") return "var(--c-f87171, #f87171)";
-  if (band === "medium") return "var(--c-fbbf24, #fbbf24)";
-  return "var(--c-60a5fa, #60a5fa)";
-}
+const STATUS_PRIORITY: Record<DecisionStatus, number> = {
+  Pojacaj: 3,
+  Zadrzi: 2,
+  Smanji: 1,
+};
+const BOOST_SCORE_THRESHOLD = 68;
+const KEEP_SCORE_THRESHOLD = 43;
+const BOOST_MIN_RELIABILITY_PCT = 40;
 
-function queueKey(item: PreNivelacijaQueueItem) {
-  return `${item.artikalId}`;
-}
-
-const candidateColumns: AnalyticsTableColumn<PreNivelacijaPriorityResponse["candidates"][number]>[] = [
+const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
   { key: "supplierName", header: "Dobavljac", dataType: "text" },
+  { key: "preNivelacijaScore", header: "Pre score", dataType: "number" },
   { key: "stockUnits", header: "Stock", dataType: "number" },
-  { key: "velocity180", header: "Velocity180", dataType: "number" },
-  { key: "daysSinceLastSale", header: "No sale days", dataType: "number" },
-  { key: "grossMarginPctEst", header: "Margin %", dataType: "percent" },
-  { key: "preNivelacijaScore", header: "Score", dataType: "number" },
+  { key: "daysSinceLastSale", header: "No-sale days", dataType: "number" },
+  { key: "revenueDelta", header: "Rev delta", dataType: "currency" },
+  { key: "status", header: "Preporuka", dataType: "text" },
+  { key: "decisionScore", header: "Decision score", dataType: "number" },
 ];
 
-const supplierColumns: AnalyticsTableColumn<PreNivelacijaPriorityResponse["supplierLeaderboard"][number]>[] = [
-  { key: "supplierName", header: "Dobavljac", dataType: "text" },
-  { key: "actionScore", header: "Action score", dataType: "number" },
-  { key: "highPrioritySkuCount", header: "High SKU", dataType: "number" },
-  { key: "stockUnitsAtRisk", header: "Stock risk", dataType: "number" },
-  { key: "estimatedAvoidableMarkdownLoss", header: "Avoidable loss", dataType: "currency" },
-  { key: "weekOverWeekRiskDeltaPct", header: "WoW risk", dataType: "percent" },
-];
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
 
-const simulatorColumns: AnalyticsTableColumn<PreNivelacijaPriorityResponse["candidates"][number]>[] = [
-  { key: "sku", header: "SKU", dataType: "text" },
-  { key: "scenarioHighlightNowRevenue", header: "Highlight rev", dataType: "currency", getValue: (row) => row.scenarioHighlightNow.expectedRevenue30d },
-  { key: "scenarioMarkdownNowRevenue", header: "Markdown rev", dataType: "currency", getValue: (row) => row.scenarioMarkdownNow.expectedRevenue30d },
-  { key: "revenueDeltaHighlightVsMarkdown", header: "Delta rev", dataType: "currency" },
-  { key: "marginDeltaHighlightVsMarkdown", header: "Delta margin", dataType: "currency" },
-  { key: "confidence", header: "Confidence", dataType: "text" },
-];
+function fmtRsd(value: number): string {
+  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`;
+}
+
+function fmtPct(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
+}
+
+function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
+  if (field !== activeField) return "";
+  return dir === "asc" ? " ^" : " v";
+}
+
+function statusClass(status: DecisionStatus): string {
+  if (status === "Pojacaj") return "pnp-decision-status status-boost";
+  if (status === "Smanji") return "pnp-decision-status status-reduce";
+  return "pnp-decision-status status-keep";
+}
+
+type StatusReasonSignals = {
+  priorityBand: string;
+  revenueDelta: number;
+  reliabilityPct: number;
+  decisionScore: number;
+};
+
+type StatusTooltipData = {
+  status: DecisionStatus;
+  statusReason: string;
+  decisionScore: number;
+  revenueDelta: number;
+  reliabilityPct: number;
+  confidence: string;
+};
+
+function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals): string {
+  const lowReliability = signals.reliabilityPct < BOOST_MIN_RELIABILITY_PCT;
+  const highPriority = signals.priorityBand.toLowerCase() === "high";
+  const negativeDelta = signals.revenueDelta < 0;
+
+  if (status === "Pojacaj") {
+    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
+    if (highPriority && !negativeDelta) return "Visok prioritet i bolji scenario prihoda uz isticanje.";
+    return "Stabilan signal za veci fokus pre nivelacije.";
+  }
+
+  if (status === "Zadrzi") {
+    if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
+    if (negativeDelta) return "Scenario prihoda je slabiji od markdown alternative; pratiti bez eskalacije.";
+    return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
+  }
+
+  if (negativeDelta) return "Nizak prioritet i slab scenario prihoda; spustiti fokus.";
+  return "Nedovoljno jak signal za investiciju u dodatnu vidljivost.";
+}
+
+function buildStatusTooltip(data: StatusTooltipData): string {
+  return `${data.status}: ${data.statusReason} | Score ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Confidence ${data.confidence}`;
+}
+
+function reliabilityFromConfidence(confidence: string): number {
+  const normalized = (confidence ?? "").toLowerCase();
+  if (normalized === "high") return 90;
+  if (normalized === "medium") return 65;
+  if (normalized === "low") return 35;
+  return 50;
+}
 
 export default function PreNivelacijaPriorityPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [tab, setTab] = useState<Tab>("candidates");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<PreNivelacijaPriorityResponse | null>(null);
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<Omit<PreNivelacijaQuery, "page" | "pageSize">>({
-    stockMin: 1,
-    noSaleDaysMin: 14,
+  const requestIdRef = useRef(0);
+
+  const [supplierId, setSupplierId] = useState<number | null>(null);
+  const [seasonId, setSeasonId] = useState<number | null>(null);
+  const [footwearTypeId, setFootwearTypeId] = useState<number | null>(null);
+  const [minScore, setMinScore] = useState<number>(40);
+  const [noSaleDaysMin, setNoSaleDaysMin] = useState<number>(14);
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
+    supplierId: null,
+    seasonId: null,
+    footwearTypeId: null,
     minScore: 40,
+    noSaleDaysMin: 14,
   });
-  const [queueState, setQueueState] = useState<Record<string, QueueStatus>>({});
+
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<PreNivelacijaPriorityResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>("status");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [expandedArtikalId, setExpandedArtikalId] = useState<number | null>(null);
+
+  const load = useCallback(async (filters: ActiveFilters, nextPage: number) => {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await getPreNivelacijaPrioriteti({
+        supplierId: filters.supplierId ?? undefined,
+        seasonId: filters.seasonId ?? undefined,
+        footwearTypeId: filters.footwearTypeId ?? undefined,
+        minScore: filters.minScore,
+        noSaleDaysMin: filters.noSaleDaysMin,
+        page: nextPage,
+        pageSize: 60,
+      });
+
+      if (requestId !== requestIdRef.current) return;
+      setData(result);
+      setExpandedArtikalId(null);
+    } catch (reason) {
+      if (requestId !== requestIdRef.current) return;
+      setData(null);
+      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju pre-nivelacija prioriteta.");
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    let aborted = false;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await getPreNivelacijaPrioriteti({
-          ...filters,
-          page,
-          pageSize: 20,
-        });
-        if (!aborted) setData(result);
-      } catch (e: unknown) {
-        if (!aborted) setError(e instanceof Error ? e.message : "Greska pri ucitavanju");
-      } finally {
-        if (!aborted) setLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      aborted = true;
-    };
-  }, [filters, page]);
+    void load(activeFilters, page);
+  }, [activeFilters, load, page]);
 
   const supplierOptions = useMemo(
-    () => (data?.supplierLeaderboard ?? []).filter((x) => x.supplierId != null),
-    [data]
+    () => (data?.supplierLeaderboard ?? []).filter((item) => item.supplierId != null),
+    [data?.supplierLeaderboard]
   );
 
   const seasonOptions = useMemo(() => {
     const map = new Map<number, string>();
-    (data?.candidates ?? []).forEach((x) => {
-      if (x.seasonId != null && x.season && x.season !== "N/A") {
-        map.set(x.seasonId, x.season);
+    (data?.candidates ?? []).forEach((item) => {
+      if (item.seasonId != null && item.season && item.season !== "N/A") {
+        map.set(item.seasonId, item.season);
       }
     });
+
     return [...map.entries()]
       .map(([id, label]) => ({ id, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [data]);
+      .sort((a, b) => a.label.localeCompare(b.label, "sr"));
+  }, [data?.candidates]);
 
   const footwearTypeOptions = useMemo(() => {
     const map = new Map<number, string>();
-    (data?.candidates ?? []).forEach((x) => {
-      if (x.footwearTypeId != null && x.footwearType && x.footwearType !== "N/A") {
-        map.set(x.footwearTypeId, x.footwearType);
+    (data?.candidates ?? []).forEach((item) => {
+      if (item.footwearTypeId != null && item.footwearType && item.footwearType !== "N/A") {
+        map.set(item.footwearTypeId, item.footwearType);
       }
     });
+
     return [...map.entries()]
       .map(([id, label]) => ({ id, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [data]);
+      .sort((a, b) => a.label.localeCompare(b.label, "sr"));
+  }, [data?.candidates]);
 
-  const scatterData = useMemo(
-    () =>
-      (data?.candidates ?? []).map((x) => ({
-        x: x.stockUnits,
-        y: Number(x.velocity180),
-        z: Math.max(1, Number(x.scenarioHighlightNow?.expectedRevenue30d ?? 0) / 1000),
-        label: x.sku,
-        band: x.priorityBand,
-      })),
-    [data]
+  const decisionRows = useMemo<DecisionCandidate[]>(() => {
+    const rows = data?.candidates ?? [];
+    if (rows.length === 0) return [];
+
+    const revenueValues = rows.map((item) => item.revenueDeltaHighlightVsMarkdown);
+    const minRevenueDelta = Math.min(...revenueValues);
+    const maxRevenueDelta = Math.max(...revenueValues);
+    const deltaSpan = maxRevenueDelta - minRevenueDelta;
+
+    return rows.map((item) => {
+      const revenueDelta = item.revenueDeltaHighlightVsMarkdown;
+      const marginDelta = item.marginDeltaHighlightVsMarkdown;
+      const reliabilityPct = reliabilityFromConfidence(item.confidence);
+      const scoreBase = clamp(item.preNivelacijaScore, 0, 100);
+      const deltaNorm = deltaSpan > 0 ? clamp(((revenueDelta - minRevenueDelta) / deltaSpan) * 100, 0, 100) : 50;
+      const staleRiskNorm = clamp((item.daysSinceLastSale / 90) * 100, 0, 100);
+
+      const decisionScore = Math.round(
+        scoreBase * 0.50 +
+        deltaNorm * 0.20 +
+        staleRiskNorm * 0.15 +
+        reliabilityPct * 0.15
+      );
+
+      let status: DecisionStatus = "Smanji";
+      if (decisionScore >= BOOST_SCORE_THRESHOLD) status = "Pojacaj";
+      else if (decisionScore >= KEEP_SCORE_THRESHOLD) status = "Zadrzi";
+
+      if (reliabilityPct < BOOST_MIN_RELIABILITY_PCT && status === "Pojacaj") status = "Zadrzi";
+      if ((item.priorityBand ?? "").toLowerCase() === "low" && status === "Pojacaj") status = "Zadrzi";
+      if (revenueDelta < 0 && status === "Pojacaj") status = "Zadrzi";
+
+      const statusReason = buildStatusReason(status, {
+        priorityBand: item.priorityBand,
+        revenueDelta,
+        reliabilityPct,
+        decisionScore,
+      });
+
+      return {
+        ...item,
+        revenueDelta,
+        marginDelta,
+        reliabilityPct,
+        decisionScore,
+        status,
+        statusReason,
+      };
+    });
+  }, [data?.candidates]);
+
+  const sortedRows = useMemo(() => {
+    const rows = [...decisionRows];
+    return rows.sort((a, b) => {
+      let compare = 0;
+
+      if (sortField === "sku") compare = a.sku.localeCompare(b.sku, "sr");
+      else if (sortField === "supplierName") compare = a.supplierName.localeCompare(b.supplierName, "sr");
+      else if (sortField === "preNivelacijaScore") compare = a.preNivelacijaScore - b.preNivelacijaScore;
+      else if (sortField === "stockUnits") compare = a.stockUnits - b.stockUnits;
+      else if (sortField === "daysSinceLastSale") compare = a.daysSinceLastSale - b.daysSinceLastSale;
+      else if (sortField === "revenueDelta") compare = a.revenueDelta - b.revenueDelta;
+      else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+
+      if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      return sortDir === "asc" ? compare : -compare;
+    });
+  }, [decisionRows, sortDir, sortField]);
+
+  const candidateCounts = useMemo(() => {
+    const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
+    const keep = sortedRows.filter((row) => row.status === "Zadrzi").length;
+    const reduce = sortedRows.filter((row) => row.status === "Smanji").length;
+    return { boost, keep, reduce };
+  }, [sortedRows]);
+
+  const supplierActionShare = useMemo(() => {
+    const items = data?.supplierLeaderboard ?? [];
+    if (items.length === 0) return [] as Array<{ name: string; sharePct: number }>;
+
+    const top = [...items].sort((a, b) => b.actionScore - a.actionScore).slice(0, 7);
+    const total = top.reduce((sum, item) => sum + item.actionScore, 0);
+    if (total <= 0) return [];
+
+    return top.map((item) => ({
+      name: item.supplierName,
+      sharePct: (item.actionScore / total) * 100,
+    }));
+  }, [data?.supplierLeaderboard]);
+
+  const selectedRow = useMemo(() => {
+    if (expandedArtikalId == null) return null;
+    return sortedRows.find((row) => row.artikalId === expandedArtikalId) ?? null;
+  }, [expandedArtikalId, sortedRows]);
+
+  const canGoPrev = page > 1;
+  const canGoNext = data ? page * data.pageSize < data.totalCandidates : false;
+
+  const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "supplierId", label: "Dobavljac", value: activeFilters.supplierId ?? "" },
+      { key: "seasonId", label: "Sezona", value: activeFilters.seasonId ?? "" },
+      { key: "footwearTypeId", label: "Tip obuce", value: activeFilters.footwearTypeId ?? "" },
+      { key: "minScore", label: "Min score", value: activeFilters.minScore },
+      { key: "noSaleDaysMin", label: "No-sale days", value: activeFilters.noSaleDaysMin },
+      { key: "page", label: "Page", value: page },
+    ],
+    [activeFilters.footwearTypeId, activeFilters.minScore, activeFilters.noSaleDaysMin, activeFilters.seasonId, activeFilters.supplierId, page]
   );
 
-  const queueSections = useMemo(() => {
-    if (!data) return [];
-    const queues = data.queues ?? { highlightNow: [], monitor: [], likelyMarkdownSoon: [] };
-    return [
-      { label: "Highlight now", items: queues.highlightNow ?? [] },
-      { label: "Monitor", items: queues.monitor ?? [] },
-      { label: "Likely markdown soon", items: queues.likelyMarkdownSoon ?? [] },
-    ];
-  }, [data]);
+  const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
+    () => [
+      { key: "generatedAtUtc", label: "Generisano", value: data?.generatedAtUtc ?? "" },
+      { key: "formulaVersion", label: "Formula", value: data?.formulaVersion ?? "" },
+      { key: "totalCandidates", label: "Total", value: data?.totalCandidates ?? 0 },
+    ],
+    [data?.formulaVersion, data?.generatedAtUtc, data?.totalCandidates]
+  );
 
-  const sharedFilters = useMemo<AnalyticsNamedValue[]>(() => [
-    { key: "supplierId", label: "Dobavljac", value: filters.supplierId ?? "" },
-    { key: "seasonId", label: "Sezona", value: filters.seasonId ?? "" },
-    { key: "footwearTypeId", label: "Tip obuce", value: filters.footwearTypeId ?? "" },
-    { key: "stockMin", label: "Stock min", value: filters.stockMin ?? "" },
-    { key: "noSaleDaysMin", label: "No-sale days min", value: filters.noSaleDaysMin ?? "" },
-    { key: "minScore", label: "Min score", value: filters.minScore ?? "" },
-  ], [filters]);
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortField(field);
+    setSortDir(field === "sku" || field === "supplierName" ? "asc" : "desc");
+  };
 
-  const sharedMetadata = useMemo<AnalyticsNamedValue[]>(() => [
-    { key: "generatedAtUtc", label: "Generisano", value: data?.generatedAtUtc ?? "" },
-    { key: "formulaVersion", label: "Formula", value: data?.formulaVersion ?? "" },
-  ], [data?.formulaVersion, data?.generatedAtUtc]);
+  const handleApplyFilters = () => {
+    setPage(1);
+    setActiveFilters({
+      supplierId,
+      seasonId,
+      footwearTypeId,
+      minScore,
+      noSaleDaysMin,
+    });
+  };
 
-  const openSnapshotDetail = <Row,>(
-    table: string,
-    recordId: string,
-    title: string,
-    subtitle: string,
-    columns: AnalyticsTableColumn<Row>[],
-    row: Row
-  ) => {
+  const handleResetFilters = () => {
+    setSupplierId(null);
+    setSeasonId(null);
+    setFootwearTypeId(null);
+    setMinScore(40);
+    setNoSaleDaysMin(14);
+    setPage(1);
+    setActiveFilters({
+      supplierId: null,
+      seasonId: null,
+      footwearTypeId: null,
+      minScore: 40,
+      noSaleDaysMin: 14,
+    });
+  };
+
+  const openCandidateDetail = (row: DecisionCandidate) => {
     saveAnalyticsDetailSnapshot(
       buildAnalyticsDetailSnapshot({
-        table,
-        recordId,
-        title,
-        subtitle,
-        columns,
+        table: "pre-nivelacija-prioriteti",
+        recordId: String(row.artikalId),
+        title: row.sku,
+        subtitle: row.supplierName,
+        columns: decisionColumns,
         row,
-        metadata: sharedFilters,
+        metadata: [...toolbarFilters, ...toolbarMetadata],
       })
     );
 
-    navigate(`/analitika/${table}/${encodeURIComponent(recordId)}`, {
+    navigate(`/analitika/pre-nivelacija-prioriteti/${row.artikalId}`, {
       state: { backgroundLocation: location },
     });
   };
 
   return (
-    <InventoryPageShell
-      icon={Sparkles}
-      title="Pre-Nivelacija Prioriteti Dobavljaca"
-      subtitle="Operativna analitika koja otkriva koje modele treba isticati pre markdown-a."
-      actions={
-        <button
-          type="button"
-          onClick={() => setPage(1)}
-          className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-white"
-        >
-          Osvezi
-        </button>
-      }
-    >
-      <InventoryKpiRow
-        items={[
-          { label: "Dobavljaci", value: `${data?.summary.supplierCount ?? 0}` },
-          { label: "Kandidati", value: `${data?.summary.candidatesCount ?? 0}` },
-          { label: "High priority", value: `${data?.summary.highPriorityCount ?? 0}`, tone: "warning" },
-          { label: "Stock at risk", value: `${data?.summary.totalStockAtRisk ?? 0}` },
-          { label: "Avoidable loss", value: fmtRsd(data?.summary.estimatedAvoidableMarkdownLoss ?? 0), tone: "danger" },
-          { label: "Expected uplift", value: fmtRsd(data?.summary.expectedHighlightRevenueUplift ?? 0), tone: "positive" },
-        ]}
-      />
-
-      <InventoryPanel>
-        <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Dobavljac</label>
-            <select
-              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
-              value={filters.supplierId ?? ""}
-              onChange={(e) =>
-                setFilters((f) => ({
-                  ...f,
-                  supplierId: e.target.value ? Number(e.target.value) : undefined,
-                }))
-              }
-            >
-              <option value="">Svi</option>
-              {supplierOptions.map((s, idx) => (
-                <option key={`${s.supplierId}`} value={s.supplierId ?? ""}>
-                  {s.supplierName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Sezona</label>
-            <select
-              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
-              value={filters.seasonId ?? ""}
-              onChange={(e) =>
-                setFilters((f) => ({
-                  ...f,
-                  seasonId: e.target.value ? Number(e.target.value) : undefined,
-                }))
-              }
-            >
-              <option value="">Sve</option>
-              {seasonOptions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Tip obuce</label>
-            <select
-              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
-              value={filters.footwearTypeId ?? ""}
-              onChange={(e) =>
-                setFilters((f) => ({
-                  ...f,
-                  footwearTypeId: e.target.value ? Number(e.target.value) : undefined,
-                }))
-              }
-            >
-              <option value="">Svi</option>
-              {footwearTypeOptions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Stock min</label>
-            <input
-              type="number"
-              value={filters.stockMin ?? 1}
-              onChange={(e) => setFilters((f) => ({ ...f, stockMin: Number(e.target.value) }))}
-              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">No-sale days min</label>
-            <input
-              type="number"
-              value={filters.noSaleDaysMin ?? 14}
-              onChange={(e) => setFilters((f) => ({ ...f, noSaleDaysMin: Number(e.target.value) }))}
-              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Min score</label>
-            <input
-              type="number"
-              value={filters.minScore ?? 40}
-              onChange={(e) => setFilters((f) => ({ ...f, minScore: Number(e.target.value) }))}
-              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-2 text-sm text-[var(--text-primary)]"
-            />
-          </div>
+    <div className="pnp-decision-page">
+      <header className="pnp-decision-header">
+        <div>
+          <h1 className="pnp-decision-title">Pre-Nivelacija Prioriteti</h1>
+          <p className="pnp-decision-subtitle">
+            Operativni decision-support za SKU pre markdown faze: gde treba pojacati izlaganje,
+            sta zadrzati pod nadzorom i sta spustiti iz fokusa.
+          </p>
         </div>
-
-        <div className="mb-4 flex gap-2">
-          {[
-            { key: "candidates", label: "Pre-Nivelacija kandidati", icon: Lightbulb },
-            { key: "suppliers", label: "Supplier action board", icon: Sparkles },
-            { key: "simulator", label: "Scenario simulator", icon: Siren },
-            { key: "alerts", label: "Alerts & anomalies", icon: AlertTriangle },
-          ].map((x) => (
-            <button
-              key={x.key}
-              type="button"
-              onClick={() => setTab(x.key as Tab)}
-              className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
-                tab === x.key
-                  ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-white"
-                  : "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]"
-              }`}
-            >
-              {x.label}
-            </button>
-          ))}
+        <div className="pnp-decision-generated">
+          Generisano: {data?.generatedAtUtc ? new Date(data.generatedAtUtc).toLocaleString("sr-RS") : "-"}
         </div>
+      </header>
 
-        {loading && <InventoryState message="Ucitavanje pre-nivelacija analitike..." tone="warning" />}
-        {!loading && error && <InventoryState message={error} tone="danger" />}
-        {!loading && !error && !data && <InventoryState message="Nema podataka." />}
-
-        {!loading && !error && data && tab === "candidates" && (
-          <div className="space-y-4">
-            <div className="flex justify-end">
-              <AnalyticsTableToolbar
-                tableKey="pre-nivelacija-candidates"
-                tableTitle="Pre-nivelacija kandidati"
-                columns={candidateColumns}
-                rows={data.candidates}
-                filters={sharedFilters}
-                metadata={sharedMetadata}
-                defaultOrientation="landscape"
-              />
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
-              <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
-                <thead className="bg-[var(--surface-elevated)] text-[var(--text-primary)]">
-                  <tr>
-                    <th className="px-3 py-2 text-left">SKU</th>
-                    <th className="px-3 py-2 text-left">Dobavljac</th>
-                    <th className="px-3 py-2 text-right">Stock</th>
-                    <th className="px-3 py-2 text-right">Velocity180</th>
-                    <th className="px-3 py-2 text-right">No sale days</th>
-                    <th className="px-3 py-2 text-right">Margin %</th>
-                    <th className="px-3 py-2 text-right">Score</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]">
-                  {data.candidates.map((row) => (
-                    <tr
-                      key={row.artikalId}
-                      className={`cursor-pointer hover:brightness-110 ${
-                      row.priorityBand === "high" ? "bg-rose-950/20" :
-                      row.priorityBand === "medium" ? "bg-amber-950/15" :
-                      "hover:bg-[var(--surface-light)]"
-                    }`}
-                      onClick={() => openSnapshotDetail("pre-nivelacija-candidates", String(row.artikalId), row.sku, row.supplierName, candidateColumns, row)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          openSnapshotDetail("pre-nivelacija-candidates", String(row.artikalId), row.sku, row.supplierName, candidateColumns, row);
-                        }
-                      }}
-                      tabIndex={0}
-                    >
-                      <td className="px-3 py-2">{row.sku}</td>
-                      <td className="px-3 py-2">{row.supplierName}</td>
-                      <td className="px-3 py-2 text-right">{row.stockUnits}</td>
-                      <td className="px-3 py-2 text-right">{row.velocity180.toFixed(3)}</td>
-                      <td className="px-3 py-2 text-right">{row.daysSinceLastSale}</td>
-                      <td className="px-3 py-2 text-right">{fmtPct(row.grossMarginPctEst)}</td>
-                      <td className="px-3 py-2 text-right font-semibold" style={{ color: priorityColor(row.priorityBand) }}>
-                        {row.preNivelacijaScore.toFixed(1)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-[var(--text-primary)]">
-                Formula: {data.formulaDescription}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={data.page <= 1}
-                  className="rounded-md border border-[var(--border-default)] bg-[var(--surface-elevated)] p-1.5 text-[var(--text-primary)] disabled:opacity-50"
-                  title="Prethodna"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <span className="text-xs text-[var(--text-primary)]">
-                  {data.page} / {Math.max(1, Math.ceil(data.totalCandidates / data.pageSize))}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPage((p) => {
-                      const max = Math.max(1, Math.ceil(data.totalCandidates / data.pageSize));
-                      return Math.min(max, p + 1);
-                    })
-                  }
-                  disabled={data.page >= Math.max(1, Math.ceil(data.totalCandidates / data.pageSize))}
-                  className="rounded-md border border-[var(--border-default)] bg-[var(--surface-elevated)] p-1.5 text-[var(--text-primary)] disabled:opacity-50"
-                  title="Sledeca"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!loading && !error && data && tab === "suppliers" && (
-          <div className="space-y-4">
-            <div className="flex justify-end">
-              <AnalyticsTableToolbar
-                tableKey="pre-nivelacija-suppliers"
-                tableTitle="Pre-nivelacija supplier action board"
-                columns={supplierColumns}
-                rows={data.supplierLeaderboard}
-                filters={sharedFilters}
-                metadata={sharedMetadata}
-                defaultOrientation="landscape"
-              />
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
-              <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
-                <thead className="bg-[var(--surface-elevated)] text-[var(--text-primary)]">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Dobavljac</th>
-                    <th className="px-3 py-2 text-right">Action score</th>
-                    <th className="px-3 py-2 text-right">High SKU</th>
-                    <th className="px-3 py-2 text-right">Stock risk</th>
-                    <th className="px-3 py-2 text-right">Avoidable loss</th>
-                    <th className="px-3 py-2 text-right">WoW risk</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]">
-                  {data.supplierLeaderboard.map((s, idx) => (
-                    <tr
-                      key={`${s.supplierName}-${idx}`}
-                      className="cursor-pointer hover:bg-[var(--surface-light)]"
-                      onClick={() => openSnapshotDetail("pre-nivelacija-suppliers", String(s.supplierId ?? idx), s.supplierName, "Supplier action board", supplierColumns, s)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          openSnapshotDetail("pre-nivelacija-suppliers", String(s.supplierId ?? idx), s.supplierName, "Supplier action board", supplierColumns, s);
-                        }
-                      }}
-                      tabIndex={0}
-                    >
-                      <td className="px-3 py-2">{s.supplierName}</td>
-                      <td className="px-3 py-2 text-right font-semibold">{s.actionScore.toFixed(1)}</td>
-                      <td className="px-3 py-2 text-right">{s.highPrioritySkuCount}</td>
-                      <td className="px-3 py-2 text-right">{s.stockUnitsAtRisk}</td>
-                      <td className="px-3 py-2 text-right">{fmtRsd(s.estimatedAvoidableMarkdownLoss)}</td>
-                      <td className={`px-3 py-2 text-right ${s.weekOverWeekRiskDeltaPct > 20 ? "text-rose-300" : "text-[var(--text-primary)]"}`}>
-                        {fmtPct(s.weekOverWeekRiskDeltaPct)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="h-[320px] rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
-                <ScatterChart>
-                  <CartesianGrid stroke="var(--c-2f323b, #2f323b)" />
-                  <XAxis dataKey="x" name="Stock" tick={{ fill: "var(--c-9aabc7, #9aabc7)", fontSize: 11 }} />
-                  <YAxis dataKey="y" name="Velocity" tick={{ fill: "var(--c-9aabc7, #9aabc7)", fontSize: 11 }} />
-                  <ZAxis dataKey="z" range={[40, 260]} name="Revenue" />
-                  <Tooltip cursor={{ strokeDasharray: "4 4" }} />
-                  <Legend />
-                  <Scatter data={scatterData} name="SKU signal" fill="var(--c-4f8cff, #4f8cff)" />
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {!loading && !error && data && tab === "simulator" && (
-          <div className="space-y-4">
-            <div className="flex justify-end">
-              <AnalyticsTableToolbar
-                tableKey="pre-nivelacija-simulator"
-                tableTitle="Pre-nivelacija scenario simulator"
-                columns={simulatorColumns}
-                rows={data.candidates.slice(0, 20)}
-                filters={sharedFilters}
-                metadata={sharedMetadata}
-                defaultOrientation="landscape"
-              />
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
-              <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
-                <thead className="bg-[var(--surface-elevated)] text-[var(--text-primary)]">
-                  <tr>
-                    <th className="px-3 py-2 text-left">SKU</th>
-                    <th className="px-3 py-2 text-right">Highlight rev</th>
-                    <th className="px-3 py-2 text-right">Markdown rev</th>
-                    <th className="px-3 py-2 text-right">Delta rev</th>
-                    <th className="px-3 py-2 text-right">Delta margin</th>
-                    <th className="px-3 py-2 text-right">Confidence</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]">
-                  {data.candidates.slice(0, 20).map((row) => (
-                    <tr
-                      key={row.artikalId}
-                      className="cursor-pointer hover:bg-[var(--surface-light)]"
-                      onClick={() => openSnapshotDetail("pre-nivelacija-simulator", String(row.artikalId), row.sku, "Scenario simulator", simulatorColumns, row)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          openSnapshotDetail("pre-nivelacija-simulator", String(row.artikalId), row.sku, "Scenario simulator", simulatorColumns, row);
-                        }
-                      }}
-                      tabIndex={0}
-                    >
-                      <td className="px-3 py-2">{row.sku}</td>
-                      <td className="px-3 py-2 text-right">{fmtRsd(row.scenarioHighlightNow.expectedRevenue30d)}</td>
-                      <td className="px-3 py-2 text-right">{fmtRsd(row.scenarioMarkdownNow.expectedRevenue30d)}</td>
-                      <td className={`px-3 py-2 text-right ${row.revenueDeltaHighlightVsMarkdown >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                        {fmtRsd(row.revenueDeltaHighlightVsMarkdown)}
-                      </td>
-                      <td className={`px-3 py-2 text-right ${row.marginDeltaHighlightVsMarkdown >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                        {fmtRsd(row.marginDeltaHighlightVsMarkdown)}
-                      </td>
-                      <td className="px-3 py-2 text-right">{row.confidence}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="grid gap-3 xl:grid-cols-3">
-              {queueSections.map((section) => (
-                <div key={section.label} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
-                  <h3 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">{section.label}</h3>
-                  <div className="space-y-2">
-                    {section.items.slice(0, 8).map((item) => {
-                      const key = queueKey(item);
-                      const state = queueState[key] ?? (item.status as QueueStatus);
-                      return (
-                        <div key={key} className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] p-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-xs text-[var(--text-primary)]">{item.sku}</p>
-                            <span className="text-[11px] text-[var(--text-primary)]">{item.preNivelacijaScore.toFixed(1)}</span>
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                            {(["Unassigned", "Assigned", "Done"] as QueueStatus[]).map((status) => (
-                              <button
-                                key={status}
-                                type="button"
-                                onClick={() => setQueueState((s) => ({ ...s, [key]: status }))}
-                                className={`rounded px-2 py-1 text-[10px] ${
-                                  state === status
-                                    ? "bg-[var(--surface-elevated)] text-white"
-                                    : "bg-[var(--surface-elevated)] text-[var(--text-primary)]"
-                                }`}
-                              >
-                                {status}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!loading && !error && data && tab === "alerts" && (
-          <div className="space-y-3">
-            {data.alerts.length === 0 && <InventoryState message="Nema aktivnih upozorenja." tone="neutral" />}
-            {data.alerts.map((a, idx) => (
-              <div
-                key={`${a.type}-${idx}`}
-                className={`rounded-xl border px-3 py-2 text-sm ${
-                  a.severity === "critical"
-                    ? "border-rose-700 bg-rose-950/30 text-rose-300"
-                    : "border-amber-700 bg-amber-950/30 text-amber-300"
-                }`}
-              >
-                <div className="font-semibold">{a.type}</div>
-                <div>{a.message}</div>
-              </div>
+      <section className="pnp-decision-filters">
+        <label className="pnp-decision-field">
+          <span>Dobavljac</span>
+          <select value={supplierId ?? ""} onChange={(e) => setSupplierId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">Svi</option>
+            {supplierOptions.map((item) => (
+              <option key={item.supplierId ?? item.supplierName} value={item.supplierId ?? ""}>{item.supplierName}</option>
             ))}
-          </div>
-        )}
-      </InventoryPanel>
-    </InventoryPageShell>
+          </select>
+        </label>
+
+        <label className="pnp-decision-field">
+          <span>Sezona</span>
+          <select value={seasonId ?? ""} onChange={(e) => setSeasonId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">Sve</option>
+            {seasonOptions.map((item) => (
+              <option key={item.id} value={item.id}>{item.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="pnp-decision-field">
+          <span>Tip obuce</span>
+          <select value={footwearTypeId ?? ""} onChange={(e) => setFootwearTypeId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">Svi</option>
+            {footwearTypeOptions.map((item) => (
+              <option key={item.id} value={item.id}>{item.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="pnp-decision-field">
+          <span>Min score</span>
+          <input type="number" min={0} max={100} value={minScore} onChange={(e) => setMinScore(Number(e.target.value) || 0)} />
+        </label>
+
+        <label className="pnp-decision-field">
+          <span>No-sale days min</span>
+          <input type="number" min={0} value={noSaleDaysMin} onChange={(e) => setNoSaleDaysMin(Number(e.target.value) || 0)} />
+        </label>
+
+        <div className="pnp-decision-actions">
+          <button type="button" onClick={handleApplyFilters} disabled={loading}>Primeni</button>
+          <button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button>
+        </div>
+      </section>
+
+      {error ? <div className="pnp-decision-message error">{error}</div> : null}
+      {loading ? <div className="pnp-decision-message loading">Ucitavam pre-nivelacija prioritete...</div> : null}
+
+      {!loading && data ? (
+        <>
+          <section className="pnp-decision-kpis">
+            <article className="pnp-decision-kpi">
+              <span>Kandidati</span>
+              <strong>{data.summary.candidatesCount}</strong>
+            </article>
+            <article className="pnp-decision-kpi">
+              <span>High priority SKU</span>
+              <strong>{data.summary.highPriorityCount}</strong>
+            </article>
+            <article className="pnp-decision-kpi">
+              <span>Stock at risk</span>
+              <strong>{data.summary.totalStockAtRisk}</strong>
+            </article>
+            <article className="pnp-decision-kpi">
+              <span>Expected uplift</span>
+              <strong>{fmtRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
+            </article>
+            <article className="pnp-decision-kpi">
+              <span>Avoidable markdown loss</span>
+              <strong className="trend-down">{fmtRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
+            </article>
+          </section>
+
+          <section className="pnp-decision-panels">
+            <article className="pnp-decision-card">
+              <h2>Koncentracija akcije po dobavljacima</h2>
+              <p>Top dobavljaci po action score u aktuelnom prioritetnom setu.</p>
+              {supplierActionShare.length > 0 ? (
+                <div className="pnp-decision-chart-wrap">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                    <BarChart data={supplierActionShare} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
+                      <Tooltip formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
+                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="pnp-decision-empty">Nema podataka za grafikon koncentracije.</div>
+              )}
+            </article>
+
+            <article className="pnp-decision-card">
+              <div className="pnp-decision-table-head">
+                <div>
+                  <h2>Prioritetna lista SKU</h2>
+                  <p>
+                    Pojacaj: {candidateCounts.boost} | Zadrzi: {candidateCounts.keep} | Smanji: {candidateCounts.reduce}
+                  </p>
+                </div>
+                <div className="pnp-decision-table-controls">
+                  <button type="button" onClick={() => canGoPrev && setPage((p) => p - 1)} disabled={!canGoPrev || loading}>Prethodna</button>
+                  <span>Strana {page}</span>
+                  <button type="button" onClick={() => canGoNext && setPage((p) => p + 1)} disabled={!canGoNext || loading}>Sledeca</button>
+                </div>
+                <AnalyticsTableToolbar
+                  tableKey="pre-nivelacija-prioriteti"
+                  tableTitle="Pre-nivelacija decision support"
+                  columns={decisionColumns}
+                  rows={sortedRows}
+                  filters={toolbarFilters}
+                  metadata={toolbarMetadata}
+                  defaultOrientation="landscape"
+                />
+              </div>
+
+              <div className="pnp-decision-table-wrap">
+                <table className="pnp-decision-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        <button type="button" onClick={() => handleSort("sku")}>SKU{sortMarker("sku", sortField, sortDir)}</button>
+                      </th>
+                      <th>
+                        <button type="button" onClick={() => handleSort("supplierName")}>Dobavljac{sortMarker("supplierName", sortField, sortDir)}</button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("preNivelacijaScore")}>Score{sortMarker("preNivelacijaScore", sortField, sortDir)}</button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("stockUnits")}>Stock{sortMarker("stockUnits", sortField, sortDir)}</button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("daysSinceLastSale")}>No-sale days{sortMarker("daysSinceLastSale", sortField, sortDir)}</button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("revenueDelta")}>Rev delta{sortMarker("revenueDelta", sortField, sortDir)}</button>
+                      </th>
+                      <th>
+                        <button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button>
+                      </th>
+                      <th className="align-center">Detalj</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="pnp-decision-empty-row">Nema podataka za izabrane filtere.</td>
+                      </tr>
+                    ) : (
+                      sortedRows.map((row) => {
+                        const expanded = expandedArtikalId === row.artikalId;
+                        return (
+                          <tr key={row.artikalId} className={expanded ? "expanded-row" : ""}>
+                            <td>{row.sku}</td>
+                            <td>{row.supplierName}</td>
+                            <td className="align-right">{row.preNivelacijaScore.toFixed(1)}</td>
+                            <td className="align-right">{row.stockUnits}</td>
+                            <td className="align-right">{row.daysSinceLastSale}</td>
+                            <td className={`align-right ${row.revenueDelta >= 0 ? "trend-up" : "trend-down"}`}>{fmtRsd(row.revenueDelta)}</td>
+                            <td>
+                              <span
+                                className={statusClass(row.status)}
+                                title={buildStatusTooltip(row)}
+                                aria-label={buildStatusTooltip(row)}
+                              >
+                                {row.status}
+                              </span>
+                            </td>
+                            <td className="align-center">
+                              <button
+                                type="button"
+                                className="pnp-decision-detail-btn"
+                                onClick={() => setExpandedArtikalId(expanded ? null : row.artikalId)}
+                              >
+                                {expanded ? "Sakrij" : "Detalji"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
+          {selectedRow ? (
+            <section className="pnp-decision-detail">
+              <div className="pnp-decision-detail-head">
+                <h3>Detalj odluke: {selectedRow.sku}</h3>
+                <button type="button" onClick={() => openCandidateDetail(selectedRow)}>Otvori puni detalj</button>
+              </div>
+
+              <div className="pnp-decision-detail-grid">
+                <article>
+                  <span>Dobavljac</span>
+                  <strong>{selectedRow.supplierName}</strong>
+                </article>
+                <article>
+                  <span>Priority band</span>
+                  <strong>{selectedRow.priorityBand}</strong>
+                </article>
+                <article>
+                  <span>Scenario highlight (30d prihod)</span>
+                  <strong>{fmtRsd(selectedRow.scenarioHighlightNow.expectedRevenue30d)}</strong>
+                </article>
+                <article>
+                  <span>Scenario markdown (30d prihod)</span>
+                  <strong>{fmtRsd(selectedRow.scenarioMarkdownNow.expectedRevenue30d)}</strong>
+                </article>
+                <article>
+                  <span>Revenue delta</span>
+                  <strong className={selectedRow.revenueDelta >= 0 ? "trend-up" : "trend-down"}>{fmtRsd(selectedRow.revenueDelta)}</strong>
+                </article>
+                <article>
+                  <span>Margin delta</span>
+                  <strong className={selectedRow.marginDelta >= 0 ? "trend-up" : "trend-down"}>{fmtRsd(selectedRow.marginDelta)}</strong>
+                </article>
+                <article>
+                  <span>Stock units</span>
+                  <strong>{selectedRow.stockUnits}</strong>
+                </article>
+                <article>
+                  <span>No-sale days</span>
+                  <strong>{selectedRow.daysSinceLastSale}</strong>
+                </article>
+                <article>
+                  <span>Decision score</span>
+                  <strong>{selectedRow.decisionScore}</strong>
+                </article>
+              </div>
+
+              <p className="pnp-decision-reason">
+                <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
+              </p>
+            </section>
+          ) : null}
+        </>
+      ) : null}
+    </div>
   );
 }
-

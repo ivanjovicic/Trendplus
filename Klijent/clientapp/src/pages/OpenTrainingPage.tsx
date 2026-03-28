@@ -258,8 +258,8 @@ export default function OpenTrainingPage() {
                                     onClick={() => setLabelType(lt)}
                                     style={{
                                         padding: "7px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none",
-                                        background: labelType === lt ? (lt === "popularity_prior" ? C.amber : C.red) : "white",
-                                        color: labelType === lt ? "white" : "var(--c-374151, #374151)",
+                                        background: labelType === lt ? (lt === "popularity_prior" ? C.amber : C.red) : "var(--surface-default, #ffffff)",
+                                        color: labelType === lt ? "var(--text-on-primary, #ffffff)" : "var(--c-374151, #374151)",
                                     }}
                                 >
                                     {lt === "popularity_prior" ? " Popularity" : " Deal Score"}
@@ -489,10 +489,10 @@ export default function OpenTrainingPage() {
                                             <div style={{
                                                 width: 17, height: 17, borderRadius: 4, flexShrink: 0,
                                                 border: `2px solid ${checked ? C.blue : "var(--c-d1d5db, #d1d5db)"}`,
-                                                background: checked ? C.blue : "white",
+                                                background: checked ? C.blue : "var(--surface-card, #ffffff)",
                                                 display: "flex", alignItems: "center", justifyContent: "center",
                                             }}>
-                                                {checked && <span style={{ color: "white", fontSize: 10, lineHeight: 1 }}></span>}
+                                                {checked && <span style={{ color: "var(--text-on-primary, #ffffff)", fontSize: 10, lineHeight: 1 }}></span>}
                                             </div>
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <span style={{ fontWeight: 700, fontSize: 13, color: checked ? C.blue : "var(--c-111827, #111827)" }}>{ds.name}</span>
@@ -524,19 +524,18 @@ export default function OpenTrainingPage() {
                             style={{
                                 width: "100%", padding: "12px 0",
                                 background: rcLoading ? C.gray : C.blue,
-                                color: "white", border: "none", borderRadius: 9,
+                                color: "var(--text-on-primary, #ffffff)", border: "none", borderRadius: 9,
                                 fontSize: 14, fontWeight: 700, cursor: rcLoading ? "not-allowed" : "pointer",
                             }}
                         >
                             {rcLoading ? " Izračunavanje" : " Pokreni Recompute"}
                         </button>
-                    </div>
 
-                    {rcErr && (
-                        <div style={{ marginTop: 12, background: C.redLight, color: C.red, padding: "12px 16px", borderRadius: 10, fontSize: 13 }}>
-                             {rcErr}
-                        </div>
-                    )}
+                        {rcErr && (
+                            <div style={{ marginTop: 12, background: C.redLight, color: C.red, padding: "12px 16px", borderRadius: 10, fontSize: 13 }}>
+                                 {rcErr}
+                            </div>
+                        )}
 
                     {rcResult && (
                         <div style={{ marginTop: 14, background: C.greenLight, border: `1.5px solid var(--c-86efac, #86efac)`, borderRadius: 12, padding: "16px 20px" }}>
@@ -544,14 +543,14 @@ export default function OpenTrainingPage() {
                                  Gotovo  {fmtDate(rcResult.computedAtUtc)}
                             </div>
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                {[
+                                {[ 
                                     { label: "Dataseta",       value: rcResult.datasetCount },
                                     { label: "Kandidata",      value: rcResult.candidateProducts },
                                     { label: "Okskorirano",    value: rcResult.scoredProducts },
                                     { label: "Grupa",          value: rcResult.groupCount },
                                     { label: "Ubačeno labela", value: rcResult.insertedLabels },
                                 ].map(r => (
-                                    <div key={r.label} style={{ background: "white", borderRadius: 8, padding: "8px 12px", flex: "1 1 80px", textAlign: "center" }}>
+                                    <div key={r.label} style={{ background: "var(--surface-card, #ffffff)", borderRadius: 8, padding: "8px 12px", flex: "1 1 80px", textAlign: "center" }}>
                                         <div style={{ fontSize: 18, fontWeight: 800, color: C.green }}>{fmt(r.value)}</div>
                                         <div style={{ fontSize: 10, color: C.gray, marginTop: 1 }}>{r.label}</div>
                                     </div>
@@ -563,6 +562,7 @@ export default function OpenTrainingPage() {
                         </div>
                     )}
                 </div>
+            </div>
             )}
 
             {/* ══════ DIJAGNOSTIKA ══════════════════════════════════════════ */}
@@ -571,15 +571,15 @@ export default function OpenTrainingPage() {
                     {/* Label type toggle */}
                     <div style={{ display: "flex", gap: 0, borderRadius: 8, overflow: "hidden", border: `1.5px solid ${C.border}`, width: "fit-content", marginBottom: 16 }}>
                         {(["popularity_prior", "deal_score"] as const).map(lt => (
-                            <button key={lt} onClick={() => setDiagLabelType(lt)} style={{
+                                <button key={lt} onClick={() => setDiagLabelType(lt)} style={{
                                 padding: "7px 18px", fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none",
-                                background: diagLabelType === lt ? C.blue : "white",
-                                color: diagLabelType === lt ? "white" : "var(--c-374151, #374151)",
+                                background: diagLabelType === lt ? C.blue : "var(--surface-default, #ffffff)",
+                                color: diagLabelType === lt ? "var(--text-on-primary, #ffffff)" : "var(--c-374151, #374151)",
                             }}>
                                 {lt === "popularity_prior" ? "⭐ Popularity" : "🔥 Deal Score"}
                             </button>
                         ))}
-                        <button onClick={loadDiag} style={{ padding: "7px 14px", fontSize: 12, cursor: "pointer", border: "none", borderLeft: `1px solid ${C.border}`, background: "white", color: C.blue }}>
+                        <button onClick={loadDiag} style={{ padding: "7px 14px", fontSize: 12, cursor: "pointer", border: "none", borderLeft: `1px solid ${C.border}`, background: "var(--surface-default, #ffffff)", color: C.blue }}>
                             🔄
                         </button>
                     </div>

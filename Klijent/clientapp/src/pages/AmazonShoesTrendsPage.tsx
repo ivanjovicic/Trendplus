@@ -315,7 +315,7 @@ export default function AmazonShoesTrendsPage() {
             </div>
 
             {/* ── Sync card ── */}
-            <div style={{ background: "var(--surface-card, #fff)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px rgba(0,0,0,.06))" }}>
+            <div style={{ background: "var(--surface-card, #ffffff)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px rgba(0,0,0,.06))" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong, #111827)", marginBottom: 12 }}>🔄 Sync from Amazon</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
 
@@ -342,7 +342,7 @@ export default function AmazonShoesTrendsPage() {
                         <select
                             value={syncGender}
                             onChange={(e) => setSyncGender(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, minWidth: 120, background: "var(--surface-card, #fff)" }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, minWidth: 120, background: "var(--surface-card, #ffffff)" }}
                         >
                             {GENDER_OPTIONS.map((g) => (
                                 <option key={g.value} value={g.value}>{g.label}</option>

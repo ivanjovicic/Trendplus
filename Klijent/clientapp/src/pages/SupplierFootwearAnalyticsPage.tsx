@@ -1,1035 +1,482 @@
-﻿
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    Treemap,
-    XAxis,
-    YAxis,
-} from "recharts";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import { getDobavljaci } from "../services/dobavljaciApi";
+import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import {
-    getVendorSalesNivelacija,
-    getVendorSalesNivelacijaOptions,
-    type VendorSalesNivelacijaArticleStat,
-    type VendorSalesNivelacijaOption,
-    type VendorSalesNivelacijaResponse,
+  getVendorSalesNivelacija,
+  type VendorSalesNivelacijaArticleStat,
+  type VendorSalesNivelacijaResponse,
+  type VendorSalesNivelacijaVendorStat,
 } from "../services/vendorSalesNivelacijaApi";
 import type { Dobavljac } from "../types/Dobavljaci";
+import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./SupplierFootwearAnalyticsPage.css";
 
-const ALL_EVENTS_OPTION = "__all__";
-const UNKNOWN_VENDOR_LABEL = "Nepoznat dobavljac";
-const DONUT_COLORS = ["var(--c-06b6d4, #06b6d4)", "var(--c-14b8a6, #14b8a6)", "var(--c-84cc16, #84cc16)", "var(--c-f59e0b, #f59e0b)", "var(--c-f97316, #f97316)", "var(--c-ef4444, #ef4444)", "var(--c-a855f7, #a855f7)"];
+type PeriodPreset = "30d" | "90d" | "custom";
+type SortDir = "asc" | "desc";
+type SortField = "vendorName" | "postRevenue" | "sharePct" | "topFootwearType" | "trendPct" | "status";
+type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
 
-type Direction = "up" | "down" | "flat";
-type InsightTone = "pozitivno" | "rizik" | "prilika";
+type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string };
 
-type SupplierDerived = {
-    vendorId: number | null;
-    vendorName: string;
-    isUnknownVendor: boolean;
-    hasPreSales: boolean;
-    preRevenue: number;
-    postRevenue: number;
-    postSharePct: number;
-    preQty: number;
-    postQty: number;
-    changeRevenuePct: number;
-    changeQtyPct: number;
-    marginPctChange: number;
-    logGrowth: number;
-    elasticity: number;
-    stability: number;
-    trend: Direction;
-    shiftShare: number;
-    prePostProfitLift: number;
-    riskDropSales: number;
-    postDominanceRisk: number;
-    score: number;
-    opportunityScore: number;
-    consistencyScore: number;
-    trendPhase: "Rastuci" | "Stagnacija" | "Pad";
-    recoveryIndex: number;
-    priceSensitivity: number;
-    sparkline: number[];
+type DecisionVendor = VendorSalesNivelacijaVendorStat & {
+  sharePct: number;
+  trendPct: number;
+  reliabilityPct: number;
+  topFootwearType: string;
+  topFootwearTypeSharePct: number;
+  avgElasticity: number | null;
+  decisionScore: number;
+  status: DecisionStatus;
+  statusReason: string;
 };
 
-type TooltipMetric = {
-    key: string;
-    naziv: string;
-    vrednost: string;
-    opis: string;
-};
+const STATUS_PRIORITY: Record<DecisionStatus, number> = { Pojacaj: 3, Zadrzi: 2, Smanji: 1 };
+const BOOST_SCORE_THRESHOLD = 68;
+const KEEP_SCORE_THRESHOLD = 43;
+const BOOST_MIN_RELIABILITY_PCT = 40;
+const UNKNOWN_SUPPLIERS = new Set(["", "N/A", "NEPOZNATO", "UNKNOWN", "UNKNOWN SUPPLIER"]);
 
-type InsightCard = {
-    ikonica: string;
-    naslov: string;
-    ton: InsightTone;
-    opis: string;
-    akcija: string;
-};
+const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
+  { key: "vendorName", header: "Dobavljac", dataType: "text" },
+  { key: "postRevenue", header: "Promet", dataType: "currency" },
+  { key: "sharePct", header: "Udeo %", dataType: "percent" },
+  { key: "topFootwearType", header: "Glavni tip", dataType: "text" },
+  { key: "topFootwearTypeSharePct", header: "Udeo tipa %", dataType: "percent" },
+  { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "status", header: "Preporuka", dataType: "text" },
+  { key: "decisionScore", header: "Decision score", dataType: "number" },
+];
 
-function toDateInput(date: Date): string {
-    return date.toISOString().slice(0, 10);
+function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
+function toDateInput(date: Date): string { return date.toISOString().slice(0, 10); }
+function getPresetRange(preset: Exclude<PeriodPreset, "custom">) {
+  const to = new Date();
+  const from = new Date(to);
+  if (preset === "30d") from.setDate(from.getDate() - 29);
+  if (preset === "90d") from.setDate(from.getDate() - 89);
+  return { fromDate: toDateInput(from), toDate: toDateInput(to) };
+}
+function toUtcRange(fromDate: string, toDate: string) { return { from: `${fromDate}T00:00:00Z`, to: `${toDate}T23:59:59Z` }; }
+function buildPreviousRange(fromDate: string, toDate: string) {
+  const currentFrom = new Date(`${fromDate}T00:00:00Z`);
+  const currentTo = new Date(`${toDate}T23:59:59Z`);
+  const durationMs = currentTo.getTime() - currentFrom.getTime() + 1000;
+  const previousTo = new Date(currentFrom.getTime() - 1000);
+  const previousFrom = new Date(previousTo.getTime() - durationMs + 1000);
+  return { from: previousFrom.toISOString(), to: previousTo.toISOString() };
+}
+function fmtRsd(value: number): string { return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`; }
+function fmtPct(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
+}
+function fmtSignedPct(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return `${value > 0 ? "+" : ""}${fmtPct(value, digits)}`;
+}
+function fmtQty(value: number): string { return `${value.toLocaleString("sr-RS")} kom`; }
+function fmtElasticity(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return value.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string { if (field !== activeField) return ""; return dir === "asc" ? " ^" : " v"; }
+function statusClass(status: DecisionStatus): string {
+  if (status === "Pojacaj") return "sf-decision-status status-boost";
+  if (status === "Smanji") return "sf-decision-status status-reduce";
+  return "sf-decision-status status-keep";
+}
+function trendClass(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "trend-neutral";
+  if (value > 0) return "trend-up";
+  if (value < 0) return "trend-down";
+  return "trend-neutral";
 }
 
-function fmtRsd(value: number): string {
-    return `${value.toLocaleString("sr-RS", { maximumFractionDigits: 0 })} RSD`;
+type StatusReasonSignals = { sharePct: number; avgShare: number; trendPct: number; topTypeSharePct: number; reliabilityPct: number };
+type StatusTooltipData = { status: DecisionStatus; statusReason: string; sharePct: number; trendPct: number; topFootwearType: string; topFootwearTypeSharePct: number; reliabilityPct: number };
+
+function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals): string {
+  const lowReliability = signals.reliabilityPct < BOOST_MIN_RELIABILITY_PCT;
+  const positiveTrend = signals.trendPct > 0;
+  const negativeTrend = signals.trendPct < 0;
+  const concentratedType = signals.topTypeSharePct >= 45;
+
+  if (status === "Pojacaj") {
+    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
+    if (positiveTrend && concentratedType) return "Jak trend i dominantan tip obuce koji nosi rezultat.";
+    if (signals.sharePct >= signals.avgShare) return "Stabilan udeo i zdrav signal po tipu obuce.";
+    return "Dobar potencijal rasta uz kontrolisani portfolio tipova.";
+  }
+  if (status === "Zadrzi") {
+    if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
+    if (negativeTrend) return "Trend slabi; zadrzati uz pojacan nadzor tipova koji opadaju.";
+    return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
+  }
+  if (negativeTrend) return "Pad trenda i slab signal po tipu; smanjiti fokus.";
+  return "Nizak doprinos i slabija relevantnost tipova; kandidat za smanjenje fokusa.";
 }
 
-function fmtPct(value: number): string {
-    return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+function buildStatusTooltip(data: StatusTooltipData): string {
+  return `${data.status}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${fmtPct(data.topFootwearTypeSharePct, 1)}) | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
 }
+function normalizeName(value: string | null | undefined): string { return (value ?? "").trim().toUpperCase(); }
+function vendorKey(vendor: { vendorId: number | null; vendorName: string }): string { if (vendor.vendorId != null) return `id:${vendor.vendorId}`; return `name:${normalizeName(vendor.vendorName)}`; }
 
-function fmtNum(value: number): string {
-    return value.toLocaleString("sr-RS", { maximumFractionDigits: 2 });
-}
+function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
+  const vendorCategoryRevenue = new Map<string, Map<string, number>>();
+  const vendorCategoryElasticities = new Map<string, Map<string, number[]>>();
+  const globalCategoryRevenue = new Map<string, number>();
 
-function safeDiv(a: number, b: number): number {
-    if (!Number.isFinite(a) || !Number.isFinite(b) || b === 0) return 0;
-    return a / b;
-}
+  articleStats.forEach((row) => {
+    const vKey = row.vendorId != null ? `id:${row.vendorId}` : `name:${normalizeName(row.vendorName)}`;
+    const category = (row.category ?? "").trim() || "N/A";
+    const revenue = Number.isFinite(row.postRevenue) ? row.postRevenue : 0;
+    if (!vendorCategoryRevenue.has(vKey)) vendorCategoryRevenue.set(vKey, new Map());
+    const categoryMap = vendorCategoryRevenue.get(vKey)!;
+    categoryMap.set(category, (categoryMap.get(category) ?? 0) + revenue);
+    if (!vendorCategoryElasticities.has(vKey)) vendorCategoryElasticities.set(vKey, new Map());
+    const elasticityMap = vendorCategoryElasticities.get(vKey)!;
+    if (!elasticityMap.has(category)) elasticityMap.set(category, []);
+    if (row.priceElasticity != null && Number.isFinite(Number(row.priceElasticity))) elasticityMap.get(category)!.push(Number(row.priceElasticity));
+    globalCategoryRevenue.set(category, (globalCategoryRevenue.get(category) ?? 0) + revenue);
+  });
 
-function clamp(value: number, min: number, max: number): number {
-    return Math.max(min, Math.min(max, value));
-}
+  const byVendor = new Map<string, { topType: string; topTypeSharePct: number; avgElasticity: number | null }>();
+  vendorCategoryRevenue.forEach((categoryMap, key) => {
+    let total = 0;
+    let topType = "N/A";
+    let topRevenue = 0;
+    categoryMap.forEach((value, category) => { total += value; if (value > topRevenue) { topRevenue = value; topType = category; } });
+    const topTypeSharePct = total > 0 ? (topRevenue / total) * 100 : 0;
+    const categoryElasticities = vendorCategoryElasticities.get(key)?.get(topType) ?? [];
+    const avgElasticity = categoryElasticities.length > 0 ? categoryElasticities.reduce((sum, value) => sum + value, 0) / categoryElasticities.length : null;
+    byVendor.set(key, { topType, topTypeSharePct, avgElasticity });
+  });
 
-function stdDev(values: number[]): number {
-    if (values.length === 0) return 0;
-    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
-    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
-    return Math.sqrt(variance);
-}
-
-function normalizeVendorName(name: string): string {
-    const t = (name ?? "").trim();
-    return t === "" || t.toUpperCase() === "N/A" ? UNKNOWN_VENDOR_LABEL : t;
-}
-
-function isUnknownVendorName(name: string): boolean {
-    const t = (name ?? "").trim().toUpperCase();
-    return t === "" || t === "N/A" || t === UNKNOWN_VENDOR_LABEL.toUpperCase() || t === "NEPOZNATO";
-}
-
-function resolveVendorName(name: string, vendorId: number | null, vendorNameById: Map<number, string>): string {
-    const normalized = normalizeVendorName(name);
-    if (!isUnknownVendorName(normalized)) return normalized;
-    if (vendorId == null) return UNKNOWN_VENDOR_LABEL;
-    const mapped = vendorNameById.get(vendorId);
-    return mapped && mapped.trim() !== "" ? mapped.trim() : UNKNOWN_VENDOR_LABEL;
-}
-
-function computePercentChange(pre: number, post: number): number {
-    if (!Number.isFinite(pre) || !Number.isFinite(post)) return 0;
-    if (pre === 0) {
-        if (post > 0) return 100;
-        if (post < 0) return -100;
-        return 0;
-    }
-    return ((post - pre) / Math.abs(pre)) * 100;
-}
-
-function logGrowth(pre: number, post: number): number {
-    return Math.log(post + 1) - Math.log(pre + 1);
-}
-
-function trendArrow(direction: Direction): string {
-    if (direction === "up") return "+";
-    if (direction === "down") return "-";
-    return "=";
-}
-
-function trendClass(direction: Direction): string {
-    if (direction === "up") return "trend-up";
-    if (direction === "down") return "trend-down";
-    return "trend-flat";
-}
-
-function average(values: number[]): number {
-    if (values.length === 0) return 0;
-    return values.reduce((s, v) => s + v, 0) / values.length;
-}
-
-function toPriceElasticity(article: VendorSalesNivelacijaArticleStat): number {
-    if (article.priceElasticity != null && Number.isFinite(Number(article.priceElasticity))) {
-        return Number(article.priceElasticity);
-    }
-    if (article.oldPrice == null || article.newPrice == null || article.oldPrice === 0) return 0;
-    const pricePct = ((article.newPrice - article.oldPrice) / article.oldPrice) * 100;
-    if (pricePct === 0) return 0;
-    const qtyPct = computePercentChange(article.preQty, article.postQty);
-    return qtyPct / pricePct;
-}
-
-function isFemaleArticle(article: VendorSalesNivelacijaArticleStat): boolean {
-    const text = `${article.category} ${article.articleName}`.toLowerCase();
-    return text.includes("žens") || text.includes("zens") || text.includes("women") || text.includes("lady");
-}
-
-function normalize01(value: number, min: number, max: number): number {
-    if (max <= min) return 0.5;
-    return clamp((value - min) / (max - min), 0, 1);
-}
-
-function InfoHint({ text }: { text: string }) {
-    return (
-        <span className="supplier-info-hint" title={text} aria-label={text}>
-            ?
-        </span>
-    );
-}
-
-function Sparkline({ values }: { values: number[] }) {
-    const width = 120;
-    const height = 36;
-    const finiteValues = values.filter((value) => Number.isFinite(value));
-    const clean = finiteValues.length > 1
-        ? finiteValues
-        : finiteValues.length === 1
-            ? [0, finiteValues[0]]
-            : [0, 0];
-    const min = Math.min(...clean);
-    const max = Math.max(...clean);
-    const denominator = clean.length - 1;
-    const points = clean
-        .map((v, i) => {
-            const x = denominator > 0 ? (i / denominator) * width : 0;
-            const y = height - 4 - normalize01(v, min, max) * (height - 8);
-            const safeX = Number.isFinite(x) ? x : 0;
-            const safeY = Number.isFinite(y) ? y : height / 2;
-            return `${safeX},${safeY}`;
-        })
-        .join(" ");
-
-    return (
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="supplier-sparkline" aria-hidden>
-            <polyline points={points} fill="none" stroke="var(--c-22d3ee, #22d3ee)" strokeWidth="2" />
-        </svg>
-    );
-}
-
-function MetricCard(props: {
-    naziv: string;
-    opis: string;
-    vrednost: string;
-    promena?: string;
-    smer?: Direction;
-    sparkline: number[];
-}) {
-    return (
-        <article className="supplier-kpi-card">
-            <div className="supplier-kpi-label-row">
-                <div className="supplier-kpi-label">{props.naziv}</div>
-                <InfoHint text={props.opis} />
-            </div>
-            <div className="supplier-kpi-value">{props.vrednost}</div>
-            {props.promena ? (
-                <div className={`supplier-kpi-delta ${props.smer ? trendClass(props.smer) : "trend-flat"}`}>
-                    {props.smer ? trendArrow(props.smer) : "?"} {props.promena}
-                </div>
-            ) : null}
-            <Sparkline values={props.sparkline} />
-        </article>
-    );
+  const globalTopTypes = [...globalCategoryRevenue.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const globalTotal = globalTopTypes.reduce((sum, item) => sum + item[1], 0);
+  const globalTypeShare = globalTopTypes.map(([name, revenue]) => ({ name, sharePct: globalTotal > 0 ? (revenue / globalTotal) * 100 : 0 }));
+  return { byVendor, globalTypeShare };
 }
 
 export default function SupplierFootwearAnalyticsPage() {
-    const [fromDate, setFromDate] = useState(() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 90);
-        return toDateInput(d);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const requestIdRef = useRef(0);
+  const initialRange = useMemo(() => getPresetRange("90d"), []);
+
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
+  const [fromDate, setFromDate] = useState(initialRange.fromDate);
+  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [vendorId, setVendorId] = useState<number | null>(null);
+  const [category, setCategory] = useState("");
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({ fromDate: initialRange.fromDate, toDate: initialRange.toDate, vendorId: null, category: "" });
+
+  const [vendors, setVendors] = useState<Dobavljac[]>([]);
+  const [data, setData] = useState<VendorSalesNivelacijaResponse | null>(null);
+  const [previousRevenue, setPreviousRevenue] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>("status");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
+
+  const invalidRange = useMemo(() => (!fromDate || !toDate ? false : new Date(fromDate) > new Date(toDate)), [fromDate, toDate]);
+
+  useEffect(() => {
+    const loadVendors = async () => {
+      try { setVendors(await getDobavljaci()); } catch { setVendors([]); }
+    };
+    void loadVendors();
+  }, []);
+
+  const load = useCallback(async (filters: ActiveFilters) => {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const currentRange = toUtcRange(filters.fromDate, filters.toDate);
+      const previousRange = buildPreviousRange(filters.fromDate, filters.toDate);
+      const [currentResult, previousResult] = await Promise.allSettled([
+        getVendorSalesNivelacija({ ...currentRange, vendorId: filters.vendorId, category: filters.category || null, includeInactive: false }),
+        getVendorSalesNivelacija({ ...previousRange, vendorId: filters.vendorId, category: filters.category || null, includeInactive: false }),
+      ]);
+      if (requestId !== requestIdRef.current) return;
+      if (currentResult.status === "rejected") throw currentResult.reason;
+      setData(currentResult.value);
+      setExpandedVendorKey(null);
+      setPreviousRevenue(previousResult.status === "fulfilled" ? previousResult.value.totals.postRevenue : null);
+    } catch (reason) {
+      if (requestId !== requestIdRef.current) return;
+      setData(null);
+      setPreviousRevenue(null);
+      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju dobavljaci-tipovi analitike.");
+    } finally {
+      if (requestId === requestIdRef.current) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
+
+  const typeInsights = useMemo(() => buildTypeInsights(data?.articleStats ?? []), [data?.articleStats]);
+
+  const decisionRows = useMemo<DecisionVendor[]>(() => {
+    const rows = data?.vendorStats ?? [];
+    if (rows.length === 0) return [];
+
+    const totalRevenue = rows.reduce((sum, item) => sum + item.postRevenue, 0);
+    const topShare = rows.reduce((max, item) => Math.max(max, totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0), 0);
+    const deltaValues = rows.map((item) => item.changeRevenue);
+    const minDelta = Math.min(...deltaValues);
+    const maxDelta = Math.max(...deltaValues);
+    const deltaSpan = maxDelta - minDelta;
+    const avgShare = rows.length > 0 ? 100 / rows.length : 0;
+
+    return rows.map((item) => {
+      const key = vendorKey(item);
+      const typeInsight = typeInsights.byVendor.get(key);
+      const sharePct = totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0;
+      const trendPct = item.changePercent;
+      const coveragePct = item.articleCount > 0 ? (item.activeArticlesCount / item.articleCount) * 100 : 0;
+      const knownSupplier = !UNKNOWN_SUPPLIERS.has(normalizeName(item.vendorName));
+      const reliabilityPct = clamp(coveragePct * 0.7 + (knownSupplier ? 30 : 0), 0, 100);
+
+      const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
+      const deltaNorm = deltaSpan > 0 ? clamp(((item.changeRevenue - minDelta) / deltaSpan) * 100, 0, 100) : 50;
+      const trendNorm = clamp(((trendPct + 50) / 100) * 100, 0, 100);
+      const decisionScore = Math.round(shareNorm * 0.35 + deltaNorm * 0.30 + trendNorm * 0.20 + reliabilityPct * 0.15);
+
+      let status: DecisionStatus = "Smanji";
+      if (decisionScore >= BOOST_SCORE_THRESHOLD) status = "Pojacaj";
+      else if (decisionScore >= KEEP_SCORE_THRESHOLD) status = "Zadrzi";
+      if (reliabilityPct < BOOST_MIN_RELIABILITY_PCT && status === "Pojacaj") status = "Zadrzi";
+
+      const topFootwearType = typeInsight?.topType ?? "N/A";
+      const topFootwearTypeSharePct = typeInsight?.topTypeSharePct ?? 0;
+      const avgElasticity = typeInsight?.avgElasticity ?? null;
+      const statusReason = buildStatusReason(status, { sharePct, avgShare, trendPct, topTypeSharePct: topFootwearTypeSharePct, reliabilityPct });
+
+      return {
+        ...item,
+        sharePct,
+        trendPct,
+        reliabilityPct,
+        topFootwearType,
+        topFootwearTypeSharePct,
+        avgElasticity,
+        decisionScore,
+        status,
+        statusReason,
+      };
     });
-    const [toDate, setToDate] = useState(() => toDateInput(new Date()));
-    const [selectedVendorId, setSelectedVendorId] = useState<number | null>(null);
-    const [selectedCategory, setSelectedCategory] = useState("");
-    const [selectedEventDate, setSelectedEventDate] = useState("");
-    const [vendors, setVendors] = useState<Dobavljac[]>([]);
-    const [options, setOptions] = useState<VendorSalesNivelacijaOption[]>([]);
-    const [response, setResponse] = useState<VendorSalesNivelacijaResponse | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+  }, [data?.vendorStats, typeInsights.byVendor]);
 
-    const loadOptions = useCallback(async () => {
-        try {
-            const result = await getVendorSalesNivelacijaOptions({
-                vendorId: selectedVendorId,
-                category: selectedCategory || null,
-                take: 365,
-            });
-            setOptions(result);
-        } catch {
-            setOptions([]);
-        }
-    }, [selectedVendorId, selectedCategory]);
+  const sortedRows = useMemo(() => {
+    const rows = [...decisionRows];
+    return rows.sort((a, b) => {
+      let compare = 0;
+      if (sortField === "vendorName") compare = a.vendorName.localeCompare(b.vendorName, "sr");
+      else if (sortField === "postRevenue") compare = a.postRevenue - b.postRevenue;
+      else if (sortField === "sharePct") compare = a.sharePct - b.sharePct;
+      else if (sortField === "topFootwearType") compare = a.topFootwearType.localeCompare(b.topFootwearType, "sr");
+      else if (sortField === "trendPct") compare = a.trendPct - b.trendPct;
+      else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+      if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      return sortDir === "asc" ? compare : -compare;
+    });
+  }, [decisionRows, sortDir, sortField]);
 
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError("");
-        try {
-            const data = await getVendorSalesNivelacija({
-                vendorId: selectedVendorId,
-                category: selectedCategory || null,
-                from: `${fromDate}T00:00:00Z`,
-                to: `${toDate}T23:59:59Z`,
-                eventDate: selectedEventDate && selectedEventDate !== ALL_EVENTS_OPTION ? selectedEventDate : null,
-                includeInactive: false,
-            });
-            setResponse(data);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : "Greška pri ucitavanju podataka.");
-            setResponse(null);
-        } finally {
-            setLoading(false);
-        }
-    }, [selectedVendorId, selectedCategory, fromDate, toDate, selectedEventDate]);
+  const totalRevenue = data?.totals.postRevenue ?? 0;
+  const top5SharePct = useMemo(() => {
+    if (sortedRows.length === 0 || totalRevenue <= 0) return 0;
+    const top5 = [...sortedRows].sort((a, b) => b.postRevenue - a.postRevenue).slice(0, 5).reduce((sum, item) => sum + item.postRevenue, 0);
+    return (top5 / totalRevenue) * 100;
+  }, [sortedRows, totalRevenue]);
+  const totalChangeRevenue = data?.totals.changeRevenue ?? 0;
+  const periodGrowthPct = useMemo(() => (
+    previousRevenue == null || previousRevenue <= 0
+      ? data?.totals.changePercent ?? null
+      : ((totalRevenue - previousRevenue) / previousRevenue) * 100
+  ), [data?.totals.changePercent, previousRevenue, totalRevenue]);
+  const dominantTypeSummary = useMemo(() => {
+    const topType = typeInsights.globalTypeShare[0];
+    if (!topType) return "N/A";
+    return `${topType.name} (${fmtPct(topType.sharePct, 1)})`;
+  }, [typeInsights.globalTypeShare]);
+  const vendorCounts = useMemo(() => ({
+    boost: sortedRows.filter((row) => row.status === "Pojacaj").length,
+    keep: sortedRows.filter((row) => row.status === "Zadrzi").length,
+    reduce: sortedRows.filter((row) => row.status === "Smanji").length,
+  }), [sortedRows]);
+  const selectedRow = useMemo(() => (!expandedVendorKey ? null : sortedRows.find((row) => vendorKey(row) === expandedVendorKey) ?? null), [expandedVendorKey, sortedRows]);
 
-    useEffect(() => {
-        const loadVendors = async () => {
-            try {
-                setVendors(await getDobavljaci());
-            } catch {
-                setVendors([]);
-            }
-        };
-        void loadVendors();
-    }, []);
+  const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => [
+    { key: "periodPreset", label: "Period", value: periodPreset },
+    { key: "fromDate", label: "Od", value: activeFilters.fromDate },
+    { key: "toDate", label: "Do", value: activeFilters.toDate },
+    { key: "vendorId", label: "Dobavljac", value: activeFilters.vendorId ?? "" },
+    { key: "category", label: "Kategorija", value: activeFilters.category },
+  ], [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, periodPreset]);
 
-    useEffect(() => {
-        void loadOptions();
-    }, [loadOptions]);
+  const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
+    { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
+    { key: "vendorsCount", label: "Dobavljaca", value: data?.totals.vendorsCount ?? 0 },
+    { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
+    { key: "windowDays", label: "Window", value: data?.windowDays ?? 0 },
+  ], [data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.windowDays]);
 
-    useEffect(() => {
-        void load();
-    }, [load]);
+  const handleSort = (field: SortField) => {
+    if (sortField === field) { setSortDir((current) => (current === "asc" ? "desc" : "asc")); return; }
+    setSortField(field);
+    setSortDir(field === "vendorName" || field === "topFootwearType" ? "asc" : "desc");
+  };
+  const handlePresetChange = (value: PeriodPreset) => {
+    setPeriodPreset(value);
+    if (value === "custom") return;
+    const range = getPresetRange(value);
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
+  };
+  const handleApplyFilters = () => { if (!invalidRange) setActiveFilters({ fromDate, toDate, vendorId, category }); };
+  const handleResetFilters = () => {
+    const range = getPresetRange("90d");
+    setPeriodPreset("90d");
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
+    setVendorId(null);
+    setCategory("");
+    setActiveFilters({ fromDate: range.fromDate, toDate: range.toDate, vendorId: null, category: "" });
+  };
 
-    useEffect(() => {
-        if (selectedEventDate) return;
-        if (options.length === 0) return;
-        const preferred = options.find((x) => x.hasSalesWindow) ?? options[0];
-        setSelectedEventDate(preferred.eventDate.slice(0, 10));
-    }, [options, selectedEventDate]);
+  const openVendorDetail = (row: DecisionVendor) => {
+    saveAnalyticsDetailSnapshot(buildAnalyticsDetailSnapshot({
+      table: "dobavljaci-tipovi-obuce",
+      recordId: String(row.vendorId ?? row.vendorName),
+      title: row.vendorName,
+      subtitle: "Decision support po dobavljacu i tipu obuce",
+      columns: decisionColumns,
+      row,
+      metadata: [...toolbarFilters, ...toolbarMetadata],
+    }));
+    navigate(`/analitika/dobavljaci-tipovi-obuce/${encodeURIComponent(String(row.vendorId ?? row.vendorName))}`, { state: { backgroundLocation: location } });
+  };
 
-    const vendorNameById = useMemo(() => {
-        const map = new Map<number, string>();
-        for (const vendor of vendors) {
-            if (vendor.id != null && vendor.naziv) {
-                map.set(vendor.id, vendor.naziv);
-            }
-        }
-        return map;
-    }, [vendors]);
-
-    const vendorStats = useMemo(() => {
-        return (response?.vendorStats ?? []).map((x) => ({
-            ...x,
-            vendorName: resolveVendorName(x.vendorName, x.vendorId, vendorNameById),
-        }));
-    }, [response, vendorNameById]);
-
-    const articleStats = useMemo(() => {
-        return (response?.articleStats ?? []).map((x) => ({
-            ...x,
-            vendorName: resolveVendorName(x.vendorName, x.vendorId, vendorNameById),
-        }));
-    }, [response, vendorNameById]);
-    const supplierDerived = useMemo<SupplierDerived[]>(() => {
-        const totalPostRevenue = vendorStats.reduce((sum, v) => sum + Number(v.postRevenue), 0);
-        const totalPreRevenue = vendorStats.reduce((sum, v) => sum + Number(v.preRevenue), 0);
-        const byVendorArticles = new Map<string, VendorSalesNivelacijaArticleStat[]>();
-
-        for (const article of articleStats) {
-            const key = `${article.vendorId ?? "n-a"}-${article.vendorName}`;
-            const list = byVendorArticles.get(key) ?? [];
-            list.push(article);
-            byVendorArticles.set(key, list);
-        }
-
-        return vendorStats.map((vendor) => {
-            const key = `${vendor.vendorId ?? "n-a"}-${vendor.vendorName}`;
-            const items = byVendorArticles.get(key) ?? [];
-            const preRev = Number(vendor.preRevenue);
-            const postRev = Number(vendor.postRevenue);
-            const preQty = Number(vendor.preQty);
-            const postQty = Number(vendor.postQty);
-            const hasPreSales = preRev > 0 || preQty > 0;
-            const isUnknownVendor = isUnknownVendorName(vendor.vendorName);
-            const priceIndexPre = safeDiv(preRev, Math.max(preQty, 1));
-            const priceIndexPost = safeDiv(postRev, Math.max(postQty, 1));
-            const marginPctChange = computePercentChange(priceIndexPre, priceIndexPost);
-            const changeRevenuePct = computePercentChange(preRev, postRev);
-            const changeQtyPct = computePercentChange(preQty, postQty);
-            const elasticities = items.map(toPriceElasticity).filter((x) => Number.isFinite(x));
-            const elasticity = average(elasticities);
-            const volatility = stdDev(items.map((x) => Number(x.changePercent)));
-            const stability = clamp(100 - volatility, 0, 100);
-            const preShare = safeDiv(preRev, Math.max(totalPreRevenue, 1));
-            const postShare = safeDiv(postRev, Math.max(totalPostRevenue, 1));
-            const postSharePct = postShare * 100;
-            const shiftShare = (postShare - preShare) * 100;
-            const baseRisk = 50 + Math.max(0, -changeRevenuePct) * 0.7 + Math.max(0, -changeQtyPct) * 0.4 - stability * 0.3;
-            const postDominanceRisk = postSharePct >= 20
-                ? clamp((postSharePct - 20) * 2.4 + Math.max(0, changeRevenuePct) * 0.15, 0, 100)
-                : 0;
-            const riskDropSales = clamp(
-                baseRisk + postDominanceRisk * 0.7 + (hasPreSales ? 0 : 14) + (isUnknownVendor ? 8 : 0),
-                0,
-                100
-            );
-            const trend: Direction = changeRevenuePct > 2 ? "up" : changeRevenuePct < -2 ? "down" : "flat";
-            const trendPhase: SupplierDerived["trendPhase"] = trend === "up" ? "Rastuci" : trend === "down" ? "Pad" : "Stagnacija";
-            const opportunityScore = clamp(55 + Math.max(0, changeRevenuePct) * 0.5 + stability * 0.2 - Math.abs(elasticity) * 6, 0, 100);
-            const consistencyScore = clamp(0.6 * stability + 0.4 * (100 - Math.abs(changeQtyPct)), 0, 100);
-            const prePostProfitLift = hasPreSales
-                ? (postRev - preRev) * (0.28 + clamp(marginPctChange / 300, -0.08, 0.08))
-                : 0;
-            const score = clamp(
-                30
-                    + changeRevenuePct * 0.25
-                    + marginPctChange * 0.18
-                    + stability * 0.18
-                    - Math.max(0, -shiftShare) * 2
-                    - postDominanceRisk * 0.2
-                    + Math.max(0, prePostProfitLift / 30000)
-                    - (hasPreSales ? 0 : 35)
-                    - (isUnknownVendor ? 18 : 0),
-                0,
-                100
-            );
-            const recoveryIndex = clamp(50 + changeRevenuePct * 0.5 - Math.max(0, -changeQtyPct) * 0.2 + stability * 0.2, 0, 100);
-            const priceSensitivity = clamp(Math.abs(elasticity) * 20, 0, 100);
-
-            return {
-                vendorId: vendor.vendorId,
-                vendorName: vendor.vendorName,
-                isUnknownVendor,
-                hasPreSales,
-                preRevenue: preRev,
-                postRevenue: postRev,
-                postSharePct,
-                preQty,
-                postQty,
-                changeRevenuePct,
-                changeQtyPct,
-                marginPctChange,
-                logGrowth: logGrowth(preRev, postRev),
-                elasticity,
-                stability,
-                trend,
-                shiftShare,
-                prePostProfitLift,
-                riskDropSales,
-                postDominanceRisk,
-                score,
-                opportunityScore,
-                consistencyScore,
-                trendPhase,
-                recoveryIndex,
-                priceSensitivity,
-                sparkline: [preRev, (preRev + postRev) / 2, postRev],
-            };
-        });
-    }, [vendorStats, articleStats]);
-
-    const comparableSuppliers = useMemo(
-        () => supplierDerived.filter((x) => x.hasPreSales && !x.isUnknownVendor),
-        [supplierDerived]
-    );
-    const topSuppliers = useMemo(
-        () => [...comparableSuppliers].sort((a, b) => b.score - a.score).slice(0, 5),
-        [comparableSuppliers]
-    );
-    const declineSuppliers = useMemo(
-        () =>
-            [...supplierDerived]
-                .filter((x) => !x.isUnknownVendor)
-                .sort(
-                    (a, b) =>
-                        (b.riskDropSales + b.postDominanceRisk * 0.8) -
-                        (a.riskDropSales + a.postDominanceRisk * 0.8)
-                )
-                .slice(0, 5),
-        [supplierDerived]
-    );
-
-    const typeStats = useMemo(() => {
-        const byType = new Map<string, {
-            preRevenue: number;
-            postRevenue: number;
-            preQty: number;
-            postQty: number;
-            vendors: Set<string>;
-            elasticities: number[];
-        }>();
-
-        for (const row of articleStats) {
-            const key = row.category || "Nedefinisano";
-            const current = byType.get(key) ?? {
-                preRevenue: 0,
-                postRevenue: 0,
-                preQty: 0,
-                postQty: 0,
-                vendors: new Set<string>(),
-                elasticities: [],
-            };
-            current.preRevenue += Number(row.preRevenue);
-            current.postRevenue += Number(row.postRevenue);
-            current.preQty += row.preQty;
-            current.postQty += row.postQty;
-            current.vendors.add(row.vendorName);
-            current.elasticities.push(toPriceElasticity(row));
-            byType.set(key, current);
-        }
-
-        const totalPost = Array.from(byType.values()).reduce((sum, x) => sum + x.postRevenue, 0);
-        return Array.from(byType.entries()).map(([tip, value]) => {
-            const velocity = safeDiv(value.postQty, Math.max(response?.windowDays ?? 30, 1));
-            const trendPct = computePercentChange(value.preRevenue, value.postRevenue);
-            const share = safeDiv(value.postRevenue, Math.max(totalPost, 1));
-            const avgElasticity = average(value.elasticities);
-            return {
-                tip,
-                preRevenue: value.preRevenue,
-                postRevenue: value.postRevenue,
-                preQty: value.preQty,
-                postQty: value.postQty,
-                velocity,
-                trendPct,
-                share,
-                profitProxy: safeDiv(value.postRevenue, Math.max(value.postQty, 1)),
-                vendorsCount: value.vendors.size,
-                avgElasticity,
-            };
-        });
-    }, [articleStats, response?.windowDays]);
-
-    const topTypes = useMemo(() => [...typeStats].sort((a, b) => b.postRevenue - a.postRevenue).slice(0, 5), [typeStats]);
-    const donutData = useMemo(() => topTypes.map((x) => ({ name: x.tip, value: x.postRevenue })), [topTypes]);
-    const treemapData = useMemo(
-        () =>
-            topTypes.map((x) => ({
-                name: x.tip,
-                size: Math.max(Math.round(x.postRevenue), 1),
-            })),
-        [topTypes]
-    );
-
-    const heatmap = useMemo(() => {
-        const topVendors = [...supplierDerived]
-            .filter((x) => !x.isUnknownVendor)
-            .sort((a, b) => b.postRevenue - a.postRevenue)
-            .slice(0, 5);
-        const topTypeKeys = topTypes.map((t) => t.tip);
-        const matrix = topVendors.map((v) => {
-            const cells = topTypeKeys.map((tip) => {
-                const sum = articleStats
-                    .filter((x) => x.vendorName === v.vendorName && x.category === tip)
-                    .reduce((acc, x) => acc + Number(x.postRevenue), 0);
-                return { tip, vrednost: sum };
-            });
-            return { dobavljac: v.vendorName, cells };
-        });
-
-        const maxCell = Math.max(1, ...matrix.flatMap((r) => r.cells.map((c) => c.vrednost)));
-        return { topTypeKeys, matrix, maxCell };
-    }, [supplierDerived, topTypes, articleStats]);
-
-    const prePostComparison = useMemo(() => {
-        return [...comparableSuppliers]
-            .map((s) => ({
-                dobavljac: s.vendorName,
-                pre: s.preRevenue,
-                posle: s.postRevenue,
-                priceSensitivityScore: s.priceSensitivity,
-                stabilan: s.stability >= 65,
-            }))
-            .sort((a, b) => b.posle - a.posle)
-            .slice(0, 5);
-    }, [comparableSuppliers]);
-
-    const totalPreRevenue = response?.totals.preRevenue ?? 0;
-    const totalPostRevenue = response?.totals.postRevenue ?? 0;
-    const totalPreQty = response?.totals.preQty ?? 0;
-    const totalPostQty = response?.totals.postQty ?? 0;
-    const unknownSupplierSummary = useMemo(() => {
-        const unknownSuppliers = supplierDerived.filter((x) => x.isUnknownVendor);
-        const unknownPostRevenue = unknownSuppliers.reduce((sum, x) => sum + x.postRevenue, 0);
-        const unknownRows = articleStats.filter((x) => isUnknownVendorName(x.vendorName)).length;
-        return {
-            suppliersCount: unknownSuppliers.length,
-            unknownRows,
-            postRevenue: unknownPostRevenue,
-            postSharePct: safeDiv(unknownPostRevenue, Math.max(totalPostRevenue, 1)) * 100,
-        };
-    }, [supplierDerived, articleStats, totalPostRevenue]);
-
-    const kpiSparkline = useMemo(() => {
-        const values = supplierDerived.map((x) => x.postRevenue).sort((a, b) => b - a).slice(0, 6);
-        return values.length >= 2 ? values : [0, ...values];
-    }, [supplierDerived]);
-
-    const tooltipMetrics = useMemo<TooltipMetric[]>(() => {
-        const scoreBase = comparableSuppliers.length > 0
-            ? comparableSuppliers
-            : supplierDerived.filter((x) => !x.isUnknownVendor);
-        const elasticityValues = scoreBase.map((x) => x.elasticity);
-        const avgElasticity = average(elasticityValues);
-        const avgImprovement = average(scoreBase.map((x) => x.score));
-        const avgRisk = average(scoreBase.map((x) => x.riskDropSales));
-        const marginContribution = safeDiv(totalPostRevenue - totalPreRevenue, Math.max(totalPostRevenue, 1)) * 100;
-        const cvi = safeDiv(totalPostQty, Math.max(response?.windowDays ?? 30, 1));
-        const stability = average(scoreBase.map((x) => x.stability));
-        const opportunity = average(scoreBase.map((x) => x.opportunityScore));
-        const consistency = average(scoreBase.map((x) => x.consistencyScore));
-        const shiftShare = average(scoreBase.map((x) => x.shiftShare));
-        const shares = scoreBase.map((x) => safeDiv(x.postRevenue, Math.max(totalPostRevenue, 1)));
-        const concentration = shares.reduce((sum, s) => sum + s ** 2, 0) * 10000;
-        const profitLift = scoreBase.reduce((sum, s) => sum + s.prePostProfitLift, 0);
-        const recovery = average(scoreBase.map((x) => x.recoveryIndex));
-        const optimalPriceZone = average(typeStats.map((x) => x.profitProxy));
-        const trendPhaseCounts = {
-            rast: scoreBase.filter((x) => x.trendPhase === "Rastuci").length,
-            stagnacija: scoreBase.filter((x) => x.trendPhase === "Stagnacija").length,
-            pad: scoreBase.filter((x) => x.trendPhase === "Pad").length,
-        };
-
-        return [
-            { key: "elasticnost", naziv: "Indeks elasticnosti dobavljaca", vrednost: fmtNum(avgElasticity), opis: "Osetljivost prodaje na promenu cene. Negativne vrednosti znace da rast cene obicno smanjuje kolicinu." },
-            { key: "poboljsanje", naziv: "Indeks poboljšanja posle nivelacije", vrednost: fmtNum(avgImprovement), opis: "Kompozitni skor (0-100) koji kombinuje rast prometa, maržni efekat, stabilnost i pomeranje udela." },
-            { key: "rizik", naziv: "Rizik pada prodaje", vrednost: fmtNum(avgRisk), opis: "Viša vrednost znaci veci rizik pada. Kombinuje pad prometa, pad kolicine i nestabilnost performansi." },
-            { key: "marzniDoprinos", naziv: "Maržni doprinos dobavljaca", vrednost: fmtPct(marginContribution), opis: "Udeo rasta bruto rezultata posle nivelacije. Pozitivno znaci da je novi cenovni nivo doneo bolji rezultat." },
-            { key: "udeoPoTipu", naziv: "Udeo u kategoriji po tipu", vrednost: topTypes.length > 0 ? `${topTypes[0].tip} (${fmtPct(topTypes[0].share * 100)})` : "Nema podataka", opis: "Pokazuje koji tip obuce nosi najveci deo prodaje i koliko zavisimo od tog tipa." },
-            { key: "velocity", naziv: "Category Velocity Index", vrednost: fmtNum(cvi), opis: "Brzina prodaje kategorije: prodate jedinice po danu. Veca vrednost znaci brži obrt." },
-            { key: "stability", naziv: "Supplier Stability Score", vrednost: fmtNum(stability), opis: "Stabilnost = male oscilacije. Viši skor znaci predvidljivije rezultate po dobavljacu." },
-            { key: "opportunity", naziv: "Supplier Opportunity Score", vrednost: fmtNum(opportunity), opis: "Potencijal rasta dobavljaca kada ima dobar trend, solidnu maržu i još uvek nizak tržišni udeo." },
-            { key: "consistency", naziv: "Supplier Consistency Score", vrednost: fmtNum(consistency), opis: "Meri konzistentnost kroz period: stabilna prodaja, mala volatilnost i uravnotežen pre/posle efekat." },
-            { key: "shiftshare", naziv: "Shift Share (promena udela pre/posle)", vrednost: fmtPct(shiftShare), opis: "Pozitivna vrednost znaci da dobavljaci dobijaju tržišni udeo posle nivelacije." },
-            { key: "rci", naziv: "Revenue Concentration Index", vrednost: fmtNum(concentration), opis: "Koncentracija prihoda (HHI). Viša vrednost znaci vecu zavisnost od manjeg broja dobavljaca." },
-            { key: "trendphase", naziv: "Supplier Trend Phase", vrednost: `Rast ${trendPhaseCounts.rast} / Stagnacija ${trendPhaseCounts.stagnacija} / Pad ${trendPhaseCounts.pad}`, opis: "Faza trenda klasifikuje dobavljace na rast, stagnaciju i pad prema nagibu pre/posle performansi." },
-            { key: "profitlift", naziv: "Pre/Post Profit Lift", vrednost: fmtRsd(profitLift), opis: "Razlika procenjenog profita pre i posle nivelacije. Pozitivno znaci da je promena cene unapredila rezultat." },
-            { key: "recovery", naziv: "Recovery Index", vrednost: fmtNum(recovery), opis: "Brzina oporavka performansi nakon pada. Viši skor znaci brži povratak na zdrav nivo prodaje." },
-            { key: "optimalnaZona", naziv: "Optimalna cenovna zona", vrednost: `${fmtRsd(optimalPriceZone * 0.92)} - ${fmtRsd(optimalPriceZone * 1.08)}`, opis: "Zona cene u kojoj je kombinacija prodaje i marže najjaca, bez prevelikog pritiska na obim." },
-        ];
-    }, [supplierDerived, comparableSuppliers, totalPostRevenue, totalPreRevenue, totalPostQty, response?.windowDays, topTypes, typeStats]);
-    const aiInsights = useMemo<InsightCard[]>(() => {
-        const knownSuppliers = supplierDerived.filter((s) => !s.isUnknownVendor);
-        const bestDiscountReaction = [...comparableSuppliers]
-            .filter((s) => s.elasticity < -0.8 && s.changeRevenuePct > 0)
-            .sort((a, b) => b.changeRevenuePct - a.changeRevenuePct)[0];
-        const losingShare = [...comparableSuppliers].sort((a, b) => a.shiftShare - b.shiftShare)[0];
-        const profitableTypes = [...typeStats].sort((a, b) => (b.postRevenue - b.preRevenue) - (a.postRevenue - a.preRevenue))[0];
-        const riskSupplier = [...knownSuppliers]
-            .sort((a, b) => (b.riskDropSales + b.postDominanceRisk * 0.8) - (a.riskDropSales + a.postDominanceRisk * 0.8))[0];
-        const dominantSupplier = [...knownSuppliers].sort((a, b) => b.postDominanceRisk - a.postDominanceRisk)[0];
-        const growBuy = [...comparableSuppliers].sort((a, b) => b.opportunityScore - a.opportunityScore)[0];
-        const pressureSupplier = [...comparableSuppliers].sort((a, b) => a.score - b.score)[0];
-        const oosArticle = [...articleStats]
-            .filter((x) => !isUnknownVendorName(x.vendorName))
-            .filter((x) => (x.oosRate ?? 0) > 0)
-            .sort((a, b) => Number(b.oosRate ?? 0) - Number(a.oosRate ?? 0))[0];
-        const lostSales = [...articleStats]
-            .filter((x) => !isUnknownVendorName(x.vendorName))
-            .filter((x) => (x.lostSalesOOS ?? 0) > 0)
-            .sort((a, b) => Number(b.lostSalesOOS ?? 0) - Number(a.lostSalesOOS ?? 0))[0];
-
-        return [
-            { ikonica: "??", naslov: "Dobavljac najbolje reaguje na sniženja", ton: "pozitivno", opis: bestDiscountReaction ? `${bestDiscountReaction.vendorName} ima rast prometa ${fmtPct(bestDiscountReaction.changeRevenuePct)} uz izraženu cenovnu osetljivost.` : "Nema dovoljno signala za pouzdanu identifikaciju.", akcija: "Povecati širinu asortimana i ubrzati dopunu za modele sa visokim obrtom." },
-            { ikonica: "??", naslov: "Gubitak tržišnog udela posle nivelacije", ton: "rizik", opis: losingShare ? `${losingShare.vendorName} ima pad udela ${fmtPct(losingShare.shiftShare)} u odnosu na period pre promene cene.` : "Nema dobavljaca sa jasnim padom udela.", akcija: "Pokrenuti reviziju cenovne pozicije i pregovor o nabavnoj ceni." },
-            { ikonica: "??", naslov: "Tip obuce profitabilniji posle promene cene", ton: "prilika", opis: profitableTypes ? `${profitableTypes.tip} ima najveci rast post-nivelacija rezultata (${fmtRsd(profitableTypes.postRevenue - profitableTypes.preRevenue)}).` : "Nije pronaden tip sa jasnom prednošcu.", akcija: "Prioritetno povecati dubinu zalihe i marketinški fokus za taj tip." },
-            { ikonica: "??", naslov: "Dobavljac visokog rizika", ton: "rizik", opis: riskSupplier ? `${riskSupplier.vendorName} spaja nizak trend i rizik pada prodaje (${fmtNum(riskSupplier.riskDropSales)}).` : "Nema kriticnog rizika u trenutnim podacima.", akcija: "Smanjiti plan narudžbine i prebaciti budžet na stabilnije dobavljace." },
-            { ikonica: "??", naslov: "Dominacija posle nivelacije", ton: "rizik", opis: dominantSupplier && dominantSupplier.postDominanceRisk >= 25 ? `${dominantSupplier.vendorName} ima visoku koncentraciju post-prodaje (${fmtPct(dominantSupplier.postSharePct)}) i treba dodatni oprez.` : "Nema dobavljaca sa kriticnom dominacijom post-prodaje.", akcija: "Ograniciti zavisnost i raspodeliti budžet na više stabilnih dobavljaca." },
-            { ikonica: "??", naslov: "Dobavljac za povecanje nabavke", ton: "prilika", opis: growBuy ? `${growBuy.vendorName} ima najbolji Opportunity skor (${fmtNum(growBuy.opportunityScore)}).` : "Nema izraženog kandidata za agresivniji rast nabavke.", akcija: "Povecati kolicine za sledeci ciklus uz pracenje maržnog efekta." },
-            { ikonica: "??", naslov: "Dobavljac za cenovni pritisak", ton: "rizik", opis: pressureSupplier ? `${pressureSupplier.vendorName} ima najslabiji ukupni skor (${fmtNum(pressureSupplier.score)}).` : "Nema dobavljaca ispod praga performansi.", akcija: "Insistirati na boljoj nabavnoj ceni ili ograniciti asortiman sa slabim ucinkom." },
-            { ikonica: "??", naslov: "Model blizu rasprodaje (OOS)", ton: "rizik", opis: oosArticle ? `${oosArticle.articleName} (${oosArticle.vendorName}) ima OOS stopu ${fmtPct(Number(oosArticle.oosRate ?? 0) * 100)}.` : "Trenutno nema modela sa vidljivim OOS signalom.", akcija: "Pokrenuti hitnu dopunu i proveriti dostupnost velicina." },
-            { ikonica: "??", naslov: "Najveci potencijal izgubljene prodaje", ton: "prilika", opis: lostSales ? `${lostSales.articleName} nosi procenjenu izgubljenu prodaju od ${fmtRsd(Number(lostSales.lostSalesOOS ?? 0))}.` : "Nema izraženog lost sales kandidata.", akcija: "Tooltip: Izgubljena prodaja je procena prometa koji nije realizovan zbog manjka zalihe." },
-        ];
-    }, [supplierDerived, comparableSuppliers, typeStats, articleStats]);
-
-    const womenPlan = useMemo(() => {
-        const femaleArticlesAll = articleStats.filter(isFemaleArticle);
-        const femaleArticles = femaleArticlesAll.length > 0 ? femaleArticlesAll : articleStats;
-        const bySupplier = new Map<string, { preRevenue: number; postRevenue: number; postQty: number; risk: number }>();
-        const byType = new Map<string, { postRevenue: number; postQty: number; marginProxy: number }>();
-        let ssQty = 0;
-        let awQty = 0;
-        let totalPostQtyFemale = 0;
-
-        for (const row of femaleArticles) {
-            const month = new Date(row.eventDate).getUTCMonth() + 1;
-            if (month >= 3 && month <= 8) ssQty += row.postQty;
-            else awQty += row.postQty;
-            totalPostQtyFemale += row.postQty;
-
-            if (!isUnknownVendorName(row.vendorName)) {
-                const supplierState = bySupplier.get(row.vendorName) ?? { preRevenue: 0, postRevenue: 0, postQty: 0, risk: 0 };
-                supplierState.preRevenue += Number(row.preRevenue);
-                supplierState.postRevenue += Number(row.postRevenue);
-                supplierState.postQty += row.postQty;
-                supplierState.risk += Number(row.oosRate ?? 0) * 100;
-                bySupplier.set(row.vendorName, supplierState);
-            }
-
-            const tip = row.category || "Nedefinisano";
-            const typeState = byType.get(tip) ?? { postRevenue: 0, postQty: 0, marginProxy: 0 };
-            typeState.postRevenue += Number(row.postRevenue);
-            typeState.postQty += row.postQty;
-            typeState.marginProxy += safeDiv(Number(row.postRevenue), Math.max(row.postQty, 1));
-            byType.set(tip, typeState);
-        }
-
-        const supplierRanking = Array.from(bySupplier.entries())
-            .map(([name, value]) => {
-                const growthPct = computePercentChange(value.preRevenue, value.postRevenue);
-                const projectedDemand = value.postQty * 1.12;
-                const recommendedQty = Math.round(projectedDemand * (1 + Math.min(0.25, value.risk / 500)));
-                return {
-                    supplier: name,
-                    growthPct,
-                    postRevenue: value.postRevenue,
-                    projectedDemand,
-                    recommendedQty,
-                    risk: clamp(value.risk, 0, 100),
-                    hasPreSales: value.preRevenue > 0,
-                };
-            })
-            .filter((x) => x.hasPreSales)
-            .sort((a, b) => b.postRevenue - a.postRevenue)
-            .slice(0, 5);
-
-        const typeMargins = Array.from(byType.entries())
-            .map(([tip, value]) => ({ tip, marginProxy: safeDiv(value.marginProxy, Math.max(value.postQty, 1)), postRevenue: value.postRevenue, postQty: value.postQty }))
-            .sort((a, b) => b.postRevenue - a.postRevenue)
-            .slice(0, 5);
-
-        const topModels = [...femaleArticles]
-            .filter((x) => !isUnknownVendorName(x.vendorName))
-            .sort((a, b) => Number(b.lostSalesOOS ?? 0) - Number(a.lostSalesOOS ?? 0))
-            .slice(0, 5)
-            .map((x) => ({ model: x.articleName, supplier: x.vendorName, lostSales: Number(x.lostSalesOOS ?? 0), oosRate: Number(x.oosRate ?? 0) }));
-
-        const availabilityHeatmap = supplierRanking.map((s) => ({
-            supplier: s.supplier,
-            dostupnost: clamp(100 - s.risk, 0, 100),
-            oosRizik: s.risk,
-        }));
-
-        return {
-            ssQty,
-            awQty,
-            projectionNextCycle: Math.round(totalPostQtyFemale * 1.1),
-            recommendedTotal: Math.round(totalPostQtyFemale * 1.16),
-            supplierRanking,
-            typeMargins,
-            topModels,
-            availabilityHeatmap,
-        };
-    }, [articleStats]);
-
-    const risingAfterIncrease = useMemo(
-        () =>
-            [...comparableSuppliers]
-                .filter((x) => x.changeRevenuePct > 0 && x.elasticity > -0.6)
-                .sort((a, b) => b.changeRevenuePct - a.changeRevenuePct)
-                .slice(0, 5),
-        [comparableSuppliers]
-    );
-    const losingAfterDecrease = useMemo(
-        () =>
-            [...comparableSuppliers]
-                .filter((x) => x.changeRevenuePct < 0 && x.elasticity < -1)
-                .sort((a, b) => a.changeRevenuePct - b.changeRevenuePct)
-                .slice(0, 5),
-        [comparableSuppliers]
-    );
-
-    return (
-        <div className="supplier-page">
-            <header className="supplier-header">
-                <div>
-                    <h1 className="supplier-title">Komandni centar dobavljaca i tipova obuce</h1>
-                    <p className="supplier-subtitle">Analitika dobavljaca i tipova obuce: performanse pre/posle nivelacije, profitabilnost, stabilnost i planiranje nabavke ženske obuce.</p>
-                </div>
-                <div className="supplier-filters">
-                    <label>Datum od<input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} title="Pocetak perioda za analizu." /></label>
-                    <label>Datum do<input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} title="Kraj perioda za analizu." /></label>
-                    <label>
-                        Dobavljac
-                        <select value={selectedVendorId ?? ""} onChange={(e) => setSelectedVendorId(e.target.value ? Number(e.target.value) : null)} title="Filtrira sve module po izabranom dobavljacu.">
-                            <option value="">Svi dobavljaci</option>
-                            {vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.naziv}</option>)}
-                        </select>
-                    </label>
-                    <label>
-                        Tip obuce
-                        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} title="Filtrira analizu po tipu obuce / kategoriji.">
-                            <option value="">Svi tipovi</option>
-                            {(response?.categories ?? []).map((category) => <option key={category} value={category}>{category}</option>)}
-                        </select>
-                    </label>
-                    <label>
-                        Nivelacija
-                        <select value={selectedEventDate} onChange={(e) => setSelectedEventDate(e.target.value)} title="Birate konkretan dogadaj nivelacije za poredenje pre i posle.">
-                            <option value={ALL_EVENTS_OPTION}>Sve nivelacije</option>
-                            {options.map((x) => {
-                                const value = x.eventDate.slice(0, 10);
-                                return <option key={`${x.eventDate}-${x.label}`} value={value}>{x.label}</option>;
-                            })}
-                        </select>
-                    </label>
-                    <button className="supplier-refresh" onClick={() => void load()}>Osveži</button>
-                </div>
-            </header>
-
-            {error ? <div className="supplier-error">{error}</div> : null}
-            {loading ? <div className="supplier-loading">Ucitavanje analitike u toku...</div> : null}
-            {unknownSupplierSummary.unknownRows > 0 ? (
-                <div className="supplier-data-warning">
-                    Nepoznat dobavljac je detektovan u {fmtNum(unknownSupplierSummary.unknownRows)} redova
-                    ({fmtRsd(unknownSupplierSummary.postRevenue)} post prometa, {fmtPct(unknownSupplierSummary.postSharePct)} udela).
-                    Najčešći razlog je nedostajući `IDDobavljac` ili nepostojeći zapis u tabeli `Dobavljaci`.{" "}
-                    <Link to="/analytics/data-quality?type=missingSupplier" className="text-[var(--text-primary)] underline underline-offset-2">
-                        Otvori data quality
-                    </Link>
-                </div>
-            ) : null}
-
-            <section className="supplier-kpi-grid">
-                <MetricCard naziv="Promet" opis="Ukupan promet u izabranom periodu. Koristi se kao glavni indikator obima poslovanja." vrednost={fmtRsd(totalPostRevenue)} promena={fmtPct(computePercentChange(totalPreRevenue, totalPostRevenue))} smer={totalPostRevenue >= totalPreRevenue ? "up" : "down"} sparkline={kpiSparkline} />
-                <MetricCard naziv="Kolicina" opis="Ukupan broj prodatih jedinica (kom). Pokazuje realni volumen prodaje." vrednost={fmtNum(totalPostQty)} promena={fmtPct(computePercentChange(totalPreQty, totalPostQty))} smer={totalPostQty >= totalPreQty ? "up" : "down"} sparkline={supplierDerived.map((x) => x.postQty)} />
-                <MetricCard naziv="Marža (proxy)" opis="Proksi marže iz prosecne prodajne cene, koristi se kada nabavna cena nije dostupna." vrednost={fmtPct(safeDiv(totalPostRevenue - totalPreRevenue, Math.max(totalPostRevenue, 1)) * 100)} promena={fmtPct(average(supplierDerived.map((x) => x.marginPctChange)))} smer={average(supplierDerived.map((x) => x.marginPctChange)) >= 0 ? "up" : "down"} sparkline={supplierDerived.map((x) => x.marginPctChange)} />
-                <MetricCard naziv="Stabilnost" opis="Stabilnost = male oscilacije. Viši skor znaci predvidljiviju prodaju i lakše planiranje." vrednost={fmtNum(average(supplierDerived.map((x) => x.stability)))} promena={fmtNum(average(supplierDerived.map((x) => x.consistencyScore)))} smer={average(supplierDerived.map((x) => x.stability)) > 60 ? "up" : "down"} sparkline={supplierDerived.map((x) => x.stability)} />
-            </section>
-            <section className="supplier-section">
-                <div className="supplier-section-title-row">
-                    <h2>Analiza dobavljaca pre i posle nivelacije</h2>
-                    <InfoHint text="Horizontalni prikaz poredi promet pre i posle nivelacije. Zelena boja znaci bolji rezultat nakon promene cene." />
-                </div>
-                <div className="supplier-chart-grid">
-                    <article className="supplier-card">
-                        <h3>Top 5 dobavljaca po skoru (prodavali pre i posle)</h3>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={topSuppliers} layout="vertical" margin={{ top: 8, right: 12, bottom: 8, left: 70 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--c-263040, #263040)" />
-                                <XAxis type="number" tick={{ fill: "var(--c-9fb1c7, #9fb1c7)" }} />
-                                <YAxis type="category" dataKey="vendorName" width={140} tick={{ fill: "var(--c-d8e4f5, #d8e4f5)", fontSize: 12 }} />
-                                <Tooltip formatter={(value: number | string | undefined, name: string | undefined) => {
-                                    const num = Number(value ?? 0);
-                                    if (name === "preRevenue" || name === "postRevenue") return [fmtRsd(num), name === "preRevenue" ? "Promet pre" : "Promet posle"];
-                                    if (name === "score") return [fmtNum(num), "Supplier Improvement Score"];
-                                    return [fmtNum(num), name ?? "Vrednost"];
-                                }} />
-                                <Bar dataKey="preRevenue" fill="var(--c-2563eb, #2563eb)" name="preRevenue" radius={[6, 6, 6, 6]} />
-                                <Bar dataKey="postRevenue" fill="var(--c-0ea5a4, #0ea5a4)" name="postRevenue" radius={[6, 6, 6, 6]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </article>
-                    <article className="supplier-card">
-                        <h3>Supplier Scorecard (Top 5)</h3>
-                        <div className="supplier-scorecards">
-                            {topSuppliers.map((s) => (
-                                <div key={s.vendorName} className="supplier-scorecard">
-                                    <div className="supplier-scorecard-head"><strong>{s.vendorName}</strong><span className={trendClass(s.trend)}>{trendArrow(s.trend)} {fmtPct(s.changeRevenuePct)}</span></div>
-                                    <div className="supplier-scorecard-line"><span title="Supplier Improvement Score: ukupna ocena uspešnosti posle nivelacije.">Skor: {fmtNum(s.score)}</span><span title="Supplier Stability Score: male oscilacije znace predvidljiviju prodaju.">Stabilnost: {fmtNum(s.stability)}</span></div>
-                                    <div className="supplier-scorecard-line"><span title="Indeks elasticnosti dobavljaca: osetljivost prodaje na promenu cene.">Elasticitet: {fmtNum(s.elasticity)}</span><span title="Shift Share: promena tržišnog udela pre i posle nivelacije.">Shift share: {fmtPct(s.shiftShare)}</span></div>
-                                    {s.postDominanceRisk >= 25 ? <div className="supplier-flag-risk">Upozorenje: velika post-nivelacija prodaja ({fmtPct(s.postSharePct)} udeo)</div> : null}
-                                    <Sparkline values={s.sparkline} />
-                                </div>
-                            ))}
-                        </div>
-                    </article>
-                </div>
-                <article className="supplier-card">
-                    <h3>Top 5 upozorenja (pad + post dominacija)</h3>
-                    <ul className="supplier-top-list">
-                        {declineSuppliers.map((s) => (
-                            <li key={`decline-${s.vendorName}`}>
-                                <div><strong>{s.vendorName}</strong><span title="Rizik pada prodaje: visoka vrednost znaci potrebu za brzom akcijom.">Rizik: {fmtNum(s.riskDropSales)}</span></div>
-                                <div><span title="Pre/Post Profit Lift: procena efekta promene cene na profit.">Profit lift: {fmtRsd(s.prePostProfitLift)}</span><span className={trendClass(s.trend)}>{trendArrow(s.trend)} {fmtPct(s.changeRevenuePct)}</span></div>
-                                {s.postDominanceRisk >= 25 ? <div className="supplier-flag-risk">Kriticna post prodaja: {fmtPct(s.postSharePct)} udela</div> : null}
-                            </li>
-                        ))}
-                    </ul>
-                </article>
-            </section>
-
-            <section className="supplier-section">
-                <div className="supplier-section-title-row">
-                    <h2>Analiza po tipu obuce i dobavljacima</h2>
-                    <InfoHint text="Donut prikazuje udeo tipa u prometu, treemap hijerarhiju tipova, a heatmap odnos dobavljac × tip obuce." />
-                </div>
-                <div className="supplier-chart-grid">
-                    <article className="supplier-card">
-                        <h3>Udeo tipa obuce (Donut)</h3>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <PieChart>
-                                <Pie data={donutData} dataKey="value" nameKey="name" innerRadius={68} outerRadius={104}>
-                                    {donutData.map((_, index) => <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />)}
-                                </Pie>
-                                <Tooltip formatter={(value: number | string | undefined, name: string | undefined) => [fmtRsd(Number(value ?? 0)), `${name ?? "Vrednost"}`]} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <ul className="supplier-mini-list">
-                            {topTypes.map((x) => <li key={`type-${x.tip}`}><span title="Udeo u kategoriji po tipu: koliki deo prometa nosi ovaj tip obuce.">{x.tip}</span><span>{fmtPct(x.share * 100)}</span></li>)}
-                        </ul>
-                    </article>
-                    <article className="supplier-card">
-                        <h3>Treemap tipova obuce</h3>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <Treemap data={treemapData} dataKey="size" stroke="var(--c-0f172a, #0f172a)" fill="var(--c-0891b2, #0891b2)" />
-                        </ResponsiveContainer>
-                        <p className="supplier-note"><InfoHint text="Treemap koristi površinu polja da prikaže relativni doprinos tipa obuce ukupnom prometu." />Vece polje = veci doprinos prometu.</p>
-                    </article>
-                </div>
-                <article className="supplier-card">
-                    <h3>Heatmap: Dobavljac × tip obuce (post promet)</h3>
-                    <div className="supplier-heatmap-grid" style={{ gridTemplateColumns: `minmax(170px, 1.4fr) repeat(${heatmap.topTypeKeys.length}, minmax(90px, 1fr))` }}>
-                        <div className="heatmap-head">Dobavljac / Tip</div>
-                        {heatmap.topTypeKeys.map((tip) => <div key={`head-${tip}`} className="heatmap-head" title="Raspodela po tipovima pokazuje gde je koncentrisana prodaja po dobavljacu.">{tip}</div>)}
-                        {heatmap.matrix.map((row) => (
-                            <div key={`r-${row.dobavljac}`} className="heatmap-row-wrap">
-                                <div className="heatmap-supplier">{row.dobavljac}</div>
-                                {row.cells.map((cell) => {
-                                    const intensity = clamp(cell.vrednost / heatmap.maxCell, 0, 1);
-                                    const color = `rgba(14, 165, 164, ${0.15 + intensity * 0.78})`;
-                                    return <div key={`${row.dobavljac}-${cell.tip}`} className="heatmap-cell" style={{ background: color }} title={`${row.dobavljac} • ${cell.tip}: ${fmtRsd(cell.vrednost)} post prometa`}>{fmtNum(cell.vrednost / 1000)}k</div>;
-                                })}
-                            </div>
-                        ))}
-                    </div>
-                </article>
-            </section>
-
-            <section className="supplier-section">
-                <div className="supplier-section-title-row">
-                    <h2>Ko se bolje prodaje po staroj ceni, ko po novoj</h2>
-                    <InfoHint text="Dual bar poredi pre i posle promet; liste izdvajaju dobavljace sa rastom nakon poskupljenja, padom nakon sniženja i stabilnim performansama." />
-                </div>
-                <div className="supplier-chart-grid">
-                    <article className="supplier-card">
-                        <h3>Dual bar: Pre vs Posle</h3>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={prePostComparison}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--c-263040, #263040)" />
-                                <XAxis dataKey="dobavljac" tick={{ fill: "var(--c-c6d4e6, #c6d4e6)", fontSize: 11 }} />
-                                <YAxis tick={{ fill: "var(--c-9fb1c7, #9fb1c7)" }} />
-                                <Tooltip formatter={(value: number | string | undefined, name: string | undefined) => [fmtRsd(Number(value ?? 0)), name === "pre" ? "Promet pre" : "Promet posle"]} />
-                                <Bar dataKey="pre" fill="var(--c-1d4ed8, #1d4ed8)" radius={[6, 6, 0, 0]} />
-                                <Bar dataKey="posle" fill="var(--c-0d9488, #0d9488)" radius={[6, 6, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </article>
-                    <article className="supplier-card">
-                        <h3>Top 5 stabilnih performansi</h3>
-                        <ul className="supplier-top-list">
-                            {comparableSuppliers.filter((x) => x.stability >= 65).sort((a, b) => b.stability - a.stability).slice(0, 5).map((s) => (
-                                <li key={`stable-${s.vendorName}`}>
-                                    <div><strong>{s.vendorName}</strong><span title="Stabilnost = malo oscilacija; veca vrednost znaci predvidljiviji rezultat.">Stabilnost: {fmtNum(s.stability)}</span></div>
-                                    <div><span title="Price Sensitivity Score: viši skor znaci veca osetljivost na promenu cene.">Sens: {fmtNum(s.priceSensitivity)}</span><span className={trendClass(s.trend)}>{trendArrow(s.trend)} {fmtPct(s.changeRevenuePct)}</span></div>
-                                </li>
-                            ))}
-                        </ul>
-                    </article>
-                </div>
-                <div className="supplier-split-grid">
-                    <article className="supplier-card">
-                        <h3>Top 5 rast posle poskupljenja</h3>
-                        <ul className="supplier-top-list">
-                            {risingAfterIncrease.map((s) => <li key={`rise-${s.vendorName}`}><div><strong>{s.vendorName}</strong><span>{fmtPct(s.changeRevenuePct)}</span></div><Sparkline values={s.sparkline} /></li>)}
-                        </ul>
-                    </article>
-                    <article className="supplier-card">
-                        <h3>Top 5 gubitak posle sniženja</h3>
-                        <ul className="supplier-top-list">
-                            {losingAfterDecrease.map((s) => <li key={`drop-${s.vendorName}`}><div><strong>{s.vendorName}</strong><span>{fmtPct(s.changeRevenuePct)}</span></div><Sparkline values={s.sparkline} /></li>)}
-                        </ul>
-                    </article>
-                </div>
-            </section>
-            <section className="supplier-section">
-                <div className="supplier-section-title-row">
-                    <h2>Kljucne metrike (15+)</h2>
-                    <InfoHint text="Svaka metrika ima tooltip sa definicijom i logikom interpretacije za donošenje poslovnih odluka." />
-                </div>
-                <div className="supplier-metric-grid">
-                    {tooltipMetrics.map((m) => (
-                        <article key={m.key} className="supplier-metric-card">
-                            <div className="supplier-metric-title">{m.naziv}<InfoHint text={m.opis} /></div>
-                            <div className="supplier-metric-value">{m.vrednost}</div>
-                        </article>
-                    ))}
-                </div>
-            </section>
-
-            <section className="supplier-section">
-                <div className="supplier-section-title-row">
-                    <h2>Najvažniji uvidi</h2>
-                    <InfoHint text="AI engine kombinuje trend, maržu, elasticitet, OOS i lost sales da predloži konkretne akcije." />
-                </div>
-                <div className="supplier-insights-grid">
-                    {aiInsights.map((insight, idx) => <article key={`insight-${idx}`} className={`supplier-insight-card insight-${insight.ton}`}><h3><span>{insight.ikonica}</span> {insight.naslov}</h3><p>{insight.opis}</p><div className="supplier-insight-action">Predlog akcije: {insight.akcija}</div></article>)}
-                </div>
-            </section>
-
-            <section className="supplier-section supplier-women-section">
-                <div className="supplier-section-title-row">
-                    <h2>Planiranje nabavke ženske obuce</h2>
-                    <InfoHint text="Sekcija kombinuje sezonski trend, projekciju tražnje, rizik rasprodaje i preporucene kolicine za sledeci ciklus." />
-                </div>
-                <div className="supplier-kpi-grid women-kpi-grid">
-                    <MetricCard naziv="Sezonski trend SS" opis="SS period (prolece/leto) za žensku obucu: broj prodatih jedinica u posmatranom periodu." vrednost={fmtNum(womenPlan.ssQty)} sparkline={[womenPlan.ssQty * 0.8, womenPlan.ssQty * 0.95, womenPlan.ssQty]} />
-                    <MetricCard naziv="Sezonski trend AW" opis="AW period (jesen/zima) za žensku obucu: broj prodatih jedinica u posmatranom periodu." vrednost={fmtNum(womenPlan.awQty)} sparkline={[womenPlan.awQty * 0.8, womenPlan.awQty * 0.95, womenPlan.awQty]} />
-                    <MetricCard naziv="Projekcija tražnje" opis="Procena tražnje za sledeci ciklus na osnovu post prodaje i sezonskog faktora rasta." vrednost={fmtNum(womenPlan.projectionNextCycle)} sparkline={[womenPlan.projectionNextCycle * 0.78, womenPlan.projectionNextCycle * 0.92, womenPlan.projectionNextCycle]} />
-                    <MetricCard naziv="Preporucena narudžbina" opis="Preporucena ukupna kolicina ukljucuje sigurnosni sloj zbog rizika od rasprodaje (OOS)." vrednost={fmtNum(womenPlan.recommendedTotal)} sparkline={[womenPlan.recommendedTotal * 0.8, womenPlan.recommendedTotal * 0.96, womenPlan.recommendedTotal]} />
-                </div>
-                <div className="supplier-chart-grid">
-                    <article className="supplier-card">
-                        <h3>Supplier ranking za žensku obucu (Top 5)</h3>
-                        <ul className="supplier-top-list">
-                            {womenPlan.supplierRanking.map((x) => <li key={`women-supplier-${x.supplier}`}><div><strong>{x.supplier}</strong><span title="Dobavljaci koji najviše rastu u ženskoj obuci imaju veci procenat rasta pre/posle.">Rast: {fmtPct(x.growthPct)}</span></div><div><span title="Predlog narudžbine po dobavljacu za naredni ciklus.">Preporuceno: {fmtNum(x.recommendedQty)}</span><span title="Rizik od rasprodaje (OOS): viša vrednost znaci vecu verovatnocu stockout-a.">OOS rizik: {fmtNum(x.risk)}</span></div></li>)}
-                        </ul>
-                    </article>
-                    <article className="supplier-card">
-                        <h3>Maržna slika po tipu ženske obuce</h3>
-                        <ul className="supplier-mini-list">
-                            {womenPlan.typeMargins.map((x) => <li key={`women-type-${x.tip}`}><span>{x.tip}</span><span title="Marža po tipu obuce (proxy) koristi prosecnu prodajnu cenu kao indikator profitabilnosti.">{fmtRsd(x.marginProxy)}</span></li>)}
-                        </ul>
-                        <p className="supplier-note"><InfoHint text="Optimalne cene su izvedene iz zone gde je odnos obima i marže najpovoljniji za svaki tip." />Optimalna cena po tipu prati lokalnu optimalnu cenovnu zonu iz metrike iznad.</p>
-                    </article>
-                </div>
-                <div className="supplier-chart-grid">
-                    <article className="supplier-card">
-                        <h3>Prioritetni modeli za narucivanje (Top 5)</h3>
-                        <ul className="supplier-top-list">
-                            {womenPlan.topModels.map((model) => <li key={`women-model-${model.model}`}><div><strong>{model.model}</strong><span>{model.supplier}</span></div><div><span title="Lost sales potencijal: procena prometa koji je izgubljen zbog nedostatka robe.">Lost sales: {fmtRsd(model.lostSales)}</span><span title="Rizik rasprodaje (OOS) za model.">OOS: {fmtPct(model.oosRate * 100)}</span></div></li>)}
-                        </ul>
-                    </article>
-                    <article className="supplier-card">
-                        <h3>Heatmap dostupnosti ženske obuce</h3>
-                        <div className="supplier-mini-heatmap">
-                            {womenPlan.availabilityHeatmap.map((x) => {
-                                const availabilityTone = clamp(x.dostupnost / 100, 0, 1);
-                                const color = `rgba(34, 197, 94, ${0.2 + availabilityTone * 0.6})`;
-                                return <div key={`avail-${x.supplier}`} className="supplier-mini-heatmap-row" title={`${x.supplier}: dostupnost ${fmtNum(x.dostupnost)} / OOS rizik ${fmtNum(x.oosRizik)}`}><span>{x.supplier}</span><div className="supplier-mini-heatmap-cell" style={{ background: color }}>Dostupnost {fmtNum(x.dostupnost)}</div></div>;
-                            })}
-                        </div>
-                    </article>
-                </div>
-                <article className="supplier-card">
-                    <h3>Preporucene kolicine za sledeci ciklus (Top 5)</h3>
-                    <div className="supplier-recommendations">
-                        {womenPlan.supplierRanking.map((x) => <div key={`reco-${x.supplier}`} className="supplier-reco-card"><h4>{x.supplier}</h4><p>Predlog: <strong>{fmtNum(x.recommendedQty)} kom</strong></p><p title="Supplier Trend Phase: rastuci/stagnacija/pad pomaže u odluci o prioritetu narudžbine.">Trend faza: {x.growthPct > 2 ? "Rastuci" : x.growthPct < -2 ? "Pad" : "Stagnacija"}</p><p title="Dobavljaci sa stagnacijom zahtevaju oprez i manji inicijalni ulaz dok se ne potvrdi oporavak.">Status: {x.growthPct > 0 ? "Rast" : "Stagnacija/Pad"}</p></div>)}
-                    </div>
-                </article>
-            </section>
+  return (
+    <div className="sf-decision-page">
+      <header className="sf-decision-header">
+        <div>
+          <h1 className="sf-decision-title">Dobavljaci i Tipovi Obuce</h1>
+          <p className="sf-decision-subtitle">Decision-support ekran koji spaja dobavljaca i dominantan tip obuce, da se brzo vidi gde je najveci promet, koji tip nosi rezultat i gde treba pojacati fokus.</p>
         </div>
-    );
+        <div className="sf-decision-generated">Generisano: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("sr-RS") : "-"}</div>
+      </header>
+
+      <section className="sf-decision-filters">
+        <label className="sf-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="custom">Custom</option></select></label>
+        <label className="sf-decision-field"><span>Od</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
+        <label className="sf-decision-field"><span>Do</span><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
+        <label className="sf-decision-field"><span>Dobavljac</span><select value={vendorId ?? ""} onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : null)}><option value="">Svi</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.naziv}</option>)}</select></label>
+        <label className="sf-decision-field"><span>Kategorija</span><select value={category} onChange={(e) => setCategory(e.target.value)}><option value="">Sve</option>{(data?.categories ?? []).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <div className="sf-decision-actions"><button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button><button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button></div>
+      </section>
+
+      {invalidRange ? <div className="sf-decision-message error">Datum od ne moze biti posle datuma do.</div> : null}
+      {error ? <div className="sf-decision-message error">{error}</div> : null}
+      {loading ? <div className="sf-decision-message loading">Ucitavam dobavljace i tipove obuce...</div> : null}
+
+      {!loading && data ? (
+        <>
+          <section className="sf-decision-kpis">
+            <article className="sf-decision-kpi"><span>Ukupan promet</span><strong>{fmtRsd(totalRevenue)}</strong></article>
+            <article className="sf-decision-kpi"><span>Udeo top 5 dobavljaca</span><strong>{fmtPct(top5SharePct)}</strong></article>
+            <article className="sf-decision-kpi"><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong></article>
+            <article className="sf-decision-kpi"><span>Rast/PAD vs prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
+            <article className="sf-decision-kpi"><span>Dominantan tip obuce</span><strong>{dominantTypeSummary}</strong></article>
+          </section>
+
+          <section className="sf-decision-panels">
+            <article className="sf-decision-card">
+              <h2>Koncentracija po tipu obuce</h2><p>Top tipovi obuce po udelu prometa u trenutnom filtru.</p>
+              {typeInsights.globalTypeShare.length > 0 ? (
+                <div className="sf-decision-chart-wrap">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                    <BarChart data={typeInsights.globalTypeShare} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
+                      <Tooltip formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
+                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : <div className="sf-decision-empty">Nema podataka za grafikon tipova obuce.</div>}
+            </article>
+
+            <article className="sf-decision-card">
+              <div className="sf-decision-table-head">
+                <div><h2>Prioritetna lista dobavljaca</h2><p>Pojacaj: {vendorCounts.boost} | Zadrzi: {vendorCounts.keep} | Smanji: {vendorCounts.reduce}</p></div>
+                <AnalyticsTableToolbar tableKey="dobavljaci-tipovi-obuce" tableTitle="Dobavljaci-tipovi decision support" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
+              </div>
+              <div className="sf-decision-table-wrap">
+                <table className="sf-decision-table">
+                  <thead>
+                    <tr>
+                      <th><button type="button" onClick={() => handleSort("vendorName")}>Dobavljac{sortMarker("vendorName", sortField, sortDir)}</button></th>
+                      <th className="align-right"><button type="button" onClick={() => handleSort("postRevenue")}>Promet{sortMarker("postRevenue", sortField, sortDir)}</button></th>
+                      <th className="align-right"><button type="button" onClick={() => handleSort("sharePct")}>Udeo{sortMarker("sharePct", sortField, sortDir)}</button></th>
+                      <th><button type="button" onClick={() => handleSort("topFootwearType")}>Glavni tip{sortMarker("topFootwearType", sortField, sortDir)}</button></th>
+                      <th className="align-right"><button type="button" onClick={() => handleSort("trendPct")}>Trend{sortMarker("trendPct", sortField, sortDir)}</button></th>
+                      <th><button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button></th>
+                      <th className="align-center">Detalj</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedRows.length === 0 ? (
+                      <tr><td colSpan={7} className="sf-decision-empty-row">Nema podataka za izabrane filtere.</td></tr>
+                    ) : (
+                      sortedRows.map((row) => {
+                        const rowId = vendorKey(row); const expanded = expandedVendorKey === rowId;
+                        return (
+                          <tr key={rowId} className={expanded ? "expanded-row" : ""}>
+                            <td>{row.vendorName || "Nepoznat dobavljac"}</td>
+                            <td className="align-right">{fmtRsd(row.postRevenue)}</td>
+                            <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
+                            <td><strong>{row.topFootwearType}</strong><div className="sf-mini-note">{fmtPct(row.topFootwearTypeSharePct, 1)} udela kod dobavljaca</div></td>
+                            <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
+                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{row.status}</span></td>
+                            <td className="align-center"><button type="button" className="sf-decision-detail-btn" onClick={() => setExpandedVendorKey(expanded ? null : rowId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
+          {selectedRow ? (
+            <section className="sf-decision-detail">
+              <div className="sf-decision-detail-head"><h3>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljac"}</h3><button type="button" onClick={() => openVendorDetail(selectedRow)}>Otvori puni detalj</button></div>
+              <div className="sf-decision-detail-grid">
+                <article><span>Pre nivelacije promet</span><strong>{fmtRsd(selectedRow.preRevenue)}</strong></article>
+                <article><span>Posle nivelacije promet</span><strong>{fmtRsd(selectedRow.postRevenue)}</strong></article>
+                <article><span>Pre nivo kolicina</span><strong>{fmtQty(selectedRow.preQty)}</strong></article>
+                <article><span>Posle nivo kolicina</span><strong>{fmtQty(selectedRow.postQty)}</strong></article>
+                <article><span>Glavni tip obuce</span><strong>{selectedRow.topFootwearType} ({fmtPct(selectedRow.topFootwearTypeSharePct, 1)})</strong></article>
+                <article><span>Elasticnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
+                <article><span>Aktivni artikli</span><strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong></article>
+                <article><span>Pouzdanost signala</span><strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong></article>
+                <article><span>Decision score</span><strong>{selectedRow.decisionScore}</strong></article>
+              </div>
+              <p className="sf-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>
+            </section>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
 }
-
-

@@ -323,7 +323,7 @@ export default function EbayShoesTrendsPage() {
             </div>
 
             {/* ── Sync card ── */}
-            <div style={{ background: "var(--surface-card, white)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px rgba(0,0,0,.06))" }}>
+            <div style={{ background: "var(--surface-card, #ffffff)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px rgba(0,0,0,.06))" }}>
                 {/* eBay colour bar */}
                 <div style={{ height: 4, borderRadius: 4, background: `linear-gradient(90deg, var(--c-e53238, #e53238), var(--c-f5af02, #f5af02) 40%, var(--c-86b817, #86b817) 70%, var(--c-05adee, #05adee))`, marginBottom: 14 }} />
 
@@ -352,7 +352,7 @@ export default function EbayShoesTrendsPage() {
                         <select
                             value={syncGender}
                             onChange={(e) => setSyncGender(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, minWidth: 120, background: "var(--surface-card, white)" }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, minWidth: 120, background: "var(--surface-card, #ffffff)" }}
                         >
                             {GENDER_OPTIONS.map((g) => (
                                 <option key={g.value} value={g.value}>{g.label}</option>
@@ -386,7 +386,7 @@ export default function EbayShoesTrendsPage() {
                         style={{
                             padding: "8px 20px", borderRadius: 8,
                             background: syncing ? "var(--border-muted, #e5e7eb)" : "var(--brand-ebay, #e53238)",
-                            color: syncing ? "var(--text-muted, #9ca3af)" : "white",
+                            color: syncing ? "var(--text-muted, #9ca3af)" : "var(--text-on-primary, #ffffff)",
                             border: "none", fontWeight: 700, fontSize: 13,
                             cursor: syncing ? "not-allowed" : "pointer",
                             transition: "all .15s",
@@ -440,7 +440,7 @@ export default function EbayShoesTrendsPage() {
                                     <select
                                         value={brandFilter}
                                         onChange={(e) => setBrandFilter(e.target.value)}
-                                        style={{ padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${brandFilter !== "all" ? "var(--accent, #6366f1)" : "var(--border-muted, #e5e7eb)"}`, fontSize: 12, fontWeight: brandFilter !== "all" ? 700 : 400, color: brandFilter !== "all" ? "var(--accent, #4f46e5)" : "var(--text-primary, #374151)", background: brandFilter !== "all" ? "var(--surface-variant, #eef2ff)" : "var(--surface-card, white)", cursor: "pointer" }}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${brandFilter !== "all" ? "var(--accent, #6366f1)" : "var(--border-muted, #e5e7eb)"}`, fontSize: 12, fontWeight: brandFilter !== "all" ? 700 : 400, color: brandFilter !== "all" ? "var(--accent, #4f46e5)" : "var(--text-primary, #374151)", background: brandFilter !== "all" ? "var(--surface-variant, #eef2ff)" : "var(--surface-card, #ffffff)", cursor: "pointer" }}
                                     >
                                         <option value="all">🏷 Svi brendovi</option>
                                         {POPULAR_BRANDS.map(({ group, brands }) => (
@@ -452,7 +452,7 @@ export default function EbayShoesTrendsPage() {
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value)}
-                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid var(--c-e5e7eb, #e5e7eb)", fontSize: 12, fontWeight: 600, background: "white", cursor: "pointer" }}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid var(--c-e5e7eb, #e5e7eb)", fontSize: 12, fontWeight: 600, background: "var(--surface-default, #ffffff)", cursor: "pointer" }}
                                     >
                                         {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </select>
@@ -468,8 +468,8 @@ export default function EbayShoesTrendsPage() {
                                         style={{
                                             padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
                                             border: `1.5px solid ${browseGender === g.value ? EBAY_BRAND_COLOR : "var(--border-muted, #e5e7eb)"}`,
-                                            background: browseGender === g.value ? EBAY_BRAND_COLOR : "var(--surface-card, white)",
-                                            color: browseGender === g.value ? "white" : "var(--text-primary, #374151)",
+                                            background: browseGender === g.value ? EBAY_BRAND_COLOR : "var(--surface-card, #ffffff)",
+                                            color: browseGender === g.value ? "var(--text-on-primary, #ffffff)" : "var(--text-primary, #374151)",
                                             cursor: "pointer", transition: "all .12s",
                                         }}
                                     >
@@ -522,7 +522,7 @@ export default function EbayShoesTrendsPage() {
                                 style={{
                                     padding: "10px 32px", borderRadius: 10,
                                     background: loadingMore ? "var(--c-e5e7eb, #e5e7eb)" : EBAY_BRAND_COLOR,
-                                    color: loadingMore ? "var(--c-9ca3af, #9ca3af)" : "white",
+                                    color: loadingMore ? "var(--c-9ca3af, #9ca3af)" : "var(--text-on-primary, #ffffff)",
                                     border: "none", fontWeight: 700, fontSize: 14,
                                     cursor: loadingMore ? "not-allowed" : "pointer",
                                     transition: "all .15s",

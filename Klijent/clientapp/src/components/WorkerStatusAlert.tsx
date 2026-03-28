@@ -196,8 +196,8 @@ export default function WorkerStatusAlert() {
             style={{
               width: "100%",
               padding: "8px 12px",
-              background: "var(--error)",
-              color: "white",
+              background: "var(--error, #dc2626)",
+              color: "var(--text-on-primary, #ffffff)",
               border: "none",
               borderRadius: 6,
               cursor: "pointer",

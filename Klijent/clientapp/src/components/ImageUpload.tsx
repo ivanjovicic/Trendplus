@@ -237,7 +237,7 @@ export default function ImageUpload({
                             }}
                             style={{
                                 background: "var(--error, #dc2626)",
-                                color: "white",
+                                color: "var(--text-on-primary, #ffffff)",
                                 padding: "6px 12px",
                                 borderRadius: "6px",
                                 border: "none",
@@ -272,14 +272,15 @@ export default function ImageUpload({
             {!showPreview && fileName && (
                 <div
                     style={{
-                        marginTop: "0.5rem",
-                        padding: "0.75rem",
-                        background: "var(--surface-elevated)",
-                        border: "1px solid var(--success, #86efac)",
-                        borderRadius: "8px",
+                        marginTop: "1rem",
                         display: "flex",
-                        justifyContent: "space-between",
                         alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "10px",
+                        background: "var(--surface-muted, #f0fdf4)",
+                        border: "1px solid var(--c-86efac, #86efac)",
+                        padding: "10px 12px",
+                        borderRadius: "8px",
                     }}
                 >
                     <span
@@ -298,8 +299,8 @@ export default function ImageUpload({
                             handleClear();
                         }}
                         style={{
-                            background: "var(--error)",
-                            color: "white",
+                            background: "var(--error, #dc2626)",
+                            color: "var(--text-on-primary, #ffffff)",
                             padding: "4px 8px",
                             borderRadius: "4px",
                             border: "none",
