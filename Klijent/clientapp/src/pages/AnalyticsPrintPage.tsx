@@ -31,7 +31,7 @@ export default function AnalyticsPrintPage() {
         @page { size: A4 landscape; margin: 14mm; }
         @media print {
           .analytics-print-actions { display: none !important; }
-          body { background: #fff !important; }
+          body { background: var(--c-fff, #fff) !important; }
         }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid var(--border); padding: 8px; font-size: 12px; vertical-align: top; }

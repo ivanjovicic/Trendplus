@@ -738,7 +738,7 @@ export default function ProdajaPrePostNivelacijePage() {
                                 disabled={loadingOptions}
                                 title="Osvezi listu nivelacija"
                                 type="button"
-                            >&#8635;</button>
+                            >&var(--c-8635, #8635);</button>
                         </div>
                     </div>
                 )}
@@ -1051,13 +1051,13 @@ export default function ProdajaPrePostNivelacijePage() {
                     <h3 className="nivelacija-card-title">Pre vs posle po dobavljacu</h3>
                     <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={0}>
                         <BarChart data={vendorChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="name" tick={{ fill: "#d1d5db", fontSize: 12 }} />
-                            <YAxis tick={{ fill: "#d1d5db", fontSize: 12 }} />
-                            <Tooltip contentStyle={{ background: "#0b1220", border: "1px solid #374151", color: "#e5e7eb" }} formatter={tooltipFormatter} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--c-374151, #374151)" />
+                            <XAxis dataKey="name" tick={{ fill: "var(--c-d1d5db, #d1d5db)", fontSize: 12 }} />
+                            <YAxis tick={{ fill: "var(--c-d1d5db, #d1d5db)", fontSize: 12 }} />
+                            <Tooltip contentStyle={{ background: "var(--c-0b1220, #0b1220)", border: "1px solid var(--c-374151, #374151)", color: "var(--c-e5e7eb, #e5e7eb)" }} formatter={tooltipFormatter} />
                             <Legend />
-                            <Bar dataKey="preValue" name={preSeriesName} fill="#60a5fa" />
-                            <Bar dataKey="postValue" name={postSeriesName} fill="#34d399" />
+                            <Bar dataKey="preValue" name={preSeriesName} fill="var(--c-60a5fa, #60a5fa)" />
+                            <Bar dataKey="postValue" name={postSeriesName} fill="var(--c-34d399, #34d399)" />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -1065,13 +1065,13 @@ export default function ProdajaPrePostNivelacijePage() {
                     <h3 className="nivelacija-card-title">Pre vs posle po artiklima (Top 20)</h3>
                     <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={0}>
                         <LineChart data={articleChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="name" tick={{ fill: "#d1d5db", fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={80} tickFormatter={(value: string) => (value.length > 24 ? `${value.slice(0, 24)}...` : value)} />
-                            <YAxis tick={{ fill: "#d1d5db", fontSize: 12 }} />
-                            <Tooltip contentStyle={{ background: "#0b1220", border: "1px solid #374151", color: "#e5e7eb" }} formatter={tooltipFormatter} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--c-374151, #374151)" />
+                            <XAxis dataKey="name" tick={{ fill: "var(--c-d1d5db, #d1d5db)", fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={80} tickFormatter={(value: string) => (value.length > 24 ? `${value.slice(0, 24)}...` : value)} />
+                            <YAxis tick={{ fill: "var(--c-d1d5db, #d1d5db)", fontSize: 12 }} />
+                            <Tooltip contentStyle={{ background: "var(--c-0b1220, #0b1220)", border: "1px solid var(--c-374151, #374151)", color: "var(--c-e5e7eb, #e5e7eb)" }} formatter={tooltipFormatter} />
                             <Legend />
-                            <Line type="monotone" dataKey="preValue" name={preSeriesName} stroke="#60a5fa" strokeWidth={2} />
-                            <Line type="monotone" dataKey="postValue" name={postSeriesName} stroke="#34d399" strokeWidth={2} />
+                            <Line type="monotone" dataKey="preValue" name={preSeriesName} stroke="var(--c-60a5fa, #60a5fa)" strokeWidth={2} />
+                            <Line type="monotone" dataKey="postValue" name={postSeriesName} stroke="var(--c-34d399, #34d399)" strokeWidth={2} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>

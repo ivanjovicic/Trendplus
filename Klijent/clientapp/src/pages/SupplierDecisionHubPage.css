@@ -1,16 +1,16 @@
 .supplier-decision-page {
-  --bg: #08111f;
-  --bg-soft: #101a2d;
+  --bg: var(--c-08111f, #08111f);
+  --bg-soft: var(--c-101a2d, #101a2d);
   --border: rgba(125, 146, 191, 0.24);
-  --text: #e6eefc;
-  --muted: #9eb1d5;
+  --text: var(--c-e6eefc, #e6eefc);
+  --muted: var(--c-9eb1d5, #9eb1d5);
   color: var(--text);
   min-height: calc(100vh - 64px);
   padding: 24px;
   background:
     radial-gradient(1100px 520px at 8% -10%, rgba(65, 199, 168, 0.22), transparent 58%),
     radial-gradient(980px 620px at 92% 0%, rgba(94, 168, 255, 0.2), transparent 56%),
-    linear-gradient(180deg, #06101e 0%, #0a1323 100%);
+    linear-gradient(180deg, var(--c-06101e, #06101e) 0%, var(--c-0a1323, #0a1323) 100%);
 }
 
 .supplier-decision-hero,
@@ -46,7 +46,7 @@
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #7edcc4;
+  color: var(--c-7edcc4, #7edcc4);
 }
 
 .supplier-decision-hero-copy h1 {
@@ -84,7 +84,7 @@
   background: rgba(16, 30, 50, 0.72);
   padding: 8px 12px;
   font-size: 12px;
-  color: #dce8ff;
+  color: var(--c-dce8ff, #dce8ff);
 }
 
 .supplier-decision-filters {
@@ -160,7 +160,7 @@
 
 .supplier-decision-filter-actions button,
 .supplier-decision-pagination button {
-  background: linear-gradient(135deg, #2fcb9b, #3d7df4);
+  background: linear-gradient(135deg, var(--c-2fcb9b, #2fcb9b), var(--c-3d7df4, #3d7df4));
   color: white;
 }
 
@@ -181,7 +181,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #abc2ea;
+  color: var(--c-abc2ea, #abc2ea);
 }
 
 .supplier-decision-kpi-grid {
@@ -201,7 +201,7 @@
   min-height: 34px;
   font-size: 12px;
   line-height: 1.4;
-  color: #b5c8ea;
+  color: var(--c-b5c8ea, #b5c8ea);
   font-weight: 700;
 }
 
@@ -242,7 +242,7 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #d3e0f8;
+  color: var(--c-d3e0f8, #d3e0f8);
 }
 
 .supplier-decision-legend-dot {
@@ -355,14 +355,14 @@
 
 .supplier-decision-reco-foot {
   margin-top: 12px;
-  color: #dbe7fb;
+  color: var(--c-dbe7fb, #dbe7fb);
   font-size: 12px;
 }
 
 .supplier-decision-table-summary,
 .supplier-decision-reco-confidence {
   font-size: 12px;
-  color: #d5e2fb;
+  color: var(--c-d5e2fb, #d5e2fb);
 }
 
 .supplier-decision-table-wrap {
@@ -389,7 +389,7 @@
 }
 
 .supplier-decision-table th {
-  color: #aac0e6;
+  color: var(--c-aac0e6, #aac0e6);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -437,23 +437,23 @@
 
 .supplier-decision-pill.tone-pozitivno {
   background: rgba(34, 197, 94, 0.15);
-  color: #8ef0b0;
+  color: var(--c-8ef0b0, #8ef0b0);
 }
 
 .supplier-decision-pill.tone-upozorenje {
   background: rgba(245, 158, 11, 0.16);
-  color: #ffd184;
+  color: var(--c-ffd184, #ffd184);
 }
 
 .supplier-decision-pill.tone-rizik {
   background: rgba(239, 68, 68, 0.16);
-  color: #ffacac;
+  color: var(--c-ffacac, #ffacac);
 }
 
 .supplier-decision-pill.tone-neutralno,
 .supplier-decision-pill.neutral {
   background: rgba(94, 168, 255, 0.16);
-  color: #bdd8ff;
+  color: var(--c-bdd8ff, #bdd8ff);
 }
 
 .supplier-decision-drawer-backdrop {
@@ -508,7 +508,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 12px;
-  color: #dce7fb;
+  color: var(--c-dce7fb, #dce7fb);
   font-size: 12px;
 }
 
@@ -548,7 +548,7 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 12px;
-  color: #d5e2fb;
+  color: var(--c-d5e2fb, #d5e2fb);
   font-size: 12px;
 }
 
@@ -558,7 +558,7 @@
   border: 1px solid rgba(128, 153, 196, 0.16);
   background: rgba(11, 19, 35, 0.84);
   padding: 14px;
-  color: #d5e2fb;
+  color: var(--c-d5e2fb, #d5e2fb);
   font-size: 13px;
 }
 
@@ -566,7 +566,7 @@
   margin-bottom: 14px;
   border-color: rgba(239, 68, 68, 0.32);
   background: rgba(83, 19, 19, 0.34);
-  color: #ffd8d8;
+  color: var(--c-ffd8d8, #ffd8d8);
 }
 
 .supplier-decision-skeleton-line,

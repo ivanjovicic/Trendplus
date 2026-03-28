@@ -112,7 +112,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
             <text x={64} y={62} textAnchor="middle" dominantBaseline="middle" fontSize={22} fontWeight={800} fill={color}>
                 {score.toFixed(0)}
             </text>
-            <text x={64} y={84} textAnchor="middle" dominantBaseline="middle" fontSize={11} fill="#8A95B0">
+            <text x={64} y={84} textAnchor="middle" dominantBaseline="middle" fontSize={11} fill="var(--c-8a95b0, #8A95B0)">
                 / 100
             </text>
         </svg>
@@ -265,7 +265,7 @@ export default function RuntimeScoringPage() {
 
     const verdictCls = result ? VERDICT_MAP[result.verdictColor] ?? VERDICT_MAP.gray : VERDICT_MAP.gray;
 
-    const sellBarColor = sellProbabilityPercent >= 60 ? "#22c55e" : sellProbabilityPercent >= 30 ? "#f59e0b" : "#ef4444";
+    const sellBarColor = sellProbabilityPercent >= 60 ? "var(--c-22c55e, #22c55e)" : sellProbabilityPercent >= 30 ? "var(--c-f59e0b, #f59e0b)" : "var(--c-ef4444, #ef4444)";
 
     const handleRunEvaluation = useCallback(() => {
         formRef.current?.requestSubmit();
@@ -373,7 +373,7 @@ export default function RuntimeScoringPage() {
                                 </>
                             ) : (
                                 <>
-                                    <svg width={36} height={36} fill="none" stroke={isDragging ? "#4F8EF7" : "#3A4565"} strokeWidth={1.5} viewBox="0 0 24 24">
+                                    <svg width={36} height={36} fill="none" stroke={isDragging ? "var(--c-4f8ef7, #4F8EF7)" : "var(--c-3a4565, #3A4565)"} strokeWidth={1.5} viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                                     </svg>
                                     <span className="mt-2 text-sm text-muted text-center">{isDragging ? "Pusti sliku ovde" : "Prevuci sliku ili klikni za izbor"}</span>
@@ -382,7 +382,7 @@ export default function RuntimeScoringPage() {
                             )}
                         </div>
                         <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={(e) => applyFile(e.target.files?.[0] ?? null)} className="hidden" />
-                        {formErrors.file && <div style={{ marginTop: 5, color: "#f87171", fontSize: 12 }}>{formErrors.file}</div>}
+                        {formErrors.file && <div style={{ marginTop: 5, color: "var(--c-f87171, #f87171)", fontSize: 12 }}>{formErrors.file}</div>}
                     </div>
 
                     {/* brand */}
@@ -410,11 +410,11 @@ export default function RuntimeScoringPage() {
 
                     {/* market */}
                     <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8A95B0", marginBottom: 5 }}>Tržište</label>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--c-8a95b0, #8A95B0)", marginBottom: 5 }}>Tržište</label>
                         <select
                             value={market}
                             onChange={(e) => setMarket(e.target.value)}
-                            style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #2A3045", fontSize: 13, background: "#1A1F2E", color: "#c9d3e4" }}
+                            style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--c-2a3045, #2A3045)", fontSize: 13, background: "var(--c-1a1f2e, #1A1F2E)", color: "var(--c-c9d3e4, #c9d3e4)" }}
                         >
                             {[["RS","Srbija (RS)"],["DE","Nemačka (DE)"],["AT","Austrija (AT)"],["CH","Švajcarska (CH)"],["HU","Mađarska (HU)"],["RO","Rumunija (RO)"]].map(([val, lbl]) => (
                                 <option key={val} value={val}>{lbl}</option>
@@ -425,60 +425,60 @@ export default function RuntimeScoringPage() {
                     {/* prices */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         <div>
-                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8A95B0", marginBottom: 5 }}>Nabavna cena</label>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--c-8a95b0, #8A95B0)", marginBottom: 5 }}>Nabavna cena</label>
                             <input
                                 type="text" inputMode="decimal" value={cost}
                                 onChange={(e) => { setCost(e.target.value); if (formErrors.cost) setFormErrors((p) => ({ ...p, cost: undefined })); }}
                                 placeholder="55.90"
-                                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: `1px solid ${formErrors.cost ? "#ef4444" : "#2A3045"}`, fontSize: 13, background: "#1A1F2E", color: "#c9d3e4" }}
+                                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: `1px solid ${formErrors.cost ? "var(--c-ef4444, #ef4444)" : "var(--c-2a3045, #2A3045)"}`, fontSize: 13, background: "var(--c-1a1f2e, #1A1F2E)", color: "var(--c-c9d3e4, #c9d3e4)" }}
                             />
-                            {formErrors.cost && <div style={{ marginTop: 5, color: "#f87171", fontSize: 12 }}>{formErrors.cost}</div>}
+                            {formErrors.cost && <div style={{ marginTop: 5, color: "var(--c-f87171, #f87171)", fontSize: 12 }}>{formErrors.cost}</div>}
                         </div>
                         <div>
-                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8A95B0", marginBottom: 5 }}>Ciljna cena *</label>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--c-8a95b0, #8A95B0)", marginBottom: 5 }}>Ciljna cena *</label>
                             <input
                                 type="text" inputMode="decimal" value={targetPrice}
                                 onChange={(e) => { setTargetPrice(e.target.value); if (formErrors.targetPrice) setFormErrors((p) => ({ ...p, targetPrice: undefined })); }}
                                 placeholder="89.90"
-                                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: `1px solid ${formErrors.targetPrice ? "#ef4444" : "#2A3045"}`, fontSize: 13, background: "#1A1F2E", color: "#c9d3e4" }}
+                                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: `1px solid ${formErrors.targetPrice ? "var(--c-ef4444, #ef4444)" : "var(--c-2a3045, #2A3045)"}`, fontSize: 13, background: "var(--c-1a1f2e, #1A1F2E)", color: "var(--c-c9d3e4, #c9d3e4)" }}
                             />
-                            {formErrors.targetPrice && <div style={{ marginTop: 5, color: "#f87171", fontSize: 12 }}>{formErrors.targetPrice}</div>}
+                            {formErrors.targetPrice && <div style={{ marginTop: 5, color: "var(--c-f87171, #f87171)", fontSize: 12 }}>{formErrors.targetPrice}</div>}
                         </div>
                     </div>
 
                     {/* ── Local-signal inputs ── */}
-                    <div style={{ borderTop: "1px solid #2A3045", paddingTop: 10 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "#8A95B0", marginBottom: 8 }}>Lokalni signali (opcionalno)</div>
+                    <div style={{ borderTop: "1px solid var(--c-2a3045, #2A3045)", paddingTop: 10 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--c-8a95b0, #8A95B0)", marginBottom: 8 }}>Lokalni signali (opcionalno)</div>
 
                         {/* Veličina + Boja */}
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                             <div>
-                                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8A95B0", marginBottom: 5 }}>Veličina</label>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--c-8a95b0, #8A95B0)", marginBottom: 5 }}>Veličina</label>
                                 <input
                                     value={velicina}
                                     onChange={(e) => setVelicina(e.target.value)}
                                     placeholder="npr. 42"
-                                    style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #2A3045", fontSize: 13, background: "#1A1F2E", color: "#c9d3e4" }}
+                                    style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--c-2a3045, #2A3045)", fontSize: 13, background: "var(--c-1a1f2e, #1A1F2E)", color: "var(--c-c9d3e4, #c9d3e4)" }}
                                 />
                             </div>
                             <div>
-                                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8A95B0", marginBottom: 5 }}>Boja</label>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--c-8a95b0, #8A95B0)", marginBottom: 5 }}>Boja</label>
                                 <input
                                     value={boja}
                                     onChange={(e) => setBoja(e.target.value)}
                                     placeholder="npr. Crna"
-                                    style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #2A3045", fontSize: 13, background: "#1A1F2E", color: "#c9d3e4" }}
+                                    style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--c-2a3045, #2A3045)", fontSize: 13, background: "var(--c-1a1f2e, #1A1F2E)", color: "var(--c-c9d3e4, #c9d3e4)" }}
                                 />
                             </div>
                         </div>
 
                         {/* Materijal */}
                         <div>
-                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8A95B0", marginBottom: 5 }}>Materijal gornjišta</label>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--c-8a95b0, #8A95B0)", marginBottom: 5 }}>Materijal gornjišta</label>
                             <select
                                 value={materijal}
                                 onChange={(e) => setMaterijal(e.target.value)}
-                                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #2A3045", fontSize: 13, background: "#1A1F2E", color: "#c9d3e4" }}
+                                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--c-2a3045, #2A3045)", fontSize: 13, background: "var(--c-1a1f2e, #1A1F2E)", color: "var(--c-c9d3e4, #c9d3e4)" }}
                             >
                                 <option value="">— Izaberi materijal —</option>
                                 {MATERIAL_OPTIONS.map((m) => (
@@ -521,12 +521,12 @@ export default function RuntimeScoringPage() {
 
                     {/* empty state */}
                     {!result && !loading && !error && (
-                        <div style={{ background: "#161A23", border: "1px solid #2A3045", borderRadius: 12, padding: "32px 20px", textAlign: "center", color: "#8A95B0" }}>
-                            <svg width={40} height={40} fill="none" stroke="#3A4565" strokeWidth={1.5} viewBox="0 0 24 24" style={{ margin: "0 auto 10px" }}>
+                        <div style={{ background: "var(--c-161a23, #161A23)", border: "1px solid var(--c-2a3045, #2A3045)", borderRadius: 12, padding: "32px 20px", textAlign: "center", color: "var(--c-8a95b0, #8A95B0)" }}>
+                            <svg width={40} height={40} fill="none" stroke="var(--c-3a4565, #3A4565)" strokeWidth={1.5} viewBox="0 0 24 24" style={{ margin: "0 auto 10px" }}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                             </svg>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: "#8A95B0" }}>Čeka na unos</div>
-                            <div style={{ fontSize: 12, marginTop: 4, color: "#3A4565" }}>Popuni formu i klikni „Izračunaj score"</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--c-8a95b0, #8A95B0)" }}>Čeka na unos</div>
+                            <div style={{ fontSize: 12, marginTop: 4, color: "var(--c-3a4565, #3A4565)" }}>Popuni formu i klikni „Izračunaj score"</div>
                         </div>
                     )}
 
@@ -570,11 +570,11 @@ export default function RuntimeScoringPage() {
 
                             {/* ── insights ── */}
                             {result.insights.length > 0 && (
-                                <div style={{ background: "#161A23", border: "1px solid #2A3045", borderRadius: 12, padding: "14px 16px" }}>
-                                    <div style={{ fontWeight: 700, fontSize: 13, color: "#c9d3e4", marginBottom: 10 }}>Zaključci i preporuke</div>
+                                <div style={{ background: "var(--c-161a23, #161A23)", border: "1px solid var(--c-2a3045, #2A3045)", borderRadius: 12, padding: "14px 16px" }}>
+                                    <div style={{ fontWeight: 700, fontSize: 13, color: "var(--c-c9d3e4, #c9d3e4)", marginBottom: 10 }}>Zaključci i preporuke</div>
                                     <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
                                         {result.insights.map((insight, i) => (
-                                            <li key={i} style={{ fontSize: 13, color: "#8A95B0", display: "flex", alignItems: "flex-start", lineHeight: "1.5" }}>
+                                            <li key={i} style={{ fontSize: 13, color: "var(--c-8a95b0, #8A95B0)", display: "flex", alignItems: "flex-start", lineHeight: "1.5" }}>
                                                 <span style={{ marginRight: 8 }}>{getInsightIcon(insight)}</span>
                                                 <span>{cleanInsightText(insight)}</span>
                                             </li>
@@ -584,8 +584,8 @@ export default function RuntimeScoringPage() {
                             )}
 
                             {/* ── score groups ── */}
-                            <div style={{ background: "#161A23", border: "1px solid #2A3045", borderRadius: 12, padding: "14px 16px" }}>
-                                <div style={{ fontWeight: 700, fontSize: 13, color: "#c9d3e4", marginBottom: 12 }}>Detaljan pregled bodova</div>
+                            <div style={{ background: "var(--c-161a23, #161A23)", border: "1px solid var(--c-2a3045, #2A3045)", borderRadius: 12, padding: "14px 16px" }}>
+                                <div style={{ fontWeight: 700, fontSize: 13, color: "var(--c-c9d3e4, #c9d3e4)", marginBottom: 12 }}>Detaljan pregled bodova</div>
                                 {SCORE_GROUPS.map((group) => {
                                     const keys = Object.entries(SCORE_META)
                                         .filter(([, m]) => m.group === group)
@@ -608,7 +608,7 @@ export default function RuntimeScoringPage() {
                                     };
                                     return (
                                         <div key={group} style={{ marginBottom: 14 }}>
-                                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "#8A95B0", marginBottom: 4 }}>{group}</div>
+                                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--c-8a95b0, #8A95B0)", marginBottom: 4 }}>{group}</div>
                                             {keys.map((k) => <ScoreRow key={k} fieldKey={k} value={values[k] ?? 0} />)}
                                         </div>
                                     );
@@ -616,45 +616,45 @@ export default function RuntimeScoringPage() {
                             </div>
 
                             {/* ── similar products ── */}
-                            <div style={{ background: "#161A23", border: "1px solid #2A3045", borderRadius: 12, padding: "14px 16px" }}>
-                                <div style={{ fontWeight: 700, fontSize: 13, color: "#c9d3e4", marginBottom: 10 }}>
-                                    Slični proizvodi {result.similarProducts.length > 0 && <span style={{ fontWeight: 400, color: "#8A95B0" }}>({result.similarProducts.length})</span>}
+                            <div style={{ background: "var(--c-161a23, #161A23)", border: "1px solid var(--c-2a3045, #2A3045)", borderRadius: 12, padding: "14px 16px" }}>
+                                <div style={{ fontWeight: 700, fontSize: 13, color: "var(--c-c9d3e4, #c9d3e4)", marginBottom: 10 }}>
+                                    Slični proizvodi {result.similarProducts.length > 0 && <span style={{ fontWeight: 400, color: "var(--c-8a95b0, #8A95B0)" }}>({result.similarProducts.length})</span>}
                                 </div>
                                 {result.similarProducts.length === 0 ? (
-                                    <div style={{ color: "#8A95B0", fontSize: 13 }}>Nema vizuelno sličnih proizvoda u bazi.</div>
+                                    <div style={{ color: "var(--c-8a95b0, #8A95B0)", fontSize: 13 }}>Nema vizuelno sličnih proizvoda u bazi.</div>
                                 ) : (
                                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                         {result.similarProducts.map((sp) => {
                                             const imageUrl = getRuntimeProductImageUrl(sp.imageFileName);
                                             const simPct = sp.similarity <= 1 ? sp.similarity * 100 : sp.similarity;
-                                            const simColor = simPct >= 75 ? "#15803d" : simPct >= 55 ? "#d97706" : "#dc2626";
+                                            const simColor = simPct >= 75 ? "var(--c-15803d, #15803d)" : simPct >= 55 ? "var(--c-d97706, #d97706)" : "var(--c-dc2626, #dc2626)";
                                             return (
                                                 <div
                                                     key={`${sp.productId}-${sp.productName}`}
-                                                    style={{ display: "grid", gridTemplateColumns: "52px 1fr auto", gap: 10, alignItems: "center", border: "1px solid #2A3045", borderRadius: 10, padding: "8px 10px", background: "#1A1F2E" }}
+                                                    style={{ display: "grid", gridTemplateColumns: "52px 1fr auto", gap: 10, alignItems: "center", border: "1px solid var(--c-2a3045, #2A3045)", borderRadius: 10, padding: "8px 10px", background: "var(--c-1a1f2e, #1A1F2E)" }}
                                                 >
-                                                    <div style={{ width: 52, height: 52, borderRadius: 8, background: "#1E2332", border: "1px solid #2A3045", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                                    <div style={{ width: 52, height: 52, borderRadius: 8, background: "var(--c-1e2332, #1E2332)", border: "1px solid var(--c-2a3045, #2A3045)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                                         {imageUrl ? (
                                                             <img src={imageUrl} alt={sp.productName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                                         ) : (
-                                                            <svg width={20} height={20} fill="none" stroke="#3A4565" strokeWidth={1.5} viewBox="0 0 24 24">
+                                                            <svg width={20} height={20} fill="none" stroke="var(--c-3a4565, #3A4565)" strokeWidth={1.5} viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 20.25h18A2.25 2.25 0 0 0 23.25 18V6A2.25 2.25 0 0 0 21 3.75H3A2.25 2.25 0 0 0 .75 6v12A2.25 2.25 0 0 0 3 20.25Z" />
                                                             </svg>
                                                         )}
                                                     </div>
                                                     <div style={{ minWidth: 0 }}>
-                                                        <div style={{ fontWeight: 600, fontSize: 13, color: "#c9d3e4", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                        <div style={{ fontWeight: 600, fontSize: 13, color: "var(--c-c9d3e4, #c9d3e4)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                                             {sp.productName || `Proizvod #${sp.productId}`}
                                                         </div>
                                                         <div style={{ display: "flex", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
-                                                            {sp.brand && <span style={{ fontSize: 11, background: "#0e1e38", color: "#60a5fa", borderRadius: 5, padding: "1px 6px" }}>{sp.brand}</span>}
-                                                            {sp.shoeType && <span style={{ fontSize: 11, background: "#0d2118", color: "#4ade80", borderRadius: 5, padding: "1px 6px" }}>{sp.shoeType}</span>}
-                                                            {!sp.brand && !sp.shoeType && <span style={{ fontSize: 11, color: "#3A4565" }}>#{sp.productId}</span>}
+                                                            {sp.brand && <span style={{ fontSize: 11, background: "var(--c-0e1e38, #0e1e38)", color: "var(--c-60a5fa, #60a5fa)", borderRadius: 5, padding: "1px 6px" }}>{sp.brand}</span>}
+                                                            {sp.shoeType && <span style={{ fontSize: 11, background: "var(--c-0d2118, #0d2118)", color: "var(--c-4ade80, #4ade80)", borderRadius: 5, padding: "1px 6px" }}>{sp.shoeType}</span>}
+                                                            {!sp.brand && !sp.shoeType && <span style={{ fontSize: 11, color: "var(--c-3a4565, #3A4565)" }}>#{sp.productId}</span>}
                                                         </div>
                                                     </div>
                                                     <div style={{ textAlign: "right" }}>
                                                         <div style={{ fontWeight: 700, fontSize: 14, color: simColor }}>{simPct.toFixed(1)}%</div>
-                                                        <div style={{ fontSize: 10, color: "#8A95B0" }}>sličnost</div>
+                                                        <div style={{ fontSize: 10, color: "var(--c-8a95b0, #8A95B0)" }}>sličnost</div>
                                                     </div>
                                                 </div>
                                             );

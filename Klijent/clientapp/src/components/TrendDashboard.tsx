@@ -19,13 +19,13 @@ import { fetchDashboard, type DashboardItem, type DashboardRun } from "../servic
 // â”€â”€ Design tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PAL = {
-    blue:          "#4F8EF7",
-    green:         "#4CAF82",
-    yellow:        "#F5C542",
-    orange:        "#F97316",
-    red:           "#E05C5C",
-    purple:        "#9B72CF",
-    cyan:          "#22D3EE",
+    blue:          "var(--c-4f8ef7, #4F8EF7)",
+    green:         "var(--c-4caf82, #4CAF82)",
+    yellow:        "var(--c-f5c542, #F5C542)",
+    orange:        "var(--c-f97316, #F97316)",
+    red:           "var(--c-e05c5c, #E05C5C)",
+    purple:        "var(--c-9b72cf, #9B72CF)",
+    cyan:          "var(--c-22d3ee, #22D3EE)",
     bg:            "var(--surface-default, #0D0F14)",
     card:          "var(--surface-elevated, #161A23)",
     cardHover:     "var(--surface-elevated, #1C2133)",

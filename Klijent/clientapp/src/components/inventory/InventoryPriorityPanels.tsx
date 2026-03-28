@@ -71,13 +71,13 @@ export function InventoryPriorityPanels({
           {chartData.length === 0 ? (
             <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] text-sm text-[var(--text-primary)]">Nema dovoljno podataka za grafikon.</div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
               <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 12, bottom: 10, left: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#233042" />
-                <XAxis type="number" tick={{ fill: "#92a4bf", fontSize: 12 }} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-                <YAxis type="category" dataKey="supplierName" width={110} tick={{ fill: "#92a4bf", fontSize: 11 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={"var(--border-default, #233042)"} />
+                <XAxis type="number" tick={{ fill: "var(--text-muted, #92a4bf)", fontSize: 12 }} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
+                <YAxis type="category" dataKey="supplierName" width={110} tick={{ fill: "var(--text-muted, #92a4bf)", fontSize: 11 }} />
                 <Tooltip cursor={{ fill: "rgba(68,208,255,0.08)" }} formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} />
-                <Bar dataKey="totalValue" fill="#44d0ff" radius={[0, 10, 10, 0]} />
+                <Bar dataKey="totalValue" fill={"var(--accent, #44d0ff)"} radius={[0, 10, 10, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

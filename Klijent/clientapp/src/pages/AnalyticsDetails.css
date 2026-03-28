@@ -97,7 +97,7 @@
 .ad-error {
   margin-bottom: 12px;
   border-color: rgba(255, 109, 109, 0.5);
-  color: #ffd5d5;
+  color: var(--text-on-error, #ffd5d5);
 }
 
 .ad-skeleton-grid {
@@ -220,7 +220,7 @@
 }
 
 .ad-table-head {
-  color: #9fb2de;
+  color: var(--text-secondary, #9fb2de);
   font-size: 12px;
   border-bottom: 1px solid rgba(140, 164, 220, 0.22);
   padding-bottom: 8px;
@@ -246,10 +246,10 @@
   font-size: 11px;
   border: 1px solid transparent;
 }
-.status-tag.good { border-color: rgba(51, 196, 143, 0.45); color: #9ff3d0; background: rgba(51, 196, 143, 0.16); }
-.status-tag.warning { border-color: rgba(246, 189, 98, 0.5); color: #ffe5b8; background: rgba(246, 189, 98, 0.16); }
-.status-tag.critical { border-color: rgba(255, 109, 109, 0.5); color: #ffd1d1; background: rgba(255, 109, 109, 0.16); }
-.status-tag.neutral { border-color: rgba(140, 164, 220, 0.4); color: #d5e1ff; background: rgba(140, 164, 220, 0.14); }
+.status-tag.good { border-color: rgba(51, 196, 143, 0.45); color: var(--success-text, #9ff3d0); background: rgba(51, 196, 143, 0.16); }
+.status-tag.warning { border-color: rgba(246, 189, 98, 0.5); color: var(--warning-text, #ffe5b8); background: rgba(246, 189, 98, 0.16); }
+.status-tag.critical { border-color: rgba(255, 109, 109, 0.5); color: var(--error-text, #ffd1d1); background: rgba(255, 109, 109, 0.16); }
+.status-tag.neutral { border-color: rgba(140, 164, 220, 0.4); color: var(--text-secondary, #d5e1ff); background: rgba(140, 164, 220, 0.14); }
 
 .ad-action {
   border-radius: 10px;
@@ -259,7 +259,7 @@
   margin-bottom: 8px;
 }
 .ad-action strong { font-size: 12px; display: block; margin-bottom: 4px; }
-.ad-action p { margin: 0; color: #c9d7f9; font-size: 12px; }
+.ad-action p { margin: 0; color: var(--text-secondary, #c9d7f9); font-size: 12px; }
 
 .ad-validation {
   border-radius: 10px;
@@ -269,7 +269,7 @@
   margin-top: 8px;
 }
 .ad-validation strong { font-size: 12px; }
-.ad-validation p { margin: 3px 0 0; font-size: 12px; color: #c8d7f8; }
+.ad-validation p { margin: 3px 0 0; font-size: 12px; color: var(--text-secondary, #c8d7f8); }
 .ad-validation.good { border-color: rgba(51, 196, 143, 0.45); }
 .ad-validation.warning { border-color: rgba(246, 189, 98, 0.5); }
 .ad-validation.critical { border-color: rgba(255, 109, 109, 0.5); }

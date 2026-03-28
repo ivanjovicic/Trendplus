@@ -17,20 +17,20 @@ import {
 
 //  Palette 
 const C = {
-    blue:        "#4f46e5",
-    blueLight:   "#eef2ff",
-    green:       "#16a34a",
-    greenLight:  "#dcfce7",
-    amber:       "#d97706",
-    amberLight:  "#fef3c7",
-    red:         "#dc2626",
-    redLight:    "#fee2e2",
-    purple:      "#7c3aed",
-    purpleLight: "#f5f3ff",
-    gray:        "#6b7280",
-    border:      "#e5e7eb",
-    card:        "#ffffff",
-    bg:          "#f9fafb",
+    blue:        "var(--c-4f46e5, #4f46e5)",
+    blueLight:   "var(--c-eef2ff, #eef2ff)",
+    green:       "var(--c-16a34a, #16a34a)",
+    greenLight:  "var(--c-dcfce7, #dcfce7)",
+    amber:       "var(--c-d97706, #d97706)",
+    amberLight:  "var(--c-fef3c7, #fef3c7)",
+    red:         "var(--c-dc2626, #dc2626)",
+    redLight:    "var(--c-fee2e2, #fee2e2)",
+    purple:      "var(--c-7c3aed, #7c3aed)",
+    purpleLight: "var(--c-f5f3ff, #f5f3ff)",
+    gray:        "var(--c-6b7280, #6b7280)",
+    border:      "var(--c-e5e7eb, #e5e7eb)",
+    card:        "var(--c-ffffff, #ffffff)",
+    bg:          "var(--c-f9fafb, #f9fafb)",
 };
 
 type Tab = "top" | "datasets" | "compute" | "diag";
@@ -259,7 +259,7 @@ export default function OpenTrainingPage() {
                                     style={{
                                         padding: "7px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none",
                                         background: labelType === lt ? (lt === "popularity_prior" ? C.amber : C.red) : "white",
-                                        color: labelType === lt ? "white" : "#374151",
+                                        color: labelType === lt ? "white" : "var(--c-374151, #374151)",
                                     }}
                                 >
                                     {lt === "popularity_prior" ? " Popularity" : " Deal Score"}
@@ -342,7 +342,7 @@ export default function OpenTrainingPage() {
                                     }}>
                                         <div style={{
                                             width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
-                                            background: i === 0 ? "#fbbf24" : i === 1 ? "#9ca3af" : i === 2 ? "#b45309" : C.bg,
+                                            background: i === 0 ? "var(--c-fbbf24, #fbbf24)" : i === 1 ? "var(--c-9ca3af, #9ca3af)" : i === 2 ? "var(--c-b45309, #b45309)" : C.bg,
                                             color: i < 3 ? "white" : C.gray,
                                             display: "flex", alignItems: "center", justifyContent: "center",
                                             fontWeight: 800, fontSize: 12,
@@ -389,7 +389,7 @@ export default function OpenTrainingPage() {
                         </>
                     )}
 
-                    <div style={{ marginTop: 20, background: C.blueLight, borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#3730a3" }}>
+                    <div style={{ marginTop: 20, background: C.blueLight, borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "var(--c-3730a3, #3730a3)" }}>
                          <strong>Kako se ovo koristi?</strong> Popularity Prior i Deal Score iz ovih dataseta se automatski
                         primenjuju kao signal pri računanju <strong>Trending Score-a</strong> za svaki artikal u katalogu.
                         Filtriraj po tipu obuće da vidiš referentne vrednosti za konkretan segment.
@@ -488,14 +488,14 @@ export default function OpenTrainingPage() {
                                         >
                                             <div style={{
                                                 width: 17, height: 17, borderRadius: 4, flexShrink: 0,
-                                                border: `2px solid ${checked ? C.blue : "#d1d5db"}`,
+                                                border: `2px solid ${checked ? C.blue : "var(--c-d1d5db, #d1d5db)"}`,
                                                 background: checked ? C.blue : "white",
                                                 display: "flex", alignItems: "center", justifyContent: "center",
                                             }}>
                                                 {checked && <span style={{ color: "white", fontSize: 10, lineHeight: 1 }}></span>}
                                             </div>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <span style={{ fontWeight: 700, fontSize: 13, color: checked ? C.blue : "#111827" }}>{ds.name}</span>
+                                                <span style={{ fontWeight: 700, fontSize: 13, color: checked ? C.blue : "var(--c-111827, #111827)" }}>{ds.name}</span>
                                                 {ds.description && <span style={{ fontSize: 11, color: C.gray, marginLeft: 8 }}>{ds.description}</span>}
                                             </div>
                                             <span style={{ fontSize: 11, color: checked ? C.green : C.gray, fontWeight: 700, flexShrink: 0 }}>
@@ -539,7 +539,7 @@ export default function OpenTrainingPage() {
                     )}
 
                     {rcResult && (
-                        <div style={{ marginTop: 14, background: C.greenLight, border: `1.5px solid #86efac`, borderRadius: 12, padding: "16px 20px" }}>
+                        <div style={{ marginTop: 14, background: C.greenLight, border: `1.5px solid var(--c-86efac, #86efac)`, borderRadius: 12, padding: "16px 20px" }}>
                             <div style={{ fontWeight: 700, color: C.green, fontSize: 14, marginBottom: 10 }}>
                                  Gotovo  {fmtDate(rcResult.computedAtUtc)}
                             </div>
@@ -574,7 +574,7 @@ export default function OpenTrainingPage() {
                             <button key={lt} onClick={() => setDiagLabelType(lt)} style={{
                                 padding: "7px 18px", fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none",
                                 background: diagLabelType === lt ? C.blue : "white",
-                                color: diagLabelType === lt ? "white" : "#374151",
+                                color: diagLabelType === lt ? "white" : "var(--c-374151, #374151)",
                             }}>
                                 {lt === "popularity_prior" ? "⭐ Popularity" : "🔥 Deal Score"}
                             </button>
@@ -620,7 +620,7 @@ export default function OpenTrainingPage() {
                                                             title={`${bin.rangeLabel}: ${fmt(bin.count)} labela`}
                                                             style={{
                                                                 width: "100%", height: barH || 3, minHeight: bin.count > 0 ? 8 : 3,
-                                                                background: bin.count > 0 ? scoreBucketColor : "#e5e7eb",
+                                                                background: bin.count > 0 ? scoreBucketColor : "var(--c-e5e7eb, #e5e7eb)",
                                                                 borderRadius: "3px 3px 0 0", transition: "height .4s",
                                                                 opacity: bin.count > 0 ? 0.7 + 0.3 * (bin.count / maxCount) : 1,
                                                             }}
@@ -671,7 +671,7 @@ export default function OpenTrainingPage() {
                                                         <span style={{ fontWeight: 600 }}>{row.label}</span>
                                                         <span style={{ color: C.gray }}>{fmt(row.n)} / {fmt(diag.quality!.total)} ({pct}%)</span>
                                                     </div>
-                                                    <div style={{ height: 7, background: "#e5e7eb", borderRadius: 4 }}>
+                                                    <div style={{ height: 7, background: "var(--c-e5e7eb, #e5e7eb)", borderRadius: 4 }}>
                                                         <div style={{ width: `${pct}%`, height: "100%", background: row.color, borderRadius: 4, transition: "width .5s" }} />
                                                     </div>
                                                 </div>
@@ -713,7 +713,7 @@ export default function OpenTrainingPage() {
                                             );
                                         })}
                                     </div>
-                                    <div style={{ marginTop: 12, background: C.blueLight, borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#3730a3" }}>
+                                    <div style={{ marginTop: 12, background: C.blueLight, borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--c-3730a3, #3730a3)" }}>
                                         💡 <strong>Šta popravlja rezultate?</strong> Dodaj datasete sa više recenzija (Amazon, eBay) ili ubaci
                                         EU Trend podatke (dataset name: <code>eu_trends_zalando</code>, source type: <code>eutrend</code>).
                                         Više recenzija po grupi → stabilniji, rasprostranjeniji scoring.

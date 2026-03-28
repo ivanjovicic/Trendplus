@@ -31,9 +31,9 @@ function fmtPct(value: number, digits = 1) {
 }
 
 function priorityColor(band: string) {
-  if (band === "high") return "#f87171";
-  if (band === "medium") return "#fbbf24";
-  return "#60a5fa";
+  if (band === "high") return "var(--c-f87171, #f87171)";
+  if (band === "medium") return "var(--c-fbbf24, #fbbf24)";
+  return "var(--c-60a5fa, #60a5fa)";
 }
 
 function queueKey(item: PreNivelacijaQueueItem) {
@@ -492,15 +492,15 @@ export default function PreNivelacijaPriorityPage() {
               </table>
             </div>
             <div className="h-[320px] rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                 <ScatterChart>
-                  <CartesianGrid stroke="#2f323b" />
-                  <XAxis dataKey="x" name="Stock" tick={{ fill: "#9aabc7", fontSize: 11 }} />
-                  <YAxis dataKey="y" name="Velocity" tick={{ fill: "#9aabc7", fontSize: 11 }} />
+                  <CartesianGrid stroke="var(--c-2f323b, #2f323b)" />
+                  <XAxis dataKey="x" name="Stock" tick={{ fill: "var(--c-9aabc7, #9aabc7)", fontSize: 11 }} />
+                  <YAxis dataKey="y" name="Velocity" tick={{ fill: "var(--c-9aabc7, #9aabc7)", fontSize: 11 }} />
                   <ZAxis dataKey="z" range={[40, 260]} name="Revenue" />
                   <Tooltip cursor={{ strokeDasharray: "4 4" }} />
                   <Legend />
-                  <Scatter data={scatterData} name="SKU signal" fill="#4f8cff" />
+                  <Scatter data={scatterData} name="SKU signal" fill="var(--c-4f8cff, #4f8cff)" />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>

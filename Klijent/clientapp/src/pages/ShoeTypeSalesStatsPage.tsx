@@ -422,22 +422,22 @@ export default function ShoeTypeSalesStatsPage() {
             {top10Chart.length > 0 ? (
               <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={top10Chart} margin={{ top: 12, right: 16, bottom: 12, left: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--c-334155, #334155)" />
                   <XAxis
                     dataKey="tipObuceNaziv"
-                    tick={{ fill: "#cbd5e1", fontSize: 12 }}
+                    tick={{ fill: "var(--c-cbd5e1, #cbd5e1)", fontSize: 12 }}
                     angle={-20}
                     height={70}
                     textAnchor="end"
                   />
-                  <YAxis tick={{ fill: "#cbd5e1", fontSize: 12 }} />
+                  <YAxis tick={{ fill: "var(--c-cbd5e1, #cbd5e1)", fontSize: 12 }} />
                   <Tooltip
                     formatter={(value) => fmtRsd(Number(value))}
-                    labelStyle={{ color: "#0f172a" }}
+                    labelStyle={{ color: "var(--c-0f172a, #0f172a)" }}
                   />
                   <Legend />
-                  <Bar dataKey="preNivelacijePromet" name="Pre snizenja" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="posleNivelacijePromet" name="Posle snizenja" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="preNivelacijePromet" name="Pre snizenja" fill="var(--c-6366f1, #6366f1)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="posleNivelacijePromet" name="Posle snizenja" fill="var(--c-22c55e, #22c55e)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (

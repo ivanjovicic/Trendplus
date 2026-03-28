@@ -27,7 +27,7 @@ import "./SupplierFootwearAnalyticsPage.css";
 
 const ALL_EVENTS_OPTION = "__all__";
 const UNKNOWN_VENDOR_LABEL = "Nepoznat dobavljac";
-const DONUT_COLORS = ["#06b6d4", "#14b8a6", "#84cc16", "#f59e0b", "#f97316", "#ef4444", "#a855f7"];
+const DONUT_COLORS = ["var(--c-06b6d4, #06b6d4)", "var(--c-14b8a6, #14b8a6)", "var(--c-84cc16, #84cc16)", "var(--c-f59e0b, #f59e0b)", "var(--c-f97316, #f97316)", "var(--c-ef4444, #ef4444)", "var(--c-a855f7, #a855f7)"];
 
 type Direction = "up" | "down" | "flat";
 type InsightTone = "pozitivno" | "rizik" | "prilika";
@@ -190,20 +190,28 @@ function InfoHint({ text }: { text: string }) {
 function Sparkline({ values }: { values: number[] }) {
     const width = 120;
     const height = 36;
-    const clean = values.length > 1 ? values : [0, ...values];
+    const finiteValues = values.filter((value) => Number.isFinite(value));
+    const clean = finiteValues.length > 1
+        ? finiteValues
+        : finiteValues.length === 1
+            ? [0, finiteValues[0]]
+            : [0, 0];
     const min = Math.min(...clean);
     const max = Math.max(...clean);
+    const denominator = clean.length - 1;
     const points = clean
         .map((v, i) => {
-            const x = (i / (clean.length - 1)) * width;
+            const x = denominator > 0 ? (i / denominator) * width : 0;
             const y = height - 4 - normalize01(v, min, max) * (height - 8);
-            return `${x},${y}`;
+            const safeX = Number.isFinite(x) ? x : 0;
+            const safeY = Number.isFinite(y) ? y : height / 2;
+            return `${safeX},${safeY}`;
         })
         .join(" ");
 
     return (
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="supplier-sparkline" aria-hidden>
-            <polyline points={points} fill="none" stroke="#22d3ee" strokeWidth="2" />
+            <polyline points={points} fill="none" stroke="var(--c-22d3ee, #22d3ee)" strokeWidth="2" />
         </svg>
     );
 }
@@ -808,17 +816,17 @@ export default function SupplierFootwearAnalyticsPage() {
                         <h3>Top 5 dobavljaca po skoru (prodavali pre i posle)</h3>
                         <ResponsiveContainer width="100%" height={280}>
                             <BarChart data={topSuppliers} layout="vertical" margin={{ top: 8, right: 12, bottom: 8, left: 70 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#263040" />
-                                <XAxis type="number" tick={{ fill: "#9fb1c7" }} />
-                                <YAxis type="category" dataKey="vendorName" width={140} tick={{ fill: "#d8e4f5", fontSize: 12 }} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--c-263040, #263040)" />
+                                <XAxis type="number" tick={{ fill: "var(--c-9fb1c7, #9fb1c7)" }} />
+                                <YAxis type="category" dataKey="vendorName" width={140} tick={{ fill: "var(--c-d8e4f5, #d8e4f5)", fontSize: 12 }} />
                                 <Tooltip formatter={(value: number | string | undefined, name: string | undefined) => {
                                     const num = Number(value ?? 0);
                                     if (name === "preRevenue" || name === "postRevenue") return [fmtRsd(num), name === "preRevenue" ? "Promet pre" : "Promet posle"];
                                     if (name === "score") return [fmtNum(num), "Supplier Improvement Score"];
                                     return [fmtNum(num), name ?? "Vrednost"];
                                 }} />
-                                <Bar dataKey="preRevenue" fill="#2563eb" name="preRevenue" radius={[6, 6, 6, 6]} />
-                                <Bar dataKey="postRevenue" fill="#0ea5a4" name="postRevenue" radius={[6, 6, 6, 6]} />
+                                <Bar dataKey="preRevenue" fill="var(--c-2563eb, #2563eb)" name="preRevenue" radius={[6, 6, 6, 6]} />
+                                <Bar dataKey="postRevenue" fill="var(--c-0ea5a4, #0ea5a4)" name="postRevenue" radius={[6, 6, 6, 6]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </article>
@@ -874,7 +882,7 @@ export default function SupplierFootwearAnalyticsPage() {
                     <article className="supplier-card">
                         <h3>Treemap tipova obuce</h3>
                         <ResponsiveContainer width="100%" height={280}>
-                            <Treemap data={treemapData} dataKey="size" stroke="#0f172a" fill="#0891b2" />
+                            <Treemap data={treemapData} dataKey="size" stroke="var(--c-0f172a, #0f172a)" fill="var(--c-0891b2, #0891b2)" />
                         </ResponsiveContainer>
                         <p className="supplier-note"><InfoHint text="Treemap koristi površinu polja da prikaže relativni doprinos tipa obuce ukupnom prometu." />Vece polje = veci doprinos prometu.</p>
                     </article>
@@ -908,12 +916,12 @@ export default function SupplierFootwearAnalyticsPage() {
                         <h3>Dual bar: Pre vs Posle</h3>
                         <ResponsiveContainer width="100%" height={280}>
                             <BarChart data={prePostComparison}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#263040" />
-                                <XAxis dataKey="dobavljac" tick={{ fill: "#c6d4e6", fontSize: 11 }} />
-                                <YAxis tick={{ fill: "#9fb1c7" }} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--c-263040, #263040)" />
+                                <XAxis dataKey="dobavljac" tick={{ fill: "var(--c-c6d4e6, #c6d4e6)", fontSize: 11 }} />
+                                <YAxis tick={{ fill: "var(--c-9fb1c7, #9fb1c7)" }} />
                                 <Tooltip formatter={(value: number | string | undefined, name: string | undefined) => [fmtRsd(Number(value ?? 0)), name === "pre" ? "Promet pre" : "Promet posle"]} />
-                                <Bar dataKey="pre" fill="#1d4ed8" radius={[6, 6, 0, 0]} />
-                                <Bar dataKey="posle" fill="#0d9488" radius={[6, 6, 0, 0]} />
+                                <Bar dataKey="pre" fill="var(--c-1d4ed8, #1d4ed8)" radius={[6, 6, 0, 0]} />
+                                <Bar dataKey="posle" fill="var(--c-0d9488, #0d9488)" radius={[6, 6, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </article>

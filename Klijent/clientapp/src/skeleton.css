@@ -59,7 +59,7 @@ html, body {
 .field-label {
     display: block;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-secondary, #374151);
     margin: 0.75rem 0 0.35rem;
     letter-spacing: 0.2px;
 }
@@ -71,7 +71,7 @@ html, body {
     border-radius: 10px;
     padding: 8px 12px;
     font-size: 0.875rem;
-    background: #fff;
+    background: var(--surface, #ffffff);
     color: var(--text);
     box-shadow: var(--shadow-sm);
     outline: none;
@@ -79,7 +79,7 @@ html, body {
 }
 
 .input-big::placeholder {
-    color: #9ca3af;
+    color: var(--muted, #9ca3af);
 }
 
 .input-big:hover {
@@ -95,8 +95,8 @@ html, body {
 select.input-big {
     appearance: none;
     background-image:
-        linear-gradient(45deg, transparent 50%, #6b7280 50%),
-        linear-gradient(135deg, #6b7280 50%, transparent 50%);
+        linear-gradient(45deg, transparent 50%, var(--muted, #6b7280) 50%),
+            linear-gradient(135deg, var(--muted, #6b7280) 50%, transparent 50%);
     background-position:
         calc(100% - 18px) calc(50% - 3px),
         calc(100% - 12px) calc(50% - 3px);
@@ -152,8 +152,8 @@ textarea.input-big {
 /* Error/Success messages */
 .error-msg {
     color: var(--danger);
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    background: var(--error-10, #fef2f2);
+    border: 1px solid var(--error, #fecaca);
     border-radius: 8px;
     padding: 10px 12px;
     font-size: 0.875rem;
@@ -161,8 +161,8 @@ textarea.input-big {
 
 .success-msg {
     color: var(--success);
-    background: #ecfdf5;
-    border: 1px solid #a7f3d0;
+    background: var(--success-10, #ecfdf5);
+    border: 1px solid var(--success, #a7f3d0);
     border-radius: 8px;
     padding: 10px 12px;
     font-size: 0.875rem;
@@ -178,8 +178,8 @@ textarea.input-big {
 .table th {
     position: sticky;
     top: 0;
-    background: #f3f4f6;
-    border-bottom: 2px solid #e5e7eb;
+    background: var(--bg, #f3f4f6);
+    border-bottom: 2px solid var(--border, #e5e7eb);
     text-align: left;
     padding: 10px;
     font-size: 0.875rem;
@@ -188,21 +188,21 @@ textarea.input-big {
 
 .table td {
     padding: 10px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border, #e5e7eb);
 }
 
 .table tbody tr:nth-child(even) {
-    background: #fafafa;
+    background: var(--surface-2, #fafafa);
 }
 
 .table tbody tr:hover {
-    background: #eff6ff;
+    background: var(--surface-elevated, #eff6ff);
 }
 
 /* Small utility */
 .kbd {
-    background: #fff;
-    border: 1px solid #d1d5db;
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, #d1d5db);
     border-radius: 6px;
     padding: 2px 6px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -221,13 +221,13 @@ textarea.input-big {
 .dropdown-item {
     padding: 10px 12px;
     cursor: pointer;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--bg, #f3f4f6);
     transition: background 120ms ease;
     font-size: 0.875rem;
 }
 
 .dropdown-item:hover {
-    background: #eff6ff;
+    background: var(--surface-elevated, #eff6ff);
 }
 
 .dropdown-item-title {
@@ -244,7 +244,7 @@ textarea.input-big {
 
 /* Toolbar / summary row */
 .toolbar {
-    background: #ffffff;
+    background: var(--surface, #ffffff);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 10px 12px;
@@ -253,21 +253,21 @@ textarea.input-big {
 
 /* Button variants */
 .button-secondary {
-    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-    color: #111827;
-    border: 1px solid #d1d5db;
+    background: linear-gradient(135deg, var(--surface-2, #f3f4f6) 0%, var(--surface-default, #e5e7eb) 100%);
+    color: var(--text, #111827);
+    border: 1px solid var(--border, #d1d5db);
     box-shadow: var(--shadow-sm);
 }
 
 .button-danger {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    background: linear-gradient(135deg, var(--error, #ef4444) 0%, var(--danger, #dc2626) 100%);
     color: #fff;
     border: 1px solid rgba(220,38,38,0.35);
     box-shadow: 0 4px 12px rgba(220,38,38,0.20);
 }
 
 .button-success {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(135deg, var(--success, #10b981) 0%, var(--success, #059669) 100%);
     color: #fff;
     border: 1px solid rgba(5,150,105,0.35);
     box-shadow: 0 4px 12px rgba(5,150,105,0.20);

@@ -54,7 +54,7 @@ export default function ImageUploadTestPage() {
 
     return (
         <div className="card" style={{ maxWidth: "800px", margin: "2rem auto" }}>
-            <h2 className="text-2xl font-semibold mb-6" style={{ color: "#1f2937" }}>
+            <h2 className="text-2xl font-semibold mb-6" style={{ color: "var(--c-1f2937, #1f2937)" }}>
                 📸 Upload slike - Test stranica
             </h2>
 
@@ -64,7 +64,7 @@ export default function ImageUploadTestPage() {
                     background: "white",
                     padding: "1.5rem",
                     borderRadius: "12px",
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--c-e5e7eb, #e5e7eb)",
                     boxShadow: "var(--box-shadow-md, 0 2px 8px rgba(0,0,0,0.06))",
                     marginBottom: "1.5rem",
                 }}
@@ -80,7 +80,7 @@ export default function ImageUploadTestPage() {
                     onChange={(e) => setProductId(e.target.value)}
                     style={{ maxWidth: "300px" }}
                 />
-                <p style={{ fontSize: "0.875rem", color: "#6b7280", marginTop: "0.5rem" }}>
+                <p style={{ fontSize: "0.875rem", color: "var(--c-6b7280, #6b7280)", marginTop: "0.5rem" }}>
                     Ako ostavite prazno, slika će biti otpremljena bez povezivanja sa artiklom
                 </p>
             </div>
@@ -91,7 +91,7 @@ export default function ImageUploadTestPage() {
                     background: "white",
                     padding: "1.5rem",
                     borderRadius: "12px",
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--c-e5e7eb, #e5e7eb)",
                     boxShadow: "var(--box-shadow-md, 0 2px 8px rgba(0,0,0,0.06))",
                 }}
             >
@@ -107,11 +107,11 @@ export default function ImageUploadTestPage() {
                         style={{
                             marginTop: "1rem",
                             padding: "1rem",
-                            background: "#eff6ff",
-                            border: "1px solid #3b82f6",
+                            background: "var(--c-eff6ff, #eff6ff)",
+                            border: "1px solid var(--c-3b82f6, #3b82f6)",
                             borderRadius: "8px",
                             textAlign: "center",
-                            color: "#1e40af",
+                            color: "var(--c-1e40af, #1e40af)",
                             fontWeight: 600,
                         }}
                     >
@@ -124,32 +124,32 @@ export default function ImageUploadTestPage() {
                         style={{
                             marginTop: "1.5rem",
                             padding: "1.5rem",
-                            background: "#f0fdf4",
-                            border: "2px solid #86efac",
+                            background: "var(--c-f0fdf4, #f0fdf4)",
+                            border: "2px solid var(--c-86efac, #86efac)",
                             borderRadius: "12px",
                         }}
                     >
-                        <h3 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#059669", marginBottom: "1rem" }}>
+                        <h3 style={{ fontSize: "1.125rem", fontWeight: 600, color: "var(--c-059669, #059669)", marginBottom: "1rem" }}>
                             ✅ Slika uspešno otpremljena!
                         </h3>
                         
                         <div style={{ marginBottom: "1rem" }}>
-                            <p style={{ fontSize: "0.875rem", color: "#15803d" }}>
+                            <p style={{ fontSize: "0.875rem", color: "var(--c-15803d, #15803d)" }}>
                                 <strong>Naziv fajla:</strong> {uploadedImage.fileName}
                             </p>
-                            <p style={{ fontSize: "0.875rem", color: "#15803d" }}>
+                            <p style={{ fontSize: "0.875rem", color: "var(--c-15803d, #15803d)" }}>
                                 <strong>URL:</strong>{" "}
                                 <a
                                     href={getImageUrl(uploadedImage.fileName) || "#"}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    style={{ color: "#2563eb", textDecoration: "underline" }}
+                                    style={{ color: "var(--c-2563eb, #2563eb)", textDecoration: "underline" }}
                                 >
                                     {getImageUrl(uploadedImage.fileName)}
                                 </a>
                             </p>
                             {uploadedImage.productId && (
-                                <p style={{ fontSize: "0.875rem", color: "#15803d" }}>
+                                <p style={{ fontSize: "0.875rem", color: "var(--c-15803d, #15803d)" }}>
                                     <strong>ID proizvoda:</strong> {uploadedImage.productId}
                                 </p>
                             )}
@@ -162,7 +162,7 @@ export default function ImageUploadTestPage() {
                                 maxWidth: "100%",
                                 maxHeight: "300px",
                                 borderRadius: "8px",
-                                border: "1px solid #d1d5db",
+                                border: "1px solid var(--c-d1d5db, #d1d5db)",
                                 objectFit: "contain",
                             }}
                         />
@@ -173,7 +173,7 @@ export default function ImageUploadTestPage() {
                                 onClick={handleDeleteImage}
                                 style={{
                                     marginTop: "1rem",
-                                    background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                                    background: "linear-gradient(135deg, var(--c-dc2626, #dc2626) 0%, var(--c-b91c1c, #b91c1c) 100%)",
                                     color: "white",
                                     padding: "10px 20px",
                                     borderRadius: "8px",
@@ -195,18 +195,18 @@ export default function ImageUploadTestPage() {
                 style={{
                     marginTop: "2rem",
                     padding: "1.5rem",
-                    background: "#f9fafb",
+                    background: "var(--c-f9fafb, #f9fafb)",
                     borderRadius: "12px",
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--c-e5e7eb, #e5e7eb)",
                 }}
             >
-                <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1rem", color: "#374151" }}>
+                <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1rem", color: "var(--c-374151, #374151)" }}>
                     📖 Kako koristiti u drugim komponentama
                 </h3>
                 <pre
                     style={{
-                        background: "#1f2937",
-                        color: "#f9fafb",
+                        background: "var(--c-1f2937, #1f2937)",
+                        color: "var(--c-f9fafb, #f9fafb)",
                         padding: "1rem",
                         borderRadius: "8px",
                         fontSize: "0.875rem",

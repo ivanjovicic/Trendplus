@@ -102,7 +102,7 @@ export default function OutboxMessagesPage() {
                     gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                     gap: "1rem",
                     marginBottom: "1.5rem",
-                    background: "#f9fafb",
+                    background: "var(--c-f9fafb, #f9fafb)",
                 }}
             >
                 <div>
@@ -193,7 +193,7 @@ export default function OutboxMessagesPage() {
             </div>
 
             {/* Summary */}
-            <div className="toolbar" style={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af", marginBottom: "1.5rem" }}>
+            <div className="toolbar" style={{ background: "var(--c-eff6ff, #eff6ff)", border: "1px solid var(--c-bfdbfe, #bfdbfe)", color: "var(--c-1e40af, #1e40af)", marginBottom: "1.5rem" }}>
                 Prikazano <strong>{messages.length}</strong> od ukupno <strong>{totalCount}</strong> poruka
             </div>
 
@@ -208,9 +208,9 @@ export default function OutboxMessagesPage() {
                             key={message.id}
                             className="toolbar"
                             style={{
-                                background: message.isProcessed ? "#f0fdf4" : message.retryCount >= 5 ? "#fef2f2" : "#fef3c7",
+                                background: message.isProcessed ? "var(--c-f0fdf4, #f0fdf4)" : message.retryCount >= 5 ? "var(--c-fef2f2, #fef2f2)" : "var(--c-fef3c7, #fef3c7)",
                                 border: `2px solid ${
-                                    message.isProcessed ? "#059669" : message.retryCount >= 5 ? "#dc2626" : "#f59e0b"
+                                    message.isProcessed ? "var(--c-059669, #059669)" : message.retryCount >= 5 ? "var(--c-dc2626, #dc2626)" : "var(--c-f59e0b, #f59e0b)"
                                 }`,
                             }}
                         >
@@ -219,7 +219,7 @@ export default function OutboxMessagesPage() {
                                     <div style={{ fontWeight: 900, fontSize: "1.125rem", marginBottom: "0.25rem" }}>
                                         {message.eventType}
                                     </div>
-                                    <div style={{ fontSize: "0.875rem", color: "#6b7280", fontFamily: "monospace" }}>
+                                    <div style={{ fontSize: "0.875rem", color: "var(--c-6b7280, #6b7280)", fontFamily: "monospace" }}>
                                         ID: {message.id} | CorrelationId: {message.correlationId}
                                     </div>
                                 </div>
@@ -229,11 +229,11 @@ export default function OutboxMessagesPage() {
                                         <span style={{
                                             padding: "4px 12px",
                                             borderRadius: "8px",
-                                            background: "#f0fdf4",
-                                            color: "#059669",
+                                            background: "var(--c-f0fdf4, #f0fdf4)",
+                                            color: "var(--c-059669, #059669)",
                                             fontSize: "0.75rem",
                                             fontWeight: 800,
-                                            border: "1px solid #a7f3d0"
+                                            border: "1px solid var(--c-a7f3d0, #a7f3d0)"
                                         }}>
                                             Processed
                                         </span>
@@ -242,11 +242,11 @@ export default function OutboxMessagesPage() {
                                             <span style={{
                                                 padding: "4px 12px",
                                                 borderRadius: "8px",
-                                                background: "#fef2f2",
-                                                color: "#dc2626",
+                                                background: "var(--c-fef2f2, #fef2f2)",
+                                                color: "var(--c-dc2626, #dc2626)",
                                                 fontSize: "0.75rem",
                                                 fontWeight: 800,
-                                                border: "1px solid #fecaca"
+                                                border: "1px solid var(--c-fecaca, #fecaca)"
                                             }}>
                                                 Failed
                                             </span>
@@ -263,11 +263,11 @@ export default function OutboxMessagesPage() {
                                         <span style={{
                                             padding: "4px 12px",
                                             borderRadius: "8px",
-                                            background: "#fef3c7",
-                                            color: "#92400e",
+                                            background: "var(--c-fef3c7, #fef3c7)",
+                                            color: "var(--c-92400e, #92400e)",
                                             fontSize: "0.75rem",
                                             fontWeight: 800,
-                                            border: "1px solid #fde68a"
+                                            border: "1px solid var(--c-fde68a, #fde68a)"
                                         }}>
                                             Pending (Retry: {message.retryCount})
                                         </span>
@@ -277,12 +277,12 @@ export default function OutboxMessagesPage() {
 
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "0.75rem" }}>
                                 <div>
-                                    <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>Created At</div>
+                                    <div style={{ fontSize: "0.75rem", color: "var(--c-6b7280, #6b7280)", marginBottom: "0.25rem" }}>Created At</div>
                                     <div style={{ fontFamily: "monospace", fontSize: "0.875rem" }}>{formatDate(message.createdAt)}</div>
                                 </div>
                                 {message.processedAt && (
                                     <div>
-                                        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>Processed At</div>
+                                        <div style={{ fontSize: "0.75rem", color: "var(--c-6b7280, #6b7280)", marginBottom: "0.25rem" }}>Processed At</div>
                                         <div style={{ fontFamily: "monospace", fontSize: "0.875rem" }}>{formatDate(message.processedAt)}</div>
                                     </div>
                                 )}
@@ -300,13 +300,13 @@ export default function OutboxMessagesPage() {
                                     Payload
                                 </summary>
                                 <pre style={{
-                                    background: "#f9fafb",
+                                    background: "var(--c-f9fafb, #f9fafb)",
                                     padding: "1rem",
                                     borderRadius: "12px",
                                     fontSize: "0.75rem",
                                     overflow: "auto",
                                     maxHeight: "300px",
-                                    border: "1px solid #e5e7eb"
+                                    border: "1px solid var(--c-e5e7eb, #e5e7eb)"
                                 }}>
                                     {formatPayload(message.payload)}
                                 </pre>
@@ -317,7 +317,7 @@ export default function OutboxMessagesPage() {
             )}
 
             {!loading && !error && messages.length === 0 && (
-                <p style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
+                <p style={{ textAlign: "center", padding: "2rem", color: "var(--c-6b7280, #6b7280)" }}>
                     Nema poruka koje odgovaraju filterima.
                 </p>
             )}
@@ -335,7 +335,7 @@ export default function OutboxMessagesPage() {
                         ← Prethodna
                     </button>
 
-                    <span style={{ fontSize: "0.875rem", color: "#6b7280", fontWeight: 800 }}>
+                    <span style={{ fontSize: "0.875rem", color: "var(--c-6b7280, #6b7280)", fontWeight: 800 }}>
                         Page {pageNumber} of {totalPages}
                     </span>
 

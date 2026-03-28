@@ -360,7 +360,7 @@ export default function AnalyticsDetails() {
                       <YAxis tick={{ fill: "var(--text-secondary, #9fb2de)", fontSize: 12 }} />
                       <Tooltip
                         formatter={(v: number | string | undefined, n?: string) => [fmtCur(Number(v ?? 0)), n ?? "vrednost"]}
-                        contentStyle={{ background: "var(--surface-elev-1, #0f1730)", border: "1px solid var(--border, #32406b)" }}
+                        contentStyle={{ background: "var(--surface-elev-1, #0f1730)", border: "1px solid var(--border-default, #32406b)" }}
                       />
                       <Line type="monotone" dataKey="revenue" stroke="var(--series-revenue, #40d69f)" strokeWidth={2.2} dot={false} name="Promet" />
                       <Line type="monotone" dataKey="ma7" stroke="var(--series-ma7, #6ca8ff)" strokeWidth={2} dot={false} name="MA7" />

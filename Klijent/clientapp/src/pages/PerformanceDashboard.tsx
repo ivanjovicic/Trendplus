@@ -41,7 +41,7 @@ function formatDuration(ms: number): string {
 function durationColor(ms: number): string {
     if (ms < 1000) return "var(--success)";
     if (ms < 3000) return "var(--warning)";
-    if (ms < 5000) return "#fb923c";
+    if (ms < 5000) return "var(--c-fb923c, #fb923c)";
     return "var(--error)";
 }
 

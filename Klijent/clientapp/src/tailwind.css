@@ -53,7 +53,7 @@ body {
 
 .button-big {
   background-color: var(--info, #2563eb);
-  color: #ffffff;
+  color: var(--c-ffffff, #ffffff);
   width: 100%;
   padding: 12px 16px;
   margin-top: 0.5rem;
@@ -79,7 +79,7 @@ body {
 
 .button-small {
   background-color: var(--gray-500, #6b7280);
-  color: #ffffff;
+  color: var(--c-ffffff, #ffffff);
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 0.875rem;
@@ -344,38 +344,38 @@ select:focus {
 /* Theme CSS Custom Properties (Default: inventory-dark) */
 :root {
   /* Gray palette */
-  --gray-50: #f8fafb;
-  --gray-100: #f1f5f9;
-  --gray-200: #e2e8f0;
-  --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
-  --gray-500: #64748b;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-800: #1f2933;
-  --gray-900: #0b1220;
+  --gray-50: var(--c-f8fafb, #f8fafb);
+  --gray-100: var(--c-f1f5f9, #f1f5f9);
+  --gray-200: var(--c-e2e8f0, #e2e8f0);
+  --gray-300: var(--c-cbd5e1, #cbd5e1);
+  --gray-400: var(--c-94a3b8, #94a3b8);
+  --gray-500: var(--c-64748b, #64748b);
+  --gray-600: var(--c-475569, #475569);
+  --gray-700: var(--c-334155, #334155);
+  --gray-800: var(--c-1f2933, #1f2933);
+  --gray-900: var(--c-0b1220, #0b1220);
 
   /* Surface colors */
-  --surface-default: #0f1318;
-  --surface-light: #10141c;
-  --surface-elevated: #12161f;
-  --surface-darker: #0a0d14;
+  --surface-default: var(--c-0f1318, #0f1318);
+  --surface-light: var(--c-10141c, #10141c);
+  --surface-elevated: var(--c-12161f, #12161f);
+  --surface-darker: var(--c-0a0d14, #0a0d14);
 
   /* Status Colors */
-  --success: #10b981;
-  --error: #ef4444;
-  --warning: #f59e0b;
-  --info: #3b82f6;
+  --success: var(--c-10b981, #10b981);
+  --error: var(--c-ef4444, #ef4444);
+  --warning: var(--c-f59e0b, #f59e0b);
+  --info: var(--c-3b82f6, #3b82f6);
 
   /* Text colors with high contrast */
-  --text-primary: #dbe6fb;
-  --text-secondary: #9aa9c6;
-  --text-muted: #73809a;
+  --text-primary: var(--c-dbe6fb, #dbe6fb);
+  --text-secondary: var(--c-9aa9c6, #9aa9c6);
+  --text-muted: var(--c-73809a, #73809a);
 
   /* Interactive states */
-  --border-default: #283042;
-  --border-hover: #344a66;
-  --focus-ring: #44d0ff;
+  --border-default: var(--c-283042, #283042);
+  --border-hover: var(--c-344a66, #344a66);
+  --focus-ring: var(--c-44d0ff, #44d0ff);
 }
 
 /* Additional semantic tokens for components */
@@ -385,9 +385,9 @@ select:focus {
   --modal-overlay: rgba(0, 0, 0, 0.88);
   --surface-inverse: rgba(255, 255, 255, 0.95);
   --surface-inverse-outline: rgba(255, 255, 255, 0.5);
-  --icon-stroke: #374151;
-  --text-on-dark: #ffffff;
-  --link: #2563eb;
+  --icon-stroke: var(--c-374151, #374151);
+  --text-on-dark: var(--c-ffffff, #ffffff);
+  --link: var(--c-2563eb, #2563eb);
   --tooltip-box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
@@ -400,6 +400,28 @@ select:focus {
   --toast-box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
   --surface-muted: rgba(0,0,0,0.05);
 }
+
+/* Ensure explicit light-theme variable overrides (applied before JS theme load) */
+[data-theme="light"] {
+  --surface-default: var(--c-f4f7fb, #f4f7fb);
+  --surface-light: var(--c-ffffff, #ffffff);
+  --surface-elevated: var(--c-ffffff, #ffffff);
+  --surface-darker: var(--c-e6edf7, #e6edf7);
+
+  --text-primary: var(--c-0f172a, #0f172a);
+  --text-secondary: var(--c-334155, #334155);
+  --text-muted: var(--c-64748b, #64748b);
+
+  --border-default: var(--c-d3dce9, #d3dce9);
+  --border-hover: var(--c-a7b9d3, #a7b9d3);
+  --focus-ring: var(--c-2563eb, #2563eb);
+  --card-shadow: rgba(16,24,40,0.06);
+
+  --text-on-primary: var(--c-ffffff, #ffffff);
+  --icon-stroke: var(--c-374151, #374151);
+  --overlay: rgba(0,0,0,0.05);
+}
+
 
 /* Modal helper classes */
 .modal-root {

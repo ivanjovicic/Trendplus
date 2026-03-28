@@ -1,9 +1,9 @@
 import { TrendDashboard } from "../components/TrendDashboard";
 
 const PAL = {
-    bg:            "#0D0F14",
-    textPrimary:   "#E8ECF4",
-    textSecondary: "#8A95B0",
+    bg:            "var(--c-0d0f14, #0D0F14)",
+    textPrimary:   "var(--c-e8ecf4, #E8ECF4)",
+    textSecondary: "var(--c-8a95b0, #8A95B0)",
 };
 
 export default function TrendDashboardPage() {

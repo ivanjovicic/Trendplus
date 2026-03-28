@@ -69,7 +69,7 @@ const POPULAR_BRANDS: { group: string; brands: string[] }[] = [
     },
 ];
 
-const EBAY_BRAND_COLOR = "#e53238"; // kept as reference but UI uses theme classes
+const EBAY_BRAND_COLOR = "var(--c-e53238, #e53238)"; // kept as reference but UI uses theme classes
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -311,10 +311,10 @@ export default function EbayShoesTrendsPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ fontSize: 30 }}>🛒</span>
                     <div>
-                        <h1 style={{ fontSize: 26, fontWeight: 800, color: "#111827", margin: 0 }}>
+                        <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--c-111827, #111827)", margin: 0 }}>
                             eBay Shoe Trends
                         </h1>
-                        <p style={{ color: "#6b7280", marginTop: 2, marginBottom: 0, fontSize: 14 }}>
+                        <p style={{ color: "var(--c-6b7280, #6b7280)", marginTop: 2, marginBottom: 0, fontSize: 14 }}>
                             Fetch top shoe listings from eBay via Browse API and track them over time.
                             Requires an eBay OAuth App token in <code>appsettings.json → Ebay:OAuthToken</code>.
                         </p>
@@ -325,20 +325,20 @@ export default function EbayShoesTrendsPage() {
             {/* ── Sync card ── */}
             <div style={{ background: "var(--surface-card, white)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px rgba(0,0,0,.06))" }}>
                 {/* eBay colour bar */}
-                <div style={{ height: 4, borderRadius: 4, background: `linear-gradient(90deg, #e53238, #f5af02 40%, #86b817 70%, #05adee)`, marginBottom: 14 }} />
+                <div style={{ height: 4, borderRadius: 4, background: `linear-gradient(90deg, var(--c-e53238, #e53238), var(--c-f5af02, #f5af02) 40%, var(--c-86b817, #86b817) 70%, var(--c-05adee, #05adee))`, marginBottom: 14 }} />
 
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 12 }}>🔄 Sync from eBay</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary, #111827)", marginBottom: 12 }}>🔄 Sync from eBay</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
 
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Tip cipele</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, #6b7280)", marginBottom: 4 }}>Tip cipele</label>
                         <div>
                             <input
                                 value={syncType}
                                 onChange={(e) => setSyncType(e.target.value)}
                                 list="ebay-shoe-type-list"
                                 placeholder="e.g. sneakers"
-                                style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, width: 200 }}
+                                style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 200 }}
                             />
                             <datalist id="ebay-shoe-type-list">
                                 {SHOE_TYPES.map((t) => <option key={t} value={t} />)}
@@ -348,11 +348,11 @@ export default function EbayShoesTrendsPage() {
 
                     {/* Gender */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Pol</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, #6b7280)", marginBottom: 4 }}>Pol</label>
                         <select
                             value={syncGender}
                             onChange={(e) => setSyncGender(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, minWidth: 120, background: "white" }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, minWidth: 120, background: "var(--surface-card, white)" }}
                         >
                             {GENDER_OPTIONS.map((g) => (
                                 <option key={g.value} value={g.value}>{g.label}</option>
@@ -361,22 +361,22 @@ export default function EbayShoesTrendsPage() {
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Min price (€)</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, #6b7280)", marginBottom: 4 }}>Min price (€)</label>
                         <input
                             type="number" min={0} placeholder="e.g. 20"
                             value={syncMinPrice}
                             onChange={(e) => setSyncMinPrice(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, width: 100 }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 100 }}
                         />
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Max price (€)</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, #6b7280)", marginBottom: 4 }}>Max price (€)</label>
                         <input
                             type="number" min={0} placeholder="e.g. 150"
                             value={syncMaxPrice}
                             onChange={(e) => setSyncMaxPrice(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid #e5e7eb", fontSize: 13, width: 100 }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--c-e5e7eb, #e5e7eb)", fontSize: 13, width: 100 }}
                         />
                     </div>
 
@@ -399,10 +399,10 @@ export default function EbayShoesTrendsPage() {
                 {syncMsg && (
                     <div style={{
                         marginTop: 10, padding: "7px 12px", borderRadius: 8,
-                        background: syncMsg.ok ? "#ecfdf5" : "#fff1f2",
-                        color: syncMsg.ok ? "#065f46" : "#be123c",
+                        background: syncMsg.ok ? "var(--success-bg, #ecfdf5)" : "var(--error-bg, #fff1f2)",
+                        color: syncMsg.ok ? "var(--success-text, #065f46)" : "var(--error-text, #be123c)",
                         fontSize: 13, fontWeight: 600,
-                        border: `1px solid ${syncMsg.ok ? "#a7f3d0" : "#fecdd3"}`,
+                        border: `1px solid ${syncMsg.ok ? "var(--success-border, #a7f3d0)" : "var(--error-border, #fecdd3)"}`,
                     }}>
                         {syncMsg.text}
                     </div>
@@ -429,9 +429,9 @@ export default function EbayShoesTrendsPage() {
                         <div style={{ marginBottom: 14 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                                 <div>
-                                    <span style={{ fontWeight: 700, fontSize: 16, color: "#111827", textTransform: "capitalize" }}>{selectedType}</span>
+                                    <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary, #111827)", textTransform: "capitalize" }}>{selectedType}</span>
                                     {total > 0 && (
-                                        <span style={{ marginLeft: 8, fontSize: 13, color: "#6b7280" }}>
+                                        <span style={{ marginLeft: 8, fontSize: 13, color: "var(--text-muted, #6b7280)" }}>
                                             {items.length}/{total} items
                                         </span>
                                     )}
@@ -440,7 +440,7 @@ export default function EbayShoesTrendsPage() {
                                     <select
                                         value={brandFilter}
                                         onChange={(e) => setBrandFilter(e.target.value)}
-                                        style={{ padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${brandFilter !== "all" ? "#6366f1" : "#e5e7eb"}`, fontSize: 12, fontWeight: brandFilter !== "all" ? 700 : 400, color: brandFilter !== "all" ? "#4f46e5" : "#374151", background: brandFilter !== "all" ? "#eef2ff" : "white", cursor: "pointer" }}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${brandFilter !== "all" ? "var(--accent, #6366f1)" : "var(--border-muted, #e5e7eb)"}`, fontSize: 12, fontWeight: brandFilter !== "all" ? 700 : 400, color: brandFilter !== "all" ? "var(--accent, #4f46e5)" : "var(--text-primary, #374151)", background: brandFilter !== "all" ? "var(--surface-variant, #eef2ff)" : "var(--surface-card, white)", cursor: "pointer" }}
                                     >
                                         <option value="all">🏷 Svi brendovi</option>
                                         {POPULAR_BRANDS.map(({ group, brands }) => (
@@ -452,11 +452,11 @@ export default function EbayShoesTrendsPage() {
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value)}
-                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid #e5e7eb", fontSize: 12, fontWeight: 600, background: "white", cursor: "pointer" }}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid var(--c-e5e7eb, #e5e7eb)", fontSize: 12, fontWeight: 600, background: "white", cursor: "pointer" }}
                                     >
                                         {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </select>
-                                    {loadingItems && <span style={{ fontSize: 12, color: "#9ca3af" }}>⏳ Loading…</span>}
+                                    {loadingItems && <span style={{ fontSize: 12, color: "var(--c-9ca3af, #9ca3af)" }}>⏳ Loading…</span>}
                                 </div>
                             </div>
                             {/* Gender filter tabs */}
@@ -467,9 +467,9 @@ export default function EbayShoesTrendsPage() {
                                         onClick={() => setBrowseGender(g.value)}
                                         style={{
                                             padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-                                            border: `1.5px solid ${browseGender === g.value ? EBAY_BRAND_COLOR : "#e5e7eb"}`,
-                                            background: browseGender === g.value ? EBAY_BRAND_COLOR : "white",
-                                            color: browseGender === g.value ? "white" : "#374151",
+                                            border: `1.5px solid ${browseGender === g.value ? EBAY_BRAND_COLOR : "var(--border-muted, #e5e7eb)"}`,
+                                            background: browseGender === g.value ? EBAY_BRAND_COLOR : "var(--surface-card, white)",
+                                            color: browseGender === g.value ? "white" : "var(--text-primary, #374151)",
                                             cursor: "pointer", transition: "all .12s",
                                         }}
                                     >
@@ -481,7 +481,7 @@ export default function EbayShoesTrendsPage() {
                     )}
 
                     {!selectedType && categories.length === 0 && (
-                        <div style={{ textAlign: "center", padding: "60px 0", color: "#9ca3af" }}>
+                        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--c-9ca3af, #9ca3af)" }}>
                             <div style={{ fontSize: 40 }}>🛒</div>
                             <div style={{ fontWeight: 600, marginTop: 12 }}>No data yet</div>
                             <div style={{ fontSize: 13, marginTop: 4 }}>Use the sync panel above to fetch shoes from eBay.</div>
@@ -501,7 +501,7 @@ export default function EbayShoesTrendsPage() {
                                     </div>
                                 )}
                                 {displayedItems.length === 0 && selectedType && !loadingItems && (
-                                    <div style={{ textAlign: "center", padding: 40, background: "#f9fafb", borderRadius: 14, color: "#6b7280" }}>
+                                    <div style={{ textAlign: "center", padding: 40, background: "var(--c-f9fafb, #f9fafb)", borderRadius: 14, color: "var(--c-6b7280, #6b7280)" }}>
                                         <div style={{ fontSize: 32 }}>💭</div>
                                         {brandFilter !== "all"
                                             ? <><div style={{ marginTop: 8, fontWeight: 600 }}>Nema rezultata za brend "{brandFilter}"</div><div style={{ fontSize: 13, marginTop: 4 }}>Probaj drugi brend ili učitaj više stranica.</div></>
@@ -521,8 +521,8 @@ export default function EbayShoesTrendsPage() {
                                 disabled={loadingMore}
                                 style={{
                                     padding: "10px 32px", borderRadius: 10,
-                                    background: loadingMore ? "#e5e7eb" : EBAY_BRAND_COLOR,
-                                    color: loadingMore ? "#9ca3af" : "white",
+                                    background: loadingMore ? "var(--c-e5e7eb, #e5e7eb)" : EBAY_BRAND_COLOR,
+                                    color: loadingMore ? "var(--c-9ca3af, #9ca3af)" : "white",
                                     border: "none", fontWeight: 700, fontSize: 14,
                                     cursor: loadingMore ? "not-allowed" : "pointer",
                                     transition: "all .15s",

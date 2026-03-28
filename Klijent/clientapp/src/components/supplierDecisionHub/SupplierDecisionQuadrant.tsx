@@ -29,17 +29,17 @@ type QuadrantPoint = QuadrantItem & {
 };
 
 const quadrantColors: Record<string, string> = {
-  EXPAND: "#22c55e",
-  EXPAND_SELECTIVELY: "#84cc16",
-  HOLD: "#60a5fa",
-  PRICE_NEGOTIATE: "#f59e0b",
-  ASSORTMENT_REDUCE: "#ef4444",
-  OOS_FALSE_NEGATIVE: "#fb7185",
-  REVIEW_QUALITY: "#f97316",
+  EXPAND: "var(--success, #22c55e)",
+  EXPAND_SELECTIVELY: "var(--success, #84cc16)",
+  HOLD: "var(--info, #60a5fa)",
+  PRICE_NEGOTIATE: "var(--warning, #f59e0b)",
+  ASSORTMENT_REDUCE: "var(--error, #ef4444)",
+  OOS_FALSE_NEGATIVE: "var(--error, #fb7185)",
+  REVIEW_QUALITY: "var(--warning, #f97316)",
 };
 
 function quadrantColor(code: string) {
-  return quadrantColors[code] ?? "#94a3b8";
+  return quadrantColors[code] ?? "var(--text-muted, #94a3b8)";
 }
 
 export default function SupplierDecisionQuadrant({
@@ -117,7 +117,7 @@ export default function SupplierDecisionQuadrant({
                 name="Zavisnost od sniženja"
                 domain={[0, 100]}
                 tickFormatter={(value) => formatPercentValue(Number(value), 0)}
-                stroke="#9fb4d8"
+                stroke="var(--border-muted, #9fb4d8)"
               />
               <YAxis
                 type="number"
@@ -125,7 +125,7 @@ export default function SupplierDecisionQuadrant({
                 name="Sell-through bez sniženja"
                 domain={[0, 1]}
                 tickFormatter={(value) => formatRatioPercent(Number(value), 0)}
-                stroke="#9fb4d8"
+                stroke="var(--border-muted, #9fb4d8)"
               />
               <ZAxis type="number" dataKey="revenue" range={[120, 900]} />
               <Tooltip
@@ -156,7 +156,7 @@ export default function SupplierDecisionQuadrant({
               />
               <Scatter
                 data={data}
-                fill="#60a5fa"
+                fill="var(--info, #60a5fa)"
                 onClick={(event: unknown) => {
                   const point = (event as { payload?: QuadrantPoint } | null)?.payload;
                   if (point?.supplierId) {

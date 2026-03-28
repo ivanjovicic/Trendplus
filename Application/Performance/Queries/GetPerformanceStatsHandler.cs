@@ -63,31 +63,25 @@ namespace Application.Performance.Queries
                 ))
                 .ToListAsync(cancellationToken);
 
-            // Calculate summary stats without materializing full result set.
-            var totalRequestsTask = query.CountAsync(cancellationToken);
-            var slowRequestsTask = query.CountAsync(p => p.DurationMs >= 1000, cancellationToken);
-            var failedRequestsTask = query.CountAsync(p => !p.IsSuccess, cancellationToken);
-            var averageDurationTask = query
-                .Select(p => (double?)p.DurationMs)
-                .AverageAsync(cancellationToken);
-            var maxDurationTask = query
-                .Select(p => (long?)p.DurationMs)
-                .MaxAsync(cancellationToken);
-
-            await Task.WhenAll(
-                totalRequestsTask,
-                slowRequestsTask,
-                failedRequestsTask,
-                averageDurationTask,
-                maxDurationTask
-            );
+            // Execute summary in a single query to avoid parallel operations on the same DbContext.
+            var summaryRow = await query
+                .GroupBy(_ => 1)
+                .Select(g => new
+                {
+                    TotalRequests = g.Count(),
+                    SlowRequests = g.Count(p => p.DurationMs >= 1000),
+                    FailedRequests = g.Count(p => !p.IsSuccess),
+                    AverageDurationMs = g.Average(p => (double?)p.DurationMs),
+                    MaxDurationMs = g.Max(p => (long?)p.DurationMs)
+                })
+                .FirstOrDefaultAsync(cancellationToken);
 
             var summary = new PerformanceSummaryDto(
-                TotalRequests: totalRequestsTask.Result,
-                SlowRequests: slowRequestsTask.Result,
-                FailedRequests: failedRequestsTask.Result,
-                AverageDurationMs: averageDurationTask.Result.HasValue ? (long)Math.Round(averageDurationTask.Result.Value) : 0,
-                MaxDurationMs: maxDurationTask.Result ?? 0
+                TotalRequests: summaryRow?.TotalRequests ?? 0,
+                SlowRequests: summaryRow?.SlowRequests ?? 0,
+                FailedRequests: summaryRow?.FailedRequests ?? 0,
+                AverageDurationMs: summaryRow?.AverageDurationMs is double averageDuration ? (long)Math.Round(averageDuration) : 0,
+                MaxDurationMs: summaryRow?.MaxDurationMs ?? 0
             );
 
             _logger.LogInformation(

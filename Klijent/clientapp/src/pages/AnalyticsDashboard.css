@@ -236,7 +236,7 @@
 }
 
 .analytics-errors li {
-  color: #ffd5d5;
+  color: var(--text-error, #ffd5d5);
   margin-bottom: 4px;
   font-size: 13px;
 }
@@ -297,7 +297,7 @@
 
 .metric-card > small {
   font-size: 12px;
-  color: #b9c8f3;
+  color: var(--text-secondary, #b9c8f3);
 }
 
 .metric-card.good {
@@ -352,28 +352,28 @@
 .insight-row p,
 .action-row p {
   margin: 0;
-  color: #ccd8fb;
+  color: var(--text-secondary, #ccd8fb);
   font-size: 13px;
 }
 
 .insight-row.green .badge {
   background: rgba(49, 196, 141, 0.2);
-  color: #97f0cd;
+  color: var(--success, #97f0cd);
 }
 
 .insight-row.yellow .badge {
   background: rgba(255, 188, 87, 0.2);
-  color: #ffe0ad;
+  color: var(--warning, #ffe0ad);
 }
 
 .insight-row.red .badge {
   background: rgba(255, 108, 108, 0.2);
-  color: #ffc4c4;
+  color: var(--error, #ffc4c4);
 }
 
 .insight-row.blue .badge {
   background: rgba(110, 168, 255, 0.2);
-  color: #cae0ff;
+  color: var(--info, #cae0ff);
 }
 
 .priority {
@@ -385,7 +385,7 @@
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-on-primary, #fff);
 }
 
 .priority.p1 {
@@ -437,7 +437,7 @@
 .validation-card p {
   margin: 0;
   font-size: 12px;
-  color: #d5e0ff;
+  color: var(--text-secondary, #d5e0ff);
 }
 
 .chart-wrap {
@@ -504,7 +504,7 @@
   border-radius: 10px;
   border: 1px solid rgba(138, 160, 214, 0.3);
   background: rgba(7, 14, 29, 0.78);
-  color: #dce6ff;
+  color: var(--text-secondary, #dce6ff);
   padding: 0 14px;
   font-size: 12px;
   font-weight: 600;
@@ -520,7 +520,7 @@
   border-radius: 999px;
   border: 1px solid rgba(138, 160, 214, 0.3);
   background: rgba(7, 14, 29, 0.78);
-  color: #c9d8ff;
+  color: var(--text-secondary, #c9d8ff);
   padding: 8px 12px;
   font-size: 12px;
   cursor: pointer;
@@ -528,7 +528,7 @@
 
 .top-tabs button.active {
   border-color: rgba(61, 217, 164, 0.65);
-  color: #e7fffa;
+  color: var(--text-primary, #e7fffa);
   background: linear-gradient(120deg, rgba(61, 217, 164, 0.22), rgba(52, 124, 254, 0.22));
 }
 
@@ -551,7 +551,7 @@
 }
 
 .top-table th {
-  color: #9bb0e5;
+  color: var(--text-secondary, #9bb0e5);
   font-weight: 600;
   position: sticky;
   top: 0;
@@ -565,11 +565,11 @@
 
 .sku-cell strong {
   font-size: 12px;
-  color: #e9f0ff;
+  color: var(--text-primary, #e9f0ff);
 }
 
 .sku-cell span {
-  color: #9aa4c7;
+  color: var(--text-secondary, #9aa4c7);
   font-size: 12px;
   max-width: 360px;
   overflow: hidden;
@@ -578,11 +578,11 @@
 }
 
 .trend.up {
-  color: #79ebb8;
+  color: var(--success, #79ebb8);
 }
 
 .trend.down {
-  color: #ff9e9e;
+  color: var(--error, #ff9e9e);
 }
 
 .stock-pill {
@@ -599,25 +599,25 @@
 
 .stock-pill.good {
   border-color: rgba(49, 196, 141, 0.4);
-  color: #96f2ce;
+  color: var(--success, #96f2ce);
   background: rgba(49, 196, 141, 0.14);
 }
 
 .stock-pill.warning {
   border-color: rgba(255, 188, 87, 0.45);
-  color: #ffe1ad;
+  color: var(--warning, #ffe1ad);
   background: rgba(255, 188, 87, 0.14);
 }
 
 .stock-pill.critical {
   border-color: rgba(255, 108, 108, 0.45);
-  color: #ffc3c3;
+  color: var(--error, #ffc3c3);
   background: rgba(255, 108, 108, 0.14);
 }
 
 .stock-pill.neutral {
   border-color: rgba(138, 160, 214, 0.45);
-  color: #d5e0ff;
+  color: var(--text-secondary, #d5e0ff);
   background: rgba(138, 160, 214, 0.14);
 }
 
@@ -625,19 +625,19 @@
   border-radius: 10px;
   border: 1px dashed rgba(138, 160, 214, 0.45);
   background: rgba(8, 16, 33, 0.7);
-  color: #c6d4f8;
+  color: var(--text-secondary, #c6d4f8);
   padding: 10px 12px;
   font-size: 13px;
 }
 
 .analytics-empty.warning {
   border-color: rgba(255, 188, 87, 0.55);
-  color: #ffe2b2;
+  color: var(--warning, #ffe2b2);
 }
 
 .analytics-empty.success {
   border-color: rgba(49, 196, 141, 0.55);
-  color: #aaf5d7;
+  color: var(--success, #aaf5d7);
 }
 
 .glossary-grid {
@@ -657,13 +657,13 @@
   display: block;
   margin-bottom: 4px;
   font-size: 12px;
-  color: #dce6ff;
+  color: var(--text-secondary, #dce6ff);
 }
 
 .glossary-card p {
   margin: 0;
   font-size: 12px;
-  color: #b8c6eb;
+  color: var(--text-secondary, #b8c6eb);
 }
 
 @media (max-width: 1260px) {
