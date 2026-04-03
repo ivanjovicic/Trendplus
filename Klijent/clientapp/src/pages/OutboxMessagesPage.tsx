@@ -220,11 +220,11 @@ export default function OutboxMessagesPage() {
             </div>
 
             {/* Summary */}
-            <div className="toolbar" style={{ background: "var(--surface-elevated)", border: "1px solid var(--border-default)", color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
+            <div className="toolbar" style={{ background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
                 Prikazano <strong>{messages.length}</strong> od ukupno <strong>{totalCount}</strong> poruka
             </div>
 
-            {loading && <p style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
+            {loading && <p className="text-muted" style={{ textAlign: "center", padding: "2rem" }}>Učitavanje...</p>}
             {error && <p className="error-msg">{error}</p>}
 
             {/* Messages */}
@@ -238,7 +238,9 @@ export default function OutboxMessagesPage() {
                             className="toolbar"
                             style={{
                                 background: rowStatusStyle.background,
-                                border: `2px solid ${rowStatusStyle.borderColor}`,
+                                borderColor: rowStatusStyle.borderColor,
+                                borderStyle: "solid",
+                                borderWidth: "2px"
                             }}
                         >
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem", gap: "1rem", flexWrap: "wrap" }}>

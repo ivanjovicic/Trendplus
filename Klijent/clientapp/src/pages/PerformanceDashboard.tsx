@@ -437,7 +437,7 @@ export default function PerformanceDashboard() {
                                     {visibleStats.map((stat) => (
                                         <tr
                                             key={stat.id}
-                                            className={stat.isSuccess ? "hover:bg-surface/30 transition-colors" : "bg-error/5 hover:bg-error/10 transition-colors"}
+                                            className={stat.isSuccess ? "hover:bg-surface-2 transition-colors border-b border-muted/20" : "bg-error-soft hover:bg-error-soft/80 transition-colors border-b border-error/20"}
                                         >
                                             <td className="px-4 py-3 whitespace-nowrap opacity-75">{formatDate(stat.timestamp)}</td>
                                             <td className="px-4 py-3 font-semibold text-sm font-sans">{stat.requestName}</td>

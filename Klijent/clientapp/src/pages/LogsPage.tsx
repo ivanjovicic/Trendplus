@@ -274,7 +274,7 @@ export default function LogsPage() {
                                     {logs.map((log, index) => (
                                         <React.Fragment key={`${log.timestamp}-${index}`}>
                                             <tr
-                                                className="hover:bg-surface/30 transition-colors"
+                                                className="hover:bg-surface-2 transition-colors border-b border-muted/20"
                                                 style={{ backgroundColor: getLevelBgColor(log.level) }}
                                             >
                                                 <td className="px-4 py-2 whitespace-nowrap opacity-70">
@@ -293,13 +293,13 @@ export default function LogsPage() {
                                                 </td>
                                             </tr>
                                             {log.exception && (
-                                                <tr className="bg-error/5">
+                                                <tr className="bg-error-soft/30">
                                                     <td colSpan={3} className="px-4 py-3">
                                                         <details>
                                                             <summary className="cursor-pointer font-bold text-error mb-2">
                                                                 {"\u{1F41E}"} Exception Details
                                                             </summary>
-                                                            <pre className="rounded-xl border border-error/30 bg-surface px-3 py-2 text-[11px] leading-5 overflow-auto whitespace-pre-wrap">
+                                                            <pre className="rounded-xl border border-error/30 bg-surface-darker/50 px-3 py-2 text-[11px] leading-5 overflow-auto whitespace-pre-wrap text-contrast">
                                                                 {log.exception}
                                                             </pre>
                                                         </details>
