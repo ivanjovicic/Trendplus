@@ -1,9 +1,16 @@
 export interface LogEntry {
+    id?: number;
     timestamp: string;
     level: string;
     message: string;
     exception?: string;
-    properties?: Record<string, any>;
+    properties?: {
+        path?: string;
+        userName?: string;
+        clientApp?: string;
+        correlationId?: string;
+        [key: string]: any;
+    };
 }
 
 export interface LogsResponse {

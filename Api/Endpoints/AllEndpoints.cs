@@ -182,10 +182,14 @@ public static class AllEndpoints
             int pageSize = 50,
             string? level = null,
             DateTime? fromDate = null,
-            DateTime? toDate = null) =>
+            DateTime? toDate = null,
+            string? searchText = null) =>
         {
             try
             {
+                var safePageNumber = pageNumber <= 0 ? 1 : pageNumber;
+                var safePageSize = pageSize <= 0 ? 50 : Math.Min(pageSize, 500);
+
                 // Convert dates to UTC if they have Unspecified kind
                 if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                     fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
@@ -193,51 +197,31 @@ public static class AllEndpoints
                 if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                     toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-                var errors = await store.GetAllAsync();
-                var filtered = errors.AsEnumerable();
+                var normalizedLevel = string.IsNullOrWhiteSpace(level) ? null : level.Trim();
+                var normalizedSearch = string.IsNullOrWhiteSpace(searchText) ? null : searchText.Trim();
 
-                if (fromDate.HasValue)
-                    filtered = filtered.Where(e => e.Timestamp >= fromDate.Value);
+                var total = await store.GetCountAsync(
+                    normalizedLevel,
+                    fromDate,
+                    toDate,
+                    normalizedSearch);
 
-                if (toDate.HasValue)
-                    filtered = filtered.Where(e => e.Timestamp <= toDate.Value);
+                var paged = await store.GetPagedAsync(
+                    safePageNumber,
+                    safePageSize,
+                    normalizedLevel,
+                    fromDate,
+                    toDate,
+                    normalizedSearch);
 
-                if (!string.IsNullOrWhiteSpace(level))
-                {
-                    var lvl = level.Trim();
-                    filtered = filtered.Where(e => string.Equals(e.Level, lvl, StringComparison.OrdinalIgnoreCase));
-                }
-
-                var total = filtered.Count();
-
-                var paged = filtered
-                    .OrderByDescending(e => e.Timestamp)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .Select(e => new
-                    {
-                        timestamp = e.Timestamp.ToString("o"),
-                        level = string.IsNullOrWhiteSpace(e.Level) ? "Error" : e.Level,
-                        message = e.Message,
-                        exception = !string.IsNullOrEmpty(e.StackTrace)
-                            ? $"{e.ExceptionType}\n{e.StackTrace}"
-                            : null,
-                        properties = new
-                        {
-                            path = e.Path,
-                            userName = e.UserName,
-                            clientApp = e.ClientApp,
-                            correlationId = e.CorrelationId
-                        }
-                    })
-                    .ToList();
+                var logs = paged.Select(MapLogEntry);
 
                 return Results.Ok(new
                 {
-                    logs = paged,
+                    logs,
                     totalCount = total,
-                    pageNumber,
-                    pageSize
+                    pageNumber = safePageNumber,
+                    pageSize = safePageSize
                 });
             }
             catch (Exception ex)
@@ -253,6 +237,87 @@ public static class AllEndpoints
         .WithName("GetLogs")
         .WithTags("System")
         .RequireRateLimiting("db-heavy");
+
+        app.MapGet("/api/logs/{id:int}", async (
+            int id,
+            IErrorStore store,
+            ILogger<Program> logger,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                var entry = await store.GetByIdAsync(id, ct);
+                if (entry is null)
+                {
+                    return Results.NotFound(new { error = $"Log sa ID {id} nije pronađen." });
+                }
+
+                return Results.Ok(MapLogEntry(entry));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to fetch log by id {LogId}", id);
+                return Results.Problem(
+                    detail: "Unable to fetch log details.",
+                    statusCode: 500,
+                    title: "Database Error");
+            }
+        })
+        .WithName("GetLogById")
+        .WithTags("System")
+        .RequireRateLimiting("db-heavy");
+
+        app.MapDelete("/api/logs/clear", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
+            IHostEnvironment environment,
+            TrendplusDbContext trendDb,
+            ILogger<Program> logger,
+            DateTime? beforeDate = null,
+            string? level = null,
+            CancellationToken ct = default) =>
+        {
+            if (!IsAdminRequest(httpContext, configuration, environment))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                DateTime? normalizedBefore = beforeDate;
+                if (normalizedBefore.HasValue && normalizedBefore.Value.Kind == DateTimeKind.Unspecified)
+                    normalizedBefore = DateTime.SpecifyKind(normalizedBefore.Value, DateTimeKind.Utc);
+
+                var query = trendDb.ErrorRecords.AsQueryable();
+
+                if (normalizedBefore.HasValue)
+                {
+                    query = query.Where(x => x.Timestamp <= normalizedBefore.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(level))
+                {
+                    var normalizedLevel = level.Trim();
+                    query = query.Where(x => EF.Functions.ILike(x.Level, normalizedLevel));
+                }
+
+                var deletedCount = await query.ExecuteDeleteAsync(ct);
+                logger.LogWarning("Logs clear executed. Deleted {DeletedCount} rows.", deletedCount);
+
+                return Results.Ok(new { deletedCount });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to clear logs.");
+                return Results.Problem(
+                    detail: "Unable to clear logs.",
+                    statusCode: 500,
+                    title: "Database Error");
+            }
+        })
+        .WithName("ClearLogs")
+        .WithTags("System", "Admin")
+        .RequireRateLimiting("strict");
 
         // ============ PERFORMANCE ============
         
@@ -4808,6 +4873,46 @@ public static class AllEndpoints
             SortBy = normalizedSortBy,
             SortDir = normalizedSortDir
         };
+    }
+
+    private static object MapLogEntry(ErrorRecord e)
+        => new
+        {
+            id = e.Id,
+            timestamp = e.Timestamp.ToString("o"),
+            level = string.IsNullOrWhiteSpace(e.Level) ? "Error" : e.Level,
+            message = e.Message,
+            exception = !string.IsNullOrEmpty(e.StackTrace)
+                ? $"{e.ExceptionType}\n{e.StackTrace}"
+                : null,
+            properties = new
+            {
+                path = e.Path,
+                userName = e.UserName,
+                clientApp = e.ClientApp,
+                correlationId = e.CorrelationId
+            }
+        };
+
+    private static bool IsAdminRequest(
+        HttpContext context,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        if (environment.IsDevelopment())
+        {
+            return true;
+        }
+
+        var configuredKey = configuration["Admin:ApiKey"] ?? Environment.GetEnvironmentVariable("ADMIN_API_KEY");
+        if (string.IsNullOrWhiteSpace(configuredKey))
+        {
+            return false;
+        }
+
+        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
+        return !string.IsNullOrWhiteSpace(providedKey)
+            && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
     }
 
     private static async Task<bool> RelationHasColumnAsync(

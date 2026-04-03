@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getLogs } from "../services/logsApi";
+import { clearLogs, getLogById, getLogs } from "../services/logsApi";
 import type { LogEntry } from "../types/logs";
 
 type TimePeriod = "" | "30m" | "1h" | "6h" | "1d" | "2d" | "7d";
@@ -106,6 +106,21 @@ export default function LogsPage() {
     const [toDate, setToDate] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
+    const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+    const [logIdInput, setLogIdInput] = useState("");
+    const [loadingLogById, setLoadingLogById] = useState(false);
+    const [clearingLogs, setClearingLogs] = useState(false);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm.trim());
+            setCurrentPage(1);
+        }, 300);
+
+        return () => window.clearTimeout(timer);
+    }, [searchTerm]);
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -117,7 +132,8 @@ export default function LogsPage() {
                 PAGE_SIZE,
                 selectedLevel || undefined,
                 fromDate || undefined,
-                toDate || undefined
+                toDate || undefined,
+                debouncedSearchTerm || undefined
             );
 
             setLogs(result.logs);
@@ -132,7 +148,7 @@ export default function LogsPage() {
 
     useEffect(() => {
         fetchLogs();
-    }, [currentPage, selectedLevel, fromDate, toDate]);
+    }, [currentPage, selectedLevel, fromDate, toDate, debouncedSearchTerm]);
 
     const handlePeriodChange = (period: TimePeriod) => {
         setSelectedPeriod(period);
@@ -149,15 +165,69 @@ export default function LogsPage() {
         setCurrentPage(1);
     };
 
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        alert("Kopirano u clipboard!");
+    };
+
+    const openLogById = async () => {
+        const parsedId = Number.parseInt(logIdInput, 10);
+        if (!Number.isInteger(parsedId) || parsedId <= 0) {
+            setError("Unesi ispravan ID loga.");
+            return;
+        }
+
+        setLoadingLogById(true);
+        setError(null);
+        try {
+            const log = await getLogById(parsedId);
+            setSelectedLog(log);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Greška pri učitavanju loga po ID.";
+            setError(message);
+        } finally {
+            setLoadingLogById(false);
+        }
+    };
+
+    const handleClearLogs = async () => {
+        if (!window.confirm("Potvrdi brisanje logova za zadate filtere.")) {
+            return;
+        }
+
+        const adminKey = window.prompt("Unesite admin key za brisanje logova");
+        if (!adminKey || !adminKey.trim()) {
+            setError("Admin key je obavezan za brisanje logova.");
+            return;
+        }
+
+        setClearingLogs(true);
+        setError(null);
+        try {
+            const result = await clearLogs(
+                adminKey.trim(),
+                toDate || undefined,
+                selectedLevel || undefined
+            );
+            await fetchLogs();
+            alert(`Obrisano logova: ${result.deletedCount}`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Greška pri brisanju logova.";
+            setError(message);
+        } finally {
+            setClearingLogs(false);
+        }
+    };
+
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
     return (
         <div className="card max-w-[1400px]">
-            <h2 className="text-2xl font-bold mb-6 text-contrast">
-                {"\u{1F4CB}"} Pregled logova
+            <h2 className="text-2xl font-bold mb-6 text-contrast flex items-center gap-2">
+                <span>{"\u{1F4CB}"}</span> Pregled logova
             </h2>
 
-            <div className="toolbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 rounded-xl border border-muted bg-surface-darker">
+            <div className="toolbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6 p-4 rounded-xl border border-muted bg-surface-darker">
                 <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted">Nivo</label>
                     <select
@@ -190,6 +260,17 @@ export default function LogsPage() {
                             </option>
                         ))}
                     </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Pretraga</label>
+                    <input
+                        type="text"
+                        className="input-big w-full"
+                        placeholder="Poruka, User, ID..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -228,12 +309,24 @@ export default function LogsPage() {
                             setSelectedPeriod("");
                             setFromDate("");
                             setToDate("");
+                            setSearchTerm("");
                             setCurrentPage(1);
                         }}
                         title="Resetuj filtere"
                         type="button"
                     >
                         Reset
+                    </button>
+                    <button
+                        className="button-big button-danger !px-3"
+                        onClick={() => {
+                            void handleClearLogs();
+                        }}
+                        title="Obriši logove (admin)"
+                        type="button"
+                        disabled={clearingLogs}
+                    >
+                        {clearingLogs ? "..." : "Obriši"}
                     </button>
                 </div>
             </div>
@@ -243,6 +336,31 @@ export default function LogsPage() {
                     <strong className="text-muted">Ukupno:</strong> {totalCount} logova |{" "}
                     <strong className="text-muted">Stranica:</strong> {currentPage} od {totalPages}
                 </span>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="number"
+                        min={1}
+                        className="input-big !mb-0 !py-2 !px-3 w-36"
+                        placeholder="ID loga"
+                        value={logIdInput}
+                        onChange={(e) => setLogIdInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                void openLogById();
+                            }
+                        }}
+                    />
+                    <button
+                        type="button"
+                        className="button-big !py-2 !px-4"
+                        disabled={loadingLogById}
+                        onClick={() => {
+                            void openLogById();
+                        }}
+                    >
+                        {loadingLogById ? "..." : "Otvori ID"}
+                    </button>
+                </div>
                 {selectedPeriod && (
                     <span className="text-info font-bold">
                         {"\u{1F4C5}"} {timePeriodOptions.find((option) => option.value === selectedPeriod)?.label}
@@ -268,41 +386,54 @@ export default function LogsPage() {
                                         <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider w-40">Vreme</th>
                                         <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider w-24">Nivo</th>
                                         <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider">Poruka</th>
+                                        <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider w-20">Akcije</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-muted/50 text-contrast font-mono text-xs">
+                                <tbody className="divide-y divide-muted/50 text-contrast font-mono text-[11px]">
                                     {logs.map((log, index) => (
-                                        <React.Fragment key={`${log.timestamp}-${index}`}>
+                                        <React.Fragment key={log.id ?? `${log.timestamp}-${index}`}>
                                             <tr
-                                                className="table-row-hover transition-colors"
+                                                className="table-row-hover transition-colors cursor-pointer"
                                                 style={{ backgroundColor: getLevelBgColor(log.level) }}
+                                                onClick={() => setSelectedLog(log)}
                                             >
                                                 <td className="px-4 py-2 whitespace-nowrap opacity-70">
                                                     {formatDate(log.timestamp)}
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <span
-                                                        className="font-bold uppercase"
-                                                        style={{ color: getLevelColor(log.level) }}
+                                                        className="font-bold uppercase px-1.5 py-0.5 rounded text-[10px]"
+                                                        style={{ 
+                                                            color: getLevelColor(log.level),
+                                                            backgroundColor: `${getLevelColor(log.level)}20`,
+                                                            border: `1px solid ${getLevelColor(log.level)}40`
+                                                        }}
                                                     >
                                                         {log.level}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-2 break-all">
+                                                <td className="px-4 py-2 break-all max-w-md truncate" title={log.message}>
                                                     {log.message}
+                                                </td>
+                                                <td className="px-4 py-2 text-right">
+                                                    <button 
+                                                        className="text-muted hover:text-contrast"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedLog(log);
+                                                        }}
+                                                    >
+                                                        {"\u{1F441}"}
+                                                    </button>
                                                 </td>
                                             </tr>
                                             {log.exception && (
-                                                <tr className="table-row-error">
-                                                    <td colSpan={3} className="px-4 py-3">
-                                                        <details>
-                                                            <summary className="cursor-pointer font-bold text-error mb-2">
-                                                                {"\u{1F41E}"} Exception Details
-                                                            </summary>
-                                                            <pre className="rounded-xl border border-error/30 bg-surface-darker px-3 py-2 text-[11px] leading-5 overflow-auto whitespace-pre-wrap text-contrast">
-                                                                {log.exception}
-                                                            </pre>
-                                                        </details>
+                                                <tr className="bg-error/5 border-l-2 border-l-error">
+                                                    <td colSpan={4} className="px-4 py-1.5">
+                                                        <div className="flex items-center gap-2 text-error text-[10px] font-bold opacity-80">
+                                                            <span>{"\u{1F41E}"}</span>
+                                                            <span className="truncate">{log.exception.split('\n')[0]}</span>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             )}
@@ -313,6 +444,7 @@ export default function LogsPage() {
                         </div>
                     </div>
 
+                    {/* Pagination */}
                     <div className="flex justify-center flex-wrap gap-2 mt-6">
                         <button
                             className="button-big button-secondary !px-4"
@@ -322,8 +454,8 @@ export default function LogsPage() {
                         >
                             {"\u2190"} Prethodna
                         </button>
-                        <div className="flex items-center gap-1 font-semibold mx-2 text-contrast">
-                            {currentPage} / {totalPages}
+                        <div className="flex items-center gap-1 font-semibold mx-4 text-contrast">
+                            Stranica {currentPage} od {totalPages}
                         </div>
                         <button
                             className="button-big button-secondary !px-4"
@@ -334,6 +466,99 @@ export default function LogsPage() {
                             Sledeća {"\u2192"}
                         </button>
                     </div>
+
+                    {/* Modal za Detalje */}
+                    {selectedLog && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
+                            <div className="bg-surface-elevated border border-muted w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                                <div className="p-4 border-b border-muted bg-surface-darker flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-bold uppercase px-2 py-1 rounded text-xs" style={{ 
+                                            color: getLevelColor(selectedLog.level),
+                                            backgroundColor: `${getLevelColor(selectedLog.level)}20`,
+                                        }}>
+                                            {selectedLog.level}
+                                        </span>
+                                        <h3 className="font-bold text-contrast truncate max-w-xl">{selectedLog.message}</h3>
+                                    </div>
+                                    <button onClick={() => setSelectedLog(null)} className="text-muted hover:text-contrast text-2xl">&times;</button>
+                                </div>
+                                
+                                <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-sm">
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="text-xs text-muted uppercase font-bold">ID</label>
+                                                <div className="text-contrast font-mono">{selectedLog.id ?? "-"}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-muted uppercase font-bold">Vreme (Lokalno)</label>
+                                                <div className="text-contrast font-mono">{formatDate(selectedLog.timestamp)}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-muted uppercase font-bold">Korisnik</label>
+                                                <div className="text-contrast font-mono">{selectedLog.properties?.userName || "Sistem"}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-muted uppercase font-bold">Putanja</label>
+                                                <div className="text-contrast font-mono">{selectedLog.properties?.path || "/"}</div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="text-xs text-muted uppercase font-bold">Correlation ID</label>
+                                                <div className="text-info font-mono text-xs break-all flex items-center gap-2">
+                                                    {selectedLog.properties?.correlationId}
+                                                    <button onClick={() => copyToClipboard(selectedLog.properties?.correlationId || "")} className="text-[10px] underline hover:text-contrast">Copy</button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-muted uppercase font-bold">Klijent</label>
+                                                <div className="text-contrast font-mono">{selectedLog.properties?.clientApp || "Browser"}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {selectedLog.exception && (
+                                        <div className="mb-6">
+                                            <label className="text-xs text-error uppercase font-bold block mb-2">Stack Trace</label>
+                                            <pre className="bg-surface-darker border border-error/20 p-4 rounded-xl text-[11px] text-error overflow-x-auto whitespace-pre font-mono leading-relaxed max-h-60 custom-scrollbar">
+                                                {selectedLog.exception}
+                                            </pre>
+                                            <button 
+                                                onClick={() => copyToClipboard(selectedLog.exception || "")}
+                                                className="mt-2 text-xs text-muted hover:text-error underline"
+                                            >
+                                                Kopiraj Stack Trace
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="text-xs text-muted uppercase font-bold block mb-2">Raw Properties (JSON)</label>
+                                        <pre className="bg-surface-darker border border-muted p-4 rounded-xl text-[11px] text-info overflow-x-auto font-mono">
+                                            {JSON.stringify(selectedLog.properties, null, 2)}
+                                        </pre>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 border-t border-muted bg-surface-darker flex justify-end gap-3">
+                                    <button 
+                                        className="button button-secondary text-sm"
+                                        onClick={() => copyToClipboard(JSON.stringify(selectedLog, null, 2))}
+                                    >
+                                        Kopiraj ceo log
+                                    </button>
+                                    <button 
+                                        className="button-big text-sm"
+                                        onClick={() => setSelectedLog(null)}
+                                    >
+                                        Zatvori
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {logs.length === 0 && !loading && (
                         <div className="py-20 text-center text-muted border border-dashed border-muted rounded-xl mt-4">

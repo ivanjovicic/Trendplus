@@ -376,6 +376,7 @@ public static class DatabaseInitializer
         await EnsureTrendplusAggregationTablesAsync(connectionString, logger);
         await EnsureTrendplusOutboxSchemaAsync(connectionString, logger);
         await EnsureTrendplusDocumentSchemaAsync(connectionString, logger);
+        await EnsureDeletedRowsArchiveSchemaAsync(connectionString, logger, "trendplus");
 
         // Ensure migrations history table exists
         await ExecuteSqlCommandAsync(connectionString, @"
@@ -469,6 +470,13 @@ public static class DatabaseInitializer
             connectionString,
             "Database/Migrations/026_CreatePerformanceExplainTemplates.sql",
             logger);
+
+        await ExecuteSqlFileAsync(
+            connectionString,
+            "Database/Migrations/027_AddLogsIndexes.sql",
+            logger,
+            commandTimeoutSeconds: 0,
+            useTransaction: false);
 
         // Fire-and-forget: startup now builds only the core supplier decision views from 018.
         // The heavy supplier materialized caches are intentionally deferred so API startup can
@@ -672,6 +680,41 @@ public static class DatabaseInitializer
         {
             logger.LogError(ex, "Failed to execute SQL command.");
             throw;
+        }
+    }
+
+    private static async Task EnsureDeletedRowsArchiveSchemaAsync(
+        string connectionString,
+        ILogger logger,
+        string scope)
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS deleted_rows_archive (
+                id BIGSERIAL PRIMARY KEY,
+                batch_id BIGINT NULL,
+                table_name TEXT NOT NULL,
+                primary_key JSONB NULL,
+                row_json JSONB NOT NULL,
+                deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                deleted_by TEXT NULL,
+                reason TEXT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_deleted_rows_archive_table_deleted_at
+                ON deleted_rows_archive(table_name, deleted_at DESC);
+            """;
+
+        try
+        {
+            await ExecuteSqlCommandAsync(connectionString, sql, logger);
+            logger.LogInformation("Ensured deleted_rows_archive schema for {Scope}.", scope);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to ensure deleted_rows_archive schema for {Scope}. Cleanup archive may be unavailable until DB is ready.",
+                scope);
         }
     }
 
@@ -1453,6 +1496,7 @@ public static class DatabaseInitializer
         }
 
         await EnsureCoreAnalyticsDimensionTablesAsync(connectionString, logger);
+        await EnsureDeletedRowsArchiveSchemaAsync(connectionString, logger, "analytics");
 
         // Check if we need to create tables
         if (!await TableExistsAsync(connectionString, "SalesFacts", logger))

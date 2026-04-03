@@ -193,10 +193,14 @@ export async function previewAccessImport(file: File | null, useRootFile = false
 
 export async function runAccessImport(
     file: File | null,
-    options?: { useRootFile?: boolean; includeAnalytics?: boolean; overwriteExisting?: boolean }
+    options?: { useRootFile?: boolean; includeAnalytics?: boolean; overwriteExisting?: boolean; adminKey?: string }
 ): Promise<AccessImportRunResponse> {
+    const headers: HeadersInit = {};
+    if (options?.adminKey) headers["X-Admin-Key"] = options.adminKey;
+
     const res = await fetch(`${API}/api/access-import/run`, {
         method: "POST",
+        headers,
         body: buildFormData(file, options),
     });
     if (!res.ok) throw new Error(await parseError(res));
@@ -328,8 +332,18 @@ export interface AccessImportRuntimeStatusResponse {
     detail?: string | null;
 }
 
-export async function deleteAccessImportBatch(batchId: number, includeAnalytics = true): Promise<DeleteBatchResult> {
-    const res = await fetch(`${API}/api/access-import/batches/${batchId}?includeAnalytics=${includeAnalytics}`, { method: "DELETE" });
+export async function deleteAccessImportBatch(
+    batchId: number,
+    includeAnalytics = true,
+    adminKey?: string
+): Promise<DeleteBatchResult> {
+    const headers: HeadersInit = {};
+    if (adminKey) headers["X-Admin-Key"] = adminKey;
+
+    const res = await fetch(`${API}/api/access-import/batches/${batchId}?includeAnalytics=${includeAnalytics}`, {
+        method: "DELETE",
+        headers,
+    });
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
@@ -353,10 +367,16 @@ export async function previewCleanupNonAccess(): Promise<Record<string, number>>
     return body?.preview ?? {};
 }
 
-export async function executeCleanupNonAccess(confirm = true): Promise<{ executed: boolean; deleted: Record<string, number> }> {
+export async function executeCleanupNonAccess(
+    confirm = true,
+    adminKey?: string
+): Promise<{ executed: boolean; deleted: Record<string, number> }> {
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (adminKey) headers["X-Admin-Key"] = adminKey;
+
     const res = await fetch(`${API}/api/access-import/cleanup/execute`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ confirm }),
     });
     if (!res.ok) throw new Error(await parseError(res));

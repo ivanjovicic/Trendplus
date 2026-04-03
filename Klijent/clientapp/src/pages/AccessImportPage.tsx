@@ -155,6 +155,16 @@ export default function AccessImportPage() {
         window.dispatchEvent(new Event("trendplus:data-scope-changed"));
     };
 
+    const promptAdminKey = (actionLabel: string): string | null => {
+        const key = window.prompt(`Unesite admin key za akciju: ${actionLabel}`);
+        if (!key || !key.trim()) {
+            setError("Admin key je obavezan za ovu akciju.");
+            return null;
+        }
+
+        return key.trim();
+    };
+
     const hydrateRunResultFromBatch = (batch: AccessImportBatchDto, fallbackIncludeAnalytics: boolean) => {
         if (batch.summaryJson) {
             try {
@@ -301,10 +311,13 @@ export default function AccessImportPage() {
     };
 
     const handleImport = async () => {
+        const adminKey = promptAdminKey("Pokretanje importa");
+        if (!adminKey) return;
+
         setError(null);
         setLoadingImport(true);
         try {
-            const data = await runAccessImport(file, { useRootFile, includeAnalytics, overwriteExisting });
+            const data = await runAccessImport(file, { useRootFile, includeAnalytics, overwriteExisting, adminKey });
             setRunResult(data);
             setActiveTab("lastImport");
             await refreshBatches("after-run");
@@ -342,11 +355,14 @@ export default function AccessImportPage() {
 
     const handleDeleteBatch = async (batchId: number) => {
         if (!window.confirm(`Obrisati batch #${batchId}? Ova akcija je nepovratna.`)) return;
+        const adminKey = promptAdminKey(`Brisanje batch istorije #${batchId}`);
+        if (!adminKey) return;
+
         setError(null);
         setDeleteResult(null);
         setDeletingBatchId(batchId);
         try {
-            const result = await deleteAccessImportBatch(batchId, deleteIncludeAnalytics);
+            const result = await deleteAccessImportBatch(batchId, deleteIncludeAnalytics, adminKey);
             setDeleteResult(result);
             await refreshBatches("after-delete");
         } catch (e: unknown) {
@@ -371,11 +387,14 @@ export default function AccessImportPage() {
 
     const handleCleanupExecute = async () => {
         if (!window.confirm("Potvrdite brisanje svih zapisa koji NISU iz Access-a. Ova akcija je nepovratna.")) return;
+        const adminKey = promptAdminKey("Cleanup ne-Access zapisa");
+        if (!adminKey) return;
+
         setError(null);
         setCleanupExecuting(true);
         setCleanupResult(null);
         try {
-            const res = await executeCleanupNonAccess(true);
+            const res = await executeCleanupNonAccess(true, adminKey);
             setCleanupResult(res);
             // optionally refresh batches / caches
             await refreshBatches("after-cleanup");

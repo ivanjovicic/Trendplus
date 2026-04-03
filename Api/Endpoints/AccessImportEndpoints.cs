@@ -226,10 +226,16 @@ public static class AccessImportEndpoints
 
         group.MapDelete("/batches/{batchId:long}", async (
             long batchId,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            IHostEnvironment environment,
             IAccessImportService service,
             bool includeAnalytics = true,
             CancellationToken ct = default) =>
         {
+            if (!IsAdminRequest(httpContext, configuration, environment))
+                return Results.Unauthorized();
+
             var result = await service.DeleteBatchAsync(batchId, includeAnalytics, ct);
             return result.Found
                 ? Results.Ok(result)
@@ -361,10 +367,16 @@ public static class AccessImportEndpoints
         group.MapPost("/cleanup/execute", async (
             TrendplusDbContext trendDb,
             AnalyticsDbContext analyticsDb,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            IHostEnvironment environment,
             HttpRequest request,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
+            if (!IsAdminRequest(httpContext, configuration, environment))
+                return Results.Unauthorized();
+
             try
             {
                 var body = await request.ReadFromJsonAsync<CleanupExecutionRequest>(cancellationToken: ct);
@@ -607,20 +619,26 @@ public static class AccessImportEndpoints
 
         group.MapPost("/jobs", async (
             HttpRequest request,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            IHostEnvironment environment,
             IAccessImportService service,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
-            await StartAccessImportJobAsync(request, service, logger, ct))
+            await StartAccessImportJobAsync(request, httpContext, configuration, environment, service, logger, ct))
         .RequireRateLimiting("writes")
         .DisableAntiforgery()
         .WithName("CreateAccessImportJob");
 
         group.MapPost("/run", async (
             HttpRequest request,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            IHostEnvironment environment,
             IAccessImportService service,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
-            await StartAccessImportJobAsync(request, service, logger, ct))
+            await StartAccessImportJobAsync(request, httpContext, configuration, environment, service, logger, ct))
         .RequireRateLimiting("writes")
         .DisableAntiforgery()
         .WithName("RunAccessImport");
@@ -881,10 +899,16 @@ public static class AccessImportEndpoints
 
     private static async Task<IResult> StartAccessImportJobAsync(
         HttpRequest request,
+        HttpContext httpContext,
+        IConfiguration configuration,
+        IHostEnvironment environment,
         IAccessImportService service,
         ILogger logger,
         CancellationToken ct)
     {
+        if (!IsAdminRequest(httpContext, configuration, environment))
+            return Results.Unauthorized();
+
         var runtimeStatus = GetAccessImportRuntimeStatus();
         if (!runtimeStatus.Available)
         {
@@ -1011,6 +1035,23 @@ public static class AccessImportEndpoints
         if (string.IsNullOrWhiteSpace(raw))
             return defaultValue;
         return bool.TryParse(raw, out var parsed) ? parsed : defaultValue;
+    }
+
+    private static bool IsAdminRequest(
+        HttpContext context,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        if (environment.IsDevelopment())
+            return true;
+
+        var configuredKey = configuration["Admin:ApiKey"] ?? Environment.GetEnvironmentVariable("ADMIN_API_KEY");
+        if (string.IsNullOrWhiteSpace(configuredKey))
+            return false;
+
+        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
+        return !string.IsNullOrWhiteSpace(providedKey)
+            && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
     }
 
     private static AccessImportRuntimeStatus GetAccessImportRuntimeStatus()
