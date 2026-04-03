@@ -16,6 +16,33 @@
    Global UI theme (Klijent)
    ========================= */
 
+:root {
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --surface-2: #fafbfc;
+    --text: #111827;
+    --muted: #6b7280;
+
+    --border: #d1d5db;
+    --border-strong: #9ca3af;
+
+    --primary: #2563eb;
+    --primary-600: #1d4ed8;
+    --success: #059669;
+    --warning: #f59e0b;
+    --danger: #dc2626;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 8px 20px rgba(0,0,0,0.10);
+
+    --radius: 12px;
+    --radius-sm: 10px;
+
+    --focus-ring: 0 0 0 4px rgba(37, 99, 235, 0.18);
+    --focus-ring-success: 0 0 0 4px rgba(5, 150, 105, 0.18);
+}
+
+/* Theme overrides — must come AFTER :root so higher-specificity attr selector wins */
 [data-theme="inventory-dark"] {
     --bg: #0b0f14;
     --surface: #12161f;
@@ -62,7 +89,8 @@
     --focus-ring-success: 0 0 0 4px #00ff00;
 }
 
-:root {
+/* Explicit light-theme reset so toggling light always restores white */
+[data-theme="light"] {
     --bg: #f3f4f6;
     --surface: #ffffff;
     --surface-2: #fafbfc;
@@ -75,14 +103,11 @@
     --primary: #2563eb;
     --primary-600: #1d4ed8;
     --success: #059669;
-    --warning: #f59e0b;
+    --warning: #d97706;
     --danger: #dc2626;
 
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
     --shadow-md: 0 8px 20px rgba(0,0,0,0.10);
-
-    --radius: 12px;
-    --radius-sm: 10px;
 
     --focus-ring: 0 0 0 4px rgba(37, 99, 235, 0.18);
     --focus-ring-success: 0 0 0 4px rgba(5, 150, 105, 0.18);

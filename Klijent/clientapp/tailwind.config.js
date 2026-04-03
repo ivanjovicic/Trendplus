@@ -18,13 +18,14 @@ export default {
         extend: {
             colors: {
                 surface: {
-                    DEFAULT: '#10141c',
-                    light: '#12161f',
-                    elevated: '#0f1318'
+                    DEFAULT: 'var(--surface-default)',
+                    light: 'var(--surface-light)',
+                    elevated: 'var(--surface-elevated)',
+                    darker: 'var(--surface-darker)',
                 },
                 contrast: {
-                    DEFAULT: '#dbe6fb',
-                    muted: '#9aa9c6'
+                    DEFAULT: 'var(--text-primary)',
+                    muted: 'var(--text-muted)',
                 },
                 grayCustom: {
                     50: '#f8fafb',

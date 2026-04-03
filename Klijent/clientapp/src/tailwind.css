@@ -491,6 +491,27 @@ body {
   background-color: var(--surface-elevated);
 }
 
+.surface-darker {
+  background-color: var(--surface-darker);
+}
+
+/* Tailwind bg- prefixed aliases so JSX can use bg-surface-* classes */
+.bg-surface { background-color: var(--surface-default); }
+.bg-surface-light { background-color: var(--surface-light); }
+.bg-surface-elevated { background-color: var(--surface-elevated); }
+.bg-surface-darker { background-color: var(--surface-darker); }
+.bg-surface-2 { background-color: var(--surface-elevated); }
+
+/* Status soft bg helpers */
+.bg-error-soft { background-color: var(--error-soft, rgba(239,68,68,0.12)); }
+.bg-success-soft { background-color: var(--success-soft, rgba(16,185,129,0.12)); }
+.bg-warning-soft { background-color: var(--warning-soft, rgba(245,158,11,0.12)); }
+
+/* Hover overrides that can't carry Tailwind modifiers on custom classes */
+.table-row-hover:hover { background-color: var(--surface-elevated); }
+.table-row-error { background-color: var(--error-soft, rgba(239,68,68,0.10)); }
+.table-row-error:hover { background-color: var(--error-soft, rgba(239,68,68,0.18)); }
+
 .text-contrast {
   color: var(--text-primary);
 }
