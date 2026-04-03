@@ -145,22 +145,22 @@ export default function OutboxDashboard() {
     const badgeStyle = (status: "processed" | "pending" | "failed") => {
         switch (status) {
             case "processed":
-                return { background: "var(--surface-light)", borderColor: "var(--success)", color: "var(--success)" };
+                return { background: "var(--success-soft)", borderColor: "var(--success)", color: "var(--success)" };
             case "failed":
-                return { background: "var(--surface-light)", borderColor: "var(--error)", color: "var(--error)" };
+                return { background: "var(--error-soft)", borderColor: "var(--error)", color: "var(--error)" };
             default:
-                return { background: "var(--surface-light)", borderColor: "var(--warning)", color: "var(--warning)" };
+                return { background: "var(--warning-soft)", borderColor: "var(--warning)", color: "var(--warning)" };
         }
     };
 
     const rowStyle = (message: OutboxMessage) => {
         if (message.isProcessed) {
-            return { background: "var(--surface-light)", borderColor: "var(--success)" };
+            return { background: "var(--success-soft)", borderColor: "var(--success)" };
         }
         if (message.retryCount >= 5) {
-            return { background: "var(--surface-light)", borderColor: "var(--error)" };
+            return { background: "var(--error-soft)", borderColor: "var(--error)" };
         }
-        return { background: "var(--surface-light)", borderColor: "var(--warning)" };
+        return { background: "var(--warning-soft)", borderColor: "var(--warning)" };
     };
 
     return (
@@ -329,7 +329,7 @@ export default function OutboxDashboard() {
                                         <div style={{ fontWeight: 900, fontSize: "1.125rem", marginBottom: "0.25rem" }}>
                                             {message.eventType}
                                         </div>
-                                        <div style={{ fontSize: "0.875rem", color: "var(--c-6b7280, #6b7280)", fontFamily: "monospace" }}>
+                                        <div style={{ fontSize: "0.875rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
                                             ID: {message.id} | CorrelationId: {message.correlationId}
                                         </div>
                                     </div>
@@ -396,12 +396,12 @@ export default function OutboxDashboard() {
 
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "0.75rem" }}>
                                     <div>
-                                        <div style={{ fontSize: "0.75rem", color: "var(--c-6b7280, #6b7280)", marginBottom: "0.25rem" }}>Created At</div>
+                                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>Created At</div>
                                         <div style={{ fontFamily: "monospace", fontSize: "0.875rem" }}>{formatDate(message.createdAt)}</div>
                                     </div>
                                     {message.processedAt && (
                                         <div>
-                                            <div style={{ fontSize: "0.75rem", color: "var(--c-6b7280, #6b7280)", marginBottom: "0.25rem" }}>Processed At</div>
+                                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>Processed At</div>
                                             <div style={{ fontFamily: "monospace", fontSize: "0.875rem" }}>{formatDate(message.processedAt)}</div>
                                         </div>
                                     )}

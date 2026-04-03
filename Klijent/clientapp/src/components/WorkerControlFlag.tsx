@@ -43,12 +43,12 @@ export default function WorkerControlFlag() {
   }, [load, apiPingEnabled]);
 
   const statusTone = useMemo(() => {
-    if (error) return { bg: "var(--error, #ef4444)", border: "var(--error, #ef4444)", text: "var(--text-primary, #0f172a)" };
-    if (!health) return { bg: "var(--surface-default, #f4f7fb)", border: "var(--border-default, #d3dce9)", text: "var(--text-primary, #0f172a)" };
-    if (!health.workersEnabled) return { bg: "var(--surface-default, #f4f7fb)", border: "var(--border-hover, #a7b9d3)", text: "var(--text-primary, #0f172a)" };
-    if (health.errorWorkers > 0) return { bg: "var(--error, #ef4444)", border: "var(--error, #ef4444)", text: "var(--text-primary, #0f172a)" };
-    if (health.staleWorkers > 0) return { bg: "var(--warning, #f59e0b)", border: "var(--warning, #f59e0b)", text: "var(--text-primary, #0f172a)" };
-    return { bg: "var(--success, #10b981)", border: "var(--success, #10b981)", text: "var(--text-primary, #0f172a)" };
+    if (error) return { bg: "var(--error)", border: "var(--error)", text: "var(--text-primary)" };
+    if (!health) return { bg: "var(--surface-default)", border: "var(--border-default)", text: "var(--text-primary)" };
+    if (!health.workersEnabled) return { bg: "var(--surface-default)", border: "var(--border-hover)", text: "var(--text-primary)" };
+    if (health.errorWorkers > 0) return { bg: "var(--error)", border: "var(--error)", text: "var(--text-primary)" };
+    if (health.staleWorkers > 0) return { bg: "var(--warning)", border: "var(--warning)", text: "var(--text-primary)" };
+    return { bg: "var(--success)", border: "var(--success)", text: "var(--text-primary)" };
   }, [error, health]);
 
   const statusText = useMemo(() => {
@@ -110,9 +110,9 @@ export default function WorkerControlFlag() {
         style={{
           padding: "5px 10px",
           borderRadius: 8,
-          border: "1px solid var(--border-default, #d3dce9)",
-          background: busy ? "var(--surface-elevated, #ffffff)" : "var(--surface-default, #f4f7fb)",
-          color: "var(--text-on-surface, #0f172a)",
+          border: "1px solid var(--border-default)",
+          background: busy ? "var(--surface-elevated)" : "var(--surface-default)",
+          color: "var(--text-on-surface)",
           fontSize: 12,
           fontWeight: 600,
           cursor: toggleDisabled ? "not-allowed" : "pointer",
@@ -129,9 +129,9 @@ export default function WorkerControlFlag() {
         style={{
           padding: "5px 8px",
           borderRadius: 8,
-          border: "1px solid var(--border-default, #d3dce9)",
-          background: "var(--surface-default, #f4f7fb)",
-          color: "var(--text-on-surface, #0f172a)",
+          border: "1px solid var(--border-default)",
+          background: "var(--surface-default)",
+          color: "var(--text-on-surface)",
           fontSize: 11,
           cursor: busy ? "not-allowed" : "pointer",
           opacity: busy ? 0.6 : 1,

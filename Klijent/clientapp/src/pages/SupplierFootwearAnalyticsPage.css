@@ -60,12 +60,23 @@
 
 .sf-decision-field select,
 .sf-decision-field input {
-  background: var(--surface-card, #ffffff);
-  border: 1px solid var(--border-strong, #d1d5db);
+  background: var(--surface-elevated, #ffffff);
+  border: 1px solid var(--border-default, #d1d5db);
   border-radius: 8px;
   color: var(--text-primary, #111827);
   font-size: 13px;
   padding: 8px 10px;
+}
+
+.sf-decision-field input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  color-scheme: light;
+}
+
+[data-theme="inventory-dark"] .sf-decision-field input[type="date"],
+[data-theme="high-contrast"] .sf-decision-field input[type="date"] {
+  color-scheme: dark;
 }
 
 .sf-decision-field select:focus,
@@ -112,15 +123,15 @@
 }
 
 .sf-decision-message.loading {
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(96, 165, 250, 0.3);
-  color: #bfdbfe;
+  background: var(--accent-soft, rgba(59, 130, 246, 0.12));
+  border: 1px solid var(--accent-border, rgba(96, 165, 250, 0.3));
+  color: var(--info, #bfdbfe);
 }
 
 .sf-decision-message.error {
-  background: rgba(127, 29, 29, 0.3);
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  color: #fecaca;
+  background: var(--error-soft, rgba(127, 29, 29, 0.3));
+  border: 1px solid var(--error-border, rgba(248, 113, 113, 0.35));
+  color: var(--error, #fecaca);
 }
 
 .sf-decision-kpis {
@@ -276,21 +287,21 @@
 }
 
 .sf-decision-status.status-boost {
-  background: rgba(52, 211, 153, 0.15);
-  border: 1px solid rgba(52, 211, 153, 0.45);
-  color: #6ee7b7;
+  background: var(--success-soft, rgba(52, 211, 153, 0.15));
+  border: 1px solid var(--success-border, rgba(52, 211, 153, 0.45));
+  color: var(--success, #6ee7b7);
 }
 
 .sf-decision-status.status-keep {
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid rgba(251, 191, 36, 0.45);
-  color: #fcd34d;
+  background: var(--warning-soft, rgba(251, 191, 36, 0.15));
+  border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.45));
+  color: var(--warning, #fcd34d);
 }
 
 .sf-decision-status.status-reduce {
-  background: rgba(248, 113, 113, 0.15);
-  border: 1px solid rgba(248, 113, 113, 0.45);
-  color: #fca5a5;
+  background: var(--error-soft, rgba(248, 113, 113, 0.15));
+  border: 1px solid var(--error-border, rgba(248, 113, 113, 0.45));
+  color: var(--error, #fca5a5);
 }
 
 .sf-mini-note {
@@ -300,15 +311,15 @@
 }
 
 .trend-up {
-  color: #34d399;
+  color: var(--success, #34d399);
 }
 
 .trend-down {
-  color: #f87171;
+  color: var(--error, #f87171);
 }
 
 .trend-neutral {
-  color: #93c5fd;
+  color: var(--info, #93c5fd);
 }
 
 .sf-decision-detail-btn {

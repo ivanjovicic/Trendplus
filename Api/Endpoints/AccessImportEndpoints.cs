@@ -6,7 +6,10 @@ using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Infrastructure.DbContexts;
 using System.Data.Odbc;
+using System.Net.Http.Json;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
+using System.Net.Http.Json;
 
 namespace Trendplus2.Endpoints;
 
@@ -29,6 +32,8 @@ public static class AccessImportEndpoints
         string Platform,
         string[] MissingDependencies,
         string? Detail);
+
+    private sealed record CleanupExecutionRequest(bool Confirm);
 
     public static void MapAccessImportEndpoints(this WebApplication app)
     {
@@ -362,8 +367,8 @@ public static class AccessImportEndpoints
         {
             try
             {
-                var body = await request.ReadFromJsonAsync<Dictionary<string, object?>>(cancellationToken: ct);
-                var confirm = body != null && body.TryGetValue("confirm", out var c) && (c is bool b && b);
+                var body = await request.ReadFromJsonAsync<CleanupExecutionRequest>(cancellationToken: ct);
+                var confirm = body?.Confirm ?? false;
                 if (!confirm)
                     return Results.BadRequest(new { error = "Action must be confirmed. Send JSON body { \"confirm\": true }." });
 

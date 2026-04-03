@@ -67,24 +67,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
         const typeStyles = {
             success: {
-                background: "var(--surface-elevated, #f0fdf4)",
-                color: "var(--success, #059669)",
-                border: "2px solid var(--success, #059669)",
+                background: "var(--surface-elevated)",
+                color: "var(--success)",
+                border: "2px solid var(--success)",
             },
             error: {
-                background: "var(--surface-elevated, #fef2f2)",
-                color: "var(--error, #dc2626)",
-                border: "2px solid var(--error, #dc2626)",
+                background: "var(--surface-elevated)",
+                color: "var(--error)",
+                border: "2px solid var(--error)",
             },
             warning: {
-                background: "var(--surface-elevated, #fef3c7)",
-                color: "var(--warning, #f59e0b)",
-                border: "2px solid var(--warning, #f59e0b)",
+                background: "var(--surface-elevated)",
+                color: "var(--warning)",
+                border: "2px solid var(--warning)",
             },
             info: {
-                background: "var(--surface-elevated, #eff6ff)",
-                color: "var(--focus-ring, #2563eb)",
-                border: "2px solid var(--focus-ring, #2563eb)",
+                background: "var(--surface-elevated)",
+                color: "var(--focus-ring)",
+                border: "2px solid var(--focus-ring)",
             },
         };
 

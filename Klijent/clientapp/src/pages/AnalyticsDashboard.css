@@ -3,16 +3,16 @@
   --bg-soft: var(--surface-darker);
   --panel: var(--surface-elevated);
   --panel-border: var(--border-muted);
-  --text: var(--text-primary, #0f172a);
-  --muted: var(--text-muted, #64748b);
+  --text: var(--text-primary);
+  --muted: var(--text-muted);
   --accent: var(--info);
   --accent-2: var(--info);
   --warning: var(--error);
   --critical: var(--error);
   --good: var(--success);
-  --neutral: var(--text-muted, #64748b);
+  --neutral: var(--text-muted);
   color: var(--text);
-  background: var(--bg, var(--surface-default, #f4f7fb));
+  background: var(--bg, var(--surface-default));
   min-height: calc(100vh - 64px);
   padding: 24px;
 }
@@ -65,7 +65,7 @@
   height: 16px;
   border-radius: 999px;
   border: 1px solid rgba(100,116,139,0.16);
-  color: var(--text-primary, #0f172a);
+  color: var(--text-primary);
   font-size: 10px;
   font-weight: 700;
   cursor: help;
@@ -79,8 +79,8 @@
   width: 240px;
   border-radius: 8px;
   border: 1px solid rgba(100,116,139,0.16);
-  background: var(--surface-darker, #e6edf7);
-  color: var(--text-primary, #0f172a);
+  background: var(--surface-darker);
+  color: var(--text-primary);
   font-size: 11px;
   line-height: 1.35;
   padding: 8px;
@@ -108,8 +108,8 @@
 .analytics-custom-range button {
   height: 38px;
   border-radius: 10px;
-  border: 1px solid var(--panel-border, #d3dce9);
-  background: var(--panel, #ffffff);
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
   color: var(--text);
   padding: 0 12px;
   font-size: 13px;
@@ -137,7 +137,7 @@
 .analytics-section > h2 {
   margin: 0 0 12px;
   font-size: 18px;
-  color: var(--text-primary, #0f172a);
+  color: var(--text-primary);
 }
 
 .analytics-panel {
@@ -198,7 +198,7 @@
   border-radius: 999px;
   border: 1px solid rgba(138, 160, 214, 0.26);
   background: var(--chip-bg, rgba(8, 15, 31, 0.76));
-  color: var(--text-primary, #d6e3ff);
+  color: var(--text-primary);
   font-size: 12px;
   padding: 6px 10px;
 }
@@ -215,7 +215,7 @@
   border-radius: 10px;
   border: 1px solid rgba(49, 196, 141, 0.45);
   background: rgba(49, 196, 141, 0.12);
-  color: var(--success, #d8ffef);
+  color: var(--success);
   padding: 10px 12px;
   font-size: 13px;
 }
@@ -236,7 +236,7 @@
 }
 
 .analytics-errors li {
-  color: var(--text-error, #ffd5d5);
+  color: var(--text-error);
   margin-bottom: 4px;
   font-size: 13px;
 }

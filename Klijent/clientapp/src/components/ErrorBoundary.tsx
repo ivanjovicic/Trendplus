@@ -49,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
                                 </pre>
                             </details>
                         )}
-                        <button onClick={this.handleReset} className="rounded-md px-4 py-3 font-semibold" style={{ background: 'var(--info, #3b82f6)', color: 'var(--text-on-primary, #ffffff)', border: 'none' }}>
+                        <button onClick={this.handleReset} className="rounded-md px-4 py-3 font-semibold" style={{ background: 'var(--info)', color: 'var(--text-on-primary)', border: 'none' }}>
                             Pokušaj ponovo
                         </button>
                     </div>

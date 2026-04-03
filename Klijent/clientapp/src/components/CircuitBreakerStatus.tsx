@@ -36,9 +36,9 @@ export function CircuitBreakerStatus({ showAlways = false }: CircuitBreakerStatu
     if (!showAlways && stats.state === "CLOSED") return null;
 
     const stateConfig: Record<CircuitState, { bg: string; border: string; text: string; icon: string; label: string }> = {
-        CLOSED: { bg: 'var(--success-10, #ecfdf5)', border: 'var(--success)', text: 'var(--success)', icon: '✅', label: 'Healthy' },
-        OPEN: { bg: 'var(--error-10, #fff1f2)', border: 'var(--error)', text: 'var(--error)', icon: '⛔', label: 'Unavailable' },
-        HALF_OPEN: { bg: 'var(--warning-10, #fffbeb)', border: 'var(--warning)', text: 'var(--warning)', icon: '⚠️', label: 'Recovering' },
+        CLOSED: { bg: 'var(--success-10)', border: 'var(--success)', text: 'var(--success)', icon: '✅', label: 'Healthy' },
+        OPEN: { bg: 'var(--error-10)', border: 'var(--error)', text: 'var(--error)', icon: '⛔', label: 'Unavailable' },
+        HALF_OPEN: { bg: 'var(--warning-10)', border: 'var(--warning)', text: 'var(--warning)', icon: '⚠️', label: 'Recovering' },
     };
 
     const config = stateConfig[stats.state];

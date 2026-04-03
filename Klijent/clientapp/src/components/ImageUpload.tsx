@@ -95,10 +95,10 @@ export default function ImageUpload({
 
     return (
         <div style={{ marginBottom: "1rem" }}>
-            {label && (
+            {label && ( 
                 <label
                     className="field-label"
-                    style={{ fontWeight: 600, color: "var(--text-secondary, #374151)" }}
+                    style={{ fontWeight: 600, color: "var(--text-secondary)" }}
                 >
                     {label}
                 </label>
@@ -124,12 +124,12 @@ export default function ImageUpload({
                     marginTop: "8px",
                     padding: "2rem",
                     border: isDragging
-                        ? "3px dashed var(--focus-ring, #3b82f6)"
-                        : "2px dashed var(--border-default, #d1d5db)",
-                    borderRadius: "12px",
+                        ? "3px dashed var(--focus-ring)"
+                        : "2px dashed var(--border-default)",
+                    borderRadius: "12px", 
                     background: isDragging
-                        ? "linear-gradient(135deg, var(--surface-elevated, #eff6ff) 0%, var(--surface-light, #dbeafe) 100%)"
-                        : "linear-gradient(135deg, var(--surface-default, #f9fafb) 0%, var(--surface-light, #ffffff) 100%)",
+                        ? "linear-gradient(135deg, var(--surface-elevated) 0%, var(--surface-light) 100%)"
+                        : "linear-gradient(135deg, var(--surface-default) 0%, var(--surface-light) 100%)",
                     textAlign: "center",
                     cursor: "pointer",
                     transition: "all 0.2s ease",
@@ -138,16 +138,16 @@ export default function ImageUpload({
                 }}
                     onMouseEnter={(e) => {
                         if (!isDragging) {
-                            e.currentTarget.style.borderColor = "var(--border-hover, #9ca3af)";
+                            e.currentTarget.style.borderColor = "var(--border-hover)";
                             e.currentTarget.style.background =
-                                "linear-gradient(135deg, var(--surface-elevated, #f3f4f6) 0%, var(--surface-default, #e5e7eb) 100%)";
+                                "linear-gradient(135deg, var(--surface-elevated) 0%, var(--surface-default) 100%)";
                         }
                     }}
                     onMouseLeave={(e) => {
                         if (!isDragging) {
-                            e.currentTarget.style.borderColor = "var(--border-default, #d1d5db)";
+                            e.currentTarget.style.borderColor = "var(--border-default)";
                             e.currentTarget.style.background =
-                                "linear-gradient(135deg, var(--surface-default, #f9fafb) 0%, var(--surface-light, #ffffff) 100%)";
+                                "linear-gradient(135deg, var(--surface-default) 0%, var(--surface-light) 100%)";
                         }
                     }}
             >
@@ -158,7 +158,7 @@ export default function ImageUpload({
                             style={{
                             fontSize: "1.125rem",
                             fontWeight: 600,
-                            color: "var(--focus-ring, #2563eb)",
+                            color: "var(--focus-ring)",
                             margin: 0,
                             }}
                         >
@@ -172,7 +172,7 @@ export default function ImageUpload({
                             style={{
                             fontSize: "1rem",
                             fontWeight: 600,
-                            color: "var(--text-secondary, #374151)",
+                            color: "var(--text-secondary)",
                             marginBottom: "0.5rem",
                             }}
                         >
@@ -181,7 +181,7 @@ export default function ImageUpload({
                         <p
                             style={{
                             fontSize: "0.875rem",
-                            color: "var(--text-muted, #6b7280)",
+                            color: "var(--text-muted)",
                             margin: 0,
                             }}
                         >
@@ -190,7 +190,7 @@ export default function ImageUpload({
                         <p
                             style={{
                             fontSize: "0.75rem",
-                            color: "var(--text-muted, #9ca3af)",
+                            color: "var(--text-muted)",
                             marginTop: "0.5rem",
                             }}
                         >
@@ -206,8 +206,8 @@ export default function ImageUpload({
                     style={{
                         marginTop: "1rem",
                         padding: "1rem",
-                        background: "var(--surface-light, #f3f4f6)",
-                        border: "2px solid var(--border-default, #e5e7eb)",
+                        background: "var(--surface-light)",
+                        border: "2px solid var(--border-default)",
                         borderRadius: "12px",
                         animation: "fadeIn 0.3s ease-in",
                     }}
@@ -223,7 +223,7 @@ export default function ImageUpload({
                         <span
                             style={{
                                 fontSize: "0.875rem",
-                                color: "var(--text-muted, #6b7280)",
+                                color: "var(--text-muted)",
                                 fontWeight: 600,
                             }}
                         >
@@ -236,8 +236,8 @@ export default function ImageUpload({
                                 handleClear();
                             }}
                             style={{
-                                background: "var(--error, #dc2626)",
-                                color: "var(--text-on-primary, #ffffff)",
+                                background: "var(--error)",
+                                color: "var(--text-on-primary)",
                                 padding: "6px 12px",
                                 borderRadius: "6px",
                                 border: "none",
@@ -258,8 +258,8 @@ export default function ImageUpload({
                         style={{
                             maxWidth: "100%",
                             maxHeight: "400px",
-                            borderRadius: "8px",
-                            border: "1px solid var(--border-default, #d1d5db)",
+                                borderRadius: "8px", 
+                            border: "1px solid var(--border-default)",
                             objectFit: "contain",
                             display: "block",
                             margin: "0 auto",
@@ -277,8 +277,8 @@ export default function ImageUpload({
                         alignItems: "center",
                         justifyContent: "space-between",
                         gap: "10px",
-                        background: "var(--surface-muted, #f0fdf4)",
-                        border: "1px solid var(--c-86efac, #86efac)",
+                        background: "var(--surface-muted)",
+                        border: "1px solid var(--c-86efac)",
                         padding: "10px 12px",
                         borderRadius: "8px",
                     }}
@@ -286,21 +286,21 @@ export default function ImageUpload({
                     <span
                         style={{
                             fontSize: "0.875rem",
-                            color: "var(--success, #15803d)",
+                            color: "var(--success)",
                             fontWeight: 600,
                         }}
                     >
                         ✓ {fileName}
                     </span>
-                    <button
+                        <button 
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
                             handleClear();
                         }}
                         style={{
-                            background: "var(--error, #dc2626)",
-                            color: "var(--text-on-primary, #ffffff)",
+                            background: "var(--error)",
+                                color: "var(--text-on-primary)", 
                             padding: "4px 8px",
                             borderRadius: "4px",
                             border: "none",

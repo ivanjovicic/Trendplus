@@ -63,7 +63,7 @@ function getLevelColor(level: string): string {
         case "INFO":
             return "var(--info)";
         case "DEBUG":
-            return "var(--text-secondary, #94a3b8)";
+            return "var(--text-secondary)";
         default:
             return "var(--text-muted)";
     }
@@ -73,12 +73,12 @@ function getLevelBgColor(level: string): string {
     switch (level.toUpperCase()) {
         case "ERROR":
         case "FATAL":
-            return "rgba(var(--error-rgb), 0.1)";
+            return "var(--error-soft)";
         case "WARNING":
-            return "rgba(245, 158, 11, 0.1)";
+            return "var(--warning-soft)";
         case "INFORMATION":
         case "INFO":
-            return "rgba(var(--info-rgb), 0.1)";
+            return "var(--info-soft)";
         default:
             return "transparent";
     }

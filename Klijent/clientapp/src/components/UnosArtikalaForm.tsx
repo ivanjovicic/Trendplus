@@ -565,7 +565,7 @@ export default function UnosArtikalaForm({
                 </button>
 
                 {isSubmitting && (
-                    <span style={{ fontSize: '0.875rem', color: 'var(--muted, #6b7280)' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--muted)' }}>
                         Molimo sačekajte...
                     </span>
                 )}
