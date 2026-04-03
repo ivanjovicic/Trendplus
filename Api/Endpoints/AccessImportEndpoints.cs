@@ -375,99 +375,101 @@ public static class AccessImportEndpoints
                 // Execute deletes in a transaction to ensure integrity
                 await using var tx = await trendDb.Database.BeginTransactionAsync(ct);
                 var deleted = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                var trendArchiveEnabled = await EnsureDeletedRowsArchiveAvailableAsync(trendDb, logger, "trendplus", ct);
+                var analyticsArchiveEnabled = await EnsureDeletedRowsArchiveAvailableAsync(analyticsDb, logger, "analytics", ct);
 
                 // Child tables first - archive rows before delete
                 // povracaj_stavke (parent povracaj_zaglavlje uses data_origin column)
-                await trendDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'povracaj_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM povracaj_stavke t
                     WHERE t.id_povracaj IN (SELECT id FROM povracaj_zaglavlje WHERE data_origin IS NULL OR data_origin <> 'access')
-                ", cancellationToken: ct);
+                ", logger, "trendplus", ct);
                 deleted["povracaj_stavke"] = await trendDb.PovracajStavke.Where(s => trendDb.PovracajZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdPovracaj)).ExecuteDeleteAsync(ct);
 
-                await trendDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'povracaj_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM povracaj_zaglavlje t
                     WHERE t.data_origin IS NULL OR t.data_origin <> 'access'
-                ", cancellationToken: ct);
+                ", logger, "trendplus", ct);
                 deleted["povracaj_zaglavlje"] = await trendDb.PovracajZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
 
                 // prodaja (prodaja_stavke -> prodaja_zaglavlje.data_origin)
-                await trendDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'prodaja_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM prodaja_stavke t
                     WHERE t.id_prodaja IN (SELECT id FROM prodaja_zaglavlje WHERE data_origin IS NULL OR data_origin <> 'access')
-                ", cancellationToken: ct);
+                ", logger, "trendplus", ct);
                 deleted["prodaja_stavke"] = await trendDb.ProdajaStavke.Where(s => trendDb.ProdajaZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdProdaja)).ExecuteDeleteAsync(ct);
 
-                await trendDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'prodaja_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM prodaja_zaglavlje t
                     WHERE t.data_origin IS NULL OR t.data_origin <> 'access'
-                ", cancellationToken: ct);
+                ", logger, "trendplus", ct);
                 deleted["prodaja_zaglavlje"] = await trendDb.ProdajaZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
 
                 // dnevnik_promena
-                await trendDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'DnevnikPromena', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM ""DnevnikPromena"" t
                     WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", cancellationToken: ct);
+                ", logger, "trendplus", ct);
                 deleted["dnevnik_promena"] = await trendDb.DnevnikPromena.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
 
                 // Master data - artikli, sezone, dobavljaci, tipovi
-                await trendDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'Artikli', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM ""Artikli"" t
                     WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", cancellationToken: ct);
+                ", logger, "trendplus", ct);
                 deleted["artikli"] = await trendDb.Artikli.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
 
-                await trendDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'Sezone', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM ""Sezone"" t
                     WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", cancellationToken: ct);
+                ", logger, "trendplus", ct);
                 deleted["sezone"] = await trendDb.Sezone.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
 
-                await trendDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'Dobavljaci', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM ""Dobavljaci"" t
                     WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", cancellationToken: ct);
+                ", logger, "trendplus", ct);
                 deleted["dobavljaci"] = await trendDb.Dobavljaci.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
 
-                await trendDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'TipoviObuce', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM ""TipoviObuce"" t
                     WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", cancellationToken: ct);
+                ", logger, "trendplus", ct);
                 deleted["tipovi_obuce"] = await trendDb.TipoviObuce.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
 
                 // Analytics - archive then delete
-                await analyticsDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(analyticsDb, analyticsArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'SalesFacts', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM ""SalesFacts"" t
                     WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", cancellationToken: ct);
+                ", logger, "analytics", ct);
                 deleted["sales_facts"] = await analyticsDb.SalesFacts.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
 
-                await analyticsDb.Database.ExecuteSqlRawAsync(@"
+                await TryArchiveRowsAsync(analyticsDb, analyticsArchiveEnabled, @"
                     INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                     SELECT NULL, 'ProductsDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
                     FROM ""ProductsDim"" t
                     WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", cancellationToken: ct);
+                ", logger, "analytics", ct);
                 deleted["products_dim"] = await analyticsDb.ProductsDim.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
 
                 await tx.CommitAsync(ct);
@@ -622,6 +624,68 @@ public static class AccessImportEndpoints
         .RequireRateLimiting("writes")
         .DisableAntiforgery()
         .WithName("RunAccessImport");
+    }
+
+    private static async Task<bool> EnsureDeletedRowsArchiveAvailableAsync(
+        DbContext dbContext,
+        ILogger logger,
+        string scope,
+        CancellationToken ct)
+    {
+        try
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS deleted_rows_archive (
+                    id BIGSERIAL PRIMARY KEY,
+                    batch_id BIGINT NULL,
+                    table_name TEXT NOT NULL,
+                    primary_key JSONB NULL,
+                    row_json JSONB NOT NULL,
+                    deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    deleted_by TEXT NULL,
+                    reason TEXT NULL
+                );
+            ", cancellationToken: ct);
+
+            await dbContext.Database.ExecuteSqlRawAsync(@"
+                CREATE INDEX IF NOT EXISTS idx_deleted_rows_archive_table_deleted_at
+                    ON deleted_rows_archive(table_name, deleted_at DESC);
+            ", cancellationToken: ct);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "deleted_rows_archive is unavailable for {Scope}; cleanup will continue without archive writes.",
+                scope);
+            return false;
+        }
+    }
+
+    private static async Task TryArchiveRowsAsync(
+        DbContext dbContext,
+        bool archiveEnabled,
+        string sql,
+        ILogger logger,
+        string scope,
+        CancellationToken ct)
+    {
+        if (!archiveEnabled)
+            return;
+
+        try
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Archive insert skipped for {Scope}. Cleanup delete will continue.",
+                scope);
+        }
     }
 
     private static async Task<IResult> GetBatchListResultAsync(
