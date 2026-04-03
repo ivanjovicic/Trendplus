@@ -13,6 +13,7 @@ using Infrastructure.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace Api.Services
 {
@@ -37,6 +38,8 @@ namespace Api.Services
 
     public sealed class TransferService : ITransferService
     {
+        private static readonly SemaphoreSlim TransferSchemaBootstrapLock = new(1, 1);
+        private static volatile bool _transferSchemaBootstrapCompleted;
         private readonly TrendplusDbContext _db;
         private readonly ILogger<TransferService> _logger;
 
@@ -51,6 +54,8 @@ namespace Api.Services
 
         public async Task<TransferResponse> CreateDraftAsync(TransferCreateRequest req, string userId, CancellationToken ct = default)
         {
+            await EnsureTransferSchemaIfNeededAsync(ct);
+
             ValidateCreateOrUpdateRequest(req.SourceId, req.DestinationId, req.Items);
             var normalizedLines = NormalizeLines(req.Items);
             var now = DateTimeOffset.UtcNow;
@@ -97,6 +102,8 @@ namespace Api.Services
 
         public async Task<TransferResponse> UpdateDraftAsync(long id, TransferUpdateRequest req, string userId, CancellationToken ct = default)
         {
+            await EnsureTransferSchemaIfNeededAsync(ct);
+
             ArgumentNullException.ThrowIfNull(req);
             if (req.Items == null || req.Items.Count == 0)
                 throw new ArgumentException("Transfer mora da ima bar jednu stavku.", nameof(req));
@@ -172,6 +179,8 @@ namespace Api.Services
 
         public async Task<TransferResponse> ConfirmAsync(long id, string userId, CancellationToken ct = default)
         {
+            await EnsureTransferSchemaIfNeededAsync(ct);
+
             var sw = Stopwatch.StartNew();
             var now = DateTimeOffset.UtcNow;
 
@@ -251,6 +260,8 @@ namespace Api.Services
 
         public async Task<TransferResponse> CompleteAsync(long id, string userId, CancellationToken ct = default)
         {
+            await EnsureTransferSchemaIfNeededAsync(ct);
+
             var sw = Stopwatch.StartNew();
             var now = DateTimeOffset.UtcNow;
 
@@ -364,6 +375,8 @@ namespace Api.Services
 
         public async Task<TransferResponse> CancelAsync(long id, string userId, CancellationToken ct = default)
         {
+            await EnsureTransferSchemaIfNeededAsync(ct);
+
             var now = DateTimeOffset.UtcNow;
             await using var tx = await BeginTransactionAsync(ct);
             await LockTransferRowAsync(id, ct);
@@ -411,6 +424,8 @@ namespace Api.Services
 
         public async Task<TransferResponse?> GetAsync(long id, CancellationToken ct = default)
         {
+            await EnsureTransferSchemaIfNeededAsync(ct);
+
             var transfer = await _db.Transfers
                 .AsNoTracking()
                 .Include(t => t.Items)
@@ -429,6 +444,8 @@ namespace Api.Services
             string? updatedBy,
             CancellationToken ct = default)
         {
+            await EnsureTransferSchemaIfNeededAsync(ct);
+
             pageNumber = Math.Max(pageNumber, 1);
             pageSize = Math.Clamp(pageSize, 1, 200);
 
@@ -454,8 +471,7 @@ namespace Api.Services
                 query = query.Where(x => x.UpdatedBy == normalized);
             }
 
-            var total = await query.CountAsync(ct);
-            var transfers = await query
+            var pageQuery = query
                 .OrderByDescending(x => x.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -474,8 +490,61 @@ namespace Api.Services
                     CreatedAt = x.CreatedAt,
                     UpdatedAt = x.UpdatedAt,
                     CompletedAt = x.CompletedAt
-                })
-                .ToListAsync(ct);
+                });
+
+            if (_db.Database.IsRelational())
+            {
+                _logger.LogDebug(
+                    "Transfer list SQL (page={PageNumber}, size={PageSize}, status={Status}, actor={Actor}, createdBy={CreatedBy}, updatedBy={UpdatedBy}): {Sql}",
+                    pageNumber,
+                    pageSize,
+                    status,
+                    actor,
+                    createdBy,
+                    updatedBy,
+                    pageQuery.ToQueryString());
+            }
+
+            int total;
+            List<TransferListItemProjection> transfers;
+
+            try
+            {
+                total = await query.CountAsync(ct);
+                transfers = await pageQuery.ToListAsync(ct);
+            }
+            catch (PostgresException pex) when (IsMissingTransfersRelation(pex))
+            {
+                _logger.LogWarning(
+                    pex,
+                    "Transfers relation missing during list query (SqlState={SqlState}, Table={Table}, Position={Position}). Triggering self-heal and retry.",
+                    pex.SqlState,
+                    pex.TableName,
+                    pex.Position);
+
+                await EnsureTransferSchemaIfNeededAsync(ct, force: true);
+
+                total = await query.CountAsync(ct);
+                transfers = await pageQuery.ToListAsync(ct);
+            }
+            catch (PostgresException pex)
+            {
+                _logger.LogError(
+                    pex,
+                    "Postgres error fetching transfers: SqlState={SqlState} Detail={Detail} Hint={Hint} Table={Table} Constraint={ConstraintName} Position={Position}",
+                    pex.SqlState,
+                    pex.Detail,
+                    pex.Hint,
+                    pex.TableName,
+                    pex.ConstraintName,
+                    pex.Position);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching transfers");
+                throw;
+            }
 
             return new TransferListResponse
             {
@@ -535,6 +604,115 @@ namespace Api.Services
         }
 
         private static string BuildTransferDocumentCode(long transferId) => $"TR-{transferId}";
+
+        private static bool IsMissingTransfersRelation(PostgresException ex)
+        {
+            if (!string.Equals(ex.SqlState, PostgresErrorCodes.UndefinedTable, StringComparison.Ordinal))
+                return false;
+
+            if (string.Equals(ex.TableName, "Transfers", StringComparison.Ordinal))
+                return true;
+
+            var message = ex.MessageText ?? ex.Message ?? string.Empty;
+            return message.Contains("relation \"Transfers\" does not exist", StringComparison.Ordinal);
+        }
+
+        private async Task EnsureTransferSchemaIfNeededAsync(CancellationToken ct, bool force = false)
+        {
+            if (!force && _transferSchemaBootstrapCompleted)
+                return;
+
+            if (!_db.Database.IsRelational())
+            {
+                _transferSchemaBootstrapCompleted = true;
+                return;
+            }
+
+            await TransferSchemaBootstrapLock.WaitAsync(ct);
+            try
+            {
+                if (!force && _transferSchemaBootstrapCompleted)
+                    return;
+
+                const string createSql = """
+                    CREATE TABLE IF NOT EXISTS "Transfers" (
+                        "Id" bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                        "Status" character varying(32) NOT NULL DEFAULT 'draft',
+                        "SourceId" bigint NOT NULL,
+                        "DestinationId" bigint NOT NULL,
+                        "Reserve" boolean NOT NULL DEFAULT FALSE,
+                        "Notes" character varying(2000),
+                        "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+                        "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+                        "ConfirmedAt" timestamp with time zone NULL,
+                        "CompletedAt" timestamp with time zone NULL,
+                        "CancelledAt" timestamp with time zone NULL,
+                        "CreatedBy" character varying(200),
+                        "UpdatedBy" character varying(200)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS "TransferItems" (
+                        "Id" bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                        "SkuId" bigint NOT NULL,
+                        "Quantity" numeric(18,4) NOT NULL,
+                        "ReservedQuantity" numeric(18,4) NOT NULL DEFAULT 0,
+                        "ProcessedQuantity" numeric(18,4) NOT NULL DEFAULT 0,
+                        "Unit" character varying(32),
+                        "TransferId" bigint NOT NULL,
+                        CONSTRAINT "FK_TransferItems_Transfers_TransferId"
+                            FOREIGN KEY ("TransferId")
+                            REFERENCES "Transfers" ("Id")
+                            ON DELETE CASCADE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS "StockReservations" (
+                        "Id" bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                        "TransferId" bigint NOT NULL,
+                        "SkuId" bigint NOT NULL,
+                        "Quantity" numeric(18,4) NOT NULL,
+                        "ExpiresAt" timestamp with time zone NULL,
+                        "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW()
+                    );
+
+                    ALTER TABLE IF EXISTS "Transfers" ADD COLUMN IF NOT EXISTS "Notes" character varying(2000);
+                    ALTER TABLE IF EXISTS "Transfers" ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW();
+                    ALTER TABLE IF EXISTS "Transfers" ADD COLUMN IF NOT EXISTS "ConfirmedAt" timestamp with time zone NULL;
+                    ALTER TABLE IF EXISTS "Transfers" ADD COLUMN IF NOT EXISTS "CompletedAt" timestamp with time zone NULL;
+                    ALTER TABLE IF EXISTS "Transfers" ADD COLUMN IF NOT EXISTS "CancelledAt" timestamp with time zone NULL;
+                    ALTER TABLE IF EXISTS "Transfers" ADD COLUMN IF NOT EXISTS "UpdatedBy" character varying(200);
+
+                    ALTER TABLE IF EXISTS "TransferItems" ADD COLUMN IF NOT EXISTS "ReservedQuantity" numeric(18,4) NOT NULL DEFAULT 0;
+                    ALTER TABLE IF EXISTS "TransferItems" ADD COLUMN IF NOT EXISTS "ProcessedQuantity" numeric(18,4) NOT NULL DEFAULT 0;
+
+                    CREATE INDEX IF NOT EXISTS "IX_Transfers_Status" ON "Transfers" ("Status");
+                    CREATE INDEX IF NOT EXISTS "IX_Transfers_Source_Destination" ON "Transfers" ("SourceId", "DestinationId");
+                    CREATE INDEX IF NOT EXISTS "IX_Transfers_CreatedAt" ON "Transfers" ("CreatedAt");
+                    CREATE INDEX IF NOT EXISTS "IX_TransferItems_SkuId" ON "TransferItems" ("SkuId");
+                    CREATE INDEX IF NOT EXISTS "IX_TransferItems_TransferId" ON "TransferItems" ("TransferId");
+                    CREATE INDEX IF NOT EXISTS "IX_StockReservations_TransferId" ON "StockReservations" ("TransferId");
+                    CREATE INDEX IF NOT EXISTS "IX_StockReservations_SkuId" ON "StockReservations" ("SkuId");
+                    """;
+
+                await _db.Database.ExecuteSqlRawAsync(createSql, ct);
+                _transferSchemaBootstrapCompleted = true;
+            }
+            catch (PostgresException pex)
+            {
+                _logger.LogWarning(
+                    pex,
+                    "Transfer schema self-heal failed. SqlState={SqlState} Detail={Detail} Hint={Hint} Table={Table} Constraint={ConstraintName}",
+                    pex.SqlState,
+                    pex.Detail,
+                    pex.Hint,
+                    pex.TableName,
+                    pex.ConstraintName);
+                throw;
+            }
+            finally
+            {
+                TransferSchemaBootstrapLock.Release();
+            }
+        }
 
         private bool IsNpgsqlProvider()
         {
