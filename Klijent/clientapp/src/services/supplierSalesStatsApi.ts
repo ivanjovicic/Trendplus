@@ -3,6 +3,7 @@ import { makeUrl } from "./analyticsApi";
 export interface SupplierSalesStat {
   dobavljacId: number | null;
   dobavljacNaziv: string;
+  isUnknown: boolean;
   preNivelacijePromet: number;
   preNivelacijeKolicina: number;
   posleNivelacijePromet: number;

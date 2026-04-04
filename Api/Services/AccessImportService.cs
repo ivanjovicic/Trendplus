@@ -3600,7 +3600,7 @@ using NpgsqlTypes;
             var naziv = S(row, "naziv", "tip", "tipobuce", "name");
             if (string.IsNullOrWhiteSpace(naziv)) continue;
             var id = I(row, "id", "idtipobuce", "tipid");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "tipovi_obuce");
             TrackIncrementalAcceptedRow("tipovi_obuce", row);
             TrackAnalyticsTypeId(id.Value);
@@ -3635,7 +3635,7 @@ using NpgsqlTypes;
             var naziv = S(row, "naziv", "dobavljac", "supplier", "name");
             if (string.IsNullOrWhiteSpace(naziv)) continue;
             var id = I(row, "id", "iddobavljac", "supplierid");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "dobavljaci");
             TrackIncrementalAcceptedRow("dobavljaci", row);
             TrackAnalyticsSupplierId(id.Value);
@@ -3681,7 +3681,7 @@ using NpgsqlTypes;
             var naziv = S(row, "naziv", "sezona", "name");
             if (string.IsNullOrWhiteSpace(naziv)) continue;
             var id = I(row, "id", "idsezona", "seasonid");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "sezone");
             TrackIncrementalAcceptedRow("sezone", row);
             TrackAnalyticsSeasonId(id.Value);
@@ -3725,7 +3725,7 @@ using NpgsqlTypes;
         {
             MarkSourceRow(result, "objekti");
             var id = I(row, "id", "idobjekat", "storeid", "idobjekta", "poslovnicaid");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "objekti");
             TrackIncrementalAcceptedRow("objekti", row);
             var naziv = S(row, "nazivobjekta", "naziv", "storename", "name", "poslovnica",
@@ -3990,7 +3990,7 @@ using NpgsqlTypes;
         {
             MarkSourceRow(result, "prodaja_zaglavlje");
             var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "prodaja_zaglavlje");
             TrackIncrementalAcceptedRow("prodaja_zaglavlje", row);
             TrackAnalyticsSaleId(id.Value);
@@ -4897,7 +4897,7 @@ using NpgsqlTypes;
             var naziv = S(row, "naziv", "tip", "tipobuce", "name");
             if (string.IsNullOrWhiteSpace(naziv)) continue;
             var id = I(row, "id", "idtipobuce", "tipid");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "tipovi_obuce");
 
             if (!existing.TryGetValue(id.Value, out var e))
@@ -4924,7 +4924,7 @@ using NpgsqlTypes;
             var naziv = S(row, "naziv", "dobavljac", "supplier", "name");
             if (string.IsNullOrWhiteSpace(naziv)) continue;
             var id = I(row, "id", "iddobavljac", "supplierid");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "dobavljaci");
 
             if (!existing.TryGetValue(id.Value, out var e))
@@ -4962,7 +4962,7 @@ using NpgsqlTypes;
             var naziv = S(row, "naziv", "sezona", "name");
             if (string.IsNullOrWhiteSpace(naziv)) continue;
             var id = I(row, "id", "idsezona", "seasonid");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "sezone");
 
             var datumOd = DT(row, "datumod", "od", "startdate", "sezonapocetak", "sezonaod", "pocetak") ?? DateTime.UtcNow.Date;
@@ -5071,7 +5071,7 @@ using NpgsqlTypes;
         foreach (var row in ReadRows(conn, table))
         {
             var id = I(row, "id", "idprodaja", "saleid");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "prodaja_zaglavlje");
 
             if (!existing.TryGetValue(id.Value, out var e))
@@ -5594,7 +5594,7 @@ using NpgsqlTypes;
         foreach (var row in ReadRows(conn, table))
         {
             var id = I(row, "id", "idobjekat", "storeid", "idobjekta", "poslovnicaid");
-            if (!id.HasValue || id.Value <= 0) continue;
+            if (!id.HasValue) continue;
             MarkAccepted(result, "objekti");
             var naziv = S(row, "nazivobjekta", "naziv", "storename", "name", "poslovnica",
                           "ime", "opisobjekta") ?? $"Objekat {id.Value}";

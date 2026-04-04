@@ -25,7 +25,7 @@ import "./SupplierSalesStatsPage.css";
 type PeriodPreset = "30d" | "90d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField = "dobavljacNaziv" | "ukupanPromet" | "sharePct" | "marginContribution" | "trendPct" | "status";
-type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
+type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji" | "N/A";
 
 type ActiveFilters = {
   fromDate: string;
@@ -49,6 +49,7 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
   Pojacaj: 3,
   Zadrzi: 2,
   Smanji: 1,
+  "N/A": 0,
 };
 
 const UNKNOWN_SUPPLIERS = new Set([
@@ -149,6 +150,7 @@ function sortMarker(field: SortField, activeField: SortField, dir: SortDir): str
 function statusClass(status: DecisionStatus): string {
   if (status === "Pojacaj") return "supplier-decision-status status-boost";
   if (status === "Smanji") return "supplier-decision-status status-reduce";
+  if (status === "N/A") return "supplier-decision-status status-na";
   return "supplier-decision-status status-keep";
 }
 
@@ -176,6 +178,10 @@ type StatusTooltipData = {
 };
 
 function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals): string {
+  if (status === "N/A") {
+    return "Artikli bez dodeljenog dobavljaca u bazi; red je prikazan zbog konzistentnosti ukupnog prometa.";
+  }
+
   const lowReliability = signals.reliabilityPct < 35;
   const positiveTrend = (signals.trendPct ?? 0) > 0;
   const negativeTrend = (signals.trendPct ?? 0) < 0;
@@ -330,7 +336,7 @@ export default function SupplierSalesStatsPage() {
         ? (supplier.brojArtikalaSaNivelacijom / supplier.brojArtikalaUkupno) * 100
         : 0;
 
-      const knownSupplier = !UNKNOWN_SUPPLIERS.has(normalizeName(supplier.dobavljacNaziv));
+      const knownSupplier = !supplier.isUnknown && !UNKNOWN_SUPPLIERS.has(normalizeName(supplier.dobavljacNaziv));
       const reliabilityPct = clamp(coveragePct * 0.8 + (knownSupplier ? 20 : 0), 0, 100);
 
       const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
@@ -347,11 +353,14 @@ export default function SupplierSalesStatsPage() {
       );
 
       let status: DecisionStatus = "Smanji";
-      if (decisionScore >= 70) status = "Pojacaj";
-      else if (decisionScore >= 45) status = "Zadrzi";
-
-      if (reliabilityPct < 35 && status === "Pojacaj") {
-        status = "Zadrzi";
+      if (supplier.isUnknown) {
+        status = "N/A";
+      } else {
+        if (decisionScore >= 70) status = "Pojacaj";
+        else if (decisionScore >= 45) status = "Zadrzi";
+        if (reliabilityPct < 35 && status === "Pojacaj") {
+          status = "Zadrzi";
+        }
       }
 
       const statusReason = buildStatusReason(status, {
@@ -368,7 +377,7 @@ export default function SupplierSalesStatsPage() {
         trendPct,
         reliabilityPct,
         coveragePct,
-        decisionScore,
+        decisionScore: supplier.isUnknown ? 0 : decisionScore,
         status,
         statusReason,
       };
@@ -378,6 +387,10 @@ export default function SupplierSalesStatsPage() {
   const sortedSuppliers = useMemo(() => {
     const rows = [...decisionSuppliers];
     return rows.sort((a, b) => {
+      if (a.isUnknown !== b.isUnknown) {
+        return a.isUnknown ? 1 : -1;
+      }
+
       let compare = 0;
 
       if (sortField === "dobavljacNaziv") {
@@ -418,14 +431,19 @@ export default function SupplierSalesStatsPage() {
   }, [expandedSupplierKey, selectedSupplier, sortedSuppliers.length]);
 
   const totalRevenue = data?.totals.ukupanPromet ?? 0;
+  const knownSuppliers = useMemo(
+    () => sortedSuppliers.filter((row) => !row.isUnknown),
+    [sortedSuppliers]
+  );
+
   const top5SharePct = useMemo(() => {
-    if (sortedSuppliers.length === 0 || totalRevenue <= 0) return 0;
-    const top5Revenue = [...sortedSuppliers]
+    if (knownSuppliers.length === 0 || totalRevenue <= 0) return 0;
+    const top5Revenue = [...knownSuppliers]
       .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
       .slice(0, 5)
       .reduce((sum, row) => sum + row.ukupanPromet, 0);
     return (top5Revenue / totalRevenue) * 100;
-  }, [sortedSuppliers, totalRevenue]);
+  }, [knownSuppliers, totalRevenue]);
 
   const totalMarginContribution = useMemo(
     () => sortedSuppliers.reduce((sum, row) => sum + row.marginContribution, 0),
@@ -438,9 +456,9 @@ export default function SupplierSalesStatsPage() {
   }, [previousPeriodRevenue, totalRevenue]);
 
   const concentrationData = useMemo(() => {
-    if (sortedSuppliers.length === 0) return [] as Array<{ name: string; sharePct: number }>;
+    if (knownSuppliers.length === 0) return [] as Array<{ name: string; sharePct: number }>;
 
-    const ranked = [...sortedSuppliers]
+    const ranked = [...knownSuppliers]
       .sort((a, b) => b.sharePct - a.sharePct);
 
     const topRows = ranked.slice(0, 6).map((row) => ({
@@ -454,14 +472,19 @@ export default function SupplierSalesStatsPage() {
     }
 
     return topRows;
-  }, [sortedSuppliers]);
+  }, [knownSuppliers]);
 
   const supplierCounts = useMemo(() => {
-    const boost = sortedSuppliers.filter((row) => row.status === "Pojacaj").length;
-    const keep = sortedSuppliers.filter((row) => row.status === "Zadrzi").length;
-    const reduce = sortedSuppliers.filter((row) => row.status === "Smanji").length;
+    const boost = knownSuppliers.filter((row) => row.status === "Pojacaj").length;
+    const keep = knownSuppliers.filter((row) => row.status === "Zadrzi").length;
+    const reduce = knownSuppliers.filter((row) => row.status === "Smanji").length;
     return { boost, keep, reduce };
-  }, [sortedSuppliers]);
+  }, [knownSuppliers]);
+
+  const unknownSuppliers = useMemo(
+    () => sortedSuppliers.filter((row) => row.isUnknown),
+    [sortedSuppliers]
+  );
 
   const activeSezonaLabel = useMemo(() => {
     if (activeFilters.sezonaId == null) return "Sve sezone";
@@ -509,11 +532,12 @@ export default function SupplierSalesStatsPage() {
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "suppliers", label: "Dobavljaca", value: data?.totals.brojDobavljaca ?? 0 },
+      { key: "unknownSuppliers", label: "Nepoznato/N-A", value: unknownSuppliers.length },
       { key: "boost", label: "Pojacaj", value: supplierCounts.boost },
       { key: "keep", label: "Zadrzi", value: supplierCounts.keep },
       { key: "reduce", label: "Smanji", value: supplierCounts.reduce },
     ],
-    [data?.generatedAt, data?.totals.brojDobavljaca, supplierCounts.boost, supplierCounts.keep, supplierCounts.reduce]
+    [data?.generatedAt, data?.totals.brojDobavljaca, supplierCounts.boost, supplierCounts.keep, supplierCounts.reduce, unknownSuppliers.length]
   );
 
   const openSupplierDetail = useCallback((supplier: DecisionSupplier) => {
@@ -757,6 +781,11 @@ export default function SupplierSalesStatsPage() {
                   <p>
                     Pojacaj: {supplierCounts.boost} | Zadrzi: {supplierCounts.keep} | Smanji: {supplierCounts.reduce}
                   </p>
+                  {unknownSuppliers.length > 0 ? (
+                    <p className="supplier-unknown-note">
+                      N/A dobavljaci su prikazani na dnu i nisu ukljuceni u decision preporuke.
+                    </p>
+                  ) : null}
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="supplier-sales-stats"
@@ -818,18 +847,33 @@ export default function SupplierSalesStatsPage() {
                         const rowKey = supplierKey(supplier);
                         const isExpanded = expandedSupplierKey === rowKey;
                         return (
-                          <tr key={rowKey} className={isExpanded ? "expanded-row" : ""}>
+                          <tr
+                            key={rowKey}
+                            className={[
+                              isExpanded ? "expanded-row" : "",
+                              supplier.isUnknown ? "supplier-unknown-row" : "",
+                            ].filter(Boolean).join(" ")}
+                          >
                             <td>
-                              <AnalyticsUnknownLink
-                                value={supplier.dobavljacNaziv}
-                                issueType="missingSupplier"
-                                context={{
-                                  originTable: "supplier-sales-stats",
-                                  fromDate: activeFilters.fromDate,
-                                  toDate: activeFilters.toDate,
-                                  storeId: activeFilters.storeId,
-                                }}
-                              />
+                              {supplier.isUnknown ? (
+                                <span
+                                  className="supplier-unknown-label"
+                                  title="Artikli bez dodeljenog dobavljaca u bazi"
+                                >
+                                  {supplier.dobavljacNaziv}
+                                </span>
+                              ) : (
+                                <AnalyticsUnknownLink
+                                  value={supplier.dobavljacNaziv}
+                                  issueType="missingSupplier"
+                                  context={{
+                                    originTable: "supplier-sales-stats",
+                                    fromDate: activeFilters.fromDate,
+                                    toDate: activeFilters.toDate,
+                                    storeId: activeFilters.storeId,
+                                  }}
+                                />
+                              )}
                             </td>
                             <td className="align-right">{fmtRsd(supplier.ukupanPromet)}</td>
                             <td className="align-right">{fmtPct(supplier.sharePct, 2)}</td>

@@ -971,6 +971,7 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/supplier-sales-stats", async (
             TrendplusDbContext db,
+            ILogger<Program> logger,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -1133,10 +1134,17 @@ public static class AllEndpoints
                             ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
                             : 0d;
 
+                        var normalizedSupplierName = string.IsNullOrWhiteSpace(g.Key.DobavljacNaziv)
+                            ? "Nepoznato"
+                            : g.Key.DobavljacNaziv;
+                        var isUnknown = !g.Key.DobavljacId.HasValue
+                            || string.Equals(normalizedSupplierName, "Nepoznato", StringComparison.OrdinalIgnoreCase);
+
                         return new
                         {
                             dobavljacId = g.Key.DobavljacId,
-                            dobavljacNaziv = string.IsNullOrWhiteSpace(g.Key.DobavljacNaziv) ? "Nepoznato" : g.Key.DobavljacNaziv,
+                            dobavljacNaziv = normalizedSupplierName,
+                            isUnknown,
                             preNivelacijePromet = Math.Round(preNivRevenue, 2),
                             preNivelacijeKolicina = preNivQty,
                             posleNivelacijePromet = Math.Round(postNivRevenue, 2),
@@ -1156,6 +1164,22 @@ public static class AllEndpoints
                     })
                     .OrderByDescending(x => x.ukupanPromet)
                     .ToList();
+
+                var unknownBucket = suppliers
+                    .Where(s => s.isUnknown)
+                    .OrderByDescending(s => s.brojArtikalaUkupno)
+                    .FirstOrDefault();
+                if (unknownBucket is not null && unknownBucket.brojArtikalaUkupno > 100)
+                {
+                    logger.LogWarning(
+                        "Large unknown supplier bucket detected on supplier-sales-stats. UnknownArticles={UnknownArticles} UnknownRevenue={UnknownRevenue} From={FromDate} To={ToDate} StoreId={StoreId} SezonaId={SezonaId}",
+                        unknownBucket.brojArtikalaUkupno,
+                        unknownBucket.ukupanPromet,
+                        fromUtc,
+                        toUtc,
+                        storeId,
+                        sezonaId);
+                }
 
                 var sumPreRevenue = suppliers.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = suppliers.Sum(r => r.posleNivelacijePromet);
