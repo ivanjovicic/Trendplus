@@ -116,6 +116,12 @@ try
         ?? 300;
 
     // DbContext
+    builder.Services.AddDbContextFactory<TrendplusDbContext>(options =>
+        options.UseNpgsql(
+                builder.Configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.CommandTimeout(dbCommandTimeoutSeconds))
+               .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
+
     builder.Services.AddDbContext<TrendplusDbContext>(options =>
         options.UseNpgsql(
                 builder.Configuration.GetConnectionString("DefaultConnection"),

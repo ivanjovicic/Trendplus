@@ -249,44 +249,39 @@ export default function SupplierSalesStatsPage() {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
+    setPreviousPeriodRevenue(null);
 
     try {
       const currentRange = toUtcRange(filters.fromDate, filters.toDate);
-      const previousRange = buildPreviousRange(filters.fromDate, filters.toDate);
 
-      const [currentResult, previousResult] = await Promise.allSettled([
-        getSupplierSalesStats({
-          ...currentRange,
-          storeId: filters.storeId,
-        }),
-        getSupplierSalesStats({
-          ...previousRange,
-          storeId: filters.storeId,
-        }),
-      ]);
+      // Load current period first so the page renders immediately.
+      const currentResult = await getSupplierSalesStats({
+        ...currentRange,
+        storeId: filters.storeId,
+      });
 
       if (requestId !== requestIdRef.current) return;
+      setData(currentResult);
+      setLoading(false);
 
-      if (currentResult.status === "rejected") {
-        throw currentResult.reason;
-      }
-
-      setData(currentResult.value);
-
-      if (previousResult.status === "fulfilled") {
-        setPreviousPeriodRevenue(previousResult.value.totals.ukupanPromet);
-      } else {
-        setPreviousPeriodRevenue(null);
+      // Load previous period in the background — non-blocking for initial render.
+      const previousRange = buildPreviousRange(filters.fromDate, filters.toDate);
+      try {
+        const previousResult = await getSupplierSalesStats({
+          ...previousRange,
+          storeId: filters.storeId,
+        });
+        if (requestId !== requestIdRef.current) return;
+        setPreviousPeriodRevenue(previousResult.totals.ukupanPromet);
+      } catch {
+        if (requestId === requestIdRef.current) setPreviousPeriodRevenue(null);
       }
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
       setPreviousPeriodRevenue(null);
+      setLoading(false);
       setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju podataka o dobavljacima.");
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
     }
   }, []);
 

@@ -11,6 +11,7 @@ using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
 using Application.TipObuce.Commands;
 using Application.TipObuce.Queries;
+using Api.Endpoints;
 using Api.Models;
 using Api.Services;
 using Domain.Model;
@@ -177,6 +178,7 @@ public static class AllEndpoints
         
         app.MapGet("/api/logs", async (
             IErrorStore store,
+            HttpContext httpContext,
             ILogger<Program> logger,
             int pageNumber = 1,
             int pageSize = 50,
@@ -227,6 +229,10 @@ public static class AllEndpoints
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to fetch logs");
+                await HandledErrorLogging.PersistHandledExceptionAsync(
+                    httpContext,
+                    ex,
+                    "Failed to fetch logs");
                 return Results.Problem(
                     detail: "Unable to fetch logs. Please run migrations: dotnet ef database update",
                     statusCode: 500,
@@ -241,6 +247,7 @@ public static class AllEndpoints
         app.MapGet("/api/logs/{id:int}", async (
             int id,
             IErrorStore store,
+            HttpContext httpContext,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
@@ -257,6 +264,11 @@ public static class AllEndpoints
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to fetch log by id {LogId}", id);
+                await HandledErrorLogging.PersistHandledExceptionAsync(
+                    httpContext,
+                    ex,
+                    $"Failed to fetch log by id {id}",
+                    ct);
                 return Results.Problem(
                     detail: "Unable to fetch log details.",
                     statusCode: 500,
@@ -279,6 +291,13 @@ public static class AllEndpoints
         {
             if (!IsAdminRequest(httpContext, configuration, environment))
             {
+                await HandledErrorLogging.PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: "Unauthorized admin action attempt: clear logs.",
+                    exceptionType: nameof(UnauthorizedAccessException),
+                    stackTrace: null,
+                    ct);
                 return Results.Unauthorized();
             }
 
@@ -309,6 +328,11 @@ public static class AllEndpoints
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to clear logs.");
+                await HandledErrorLogging.PersistHandledExceptionAsync(
+                    httpContext,
+                    ex,
+                    "Failed to clear logs",
+                    ct);
                 return Results.Problem(
                     detail: "Unable to clear logs.",
                     statusCode: 500,
@@ -323,24 +347,40 @@ public static class AllEndpoints
         
         app.MapGet("/api/performance", async (
             IMediator mediator,
+            HttpContext httpContext,
             ILogger<Program> logger,
             int topCount = 20,
             int minDurationMs = 1000,
             DateTime? fromDate = null,
             DateTime? toDate = null) =>
         {
-            logger.LogInformation("Performance stats request: top={TopCount}, min={MinDuration}ms", topCount, minDurationMs);
+            try
+            {
+                logger.LogInformation("Performance stats request: top={TopCount}, min={MinDuration}ms", topCount, minDurationMs);
 
-            // Convert dates to UTC if they have Unspecified kind
-            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                // Convert dates to UTC if they have Unspecified kind
+                if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                    fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
 
-            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                    toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate);
-            var result = await mediator.Send(query);
-            return Results.Ok(result);
+                var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate);
+                var result = await mediator.Send(query);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to fetch performance stats");
+                await HandledErrorLogging.PersistHandledExceptionAsync(
+                    httpContext,
+                    ex,
+                    "Failed to fetch performance stats");
+                return Results.Problem(
+                    detail: "Unable to fetch performance stats.",
+                    statusCode: 500,
+                    title: "Database Error");
+            }
         })
         .WithName("GetPerformance")
         .WithTags("System")

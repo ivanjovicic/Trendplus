@@ -1,11 +1,12 @@
-using Application.Artikli.Common.Interfaces;
+﻿using Application.Artikli.Common.Interfaces;
+using Api.Endpoints;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 
 namespace Trendplus2.Endpoints;
 
 /// <summary>
-/// Insight Studio — Napredna Analitika 2
+/// Insight Studio â€” Napredna Analitika 2
 /// KPI Snapshot, Supplier Scorecard, ABC Classification, Aging Stock,
 /// Daily Analysis (Z-score), Category Intelligence, Reorder Plan
 /// </summary>
@@ -16,9 +17,10 @@ public static class InsightStudioEndpoints
         var group = app.MapGroup("/api/analytics/advanced")
             .WithTags("Insight Studio");
 
-        // ─── KPI COMMAND ROW ──────────────────────────────────────────────
+        // â”€â”€â”€ KPI COMMAND ROW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/kpi-snapshot", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -117,13 +119,15 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška KPI snapshot");
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka KPI snapshot");
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── SUPPLIER SCORECARD ────────────────────────────────────────────
+        // â”€â”€â”€ SUPPLIER SCORECARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/supplier-scorecard", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -214,13 +218,15 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška supplier scorecard");
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka supplier scorecard");
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── ABC CLASSIFICATION ────────────────────────────────────────────
+        // â”€â”€â”€ ABC CLASSIFICATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/abc-classification", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -252,7 +258,7 @@ public static class InsightStudioEndpoints
                         artikalId = g.Key.Id,
                         naziv = g.Key.Naziv,
                         kategorija = g.Key.Kategorija ?? "Ostalo",
-                        pol = g.Key.Pol ?? "Neodređeno",
+                        pol = g.Key.Pol ?? "NeodreÄ‘eno",
                         totalRevenue = g.Sum(x => x.Kolicina * x.Cena),
                         totalUnits = g.Sum(x => x.Kolicina)
                     }
@@ -291,13 +297,15 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška ABC klasifikacija");
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka ABC klasifikacija");
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── AGING STOCK ───────────────────────────────────────────────────
+        // â”€â”€â”€ AGING STOCK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/aging-stock", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             CancellationToken ct = default) =>
         {
             try
@@ -345,7 +353,7 @@ public static class InsightStudioEndpoints
                     var days = (today - lastSale.Date).Days;
                     var aging = days < 30 ? "Aktivno" :
                                 days < 60 ? "Pazi" :
-                                days < 90 ? "Upozorenje" : "Kritično";
+                                days < 90 ? "Upozorenje" : "KritiÄno";
                     var stockVal = a.NabavnaCena.HasValue ? a.Kolicina * a.NabavnaCena.Value : (decimal?)null;
                     var dobavNaziv = a.IDDobavljac.HasValue && dobavljaciDict.TryGetValue(a.IDDobavljac.Value, out var dn1)
                         ? dn1 : "Nepoznato";
@@ -354,7 +362,7 @@ public static class InsightStudioEndpoints
                     {
                         a.Id, a.Naziv,
                         kategorija = a.Kategorija ?? "Ostalo",
-                        pol = a.Pol ?? "Neodređeno",
+                        pol = a.Pol ?? "NeodreÄ‘eno",
                         kolicina = a.Kolicina ?? 0,
                         stockValue = stockVal,
                         dobavljacNaziv = dobavNaziv,
@@ -367,11 +375,11 @@ public static class InsightStudioEndpoints
                 var summary = new
                 {
                     totalSKU = items.Count,
-                    critical = items.Count(x => x.agingCategory == "Kritično"),
+                    critical = items.Count(x => x.agingCategory == "KritiÄno"),
                     warning = items.Count(x => x.agingCategory == "Upozorenje"),
                     watch = items.Count(x => x.agingCategory == "Pazi"),
                     active = items.Count(x => x.agingCategory == "Aktivno"),
-                    criticalStockValue = items.Where(x => x.agingCategory == "Kritično")
+                    criticalStockValue = items.Where(x => x.agingCategory == "KritiÄno")
                         .Sum(x => x.stockValue ?? 0)
                 };
 
@@ -379,13 +387,15 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška aging stock");
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka aging stock");
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── DAILY ANALYSIS (Z-score / outlier detection) ─────────────────
+        // â”€â”€â”€ DAILY ANALYSIS (Z-score / outlier detection) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/daily-analysis", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? analysisDate = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -481,13 +491,15 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška daily analysis");
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka daily analysis");
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── CATEGORY INTELLIGENCE ────────────────────────────────────────
+        // â”€â”€â”€ CATEGORY INTELLIGENCE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/category-intelligence", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -513,7 +525,7 @@ public static class InsightStudioEndpoints
                     select new
                     {
                         Kategorija = a.Kategorija ?? "Ostalo",
-                        Pol = a.Pol ?? "Neodređeno",
+                        Pol = a.Pol ?? "NeodreÄ‘eno",
                         Revenue = ps.Kolicina * ps.Cena,
                         Cost = a.NabavnaCena.HasValue ? ps.Kolicina * a.NabavnaCena.Value : (decimal?)null,
                         Units = ps.Kolicina,
@@ -580,13 +592,15 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška category intelligence");
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka category intelligence");
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── REORDER PLAN ─────────────────────────────────────────────────
+        // â”€â”€â”€ REORDER PLAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/reorder-plan", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -621,7 +635,7 @@ public static class InsightStudioEndpoints
                         artikalId = g.Key.Id,
                         naziv = g.Key.Naziv,
                         kategorija = g.Key.Kategorija ?? "Ostalo",
-                        pol = g.Key.Pol ?? "Neodređeno",
+                        pol = g.Key.Pol ?? "NeodreÄ‘eno",
                         dobavljacId = g.Key.IDDobavljac,
                         prodajnaCena = g.Key.ProdajnaCena,
                         minKolicina = g.Key.MinimalnaKolicina ?? 5,
@@ -643,9 +657,9 @@ public static class InsightStudioEndpoints
                     var recQty = needsReorder
                         ? Math.Max((int)Math.Ceiling(avgDaily * 30) - p.currentStock, 0)
                         : 0;
-                    var urgency = doh < 7 ? "KRITIČNO"
+                    var urgency = doh < 7 ? "KRITIÄŒNO"
                                 : doh < 14 ? "HITNO"
-                                : doh < 30 ? "PREPORUČUJE SE"
+                                : doh < 30 ? "PREPORUÄŒUJE SE"
                                 : "OK";
                     var dobavNaziv = p.dobavljacId.HasValue && dobavljaciDict.TryGetValue(p.dobavljacId.Value, out var dn2)
                         ? dn2 : "Nepoznato";
@@ -670,9 +684,9 @@ public static class InsightStudioEndpoints
 
                 var summary = new
                 {
-                    criticalCount = items.Count(x => x.urgency == "KRITIČNO"),
+                    criticalCount = items.Count(x => x.urgency == "KRITIÄŒNO"),
                     urgentCount = items.Count(x => x.urgency == "HITNO"),
-                    recommendedCount = items.Count(x => x.urgency == "PREPORUČUJE SE"),
+                    recommendedCount = items.Count(x => x.urgency == "PREPORUÄŒUJE SE"),
                     totalReorderValue = items
                         .Where(x => x.needsReorder)
                         .Sum(x => x.recommendedQty * (x.prodajnaCena ?? 0))
@@ -682,7 +696,8 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška reorder plan");
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka reorder plan");
             }
         }).RequireRateLimiting("db-heavy");
     }

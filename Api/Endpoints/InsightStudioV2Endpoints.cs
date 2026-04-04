@@ -1,11 +1,12 @@
-using Application.Artikli.Common.Interfaces;
+﻿using Application.Artikli.Common.Interfaces;
+using Api.Endpoints;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 
 namespace Trendplus2.Endpoints;
 
 /// <summary>
-/// Insight Studio V2 — Advanced Analytics endpoints
+/// Insight Studio V2 â€” Advanced Analytics endpoints
 /// Weekly Heatmap, Basket Affinity, Price Sensitivity, Velocity-Margin Matrix,
 /// Product Lifecycle, Stock Depletion Forecast, Margin Alerts, Weekly Changelog,
 /// Enhanced Supplier Scoring, Enhanced Reorder Plan
@@ -17,9 +18,10 @@ public static class InsightStudioV2Endpoints
         var group = app.MapGroup("/api/analytics/advanced/v2")
             .WithTags("Insight Studio V2");
 
-        // ─── WEEKLY DEMAND HEATMAP ────────────────────────────────────────
+        // â”€â”€â”€ WEEKLY DEMAND HEATMAP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/weekly-heatmap", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -40,8 +42,8 @@ public static class InsightStudioV2Endpoints
                     select new { pz.DatumProdaje, ps.Kolicina, ps.Cena }
                 ).ToListAsync(ct);
 
-                // Build heatmap: dayOfWeek (0=Mon..6=Sun) × week number
-                var dayNames = new[] { "Pon", "Uto", "Sre", "Čet", "Pet", "Sub", "Ned" };
+                // Build heatmap: dayOfWeek (0=Mon..6=Sun) Ã— week number
+                var dayNames = new[] { "Pon", "Uto", "Sre", "ÄŒet", "Pet", "Sub", "Ned" };
                 var byDayAndWeek = salesData
                     .GroupBy(s => new
                     {
@@ -80,13 +82,15 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── BASKET AFFINITY ──────────────────────────────────────────────
+        // â”€â”€â”€ BASKET AFFINITY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/basket-affinity", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int minSupport = 3,
@@ -105,7 +109,16 @@ public static class InsightStudioV2Endpoints
                 var basketItems = new List<List<string>>();
                 var dbContext = db as DbContext;
                 if (dbContext == null)
+                {
+                    await HandledErrorLogging.PersistHandledIssueAsync(
+                        httpContext,
+                        level: "Error",
+                        message: "Insight Studio V2 basket-affinity failed: Database context unavailable.",
+                        exceptionType: nameof(InvalidOperationException),
+                        stackTrace: null,
+                        ct);
                     return Results.Problem(detail: "Database context unavailable", statusCode: 500);
+                }
 
                 var conn = dbContext.Database.GetDbConnection();
                 await using (conn)
@@ -166,13 +179,15 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── VELOCITY × MARGIN MATRIX ─────────────────────────────────────
+        // â”€â”€â”€ VELOCITY Ã— MARGIN MATRIX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/velocity-margin-matrix", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -198,7 +213,7 @@ public static class InsightStudioV2Endpoints
                         artikalId = g.Key.Id,
                         naziv = g.Key.Naziv,
                         kategorija = g.Key.Kategorija ?? "Ostalo",
-                        pol = g.Key.Pol ?? "Neodređeno",
+                        pol = g.Key.Pol ?? "NeodreÄ‘eno",
                         nabavnaCena = g.Key.NabavnaCena,
                         currentStock = g.Key.Kolicina ?? 0,
                         totalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
@@ -260,13 +275,15 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── PRODUCT LIFECYCLE STAGE ──────────────────────────────────────
+        // â”€â”€â”€ PRODUCT LIFECYCLE STAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/product-lifecycle", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -331,7 +348,7 @@ public static class InsightStudioV2Endpoints
                             artikalId = g.Key,
                             naziv = art?.Naziv ?? "?",
                             kategorija = art?.Kategorija ?? "Ostalo",
-                            pol = art?.Pol ?? "Neodređeno",
+                            pol = art?.Pol ?? "NeodreÄ‘eno",
                             totalUnits,
                             totalRevenue,
                             firstHalfUnits,
@@ -356,13 +373,15 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── STOCK DEPLETION FORECAST ─────────────────────────────────────
+        // â”€â”€â”€ STOCK DEPLETION FORECAST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/stock-depletion-forecast", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -437,13 +456,15 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── MARGIN PRESSURE ALERTS ──────────────────────────────────────
+        // â”€â”€â”€ MARGIN PRESSURE ALERTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/margin-alerts", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -525,13 +546,15 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── WEEKLY CHANGELOG ("What Changed This Week") ─────────────────
+        // â”€â”€â”€ WEEKLY CHANGELOG ("What Changed This Week") â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/weekly-changelog", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             CancellationToken ct = default) =>
         {
             try
@@ -619,13 +642,15 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── ENHANCED SUPPLIER SCORING 2.0 ────────────────────────────────
+        // â”€â”€â”€ ENHANCED SUPPLIER SCORING 2.0 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/supplier-scoring-v2", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -747,13 +772,15 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── ENHANCED REORDER PLAN WITH SEASONALITY & MARGIN IMPACT ──────
+        // â”€â”€â”€ ENHANCED REORDER PLAN WITH SEASONALITY & MARGIN IMPACT â”€â”€â”€â”€â”€â”€
         group.MapGet("/smart-reorder", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken ct = default) =>
@@ -791,7 +818,7 @@ public static class InsightStudioV2Endpoints
                         artikalId = g.Key.Id,
                         naziv = g.Key.Naziv,
                         kategorija = g.Key.Kategorija ?? "Ostalo",
-                        pol = g.Key.Pol ?? "Neodređeno",
+                        pol = g.Key.Pol ?? "NeodreÄ‘eno",
                         dobavljacId = g.Key.IDDobavljac,
                         prodajnaCena = g.Key.ProdajnaCena,
                         nabavnaCena = g.Key.NabavnaCena,
@@ -812,9 +839,9 @@ public static class InsightStudioV2Endpoints
                     var recQty = needsReorder
                         ? Math.Max((int)Math.Ceiling(avgDaily * 30) - p.currentStock, 0)
                         : 0;
-                    var urgency = doh < 7 ? "KRITIČNO"
+                    var urgency = doh < 7 ? "KRITIÄŒNO"
                                 : doh < 14 ? "HITNO"
-                                : doh < 30 ? "PREPORUČUJE SE"
+                                : doh < 30 ? "PREPORUÄŒUJE SE"
                                 : "OK";
                     var margin = p.prodajnaCena.HasValue && p.nabavnaCena.HasValue && p.prodajnaCena.Value > 0
                         ? (double)((p.prodajnaCena.Value - p.nabavnaCena.Value) / p.prodajnaCena.Value * 100) : 0;
@@ -858,7 +885,7 @@ public static class InsightStudioV2Endpoints
                     {
                         kategorija = g.Key,
                         totalItems = g.Count(),
-                        criticalCount = g.Count(x => x.urgency == "KRITIČNO"),
+                        criticalCount = g.Count(x => x.urgency == "KRITIÄŒNO"),
                         urgentCount = g.Count(x => x.urgency == "HITNO"),
                         totalReorderCost = g.Sum(x => x.reorderCost),
                         expectedRevenue = g.Sum(x => x.expectedRevenue),
@@ -874,7 +901,7 @@ public static class InsightStudioV2Endpoints
                     {
                         dobavljac = g.Key,
                         totalItems = g.Count(),
-                        criticalCount = g.Count(x => x.urgency == "KRITIČNO"),
+                        criticalCount = g.Count(x => x.urgency == "KRITIÄŒNO"),
                         totalReorderCost = g.Sum(x => x.reorderCost),
                         avgReorderProbability = g.Average(x => x.reorderProbability)
                     })
@@ -883,9 +910,9 @@ public static class InsightStudioV2Endpoints
 
                 var summary = new
                 {
-                    criticalCount = items.Count(x => x.urgency == "KRITIČNO"),
+                    criticalCount = items.Count(x => x.urgency == "KRITIÄŒNO"),
                     urgentCount = items.Count(x => x.urgency == "HITNO"),
-                    recommendedCount = items.Count(x => x.urgency == "PREPORUČUJE SE"),
+                    recommendedCount = items.Count(x => x.urgency == "PREPORUÄŒUJE SE"),
                     totalReorderCost = items.Sum(x => x.reorderCost),
                     expectedRevenueFromReorder = items.Sum(x => x.expectedRevenue),
                     expectedProfitFromReorder = items.Sum(x => x.expectedProfit)
@@ -895,13 +922,15 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
 
-        // ─── PRICE SENSITIVITY CLUSTERS ───────────────────────────────────
+        // â”€â”€â”€ PRICE SENSITIVITY CLUSTERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/price-sensitivity", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
             CancellationToken ct = default) =>
         {
             try
@@ -979,6 +1008,7 @@ public static class InsightStudioV2Endpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio V2 endpoint failed", ct);
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");

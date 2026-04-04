@@ -1,5 +1,7 @@
 using Api.Dtos;
 using Api.Services;
+using Domain.Model;
+using Application.Common.Interfaces;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -9,6 +11,40 @@ namespace Api.Endpoints
 {
     public static class TransferEndpoints
     {
+        private static async Task PersistHandledExceptionAsync(
+            HttpContext context,
+            Exception exception,
+            string messagePrefix,
+            CancellationToken ct)
+        {
+            var store = context.RequestServices.GetService<IErrorStore>();
+            if (store == null) return;
+
+            try
+            {
+                var record = new ErrorRecord
+                {
+                    Timestamp = DateTime.UtcNow,
+                    Level = "Error",
+                    Message = $"{messagePrefix}: {exception.GetBaseException().Message}",
+                    ExceptionType = exception.GetType().FullName ?? exception.GetType().Name,
+                    StackTrace = exception.StackTrace,
+                    Path = context.Request.Path,
+                    UserName = context.User?.Identity?.Name ?? "anonymous",
+                    ClientApp = context.Request.Headers.UserAgent.ToString(),
+                    CorrelationId = string.IsNullOrWhiteSpace(context.Response.Headers["X-Correlation-ID"].ToString())
+                        ? context.TraceIdentifier
+                        : context.Response.Headers["X-Correlation-ID"].ToString()
+                };
+
+                await store.SaveAsync(record, ct);
+            }
+            catch
+            {
+                // Silently fail
+            }
+        }
+
         public static void MapTransferEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/api/transfers").WithTags("Transfers");
@@ -56,6 +92,7 @@ namespace Api.Endpoints
             catch (Exception ex)
             {
                 logger.LogError(ex, "Transfer draft creation failed.");
+                await PersistHandledExceptionAsync(ctx, ex, "Transfer draft creation failed", ct);
                 return Results.Problem("Neuspesno kreiranje transfera.");
             }
         }
@@ -86,6 +123,7 @@ namespace Api.Endpoints
             catch (Exception ex)
             {
                 logger.LogError(ex, "Transfer draft update failed. TransferId={TransferId}", id);
+                await PersistHandledExceptionAsync(ctx, ex, $"Transfer draft update failed. TransferId={id}", ct);
                 return Results.Problem("Neuspesan update transfera.");
             }
         }
@@ -136,6 +174,7 @@ namespace Api.Endpoints
             catch (Exception ex)
             {
                 logger.LogError(ex, "Transfer action failed. TransferId={TransferId}", id);
+                await PersistHandledExceptionAsync(ctx, ex, $"Transfer action failed. TransferId={id}", ct);
                 return Results.Problem("Neuspesna promena statusa transfera.");
             }
         }

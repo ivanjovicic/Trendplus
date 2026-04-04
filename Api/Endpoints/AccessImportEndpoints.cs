@@ -1,11 +1,15 @@
 using Api.Services;
 using Api.Services.Access;
 using Api.Models;
+using Application.Common.Interfaces;
+using Domain.Model;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Infrastructure.DbContexts;
 using System.Data.Odbc;
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
@@ -196,6 +200,7 @@ public static class AccessImportEndpoints
             long batchId,
             IAccessImportJobQueue queue,
             IAccessImportService service,
+            HttpContext httpContext,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
@@ -218,6 +223,7 @@ public static class AccessImportEndpoints
             catch (Exception ex)
             {
                 logger.LogError(ex, "Manual enqueue failed for batch {BatchId}.", batchId);
+                await PersistHandledExceptionAsync(httpContext, ex, $"Manual enqueue failed for batch {batchId}", ct);
                 return Results.Problem(title: "Enqueue failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
             }
         })
@@ -234,7 +240,16 @@ public static class AccessImportEndpoints
             CancellationToken ct = default) =>
         {
             if (!IsAdminRequest(httpContext, configuration, environment))
+            {
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: $"Unauthorized admin action attempt: delete access-import batch {batchId}.",
+                    exceptionType: nameof(UnauthorizedAccessException),
+                    stackTrace: null,
+                    ct);
                 return Results.Unauthorized();
+            }
 
             var result = await service.DeleteBatchAsync(batchId, includeAnalytics, ct);
             return result.Found
@@ -248,6 +263,7 @@ public static class AccessImportEndpoints
         group.MapPost("/cleanup/preview", async (
             TrendplusDbContext trendDb,
             AnalyticsDbContext analyticsDb,
+            HttpContext httpContext,
             CancellationToken ct = default) =>
         {
             try
@@ -276,6 +292,7 @@ public static class AccessImportEndpoints
             }
             catch (Exception ex)
             {
+                await PersistHandledExceptionAsync(httpContext, ex, "Cleanup preview failed", ct);
                 return Results.Problem(title: "Cleanup preview failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
             }
         })
@@ -285,6 +302,7 @@ public static class AccessImportEndpoints
         // List archived deleted rows (recent)
         group.MapGet("/cleanup/archive", async (
             TrendplusDbContext trendDb,
+            HttpContext httpContext,
             int take = 200,
             CancellationToken ct = default) =>
         {
@@ -315,6 +333,7 @@ public static class AccessImportEndpoints
             }
             catch (Exception ex)
             {
+                await PersistHandledExceptionAsync(httpContext, ex, "Archive list failed", ct);
                 return Results.Problem(title: "Archive list failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
             }
         })
@@ -325,6 +344,7 @@ public static class AccessImportEndpoints
         group.MapPost("/cleanup/archive/export", async (
             TrendplusDbContext trendDb,
             HttpRequest request,
+            HttpContext httpContext,
             CancellationToken ct = default) =>
         {
             try
@@ -358,6 +378,7 @@ public static class AccessImportEndpoints
             }
             catch (Exception ex)
             {
+                await PersistHandledExceptionAsync(httpContext, ex, "Archive export failed", ct);
                 return Results.Problem(title: "Archive export failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
             }
         })
@@ -375,7 +396,16 @@ public static class AccessImportEndpoints
             CancellationToken ct = default) =>
         {
             if (!IsAdminRequest(httpContext, configuration, environment))
+            {
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: "Unauthorized admin action attempt: cleanup execute.",
+                    exceptionType: nameof(UnauthorizedAccessException),
+                    stackTrace: null,
+                    ct);
                 return Results.Unauthorized();
+            }
 
             try
             {
@@ -495,6 +525,12 @@ public static class AccessImportEndpoints
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Cleanup execution failed for {Path}", httpContext.Request.Path);
+                await PersistHandledExceptionAsync(
+                    httpContext,
+                    ex,
+                    "Cleanup execution failed",
+                    ct);
                 return Results.Problem(title: "Cleanup execution failed", detail: ex.GetBaseException().Message, statusCode: StatusCodes.Status500InternalServerError);
             }
         })
@@ -515,6 +551,7 @@ public static class AccessImportEndpoints
 
         group.MapPost("/preview", async (
             HttpRequest request,
+            HttpContext httpContext,
             IAccessImportService service,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
@@ -522,6 +559,13 @@ public static class AccessImportEndpoints
             var runtimeStatus = GetAccessImportRuntimeStatus();
             if (!runtimeStatus.Available)
             {
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: $"Access preview runtime unavailable: {runtimeStatus.Detail ?? "missing runtime dependency"}",
+                    exceptionType: nameof(InvalidOperationException),
+                    stackTrace: null,
+                    ct);
                 return Results.Problem(
                     title: "Access import runtime missing",
                     detail: runtimeStatus.Detail ?? "Access preview is unavailable on this server because required runtime dependencies are missing.",
@@ -530,7 +574,16 @@ public static class AccessImportEndpoints
 
             var resolved = await ResolveSourceFileAsync(request, ct);
             if (!resolved.Success)
+            {
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: $"Access preview source resolution failed: {resolved.Error}",
+                    exceptionType: nameof(ArgumentException),
+                    stackTrace: null,
+                    ct);
                 return Results.BadRequest(new { error = resolved.Error });
+            }
 
             try
             {
@@ -544,6 +597,13 @@ public static class AccessImportEndpoints
             catch (OdbcException ex)
             {
                 logger.LogWarning(ex, "Access preview ODBC issue. Returning fail-soft preview response.");
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: $"Access preview ODBC issue: {ex.GetBaseException().Message}",
+                    exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                    stackTrace: ex.StackTrace,
+                    ct);
                 return Results.Ok(new
                 {
                     tables = Array.Empty<object>(),
@@ -555,6 +615,7 @@ public static class AccessImportEndpoints
             catch (DllNotFoundException ex)
             {
                 logger.LogWarning(ex, "Access import preview failed due to missing ODBC runtime dependency.");
+                await PersistHandledExceptionAsync(httpContext, ex, "Access preview runtime missing", ct);
                 return Results.Problem(
                     title: "Access import runtime missing",
                     detail: "Access preview is unavailable on this server because required runtime dependencies are missing.",
@@ -563,6 +624,7 @@ public static class AccessImportEndpoints
             catch (PlatformNotSupportedException ex)
             {
                 logger.LogWarning(ex, "Access import preview is not supported on this platform.");
+                await PersistHandledExceptionAsync(httpContext, ex, "Access preview not supported", ct);
                 return Results.Problem(
                     title: "Access preview not supported",
                     detail: "Access preview is not supported on this server platform.",
@@ -571,6 +633,7 @@ public static class AccessImportEndpoints
             catch (TypeInitializationException ex) when (ex.InnerException is DllNotFoundException)
             {
                 logger.LogWarning(ex, "Access import preview failed due to missing native dependency.");
+                await PersistHandledExceptionAsync(httpContext, ex, "Access preview runtime missing", ct);
                 return Results.Problem(
                     title: "Access import runtime missing",
                     detail: "Access preview is unavailable on this server because required native runtime dependencies are missing.",
@@ -580,6 +643,13 @@ public static class AccessImportEndpoints
             {
                 // Schema issue: column missing from ODBC provider schema
                 logger.LogWarning(ex, "Access import schema handling error - provider returned non-standard schema. Returning best-effort preview.");
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: $"Access preview schema handling warning: {ex.GetBaseException().Message}",
+                    exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                    stackTrace: ex.StackTrace,
+                    ct);
                 return Results.Ok(new
                 {
                     tables = Array.Empty<object>(),
@@ -592,6 +662,13 @@ public static class AccessImportEndpoints
             {
                 // Schema issue: specific ODBC provider column-not-found error
                 logger.LogWarning(ex, "Access import schema error - ODBC provider returned non-standard schema structure. Returning best-effort preview.");
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: $"Access preview schema warning: {ex.GetBaseException().Message}",
+                    exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                    stackTrace: ex.StackTrace,
+                    ct);
                 return Results.Ok(new
                 {
                     tables = Array.Empty<object>(),
@@ -603,6 +680,13 @@ public static class AccessImportEndpoints
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Access import preview failed unexpectedly. Exception: {ExceptionType}: {Message}", ex.GetType().Name, ex.GetBaseException().Message);
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: $"Access preview unexpected issue: {ex.GetBaseException().Message}",
+                    exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                    stackTrace: ex.StackTrace,
+                    ct);
                 return Results.Ok(new
                 {
                     tables = Array.Empty<object>(),
@@ -943,11 +1027,27 @@ public static class AccessImportEndpoints
         CancellationToken ct)
     {
         if (!IsAdminRequest(httpContext, configuration, environment))
+        {
+            await PersistHandledIssueAsync(
+                httpContext,
+                level: "Warning",
+                message: "Unauthorized admin action attempt: start access-import job.",
+                exceptionType: nameof(UnauthorizedAccessException),
+                stackTrace: null,
+                ct);
             return Results.Unauthorized();
+        }
 
         var runtimeStatus = GetAccessImportRuntimeStatus();
         if (!runtimeStatus.Available)
         {
+            await PersistHandledIssueAsync(
+                httpContext,
+                level: "Warning",
+                message: $"Access import runtime unavailable: {runtimeStatus.Detail ?? "missing runtime dependency"}",
+                exceptionType: nameof(InvalidOperationException),
+                stackTrace: null,
+                ct);
             return Results.Problem(
                 title: "Access import runtime missing",
                 detail: runtimeStatus.Detail ?? "Access import is unavailable on this server because required runtime dependencies are missing.",
@@ -956,7 +1056,16 @@ public static class AccessImportEndpoints
 
         var resolved = await ResolveSourceFileAsync(request, ct);
         if (!resolved.Success)
+        {
+            await PersistHandledIssueAsync(
+                httpContext,
+                level: "Warning",
+                message: $"Access import source resolution failed: {resolved.Error}",
+                exceptionType: nameof(ArgumentException),
+                stackTrace: null,
+                ct);
             return Results.BadRequest(new { error = resolved.Error });
+        }
 
         var includeAnalytics = true;
         var overwriteExisting = true;
@@ -978,18 +1087,40 @@ public static class AccessImportEndpoints
         }
         catch (FileNotFoundException ex)
         {
+            await PersistHandledIssueAsync(
+                httpContext,
+                level: "Warning",
+                message: $"Access import file not found: {ex.Message}",
+                exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                stackTrace: ex.StackTrace,
+                ct);
             return Results.BadRequest(new { error = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
+            await PersistHandledIssueAsync(
+                httpContext,
+                level: "Warning",
+                message: $"Access import invalid operation: {ex.Message}",
+                exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                stackTrace: ex.StackTrace,
+                ct);
             return Results.BadRequest(new { error = ex.Message });
         }
         catch (ArgumentException ex)
         {
+            await PersistHandledIssueAsync(
+                httpContext,
+                level: "Warning",
+                message: $"Access import invalid argument: {ex.Message}",
+                exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                stackTrace: ex.StackTrace,
+                ct);
             return Results.BadRequest(new { error = ex.Message });
         }
         catch (OdbcException ex)
         {
+            await PersistHandledExceptionAsync(httpContext, ex, "Access connection failed", ct);
             return Results.Problem(
                 title: "Access connection failed",
                 detail: ex.Message,
@@ -998,6 +1129,7 @@ public static class AccessImportEndpoints
         catch (DllNotFoundException ex)
         {
             logger.LogWarning(ex, "Access import run failed due to missing ODBC runtime dependency.");
+            await PersistHandledExceptionAsync(httpContext, ex, "Access import runtime missing", ct);
             return Results.Problem(
                 title: "Access import runtime missing",
                 detail: "Access import is unavailable on this server because required runtime dependencies are missing.",
@@ -1006,6 +1138,7 @@ public static class AccessImportEndpoints
         catch (PlatformNotSupportedException ex)
         {
             logger.LogWarning(ex, "Access import run is not supported on this platform.");
+            await PersistHandledExceptionAsync(httpContext, ex, "Access import not supported", ct);
             return Results.Problem(
                 title: "Access import not supported",
                 detail: "Access import is not supported on this server platform.",
@@ -1014,6 +1147,7 @@ public static class AccessImportEndpoints
         catch (TypeInitializationException ex) when (ex.InnerException is DllNotFoundException)
         {
             logger.LogWarning(ex, "Access import run failed due to missing native dependency.");
+            await PersistHandledExceptionAsync(httpContext, ex, "Access import runtime missing", ct);
             return Results.Problem(
                 title: "Access import runtime missing",
                 detail: "Access import is unavailable on this server because required native runtime dependencies are missing.",
@@ -1023,6 +1157,13 @@ public static class AccessImportEndpoints
         {
             // Schema issue during import: column missing from ODBC provider schema
             logger.LogWarning(ex, "Access import schema handling error during import - provider returned non-standard schema.");
+            await PersistHandledIssueAsync(
+                httpContext,
+                level: "Warning",
+                message: $"Access import schema handling warning: {ex.GetBaseException().Message}",
+                exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                stackTrace: ex.StackTrace,
+                ct);
             return Results.BadRequest(new
             {
                 error = "Access database schema could not be processed. The ODBC provider may have returned unexpected results. Try again or contact support.",
@@ -1033,6 +1174,13 @@ public static class AccessImportEndpoints
         {
             // Schema issue: specific ODBC provider column-not-found error during import
             logger.LogWarning(ex, "Access import schema error - ODBC provider returned non-standard schema structure.");
+            await PersistHandledIssueAsync(
+                httpContext,
+                level: "Warning",
+                message: $"Access import schema warning: {ex.GetBaseException().Message}",
+                exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                stackTrace: ex.StackTrace,
+                ct);
             return Results.BadRequest(new
             {
                 error = "The Access ODBC provider returned an unexpected schema structure. This may be a provider compatibility issue. Please verify your database file and try again.",
@@ -1042,6 +1190,7 @@ public static class AccessImportEndpoints
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Access import run failed unexpectedly. Exception: {ExceptionType}: {Message}", ex.GetType().Name, ex.GetBaseException().Message);
+            await PersistHandledExceptionAsync(httpContext, ex, "Access import run failed unexpectedly", ct);
 
             // For system failures (unavailable runtime), return 503
             if (ex is DllNotFoundException or PlatformNotSupportedException)
@@ -1090,6 +1239,58 @@ public static class AccessImportEndpoints
         var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
         return !string.IsNullOrWhiteSpace(providedKey)
             && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
+    }
+
+    private static async Task PersistHandledExceptionAsync(
+        HttpContext context,
+        Exception exception,
+        string messagePrefix,
+        CancellationToken ct)
+    {
+        await PersistHandledIssueAsync(
+            context,
+            level: "Error",
+            message: $"{messagePrefix}: {exception.GetBaseException().Message}",
+            exceptionType: exception.GetType().FullName ?? exception.GetType().Name,
+            stackTrace: exception.StackTrace,
+            ct);
+    }
+
+    private static async Task PersistHandledIssueAsync(
+        HttpContext context,
+        string level,
+        string message,
+        string exceptionType,
+        string? stackTrace,
+        CancellationToken ct)
+    {
+        var errorStore = context.RequestServices.GetService<IErrorStore>();
+        if (errorStore is null)
+            return;
+
+        try
+        {
+            var correlationId = context.Response.Headers["X-Correlation-ID"].FirstOrDefault()
+                ?? Activity.Current?.Id
+                ?? Guid.NewGuid().ToString();
+
+            await errorStore.SaveAsync(new ErrorRecord
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = level,
+                Message = message,
+                ExceptionType = exceptionType,
+                StackTrace = stackTrace,
+                Path = context.Request.Path,
+                UserName = context.User?.Identity?.Name ?? "anonymous",
+                ClientApp = context.Request.Headers.UserAgent.ToString(),
+                CorrelationId = correlationId
+            }, ct);
+        }
+        catch
+        {
+            // Never break endpoint flow because error persistence failed.
+        }
     }
 
     private static AccessImportRuntimeStatus GetAccessImportRuntimeStatus()

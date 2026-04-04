@@ -2,6 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Api.Endpoints;
 using Api.Models;
 using Api.Services;
 using Microsoft.AspNetCore.Http;
@@ -65,6 +66,13 @@ public static class ScraperScoringEndpoints
             }
             catch (PostgresException ex) when (ex.SqlState == "42P01")
             {
+                await HandledErrorLogging.PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Error",
+                    message: $"Scoring items schema missing: {ex.GetBaseException().Message}",
+                    exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                    stackTrace: ex.StackTrace,
+                    ct);
                 return Results.Problem(
                     title: "Scoring schema nije podignuta",
                     detail: "Pokreni Database/Analytics/004_AddScraperScoringTables.sql migraciju.",
@@ -77,6 +85,7 @@ public static class ScraperScoringEndpoints
         .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/trending", async (
+            HttpContext httpContext,
             IScraperScoringQueryService service,
             IMemoryCache cache,
             string? category = null,
@@ -101,6 +110,13 @@ public static class ScraperScoringEndpoints
             }
             catch (PostgresException ex) when (ex.SqlState == "42P01")
             {
+                await HandledErrorLogging.PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Error",
+                    message: $"Scoring trending schema missing: {ex.GetBaseException().Message}",
+                    exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                    stackTrace: ex.StackTrace,
+                    ct);
                 return Results.Problem(
                     title: "Scoring schema nije podignuta",
                     detail: "Pokreni Database/Analytics/004_AddScraperScoringTables.sql migraciju.",
@@ -112,6 +128,7 @@ public static class ScraperScoringEndpoints
         .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/momentum", async (
+            HttpContext httpContext,
             IScraperScoringQueryService service,
             IMemoryCache cache,
             string? category = null,
@@ -140,6 +157,13 @@ public static class ScraperScoringEndpoints
             }
             catch (PostgresException ex) when (ex.SqlState == "42P01")
             {
+                await HandledErrorLogging.PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Error",
+                    message: $"Scoring momentum schema missing: {ex.GetBaseException().Message}",
+                    exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                    stackTrace: ex.StackTrace,
+                    ct);
                 return Results.Problem(
                     title: "Scoring schema nije podignuta",
                     detail: "Pokreni Database/Analytics/004_AddScraperScoringTables.sql migraciju.",
@@ -151,6 +175,7 @@ public static class ScraperScoringEndpoints
         .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/markets", async (
+            HttpContext httpContext,
             IScraperScoringQueryService service,
             IMemoryCache cache,
             string market = "DE",
@@ -175,6 +200,13 @@ public static class ScraperScoringEndpoints
             }
             catch (PostgresException ex) when (ex.SqlState == "42P01")
             {
+                await HandledErrorLogging.PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Error",
+                    message: $"Scoring markets schema missing: {ex.GetBaseException().Message}",
+                    exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                    stackTrace: ex.StackTrace,
+                    ct);
                 return Results.Problem(
                     title: "Scoring schema nije podignuta",
                     detail: "Pokreni Database/Analytics/004_AddScraperScoringTables.sql migraciju.",
@@ -187,6 +219,7 @@ public static class ScraperScoringEndpoints
 
         group.MapGet("/debug/score/{itemId:long}", async (
             long itemId,
+            HttpContext httpContext,
             IScraperScoringQueryService service,
             IMemoryCache cache,
             CancellationToken ct = default) =>
@@ -209,6 +242,13 @@ public static class ScraperScoringEndpoints
             }
             catch (PostgresException ex) when (ex.SqlState == "42P01")
             {
+                await HandledErrorLogging.PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Error",
+                    message: $"Scoring debug schema missing: {ex.GetBaseException().Message}",
+                    exceptionType: ex.GetType().FullName ?? ex.GetType().Name,
+                    stackTrace: ex.StackTrace,
+                    ct);
                 return Results.Problem(
                     title: "Scoring schema nije podignuta",
                     detail: "Pokreni Database/Analytics/004_AddScraperScoringTables.sql migraciju.",
@@ -265,4 +305,3 @@ public static class ScraperScoringEndpoints
         return $"\"{Convert.ToHexString(hash)}\"";
     }
 }
-

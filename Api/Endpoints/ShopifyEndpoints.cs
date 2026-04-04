@@ -1,4 +1,5 @@
 using Api.Services;
+using Api.Endpoints;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,6 +30,7 @@ public static class ShopifyEndpoints
         group.MapPost("/import", async (
             ShopifyImportRequestDto request,
             IShopifyImportService shopifyService,
+            HttpContext httpContext,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(request.ShopDomain))
@@ -54,6 +56,11 @@ public static class ShopifyEndpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(
+                    httpContext,
+                    ex,
+                    "Shopify import failed",
+                    ct);
                 return Results.Problem(
                     title: "Shopify import failed",
                     detail: ex.Message,
@@ -69,6 +76,7 @@ public static class ShopifyEndpoints
         group.MapPost("/import-batch", async (
             ShopifyBatchImportRequestDto request,
             IShopifyImportService shopifyService,
+            HttpContext httpContext,
             CancellationToken ct) =>
         {
             if (request.Stores is null || request.Stores.Count == 0)
@@ -94,6 +102,11 @@ public static class ShopifyEndpoints
             }
             catch (Exception ex)
             {
+                await HandledErrorLogging.PersistHandledExceptionAsync(
+                    httpContext,
+                    ex,
+                    "Shopify batch import failed",
+                    ct);
                 return Results.Problem(
                     title: "Shopify batch import failed",
                     detail: ex.Message,

@@ -20,9 +20,9 @@ export function InventoryPageShell({
       <section
         className="rounded-2xl border p-4 sm:p-5"
         style={{
-          background: "linear-gradient(135deg, var(--surface-elevated, #ffffff) 0%, var(--surface-elevated-light, #ffffff) 50%, var(--surface-elevated-dark, #ffffff) 100%)",
-          borderColor: "var(--border-default, #d3dce9)",
-          boxShadow: "0 16px 40px -30px var(--card-shadow, rgba(16,24,40,0.06))",
+          background: "linear-gradient(135deg, var(--surface-elevated) 0%, var(--surface-elevated-light) 50%, var(--surface-elevated-dark) 100%)",
+          borderColor: "var(--border-default)",
+          boxShadow: "0 16px 40px -30px var(--card-shadow)",
         }}
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -31,17 +31,17 @@ export function InventoryPageShell({
               <span
                 className="rounded-lg p-2"
                 style={{
-                  border: "1px solid var(--border-default, #d3dce9)",
-                  background: "var(--surface-elevated, #ffffff)",
-                  color: "var(--text-primary, #0f172a)",
+                  border: "1px solid var(--border-default)",
+                  background: "var(--surface-elevated)",
+                  color: "var(--text-primary)",
                 }}
               >
                 <Icon size={16} />
               </span>
-              <h1 className="text-lg font-semibold sm:text-xl" style={{ color: "var(--text-primary, #0f172a)" }}>{title}</h1>
+              <h1 className="text-lg font-semibold sm:text-xl" style={{ color: "var(--text-primary)" }}>{title}</h1>
             </div>
             {subtitle ? (
-              <p className="mt-2 max-w-3xl text-sm" style={{ color: "var(--text-primary, #0f172a)" }}>{subtitle}</p>
+              <p className="mt-2 max-w-3xl text-sm" style={{ color: "var(--text-muted)" }}>{subtitle}</p>
             ) : null}
           </div>
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
