@@ -384,11 +384,15 @@ public static class AccessImportEndpoints
                 if (!confirm)
                     return Results.BadRequest(new { error = "Action must be confirmed. Send JSON body { \"confirm\": true }." });
 
-                // Execute deletes in a transaction to ensure integrity
-                await using var tx = await trendDb.Database.BeginTransactionAsync(ct);
                 var deleted = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+                // Ensure archive table/index outside transaction; otherwise failed DDL
+                // can poison the transaction and trigger 25P02 downstream.
                 var trendArchiveEnabled = await EnsureDeletedRowsArchiveAvailableAsync(trendDb, logger, "trendplus", ct);
                 var analyticsArchiveEnabled = await EnsureDeletedRowsArchiveAvailableAsync(analyticsDb, logger, "analytics", ct);
+
+                // Execute deletes in a transaction to ensure integrity
+                await using var tx = await trendDb.Database.BeginTransactionAsync(ct);
 
                 // Child tables first - archive rows before delete
                 // povracaj_stavke (parent povracaj_zaglavlje uses data_origin column)
@@ -693,12 +697,44 @@ public static class AccessImportEndpoints
         if (!archiveEnabled)
             return;
 
+        var tx = dbContext.Database.CurrentTransaction;
+        var savepointName = tx is null
+            ? null
+            : $"archive_sp_{Guid.NewGuid():N}";
+
         try
         {
+            if (tx is not null && savepointName is not null)
+            {
+                await tx.CreateSavepointAsync(savepointName, ct);
+            }
+
             await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken: ct);
+
+            if (tx is not null && savepointName is not null)
+            {
+                await tx.ReleaseSavepointAsync(savepointName, ct);
+            }
         }
         catch (Exception ex)
         {
+            if (tx is not null && savepointName is not null)
+            {
+                try
+                {
+                    await tx.RollbackToSavepointAsync(savepointName, ct);
+                    await tx.ReleaseSavepointAsync(savepointName, ct);
+                }
+                catch (Exception rollbackEx)
+                {
+                    logger.LogError(
+                        rollbackEx,
+                        "Failed to rollback archive savepoint for {Scope}. Cleanup transaction is no longer safe to continue.",
+                        scope);
+                    throw;
+                }
+            }
+
             logger.LogWarning(
                 ex,
                 "Archive insert skipped for {Scope}. Cleanup delete will continue.",
