@@ -1024,6 +1024,23 @@ public static class AllEndpoints
                     });
                 }
 
+                var dataWindow = await db.ProdajaZaglavlja.AsNoTracking()
+                    .Where(pz => !storeId.HasValue || pz.IDObjekat == storeId.Value)
+                    .GroupBy(_ => 1)
+                    .Select(g => new
+                    {
+                        fromDate = g.Min(x => (DateTime?)x.DatumProdaje),
+                        toDate = g.Max(x => (DateTime?)x.DatumProdaje)
+                    })
+                    .FirstOrDefaultAsync(ct);
+
+                DateTime? dataWindowFrom = dataWindow?.fromDate.HasValue == true
+                    ? DateTime.SpecifyKind(dataWindow.fromDate.Value, DateTimeKind.Utc)
+                    : null;
+                DateTime? dataWindowTo = dataWindow?.toDate.HasValue == true
+                    ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
+                    : null;
+
                 var nivelacije = await db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
@@ -1181,6 +1198,8 @@ public static class AllEndpoints
                     generatedAt = DateTime.UtcNow,
                     fromDate = fromUtc,
                     toDate = toUtc,
+                    dataWindowFrom,
+                    dataWindowTo,
                     sezonaId,
                     storeId,
                     suppliers,
@@ -1254,6 +1273,23 @@ public static class AllEndpoints
                         toDate = toUtc.Value
                     });
                 }
+
+                var dataWindow = await db.ProdajaZaglavlja.AsNoTracking()
+                    .Where(pz => !storeId.HasValue || pz.IDObjekat == storeId.Value)
+                    .GroupBy(_ => 1)
+                    .Select(g => new
+                    {
+                        fromDate = g.Min(x => (DateTime?)x.DatumProdaje),
+                        toDate = g.Max(x => (DateTime?)x.DatumProdaje)
+                    })
+                    .FirstOrDefaultAsync(ct);
+
+                DateTime? dataWindowFrom = dataWindow?.fromDate.HasValue == true
+                    ? DateTime.SpecifyKind(dataWindow.fromDate.Value, DateTimeKind.Utc)
+                    : null;
+                DateTime? dataWindowTo = dataWindow?.toDate.HasValue == true
+                    ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
+                    : null;
 
                 var nivelacije = await db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
@@ -1412,6 +1448,8 @@ public static class AllEndpoints
                     generatedAt = DateTime.UtcNow,
                     fromDate = fromUtc,
                     toDate = toUtc,
+                    dataWindowFrom,
+                    dataWindowTo,
                     sezonaId,
                     storeId,
                     shoeTypes,
@@ -1488,6 +1526,23 @@ public static class AllEndpoints
                         toDate = toUtc.Value
                     });
                 }
+
+                var dataWindow = await db.ProdajaZaglavlja.AsNoTracking()
+                    .Where(pz => !storeId.HasValue || pz.IDObjekat == storeId.Value)
+                    .GroupBy(_ => 1)
+                    .Select(g => new
+                    {
+                        fromDate = g.Min(x => (DateTime?)x.DatumProdaje),
+                        toDate = g.Max(x => (DateTime?)x.DatumProdaje)
+                    })
+                    .FirstOrDefaultAsync(ct);
+
+                DateTime? dataWindowFrom = dataWindow?.fromDate.HasValue == true
+                    ? DateTime.SpecifyKind(dataWindow.fromDate.Value, DateTimeKind.Utc)
+                    : null;
+                DateTime? dataWindowTo = dataWindow?.toDate.HasValue == true
+                    ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
+                    : null;
 
                 var nivelacije = await db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
@@ -1642,6 +1697,8 @@ public static class AllEndpoints
                     generatedAt = DateTime.UtcNow,
                     fromDate = fromUtc,
                     toDate = toUtc,
+                    dataWindowFrom,
+                    dataWindowTo,
                     sezonaId,
                     storeId,
                     colors,
@@ -2088,8 +2145,16 @@ public static class AllEndpoints
                 }
 
                 var vendorsCount = analyzed.Select(x => x.VendorId).Distinct().Count();
-                var articlesCount = analyzed.Select(x => x.Sku).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.Ordinal).Count();
-                var activeArticlesCount = analyzed.Count(x => x.HasSalesWindow);
+                var articlesCount = analyzed
+                    .Select(x => x.Sku)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct(StringComparer.Ordinal)
+                    .Count();
+                var activeArticlesCount = analyzed
+                    .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
+                    .Select(x => x.Sku)
+                    .Distinct(StringComparer.Ordinal)
+                    .Count();
 
                 var avgRevenuePerArticlePre = activeArticlesCount == 0 ? 0m : Math.Round(totalPreRevenue / activeArticlesCount, 2);
                 var avgRevenuePerArticlePost = activeArticlesCount == 0 ? 0m : Math.Round(totalPostRevenue / activeArticlesCount, 2);
@@ -2137,8 +2202,16 @@ public static class AllEndpoints
                             ChangeQty = g.Sum(x => x.ChangeQty),
                             ChangeRevenue = g.Sum(x => x.ChangeRevenue),
                             ChangePercent = Pct(preRev, postRev),
-                            ArticleCount = g.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
-                            ActiveArticlesCount = g.Count(x => x.HasSalesWindow),
+                            ArticleCount = g
+                                .Select(x => x.Sku)
+                                .Where(s => !string.IsNullOrWhiteSpace(s))
+                                .Distinct(StringComparer.Ordinal)
+                                .Count(),
+                            ActiveArticlesCount = g
+                                .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
+                                .Select(x => x.Sku)
+                                .Distinct(StringComparer.Ordinal)
+                                .Count(),
                             IncreasedPriceArticlesCount = increased,
                             DecreasedPriceArticlesCount = decreased
                         };

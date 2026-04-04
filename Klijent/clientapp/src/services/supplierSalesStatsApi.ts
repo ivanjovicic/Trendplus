@@ -38,6 +38,8 @@ export interface SupplierSalesStatsResponse {
   generatedAt: string;
   fromDate: string | null;
   toDate: string | null;
+  dataWindowFrom: string | null;
+  dataWindowTo: string | null;
   sezonaId: number | null;
   storeId: number | null;
   suppliers: SupplierSalesStat[];

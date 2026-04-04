@@ -134,6 +134,12 @@
   color: var(--error-text, #fecaca);
 }
 
+.supplier-decision-message.info {
+  background: var(--info-10, rgba(59, 130, 246, 0.12));
+  border: 1px solid var(--info-border, rgba(96, 165, 250, 0.3));
+  color: var(--info-text, #bfdbfe);
+}
+
 .supplier-decision-kpis {
   display: grid;
   gap: 10px;

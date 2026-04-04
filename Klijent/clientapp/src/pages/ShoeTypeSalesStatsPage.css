@@ -128,6 +128,12 @@
   color: var(--error-text, #fecaca);
 }
 
+.shoetype-decision-message.info {
+  background: var(--accent-soft, rgba(59, 130, 246, 0.12));
+  border: 1px solid var(--accent-border, rgba(96, 165, 250, 0.3));
+  color: var(--accent-text, #bfdbfe);
+}
+
 .shoetype-decision-kpis {
   display: grid;
   gap: 10px;

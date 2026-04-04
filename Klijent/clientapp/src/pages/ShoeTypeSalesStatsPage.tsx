@@ -30,6 +30,7 @@ type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
 type ActiveFilters = {
   fromDate: string;
   toDate: string;
+  sezonaId: number | null;
   storeId: number | null;
 };
 
@@ -105,6 +106,19 @@ function buildPreviousRange(fromDate: string, toDate: string): { fromDate: strin
     fromDate: previousFrom.toISOString(),
     toDate: previousTo.toISOString(),
   };
+}
+
+function toDateOnly(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
+  return parsed.toISOString().slice(0, 10);
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("sr-RS");
 }
 
 function fmtRsd(value: number): string {
@@ -210,10 +224,12 @@ export default function ShoeTypeSalesStatsPage() {
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
   const [fromDate, setFromDate] = useState(initialRange.fromDate);
   const [toDate, setToDate] = useState(initialRange.toDate);
+  const [sezonaId, setSezonaId] = useState<number | null>(null);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
     fromDate: initialRange.fromDate,
     toDate: initialRange.toDate,
+    sezonaId: null,
     storeId: null,
   });
 
@@ -255,6 +271,7 @@ export default function ShoeTypeSalesStatsPage() {
       const [currentResult, previousResult] = await Promise.allSettled([
         getShoeTypeSalesStats({
           ...currentRange,
+          sezonaId: filters.sezonaId,
           storeId: filters.storeId,
         }),
         getShoeTypeSalesStats({
@@ -439,13 +456,46 @@ export default function ShoeTypeSalesStatsPage() {
     return { boost, keep, reduce };
   }, [sortedRows]);
 
+  const activeSezonaLabel = useMemo(() => {
+    if (activeFilters.sezonaId == null) return "Sve sezone";
+    return data?.sezone.find((item) => item.id === activeFilters.sezonaId)?.naziv ?? String(activeFilters.sezonaId);
+  }, [activeFilters.sezonaId, data?.sezone]);
+
+  const emptyStateHint = useMemo(() => {
+    if (!data || sortedRows.length > 0) return null;
+    if (!data.dataWindowFrom || !data.dataWindowTo) {
+      return "Nema podataka za izabrane filtere.";
+    }
+
+    const selectedFrom = new Date(`${activeFilters.fromDate}T00:00:00Z`);
+    const selectedTo = new Date(`${activeFilters.toDate}T23:59:59Z`);
+    const dataFrom = new Date(data.dataWindowFrom);
+    const dataTo = new Date(data.dataWindowTo);
+
+    if (
+      Number.isNaN(selectedFrom.getTime()) ||
+      Number.isNaN(selectedTo.getTime()) ||
+      Number.isNaN(dataFrom.getTime()) ||
+      Number.isNaN(dataTo.getTime())
+    ) {
+      return "Nema podataka za izabrane filtere.";
+    }
+
+    if (selectedTo < dataFrom || selectedFrom > dataTo) {
+      return `Izabrani period je van dostupnog raspona prodaje (${formatDate(data.dataWindowFrom)} - ${formatDate(data.dataWindowTo)}).`;
+    }
+
+    return "Nema podataka za izabrane filtere.";
+  }, [activeFilters.fromDate, activeFilters.toDate, data, sortedRows.length]);
+
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
       { key: "toDate", label: "Do", value: activeFilters.toDate },
+      { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
       { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
     ],
-    [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate]
+    [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
@@ -467,6 +517,7 @@ export default function ShoeTypeSalesStatsPage() {
     const params = new URLSearchParams();
     params.set("fromDate", `${activeFilters.fromDate}T00:00:00Z`);
     params.set("toDate", `${activeFilters.toDate}T23:59:59Z`);
+    if (activeFilters.sezonaId != null) params.set("sezonaId", String(activeFilters.sezonaId));
     if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
 
     saveAnalyticsDetailSnapshot(
@@ -484,14 +535,28 @@ export default function ShoeTypeSalesStatsPage() {
     navigate(`/analitika/shoe-type-sales-stats/${recordId}?${params.toString()}`, {
       state: { backgroundLocation: location },
     });
-  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, location, navigate, toolbarFilters]);
+  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, location, navigate, toolbarFilters]);
 
   const applyPreset = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
     if (preset === "custom") return;
     const range = getPresetRange(preset);
+    setSezonaId(null);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
+  };
+
+  const handleSeasonChange = (value: string) => {
+    const parsed = value ? Number(value) : null;
+    setSezonaId(parsed);
+    setPeriodPreset("custom");
+
+    if (parsed == null) return;
+
+    const selected = data?.sezone.find((item) => item.id === parsed);
+    if (!selected) return;
+    setFromDate(toDateOnly(selected.datumOd));
+    setToDate(toDateOnly(selected.datumDo));
   };
 
   const applyFilters = () => {
@@ -503,6 +568,7 @@ export default function ShoeTypeSalesStatsPage() {
     setActiveFilters({
       fromDate,
       toDate,
+      sezonaId,
       storeId,
     });
   };
@@ -512,10 +578,12 @@ export default function ShoeTypeSalesStatsPage() {
     setPeriodPreset("90d");
     setFromDate(range.fromDate);
     setToDate(range.toDate);
+    setSezonaId(null);
     setStoreId(null);
     setActiveFilters({
       fromDate: range.fromDate,
       toDate: range.toDate,
+      sezonaId: null,
       storeId: null,
     });
   };
@@ -560,12 +628,40 @@ export default function ShoeTypeSalesStatsPage() {
 
         <label className="shoetype-decision-field">
           <span>Od</span>
-          <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(event) => {
+              setPeriodPreset("custom");
+              setSezonaId(null);
+              setFromDate(event.target.value);
+            }}
+          />
         </label>
 
         <label className="shoetype-decision-field">
           <span>Do</span>
-          <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+          <input
+            type="date"
+            value={toDate}
+            onChange={(event) => {
+              setPeriodPreset("custom");
+              setSezonaId(null);
+              setToDate(event.target.value);
+            }}
+          />
+        </label>
+
+        <label className="shoetype-decision-field">
+          <span>Sezona</span>
+          <select value={sezonaId ?? ""} onChange={(event) => handleSeasonChange(event.target.value)}>
+            <option value="">Sve sezone</option>
+            {(data?.sezone ?? []).map((sezona) => (
+              <option key={sezona.id} value={sezona.id}>
+                {sezona.naziv}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="shoetype-decision-field">
@@ -594,6 +690,9 @@ export default function ShoeTypeSalesStatsPage() {
       ) : null}
       {error ? <div className="shoetype-decision-message error">{error}</div> : null}
       {loading ? <div className="shoetype-decision-message loading">Ucitavam tipove obuce...</div> : null}
+      {!loading && !error && emptyStateHint ? (
+        <div className="shoetype-decision-message info">{emptyStateHint}</div>
+      ) : null}
 
       {!loading && data ? (
         <>

@@ -134,6 +134,30 @@
   color: var(--error, #fecaca);
 }
 
+.sf-decision-message.info {
+  background: var(--info-soft, color-mix(in srgb, var(--accent-primary, #3b82f6) 16%, transparent));
+  border: 1px solid var(--info-border, color-mix(in srgb, var(--accent-primary, #3b82f6) 36%, transparent));
+  color: var(--text-primary, #111827);
+}
+
+.sf-decision-message.suggestion {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.sf-decision-message.suggestion button {
+  background: var(--accent-primary, #2563eb);
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-on-primary, #ffffff);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 10px;
+}
+
 .sf-decision-kpis {
   display: grid;
   gap: 10px;

@@ -6,6 +6,8 @@ import { getDobavljaci } from "../services/dobavljaciApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import {
   getVendorSalesNivelacija,
+  getVendorSalesNivelacijaOptions,
+  type VendorSalesNivelacijaOption,
   type VendorSalesNivelacijaArticleStat,
   type VendorSalesNivelacijaResponse,
   type VendorSalesNivelacijaVendorStat,
@@ -20,6 +22,7 @@ type SortField = "vendorName" | "postRevenue" | "sharePct" | "topFootwearType" |
 type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
 
 type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string };
+type SuggestedRange = { fromDate: string; toDate: string; label: string };
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   sharePct: number;
@@ -60,6 +63,11 @@ function getPresetRange(preset: Exclude<PeriodPreset, "custom">) {
   return { fromDate: toDateInput(from), toDate: toDateInput(to) };
 }
 function toUtcRange(fromDate: string, toDate: string) { return { from: `${fromDate}T00:00:00Z`, to: `${toDate}T23:59:59Z` }; }
+function toDateOnly(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
+  return parsed.toISOString().slice(0, 10);
+}
 function buildPreviousRange(fromDate: string, toDate: string) {
   const currentFrom = new Date(`${fromDate}T00:00:00Z`);
   const currentTo = new Date(`${toDate}T23:59:59Z`);
@@ -180,6 +188,8 @@ export default function SupplierFootwearAnalyticsPage() {
   const [previousRevenue, setPreviousRevenue] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataHint, setDataHint] = useState<string | null>(null);
+  const [suggestedRange, setSuggestedRange] = useState<SuggestedRange | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
@@ -197,22 +207,60 @@ export default function SupplierFootwearAnalyticsPage() {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
+    setDataHint(null);
+    setSuggestedRange(null);
     try {
       const currentRange = toUtcRange(filters.fromDate, filters.toDate);
       const previousRange = buildPreviousRange(filters.fromDate, filters.toDate);
+
       const [currentResult, previousResult] = await Promise.allSettled([
         getVendorSalesNivelacija({ ...currentRange, vendorId: filters.vendorId, category: filters.category || null, includeInactive: false }),
         getVendorSalesNivelacija({ ...previousRange, vendorId: filters.vendorId, category: filters.category || null, includeInactive: false }),
       ]);
       if (requestId !== requestIdRef.current) return;
       if (currentResult.status === "rejected") throw currentResult.reason;
-      setData(currentResult.value);
+
+      let currentData = currentResult.value;
+      let previousData = previousResult.status === "fulfilled" ? previousResult.value : null;
+
+      const hasNoRows = currentData.vendorStats.length === 0 && currentData.articleStats.length === 0;
+      const likelyFilteredOutByInactive = hasNoRows && currentData.dataQuality.deduplicatedRows > 0 && currentData.dataQuality.inactiveRows > 0;
+
+      const stillNoRows = currentData.vendorStats.length === 0 && currentData.articleStats.length === 0;
+      if (stillNoRows) {
+        const options = await getVendorSalesNivelacijaOptions({
+          vendorId: filters.vendorId,
+          category: filters.category || undefined,
+          take: 60,
+        }).catch(() => [] as VendorSalesNivelacijaOption[]);
+
+        if (requestId !== requestIdRef.current) return;
+
+        const suggested = options.find((item) => item.hasSalesWindow) ?? options[0];
+        if (suggested) {
+          const day = toDateOnly(suggested.eventDate);
+          setSuggestedRange({
+            fromDate: day,
+            toDate: day,
+            label: suggested.label,
+          });
+          setDataHint("Za izabrani period nema analiziranih redova. Predlozen je datum gde postoje nivelacije i/ili prodaja.");
+        } else if (likelyFilteredOutByInactive) {
+          setDataHint("U periodu postoje nivelacije, ali bez prodaje u pre/post prozoru. Ukljuci siri period ili proveri opciju sa neaktivnim artiklima.");
+        } else {
+          setDataHint("U izabranom periodu nema nivelacija za zadate filtere.");
+        }
+      }
+
+      setData(currentData);
       setExpandedVendorKey(null);
-      setPreviousRevenue(previousResult.status === "fulfilled" ? previousResult.value.totals.postRevenue : null);
+      setPreviousRevenue(previousData?.totals.postRevenue ?? null);
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
       setPreviousRevenue(null);
+      setDataHint(null);
+      setSuggestedRange(null);
       setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju dobavljaci-tipovi analitike.");
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
@@ -350,6 +398,13 @@ export default function SupplierFootwearAnalyticsPage() {
     setCategory("");
     setActiveFilters({ fromDate: range.fromDate, toDate: range.toDate, vendorId: null, category: "" });
   };
+  const handleApplySuggestedRange = () => {
+    if (!suggestedRange) return;
+    setPeriodPreset("custom");
+    setFromDate(suggestedRange.fromDate);
+    setToDate(suggestedRange.toDate);
+    setActiveFilters((current) => ({ ...current, fromDate: suggestedRange.fromDate, toDate: suggestedRange.toDate }));
+  };
 
   const openVendorDetail = (row: DecisionVendor) => {
     saveAnalyticsDetailSnapshot(buildAnalyticsDetailSnapshot({
@@ -386,6 +441,13 @@ export default function SupplierFootwearAnalyticsPage() {
       {invalidRange ? <div className="sf-decision-message error">Datum od ne moze biti posle datuma do.</div> : null}
       {error ? <div className="sf-decision-message error">{error}</div> : null}
       {loading ? <div className="sf-decision-message loading">Ucitavam dobavljace i tipove obuce...</div> : null}
+      {!loading && !error && dataHint ? <div className="sf-decision-message info">{dataHint}</div> : null}
+      {!loading && !error && suggestedRange ? (
+        <div className="sf-decision-message suggestion">
+          <span>Predlog: {suggestedRange.label}</span>
+          <button type="button" onClick={handleApplySuggestedRange}>Primeni predlog perioda</button>
+        </div>
+      ) : null}
 
       {!loading && data ? (
         <>
