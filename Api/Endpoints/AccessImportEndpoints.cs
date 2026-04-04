@@ -1045,7 +1045,9 @@ public static class AccessImportEndpoints
         if (environment.IsDevelopment())
             return true;
 
-        var configuredKey = configuration["Admin:ApiKey"] ?? Environment.GetEnvironmentVariable("ADMIN_API_KEY");
+        var configuredKey = configuration["Admin:ApiKey"];
+        if (string.IsNullOrWhiteSpace(configuredKey))
+            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
         if (string.IsNullOrWhiteSpace(configuredKey))
             return false;
 

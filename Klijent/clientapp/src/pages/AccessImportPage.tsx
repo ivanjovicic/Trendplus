@@ -165,6 +165,12 @@ export default function AccessImportPage() {
         return key.trim();
     };
 
+    const isUnauthorizedError = (error: unknown): boolean => {
+        if (!(error instanceof Error)) return false;
+        const msg = error.message.toLowerCase();
+        return msg.includes("401") || msg.includes("unauthorized");
+    };
+
     const hydrateRunResultFromBatch = (batch: AccessImportBatchDto, fallbackIncludeAnalytics: boolean) => {
         if (batch.summaryJson) {
             try {
@@ -399,6 +405,21 @@ export default function AccessImportPage() {
             // optionally refresh batches / caches
             await refreshBatches("after-cleanup");
         } catch (e: unknown) {
+            if (isUnauthorizedError(e)) {
+                const retryKey = promptAdminKey("Cleanup ne-Access zapisa (ponovni unos kljuca)");
+                if (!retryKey) return;
+
+                try {
+                    const res = await executeCleanupNonAccess(true, retryKey);
+                    setCleanupResult(res);
+                    await refreshBatches("after-cleanup-retry");
+                    return;
+                } catch (retryError: unknown) {
+                    setError(retryError instanceof Error ? retryError.message : "Greska pri brisanju podataka.");
+                    return;
+                }
+            }
+
             setError(e instanceof Error ? e.message : "Greska pri brisanju podataka.");
         } finally {
             setCleanupExecuting(false);

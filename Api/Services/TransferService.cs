@@ -513,19 +513,31 @@ namespace Api.Services
                 total = await query.CountAsync(ct);
                 transfers = await pageQuery.ToListAsync(ct);
             }
-            catch (PostgresException pex) when (IsMissingTransfersRelation(pex))
+            catch (PostgresException pex) when (IsMissingTransferSchemaRelation(pex))
             {
                 _logger.LogWarning(
                     pex,
-                    "Transfers relation missing during list query (SqlState={SqlState}, Table={Table}, Position={Position}). Triggering self-heal and retry.",
+                    "Transfer schema relation missing during list query (SqlState={SqlState}, Table={Table}, Position={Position}). Triggering self-heal and retry.",
                     pex.SqlState,
                     pex.TableName,
                     pex.Position);
 
                 await EnsureTransferSchemaIfNeededAsync(ct, force: true);
 
-                total = await query.CountAsync(ct);
-                transfers = await pageQuery.ToListAsync(ct);
+                try
+                {
+                    total = await query.CountAsync(ct);
+                    transfers = await pageQuery.ToListAsync(ct);
+                }
+                catch (PostgresException retryEx) when (IsMissingTransferSchemaRelation(retryEx))
+                {
+                    _logger.LogWarning(
+                        retryEx,
+                        "Transfer schema still unavailable after self-heal retry. Returning empty transfer list.");
+
+                    total = 0;
+                    transfers = [];
+                }
             }
             catch (PostgresException pex)
             {
@@ -605,16 +617,20 @@ namespace Api.Services
 
         private static string BuildTransferDocumentCode(long transferId) => $"TR-{transferId}";
 
-        private static bool IsMissingTransfersRelation(PostgresException ex)
+        private static bool IsMissingTransferSchemaRelation(PostgresException ex)
         {
             if (!string.Equals(ex.SqlState, PostgresErrorCodes.UndefinedTable, StringComparison.Ordinal))
                 return false;
 
-            if (string.Equals(ex.TableName, "Transfers", StringComparison.Ordinal))
+            if (string.Equals(ex.TableName, "Transfers", StringComparison.Ordinal)
+                || string.Equals(ex.TableName, "TransferItems", StringComparison.Ordinal)
+                || string.Equals(ex.TableName, "StockReservations", StringComparison.Ordinal))
                 return true;
 
             var message = ex.MessageText ?? ex.Message ?? string.Empty;
-            return message.Contains("relation \"Transfers\" does not exist", StringComparison.Ordinal);
+            return message.Contains("relation \"Transfers\" does not exist", StringComparison.Ordinal)
+                   || message.Contains("relation \"TransferItems\" does not exist", StringComparison.Ordinal)
+                   || message.Contains("relation \"StockReservations\" does not exist", StringComparison.Ordinal);
         }
 
         private async Task EnsureTransferSchemaIfNeededAsync(CancellationToken ct, bool force = false)
