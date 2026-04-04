@@ -2951,10 +2951,24 @@ using NpgsqlTypes;
         var typeDeleted = 0;
         var storeDeleted = 0;
 
+        Task ArchiveTrendAsync(string tableName, string sql, params object[] parameters)
+            => TryArchiveInsertCompatAsync(
+                () => _trendDb.Database.ExecuteSqlRawAsync(sql, parameters),
+                tableName,
+                "delete-batch-archive",
+                batchId);
+
+        Task ArchiveAnalyticsAsync(string tableName, string sql, params object[] parameters)
+            => TryArchiveInsertCompatAsync(
+                () => _analyticsDb.Database.ExecuteSqlRawAsync(sql, parameters),
+                tableName,
+                "delete-batch-analytics-archive",
+                batchId);
+
         // Delete transactional / master data
         // Stavke must be deleted before zaglavlja (FK constraint), filtered via parent
         // Archive prv: povracaj_stavke rows that belong to access-origin parents
-        await _trendDb.Database.ExecuteSqlRawAsync(@"
+        await ArchiveTrendAsync("povracaj_stavke", @"
             INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
             SELECT @p0, 'povracaj_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
             FROM povracaj_stavke t
@@ -2970,7 +2984,7 @@ using NpgsqlTypes;
             "povracaj_stavke",
             "delete-batch",
             batchId);
-        await _trendDb.Database.ExecuteSqlRawAsync(@"
+        await ArchiveTrendAsync("povracaj_zaglavlje", @"
             INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
             SELECT @p0, 'povracaj_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
             FROM povracaj_zaglavlje t
@@ -2981,7 +2995,7 @@ using NpgsqlTypes;
             "povracaj_zaglavlje",
             "delete-batch",
             batchId);
-        await _trendDb.Database.ExecuteSqlRawAsync(@"
+        await ArchiveTrendAsync("DnevnikPromena", @"
             INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
             SELECT @p0, 'DnevnikPromena', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
             FROM ""DnevnikPromena"" t
@@ -2992,7 +3006,7 @@ using NpgsqlTypes;
             "DnevnikPromena",
             "delete-batch",
             batchId);
-        await _trendDb.Database.ExecuteSqlRawAsync(@"
+        await ArchiveTrendAsync("prodaja_stavke", @"
             INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
             SELECT @p0, 'prodaja_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
             FROM prodaja_stavke t
@@ -3008,7 +3022,7 @@ using NpgsqlTypes;
             "prodaja_stavke",
             "delete-batch",
             batchId);
-        await _trendDb.Database.ExecuteSqlRawAsync(@"
+        await ArchiveTrendAsync("prodaja_zaglavlje", @"
             INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
             SELECT @p0, 'prodaja_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
             FROM prodaja_zaglavlje t
@@ -3019,7 +3033,7 @@ using NpgsqlTypes;
             "prodaja_zaglavlje",
             "delete-batch",
             batchId);
-        await _trendDb.Database.ExecuteSqlRawAsync(@"
+        await ArchiveTrendAsync("Artikli", @"
             INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
             SELECT @p0, 'Artikli', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
             FROM ""Artikli"" t
@@ -3030,7 +3044,7 @@ using NpgsqlTypes;
             "Artikli",
             "delete-batch",
             batchId);
-        await _trendDb.Database.ExecuteSqlRawAsync(@"
+        await ArchiveTrendAsync("Sezone", @"
             INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
             SELECT @p0, 'Sezone', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
             FROM ""Sezone"" t
@@ -3041,7 +3055,7 @@ using NpgsqlTypes;
             "Sezone",
             "delete-batch",
             batchId);
-        await _trendDb.Database.ExecuteSqlRawAsync(@"
+        await ArchiveTrendAsync("Dobavljaci", @"
             INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
             SELECT @p0, 'Dobavljaci', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
             FROM ""Dobavljaci"" t
@@ -3052,7 +3066,7 @@ using NpgsqlTypes;
             "Dobavljaci",
             "delete-batch",
             batchId);
-        await _trendDb.Database.ExecuteSqlRawAsync(@"
+        await ArchiveTrendAsync("TipoviObuce", @"
             INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
             SELECT @p0, 'TipoviObuce', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
             FROM ""TipoviObuce"" t
@@ -3070,7 +3084,7 @@ using NpgsqlTypes;
 
             // Delete analytics data imported from Access (DataOrigin="access")
             // Note: per-batch FK does not exist in analytics tables, so this removes all Access-origin rows.
-            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+            await ArchiveAnalyticsAsync("SalesFacts", @"
                 INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                 SELECT @p0, 'SalesFacts', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
                 FROM ""SalesFacts"" t
@@ -3081,7 +3095,7 @@ using NpgsqlTypes;
                 "SalesFacts",
                 "delete-batch-analytics",
                 batchId);
-            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+            await ArchiveAnalyticsAsync("SalesLineFacts", @"
                 INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                 SELECT @p0, 'SalesLineFacts', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
                 FROM ""SalesLineFacts"" t
@@ -3092,7 +3106,7 @@ using NpgsqlTypes;
                 "SalesLineFacts",
                 "delete-batch-analytics",
                 batchId);
-            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+            await ArchiveAnalyticsAsync("ProductsDim", @"
                 INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                 SELECT @p0, 'ProductsDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
                 FROM ""ProductsDim"" t
@@ -3103,7 +3117,7 @@ using NpgsqlTypes;
                 "ProductsDim",
                 "delete-batch-analytics",
                 batchId);
-            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+            await ArchiveAnalyticsAsync("InventoryMovementFacts", @"
                 INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                 SELECT @p0, 'InventoryMovementFacts', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
                 FROM ""InventoryMovementFacts"" t
@@ -3114,7 +3128,7 @@ using NpgsqlTypes;
                 "InventoryMovementFacts",
                 "delete-batch-analytics",
                 batchId);
-            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+            await ArchiveAnalyticsAsync("SuppliersDim", @"
                 INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                 SELECT @p0, 'SuppliersDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
                 FROM ""SuppliersDim"" t
@@ -3125,7 +3139,7 @@ using NpgsqlTypes;
                 "SuppliersDim",
                 "delete-batch-analytics",
                 batchId);
-            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+            await ArchiveAnalyticsAsync("SeasonsDim", @"
                 INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                 SELECT @p0, 'SeasonsDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
                 FROM ""SeasonsDim"" t
@@ -3136,7 +3150,7 @@ using NpgsqlTypes;
                 "SeasonsDim",
                 "delete-batch-analytics",
                 batchId);
-            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+            await ArchiveAnalyticsAsync("FootwearTypesDim", @"
                 INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                 SELECT @p0, 'FootwearTypesDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
                 FROM ""FootwearTypesDim"" t
@@ -3147,7 +3161,7 @@ using NpgsqlTypes;
                 "FootwearTypesDim",
                 "delete-batch-analytics",
                 batchId);
-            await _analyticsDb.Database.ExecuteSqlRawAsync(@"
+            await ArchiveAnalyticsAsync("StoresDim", @"
                 INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
                 SELECT @p0, 'StoresDim', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'delete-batch'
                                 FROM ""StoresDim"" t
@@ -3286,6 +3300,23 @@ using NpgsqlTypes;
                 tableName,
                 operation);
             return 0;
+        }
+    }
+
+    private async Task TryArchiveInsertCompatAsync(Func<Task> archiveAction, string tableName, string operation, long batchId)
+    {
+        try
+        {
+            await archiveAction();
+        }
+        catch (PostgresException ex) when (IsLegacySchemaArtifact(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "Skipping archive write for legacy schema artifact. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                batchId,
+                tableName,
+                operation);
         }
     }
 
