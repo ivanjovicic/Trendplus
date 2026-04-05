@@ -1,6 +1,7 @@
 import React from "react";
 import { ChevronDown, Download, Printer } from "lucide-react";
 import Modal from "../Modal";
+import InfoTip from "../ui/InfoTip";
 import {
   downloadExport,
   generateExport,
@@ -131,7 +132,8 @@ export default function AnalyticsTableToolbar<Row>(props: {
             className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-white"
           >
             <Download size={14} />
-            Export
+            Izvoz
+            <InfoTip text="Izvezi tabelu u PDF, Excel ili CSV format." />
             <ChevronDown size={14} />
           </button>
 
@@ -158,9 +160,11 @@ export default function AnalyticsTableToolbar<Row>(props: {
           type="button"
           onClick={handlePrint}
           className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+          title="Otvori prozor za štampu/printer"
         >
           <Printer size={14} />
-          Print
+          Štampaj
+          <InfoTip text="Otvori print layout sa podešavanjima za izveštaj." />
         </button>
 
         <span className="text-xs text-muted">Redova: {payload.rows.length}</span>

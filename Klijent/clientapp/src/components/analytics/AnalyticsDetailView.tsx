@@ -1,5 +1,6 @@
 import React from "react";
 import { Copy, RefreshCw } from "lucide-react";
+import InfoTip from "../ui/InfoTip";
 import { getAnalyticsDetail } from "../../services/analyticsDetailApi";
 import { getAnalyticsDetailSnapshot } from "../../services/analyticsTableState";
 import type { AnalyticsDetailResponse } from "../../types/analyticsTable";
@@ -120,12 +121,12 @@ export default function AnalyticsDetailView(props: {
       <section className="rounded-2xl border border-muted bg-surface-elevated p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Analitika detalj</div>
-            <div className="mt-2 text-lg font-semibold text-contrast">{detail.title}</div>
+            <div className="text-xs uppercase tracking-wide text-muted">Detalj analitike</div>
+            <div className="mt-2 text-lg font-semibold text-contrast">{detail.title} <InfoTip text="Detaljan prikaz izabranog zapisa sa dodatnim poljima i metapodacima." /></div>
             {detail.subtitle ? <div className="mt-1 text-sm text-muted">{detail.subtitle}</div> : null}
             {usedSnapshot ? (
               <div className="mt-2 text-xs text-warning">
-                Prikazan je sacuvani snapshot reda jer backend detalj nije dostupan za ovu tabelu.
+                Prikazan je sačuvani snapshot reda jer backend detalj nije dostupan za ovu tabelu.
               </div>
             ) : null}
           </div>
@@ -133,6 +134,7 @@ export default function AnalyticsDetailView(props: {
             type="button"
             onClick={() => void copyValue(detail.recordId)}
             className="inline-flex items-center gap-1 rounded-lg border border-muted bg-surface-darker px-3 py-2 text-xs text-muted hover:text-contrast transition-colors"
+            title="Kopiraj identifikator zapisa u clipboard"
           >
             <Copy size={13} />
             Kopiraj ID
