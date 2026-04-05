@@ -266,6 +266,12 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  overflow: visible;
+}
+
+.supplier-decision-table th button {
+  position: relative;
+  z-index: 2;
 }
 
 .supplier-decision-table th button {

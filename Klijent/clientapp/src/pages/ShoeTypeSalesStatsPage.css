@@ -250,6 +250,12 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  overflow: visible;
+}
+
+.shoetype-decision-table th button {
+  position: relative;
+  z-index: 2;
 }
 
 .shoetype-decision-table th button {

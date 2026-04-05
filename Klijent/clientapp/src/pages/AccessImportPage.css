@@ -301,6 +301,12 @@
     font-weight: 700;
     padding: 8px;
     border-bottom: 1px solid var(--border-default);
+    overflow: visible;
+}
+
+.accimport-table th button {
+  position: relative;
+  z-index: 2;
 }
 
 .accimport-table td {
