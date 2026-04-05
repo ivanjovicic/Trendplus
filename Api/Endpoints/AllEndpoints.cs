@@ -22,6 +22,7 @@ using Npgsql;
 using NpgsqlTypes;
 using Infrastructure.DbContexts;
 using Application.Analytics.Queries.GetTopProducts;
+using Application.Analytics;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -1084,12 +1085,17 @@ public static class AllEndpoints
                     {
                         ps.Kolicina,
                         Prihod = ps.Kolicina * ps.Cena,
-                        EffNabavnaCena = ps.NabavnaCena ?? a.NabavnaCena
+                        SaleLineCost = ps.NabavnaCena,
+                        ProductCostRsd = a.NabavnaCenaDin,
+                        ProductCostLegacy = a.NabavnaCena
                     } by new
                     {
                         SupplierId = a.IDDobavljac,
                         ArtikalId = a.Id,
-                        DatumProdaje = pz.DatumProdaje
+                        DatumProdaje = pz.DatumProdaje,
+                        SaleLineCost = ps.NabavnaCena,
+                        ProductCostRsd = a.NabavnaCenaDin,
+                        ProductCostLegacy = a.NabavnaCena
                     }
                     into g
                     select new
@@ -1099,9 +1105,9 @@ public static class AllEndpoints
                         DatumProdaje = g.Key.DatumProdaje,
                         Kolicina = g.Sum(x => x.Kolicina),
                         Prihod = g.Sum(x => x.Prihod),
-                        TotalCost = g.Sum(x => x.EffNabavnaCena.HasValue ? x.Kolicina * x.EffNabavnaCena.Value : 0m),
-                        RevenueWithCost = g.Sum(x => x.EffNabavnaCena.HasValue ? x.Prihod : 0m),
-                        MissingCostQty = g.Sum(x => x.EffNabavnaCena.HasValue ? 0 : x.Kolicina)
+                        SaleLineCost = g.Key.SaleLineCost,
+                        ProductCostRsd = g.Key.ProductCostRsd,
+                        ProductCostLegacy = g.Key.ProductCostLegacy
                     })
                     .ToListAsync(ct);
 
@@ -1131,9 +1137,8 @@ public static class AllEndpoints
                         int preNivQty = 0;
                         int postNivQty = 0;
                         int totalQty = 0;
-                        decimal totalCost = 0m;
-                        decimal revenueWithCost = 0m;
                         decimal revenueWithNivelacijaSplit = 0m;
+                        var margin = new MarginAccumulator();
 
                         var articleIds = new HashSet<int>();
                         var articleIdsWithNivelacija = new HashSet<int>();
@@ -1143,8 +1148,10 @@ public static class AllEndpoints
                             totalRevenue += s.Prihod;
                             totalQty += s.Kolicina;
                             articleIds.Add(s.ArtikalId);
-                            totalCost += s.TotalCost;
-                            revenueWithCost += s.RevenueWithCost;
+                            margin.Add(
+                                s.Prihod,
+                                s.Kolicina,
+                                AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy));
 
                             if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
                             {
@@ -1166,10 +1173,7 @@ public static class AllEndpoints
                             }
                         }
 
-                        var marginPct = revenueWithCost > 0m
-                            ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
-                            : 0d;
-                        var marginContribution = revenueWithCost - totalCost;
+                        var marginSnapshot = margin.Build(totalRevenue);
 
                         var normalizedSupplierName = string.IsNullOrWhiteSpace(g.Key.DobavljacNaziv)
                             ? "Nepoznato"
@@ -1190,12 +1194,10 @@ public static class AllEndpoints
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = Math.Round(revenueWithCost, 2),
-                            marginContribution = Math.Round(marginContribution, 2),
-                            marginDataCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)(revenueWithCost / totalRevenue * 100m), 2)
-                                : (double?)null,
-                            marginPct = Math.Round(marginPct, 2),
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
+                            marginContribution = marginSnapshot.MarginContribution,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                            marginPct = marginSnapshot.MarginPct,
                             revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
                             promenaPrometa = preNivRevenue > 0m
                                 ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
@@ -1229,8 +1231,15 @@ public static class AllEndpoints
                 var totalRevenue = suppliers.Sum(r => r.ukupanPromet);
                 var revenueWithNivelacijaSplit = suppliers.Sum(r => r.revenueWithNivelacijaSplit);
                 var unknownSupplierRevenue = suppliers.Where(r => r.isUnknown).Sum(r => r.ukupanPromet);
-                var missingCostRevenue = totalRevenue - stavke.Sum(s => s.RevenueWithCost);
-                var missingCostQty = stavke.Sum(s => s.MissingCostQty);
+                var totalRevenueWithCost = stavke.Sum(s =>
+                    AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy).HasValue
+                        ? s.Prihod
+                        : 0m);
+                var missingCostRevenue = totalRevenue - totalRevenueWithCost;
+                var missingCostQty = stavke.Sum(s =>
+                    AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy).HasValue
+                        ? 0
+                        : s.Kolicina);
 
                 var dataQuality = new
                 {
@@ -1458,12 +1467,17 @@ public static class AllEndpoints
                     {
                         ps.Kolicina,
                         Prihod = ps.Kolicina * ps.Cena,
-                        EffNabavnaCena = ps.NabavnaCena ?? a.NabavnaCena
+                        SaleLineCost = ps.NabavnaCena,
+                        ProductCostRsd = a.NabavnaCenaDin,
+                        ProductCostLegacy = a.NabavnaCena
                     } by new
                     {
                         TipObuceId = a.IDTipObuce,
                         ArtikalId = a.Id,
-                        DatumProdaje = pz.DatumProdaje
+                        DatumProdaje = pz.DatumProdaje,
+                        SaleLineCost = ps.NabavnaCena,
+                        ProductCostRsd = a.NabavnaCenaDin,
+                        ProductCostLegacy = a.NabavnaCena
                     }
                     into g
                     select new
@@ -1473,8 +1487,9 @@ public static class AllEndpoints
                         DatumProdaje = g.Key.DatumProdaje,
                         Kolicina = g.Sum(x => x.Kolicina),
                         Prihod = g.Sum(x => x.Prihod),
-                        TotalCost = g.Sum(x => x.EffNabavnaCena.HasValue ? x.Kolicina * x.EffNabavnaCena.Value : 0m),
-                        RevenueWithCost = g.Sum(x => x.EffNabavnaCena.HasValue ? x.Prihod : 0m)
+                        SaleLineCost = g.Key.SaleLineCost,
+                        ProductCostRsd = g.Key.ProductCostRsd,
+                        ProductCostLegacy = g.Key.ProductCostLegacy
                     })
                     .ToListAsync(ct);
 
@@ -1488,9 +1503,8 @@ public static class AllEndpoints
                         int preNivQty = 0;
                         int postNivQty = 0;
                         int totalQty = 0;
-                        decimal totalCost = 0m;
-                        decimal revenueWithCost = 0m;
                         decimal revenueWithNivelacijaSplit = 0m;
+                        var margin = new MarginAccumulator();
 
                         var articleIds = new HashSet<int>();
                         var articleIdsWithNivelacija = new HashSet<int>();
@@ -1500,8 +1514,10 @@ public static class AllEndpoints
                             totalRevenue += s.Prihod;
                             totalQty += s.Kolicina;
                             articleIds.Add(s.ArtikalId);
-                            totalCost += s.TotalCost;
-                            revenueWithCost += s.RevenueWithCost;
+                            margin.Add(
+                                s.Prihod,
+                                s.Kolicina,
+                                AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy));
 
                             if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
                             {
@@ -1523,10 +1539,7 @@ public static class AllEndpoints
                             }
                         }
 
-                        var marginPct = revenueWithCost > 0m
-                            ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
-                            : 0d;
-                        var marginContribution = revenueWithCost - totalCost;
+                        var marginSnapshot = margin.Build(totalRevenue);
                         var tipObuceNaziv = g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var naziv)
                             ? naziv
                             : "Nepoznato";
@@ -1543,12 +1556,10 @@ public static class AllEndpoints
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = Math.Round(revenueWithCost, 2),
-                            marginContribution = Math.Round(marginContribution, 2),
-                            marginDataCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)(revenueWithCost / totalRevenue * 100m), 2)
-                                : (double?)null,
-                            marginPct = Math.Round(marginPct, 2),
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
+                            marginContribution = marginSnapshot.MarginContribution,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                            marginPct = marginSnapshot.MarginPct,
                             revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
                             promenaPrometa = preNivRevenue > 0m
                                 ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
@@ -1565,7 +1576,10 @@ public static class AllEndpoints
                 var sumPostRevenue = shoeTypes.Sum(r => r.posleNivelacijePromet);
                 var totalRevenue = shoeTypes.Sum(r => r.ukupanPromet);
                 var revenueWithNivelacijaSplit = shoeTypes.Sum(r => r.revenueWithNivelacijaSplit);
-                var totalRevenueWithCost = stavke.Sum(s => s.RevenueWithCost);
+                var totalRevenueWithCost = stavke.Sum(s =>
+                    AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy).HasValue
+                        ? s.Prihod
+                        : 0m);
                 var missingCostRevenue = totalRevenue - totalRevenueWithCost;
                 var unknownTypeRevenue = shoeTypes
                     .Where(r => string.Equals(r.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
@@ -1766,7 +1780,9 @@ public static class AllEndpoints
                     {
                         Boja = a.Boja,
                         ArtikalId = a.Id,
-                        NabavnaCena = ps.NabavnaCena ?? a.NabavnaCena,
+                        SaleLineCost = ps.NabavnaCena,
+                        ProductCostRsd = a.NabavnaCenaDin,
+                        ProductCostLegacy = a.NabavnaCena,
                         DatumProdaje = pz.DatumProdaje
                     }
                     into g
@@ -1776,7 +1792,9 @@ public static class AllEndpoints
                         ArtikalId = g.Key.ArtikalId,
                         Kolicina = g.Sum(x => x.ps.Kolicina),
                         Prihod = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                        NabavnaCena = g.Key.NabavnaCena,
+                        SaleLineCost = g.Key.SaleLineCost,
+                        ProductCostRsd = g.Key.ProductCostRsd,
+                        ProductCostLegacy = g.Key.ProductCostLegacy,
                         DatumProdaje = g.Key.DatumProdaje
                     })
                     .ToListAsync(ct);
@@ -1791,9 +1809,8 @@ public static class AllEndpoints
                         int preNivQty = 0;
                         int postNivQty = 0;
                         int totalQty = 0;
-                        decimal totalCost = 0m;
-                        decimal revenueWithCost = 0m;
                         decimal revenueWithNivelacijaSplit = 0m;
+                        var margin = new MarginAccumulator();
 
                         var articleIds = new HashSet<int>();
                         var articleIdsWithNivelacija = new HashSet<int>();
@@ -1803,12 +1820,10 @@ public static class AllEndpoints
                             totalRevenue += s.Prihod;
                             totalQty += s.Kolicina;
                             articleIds.Add(s.ArtikalId);
-
-                            if (s.NabavnaCena.HasValue)
-                            {
-                                totalCost += s.Kolicina * s.NabavnaCena.Value;
-                                revenueWithCost += s.Prihod;
-                            }
+                            margin.Add(
+                                s.Prihod,
+                                s.Kolicina,
+                                AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy));
 
                             if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
                             {
@@ -1830,10 +1845,7 @@ public static class AllEndpoints
                             }
                         }
 
-                        var marginPct = revenueWithCost > 0m
-                            ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
-                            : 0d;
-                        var marginContribution = revenueWithCost - totalCost;
+                        var marginSnapshot = margin.Build(totalRevenue);
 
                         return new
                         {
@@ -1846,12 +1858,10 @@ public static class AllEndpoints
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = Math.Round(revenueWithCost, 2),
-                            marginContribution = Math.Round(marginContribution, 2),
-                            marginDataCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)(revenueWithCost / totalRevenue * 100m), 2)
-                                : (double?)null,
-                            marginPct = Math.Round(marginPct, 2),
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
+                            marginContribution = marginSnapshot.MarginContribution,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                            marginPct = marginSnapshot.MarginPct,
                             revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
                             promenaPrometa = preNivRevenue > 0m
                                 ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
@@ -1868,7 +1878,9 @@ public static class AllEndpoints
                 var sumPostRevenue = colors.Sum(r => r.posleNivelacijePromet);
                 var totalRevenue = colors.Sum(r => r.ukupanPromet);
                 var revenueWithNivelacijaSplit = colors.Sum(r => r.revenueWithNivelacijaSplit);
-                var missingCostRevenue = stavke.Where(s => !s.NabavnaCena.HasValue).Sum(s => s.Prihod);
+                var missingCostRevenue = stavke.Where(s =>
+                        !AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy).HasValue)
+                    .Sum(s => s.Prihod);
                 var unknownColorRevenue = colors
                     .Where(r => string.Equals(r.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
                     .Sum(r => r.ukupanPromet);

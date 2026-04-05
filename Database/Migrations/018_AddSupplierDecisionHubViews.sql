@@ -163,7 +163,15 @@ sales_profile AS (
             CASE
                 WHEN pz.datum_prodaje::date >= fm.first_markdown_date - INTERVAL '30 days'
                  AND pz.datum_prodaje::date <  fm.first_markdown_date
-                THEN ps.kolicina * COALESCE(ps.nabavna_cena, a."NabavnaCena", 0)
+                THEN ps.kolicina * COALESCE(
+                    CASE
+                        WHEN ps.nabavna_cena > 0 THEN ps.nabavna_cena
+                        WHEN a."NabavnaCenaDin" > 0 THEN a."NabavnaCenaDin"
+                        WHEN a."NabavnaCena" > 0 THEN a."NabavnaCena"
+                        ELSE NULL
+                    END,
+                    0
+                )
                 ELSE 0
             END
         ), 0)::numeric(18,2) AS pre_cost_30d,
@@ -378,7 +386,14 @@ WITH signal_base AS (
         COALESCE(nd.did_revenue, 0)::numeric(18,2) AS did_revenue,
         COALESCE(nd.did_qty, 0)::numeric AS did_qty,
         COALESCE(a."Kolicina", 0)::numeric AS current_stock,
-        COALESCE(a."NabavnaCena", 0)::numeric(18,2) AS current_cost
+        COALESCE(
+            CASE
+                WHEN a."NabavnaCenaDin" > 0 THEN a."NabavnaCenaDin"
+                WHEN a."NabavnaCena" > 0 THEN a."NabavnaCena"
+                ELSE NULL
+            END,
+            0
+        )::numeric(18,2) AS current_cost
     FROM vw_supplier_fullprice_signals fs
     LEFT JOIN LATERAL (
         SELECT

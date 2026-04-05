@@ -1,4 +1,5 @@
 using Api.Models;
+using Application.Analytics;
 using Domain.Model;
 using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Http;
@@ -28,7 +29,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         public int ArtikalId { get; init; }
         public int Kolicina { get; init; }
         public decimal Prihod { get; init; }
-        public decimal? NabavnaCena { get; init; }
+        public decimal? SaleLineCost { get; init; }
+        public decimal? ProductCostRsd { get; init; }
+        public decimal? ProductCostLegacy { get; init; }
         public DateTime DatumProdaje { get; init; }
         public string NazivArtikla { get; init; } = string.Empty;
         public string SifraArtikla { get; init; } = string.Empty;
@@ -256,7 +259,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 ArtikalId = a.Id,
                 Kolicina = ps.Kolicina,
                 Prihod = ps.Kolicina * ps.Cena,
-                NabavnaCena = ps.NabavnaCena ?? a.NabavnaCena,
+                SaleLineCost = ps.NabavnaCena,
+                ProductCostRsd = a.NabavnaCenaDin,
+                ProductCostLegacy = a.NabavnaCena,
                 DatumProdaje = pz.DatumProdaje,
                 NazivArtikla = a.Naziv ?? $"Artikal {a.Id}",
                 SifraArtikla = a.PLU ?? a.Id.ToString(),
@@ -338,8 +343,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         int preNivQty = 0;
         int postNivQty = 0;
         int totalQty = 0;
-        decimal totalCost = 0m;
-        decimal revenueWithCost = 0m;
+        var margin = new MarginAccumulator();
 
         var articleIds = new HashSet<int>();
         var articleIdsWithNivelacija = new HashSet<int>();
@@ -349,12 +353,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             totalRevenue += row.Prihod;
             totalQty += row.Kolicina;
             articleIds.Add(row.ArtikalId);
-
-            if (row.NabavnaCena.HasValue)
-            {
-                totalCost += row.Kolicina * row.NabavnaCena.Value;
-                revenueWithCost += row.Prihod;
-            }
+            margin.Add(
+                row.Prihod,
+                row.Kolicina,
+                AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.ProductCostRsd, row.ProductCostLegacy));
 
             if (!context.PrvaNivelacijaPoArtiklu.TryGetValue(row.ArtikalId, out var nivDatum))
             {
@@ -374,13 +376,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             }
         }
 
-        var marginPct = revenueWithCost > 0m
-            ? Math.Round((double)((revenueWithCost - totalCost) / revenueWithCost * 100m), 2)
-            : 0d;
-        var marginContribution = Math.Round(revenueWithCost - totalCost, 2);
-        var marginDataCoveragePct = totalRevenue > 0m
-            ? Math.Round((double)(revenueWithCost / totalRevenue * 100m), 2)
-            : (double?)null;
+        var marginSnapshot = margin.Build(totalRevenue);
 
         var promenaPrometa = preNivRevenue > 0m
             ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
@@ -406,10 +402,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 Field("posleNivelacijeKolicina", "Posle nivelacije kolicina", postNivQty.ToString(), "number"),
                 Field("promenaPrometa", "Promena prometa %", promenaPrometa?.ToString("0.00"), "percent", promenaPrometa.HasValue),
                 Field("promenaKolicine", "Promena kolicine %", promenaKolicine?.ToString("0.00"), "percent"),
-                Field("marginContribution", "Marzni doprinos", marginContribution.ToString("0.00"), "currency"),
-                Field("marginPct", "Marza %", marginPct.ToString("0.00"), "percent"),
-                Field("marginDataCoveragePct", "Pokrice marze %", marginDataCoveragePct?.ToString("0.00"), "percent"),
-                Field("revenueWithCost", "Promet sa poznatom nabavnom cenom", Math.Round(revenueWithCost, 2).ToString("0.00"), "currency"),
+                Field("marginContribution", "Marzni doprinos", marginSnapshot.MarginContribution.ToString("0.00"), "currency"),
+                Field("marginPct", "Marza %", marginSnapshot.MarginPct.ToString("0.00"), "percent"),
+                Field("marginDataCoveragePct", "Pokrice marze %", marginSnapshot.MarginDataCoveragePct?.ToString("0.00"), "percent"),
+                Field("revenueWithCost", "Promet sa poznatom nabavnom cenom", marginSnapshot.RevenueWithCost.ToString("0.00"), "currency"),
                 Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", articleIdsWithNivelacija.Count.ToString(), "number"),
                 Field("brojArtikalaUkupno", "Ukupan broj artikala", articleIds.Count.ToString(), "number")
             ],

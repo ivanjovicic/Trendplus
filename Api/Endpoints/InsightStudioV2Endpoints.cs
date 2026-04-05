@@ -1,4 +1,5 @@
 ﻿using Application.Artikli.Common.Interfaces;
+using Application.Analytics;
 using Api.Endpoints;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -202,30 +203,62 @@ public static class InsightStudioV2Endpoints
                     : DateTime.UtcNow;
                 var days = Math.Max(1, (to - fromUtc).TotalDays);
 
-                var productData = await (
+                var salesRows = await (
                     from ps in db.ProdajaStavke
                     join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
                     join a in db.Artikli on ps.IdArtikal equals a.Id
                     where p.DatumProdaje >= fromUtc && p.DatumProdaje <= to
-                    group new { ps, a } by new { a.Id, a.Naziv, a.Kategorija, a.Pol, a.NabavnaCena, a.Kolicina } into g
                     select new
                     {
-                        artikalId = g.Key.Id,
-                        naziv = g.Key.Naziv,
-                        kategorija = g.Key.Kategorija ?? "Ostalo",
-                        pol = g.Key.Pol ?? "NeodreÄ‘eno",
-                        nabavnaCena = g.Key.NabavnaCena,
-                        currentStock = g.Key.Kolicina ?? 0,
-                        totalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                        totalCost = g.Key.NabavnaCena.HasValue
-                            ? g.Sum(x => x.ps.Kolicina) * g.Key.NabavnaCena.Value : (decimal?)null,
-                        totalUnits = g.Sum(x => x.ps.Kolicina)
+                        artikalId = a.Id,
+                        naziv = a.Naziv,
+                        kategorija = a.Kategorija ?? "Ostalo",
+                        pol = a.Pol ?? "NeodreÄ‘eno",
+                        currentStock = a.Kolicina ?? 0,
+                        revenue = ps.Kolicina * ps.Cena,
+                        units = ps.Kolicina,
+                        saleLineCost = ps.NabavnaCena,
+                        productCostRsd = a.NabavnaCenaDin,
+                        productCostLegacy = a.NabavnaCena
                     }
                 ).ToListAsync(ct);
 
+                var productData = salesRows
+                    .GroupBy(x => new { x.artikalId, x.naziv, x.kategorija, x.pol, x.currentStock })
+                    .Select(g =>
+                    {
+                        var totalRevenue = g.Sum(x => x.revenue);
+                        var totalUnits = g.Sum(x => x.units);
+                        var margin = new MarginAccumulator();
+
+                        foreach (var row in g)
+                        {
+                            margin.Add(
+                                row.revenue,
+                                row.units,
+                                AnalyticsMarginPolicy.ResolveUnitCost(row.saleLineCost, row.productCostRsd, row.productCostLegacy));
+                        }
+
+                        var marginSnapshot = margin.Build(totalRevenue);
+
+                        return new
+                        {
+                            g.Key.artikalId,
+                            g.Key.naziv,
+                            g.Key.kategorija,
+                            g.Key.pol,
+                            g.Key.currentStock,
+                            totalRevenue,
+                            totalUnits,
+                            marginPct = marginSnapshot.MarginPct,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct
+                        };
+                    })
+                    .ToList();
+
                 var allMargins = productData
-                    .Where(p => p.totalCost.HasValue && p.totalRevenue > 0)
-                    .Select(p => (double)((p.totalRevenue - p.totalCost!.Value) / p.totalRevenue * 100))
+                    .Where(p => p.totalRevenue > 0m && p.marginDataCoveragePct.HasValue && p.marginDataCoveragePct.Value > 0d)
+                    .Select(p => p.marginPct)
                     .OrderBy(x => x)
                     .ToList();
                 var medianMargin = allMargins.Count > 0
@@ -240,8 +273,7 @@ public static class InsightStudioV2Endpoints
 
                 var items = productData.Select(p =>
                 {
-                    var marginPct = p.totalCost.HasValue && p.totalRevenue > 0
-                        ? (double)((p.totalRevenue - p.totalCost.Value) / p.totalRevenue * 100) : 0;
+                    var marginPct = p.marginPct;
                     var velocity = p.totalUnits / days;
                     var quadrant = velocity >= medianVelocity
                         ? (marginPct >= medianMargin ? "STAR" : "VOLUME_TRAP")
@@ -252,6 +284,7 @@ public static class InsightStudioV2Endpoints
                         p.artikalId, p.naziv, p.kategorija, p.pol,
                         p.totalRevenue, p.totalUnits,
                         marginPct,
+                        p.marginDataCoveragePct,
                         velocity,
                         quadrant
                     };
@@ -404,7 +437,7 @@ public static class InsightStudioV2Endpoints
                     from ps in db.ProdajaStavke
                     join a in db.Artikli on ps.IdArtikal equals a.Id
                     where prodajeIds.Contains(ps.IdProdaja) && a.Kolicina > 0
-                    group ps by new { a.Id, a.Naziv, a.Kategorija, a.Kolicina, a.ProdajnaCena, a.NabavnaCena } into g
+                    group ps by new { a.Id, a.Naziv, a.Kategorija, a.Kolicina, a.ProdajnaCena, a.NabavnaCenaDin, a.NabavnaCena } into g
                     select new
                     {
                         artikalId = g.Key.Id,
@@ -412,7 +445,8 @@ public static class InsightStudioV2Endpoints
                         kategorija = g.Key.Kategorija ?? "Ostalo",
                         currentStock = g.Key.Kolicina ?? 0,
                         prodajnaCena = g.Key.ProdajnaCena,
-                        nabavnaCena = g.Key.NabavnaCena,
+                        productCostRsd = g.Key.NabavnaCenaDin,
+                        productCostLegacy = g.Key.NabavnaCena,
                         totalSold = g.Sum(x => x.Kolicina)
                     }
                 ).ToListAsync(ct);
@@ -427,8 +461,10 @@ public static class InsightStudioV2Endpoints
                             : "N/A";
                         var atRiskRevenue = p.prodajnaCena.HasValue
                             ? p.currentStock * p.prodajnaCena.Value : 0;
-                        var margin = p.prodajnaCena.HasValue && p.nabavnaCena.HasValue && p.prodajnaCena.Value > 0
-                            ? (double)((p.prodajnaCena.Value - p.nabavnaCena.Value) / p.prodajnaCena.Value * 100) : 0;
+                        var resolvedUnitCost = AnalyticsMarginPolicy.ResolveProductUnitCost(p.productCostRsd, p.productCostLegacy);
+                        var margin = p.prodajnaCena.HasValue && resolvedUnitCost.HasValue && p.prodajnaCena.Value > 0
+                            ? (double)((p.prodajnaCena.Value - resolvedUnitCost.Value) / p.prodajnaCena.Value * 100m)
+                            : 0d;
 
                         return new
                         {
@@ -439,6 +475,7 @@ public static class InsightStudioV2Endpoints
                             depletionDate,
                             atRiskRevenue,
                             marginPct = margin,
+                            marginDataAvailable = resolvedUnitCost.HasValue,
                             severity = daysUntilOOS < 7 ? "CRITICAL"
                                      : daysUntilOOS < 14 ? "WARNING"
                                      : daysUntilOOS < 30 ? "WATCH" : "OK"
@@ -482,31 +519,74 @@ public static class InsightStudioV2Endpoints
                     .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
                     .Select(p => p.Id).ToListAsync(ct);
 
-                // Products with negative or dangerously low margins
-                var products = await (
+                var salesRows = await (
                     from ps in db.ProdajaStavke
                     join a in db.Artikli on ps.IdArtikal equals a.Id
-                    where prodajeIds.Contains(ps.IdProdaja) && a.NabavnaCena.HasValue
-                    group new { ps, a } by new { a.Id, a.Naziv, a.Kategorija, a.NabavnaCena, a.ProdajnaCena, a.PrvaProdajnaCena } into g
+                    where prodajeIds.Contains(ps.IdProdaja)
                     select new
                     {
-                        artikalId = g.Key.Id,
-                        naziv = g.Key.Naziv,
-                        kategorija = g.Key.Kategorija ?? "Ostalo",
-                        nabavnaCena = g.Key.NabavnaCena!.Value,
-                        prodajnaCena = g.Key.ProdajnaCena,
-                        prvaCena = g.Key.PrvaProdajnaCena,
-                        totalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                        totalCost = g.Sum(x => x.ps.Kolicina) * g.Key.NabavnaCena!.Value,
-                        totalUnits = g.Sum(x => x.ps.Kolicina)
+                        artikalId = a.Id,
+                        naziv = a.Naziv,
+                        kategorija = a.Kategorija ?? "Ostalo",
+                        prodajnaCena = a.ProdajnaCena,
+                        prvaCena = a.PrvaProdajnaCena,
+                        productCostRsd = a.NabavnaCenaDin,
+                        productCostLegacy = a.NabavnaCena,
+                        revenue = ps.Kolicina * ps.Cena,
+                        units = ps.Kolicina,
+                        saleLineCost = ps.NabavnaCena
                     }
                 ).ToListAsync(ct);
 
+                var products = salesRows
+                    .GroupBy(x => new
+                    {
+                        x.artikalId,
+                        x.naziv,
+                        x.kategorija,
+                        x.prodajnaCena,
+                        x.prvaCena,
+                        x.productCostRsd,
+                        x.productCostLegacy
+                    })
+                    .Select(g =>
+                    {
+                        var totalRevenue = g.Sum(x => x.revenue);
+                        var totalUnits = g.Sum(x => x.units);
+                        var margin = new MarginAccumulator();
+
+                        foreach (var row in g)
+                        {
+                            margin.Add(
+                                row.revenue,
+                                row.units,
+                                AnalyticsMarginPolicy.ResolveUnitCost(row.saleLineCost, row.productCostRsd, row.productCostLegacy));
+                        }
+
+                        var marginSnapshot = margin.Build(totalRevenue);
+
+                        return new
+                        {
+                            g.Key.artikalId,
+                            g.Key.naziv,
+                            g.Key.kategorija,
+                            g.Key.prodajnaCena,
+                            g.Key.prvaCena,
+                            currentUnitCost = AnalyticsMarginPolicy.ResolveProductUnitCost(g.Key.productCostRsd, g.Key.productCostLegacy),
+                            totalRevenue,
+                            totalUnits,
+                            marginPct = marginSnapshot.MarginPct,
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct
+                        };
+                    })
+                    .ToList();
+
                 var alerts = products
-                    .Where(p => p.totalRevenue > 0)
+                    .Where(p => p.totalRevenue > 0m && p.revenueWithCost > 0m)
                     .Select(p =>
                     {
-                        var marginPct = (double)((p.totalRevenue - p.totalCost) / p.totalRevenue * 100);
+                        var marginPct = p.marginPct;
                         var priceDropPct = p.prvaCena.HasValue && p.prvaCena.Value > 0 && p.prodajnaCena.HasValue
                             ? (double)((p.prvaCena.Value - p.prodajnaCena.Value) / p.prvaCena.Value * 100) : 0;
 
@@ -519,9 +599,10 @@ public static class InsightStudioV2Endpoints
                         {
                             p.artikalId, p.naziv, p.kategorija,
                             marginPct,
+                            p.marginDataCoveragePct,
                             priceDropPct,
                             p.totalRevenue, p.totalUnits,
-                            nabavnaCena = p.nabavnaCena,
+                            nabavnaCena = p.currentUnitCost ?? 0m,
                             prodajnaCena = p.prodajnaCena ?? 0,
                             alertType,
                             lostMargin = marginPct < 30 ? (30 - marginPct) / 100 * (double)p.totalRevenue : 0
@@ -681,8 +762,10 @@ public static class InsightStudioV2Endpoints
                         DobavljacId = d != null ? d.Id : (int?)null,
                         DobavljacNaziv = d != null ? d.Naziv : "Nepoznato",
                         Revenue = ps.Kolicina * ps.Cena,
-                        Cost = a.NabavnaCena.HasValue ? ps.Kolicina * a.NabavnaCena.Value : (decimal?)null,
                         Units = ps.Kolicina,
+                        SaleLineCost = ps.NabavnaCena,
+                        ProductCostRsd = a.NabavnaCenaDin,
+                        ProductCostLegacy = a.NabavnaCena,
                         Kategorija = a.Kategorija ?? "Ostalo",
                         ArtikalId = a.Id,
                         StockQty = a.Kolicina ?? 0
@@ -711,10 +794,17 @@ public static class InsightStudioV2Endpoints
                     .Select(g =>
                     {
                         var rev = g.Sum(x => x.Revenue);
-                        var wc = g.Where(x => x.Cost.HasValue).ToList();
-                        var revWC = wc.Sum(x => x.Revenue);
-                        var costSum = wc.Sum(x => x.Cost!.Value);
-                        var marginPct = revWC > 0 ? (double)((revWC - costSum) / revWC * 100) : 0;
+                        var margin = new MarginAccumulator();
+                        foreach (var row in g)
+                        {
+                            margin.Add(
+                                row.Revenue,
+                                row.Units,
+                                AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.ProductCostRsd, row.ProductCostLegacy));
+                        }
+
+                        var marginSnapshot = margin.Build(rev);
+                        var marginPct = marginSnapshot.MarginPct;
                         var units = g.Sum(x => x.Units);
                         var cats = g.Select(x => x.Kategorija).Distinct().Count();
                         var products = g.Select(x => x.ArtikalId).Distinct().Count();
@@ -751,6 +841,8 @@ public static class InsightStudioV2Endpoints
                             totalRevenue = rev,
                             totalUnits = units,
                             marginPct,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
                             uniqueProducts = products,
                             uniqueCategories = cats,
                             dependency,
@@ -810,7 +902,7 @@ public static class InsightStudioV2Endpoints
                     group new { ps, a } by new
                     {
                         a.Id, a.Naziv, a.Kategorija, a.Pol,
-                        a.IDDobavljac, a.ProdajnaCena, a.NabavnaCena,
+                        a.IDDobavljac, a.ProdajnaCena, a.NabavnaCenaDin, a.NabavnaCena,
                         a.MinimalnaKolicina, a.Kolicina, a.IDSezona
                     } into g
                     select new
@@ -821,7 +913,8 @@ public static class InsightStudioV2Endpoints
                         pol = g.Key.Pol ?? "NeodreÄ‘eno",
                         dobavljacId = g.Key.IDDobavljac,
                         prodajnaCena = g.Key.ProdajnaCena,
-                        nabavnaCena = g.Key.NabavnaCena,
+                        productCostRsd = g.Key.NabavnaCenaDin,
+                        productCostLegacy = g.Key.NabavnaCena,
                         minKolicina = g.Key.MinimalnaKolicina ?? 5,
                         currentStock = g.Key.Kolicina ?? 0,
                         sezonaId = g.Key.IDSezona,
@@ -843,9 +936,11 @@ public static class InsightStudioV2Endpoints
                                 : doh < 14 ? "HITNO"
                                 : doh < 30 ? "PREPORUÄŒUJE SE"
                                 : "OK";
-                    var margin = p.prodajnaCena.HasValue && p.nabavnaCena.HasValue && p.prodajnaCena.Value > 0
-                        ? (double)((p.prodajnaCena.Value - p.nabavnaCena.Value) / p.prodajnaCena.Value * 100) : 0;
-                    var reorderCost = p.nabavnaCena.HasValue ? recQty * p.nabavnaCena.Value : 0;
+                    var resolvedUnitCost = AnalyticsMarginPolicy.ResolveProductUnitCost(p.productCostRsd, p.productCostLegacy);
+                    var margin = p.prodajnaCena.HasValue && resolvedUnitCost.HasValue && p.prodajnaCena.Value > 0
+                        ? (double)((p.prodajnaCena.Value - resolvedUnitCost.Value) / p.prodajnaCena.Value * 100m)
+                        : 0d;
+                    var reorderCost = resolvedUnitCost.HasValue ? recQty * resolvedUnitCost.Value : 0m;
                     var expectedRevenue = p.prodajnaCena.HasValue ? recQty * p.prodajnaCena.Value : 0;
                     var expectedProfit = expectedRevenue - reorderCost;
 
@@ -868,6 +963,7 @@ public static class InsightStudioV2Endpoints
                         recommendedQty = recQty,
                         urgency,
                         marginPct = margin,
+                        marginDataAvailable = resolvedUnitCost.HasValue,
                         reorderCost,
                         expectedRevenue,
                         expectedProfit,
@@ -889,7 +985,7 @@ public static class InsightStudioV2Endpoints
                         urgentCount = g.Count(x => x.urgency == "HITNO"),
                         totalReorderCost = g.Sum(x => x.reorderCost),
                         expectedRevenue = g.Sum(x => x.expectedRevenue),
-                        avgMargin = g.Where(x => x.marginPct > 0).DefaultIfEmpty().Average(x => x?.marginPct ?? 0)
+                        avgMargin = g.Where(x => x.marginDataAvailable).Select(x => x.marginPct).DefaultIfEmpty().Average()
                     })
                     .OrderByDescending(x => x.criticalCount)
                     .ToList();
@@ -942,7 +1038,7 @@ public static class InsightStudioV2Endpoints
                     select new
                     {
                         a.Id, a.Naziv, a.Kategorija, a.Pol,
-                        a.ProdajnaCena, a.NabavnaCena,
+                        a.ProdajnaCena, a.NabavnaCenaDin, a.NabavnaCena,
                         a.PrvaProdajnaCena, a.Kolicina
                     }
                 ).ToListAsync(ct);
@@ -977,10 +1073,17 @@ public static class InsightStudioV2Endpoints
                         var totalUnits = g.Sum(a => salesByProduct.GetValueOrDefault(a.Id, 0));
                         var avgVelocity = skuCount > 0 ? totalUnits / 90.0 / skuCount : 0;
                         var avgPrice = g.Average(a => (double)a.ProdajnaCena!.Value);
-                        var withCost = g.Where(a => a.NabavnaCena.HasValue).ToList();
+                        var withCost = g
+                            .Select(a => new
+                            {
+                                a.ProdajnaCena,
+                                UnitCost = AnalyticsMarginPolicy.ResolveProductUnitCost(a.NabavnaCenaDin, a.NabavnaCena)
+                            })
+                            .Where(x => x.UnitCost.HasValue)
+                            .ToList();
                         var avgMargin = withCost.Count > 0
-                            ? withCost.Average(a => (double)((a.ProdajnaCena!.Value - a.NabavnaCena!.Value) / a.ProdajnaCena.Value * 100))
-                            : 0;
+                            ? withCost.Average(a => (double)((a.ProdajnaCena!.Value - a.UnitCost!.Value) / a.ProdajnaCena.Value * 100m))
+                            : 0d;
                         var totalStock = g.Sum(a => a.Kolicina ?? 0);
 
                         // Markdown pressure: how many dropped >20% from original price
@@ -996,6 +1099,9 @@ public static class InsightStudioV2Endpoints
                             avgVelocityPerSku = avgVelocity,
                             avgPrice,
                             avgMarginPct = avgMargin,
+                            knownCostSkuSharePct = skuCount > 0
+                                ? Math.Round(withCost.Count / (double)skuCount * 100d, 2)
+                                : (double?)null,
                             totalStock,
                             markdownCount,
                             elasticity = avgVelocity > 0 ? "HIGH_DEMAND" : "LOW_DEMAND"

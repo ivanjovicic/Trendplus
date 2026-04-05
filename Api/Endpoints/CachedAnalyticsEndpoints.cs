@@ -5,6 +5,7 @@ using Application.Analytics.Queries.GetInventoryAlerts;
 using Application.Analytics.Queries.GetInventorySizeCurve;
 using Application.Analytics.Queries.GetRebalanceSuggestions;
 using Application.Analytics.Queries.GetTopProducts;
+using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
 using Infrastructure.Services.Caching;
 using MediatR;
@@ -2350,6 +2351,7 @@ public static class CachedAnalyticsEndpoints
         }
 
         var safeTop = Math.Max(1, Math.Min(top, 100));
+        var resolvedUnitCostSql = AnalyticsMarginPolicy.BuildPositiveCostSql(@"ps.""nabavna_cena""", @"a.""NabavnaCenaDin""", @"a.""NabavnaCena""");
 
         var sql = $"""
             WITH period_meta AS (
@@ -2371,8 +2373,8 @@ public static class CachedAnalyticsEndpoints
                 SUM(ps."kolicina")::int AS units,
                 GREATEST(COUNT(DISTINCT DATE(p."datum_prodaje")), 1)::int AS active_days,
                 CASE
-                  WHEN COUNT(*) FILTER (WHERE a."NabavnaCena" IS NOT NULL) = 0 THEN NULL
-                  ELSE SUM((ps."cena" - COALESCE(a."NabavnaCena", ps."cena")) * ps."kolicina")
+                  WHEN COUNT(*) FILTER (WHERE {resolvedUnitCostSql} IS NOT NULL) = 0 THEN NULL
+                  ELSE SUM((ps."cena" - {resolvedUnitCostSql}) * ps."kolicina")
                 END AS margin_impact
               FROM "prodaja_stavke" ps
               JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"

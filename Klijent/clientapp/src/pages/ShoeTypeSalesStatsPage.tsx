@@ -140,6 +140,30 @@ function fmtQty(value: number): string {
   return `${value.toLocaleString("sr-RS")} kom`;
 }
 
+function smoothScrollToElement(element: HTMLElement, durationMs = 850): void {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    element.scrollIntoView({ behavior: "auto", block: "start" });
+    return;
+  }
+
+  const startY = window.scrollY;
+  const targetY = element.getBoundingClientRect().top + window.scrollY;
+  const distance = targetY - startY;
+  if (Math.abs(distance) < 2) return;
+
+  const startTime = performance.now();
+  const easeInOutCubic = (t: number): number => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  const tick = (now: number) => {
+    const progress = clamp((now - startTime) / durationMs, 0, 1);
+    const nextY = startY + distance * easeInOutCubic(progress);
+    window.scrollTo(0, nextY);
+    if (progress < 1) window.requestAnimationFrame(tick);
+  };
+
+  window.requestAnimationFrame(tick);
+}
+
 function normalizeName(value: string | null | undefined): string {
   return (value ?? "").trim().toUpperCase();
 }
@@ -420,15 +444,13 @@ export default function ShoeTypeSalesStatsPage() {
   }, [expandedTypeKey, selectedRow, sortedRows.length]);
 
   useEffect(() => {
-    if (selectedRow && detailSectionRef.current) {
-      const delay = 100;
-      setTimeout(() => {
-        detailSectionRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, delay);
-    }
+    if (!selectedRow || !detailSectionRef.current) return;
+    const delay = 120;
+    const timeoutId = window.setTimeout(() => {
+      if (!detailSectionRef.current) return;
+      smoothScrollToElement(detailSectionRef.current);
+    }, delay);
+    return () => window.clearTimeout(timeoutId);
   }, [selectedRow]);
 
   const totalRevenue = data?.totals.ukupanPromet ?? 0;

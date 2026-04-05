@@ -1,4 +1,5 @@
 ﻿using Application.Artikli.Common.Interfaces;
+using Application.Analytics;
 using Api.Endpoints;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -61,17 +62,31 @@ public static class InsightStudioEndpoints
                     await db.ProdajaStavke.Where(ps => prevIds.Contains(ps.IdProdaja))
                         .SumAsync(ps => ps.Kolicina, ct);
 
-                // Gross margin estimation
                 var withCostData = await (
                     from ps in db.ProdajaStavke
                     join a in db.Artikli on ps.IdArtikal equals a.Id
-                    where currentIds.Contains(ps.IdProdaja) && a.NabavnaCena.HasValue
-                    select new { Rev = ps.Kolicina * ps.Cena, Cost = ps.Kolicina * a.NabavnaCena!.Value }
+                    where currentIds.Contains(ps.IdProdaja)
+                    select new
+                    {
+                        Revenue = ps.Kolicina * ps.Cena,
+                        Quantity = ps.Kolicina,
+                        SaleLineCost = ps.NabavnaCena,
+                        ProductCostRsd = a.NabavnaCenaDin,
+                        ProductCostLegacy = a.NabavnaCena
+                    }
                 ).ToListAsync(ct);
 
-                var totalRev = withCostData.Sum(x => x.Rev);
-                var totalCost = withCostData.Sum(x => x.Cost);
-                var marginPct = totalRev > 0 ? (double)((totalRev - totalCost) / totalRev * 100) : 0;
+                var margin = new MarginAccumulator();
+                foreach (var row in withCostData)
+                {
+                    margin.Add(
+                        row.Revenue,
+                        row.Quantity,
+                        AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.ProductCostRsd, row.ProductCostLegacy));
+                }
+
+                var marginSnapshot = margin.Build(currentRevenue);
+                var marginPct = marginSnapshot.MarginPct;
 
                 var oosCount = await db.Artikli.Where(a => a.Kolicina == 0).CountAsync(ct);
                 var lowStockCount = await db.Artikli
@@ -112,6 +127,8 @@ public static class InsightStudioEndpoints
                     unitsChange,
                     transactions = currentIds.Count,
                     marginPct,
+                    marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                    revenueWithCost = marginSnapshot.RevenueWithCost,
                     oosCount,
                     lowStockCount,
                     sparkline
@@ -156,20 +173,29 @@ public static class InsightStudioEndpoints
                         DobavljacId = d != null ? d.Id : (int?)null,
                         DobavljacNaziv = d != null ? d.Naziv : "Nepoznato",
                         Revenue = ps.Kolicina * ps.Cena,
-                        Cost = a.NabavnaCena.HasValue ? ps.Kolicina * a.NabavnaCena.Value : (decimal?)null,
                         Units = ps.Kolicina,
+                        SaleLineCost = ps.NabavnaCena,
+                        ProductCostRsd = a.NabavnaCenaDin,
+                        ProductCostLegacy = a.NabavnaCena,
                         Kategorija = a.Kategorija ?? "Ostalo",
                         ArtikalId = a.Id
                     }
                 ).ToListAsync(ct);
 
                 var totalRevenue = stavke.Sum(x => x.Revenue);
+                var systemMargin = new MarginAccumulator();
+                foreach (var row in stavke)
+                {
+                    systemMargin.Add(
+                        row.Revenue,
+                        row.Units,
+                        AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.ProductCostRsd, row.ProductCostLegacy));
+                }
 
-                // System-wide margin
-                var sysWithCost = stavke.Where(x => x.Cost.HasValue).ToList();
-                var sysRevWC = sysWithCost.Sum(x => x.Revenue);
-                var sysCostSum = sysWithCost.Sum(x => x.Cost!.Value);
-                var systemMarginPct = sysRevWC > 0 ? (double)((sysRevWC - sysCostSum) / sysRevWC * 100) : 35;
+                var systemMarginSnapshot = systemMargin.Build(totalRevenue);
+                var systemMarginPct = systemMarginSnapshot.RevenueWithCost > 0m
+                    ? systemMarginSnapshot.MarginPct
+                    : 35d;
                 var totalCategories = stavke.Select(x => x.Kategorija).Distinct().Count();
 
                 var result = stavke
@@ -177,10 +203,17 @@ public static class InsightStudioEndpoints
                     .Select(g =>
                     {
                         var rev = g.Sum(x => x.Revenue);
-                        var wc = g.Where(x => x.Cost.HasValue).ToList();
-                        var revWC = wc.Sum(x => x.Revenue);
-                        var costSum = wc.Sum(x => x.Cost!.Value);
-                        var marginPct = revWC > 0 ? (double)((revWC - costSum) / revWC * 100) : 0;
+                        var margin = new MarginAccumulator();
+                        foreach (var row in g)
+                        {
+                            margin.Add(
+                                row.Revenue,
+                                row.Units,
+                                AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.ProductCostRsd, row.ProductCostLegacy));
+                        }
+
+                        var marginSnapshot = margin.Build(rev);
+                        var marginPct = marginSnapshot.MarginPct;
                         var units = g.Sum(x => x.Units);
                         var cats = g.Select(x => x.Kategorija).Distinct().Count();
                         var products = g.Select(x => x.ArtikalId).Distinct().Count();
@@ -201,6 +234,8 @@ public static class InsightStudioEndpoints
                             totalRevenue = rev,
                             totalUnits = units,
                             marginPct,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
                             uniqueProducts = products,
                             uniqueCategories = cats,
                             dependencyRatio = dependency,
@@ -317,7 +352,7 @@ public static class InsightStudioEndpoints
                     {
                         a.Id, a.Naziv,
                         a.Kategorija, a.Pol,
-                        a.Kolicina, a.NabavnaCena,
+                        a.Kolicina, a.NabavnaCenaDin, a.NabavnaCena,
                         a.UpdatedAt, a.IDDobavljac
                     }
                 ).ToListAsync(ct);
@@ -354,7 +389,8 @@ public static class InsightStudioEndpoints
                     var aging = days < 30 ? "Aktivno" :
                                 days < 60 ? "Pazi" :
                                 days < 90 ? "Upozorenje" : "KritiÄno";
-                    var stockVal = a.NabavnaCena.HasValue ? a.Kolicina * a.NabavnaCena.Value : (decimal?)null;
+                    var resolvedUnitCost = AnalyticsMarginPolicy.ResolveProductUnitCost(a.NabavnaCenaDin, a.NabavnaCena);
+                    var stockVal = resolvedUnitCost.HasValue ? a.Kolicina * resolvedUnitCost.Value : (decimal?)null;
                     var dobavNaziv = a.IDDobavljac.HasValue && dobavljaciDict.TryGetValue(a.IDDobavljac.Value, out var dn1)
                         ? dn1 : "Nepoznato";
 
@@ -365,6 +401,7 @@ public static class InsightStudioEndpoints
                         pol = a.Pol ?? "NeodreÄ‘eno",
                         kolicina = a.Kolicina ?? 0,
                         stockValue = stockVal,
+                        marginDataAvailable = resolvedUnitCost.HasValue,
                         dobavljacNaziv = dobavNaziv,
                         lastSaleDate = lastSale.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                         daysWithoutSale = days,
@@ -527,18 +564,28 @@ public static class InsightStudioEndpoints
                         Kategorija = a.Kategorija ?? "Ostalo",
                         Pol = a.Pol ?? "NeodreÄ‘eno",
                         Revenue = ps.Kolicina * ps.Cena,
-                        Cost = a.NabavnaCena.HasValue ? ps.Kolicina * a.NabavnaCena.Value : (decimal?)null,
                         Units = ps.Kolicina,
+                        SaleLineCost = ps.NabavnaCena,
+                        ProductCostRsd = a.NabavnaCenaDin,
+                        ProductCostLegacy = a.NabavnaCena,
                         ArtikalId = a.Id
                     }
                 ).ToListAsync(ct);
 
                 var totalRevenue = stavke.Sum(x => x.Revenue);
-                var sysWithCost = stavke.Where(x => x.Cost.HasValue).ToList();
-                var sysRevWC = sysWithCost.Sum(x => x.Revenue);
-                var sysCostSum = sysWithCost.Sum(x => x.Cost!.Value);
-                var systemMarginPct = sysRevWC > 0
-                    ? (double)((sysRevWC - sysCostSum) / sysRevWC * 100) : 35;
+                var systemMargin = new MarginAccumulator();
+                foreach (var row in stavke)
+                {
+                    systemMargin.Add(
+                        row.Revenue,
+                        row.Units,
+                        AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.ProductCostRsd, row.ProductCostLegacy));
+                }
+
+                var systemMarginSnapshot = systemMargin.Build(totalRevenue);
+                var systemMarginPct = systemMarginSnapshot.RevenueWithCost > 0m
+                    ? systemMarginSnapshot.MarginPct
+                    : 35d;
 
                 var avgStockByKat = await db.Artikli
                     .GroupBy(a => a.Kategorija ?? "Ostalo")
@@ -551,10 +598,17 @@ public static class InsightStudioEndpoints
                     {
                         var rev = g.Sum(x => x.Revenue);
                         var units = g.Sum(x => x.Units);
-                        var wc = g.Where(x => x.Cost.HasValue).ToList();
-                        var revWC = wc.Sum(x => x.Revenue);
-                        var costWC = wc.Sum(x => x.Cost!.Value);
-                        var marginPct = revWC > 0 ? (double)((revWC - costWC) / revWC * 100) : 0;
+                        var margin = new MarginAccumulator();
+                        foreach (var row in g)
+                        {
+                            margin.Add(
+                                row.Revenue,
+                                row.Units,
+                                AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.ProductCostRsd, row.ProductCostLegacy));
+                        }
+
+                        var marginSnapshot = margin.Build(rev);
+                        var marginPct = marginSnapshot.MarginPct;
                         var profitLift = systemMarginPct > 0
                             ? (marginPct - systemMarginPct) / systemMarginPct * 100 : 0;
                         var revShare = totalRevenue > 0 ? (double)(rev / totalRevenue * 100) : 0;
@@ -567,6 +621,8 @@ public static class InsightStudioEndpoints
                             totalRevenue = rev,
                             totalUnits = units,
                             marginPct,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
                             profitLift,
                             revShare,
                             velocity,

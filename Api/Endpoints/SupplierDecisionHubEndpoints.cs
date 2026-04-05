@@ -1,3 +1,4 @@
+using Application.Analytics;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using System.Data;
@@ -688,6 +689,7 @@ ORDER BY ds.supplier_quality_index DESC, ds.revenue DESC, ds.supplier_name;
         var parameters = new List<NpgsqlParameter>();
         var rowWhere = BuildRowFilters(filters, parameters);
         var supplierWhere = BuildSupplierFilters(filters, parameters);
+        var currentCostSql = AnalyticsMarginPolicy.BuildPositiveCostSql(@"a.""NabavnaCenaDin""", @"a.""NabavnaCena""");
         parameters.Add(new NpgsqlParameter("mlAsOfDate", filters.ToDate));
 
         var sql = $"""
@@ -718,7 +720,7 @@ WITH filtered_signals AS (
         COALESCE(nd.did_revenue, 0)::numeric(18,2) AS did_revenue,
         COALESCE(nd.did_qty, 0)::numeric AS did_qty,
         COALESCE(a."Kolicina", 0)::numeric AS current_stock,
-        COALESCE(a."NabavnaCena", 0)::numeric(18,2) AS current_cost,
+        COALESCE({currentCostSql}, 0)::numeric(18,2) AS current_cost,
         a."Pol" AS gender,
         a."IDSezona" AS season_id
     FROM vw_supplier_fullprice_signals fs
@@ -1262,6 +1264,7 @@ FROM final_suppliers;
     {
         var parameters = new List<NpgsqlParameter>();
         var rowWhere = BuildRowFilters(filters, parameters);
+        var currentCostSql = AnalyticsMarginPolicy.BuildPositiveCostSql(@"a.""NabavnaCenaDin""", @"a.""NabavnaCena""");
 
         var sql = $"""
 WITH filtered_signals AS (
@@ -1279,7 +1282,7 @@ WITH filtered_signals AS (
         COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d,
         COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d,
         COALESCE(a."Kolicina", 0)::numeric AS current_stock,
-        COALESCE(a."NabavnaCena", 0)::numeric(18,2) AS current_cost
+        COALESCE({currentCostSql}, 0)::numeric(18,2) AS current_cost
     FROM vw_supplier_fullprice_signals fs
     LEFT JOIN LATERAL (
         SELECT v.post_qty, v.post_revenue

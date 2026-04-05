@@ -34,7 +34,12 @@ sales_rows AS (
         pz."DatumProdaje" AS datum_prodaje,
         SUM(ps."Kolicina") AS kolicina,
         SUM(ps."Kolicina" * ps."Cena") AS prihod,
-        COALESCE(ps."NabavnaCena", a."NabavnaCena") AS nabavna_cena
+        CASE
+            WHEN ps."NabavnaCena" > 0 THEN ps."NabavnaCena"
+            WHEN a."NabavnaCenaDin" > 0 THEN a."NabavnaCenaDin"
+            WHEN a."NabavnaCena" > 0 THEN a."NabavnaCena"
+            ELSE NULL
+        END AS nabavna_cena
     FROM "ProdajaStavke" ps
     JOIN "ProdajaZaglavlja" pz ON ps."IdProdaja" = pz."Id"
     JOIN "Artikli" a ON ps."IdArtikal" = a."Id"
@@ -49,7 +54,12 @@ sales_rows AS (
         COALESCE(NULLIF(BTRIM(d."Naziv"), ''), 'Nepoznato'),
         a."Id",
         pz."DatumProdaje",
-        COALESCE(ps."NabavnaCena", a."NabavnaCena")
+        CASE
+            WHEN ps."NabavnaCena" > 0 THEN ps."NabavnaCena"
+            WHEN a."NabavnaCenaDin" > 0 THEN a."NabavnaCenaDin"
+            WHEN a."NabavnaCena" > 0 THEN a."NabavnaCena"
+            ELSE NULL
+        END
 )
 SELECT
     sr.supplier_id,

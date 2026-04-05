@@ -2,6 +2,7 @@
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Application.Analytics;
 using Application.Common.Interfaces;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
@@ -27,6 +28,7 @@ namespace Infrastructure.Repository
         {
             await using var conn = new NpgsqlConnection(_connStr);
             await conn.OpenAsync(ct);
+            var resolvedProductCostSql = AnalyticsMarginPolicy.BuildPositiveCostSql(@"a.""NabavnaCenaDin""", @"a.""NabavnaCena""");
 
             // Serijalizuj stavke u JSON (camelCase da se poklopi sa funkcijom)
             var stavkeJson = JsonSerializer.Serialize(command.Stavke, new JsonSerializerOptions
@@ -64,7 +66,7 @@ namespace Infrastructure.Repository
                     WHERE ps.id_prodaja = $1
                 )
                 UPDATE prodaja_stavke ps
-                SET nabavna_cena = COALESCE(payload.nabavna_cena, a.""NabavnaCena"")
+                SET nabavna_cena = COALESCE(payload.nabavna_cena, {resolvedProductCostSql})
                 FROM sale_lines sl
                 LEFT JOIN payload ON payload.ordinality = sl.ordinality
                 LEFT JOIN ""Artikli"" a ON a.""Id"" = sl.id_artikal
