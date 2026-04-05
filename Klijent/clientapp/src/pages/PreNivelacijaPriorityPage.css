@@ -251,7 +251,6 @@
 .pnp-decision-table th button {
   position: relative;
   z-index: 2;
-}
   background: transparent;
   border: 0;
   color: var(--text-secondary, #cbd5e1);
