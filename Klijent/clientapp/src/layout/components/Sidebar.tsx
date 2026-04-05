@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { NAV_GROUPS } from "../navConfig";
 
 type SidebarProps = {
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 };
 
 function isRouteMatch(pathname: string, route: string): boolean {
@@ -42,7 +44,7 @@ function findBestMatchForGroup(pathname: string, group: { id: string; items: { t
   return best;
 }
 
-export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggleCollapse }: SidebarProps) {
   const location = useLocation();
   const defaultOpenGroups = useMemo(() => {
     return new Set<string>([findCurrentGroupId(location.pathname)]);
@@ -79,14 +81,25 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           <div className="text-sm font-medium text-muted">Trendplus</div>
           <h1 className="text-lg font-semibold text-contrast">Backoffice</h1>
         </div>
-        <button
-          type="button"
-          className="rounded-md border border-muted p-1 text-secondary lg:hidden"
-          onClick={onCloseMobile}
-          aria-label="Close navigation"
-        >
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            className="hidden rounded-md border border-muted p-1 text-secondary lg:block"
+            onClick={onToggleCollapse}
+            aria-label="Skupi meni"
+            title="Skupi meni"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-muted p-1 text-secondary lg:hidden"
+            onClick={onCloseMobile}
+            aria-label="Close navigation"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       <nav className="h-[calc(100%-73px)] overflow-y-auto px-3 py-4">
@@ -143,7 +156,21 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
 
   return (
     <>
-      <div className="hidden lg:block">{sidebarContent}</div>
+      {collapsed ? (
+        <div className="hidden lg:flex lg:h-screen lg:w-12 lg:shrink-0 lg:flex-col lg:items-center lg:border-r lg:border-muted lg:pt-3 surface">
+          <button
+            type="button"
+            className="rounded-md border border-muted p-1.5 text-secondary"
+            onClick={onToggleCollapse}
+            aria-label="Raspiri meni"
+            title="Raspiri meni"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      ) : (
+        <div className="hidden lg:block">{sidebarContent}</div>
+      )}
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={onCloseMobile} />

@@ -198,7 +198,7 @@
 .supplier-decision-panels {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(540px, 1.1fr);
+  grid-template-columns: 1fr;
 }
 
 .supplier-decision-card {
@@ -250,7 +250,6 @@
 .supplier-decision-table-wrap {
   border: 1px solid var(--border-default, #1f2937);
   border-radius: 10px;
-  max-height: 620px;
   overflow: auto;
 }
 

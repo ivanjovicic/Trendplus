@@ -8,6 +8,7 @@ import HeaderStatus from "./components/HeaderStatus";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <div className="min-h-screen surface text-contrast">
@@ -15,7 +16,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <WorkerStatusAlert />
 
       <div className="flex min-h-screen">
-        <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+        <Sidebar
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+        />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <HeaderStatus onOpenMobileNav={() => setMobileOpen(true)} />

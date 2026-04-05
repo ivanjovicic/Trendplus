@@ -39,11 +39,19 @@
   background: var(--surface-darker, #ffffff);
   border: 1px solid var(--border-default, #e5e7eb);
   border-radius: 10px;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 14px;
   padding: 12px;
+}
+
+.shoetype-decision-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 140px;
 }
 
 .shoetype-decision-field span {
@@ -174,7 +182,7 @@
 .shoetype-decision-panels {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(540px, 1.1fr);
+  grid-template-columns: 1fr;
 }
 
 .shoetype-decision-card {
@@ -226,7 +234,6 @@
 .shoetype-decision-table-wrap {
   border: 1px solid var(--border-default, #1f2937);
   border-radius: 10px;
-  max-height: 620px;
   overflow: auto;
 }
 
