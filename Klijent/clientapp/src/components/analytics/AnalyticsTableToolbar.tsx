@@ -129,7 +129,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
           <button
             type="button"
             onClick={() => setMenuOpen((current) => !current)}
-            className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-white"
+            className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
           >
             <Download size={14} />
             Izvoz
@@ -168,7 +168,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
         </button>
 
         <span className="text-xs text-muted">Redova: {payload.rows.length}</span>
-        {statusText ? <span className="text-xs text-accent-success">{statusText}</span> : null}
+        {statusText ? <span className="text-xs text-[var(--accent-success)]">{statusText}</span> : null}
       </div>
 
       <Modal
@@ -236,7 +236,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
             <button
               type="button"
               onClick={() => void handleExport()}
-              className="rounded-lg border border-primary bg-primary px-3 py-2 text-xs font-semibold text-white"
+              className="rounded-lg border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
               disabled={submitting}
             >
               {submitting ? "Generisem..." : preview && format === "pdf" ? "Otvori preview" : "Pokreni export"}
