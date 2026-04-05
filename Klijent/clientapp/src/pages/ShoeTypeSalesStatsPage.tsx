@@ -18,6 +18,7 @@ import {
 import type { StoreOption } from "../types/analytics";
 import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./ShoeTypeSalesStatsPage.css";
@@ -58,13 +59,13 @@ const UNKNOWN_TYPES = new Set([
 ]);
 
 const decisionColumns: AnalyticsTableColumn<DecisionShoeType>[] = [
-  { key: "tipObuceNaziv", header: "Tip obuce", dataType: "text" },
+  { key: "tipObuceNaziv", header: "Tip obuće", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
-  { key: "marginContribution", header: "Marzni doprinos", dataType: "currency" },
+  { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "decisionScore", header: "Decision score", dataType: "number" },
+  { key: "decisionScore", header: "Skor odluke", dataType: "number" },
 ];
 
 function clamp(value: number, min: number, max: number): number {
@@ -177,6 +178,13 @@ function statusClass(status: DecisionStatus): string {
   if (status === "Pojacaj") return "shoetype-decision-status status-boost";
   if (status === "Smanji") return "shoetype-decision-status status-reduce";
   return "shoetype-decision-status status-keep";
+}
+
+function displayStatusLabel(status: DecisionStatus): string {
+  if (status === "Pojacaj") return "Pojačaj";
+  if (status === "Zadrzi") return "Zadrži";
+  if (status === "Smanji") return "Smanji";
+  return status;
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -826,7 +834,7 @@ export default function ShoeTypeSalesStatsPage() {
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="shoe-type-sales-stats"
-                  tableTitle="Shoe type decision support"
+                  tableTitle="Podrška odluci - tipovi obuće"
                   columns={decisionColumns}
                   rows={sortedRows}
                   filters={toolbarFilters}
@@ -841,32 +849,32 @@ export default function ShoeTypeSalesStatsPage() {
                     <tr>
                       <th>
                         <button type="button" onClick={() => handleSort("tipObuceNaziv")}>
-                          Tip obuce{sortMarker("tipObuceNaziv", sortField, sortDir)}
+                          Tip obuće{sortMarker("tipObuceNaziv", sortField, sortDir)} <InfoTip text="Naziv tipa obuće (npr. patike, sandale)." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("ukupanPromet")}>
-                          Promet{sortMarker("ukupanPromet", sortField, sortDir)}
+                          Promet{sortMarker("ukupanPromet", sortField, sortDir)} <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo{sortMarker("sharePct", sortField, sortDir)}
+                          Udeo%{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Marzni doprinos{sortMarker("marginContribution", sortField, sortDir)}
+                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marže: razlika između prodajne vrednosti i nabavne vrednosti za prodatu robu." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("trendPct")}>
-                          Trend{sortMarker("trendPct", sortField, sortDir)}
+                          Trend{sortMarker("trendPct", sortField, sortDir)} <InfoTip text="Promena prometa u poređenju sa prethodnim periodom (procenat)." />
                         </button>
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)}
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Systemska preporuka: Pojačaj / Zadrži / Smanji. Kliknite na red za detaljnije objašnjenje." />
                         </button>
                       </th>
                       <th className="align-center">Detalj</th>
@@ -907,7 +915,7 @@ export default function ShoeTypeSalesStatsPage() {
                                 title={buildStatusTooltip(row)}
                                 aria-label={buildStatusTooltip(row)}
                               >
-                                {row.status}
+                                {displayStatusLabel(row.status)}
                               </span>
                             </td>
                             <td className="align-center">

@@ -18,6 +18,7 @@ import {
 import type { StoreOption } from "../types/analytics";
 import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./SupplierSalesStatsPage.css";
@@ -60,13 +61,13 @@ const UNKNOWN_SUPPLIERS = new Set([
 ]);
 
 const decisionColumns: AnalyticsTableColumn<DecisionSupplier>[] = [
-  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
+  { key: "dobavljacNaziv", header: "Dobavljač", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
-  { key: "marginContribution", header: "Marzni doprinos", dataType: "currency" },
+  { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "decisionScore", header: "Decision score", dataType: "number" },
+  { key: "decisionScore", header: "Skor odluke", dataType: "number" },
 ];
 
 function clamp(value: number, min: number, max: number): number {
@@ -176,6 +177,13 @@ function statusClass(status: DecisionStatus): string {
   if (status === "Smanji") return "supplier-decision-status status-reduce";
   if (status === "N/A") return "supplier-decision-status status-na";
   return "supplier-decision-status status-keep";
+}
+
+function displayStatusLabel(status: DecisionStatus): string {
+  if (status === "Pojacaj") return "Pojačaj";
+  if (status === "Zadrzi") return "Zadrži";
+  if (status === "Smanji") return "Smanji";
+  return status;
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -876,7 +884,7 @@ export default function SupplierSalesStatsPage() {
                 <div>
                   <h2>Prioritetna lista dobavljaca</h2>
                   <p>
-                    Pojacaj: {supplierCounts.boost} | Zadrzi: {supplierCounts.keep} | Smanji: {supplierCounts.reduce}
+                    Pojačaj: {supplierCounts.boost} | Zadrži: {supplierCounts.keep} | Smanji: {supplierCounts.reduce}
                   </p>
                   {unknownSuppliers.length > 0 ? (
                     <p className="supplier-unknown-note">
@@ -886,7 +894,7 @@ export default function SupplierSalesStatsPage() {
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="supplier-sales-stats"
-                  tableTitle="Supplier decision support"
+                  tableTitle="Podrška odluci - dobavljači"
                   columns={decisionColumns}
                   rows={sortedSuppliers}
                   filters={toolbarFilters}
@@ -901,32 +909,32 @@ export default function SupplierSalesStatsPage() {
                     <tr>
                       <th>
                         <button type="button" onClick={() => handleSort("dobavljacNaziv")}>
-                          Dobavljac{sortMarker("dobavljacNaziv", sortField, sortDir)}
+                          Dobavljač{sortMarker("dobavljacNaziv", sortField, sortDir)} <InfoTip text="Naziv dobavljača. Klikom sortirate abecedno." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("ukupanPromet")}>
-                          Promet{sortMarker("ukupanPromet", sortField, sortDir)}
+                          Promet{sortMarker("ukupanPromet", sortField, sortDir)} <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo{sortMarker("sharePct", sortField, sortDir)}
+                          Udeo%{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Marzni doprinos{sortMarker("marginContribution", sortField, sortDir)}
+                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marže: razlika između prodajne vrednosti i nabavne vrednosti za prodatu robu." />
                         </button>
                       </th>
                       <th className="align-right">
-                        <button type="button" onClick={() => handleSort("trendPct")}>
-                          Trend{sortMarker("trendPct", sortField, sortDir)}
+                          <button type="button" onClick={() => handleSort("trendPct")}>
+                          Trend{sortMarker("trendPct", sortField, sortDir)} <InfoTip text="Promena prometa u poređenju sa prethodnim periodom (procenat)." />
                         </button>
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)}
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Systemska preporuka: Pojačaj / Zadrži / Smanji. Kliknite na red za detaljnije objašnjenje." />
                         </button>
                       </th>
                       <th className="align-center">Detalj</th>
@@ -982,7 +990,7 @@ export default function SupplierSalesStatsPage() {
                                 title={buildStatusTooltip(supplier)}
                                 aria-label={buildStatusTooltip(supplier)}
                               >
-                                {supplier.status}
+                                {displayStatusLabel(supplier.status)}
                               </span>
                             </td>
                             <td className="align-center">

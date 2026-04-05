@@ -93,8 +93,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Analitika",
     icon: BarChart3,
     items: [
-      { to: "/analytics/supplier-sales-stats", label: "Prodaja po dobavljacima", icon: TrendingUp },
-      { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuce", icon: ShoppingBag },
+      { to: "/analytics/supplier-sales-stats", label: "Prodaja po dobavljačima", icon: TrendingUp },
+      { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuće", icon: ShoppingBag },
       { to: "/analytics/color-sales-stats", label: "Prodaja po boji artikla", icon: Palette },
       { to: "/analytics/data-quality", label: "Data quality", icon: AlertTriangle },
       { to: "/analytics/inventory", label: "Bilans stanja", icon: Boxes },
