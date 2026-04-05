@@ -9,18 +9,34 @@
   --border-default: #d3dce9;
   --border-strong: #d1d5db;
   --border: #d3dce9;
+  --border-hover: rgba(79, 70, 229, 0.15);
+  --surface-muted: #f1f5f9;
   --card-shadow: rgba(16,24,40,0.06);
   --focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.18);
   /* Primary color - accent blue */
   --primary: #3b82f6;
   --primary-text: #ffffff;
   --accent-primary: #3b82f6;
+  --accent-primary-10: rgba(59, 130, 246, 0.12);
   --text-on-primary: #ffffff;
   --accent-success: #10b981;
   --success: #34d399;
+  --success-10: rgba(52, 211, 153, 0.1);
   --error: #f87171;
+  --error-10: rgba(248, 113, 113, 0.1);
   --accent-text: #bfdbfe;
   --error-text: #fecaca;
+  --warning: #fbbf24;
+  --warning-10: rgba(251, 191, 36, 0.1);
+  --info: #60a5fa;
+  --info-10: rgba(59, 130, 246, 0.12);
+  --info-border: rgba(59, 130, 246, 0.4);
+  --info-text: #1d4ed8;
+  --accent: #3b82f6;
+  --panel: #ffffff;
+  --panel-border: #e5e7eb;
+  --text: #0f172a;
+  --row-hover: rgba(15, 23, 42, 0.04);
   --text-primary: #0f172a;
   --text-secondary: #6b7280;
   --text-muted: #6b7280;
@@ -39,8 +55,8 @@
   --neutral-border: rgba(140,164,220,0.22);
 }
 
-/* Dark theme overrides */
-[data-theme="dark"] {
+/* Dark theme overrides: support both legacy "dark" and the named theme used in ThemeContext */
+[data-theme="dark"], [data-theme="inventory-dark"] {
   --surface-default: #0a0f1f;
   --surface-light: #0f1726;
   --surface-elevated: #0b1220;
@@ -51,6 +67,7 @@
   --border-default: #1f2937;
   --border-strong: #374151;
   --border: #1f2937;
+  --border-hover: rgba(248, 250, 252, 0.12);
   --card-shadow: rgba(0,0,0,0.6);
   --focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.18);
   /* Primary color - keep brighter for dark theme */
@@ -60,9 +77,22 @@
   --text-on-primary: #ffffff;
   --accent-success: #10b981;
   --success: #10b981;
+  --success-10: rgba(16, 185, 129, 0.2);
   --error: #ff6b6b;
+  --error-10: rgba(239, 68, 68, 0.2);
   --accent-text: #93c5fd;
   --error-text: #ff9999;
+  --warning: #f59e0b;
+  --warning-10: rgba(245, 158, 11, 0.2);
+  --info: #60a5fa;
+  --info-10: rgba(59, 130, 246, 0.12);
+  --info-border: rgba(59, 130, 246, 0.4);
+  --info-text: #93c5fd;
+  --accent: #3b82f6;
+  --panel: #0f1726;
+  --panel-border: #374151;
+  --text: #e6eef8;
+  --row-hover: rgba(148, 163, 184, 0.1);
   --text-primary: #e6eef8;
   --text-secondary: #9ca3af;
   --text-muted: #9ca3af;
@@ -80,6 +110,56 @@
     --error-border: rgba(239,68,68,0.32);
     --neutral-soft: rgba(102,129,189,0.12);
     --neutral-border: rgba(102,129,189,0.22);
+}
+
+/* Soft Gray theme overrides (no-JS fallback) */
+[data-theme="soft-gray"] {
+  --surface-default: #f5f6f8;
+  --surface-light: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-elevated-light: #ffffff;
+  --surface-elevated-dark: #f1f3f6;
+  --surface-card: #ffffff;
+  --surface-darker: #e9ecef;
+  --border-default: #e6e9ee;
+  --border-strong: #d0d6de;
+  --border: #e6e9ee;
+  --border-hover: rgba(96, 100, 120, 0.12);
+  --card-shadow: rgba(16,24,40,0.04);
+  --focus-ring: 0 0 0 3px rgba(148,163,184,0.18);
+  --primary: #6b7280;
+  --primary-text: #ffffff;
+  --accent-primary: #6b7280;
+  --accent-success: #10b981;
+  --success: #10b981;
+  --success-10: rgba(16, 185, 129, 0.1);
+  --error: #ef4444;
+  --error-10: rgba(239, 68, 68, 0.08);
+  --accent-text: #94a3b8;
+  --error-text: #fecaca;
+  --warning: #f59e0b;
+  --warning-10: rgba(245, 158, 11, 0.08);
+  --info: #3b82f6;
+  --info-10: rgba(59, 130, 246, 0.08);
+  --info-border: rgba(59, 130, 246, 0.18);
+  --accent: #6b7280;
+  --panel: #ffffff;
+  --panel-border: #e9ecef;
+  --text: #0f172a;
+  --row-hover: rgba(15, 23, 42, 0.02);
+  --text-primary: #0f172a;
+  --text-secondary: #6b7280;
+  --text-muted: #64748b;
+  --accent-soft: rgba(107,114,128,0.08);
+  --accent-border: rgba(107,114,128,0.18);
+  --success-soft: rgba(52, 211, 153, 0.08);
+  --success-border: rgba(52, 211, 153, 0.22);
+  --warning-soft: rgba(251, 191, 36, 0.08);
+  --warning-border: rgba(251, 191, 36, 0.18);
+  --error-soft: rgba(239, 68, 68, 0.08);
+  --error-border: rgba(239, 68, 68, 0.18);
+  --neutral-soft: rgba(140,164,220,0.06);
+  --neutral-border: rgba(140,164,220,0.12);
 }
 
 .card-theme {

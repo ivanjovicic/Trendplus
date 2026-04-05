@@ -1,8 +1,8 @@
 .ppn-decision-page {
-  background: var(--surface-elevated, #ffffff);
-  border: 1px solid var(--border-default, #e5e7eb);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
   border-radius: 14px;
-  color: var(--text-primary, #111827);
+  color: var(--text-primary);
   padding: 16px;
 }
 
@@ -15,14 +15,14 @@
 }
 
 .ppn-decision-title {
-  color: var(--text-primary, #f9fafb);
+  color: var(--text-primary);
   font-size: 24px;
   font-weight: 700;
   margin: 0 0 4px;
 }
 
 .ppn-decision-subtitle {
-  color: var(--text-secondary, #9ca3af);
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.5;
   margin: 0;
@@ -30,14 +30,14 @@
 }
 
 .ppn-decision-generated {
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   font-size: 12px;
   white-space: nowrap;
 }
 
 .ppn-decision-filters {
-  background: var(--surface-darker, #ffffff);
-  border: 1px solid var(--border-default, #e5e7eb);
+  background: var(--surface-darker);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
   display: grid;
   gap: 10px;
@@ -53,25 +53,25 @@
 }
 
 .ppn-decision-field span {
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
 .ppn-decision-field select,
 .ppn-decision-field input {
-  background: var(--surface-card, #ffffff);
-  border: 1px solid var(--border-strong, #d1d5db);
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
-  color: var(--text-primary, #111827);
+  color: var(--text-primary);
   font-size: 13px;
   padding: 8px 10px;
 }
 
 .ppn-decision-field select:focus,
 .ppn-decision-field input:focus {
-  border-color: var(--accent-primary, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  border-color: var(--accent-primary);
+  box-shadow: var(--focus-ring);
   outline: none;
 }
 
@@ -83,10 +83,10 @@
 }
 
 .ppn-decision-actions button {
-  background: var(--accent-primary, #2563eb);
+  background: var(--accent-primary);
   border: 0;
   border-radius: 8px;
-  color: var(--text-on-primary, #ffffff);
+  color: var(--text-on-primary);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
@@ -95,8 +95,8 @@
 
 .ppn-decision-actions button.secondary {
   background: transparent;
-  border: 1px solid var(--border-strong, #d1d5db);
-  color: var(--text-primary, #111827);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
 }
 
 .ppn-decision-actions button:disabled {
@@ -112,15 +112,15 @@
 }
 
 .ppn-decision-message.loading {
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(96, 165, 250, 0.3);
-  color: #bfdbfe;
+  background: var(--info-10);
+  border: 1px solid var(--info-border);
+  color: var(--info-text);
 }
 
 .ppn-decision-message.error {
-  background: rgba(127, 29, 29, 0.3);
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  color: #fecaca;
+  background: var(--error-soft);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
 }
 
 .ppn-decision-kpis {
@@ -131,21 +131,21 @@
 }
 
 .ppn-decision-kpi {
-  background: var(--surface-darker, #ffffff);
-  border: 1px solid var(--border-default, #e5e7eb);
+  background: var(--surface-darker);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
   padding: 12px;
 }
 
 .ppn-decision-kpi span {
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   display: block;
   font-size: 12px;
   font-weight: 600;
 }
 
 .ppn-decision-kpi strong {
-  color: var(--text-primary, #111827);
+  color: var(--text-primary);
   display: block;
   font-size: 22px;
   font-weight: 700;
@@ -153,11 +153,11 @@
 }
 
 .ppn-decision-kpi strong.trend-up {
-  color: #34d399;
+  color: var(--success);
 }
 
 .ppn-decision-kpi strong.trend-down {
-  color: #f87171;
+  color: var(--error);
 }
 
 .ppn-decision-panels {
@@ -167,20 +167,20 @@
 }
 
 .ppn-decision-card {
-  background: var(--surface-darker, #ffffff);
-  border: 1px solid var(--border-default, #e5e7eb);
+  background: var(--surface-darker);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
   padding: 12px;
 }
 
 .ppn-decision-card h2 {
-  color: var(--text-primary, #111827);
+  color: var(--text-primary);
   font-size: 16px;
   margin: 0 0 4px;
 }
 
 .ppn-decision-card p {
-  color: var(--text-secondary, #9ca3af);
+  color: var(--text-secondary);
   font-size: 12px;
   margin: 0 0 12px;
 }
@@ -191,9 +191,9 @@
 
 .ppn-decision-empty {
   align-items: center;
-  border: 1px dashed var(--border-default, #1f2937);
+  border: 1px dashed var(--border-default);
   border-radius: 8px;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   display: flex;
   font-size: 13px;
   justify-content: center;
@@ -213,7 +213,7 @@
 }
 
 .ppn-decision-table-wrap {
-  border: 1px solid var(--border-default, #1f2937);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
   max-height: 620px;
   overflow-x: auto;
@@ -227,8 +227,8 @@
 }
 
 .ppn-decision-table th {
-  background: var(--surface-card, #ffffff);
-  border-bottom: 1px solid var(--border-default, #e5e7eb);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-default);
   padding: 10px 12px;
   position: sticky;
   top: 0;
@@ -241,7 +241,7 @@
   z-index: 2;
   background: transparent;
   border: 0;
-  color: var(--text-secondary, #cbd5e1);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
@@ -255,18 +255,18 @@
 }
 
 .ppn-decision-table td {
-  border-bottom: 1px solid var(--border-default, #e5e7eb);
-  color: var(--text-primary, #111827);
+  border-bottom: 1px solid var(--border-default);
+  color: var(--text-primary);
   font-size: 13px;
   padding: 10px 12px;
 }
 
 .ppn-decision-table tr:hover {
-  background: rgba(30, 41, 59, 0.6);
+  background: var(--row-hover);
 }
 
 .ppn-decision-table tr.expanded-row {
-  background: rgba(37, 99, 235, 0.12);
+  background: var(--accent-soft);
 }
 
 .align-right {
@@ -288,40 +288,40 @@
 }
 
 .ppn-decision-status.status-boost {
-  background: rgba(52, 211, 153, 0.15);
-  border: 1px solid rgba(52, 211, 153, 0.45);
-  color: #6ee7b7;
+  background: var(--success-soft);
+  border: 1px solid var(--success-border);
+  color: var(--success);
 }
 
 .ppn-decision-status.status-keep {
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid rgba(251, 191, 36, 0.45);
-  color: #fcd34d;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
+  color: var(--warning);
 }
 
 .ppn-decision-status.status-reduce {
-  background: rgba(248, 113, 113, 0.15);
-  border: 1px solid rgba(248, 113, 113, 0.45);
-  color: #fca5a5;
+  background: var(--error-soft);
+  border: 1px solid var(--error-border);
+  color: var(--error);
 }
 
 .trend-up {
-  color: #34d399;
+  color: var(--success);
 }
 
 .trend-down {
-  color: #f87171;
+  color: var(--error);
 }
 
 .trend-neutral {
-  color: #93c5fd;
+  color: var(--accent-text);
 }
 
 .ppn-decision-detail-btn {
   background: transparent;
-  border: 1px solid var(--border-strong, #374151);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  color: var(--text-primary, #e5e7eb);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
@@ -329,14 +329,14 @@
 }
 
 .ppn-decision-empty-row {
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   padding: 20px !important;
   text-align: center;
 }
 
 .ppn-decision-detail {
-  background: var(--surface-darker, #ffffff);
-  border: 1px solid var(--border-default, #e5e7eb);
+  background: var(--surface-darker);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
   margin-top: 12px;
   padding: 12px;
@@ -351,16 +351,16 @@
 }
 
 .ppn-decision-detail-head h3 {
-  color: var(--text-primary, #111827);
+  color: var(--text-primary);
   font-size: 16px;
   margin: 0;
 }
 
 .ppn-decision-detail-head button {
-  background: var(--accent-primary, #2563eb);
+  background: var(--accent-primary);
   border: 0;
   border-radius: 8px;
-  color: var(--text-on-primary, #ffffff);
+  color: var(--text-on-primary);
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
@@ -374,27 +374,27 @@
 }
 
 .ppn-decision-detail-grid article {
-  background: var(--surface-card, #ffffff);
-  border: 1px solid var(--border-default, #e5e7eb);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 9px;
 }
 
 .ppn-decision-detail-grid article span {
-  color: var(--text-secondary, #9ca3af);
+  color: var(--text-secondary);
   display: block;
   font-size: 11px;
 }
 
 .ppn-decision-detail-grid article strong {
-  color: var(--text-primary, #111827);
+  color: var(--text-primary);
   display: block;
   font-size: 15px;
   margin-top: 5px;
 }
 
 .ppn-decision-reason {
-  color: var(--text-secondary, #cbd5e1);
+  color: var(--text-secondary);
   font-size: 13px;
   margin: 12px 0 0;
 }

@@ -64,7 +64,7 @@
   width: 16px;
   height: 16px;
   border-radius: 999px;
-  border: 1px solid rgba(100,116,139,0.16);
+  border: 1px solid var(--border-hover, rgba(100,116,139,0.16));
   color: var(--text-primary);
   font-size: 10px;
   font-weight: 700;
@@ -75,9 +75,9 @@
 .info-tip-portal {
   width: 240px;
   border-radius: 8px;
-  border: 1px solid rgba(100,116,139,0.30);
-  background: var(--surface-darker, #0f172a);
-  color: var(--text-primary, #e2e8f0);
+  border: 1px solid var(--border-hover, rgba(100,116,139,0.30));
+  background: var(--panel, #0f172a);
+  color: var(--text, #e2e8f0);
   font-size: 11px;
   line-height: 1.35;
   padding: 8px 10px;
@@ -326,8 +326,8 @@
   align-items: start;
   gap: 10px;
   border-radius: 10px;
-  border: 1px solid rgba(138, 160, 214, 0.24);
-  background: rgba(10, 19, 38, 0.78);
+  border: 1px solid var(--border-hover, rgba(138, 160, 214, 0.24));
+  background: var(--panel, rgba(10, 19, 38, 0.78));
   padding: 10px 11px;
   margin-bottom: 8px;
 }
@@ -348,22 +348,22 @@
 }
 
 .insight-row.green .badge {
-  background: rgba(49, 196, 141, 0.2);
+  background: var(--success-soft, rgba(49, 196, 141, 0.2));
   color: var(--success, #97f0cd);
 }
 
 .insight-row.yellow .badge {
-  background: rgba(255, 188, 87, 0.2);
+  background: var(--warning-soft, rgba(255, 188, 87, 0.2));
   color: var(--warning, #ffe0ad);
 }
 
 .insight-row.red .badge {
-  background: rgba(255, 108, 108, 0.2);
+  background: var(--error-soft, rgba(255, 108, 108, 0.2));
   color: var(--error, #ffc4c4);
 }
 
 .insight-row.blue .badge {
-  background: rgba(110, 168, 255, 0.2);
+  background: var(--accent-soft, rgba(110, 168, 255, 0.2));
   color: var(--info, #cae0ff);
 }
 

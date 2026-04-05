@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-export type ThemeName = "inventory-dark" | "light" | "high-contrast";
+export type ThemeName = "inventory-dark" | "light" | "high-contrast" | "soft-gray";
 
 export interface Theme {
   name: ThemeName;
@@ -69,7 +69,7 @@ function withBaseVars(overrides: Record<string, string>): Record<string, string>
 const THEMES: Record<ThemeName, Theme> = {
   "inventory-dark": {
     name: "inventory-dark",
-    displayName: "Bilans Stanja (Tamna)",
+    displayName: "Bilans Stanja — Tamna",
     description: "Optimizovana za dugotrajno citanje tabela",
     cssVars: withBaseVars({
       "--surface-default": "#0f1318",
@@ -83,6 +83,29 @@ const THEMES: Record<ThemeName, Theme> = {
       "--border-hover": "#344a66",
       "--focus-ring": "#44d0ff",
       "--card-shadow": "rgba(0,0,0,0.9)",
+    }),
+  },
+  "soft-gray": {
+    name: "soft-gray",
+    displayName: "Soft Gray",
+    description: "Light muted gray palette for low-contrast environments",
+    cssVars: withBaseVars({
+      "--surface-default": "#f5f6f8",
+      "--surface-light": "#ffffff",
+      "--surface-elevated": "#ffffff",
+      "--surface-darker": "#e9ecef",
+      "--text-primary": "#0f172a",
+      "--text-secondary": "#475569",
+      "--text-muted": "#64748b",
+      "--border-default": "#e6e9ee",
+      "--border-hover": "#d0d6de",
+      "--focus-ring": "#94a3b8",
+      "--card-shadow": "rgba(16,24,40,0.04)",
+      "--accent-primary": "#6b7280",
+      "--success": "#10b981",
+      "--error": "#ef4444",
+      "--warning": "#f59e0b",
+      "--info": "#3b82f6",
     }),
   },
   light: {

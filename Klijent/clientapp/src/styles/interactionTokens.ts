@@ -23,10 +23,10 @@ export const INTERACTION_TOKENS = {
   // Interactive background states
   interactive: {
     bg: {
-      default: 'rgba(68, 208, 255, 0.04)',
-      hover: 'rgba(68, 208, 255, 0.08)',
-      active: 'rgba(68, 208, 255, 0.12)',
-      disabled: 'rgba(255, 255, 255, 0.02)',
+      default: 'var(--interactive-bg-default, rgba(68, 208, 255, 0.04))',
+      hover: 'var(--interactive-bg-hover, rgba(68, 208, 255, 0.08))',
+      active: 'var(--interactive-bg-active, rgba(68, 208, 255, 0.12))',
+      disabled: 'var(--interactive-bg-disabled, rgba(255, 255, 255, 0.02))',
     },
     border: {
       default: 'var(--border-default)',
@@ -39,10 +39,10 @@ export const INTERACTION_TOKENS = {
 
   // Elevation/shadow levels
   elevation: {
-    none: '0 0 0 0 transparent',
-    subtle: '0 2px 8px -2px rgba(0, 0, 0, 0.15)',
-    soft: '0 4px 16px -4px rgba(0, 0, 0, 0.25)',
-    medium: '0 8px 32px -8px rgba(0, 0, 0, 0.35)',
+    none: 'var(--elevation-none, 0 0 0 0 transparent)',
+    subtle: 'var(--elevation-subtle, 0 2px 8px -2px rgba(0, 0, 0, 0.15))',
+    soft: 'var(--elevation-soft, 0 4px 16px -4px rgba(0, 0, 0, 0.25))',
+    medium: 'var(--elevation-medium, 0 8px 32px -8px rgba(0, 0, 0, 0.35))',
   },
 
   // Animation timing

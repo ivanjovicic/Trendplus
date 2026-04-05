@@ -283,7 +283,7 @@
 }
 
 .shoetype-decision-table tr:hover {
-  background: var(--muted-row-bg, rgba(30, 41, 59, 0.6));
+  background: var(--row-hover, rgba(30, 41, 59, 0.6));
 }
 
 .shoetype-decision-table tr.expanded-row {

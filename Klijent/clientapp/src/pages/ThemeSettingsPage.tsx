@@ -97,7 +97,7 @@ export default function ThemeSettingsPage() {
         <div className="mt-8 rounded-2xl border border-muted surface-light p-6">
           <h3 className="font-semibold text-contrast mb-2">Smernice za pristupačnost</h3>
           <div className="space-y-2 text-sm text-secondary">
-            <p>• <strong>Bilans Stanja (Tamna):</strong> Optimizovana za rad u tamnim uslovima i dugotrajno čitanje</p>
+            <p>• <strong>Bilans Stanja — Tamna:</strong> Optimizovana za rad u tamnim uslovima i dugotrajno čitanje</p>
             <p>• <strong>Svetla:</strong> Klasična tema pogodna za rad u osvetljenim prostorima</p>
             <p>• <strong>Visoki kontrast:</strong> Maksimalni kontrast teksta za lakše čitanje (WCAG AAA)</p>
           </div>

@@ -113,6 +113,30 @@
     --focus-ring-success: 0 0 0 4px rgba(5, 150, 105, 0.18);
 }
 
+/* Soft Gray theme fallback for no-JS cases */
+[data-theme="soft-gray"] {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #fafbfc;
+    --text: #0f172a;
+    --muted: #64748b;
+
+    --border: #e6e9ee;
+    --border-strong: #d0d6de;
+
+    --primary: #6b7280;
+    --primary-600: #575b64;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 8px 20px rgba(0,0,0,0.06);
+
+    --focus-ring: 0 0 0 4px rgba(148,163,184,0.18);
+    --focus-ring-success: 0 0 0 4px rgba(16,185,129,0.18);
+}
+
 html, body {
     background: var(--bg);
     color: var(--text);
