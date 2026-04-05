@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import InfoTip from "../components/ui/InfoTip";
 import { getAnalyticsDataQualityHealth, getDataQualityIssues } from "../services/analyticsApi";
 import type {
   AnalyticsDataQualityHealth,
@@ -14,20 +15,20 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import "./DataQualityPage.css";
 
 const ISSUE_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
-  { key: "missingSupplier", label: "Missing Supplier", tone: "danger" },
-  { key: "missingShoeType", label: "Missing Shoe Type", tone: "warning" },
-  { key: "invalidName", label: "Invalid Names", tone: "neutral" },
+  { key: "missingSupplier", label: "Nedostajući dobavljač", tone: "danger" },
+  { key: "missingShoeType", label: "Nedostajući tip obuće", tone: "warning" },
+  { key: "invalidName", label: "Neispravni nazivi", tone: "neutral" },
 ];
 
 const analyticsColumns: AnalyticsTableColumn<DataQualityIssueItem>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
   { key: "productId", header: "Artikal ID", dataType: "text" },
   { key: "name", header: "Naziv artikla", dataType: "text" },
-  { key: "supplierName", header: "Dobavljac", dataType: "text" },
-  { key: "shoeTypeName", header: "Tip obuce", dataType: "text" },
+  { key: "supplierName", header: "Dobavljač", dataType: "text" },
+  { key: "shoeTypeName", header: "Tip obuće", dataType: "text" },
   { key: "sales30d", header: "Prodaja 30d", dataType: "currency" },
   { key: "stock", header: "Stanje", dataType: "number" },
-  { key: "lastUpdated", header: "Azurirano", dataType: "datetime" },
+  { key: "lastUpdated", header: "Ažurirano", dataType: "datetime" },
   { key: "issueType", header: "Problem", dataType: "text" },
 ];
 
@@ -205,13 +206,13 @@ export default function DataQualityPage() {
     <div className="data-quality-page">
       <header className="data-quality-header">
         <div>
-          <h1 className="data-quality-title">Data Quality centar</h1>
+          <h1 className="data-quality-title">Centar za kvalitet podataka <InfoTip text="Pregled problema u podacima i prioriteti za ispravku." /></h1>
           <p className="data-quality-subtitle">
-            `Nepoznato` vise nije slepa vrednost. Ovde vidis koje artikle treba dopuniti i koje probleme prvo treba resiti.
+            'Nepoznato' više nije slepa vrednost — ovde vidite artikle koje treba dopuniti i koje probleme prvo treba rešiti.
           </p>
         </div>
         <div className="data-quality-meta">
-          <span>Podrazumevani sort: prodaja 30d opadajuce</span>
+          <span>Podrazumevani sort: prodaja 30d (opadajuće)</span>
         </div>
       </header>
 
@@ -226,7 +227,7 @@ export default function DataQualityPage() {
           </article>
 
           <article className="data-quality-health-card">
-            <span className="data-quality-health-label">Orphan dobavljaci</span>
+            <span className="data-quality-health-label">Artikli bez dobavljača</span>
             <strong>{health.orphanArticleCount.toLocaleString("sr-RS")}</strong>
             <p>Threshold: {health.thresholds.orphanArticleCount}</p>
           </article>
@@ -234,13 +235,13 @@ export default function DataQualityPage() {
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Promet bez nabavne cene</span>
             <strong>{formatPercent(health.missingCostRevenueSharePct)}</strong>
-            <p>{formatCurrency(health.missingCostRevenue)} bez pouzdane marze</p>
+            <p>{formatCurrency(health.missingCostRevenue)} bez pouzdane marže</p>
           </article>
 
           <article className="data-quality-health-card">
-            <span className="data-quality-health-label">Unknown supplier promet</span>
+            <span className="data-quality-health-label">Promet nepoznatog dobavljača</span>
             <strong>{formatPercent(health.unknownSupplierRevenueSharePct)}</strong>
-            <p>{formatCurrency(health.unknownSupplierRevenue)} u unknown bucket-u</p>
+            <p>{formatCurrency(health.unknownSupplierRevenue)} u 'unknown' bucket-u</p>
           </article>
         </section>
       ) : null}

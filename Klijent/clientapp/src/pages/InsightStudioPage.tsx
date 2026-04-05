@@ -62,6 +62,7 @@ import {
   type PriceSensitivity,
 } from "../services/insightStudioV2Api";
 import IntelligenceSnapshotPanel from "../components/dashboard/IntelligenceSnapshotPanel";
+import InfoTip from "../components/ui/InfoTip";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import {
   getDemandSignals,
@@ -104,6 +105,17 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: "zalihe", label: "Zalihe & Deplecija", icon: "📦" },
   { key: "nabavka", label: "Nabavka 2.0", icon: "🛒" },
 ];
+
+const TAB_TIPS: Record<TabKey, string> = {
+  pregled: "Kratki pregled KPI i upozorenja za brzu akciju.",
+  dobavljaci: "Ocena dobavljača, skorovi i rizici.",
+  kategorije: "Analiza po kategorijama i osvetljavanje profitabilnosti.",
+  matrica: "V×M matrica za identifikaciju zvezda i zamki volumena.",
+  dnevna: "Dnevna analiza prodaje i promene.",
+  abc: "ABC klasifikacija i lifecycle za SKU.",
+  zalihe: "Pregled zaliha i predviđanje deplecije.",
+  nabavka: "Predlozi prioriteta nabavke i reorder planovi.",
+};
 
 const PERIOD_PRESETS = [
   { label: "7d", days: 7 },
@@ -2180,7 +2192,7 @@ export default function InsightStudioPage() {
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">🔬</span>
-          <h1 className="text-xl font-bold text-white">Insight Studio</h1>
+          <h1 className="text-xl font-bold text-white">Insight Studio <InfoTip text="Napredna analitika: matrice, lifecycle, rizici i predlozi za nabavku." /></h1>
           <span className="rounded bg-gradient-to-r from-[var(--surface-elevated)]/20 to-[var(--surface-elevated-dark)]/20 px-2 py-0.5 text-[10px] font-semibold text-[var(--text-primary)] uppercase tracking-wider">
             Analitika 2 — Pro
           </span>
@@ -2226,7 +2238,9 @@ export default function InsightStudioPage() {
             className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition whitespace-nowrap ${
               activeTab === t.key ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-light)]"
             }`}>
-            <span>{t.icon}</span><span>{t.label}</span>
+            <span>{t.icon}</span>
+            <span>{t.label}</span>
+            {TAB_TIPS[t.key] ? <InfoTip text={TAB_TIPS[t.key]} /> : null}
           </button>
         ))}
       </div>
