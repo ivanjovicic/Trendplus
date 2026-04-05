@@ -230,6 +230,7 @@ export default function SupplierSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
+  const detailSectionRef = useRef<HTMLElement>(null);
 
   const initialRange = useMemo(() => getPresetRange("90d"), []);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
@@ -435,6 +436,18 @@ export default function SupplierSalesStatsPage() {
       setExpandedSupplierKey(null);
     }
   }, [expandedSupplierKey, selectedSupplier, sortedSuppliers.length]);
+
+  useEffect(() => {
+    if (selectedSupplier && detailSectionRef.current) {
+      const delay = 100;
+      setTimeout(() => {
+        detailSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, delay);
+    }
+  }, [selectedSupplier]);
 
   const totalRevenue = data?.totals.ukupanPromet ?? 0;
   const knownSuppliers = useMemo(
@@ -970,7 +983,7 @@ export default function SupplierSalesStatsPage() {
           </section>
 
           {selectedSupplier ? (
-            <section className="supplier-decision-detail">
+            <section className="supplier-decision-detail" ref={detailSectionRef}>
               <div className="supplier-decision-detail-head">
                 <h3>Detalj odluke: {selectedSupplier.dobavljacNaziv}</h3>
                 <button type="button" onClick={() => openSupplierDetail(selectedSupplier)}>

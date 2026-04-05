@@ -222,6 +222,7 @@ export default function ColorSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
+  const detailSectionRef = useRef<HTMLElement>(null);
 
   const initialRange = useMemo(() => getPresetRange("90d"), []);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
@@ -415,6 +416,18 @@ export default function ColorSalesStatsPage() {
       setExpandedColorKey(null);
     }
   }, [expandedColorKey, selectedRow, sortedRows.length]);
+
+  useEffect(() => {
+    if (selectedRow && detailSectionRef.current) {
+      const delay = 100;
+      setTimeout(() => {
+        detailSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, delay);
+    }
+  }, [selectedRow]);
 
   const totalRevenue = data?.totals.ukupanPromet ?? 0;
   const top5SharePct = useMemo(() => {
@@ -880,7 +893,7 @@ export default function ColorSalesStatsPage() {
           </section>
 
           {selectedRow ? (
-            <section className="color-decision-detail">
+            <section className="color-decision-detail" ref={detailSectionRef}>
               <div className="color-decision-detail-head">
                 <h3>Detalj odluke: {selectedRow.boja}</h3>
                 <button type="button" onClick={() => openDetail(selectedRow)}>Otvori puni detalj</button>

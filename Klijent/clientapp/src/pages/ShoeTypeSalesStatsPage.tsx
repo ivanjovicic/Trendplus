@@ -223,6 +223,7 @@ export default function ShoeTypeSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
+  const detailSectionRef = useRef<HTMLElement>(null);
 
   const initialRange = useMemo(() => getPresetRange("90d"), []);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
@@ -417,6 +418,18 @@ export default function ShoeTypeSalesStatsPage() {
       setExpandedTypeKey(null);
     }
   }, [expandedTypeKey, selectedRow, sortedRows.length]);
+
+  useEffect(() => {
+    if (selectedRow && detailSectionRef.current) {
+      const delay = 100;
+      setTimeout(() => {
+        detailSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, delay);
+    }
+  }, [selectedRow]);
 
   const totalRevenue = data?.totals.ukupanPromet ?? 0;
   const top5SharePct = useMemo(() => {
@@ -895,7 +908,7 @@ export default function ShoeTypeSalesStatsPage() {
           </section>
 
           {selectedRow ? (
-            <section className="shoetype-decision-detail">
+            <section className="shoetype-decision-detail" ref={detailSectionRef}>
               <div className="shoetype-decision-detail-head">
                 <h3>Detalj odluke: {selectedRow.tipObuceNaziv}</h3>
                 <button type="button" onClick={() => openDetail(selectedRow)}>Otvori puni detalj</button>
