@@ -111,14 +111,25 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
     private async Task<AnalyticsDetailResponseDto?> GetSupplierSalesDetailAsync(string id, IQueryCollection query, CancellationToken ct)
     {
-        if (!int.TryParse(id, out var supplierId))
+        var context = await BuildAnalyticsContextAsync(query, ct);
+        List<SalesRow> rows;
+        string title;
+
+        if (int.TryParse(id, out var supplierId))
+        {
+            rows = context.SalesRows.Where(x => x.DobavljacId == supplierId).ToList();
+            title = rows.FirstOrDefault()?.DobavljacNaziv ?? $"Dobavljac {id}";
+        }
+        else if ((id ?? string.Empty).StartsWith("unknown", StringComparison.OrdinalIgnoreCase))
+        {
+            rows = context.SalesRows.Where(x => !x.DobavljacId.HasValue).ToList();
+            title = "Nepoznato";
+        }
+        else
         {
             return null;
         }
 
-        var context = await BuildAnalyticsContextAsync(query, ct);
-        var rows = context.SalesRows.Where(x => x.DobavljacId == supplierId).ToList();
-        var title = rows.FirstOrDefault()?.DobavljacNaziv ?? $"Dobavljac {id}";
         return BuildAggregatedDetail("supplier-sales-stats", id, title, "Prodaja po dobavljacima", rows, context);
     }
 
@@ -216,8 +227,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             .Where(d =>
                 (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                 d.ArtikalId.HasValue &&
-                (!filters.FromUtc.HasValue || d.Datum >= filters.FromUtc.Value) &&
-                (!filters.ToUtc.HasValue || d.Datum <= filters.ToUtc.Value))
+                (!filters.ToUtc.HasValue || d.Datum <= filters.ToUtc.Value) &&
+                (!filters.StoreId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == filters.StoreId.Value))
             .Select(d => new
             {
                 ArtikalId = d.ArtikalId!.Value,
@@ -366,6 +377,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var marginPct = revenueWithCost > 0m
             ? Math.Round((double)((revenueWithCost - totalCost) / revenueWithCost * 100m), 2)
             : 0d;
+        var marginContribution = Math.Round(revenueWithCost - totalCost, 2);
+        var marginDataCoveragePct = totalRevenue > 0m
+            ? Math.Round((double)(revenueWithCost / totalRevenue * 100m), 2)
+            : (double?)null;
 
         var promenaPrometa = preNivRevenue > 0m
             ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
@@ -391,7 +406,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 Field("posleNivelacijeKolicina", "Posle nivelacije kolicina", postNivQty.ToString(), "number"),
                 Field("promenaPrometa", "Promena prometa %", promenaPrometa?.ToString("0.00"), "percent", promenaPrometa.HasValue),
                 Field("promenaKolicine", "Promena kolicine %", promenaKolicine?.ToString("0.00"), "percent"),
+                Field("marginContribution", "Marzni doprinos", marginContribution.ToString("0.00"), "currency"),
                 Field("marginPct", "Marza %", marginPct.ToString("0.00"), "percent"),
+                Field("marginDataCoveragePct", "Pokrice marze %", marginDataCoveragePct?.ToString("0.00"), "percent"),
+                Field("revenueWithCost", "Promet sa poznatom nabavnom cenom", Math.Round(revenueWithCost, 2).ToString("0.00"), "currency"),
                 Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", articleIdsWithNivelacija.Count.ToString(), "number"),
                 Field("brojArtikalaUkupno", "Ukupan broj artikala", articleIds.Count.ToString(), "number")
             ],

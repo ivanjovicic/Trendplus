@@ -140,6 +140,24 @@
   color: var(--info-text, #bfdbfe);
 }
 
+.supplier-decision-quality-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.supplier-decision-quality-link {
+  border: 1px solid var(--border-default, rgba(96, 165, 250, 0.35));
+  border-radius: 999px;
+  color: var(--text-primary, #e5e7eb);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  text-decoration: none;
+}
+
 .supplier-decision-kpis {
   display: grid;
   gap: 10px;

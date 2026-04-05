@@ -1,0 +1,48 @@
+name: Apply Database Migrations
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Infrastructure/Migrations/**'
+      - 'Infrastructure/DbContexts/**'
+      - 'Api/Program.cs'
+
+jobs:
+  migrate:
+    name: EF Core Migration
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+      ASPNETCORE_ENVIRONMENT: Production # Ili koji env koristiš za secrets
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          cache: true # Omogućuje automatski NuGet caching
+
+      - name: Install EF Tool
+        run: |
+          dotnet tool install --global dotnet-ef || echo "EF tool already installed"
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Apply Migrations
+        env:
+          ConnectionStrings__DefaultConnection: ${{ secrets.DB_CONNECTION }}
+        run: |
+          dotnet ef database update \
+            --project Infrastructure \
+            --startup-project Api \
+            --context TrendplusDbContext \
+            --verbose

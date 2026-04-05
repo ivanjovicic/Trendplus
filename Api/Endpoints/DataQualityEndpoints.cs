@@ -1,6 +1,9 @@
 using Application.Analytics.Queries.GetDataQualityIssues;
+using Infrastructure.Configuration;
+using Infrastructure.Services;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Trendplus2.Endpoints;
 
@@ -8,6 +11,38 @@ public static class DataQualityEndpoints
 {
     public static void MapDataQualityEndpoints(this WebApplication app)
     {
+        app.MapGet("/api/analytics/data-quality/health", async (
+            AnalyticsDataQualityHealthService healthService,
+            IOptions<AnalyticsDataQualityHealthOptions> options,
+            int? lookbackDays,
+            CancellationToken ct) =>
+        {
+            var requestedLookback = lookbackDays ?? options.Value.LookbackDays;
+            var snapshot = await healthService.CaptureAsync(requestedLookback, ct);
+
+            return Results.Ok(new
+            {
+                generatedAt = snapshot.GeneratedAtUtc,
+                lookbackDays = snapshot.LookbackDays,
+                windowFrom = snapshot.WindowFromUtc,
+                windowTo = snapshot.WindowToUtc,
+                orphanArticleCount = snapshot.OrphanArticleCount,
+                totalRevenue = snapshot.TotalRevenue,
+                missingCostRevenue = snapshot.MissingCostRevenue,
+                missingCostRevenueSharePct = snapshot.MissingCostRevenueSharePct,
+                unknownSupplierRevenue = snapshot.UnknownSupplierRevenue,
+                unknownSupplierRevenueSharePct = snapshot.UnknownSupplierRevenueSharePct,
+                thresholds = new
+                {
+                    orphanArticleCount = options.Value.WarningOrphanArticleCount,
+                    missingCostRevenueSharePct = options.Value.WarningMissingCostRevenueSharePct,
+                    unknownSupplierRevenueSharePct = options.Value.WarningUnknownSupplierRevenueSharePct
+                }
+            });
+        })
+        .WithTags("Analytics")
+        .RequireRateLimiting("analytics");
+
         app.MapGet("/api/analytics/data-quality/list", async (
             [AsParameters] DataQualityListRequest request,
             IMediator mediator,

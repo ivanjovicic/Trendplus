@@ -971,6 +971,7 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/supplier-sales-stats", async (
             TrendplusDbContext db,
+            IMemoryCache cache,
             ILogger<Program> logger,
             int? sezonaId = null,
             DateTime? fromDate = null,
@@ -978,6 +979,9 @@ public static class AllEndpoints
             int? storeId = null,
             CancellationToken ct = default) =>
         {
+            DateTime? fromUtc = null;
+            DateTime? toUtc = null;
+
             try
             {
                 static DateTime? NormalizeUtc(DateTime? value)
@@ -989,8 +993,8 @@ public static class AllEndpoints
                         : date.ToUniversalTime();
                 }
 
-                DateTime? fromUtc = NormalizeUtc(fromDate);
-                DateTime? toUtc = NormalizeUtc(toDate);
+                fromUtc = NormalizeUtc(fromDate);
+                toUtc = NormalizeUtc(toDate);
 
                 if (sezonaId.HasValue)
                 {
@@ -1025,6 +1029,12 @@ public static class AllEndpoints
                     });
                 }
 
+                var cacheKey = $"supplier-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}";
+                if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
+                {
+                    return Results.Ok(cachedResponse);
+                }
+
                 var dataWindow = await db.ProdajaZaglavlja.AsNoTracking()
                     .Where(pz => !storeId.HasValue || pz.IDObjekat == storeId.Value)
                     .GroupBy(_ => 1)
@@ -1042,49 +1052,77 @@ public static class AllEndpoints
                     ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
                     : null;
 
-                var nivelacije = await db.DnevnikPromena.AsNoTracking()
+                var supplierNames = await db.Dobavljaci.AsNoTracking()
+                    .Select(d => new { d.Id, d.Naziv })
+                    .ToDictionaryAsync(
+                        x => x.Id,
+                        x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
+                        ct);
+
+                var prvaNivelacijaPoArtiklu = await db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!fromUtc.HasValue || d.Datum >= fromUtc.Value) &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value))
-                    .Select(d => new
+                        (!toUtc.HasValue || d.Datum <= toUtc.Value) &&
+                        (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
+                    .GroupBy(d => d.ArtikalId!.Value)
+                    .Select(g => new
                     {
-                        ArtikalId = d.ArtikalId!.Value,
-                        DatumNivelacije = d.Datum,
-                        d.StaraProdajnaCena,
-                        d.NovaProdajnaCena
+                        ArtikalId = g.Key,
+                        PrvaDatum = g.Min(x => x.Datum)
                     })
-                    .ToListAsync(ct);
-
-                var prvaNivelacijaPoArtiklu = nivelacije
-                    .GroupBy(n => n.ArtikalId)
-                    .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
+                    .ToDictionaryAsync(x => x.ArtikalId, x => x.PrvaDatum, ct);
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                    join d in db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
-                    from d in dj.DefaultIfEmpty()
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                    group new
+                    {
+                        ps.Kolicina,
+                        Prihod = ps.Kolicina * ps.Cena,
+                        EffNabavnaCena = ps.NabavnaCena ?? a.NabavnaCena
+                    } by new
+                    {
+                        SupplierId = a.IDDobavljac,
+                        ArtikalId = a.Id,
+                        DatumProdaje = pz.DatumProdaje
+                    }
+                    into g
                     select new
                     {
-                        DobavljacId = d != null ? d.Id : (int?)null,
-                        DobavljacNaziv = d != null ? d.Naziv : "Nepoznato",
-                        ArtikalId = a.Id,
-                        ps.Kolicina,
-                        ps.Cena,
-                        Prihod = ps.Kolicina * ps.Cena,
-                        NabavnaCena = ps.NabavnaCena ?? a.NabavnaCena,
-                        DatumProdaje = pz.DatumProdaje
+                        DobavljacId = g.Key.SupplierId,
+                        ArtikalId = g.Key.ArtikalId,
+                        DatumProdaje = g.Key.DatumProdaje,
+                        Kolicina = g.Sum(x => x.Kolicina),
+                        Prihod = g.Sum(x => x.Prihod),
+                        TotalCost = g.Sum(x => x.EffNabavnaCena.HasValue ? x.Kolicina * x.EffNabavnaCena.Value : 0m),
+                        RevenueWithCost = g.Sum(x => x.EffNabavnaCena.HasValue ? x.Prihod : 0m),
+                        MissingCostQty = g.Sum(x => x.EffNabavnaCena.HasValue ? 0 : x.Kolicina)
                     })
                     .ToListAsync(ct);
 
+                string ResolveSupplierName(int? supplierId)
+                {
+                    if (!supplierId.HasValue)
+                    {
+                        return "Nepoznato";
+                    }
+
+                    return supplierNames.TryGetValue(supplierId.Value, out var name) && !string.IsNullOrWhiteSpace(name)
+                        ? name
+                        : "Nepoznato";
+                }
+
                 var suppliers = stavke
-                    .GroupBy(s => new { s.DobavljacId, s.DobavljacNaziv })
+                    .GroupBy(s => new
+                    {
+                        s.DobavljacId,
+                        DobavljacNaziv = ResolveSupplierName(s.DobavljacId)
+                    })
                     .Select(g =>
                     {
                         decimal preNivRevenue = 0m;
@@ -1095,6 +1133,7 @@ public static class AllEndpoints
                         int totalQty = 0;
                         decimal totalCost = 0m;
                         decimal revenueWithCost = 0m;
+                        decimal revenueWithNivelacijaSplit = 0m;
 
                         var articleIds = new HashSet<int>();
                         var articleIdsWithNivelacija = new HashSet<int>();
@@ -1104,12 +1143,8 @@ public static class AllEndpoints
                             totalRevenue += s.Prihod;
                             totalQty += s.Kolicina;
                             articleIds.Add(s.ArtikalId);
-
-                            if (s.NabavnaCena.HasValue)
-                            {
-                                totalCost += s.Kolicina * s.NabavnaCena.Value;
-                                revenueWithCost += s.Prihod;
-                            }
+                            totalCost += s.TotalCost;
+                            revenueWithCost += s.RevenueWithCost;
 
                             if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
                             {
@@ -1117,6 +1152,7 @@ public static class AllEndpoints
                             }
 
                             articleIdsWithNivelacija.Add(s.ArtikalId);
+                            revenueWithNivelacijaSplit += s.Prihod;
 
                             if (s.DatumProdaje < nivDatum)
                             {
@@ -1133,6 +1169,7 @@ public static class AllEndpoints
                         var marginPct = revenueWithCost > 0m
                             ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
                             : 0d;
+                        var marginContribution = revenueWithCost - totalCost;
 
                         var normalizedSupplierName = string.IsNullOrWhiteSpace(g.Key.DobavljacNaziv)
                             ? "Nepoznato"
@@ -1153,7 +1190,13 @@ public static class AllEndpoints
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
                             brojArtikalaUkupno = articleIds.Count,
+                            revenueWithCost = Math.Round(revenueWithCost, 2),
+                            marginContribution = Math.Round(marginContribution, 2),
+                            marginDataCoveragePct = totalRevenue > 0m
+                                ? Math.Round((double)(revenueWithCost / totalRevenue * 100m), 2)
+                                : (double?)null,
                             marginPct = Math.Round(marginPct, 2),
+                            revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
                             promenaPrometa = preNivRevenue > 0m
                                 ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
                                 : (double?)null,
@@ -1183,10 +1226,55 @@ public static class AllEndpoints
 
                 var sumPreRevenue = suppliers.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = suppliers.Sum(r => r.posleNivelacijePromet);
+                var totalRevenue = suppliers.Sum(r => r.ukupanPromet);
+                var revenueWithNivelacijaSplit = suppliers.Sum(r => r.revenueWithNivelacijaSplit);
+                var unknownSupplierRevenue = suppliers.Where(r => r.isUnknown).Sum(r => r.ukupanPromet);
+                var missingCostRevenue = totalRevenue - stavke.Sum(s => s.RevenueWithCost);
+                var missingCostQty = stavke.Sum(s => s.MissingCostQty);
+
+                var dataQuality = new
+                {
+                    missingCostQty,
+                    missingCostRevenue = Math.Round(missingCostRevenue, 2),
+                    missingCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    unknownSupplierRevenue = Math.Round(unknownSupplierRevenue, 2),
+                    unknownSupplierRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(unknownSupplierRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                    revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+                        : (double?)null
+                };
+
+                if (dataQuality.missingCostRevenueSharePct.HasValue && dataQuality.missingCostRevenueSharePct.Value >= 10d)
+                {
+                    logger.LogWarning(
+                        "Supplier-sales-stats margin reliability degraded due to missing purchase cost. MissingCostRevenueSharePct={MissingCostRevenueSharePct} BatchStoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                        dataQuality.missingCostRevenueSharePct.Value,
+                        storeId,
+                        sezonaId,
+                        fromUtc,
+                        toUtc);
+                }
+
+                if (dataQuality.revenueWithNivelacijaSplitSharePct.HasValue && dataQuality.revenueWithNivelacijaSplitSharePct.Value < 60d)
+                {
+                    logger.LogInformation(
+                        "Supplier-sales-stats pre/post split covers only part of revenue. CoveragePct={CoveragePct} StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                        dataQuality.revenueWithNivelacijaSplitSharePct.Value,
+                        storeId,
+                        sezonaId,
+                        fromUtc,
+                        toUtc);
+                }
 
                 var totals = new
                 {
-                    ukupanPromet = suppliers.Sum(r => r.ukupanPromet),
+                    ukupanPromet = totalRevenue,
+                    ukupanMarzniDoprinos = suppliers.Sum(r => r.marginContribution),
                     prePromet = sumPreRevenue,
                     poslePromet = sumPostRevenue,
                     ukupnaKolicina = suppliers.Sum(r => r.ukupnaKolicina),
@@ -1217,7 +1305,7 @@ public static class AllEndpoints
                     })
                     .ToList();
 
-                return Results.Ok(new
+                var response = new
                 {
                     generatedAt = DateTime.UtcNow,
                     fromDate = fromUtc,
@@ -1228,11 +1316,23 @@ public static class AllEndpoints
                     storeId,
                     suppliers,
                     totals,
+                    dataQuality,
                     sezone
-                });
+                };
+
+                cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+                return Results.Ok(response);
             }
             catch (Exception ex)
             {
+                logger.LogError(
+                    ex,
+                    "Supplier-sales-stats failed. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    storeId,
+                    sezonaId,
+                    fromUtc,
+                    toUtc);
+
                 return Results.Problem(
                     title: "Greška pri učitavanju statistike prodaje po dobavljačima",
                     detail: ex.Message,
@@ -1245,12 +1345,17 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/shoe-type-sales-stats", async (
             TrendplusDbContext db,
+            IMemoryCache cache,
+            ILogger<Program> logger,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
             CancellationToken ct = default) =>
         {
+            DateTime? fromUtc = null;
+            DateTime? toUtc = null;
+
             try
             {
                 static DateTime? NormalizeUtc(DateTime? value)
@@ -1262,8 +1367,8 @@ public static class AllEndpoints
                         : date.ToUniversalTime();
                 }
 
-                DateTime? fromUtc = NormalizeUtc(fromDate);
-                DateTime? toUtc = NormalizeUtc(toDate);
+                fromUtc = NormalizeUtc(fromDate);
+                toUtc = NormalizeUtc(toDate);
 
                 if (sezonaId.HasValue)
                 {
@@ -1298,6 +1403,12 @@ public static class AllEndpoints
                     });
                 }
 
+                var cacheKey = $"shoe-type-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}";
+                if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
+                {
+                    return Results.Ok(cachedResponse);
+                }
+
                 var dataWindow = await db.ProdajaZaglavlja.AsNoTracking()
                     .Where(pz => !storeId.HasValue || pz.IDObjekat == storeId.Value)
                     .GroupBy(_ => 1)
@@ -1315,49 +1426,60 @@ public static class AllEndpoints
                     ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
                     : null;
 
-                var nivelacije = await db.DnevnikPromena.AsNoTracking()
+                var prvaNivelacijaPoArtiklu = await db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!fromUtc.HasValue || d.Datum >= fromUtc.Value) &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value))
-                    .Select(d => new
+                        (!toUtc.HasValue || d.Datum <= toUtc.Value) &&
+                        (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
+                    .GroupBy(d => d.ArtikalId!.Value)
+                    .Select(g => new
                     {
-                        ArtikalId = d.ArtikalId!.Value,
-                        DatumNivelacije = d.Datum,
-                        d.StaraProdajnaCena,
-                        d.NovaProdajnaCena
+                        ArtikalId = g.Key,
+                        PrvaDatum = g.Min(x => x.Datum)
                     })
-                    .ToListAsync(ct);
+                    .ToDictionaryAsync(x => x.ArtikalId, x => x.PrvaDatum, ct);
 
-                var prvaNivelacijaPoArtiklu = nivelacije
-                    .GroupBy(n => n.ArtikalId)
-                    .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
+                var tipObuceNazivMap = await db.TipoviObuce.AsNoTracking()
+                    .Select(t => new { t.Id, t.Naziv })
+                    .ToDictionaryAsync(
+                        x => x.Id,
+                        x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
+                        ct);
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                    join t in db.TipoviObuce.AsNoTracking() on a.IDTipObuce equals t.Id into tj
-                    from t in tj.DefaultIfEmpty()
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                    group new
+                    {
+                        ps.Kolicina,
+                        Prihod = ps.Kolicina * ps.Cena,
+                        EffNabavnaCena = ps.NabavnaCena ?? a.NabavnaCena
+                    } by new
+                    {
+                        TipObuceId = a.IDTipObuce,
+                        ArtikalId = a.Id,
+                        DatumProdaje = pz.DatumProdaje
+                    }
+                    into g
                     select new
                     {
-                        TipObuceId = t != null ? t.Id : (int?)null,
-                        TipObuceNaziv = t != null ? t.Naziv : "Nepoznato",
-                        ArtikalId = a.Id,
-                        ps.Kolicina,
-                        ps.Cena,
-                        Prihod = ps.Kolicina * ps.Cena,
-                        NabavnaCena = ps.NabavnaCena ?? a.NabavnaCena,
-                        DatumProdaje = pz.DatumProdaje
+                        TipObuceId = g.Key.TipObuceId,
+                        ArtikalId = g.Key.ArtikalId,
+                        DatumProdaje = g.Key.DatumProdaje,
+                        Kolicina = g.Sum(x => x.Kolicina),
+                        Prihod = g.Sum(x => x.Prihod),
+                        TotalCost = g.Sum(x => x.EffNabavnaCena.HasValue ? x.Kolicina * x.EffNabavnaCena.Value : 0m),
+                        RevenueWithCost = g.Sum(x => x.EffNabavnaCena.HasValue ? x.Prihod : 0m)
                     })
                     .ToListAsync(ct);
 
                 var shoeTypes = stavke
-                    .GroupBy(s => new { s.TipObuceId, s.TipObuceNaziv })
+                    .GroupBy(s => s.TipObuceId)
                     .Select(g =>
                     {
                         decimal preNivRevenue = 0m;
@@ -1368,6 +1490,7 @@ public static class AllEndpoints
                         int totalQty = 0;
                         decimal totalCost = 0m;
                         decimal revenueWithCost = 0m;
+                        decimal revenueWithNivelacijaSplit = 0m;
 
                         var articleIds = new HashSet<int>();
                         var articleIdsWithNivelacija = new HashSet<int>();
@@ -1377,12 +1500,8 @@ public static class AllEndpoints
                             totalRevenue += s.Prihod;
                             totalQty += s.Kolicina;
                             articleIds.Add(s.ArtikalId);
-
-                            if (s.NabavnaCena.HasValue)
-                            {
-                                totalCost += s.Kolicina * s.NabavnaCena.Value;
-                                revenueWithCost += s.Prihod;
-                            }
+                            totalCost += s.TotalCost;
+                            revenueWithCost += s.RevenueWithCost;
 
                             if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
                             {
@@ -1390,6 +1509,7 @@ public static class AllEndpoints
                             }
 
                             articleIdsWithNivelacija.Add(s.ArtikalId);
+                            revenueWithNivelacijaSplit += s.Prihod;
 
                             if (s.DatumProdaje < nivDatum)
                             {
@@ -1406,11 +1526,15 @@ public static class AllEndpoints
                         var marginPct = revenueWithCost > 0m
                             ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
                             : 0d;
+                        var marginContribution = revenueWithCost - totalCost;
+                        var tipObuceNaziv = g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var naziv)
+                            ? naziv
+                            : "Nepoznato";
 
                         return new
                         {
-                            tipObuceId = g.Key.TipObuceId,
-                            tipObuceNaziv = string.IsNullOrWhiteSpace(g.Key.TipObuceNaziv) ? "Nepoznato" : g.Key.TipObuceNaziv,
+                            tipObuceId = g.Key,
+                            tipObuceNaziv = tipObuceNaziv,
                             preNivelacijePromet = Math.Round(preNivRevenue, 2),
                             preNivelacijeKolicina = preNivQty,
                             posleNivelacijePromet = Math.Round(postNivRevenue, 2),
@@ -1419,7 +1543,13 @@ public static class AllEndpoints
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
                             brojArtikalaUkupno = articleIds.Count,
+                            revenueWithCost = Math.Round(revenueWithCost, 2),
+                            marginContribution = Math.Round(marginContribution, 2),
+                            marginDataCoveragePct = totalRevenue > 0m
+                                ? Math.Round((double)(revenueWithCost / totalRevenue * 100m), 2)
+                                : (double?)null,
                             marginPct = Math.Round(marginPct, 2),
+                            revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
                             promenaPrometa = preNivRevenue > 0m
                                 ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
                                 : (double?)null,
@@ -1433,10 +1563,34 @@ public static class AllEndpoints
 
                 var sumPreRevenue = shoeTypes.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = shoeTypes.Sum(r => r.posleNivelacijePromet);
+                var totalRevenue = shoeTypes.Sum(r => r.ukupanPromet);
+                var revenueWithNivelacijaSplit = shoeTypes.Sum(r => r.revenueWithNivelacijaSplit);
+                var totalRevenueWithCost = stavke.Sum(s => s.RevenueWithCost);
+                var missingCostRevenue = totalRevenue - totalRevenueWithCost;
+                var unknownTypeRevenue = shoeTypes
+                    .Where(r => string.Equals(r.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Sum(r => r.ukupanPromet);
+
+                var dataQuality = new
+                {
+                    missingCostRevenue = Math.Round(missingCostRevenue, 2),
+                    missingCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    unknownTypeRevenue = Math.Round(unknownTypeRevenue, 2),
+                    unknownTypeRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(unknownTypeRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                    revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+                        : (double?)null
+                };
 
                 var totals = new
                 {
-                    ukupanPromet = shoeTypes.Sum(r => r.ukupanPromet),
+                    ukupanPromet = totalRevenue,
+                    ukupanMarzniDoprinos = shoeTypes.Sum(r => r.marginContribution),
                     prePromet = sumPreRevenue,
                     poslePromet = sumPostRevenue,
                     ukupnaKolicina = shoeTypes.Sum(r => r.ukupnaKolicina),
@@ -1467,7 +1621,7 @@ public static class AllEndpoints
                     })
                     .ToList();
 
-                return Results.Ok(new
+                var response = new
                 {
                     generatedAt = DateTime.UtcNow,
                     fromDate = fromUtc,
@@ -1478,11 +1632,23 @@ public static class AllEndpoints
                     storeId,
                     shoeTypes,
                     totals,
+                    dataQuality,
                     sezone
-                });
+                };
+
+                cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+                return Results.Ok(response);
             }
             catch (Exception ex)
             {
+                logger.LogError(
+                    ex,
+                    "Shoe-type-sales-stats failed. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    storeId,
+                    sezonaId,
+                    fromUtc,
+                    toUtc);
+
                 return Results.Problem(
                     title: "Greska pri ucitavanju statistike prodaje po tipu obuce",
                     detail: ex.Message,
@@ -1495,12 +1661,16 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/color-sales-stats", async (
             TrendplusDbContext db,
+            ILogger<Program> logger,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
             CancellationToken ct = default) =>
         {
+            DateTime? fromUtc = null;
+            DateTime? toUtc = null;
+
             try
             {
                 static DateTime? NormalizeUtc(DateTime? value)
@@ -1515,8 +1685,8 @@ public static class AllEndpoints
                 static string NormalizeColor(string? value) =>
                     string.IsNullOrWhiteSpace(value) ? "Nepoznato" : value.Trim();
 
-                DateTime? fromUtc = NormalizeUtc(fromDate);
-                DateTime? toUtc = NormalizeUtc(toDate);
+                fromUtc = NormalizeUtc(fromDate);
+                toUtc = NormalizeUtc(toDate);
 
                 if (sezonaId.HasValue)
                 {
@@ -1572,14 +1742,12 @@ public static class AllEndpoints
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!fromUtc.HasValue || d.Datum >= fromUtc.Value) &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value))
+                        (!toUtc.HasValue || d.Datum <= toUtc.Value) &&
+                        (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
                     .Select(d => new
                     {
                         ArtikalId = d.ArtikalId!.Value,
-                        DatumNivelacije = d.Datum,
-                        d.StaraProdajnaCena,
-                        d.NovaProdajnaCena
+                        DatumNivelacije = d.Datum
                     })
                     .ToListAsync(ct);
 
@@ -1594,15 +1762,22 @@ public static class AllEndpoints
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                    select new
+                    group new { ps, a, pz } by new
                     {
                         Boja = a.Boja,
                         ArtikalId = a.Id,
-                        ps.Kolicina,
-                        ps.Cena,
-                        Prihod = ps.Kolicina * ps.Cena,
                         NabavnaCena = ps.NabavnaCena ?? a.NabavnaCena,
                         DatumProdaje = pz.DatumProdaje
+                    }
+                    into g
+                    select new
+                    {
+                        Boja = g.Key.Boja,
+                        ArtikalId = g.Key.ArtikalId,
+                        Kolicina = g.Sum(x => x.ps.Kolicina),
+                        Prihod = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                        NabavnaCena = g.Key.NabavnaCena,
+                        DatumProdaje = g.Key.DatumProdaje
                     })
                     .ToListAsync(ct);
 
@@ -1618,6 +1793,7 @@ public static class AllEndpoints
                         int totalQty = 0;
                         decimal totalCost = 0m;
                         decimal revenueWithCost = 0m;
+                        decimal revenueWithNivelacijaSplit = 0m;
 
                         var articleIds = new HashSet<int>();
                         var articleIdsWithNivelacija = new HashSet<int>();
@@ -1640,6 +1816,7 @@ public static class AllEndpoints
                             }
 
                             articleIdsWithNivelacija.Add(s.ArtikalId);
+                            revenueWithNivelacijaSplit += s.Prihod;
 
                             if (s.DatumProdaje < nivDatum)
                             {
@@ -1656,6 +1833,7 @@ public static class AllEndpoints
                         var marginPct = revenueWithCost > 0m
                             ? (double)((revenueWithCost - totalCost) / revenueWithCost * 100m)
                             : 0d;
+                        var marginContribution = revenueWithCost - totalCost;
 
                         return new
                         {
@@ -1668,7 +1846,13 @@ public static class AllEndpoints
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
                             brojArtikalaUkupno = articleIds.Count,
+                            revenueWithCost = Math.Round(revenueWithCost, 2),
+                            marginContribution = Math.Round(marginContribution, 2),
+                            marginDataCoveragePct = totalRevenue > 0m
+                                ? Math.Round((double)(revenueWithCost / totalRevenue * 100m), 2)
+                                : (double?)null,
                             marginPct = Math.Round(marginPct, 2),
+                            revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
                             promenaPrometa = preNivRevenue > 0m
                                 ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
                                 : (double?)null,
@@ -1682,10 +1866,33 @@ public static class AllEndpoints
 
                 var sumPreRevenue = colors.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = colors.Sum(r => r.posleNivelacijePromet);
+                var totalRevenue = colors.Sum(r => r.ukupanPromet);
+                var revenueWithNivelacijaSplit = colors.Sum(r => r.revenueWithNivelacijaSplit);
+                var missingCostRevenue = stavke.Where(s => !s.NabavnaCena.HasValue).Sum(s => s.Prihod);
+                var unknownColorRevenue = colors
+                    .Where(r => string.Equals(r.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Sum(r => r.ukupanPromet);
+
+                var dataQuality = new
+                {
+                    missingCostRevenue = Math.Round(missingCostRevenue, 2),
+                    missingCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    unknownColorRevenue = Math.Round(unknownColorRevenue, 2),
+                    unknownColorRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(unknownColorRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                    revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+                        : (double?)null
+                };
 
                 var totals = new
                 {
-                    ukupanPromet = colors.Sum(r => r.ukupanPromet),
+                    ukupanPromet = totalRevenue,
+                    ukupanMarzniDoprinos = colors.Sum(r => r.marginContribution),
                     prePromet = sumPreRevenue,
                     poslePromet = sumPostRevenue,
                     ukupnaKolicina = colors.Sum(r => r.ukupnaKolicina),
@@ -1727,11 +1934,20 @@ public static class AllEndpoints
                     storeId,
                     colors,
                     totals,
+                    dataQuality,
                     sezone
                 });
             }
             catch (Exception ex)
             {
+                logger.LogError(
+                    ex,
+                    "Color-sales-stats failed. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    storeId,
+                    sezonaId,
+                    fromUtc,
+                    toUtc);
+
                 return Results.Problem(
                     title: "Greska pri ucitavanju statistike prodaje po boji artikla",
                     detail: ex.Message,

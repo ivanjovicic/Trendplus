@@ -167,6 +167,7 @@ type StatusReasonSignals = {
   marginPct: number;
   avgMargin: number;
   reliabilityPct: number;
+  marginCoveragePct: number | null;
 };
 
 type StatusTooltipData = {
@@ -183,9 +184,11 @@ function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals)
   const positiveTrend = (signals.trendPct ?? 0) > 0;
   const negativeTrend = (signals.trendPct ?? 0) < 0;
   const strongMargin = signals.marginPct >= signals.avgMargin;
+  const limitedMarginCoverage = (signals.marginCoveragePct ?? 0) < 70;
 
   if (status === "Pojacaj") {
     if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
+    if (limitedMarginCoverage) return "Promet i trend su dobri, ali marza je zasnovana na delimicno pokrivenim nabavnim cenama.";
     if (positiveTrend && strongMargin) return "Jak promet, zdrava marza i rastuci trend.";
     if (positiveTrend) return "Dobar promet i pozitivan trend; kandidat za veci fokus.";
     return "Stabilan doprinos i solidna marza; opravdan fokus u nabavci.";
@@ -193,6 +196,7 @@ function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals)
 
   if (status === "Zadrzi") {
     if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
+    if (limitedMarginCoverage) return "Marza je samo delimicno pokrivena nabavnim cenama; zadrzati dok se podaci ne dopune.";
     if (negativeTrend && !strongMargin) return "Trend slabi i marza je ispod proseka; zadrzati uz pojacan nadzor.";
     return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
   }
@@ -327,14 +331,15 @@ export default function ShoeTypeSalesStatsPage() {
 
     return rows.map((item) => {
       const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : 0;
-      const marginContribution = item.ukupanPromet * (item.marginPct / 100);
+      const marginContribution = item.marginContribution;
       const trendPct = item.promenaPrometa;
       const coveragePct = item.brojArtikalaUkupno > 0
         ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
         : 0;
+      const marginCoveragePct = item.marginDataCoveragePct ?? 0;
 
       const knownType = !UNKNOWN_TYPES.has(normalizeName(item.tipObuceNaziv));
-      const reliabilityPct = clamp(coveragePct * 0.8 + (knownType ? 20 : 0), 0, 100);
+      const reliabilityPct = clamp(coveragePct * 0.6 + marginCoveragePct * 0.2 + (knownType ? 20 : 0), 0, 100);
 
       const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
       const marginNorm = marginSpan > 0
@@ -359,6 +364,7 @@ export default function ShoeTypeSalesStatsPage() {
         marginPct: item.marginPct,
         avgMargin,
         reliabilityPct,
+        marginCoveragePct: item.marginDataCoveragePct,
       });
 
       return {
@@ -423,8 +429,8 @@ export default function ShoeTypeSalesStatsPage() {
   }, [sortedRows, totalRevenue]);
 
   const totalMarginContribution = useMemo(
-    () => sortedRows.reduce((sum, row) => sum + row.marginContribution, 0),
-    [sortedRows]
+    () => data?.totals.ukupanMarzniDoprinos ?? 0,
+    [data?.totals.ukupanMarzniDoprinos]
   );
 
   const periodGrowthPct = useMemo(() => {
@@ -488,6 +494,30 @@ export default function ShoeTypeSalesStatsPage() {
     return "Nema podataka za izabrane filtere.";
   }, [activeFilters.fromDate, activeFilters.toDate, data, sortedRows.length]);
 
+  const qualityNotes = useMemo(() => {
+    if (!data) return [] as string[];
+
+    const notes: string[] = [];
+    const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct;
+    const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
+    const knownCostShare = missingCostShare == null ? null : Math.max(0, 100 - missingCostShare);
+    const unknownShare = data.dataQuality.unknownTypeRevenueSharePct;
+
+    if (splitCoverage != null && splitCoverage < 60) {
+      notes.push(`Pre/posle nivelacije trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa taj signal treba citati kao delimican.`);
+    }
+
+    if (knownCostShare != null && knownCostShare < 100) {
+      notes.push(`Marza i marzni doprinos su zasnovani na ${fmtPct(knownCostShare, 1)} prometa sa poznatom nabavnom cenom.`);
+    }
+
+    if (unknownShare != null && unknownShare > 0) {
+      notes.push(`Nepoznati tipovi obuce ucestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
+    }
+
+    return notes;
+  }, [data]);
+
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
@@ -502,11 +532,21 @@ export default function ShoeTypeSalesStatsPage() {
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "tipova", label: "Tipova", value: data?.totals.brojTipovaObuce ?? 0 },
+      { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "splitCoverage", label: "Pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
       { key: "boost", label: "Pojacaj", value: counts.boost },
       { key: "keep", label: "Zadrzi", value: counts.keep },
       { key: "reduce", label: "Smanji", value: counts.reduce },
     ],
-    [counts.boost, counts.keep, counts.reduce, data?.generatedAt, data?.totals.brojTipovaObuce]
+    [
+      counts.boost,
+      counts.keep,
+      counts.reduce,
+      data?.dataQuality.missingCostRevenueSharePct,
+      data?.dataQuality.revenueWithNivelacijaSplitSharePct,
+      data?.generatedAt,
+      data?.totals.brojTipovaObuce,
+    ]
   );
 
   const openDetail = useCallback((row: DecisionShoeType) => {
@@ -692,6 +732,11 @@ export default function ShoeTypeSalesStatsPage() {
       {loading ? <div className="shoetype-decision-message loading">Ucitavam tipove obuce...</div> : null}
       {!loading && !error && emptyStateHint ? (
         <div className="shoetype-decision-message info">{emptyStateHint}</div>
+      ) : null}
+      {!loading && !error && qualityNotes.length > 0 ? (
+        <div className="shoetype-decision-message info">
+          <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
+        </div>
       ) : null}
 
       {!loading && data ? (
@@ -880,6 +925,10 @@ export default function ShoeTypeSalesStatsPage() {
                 <article>
                   <span>Pouzdanost podataka</span>
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
+                </article>
+                <article>
+                  <span>Pokrice marze</span>
+                  <strong>{fmtPct(selectedRow.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
                   <span>Marza %</span>

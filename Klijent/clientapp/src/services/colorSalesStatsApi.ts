@@ -10,13 +10,18 @@ export interface ColorSalesStat {
   ukupnaKolicina: number;
   brojArtikalaSaNivelacijom: number;
   brojArtikalaUkupno: number;
+  revenueWithCost: number;
+  marginContribution: number;
+  marginDataCoveragePct: number | null;
   marginPct: number;
+  revenueWithNivelacijaSplit: number;
   promenaPrometa: number | null;
   promenaKolicine: number | null;
 }
 
 export interface ColorSalesTotals {
   ukupanPromet: number;
+  ukupanMarzniDoprinos: number;
   prePromet: number;
   poslePromet: number;
   ukupnaKolicina: number;
@@ -24,6 +29,15 @@ export interface ColorSalesTotals {
   posleKolicina: number;
   brojBoja: number;
   promenaPrometaPct: number | null;
+}
+
+export interface ColorSalesDataQuality {
+  missingCostRevenue: number;
+  missingCostRevenueSharePct: number | null;
+  unknownColorRevenue: number;
+  unknownColorRevenueSharePct: number | null;
+  revenueWithNivelacijaSplit: number;
+  revenueWithNivelacijaSplitSharePct: number | null;
 }
 
 export interface SezonaOption {
@@ -43,6 +57,7 @@ export interface ColorSalesStatsResponse {
   storeId: number | null;
   colors: ColorSalesStat[];
   totals: ColorSalesTotals;
+  dataQuality: ColorSalesDataQuality;
   sezone: SezonaOption[];
 }
 

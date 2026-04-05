@@ -11,13 +11,18 @@ export interface ShoeTypeSalesStat {
   ukupnaKolicina: number;
   brojArtikalaSaNivelacijom: number;
   brojArtikalaUkupno: number;
+  revenueWithCost: number;
+  marginContribution: number;
+  marginDataCoveragePct: number | null;
   marginPct: number;
+  revenueWithNivelacijaSplit: number;
   promenaPrometa: number | null;
   promenaKolicine: number | null;
 }
 
 export interface ShoeTypeSalesTotals {
   ukupanPromet: number;
+  ukupanMarzniDoprinos: number;
   prePromet: number;
   poslePromet: number;
   ukupnaKolicina: number;
@@ -25,6 +30,15 @@ export interface ShoeTypeSalesTotals {
   posleKolicina: number;
   brojTipovaObuce: number;
   promenaPrometaPct: number | null;
+}
+
+export interface ShoeTypeSalesDataQuality {
+  missingCostRevenue: number;
+  missingCostRevenueSharePct: number | null;
+  unknownTypeRevenue: number;
+  unknownTypeRevenueSharePct: number | null;
+  revenueWithNivelacijaSplit: number;
+  revenueWithNivelacijaSplitSharePct: number | null;
 }
 
 export interface SezonaOption {
@@ -44,6 +58,7 @@ export interface ShoeTypeSalesStatsResponse {
   storeId: number | null;
   shoeTypes: ShoeTypeSalesStat[];
   totals: ShoeTypeSalesTotals;
+  dataQuality: ShoeTypeSalesDataQuality;
   sezone: SezonaOption[];
 }
 

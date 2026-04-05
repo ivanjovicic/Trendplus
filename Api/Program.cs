@@ -96,6 +96,8 @@ try
     builder.Services.Configure<GoogleShoppingOptions>(builder.Configuration.GetSection(GoogleShoppingOptions.Section));
     builder.Services.Configure<RuntimeScoringOptions>(builder.Configuration.GetSection(RuntimeScoringOptions.Section));
     builder.Services.Configure<AccessImportOptions>(builder.Configuration.GetSection(AccessImportOptions.Section));
+    builder.Services.Configure<Infrastructure.Configuration.AnalyticsDataQualityHealthOptions>(
+        builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsDataQualityHealthOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.OpenTrainingModelTrainingOptions>(
@@ -175,6 +177,7 @@ try
 builder.Services.AddScoped<IOutboxService, OutboxService>();
 builder.Services.AddScoped<IDnevnikPromenaReadService, DnevnikPromenaReadService>();
 builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadService>();
+builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IDocumentQueueStore, DocumentQueueStore>();
     builder.Services.AddScoped<IDocumentAuditService, DocumentAuditService>();
@@ -314,6 +317,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddHostedService<Workers.SyncWorker>();
     builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
     builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>();
+    builder.Services.AddHostedService<Workers.AnalyticsDataQualityHealthWorker>();
     builder.Services.AddHostedService<Workers.NightlyAnalyticsRefreshWorker>();
     builder.Services.AddHostedService<Workers.OpenTrainingModelTrainingWorker>();
     builder.Services.AddHostedService<Workers.TrendIngestionWorker>();
@@ -503,6 +507,32 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     });
 
     var app = builder.Build();
+
+    // --- Optional guarded automatic migrations ---
+    // Applies migrations automatically in Development or when the configuration
+    // flag `Database:AutoMigrate` is set to true. This is safe for local/dev
+    // environments but guarded to avoid accidental production schema changes.
+    if (builder.Configuration.GetValue<bool>("Database:AutoMigrate") || app.Environment.IsDevelopment())
+    {
+        using var scope = app.Services.CreateScope();
+        try
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            Console.WriteLine("Auto-migrate enabled - applying EF Core migrations...");
+            db.Database.Migrate();
+            Console.WriteLine("Database migrations applied successfully.");
+        }
+        catch (Exception ex)
+        {
+            var logger = scope.ServiceProvider.GetService<ILogger<Program>>();
+            logger?.LogError(ex, "Auto-migrate failed");
+            // In non-development environments prefer failing fast so deployment/job runner
+            // becomes aware of migration problems. In development we swallow to avoid
+            // blocking iterative work.
+            if (!app.Environment.IsDevelopment())
+                throw;
+        }
+    }
 
     // ================= MIDDLEWARE PIPELINE =================
 

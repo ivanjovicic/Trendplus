@@ -1,5 +1,6 @@
 import type {
   AnalyticsDashboardBootstrap,
+  AnalyticsDataQualityHealth,
   CategoryData,
   CategoryTrendPoint,
   DataQualityIssueListResult,
@@ -556,6 +557,17 @@ export async function getDataQualityIssues(paramsInput: {
     "/api/analytics/data-quality/list",
     params,
     "Greska pri ucitavanju data quality problema"
+  );
+}
+
+export async function getAnalyticsDataQualityHealth(lookbackDays?: number): Promise<AnalyticsDataQualityHealth> {
+  const params = new URLSearchParams();
+  if (lookbackDays != null) params.set("lookbackDays", String(lookbackDays));
+
+  return fetchJson(
+    "/api/analytics/data-quality/health",
+    params,
+    "Greska pri ucitavanju data quality health pregleda"
   );
 }
 

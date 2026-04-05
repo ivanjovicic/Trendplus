@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
-import { getDataQualityIssues } from "../services/analyticsApi";
+import { getAnalyticsDataQualityHealth, getDataQualityIssues } from "../services/analyticsApi";
 import type {
+  AnalyticsDataQualityHealth,
   DataQualityIssueItem,
   DataQualityIssueListResult,
   DataQualityIssueType,
@@ -53,6 +54,11 @@ function formatCurrency(value: number): string {
   return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RSD`;
 }
 
+function formatPercent(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString("sr-RS");
 }
@@ -70,8 +76,10 @@ function rowTone(issueType: DataQualityIssueType): string {
 export default function DataQualityPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<DataQualityIssueListResult | null>(null);
+  const [health, setHealth] = useState<AnalyticsDataQualityHealth | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
   const [searchDraft, setSearchDraft] = useState(searchParams.get("q") ?? "");
 
   const issueType = normalizeIssueType(searchParams.get("type"));
@@ -103,24 +111,43 @@ export default function DataQualityPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setHealthError(null);
 
-    try {
-      const result = await getDataQualityIssues({
+    const [issuesResult, healthResult] = await Promise.allSettled([
+      getDataQualityIssues({
         type: issueType,
         page,
         pageSize,
         q,
         sortBy,
         sortDir,
-      });
+      }),
+      getAnalyticsDataQualityHealth(),
+    ]);
 
-      setData(result);
-    } catch (reason) {
+    if (issuesResult.status === "fulfilled") {
+      setData(issuesResult.value);
+    } else {
       setData(null);
-      setError(reason instanceof Error ? reason.message : "Data quality podaci nisu dostupni.");
-    } finally {
-      setLoading(false);
+      setError(
+        issuesResult.reason instanceof Error
+          ? issuesResult.reason.message
+          : "Data quality podaci nisu dostupni."
+      );
     }
+
+    if (healthResult.status === "fulfilled") {
+      setHealth(healthResult.value);
+    } else {
+      setHealth(null);
+      setHealthError(
+        healthResult.reason instanceof Error
+          ? healthResult.reason.message
+          : "Health snapshot nije dostupan."
+      );
+    }
+
+    setLoading(false);
   }, [issueType, page, pageSize, q, sortBy, sortDir]);
 
   useEffect(() => {
@@ -152,6 +179,19 @@ export default function DataQualityPage() {
     { key: "issueType", label: "Issue type", value: issueType },
   ], [data?.total, issueType]);
 
+  const healthStatus = useMemo(() => {
+    if (!health) return { label: "Snapshot nije dostupan", tone: "neutral" as const };
+
+    const hasWarning =
+      health.orphanArticleCount >= health.thresholds.orphanArticleCount ||
+      (health.missingCostRevenueSharePct ?? 0) >= health.thresholds.missingCostRevenueSharePct ||
+      (health.unknownSupplierRevenueSharePct ?? 0) >= health.thresholds.unknownSupplierRevenueSharePct;
+
+    return hasWarning
+      ? { label: "Potrebna je korekcija podataka", tone: "warning" as const }
+      : { label: "Podaci su u zelenoj zoni", tone: "ok" as const };
+  }, [health]);
+
   const changeTab = (nextType: DataQualityIssueType) => {
     updateParams({ type: nextType, page: 1 });
   };
@@ -174,6 +214,46 @@ export default function DataQualityPage() {
           <span>Podrazumevani sort: prodaja 30d opadajuce</span>
         </div>
       </header>
+
+      {health ? (
+        <section className="data-quality-health-grid">
+          <article className={`data-quality-health-card ${healthStatus.tone}`}>
+            <span className="data-quality-health-label">Health status</span>
+            <strong>{healthStatus.label}</strong>
+            <p>
+              Prozor: {formatDateTime(health.windowFrom)} - {formatDateTime(health.windowTo)} | Lookback {health.lookbackDays} dana
+            </p>
+          </article>
+
+          <article className="data-quality-health-card">
+            <span className="data-quality-health-label">Orphan dobavljaci</span>
+            <strong>{health.orphanArticleCount.toLocaleString("sr-RS")}</strong>
+            <p>Threshold: {health.thresholds.orphanArticleCount}</p>
+          </article>
+
+          <article className="data-quality-health-card">
+            <span className="data-quality-health-label">Promet bez nabavne cene</span>
+            <strong>{formatPercent(health.missingCostRevenueSharePct)}</strong>
+            <p>{formatCurrency(health.missingCostRevenue)} bez pouzdane marze</p>
+          </article>
+
+          <article className="data-quality-health-card">
+            <span className="data-quality-health-label">Unknown supplier promet</span>
+            <strong>{formatPercent(health.unknownSupplierRevenueSharePct)}</strong>
+            <p>{formatCurrency(health.unknownSupplierRevenue)} u unknown bucket-u</p>
+          </article>
+        </section>
+      ) : null}
+
+      {health ? (
+        <section className="data-quality-quick-actions">
+          <button type="button" onClick={() => changeTab("missingSupplier")}>
+            Artikli bez dobavljaca
+          </button>
+          <Link to="/analytics/supplier-sales-stats">Otvori supplier analitiku</Link>
+          <Link to="/analytics/supplier-sales-stats?focus=data-quality">Proveri unknown supplier bucket</Link>
+        </section>
+      ) : null}
 
       <div className="data-quality-tabs" role="tablist" aria-label="Data quality issue tabs">
         {ISSUE_TABS.map((tab) => (
@@ -239,6 +319,7 @@ export default function DataQualityPage() {
       ) : null}
 
       {error ? <div className="data-quality-error">{error}</div> : null}
+      {healthError ? <div className="data-quality-loading">{healthError}</div> : null}
       {loading ? <div className="data-quality-loading">Ucitavam data quality probleme...</div> : null}
 
       {!loading && data ? (

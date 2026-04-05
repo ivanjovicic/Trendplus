@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -166,6 +166,7 @@ type StatusReasonSignals = {
   marginPct: number;
   avgMargin: number;
   reliabilityPct: number;
+  marginCoveragePct: number | null;
 };
 
 type StatusTooltipData = {
@@ -186,9 +187,11 @@ function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals)
   const positiveTrend = (signals.trendPct ?? 0) > 0;
   const negativeTrend = (signals.trendPct ?? 0) < 0;
   const strongMargin = signals.marginPct >= signals.avgMargin;
+  const limitedMarginCoverage = (signals.marginCoveragePct ?? 0) < 70;
 
   if (status === "Pojacaj") {
     if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
+    if (limitedMarginCoverage) return "Promet i trend su dobri, ali marza je zasnovana na delimicno pokrivenim nabavnim cenama.";
     if (positiveTrend && strongMargin) return "Jak promet, zdrava marza i rastuci trend.";
     if (positiveTrend) return "Dobar promet i pozitivan trend; kandidat za veci fokus.";
     return "Stabilan doprinos i solidna marza; opravdan fokus u nabavci.";
@@ -196,6 +199,7 @@ function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals)
 
   if (status === "Zadrzi") {
     if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
+    if (limitedMarginCoverage) return "Marza je samo delimicno pokrivena nabavnim cenama; zadrzati dok se podaci ne dopune.";
     if (negativeTrend && !strongMargin) return "Trend slabi i marza je ispod proseka; zadrzati uz pojacan nadzor.";
     return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
   }
@@ -330,14 +334,15 @@ export default function SupplierSalesStatsPage() {
 
     return suppliers.map((supplier) => {
       const sharePct = totalRevenue > 0 ? (supplier.ukupanPromet / totalRevenue) * 100 : 0;
-      const marginContribution = supplier.ukupanPromet * (supplier.marginPct / 100);
+      const marginContribution = supplier.marginContribution;
       const trendPct = supplier.promenaPrometa;
       const coveragePct = supplier.brojArtikalaUkupno > 0
         ? (supplier.brojArtikalaSaNivelacijom / supplier.brojArtikalaUkupno) * 100
         : 0;
+      const marginCoveragePct = supplier.marginDataCoveragePct ?? 0;
 
       const knownSupplier = !supplier.isUnknown && !UNKNOWN_SUPPLIERS.has(normalizeName(supplier.dobavljacNaziv));
-      const reliabilityPct = clamp(coveragePct * 0.8 + (knownSupplier ? 20 : 0), 0, 100);
+      const reliabilityPct = clamp(coveragePct * 0.6 + marginCoveragePct * 0.2 + (knownSupplier ? 20 : 0), 0, 100);
 
       const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
       const marginNorm = marginSpan > 0
@@ -368,6 +373,7 @@ export default function SupplierSalesStatsPage() {
         marginPct: supplier.marginPct,
         avgMargin,
         reliabilityPct,
+        marginCoveragePct: supplier.marginDataCoveragePct,
       });
 
       return {
@@ -446,8 +452,8 @@ export default function SupplierSalesStatsPage() {
   }, [knownSuppliers, totalRevenue]);
 
   const totalMarginContribution = useMemo(
-    () => sortedSuppliers.reduce((sum, row) => sum + row.marginContribution, 0),
-    [sortedSuppliers]
+    () => data?.totals.ukupanMarzniDoprinos ?? 0,
+    [data?.totals.ukupanMarzniDoprinos]
   );
 
   const periodGrowthPct = useMemo(() => {
@@ -518,6 +524,30 @@ export default function SupplierSalesStatsPage() {
     return "Nema podataka za izabrane filtere.";
   }, [activeFilters.fromDate, activeFilters.toDate, data, sortedSuppliers.length]);
 
+  const qualityNotes = useMemo(() => {
+    if (!data) return [] as string[];
+
+    const notes: string[] = [];
+    const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct;
+    const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
+    const knownCostShare = missingCostShare == null ? null : Math.max(0, 100 - missingCostShare);
+    const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct;
+
+    if (splitCoverage != null && splitCoverage < 60) {
+      notes.push(`Pre/posle nivelacije trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa taj signal treba citati kao delimican.`);
+    }
+
+    if (knownCostShare != null && knownCostShare < 100) {
+      notes.push(`Marza i marzni doprinos su zasnovani na ${fmtPct(knownCostShare, 1)} prometa sa poznatom nabavnom cenom.`);
+    }
+
+    if (unknownShare != null && unknownShare > 0) {
+      notes.push(`Nepoznati/N-A dobavljaci ucestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
+    }
+
+    return notes;
+  }, [data]);
+
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
@@ -533,11 +563,22 @@ export default function SupplierSalesStatsPage() {
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "suppliers", label: "Dobavljaca", value: data?.totals.brojDobavljaca ?? 0 },
       { key: "unknownSuppliers", label: "Nepoznato/N-A", value: unknownSuppliers.length },
+      { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "splitCoverage", label: "Pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
       { key: "boost", label: "Pojacaj", value: supplierCounts.boost },
       { key: "keep", label: "Zadrzi", value: supplierCounts.keep },
       { key: "reduce", label: "Smanji", value: supplierCounts.reduce },
     ],
-    [data?.generatedAt, data?.totals.brojDobavljaca, supplierCounts.boost, supplierCounts.keep, supplierCounts.reduce, unknownSuppliers.length]
+    [
+      data?.dataQuality.missingCostRevenueSharePct,
+      data?.dataQuality.revenueWithNivelacijaSplitSharePct,
+      data?.generatedAt,
+      data?.totals.brojDobavljaca,
+      supplierCounts.boost,
+      supplierCounts.keep,
+      supplierCounts.reduce,
+      unknownSuppliers.length,
+    ]
   );
 
   const openSupplierDetail = useCallback((supplier: DecisionSupplier) => {
@@ -727,6 +768,27 @@ export default function SupplierSalesStatsPage() {
       {loading ? <div className="supplier-decision-message loading">Ucitavam dobavljace...</div> : null}
       {!loading && !error && emptyStateHint ? (
         <div className="supplier-decision-message info">{emptyStateHint}</div>
+      ) : null}
+      {!loading && !error && qualityNotes.length > 0 ? (
+        <div className="supplier-decision-message info">
+          <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
+          <div className="supplier-decision-quality-actions">
+            <Link
+              to="/analytics/data-quality?type=missingSupplier&originTable=supplier-sales-stats"
+              className="supplier-decision-quality-link"
+            >
+              Otvori Data Quality centar
+            </Link>
+            {unknownSuppliers.length > 0 ? (
+              <Link
+                to="/analytics/data-quality?type=missingSupplier&originTable=supplier-sales-stats"
+                className="supplier-decision-quality-link"
+              >
+                Pregledaj artikle bez dobavljaca
+              </Link>
+            ) : null}
+          </div>
+        </div>
       ) : null}
 
       {!loading && data ? (
@@ -940,6 +1002,10 @@ export default function SupplierSalesStatsPage() {
                 <article>
                   <span>Pouzdanost podataka</span>
                   <strong>{fmtPct(selectedSupplier.reliabilityPct, 1)}</strong>
+                </article>
+                <article>
+                  <span>Pokrice marze</span>
+                  <strong>{fmtPct(selectedSupplier.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
                   <span>Marza %</span>

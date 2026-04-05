@@ -12,6 +12,9 @@ export interface SupplierSalesStat {
   ukupnaKolicina: number;
   brojArtikalaSaNivelacijom: number;
   brojArtikalaUkupno: number;
+  revenueWithCost: number;
+  marginContribution: number;
+  marginDataCoveragePct: number | null;
   marginPct: number;
   promenaPrometa: number | null;
   promenaKolicine: number | null;
@@ -19,6 +22,7 @@ export interface SupplierSalesStat {
 
 export interface SupplierSalesTotals {
   ukupanPromet: number;
+  ukupanMarzniDoprinos: number;
   prePromet: number;
   poslePromet: number;
   ukupnaKolicina: number;
@@ -26,6 +30,16 @@ export interface SupplierSalesTotals {
   posleKolicina: number;
   brojDobavljaca: number;
   promenaPrometaPct: number | null;
+}
+
+export interface SupplierSalesDataQuality {
+  missingCostQty: number;
+  missingCostRevenue: number;
+  missingCostRevenueSharePct: number | null;
+  unknownSupplierRevenue: number;
+  unknownSupplierRevenueSharePct: number | null;
+  revenueWithNivelacijaSplit: number;
+  revenueWithNivelacijaSplitSharePct: number | null;
 }
 
 export interface SezonaOption {
@@ -45,6 +59,7 @@ export interface SupplierSalesStatsResponse {
   storeId: number | null;
   suppliers: SupplierSalesStat[];
   totals: SupplierSalesTotals;
+  dataQuality: SupplierSalesDataQuality;
   sezone: SezonaOption[];
 }
 

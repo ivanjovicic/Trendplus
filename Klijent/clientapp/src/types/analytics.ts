@@ -229,6 +229,24 @@ export interface DataQualityIssueListResult {
   items: DataQualityIssueItem[];
 }
 
+export interface AnalyticsDataQualityHealth {
+  generatedAt: string;
+  lookbackDays: number;
+  windowFrom: string;
+  windowTo: string;
+  orphanArticleCount: number;
+  totalRevenue: number;
+  missingCostRevenue: number;
+  missingCostRevenueSharePct: number | null;
+  unknownSupplierRevenue: number;
+  unknownSupplierRevenueSharePct: number | null;
+  thresholds: {
+    orphanArticleCount: number;
+    missingCostRevenueSharePct: number;
+    unknownSupplierRevenueSharePct: number;
+  };
+}
+
 export interface InventoryBalance {
   totalSku: number;
   totalOnHand: number;
