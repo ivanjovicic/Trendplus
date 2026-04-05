@@ -34,11 +34,16 @@ export default {
                 'text-secondary': 'var(--text-secondary)',
                 'text-on-primary': 'var(--text-on-primary)',
                 'accent-primary': 'var(--accent-primary)',
+                'accent-text': 'var(--accent-text)',
+                'error-text': 'var(--error-text)',
+                success: 'var(--success)',
+                error: 'var(--error)',
                 accent: {
                     success: 'var(--accent-success)',
                     soft: 'var(--accent-soft)',
                     border: 'var(--accent-border)',
                     primary: 'var(--accent-primary)',
+                    text: 'var(--accent-text)',
                 },
                 'info-10': 'var(--info-10)',
                 grayCustom: {

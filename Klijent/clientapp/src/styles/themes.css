@@ -17,6 +17,10 @@
   --accent-primary: #3b82f6;
   --text-on-primary: #ffffff;
   --accent-success: #10b981;
+  --success: #34d399;
+  --error: #f87171;
+  --accent-text: #bfdbfe;
+  --error-text: #fecaca;
   --text-primary: #0f172a;
   --text-secondary: #6b7280;
   --text-muted: #6b7280;
@@ -55,6 +59,10 @@
   --accent-primary: #3b82f6;
   --text-on-primary: #ffffff;
   --accent-success: #10b981;
+  --success: #10b981;
+  --error: #ff6b6b;
+  --accent-text: #93c5fd;
+  --error-text: #ff9999;
   --text-primary: #e6eef8;
   --text-secondary: #9ca3af;
   --text-muted: #9ca3af;
