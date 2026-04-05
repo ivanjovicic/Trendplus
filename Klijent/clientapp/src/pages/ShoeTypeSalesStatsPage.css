@@ -234,7 +234,8 @@
 .shoetype-decision-table-wrap {
   border: 1px solid var(--border-default, #1f2937);
   border-radius: 10px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .shoetype-decision-table {
