@@ -117,7 +117,18 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
                 >
                   <span className="flex items-center gap-2 text-sm font-semibold text-contrast">
                     <GroupIcon size={15} className="text-[var(--info)]" />
-                    {group.label}
+                    <span>{group.label}</span>
+                    {group.badge && (
+                      <span
+                        className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          group.badge.tone === "warning" ? "bg-warning/10 text-warning" : "bg-muted/10 text-muted"
+                        }`}
+                        title={group.badge.title}
+                        aria-label={group.badge.title}
+                      >
+                        {group.badge.label}
+                      </span>
+                    )}
                   </span>
                   <ChevronDown
                     size={15}
@@ -129,6 +140,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
                   <ul className="space-y-1 px-2 pb-2">
                     {group.items.map((item) => {
                       const ItemIcon = item.icon;
+                      const isTestItem = Boolean(group.badge || item.badge);
+                      const badge = item.badge ?? group.badge;
                       return (
                         <li key={item.to}>
                           <NavLink to={item.to} onClick={onCloseMobile} className={
@@ -139,7 +152,20 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
                             }`
                           }>
                             <ItemIcon size={15} className="shrink-0 text-[var(--info)] group-hover:opacity-80" />
-                            <span className="truncate">{item.label}</span>
+                            <span className="truncate flex items-center gap-2">
+                              <span>{item.label}</span>
+                              {isTestItem && badge && (
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                    badge.tone === "warning" ? "bg-warning/10 text-warning" : "bg-muted/10 text-muted"
+                                  }`}
+                                  title={badge.title}
+                                  aria-label={badge.title}
+                                >
+                                  {badge.label}
+                                </span>
+                              )}
+                            </span>
                           </NavLink>
                         </li>
                       );

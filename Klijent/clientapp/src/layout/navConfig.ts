@@ -32,6 +32,7 @@ export type NavItem = {
   to: string;
   label: string;
   icon: LucideIcon;
+  badge?: { label: string; tone?: string; title?: string };
 };
 
 export type NavGroup = {
@@ -39,6 +40,7 @@ export type NavGroup = {
   label: string;
   icon: LucideIcon;
   items: NavItem[];
+  badge?: { label: string; tone?: string; title?: string };
 };
 
 export const NAV_GROUPS: NavGroup[] = [
@@ -48,9 +50,24 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: LayoutGrid,
     items: [
       { to: "/", label: "Početna", icon: LayoutGrid },
-      { to: "/trend-dashboard", label: "Trend pregled", icon: Gauge },
-      { to: "/runtime-scoring", label: "Runtime Scoring", icon: ScanLine },
-      { to: "/open-training", label: "Trening modela", icon: Rocket },
+      {
+        to: "/trend-dashboard",
+        label: "Trend pregled",
+        icon: Gauge,
+        badge: { label: "Test", tone: "warning", title: "Funkcionalnost u test fazi" },
+      },
+      {
+        to: "/runtime-scoring",
+        label: "Runtime Scoring",
+        icon: ScanLine,
+        badge: { label: "Test", tone: "warning", title: "Funkcionalnost u test fazi" },
+      },
+      {
+        to: "/open-training",
+        label: "Trening modela",
+        icon: Rocket,
+        badge: { label: "Test", tone: "warning", title: "Funkcionalnost u test fazi" },
+      },
     ],
   },
   {
@@ -112,6 +129,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "scrapers",
     label: "Trendovi i scraperi",
     icon: Globe2,
+    badge: { label: "Test", tone: "warning", title: "Ova sekcija je u fazi testa — mogući prekidi" },
     items: [
       { to: "/global-trends", label: "Globalni trendovi", icon: Globe2 },
       { to: "/scraper-hub", label: "Scraper Hub Top 10", icon: BarChart3 },
