@@ -1391,7 +1391,7 @@ public static class AccessImportEndpoints
             if (root is not null)
                 return (true, root, null, false);
 
-            return (false, null, "Posalji multipart/form-data sa ACCDB fajlom ili postavi TRENDPLUS.accdb u root folder.", false);
+            return (false, null, "Posalji multipart/form-data sa ACCDB/MDB fajlom ili postavi TRENDPLUS.accdb / TRENDPLUS.mdb u root folder.", false);
         }
 
         var form = await request.ReadFormAsync(ct);
@@ -1405,19 +1405,20 @@ public static class AccessImportEndpoints
                 var root = FindRootAccessFile();
                 if (root is not null)
                     return (true, root, null, false);
-                return (false, null, "TRENDPLUS.accdb nije pronadjen u root folderu.", false);
+                return (false, null, "TRENDPLUS.accdb / TRENDPLUS.mdb nije pronadjen u root folderu.", false);
             }
 
-            return (false, null, "ACCDB fajl je obavezan.", false);
+            return (false, null, "Access fajl (.accdb ili .mdb) je obavezan.", false);
         }
 
         var ext = Path.GetExtension(file.FileName);
-        if (!string.Equals(ext, ".accdb", StringComparison.OrdinalIgnoreCase))
-            return (false, null, "Dozvoljen je samo .accdb fajl.", false);
+        if (!string.Equals(ext, ".accdb", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(ext, ".mdb", StringComparison.OrdinalIgnoreCase))
+            return (false, null, "Dozvoljeni su samo .accdb i .mdb fajlovi.", false);
 
         var tempPath = Path.Combine(Path.GetTempPath(), "trendplus-access-import");
         Directory.CreateDirectory(tempPath);
-        var filePath = Path.Combine(tempPath, $"{Guid.NewGuid():N}.accdb");
+        var filePath = Path.Combine(tempPath, $"{Guid.NewGuid():N}{ext.ToLowerInvariant()}");
 
         await using var fs = new FileStream(filePath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
         await file.CopyToAsync(fs, ct);
@@ -1430,9 +1431,12 @@ public static class AccessImportEndpoints
         var depth = 0;
         while (dir is not null && depth < 8)
         {
-            var candidate = Path.Combine(dir.FullName, "TRENDPLUS.accdb");
-            if (File.Exists(candidate))
-                return candidate;
+            foreach (var name in new[] { "TRENDPLUS.accdb", "TRENDPLUS.mdb", "trendplus.accdb", "trendplus.mdb" })
+            {
+                var candidate = Path.Combine(dir.FullName, name);
+                if (File.Exists(candidate))
+                    return candidate;
+            }
 
             dir = dir.Parent;
             depth++;
