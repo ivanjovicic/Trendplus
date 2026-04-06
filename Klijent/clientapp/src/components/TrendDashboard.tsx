@@ -550,21 +550,21 @@ export function TrendDashboard() {
                 }}>
                     <div>
                         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: PAL.textPrimary, display: "flex", alignItems: "center", gap: 8 }}>
-                            ðŸ“Š Trend Leaderboard
+                            📊 Trend Leaderboard
                             {loading && (
                                 <span style={{ fontSize: 11, background: "var(--surface-default)", color: PAL.blue, borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>
-                                    Loadingâ€¦
+                                    Loading…
                                 </span>
                             )}
                         </h2>
                         <div style={{ fontSize: 12, color: PAL.textSecondary, marginTop: 3 }}>
                             {run
-                                ? <>Run <strong style={{ color: PAL.textPrimary }}>#{run.runId}</strong> Â· {new Date(run.startedAt).toLocaleString("sr-Latn")} Â· <strong style={{ color: PAL.textPrimary }}>{run.totalItems}</strong> items</>
+                                ? <>Run <strong style={{ color: PAL.textPrimary }}>#{run.runId}</strong> · {new Date(run.startedAt).toLocaleString("sr-Latn")} · <strong style={{ color: PAL.textPrimary }}>{run.totalItems}</strong> items</>
                                 : "Poslednji scoring run iz baze"
                             }
                             {lastRefreshed && (
                                 <span style={{ marginLeft: 10, color: PAL.textMuted }}>
-                                    Â· refreshed {lastRefreshed.toLocaleTimeString("sr-Latn")}
+                                    · refreshed {lastRefreshed.toLocaleTimeString("sr-Latn")}
                                 </span>
                             )}
                         </div>
@@ -605,7 +605,7 @@ export function TrendDashboard() {
                                 transition: "all .15s",
                             }}
                         >
-                            {loading ? "â³ Loadingâ€¦" : "ðŸ”„ Refresh"}
+                            {loading ? "⏳ Loading…" : "🔄 Refresh"}
                         </button>
                     </div>
                 </div>
@@ -621,9 +621,9 @@ export function TrendDashboard() {
                     background: "var(--surface-default)",
                 }}>
                     {/* Search */}
-                    <input
+                        <input
                         type="text"
-                        placeholder="ðŸ” PretraÅ¾i brand / nazivâ€¦"
+                        placeholder="🔍 Pretraži brand / naziv…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         style={{
@@ -668,7 +668,7 @@ export function TrendDashboard() {
 
                     {/* Market pills */}
                     <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                        <span style={{ fontSize: 11, color: PAL.textMuted, fontWeight: 600 }}>TrÅ¾iÅ¡te:</span>
+                        <span style={{ fontSize: 11, color: PAL.textMuted, fontWeight: 600 }}>Tržište:</span>
                         {ALL_MARKETS.map((m) => {
                             const active = activeMarkets.has(m);
                             return (
@@ -702,7 +702,7 @@ export function TrendDashboard() {
                                 all: PAL.blue, rising: PAL.green, dropping: PAL.red, new: PAL.textSecondary,
                             };
                             const labels: Record<MomentumFilter, string> = {
-                                all: "Svi", rising: "â–² Raste", dropping: "â–¼ Pada", new: "â— Novi",
+                                all: "Svi", rising: "▲ Raste", dropping: "▼ Pada", new: "● Novi",
                             };
                             return (
                                 <button
@@ -746,7 +746,7 @@ export function TrendDashboard() {
                                 marginLeft: "auto",
                             }}
                         >
-                            âœ• ObriÅ¡i filtere
+                            ✖ Obriši filtere
                         </button>
                     )}
 
@@ -759,7 +759,7 @@ export function TrendDashboard() {
                 {/* â”€â”€ Error state â”€â”€ */}
                 {error && (
                     <div style={{ padding: "14px 20px", background: "var(--surface-darker)", borderBottom: `1px solid ${PAL.red}44` }}>
-                        <div style={{ fontWeight: 700, color: PAL.orange, fontSize: 13 }}>âš ï¸ Python servis nije dostupan</div>
+                        <div style={{ fontWeight: 700, color: PAL.orange, fontSize: 13 }}>⚠️ Python servis nije dostupan</div>
                         <div style={{ color: PAL.textSecondary, fontSize: 12, marginTop: 4 }}>{error}</div>
                         <div style={{ color: PAL.textMuted, fontSize: 11, marginTop: 6 }}>
                             Pokreni <code style={{ background: "var(--surface-darker)", padding: "1px 5px", borderRadius: 4 }}>cd Python &amp;&amp; start_api.bat</code> da bi pokrenuo Python API servis.
@@ -771,19 +771,19 @@ export function TrendDashboard() {
                 {!loading && filteredItems.length === 0 && (
                     <div style={{ padding: 48, textAlign: "center", color: PAL.textMuted }}>
                         <div style={{ fontSize: 40, marginBottom: 12 }}>
-                            {hasActiveFilters ? "ðŸ”" : "ðŸ“­"}
+                            {hasActiveFilters ? "🔍" : "📭"}
                         </div>
                         <div style={{ fontWeight: 600, fontSize: 15, color: PAL.textSecondary }}>
                             {hasActiveFilters
                                 ? "Nema rezultata za odabrane filtere"
                                 : data?.message?.includes("not yet initialized")
-                                    ? "Scoring tabele nisu joÅ¡ inicijalozovane"
+                                    ? "Scoring tabele još nisu inicijalizovane"
                                     : "Nema run-ova u bazi"
                             }
                         </div>
                         {!hasActiveFilters && (
-                            <div style={{ fontSize: 13, marginTop: 8, color: PAL.textMuted }}>
-                                {data?.message ?? "Podesi skrejpere, pokreni ih i rezultati Ä‡e se automatski pojaviti."}
+                                <div style={{ fontSize: 13, marginTop: 8, color: PAL.textMuted }}>
+                                {data?.message ?? "Podesi skrejpere, pokreni ih i rezultati će se automatski pojaviti."}
                             </div>
                         )}
                         {!hasActiveFilters && data?.message?.includes("not yet initialized") && (
