@@ -1,4 +1,14 @@
-import { makeUrl } from "./analyticsApi";
+import { fetchAnalyticsJson } from "./analyticsHttp";
+
+export interface AnalyticsRecommendation {
+  status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
+  label: "Increase focus" | "Maintain" | "Review" | "Do not trust" | "Insufficient data";
+  summary: string;
+  confidencePct: number;
+  reliabilityPct: number;
+  dataQualityStatus: "good" | "warning" | "critical";
+  reasonCodes: string[];
+}
 
 export interface SupplierSalesStat {
   dobavljacId: number | null;
@@ -10,14 +20,25 @@ export interface SupplierSalesStat {
   posleNivelacijeKolicina: number;
   ukupanPromet: number;
   ukupnaKolicina: number;
+  previousPeriodRevenue: number | null;
+  previousPeriodUnits: number | null;
   brojArtikalaSaNivelacijom: number;
   brojArtikalaUkupno: number;
   revenueWithCost: number;
   marginContribution: number;
   marginDataCoveragePct: number | null;
   marginPct: number;
-  promenaPrometa: number | null;
-  promenaKolicine: number | null;
+  popRevenueChangePct: number | null;
+  popUnitsChangePct: number | null;
+  prePostNivelacijaRevenueImpactPct: number | null;
+  prePostNivelacijaUnitsImpactPct: number | null;
+  prePostNivelacijaRevenueCoveragePct: number | null;
+  sharePct?: number;
+  reliabilityPct?: number;
+  recommendation?: AnalyticsRecommendation;
+  // Legacy compatibility aliases (deprecated)
+  promenaPrometa?: number | null;
+  promenaKolicine?: number | null;
 }
 
 export interface SupplierSalesTotals {
@@ -28,8 +49,22 @@ export interface SupplierSalesTotals {
   ukupnaKolicina: number;
   preKolicina: number;
   posleKolicina: number;
+  previousPeriodRevenue: number | null;
+  previousPeriodUnits: number | null;
   brojDobavljaca: number;
-  promenaPrometaPct: number | null;
+  popRevenueChangePct: number | null;
+  popUnitsChangePct: number | null;
+  prePostNivelacijaRevenueImpactPct: number | null;
+  prePostNivelacijaUnitsImpactPct: number | null;
+  recommendationSummary?: {
+    increaseFocus: number;
+    maintain: number;
+    review: number;
+    doNotTrust: number;
+    insufficientData: number;
+  };
+  // Legacy compatibility alias (deprecated)
+  promenaPrometaPct?: number | null;
 }
 
 export interface SupplierSalesDataQuality {
@@ -57,6 +92,7 @@ export interface SupplierSalesStatsResponse {
   dataWindowTo: string | null;
   sezonaId: number | null;
   storeId: number | null;
+  dataScope?: string | null;
   suppliers: SupplierSalesStat[];
   totals: SupplierSalesTotals;
   dataQuality: SupplierSalesDataQuality;
@@ -68,6 +104,8 @@ export interface SupplierSalesStatsQuery {
   fromDate?: string | null;
   toDate?: string | null;
   storeId?: number | null;
+  dataScope?: string | null;
+  signal?: AbortSignal;
 }
 
 export async function getSupplierSalesStats(
@@ -78,12 +116,12 @@ export async function getSupplierSalesStats(
   if (query.fromDate) params.set("fromDate", query.fromDate);
   if (query.toDate) params.set("toDate", query.toDate);
   if (query.storeId != null) params.set("storeId", String(query.storeId));
+  if (query.dataScope) params.set("dataScope", query.dataScope);
 
-  const response = await fetch(makeUrl("/api/analytics/supplier-sales-stats", params));
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Greska pri ucitavanju statistike dobavljaca: ${text}`);
-  }
-
-  return response.json() as Promise<SupplierSalesStatsResponse>;
+  return fetchAnalyticsJson<SupplierSalesStatsResponse>(
+    "/api/analytics/supplier-sales-stats",
+    params,
+    "Greska pri ucitavanju statistike dobavljaca",
+    { signal: query.signal }
+  );
 }

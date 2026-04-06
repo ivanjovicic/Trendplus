@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using Infrastructure.Logging;
 
 namespace Api.Services
 {
@@ -709,7 +710,10 @@ namespace Api.Services
                     CREATE INDEX IF NOT EXISTS "IX_StockReservations_SkuId" ON "StockReservations" ("SkuId");
                     """;
 
+                var sw = Stopwatch.StartNew();
                 await _db.Database.ExecuteSqlRawAsync(createSql, ct);
+                sw.Stop();
+                try { SqlCommandLoggingHelper.LogSqlExecution("transfer", "ExecuteSqlRaw", createSql, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
                 _transferSchemaBootstrapCompleted = true;
             }
             catch (PostgresException pex)
@@ -749,9 +753,11 @@ namespace Api.Services
             if (!_db.Database.IsRelational())
                 return;
 
-            await _db.Database.ExecuteSqlInterpolatedAsync(
-                $@"SELECT 1 FROM ""Transfers"" WHERE ""Id"" = {id} FOR UPDATE",
-                ct);
+            FormattableString lockSql = $@"SELECT 1 FROM ""Transfers"" WHERE ""Id"" = {id} FOR UPDATE";
+            var sw = Stopwatch.StartNew();
+            await _db.Database.ExecuteSqlInterpolatedAsync(lockSql, ct);
+            sw.Stop();
+            try { SqlCommandLoggingHelper.LogSqlExecution("transfer", "ExecuteSqlInterpolated", lockSql.Format, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
         }
 
         private async Task<Dictionary<long, Artikli>> LoadAndLockSourceStockAsync(Transfer transfer, CancellationToken ct)
@@ -765,9 +771,11 @@ namespace Api.Services
             {
                 foreach (var sku in skuInt)
                 {
-                    await _db.Database.ExecuteSqlInterpolatedAsync(
-                        $@"SELECT 1 FROM ""Artikli"" WHERE ""Id"" = {sku} FOR UPDATE",
-                        ct);
+                    FormattableString lockSql = $@"SELECT 1 FROM ""Artikli"" WHERE ""Id"" = {sku} FOR UPDATE";
+                    var sw = Stopwatch.StartNew();
+                    await _db.Database.ExecuteSqlInterpolatedAsync(lockSql, ct);
+                    sw.Stop();
+                    try { SqlCommandLoggingHelper.LogSqlExecution("transfer", "ExecuteSqlInterpolated", lockSql.Format, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
                 }
             }
 
@@ -816,9 +824,11 @@ namespace Api.Services
                 return;
 
             var lockKey = $"transfer-dst:{destinationId}:{skuKey}";
-            await _db.Database.ExecuteSqlInterpolatedAsync(
-                $@"SELECT pg_advisory_xact_lock(hashtext({lockKey}))",
-                ct);
+            FormattableString lockSql = $@"SELECT pg_advisory_xact_lock(hashtext({lockKey}))";
+            var swLock = Stopwatch.StartNew();
+            await _db.Database.ExecuteSqlInterpolatedAsync(lockSql, ct);
+            swLock.Stop();
+            try { SqlCommandLoggingHelper.LogSqlExecution("transfer", "ExecuteSqlInterpolated", lockSql.Format, null, swLock.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
         }
 
         private async Task<Artikli?> FindDestinationArticleByKeyAsync(

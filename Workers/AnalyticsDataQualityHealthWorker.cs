@@ -83,7 +83,7 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
             {
                 await using var scope = _scopeFactory.CreateAsyncScope();
                 var service = scope.ServiceProvider.GetRequiredService<AnalyticsDataQualityHealthService>();
-                var snapshot = await service.CaptureAsync(_options.LookbackDays, stoppingToken);
+                var snapshot = await service.CaptureAsync(_options.LookbackDays, null, stoppingToken);
 
                 var summary =
                     $"Lookback={snapshot.LookbackDays}d | OrphanArticles={snapshot.OrphanArticleCount} | " +

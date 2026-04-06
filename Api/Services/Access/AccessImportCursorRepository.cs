@@ -1,7 +1,9 @@
 using Domain.Model;
 using Infrastructure.DbContexts;
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Infrastructure.Logging;
 
 namespace Api.Services.Access;
 
@@ -64,8 +66,8 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         var normalizedOwner = NormalizeLeaseOwner(leaseOwner);
         var now = DateTime.UtcNow;
         var expiresAt = now.Add(leaseDuration <= TimeSpan.Zero ? TimeSpan.FromMinutes(5) : leaseDuration);
-        var affected = await _db.Database.ExecuteSqlRawAsync(
-            """
+
+        var rawSql = """
             UPDATE "AccessImportCursors"
             SET "LeaseOwner" = {0},
                 "LeaseAcquiredAtUtc" = {1},
@@ -78,9 +80,30 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
                  OR "LeaseExpiresAtUtc" <= {1}
                  OR "LeaseOwner" = {0}
               );
-            """,
-            [normalizedOwner, now, expiresAt, normalizedTableKey],
+            """;
+
+        var sw = Stopwatch.StartNew();
+        var affected = await _db.Database.ExecuteSqlRawAsync(
+            rawSql,
+            new object[] { normalizedOwner, now, expiresAt, normalizedTableKey },
             ct);
+        sw.Stop();
+        try
+        {
+            SqlCommandLoggingHelper.LogSqlExecution(
+                "access-import-cursors",
+                "ExecuteSqlRaw",
+                rawSql,
+                null,
+                sw.ElapsedMilliseconds,
+                true,
+                affected,
+                null,
+                Application.Logging.RequestLogContext.Current.RequestId,
+                Application.Logging.RequestLogContext.Current.TraceId);
+        }
+        catch { }
+
         return affected > 0;
     }
 
@@ -90,16 +113,37 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         var normalizedOwner = NormalizeLeaseOwner(leaseOwner);
         var now = DateTime.UtcNow;
         var expiresAt = now.Add(leaseDuration <= TimeSpan.Zero ? TimeSpan.FromMinutes(5) : leaseDuration);
-        var affected = await _db.Database.ExecuteSqlRawAsync(
-            """
+
+        var rawSql = """
             UPDATE "AccessImportCursors"
             SET "LeaseExpiresAtUtc" = {0},
                 "UpdatedAtUtc" = {1}
             WHERE "TableKey" = {2}
               AND "LeaseOwner" = {3};
-            """,
-            [expiresAt, now, normalizedTableKey, normalizedOwner],
+            """;
+
+        var sw = Stopwatch.StartNew();
+        var affected = await _db.Database.ExecuteSqlRawAsync(
+            rawSql,
+            new object[] { expiresAt, now, normalizedTableKey, normalizedOwner },
             ct);
+        sw.Stop();
+        try
+        {
+            SqlCommandLoggingHelper.LogSqlExecution(
+                "access-import-cursors",
+                "ExecuteSqlRaw",
+                rawSql,
+                null,
+                sw.ElapsedMilliseconds,
+                true,
+                affected,
+                null,
+                Application.Logging.RequestLogContext.Current.RequestId,
+                Application.Logging.RequestLogContext.Current.TraceId);
+        }
+        catch { }
+
         return affected > 0;
     }
 
@@ -108,8 +152,8 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var normalizedOwner = NormalizeLeaseOwner(leaseOwner);
         var now = DateTime.UtcNow;
-        await _db.Database.ExecuteSqlRawAsync(
-            """
+
+        var rawSql = """
             UPDATE "AccessImportCursors"
             SET "LeaseOwner" = NULL,
                 "LeaseAcquiredAtUtc" = NULL,
@@ -117,39 +161,91 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
                 "UpdatedAtUtc" = {0}
             WHERE "TableKey" = {1}
               AND "LeaseOwner" = {2};
-            """,
-            [now, normalizedTableKey, normalizedOwner],
+            """;
+
+        var sw = Stopwatch.StartNew();
+        await _db.Database.ExecuteSqlRawAsync(
+            rawSql,
+            new object[] { now, normalizedTableKey, normalizedOwner },
             ct);
+        sw.Stop();
+        try
+        {
+            SqlCommandLoggingHelper.LogSqlExecution(
+                "access-import-cursors",
+                "ExecuteSqlRaw",
+                rawSql,
+                null,
+                sw.ElapsedMilliseconds,
+                true,
+                null,
+                null,
+                Application.Logging.RequestLogContext.Current.RequestId,
+                Application.Logging.RequestLogContext.Current.TraceId);
+        }
+        catch { }
     }
 
     public async Task MarkRunStartedAsync(string tableKey, CancellationToken ct)
     {
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var now = DateTime.UtcNow;
-        await _db.Database.ExecuteSqlRawAsync(
-            """
+        var rawSql = """
             UPDATE "AccessImportCursors"
             SET "LastRunStartedAtUtc" = {0},
                 "UpdatedAtUtc" = {0}
             WHERE "TableKey" = {1};
-            """,
-            [now, normalizedTableKey],
-            ct);
+            """;
+
+        var sw = Stopwatch.StartNew();
+        await _db.Database.ExecuteSqlRawAsync(rawSql, new object[] { now, normalizedTableKey }, ct);
+        sw.Stop();
+        try
+        {
+            SqlCommandLoggingHelper.LogSqlExecution(
+                "access-import-cursors",
+                "ExecuteSqlRaw",
+                rawSql,
+                null,
+                sw.ElapsedMilliseconds,
+                true,
+                null,
+                null,
+                Application.Logging.RequestLogContext.Current.RequestId,
+                Application.Logging.RequestLogContext.Current.TraceId);
+        }
+        catch { }
     }
 
     public async Task MarkRunCompletedAsync(string tableKey, CancellationToken ct)
     {
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var now = DateTime.UtcNow;
-        await _db.Database.ExecuteSqlRawAsync(
-            """
+        var rawSql = """
             UPDATE "AccessImportCursors"
             SET "LastRunCompletedAtUtc" = {0},
                 "UpdatedAtUtc" = {0}
             WHERE "TableKey" = {1};
-            """,
-            [now, normalizedTableKey],
-            ct);
+            """;
+
+        var sw = Stopwatch.StartNew();
+        await _db.Database.ExecuteSqlRawAsync(rawSql, new object[] { now, normalizedTableKey }, ct);
+        sw.Stop();
+        try
+        {
+            SqlCommandLoggingHelper.LogSqlExecution(
+                "access-import-cursors",
+                "ExecuteSqlRaw",
+                rawSql,
+                null,
+                sw.ElapsedMilliseconds,
+                true,
+                null,
+                null,
+                Application.Logging.RequestLogContext.Current.RequestId,
+                Application.Logging.RequestLogContext.Current.TraceId);
+        }
+        catch { }
     }
 
     public async Task CommitCursorAsync(
@@ -162,8 +258,8 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
     {
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var now = DateTime.UtcNow;
-        await _db.Database.ExecuteSqlInterpolatedAsync(
-            $"""
+
+        FormattableString commitSql = $"""
             UPDATE "AccessImportCursors"
             SET "CursorTimestampUtc" = {cursorTimestampUtc},
                 "CursorId" = {cursorId},
@@ -173,8 +269,26 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
                 "LastRunCompletedAtUtc" = {now},
                 "UpdatedAtUtc" = {now}
             WHERE "TableKey" = {normalizedTableKey};
-            """,
-            ct);
+            """;
+
+        var sw = Stopwatch.StartNew();
+        await _db.Database.ExecuteSqlInterpolatedAsync(commitSql, ct);
+        sw.Stop();
+        try
+        {
+            SqlCommandLoggingHelper.LogSqlExecution(
+                "access-import-cursors",
+                "ExecuteSqlInterpolated",
+                commitSql.Format,
+                null,
+                sw.ElapsedMilliseconds,
+                true,
+                null,
+                null,
+                Application.Logging.RequestLogContext.Current.RequestId,
+                Application.Logging.RequestLogContext.Current.TraceId);
+        }
+        catch { }
     }
 
     public async Task MarkFailureAsync(string tableKey, string? error, CancellationToken ct)
@@ -182,14 +296,32 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var now = DateTime.UtcNow;
         var trimmedError = Trim(error, 2000);
-        await _db.Database.ExecuteSqlInterpolatedAsync(
-            $"""
+
+        FormattableString failSql = $"""
             UPDATE "AccessImportCursors"
             SET "LastError" = {trimmedError},
                 "UpdatedAtUtc" = {now}
             WHERE "TableKey" = {normalizedTableKey};
-            """,
-            ct);
+            """;
+
+        var sw = Stopwatch.StartNew();
+        await _db.Database.ExecuteSqlInterpolatedAsync(failSql, ct);
+        sw.Stop();
+        try
+        {
+            SqlCommandLoggingHelper.LogSqlExecution(
+                "access-import-cursors",
+                "ExecuteSqlInterpolated",
+                failSql.Format,
+                null,
+                sw.ElapsedMilliseconds,
+                true,
+                null,
+                null,
+                Application.Logging.RequestLogContext.Current.RequestId,
+                Application.Logging.RequestLogContext.Current.TraceId);
+        }
+        catch { }
     }
 
     private static string NormalizeTableKey(string tableKey)

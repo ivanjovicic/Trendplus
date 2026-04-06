@@ -61,6 +61,20 @@
   padding: 8px 10px;
 }
 
+.supplier-decision-field-checkbox {
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.supplier-decision-field-checkbox input[type="checkbox"] {
+  accent-color: var(--accent-primary, var(--theme-color-2563eb, #2563eb));
+  border: 0;
+  box-shadow: none;
+  height: 16px;
+  padding: 0;
+  width: 16px;
+}
+
 .supplier-decision-field select:focus,
 .supplier-decision-field input:focus {
   border-color: var(--accent-primary, var(--theme-color-3b82f6, #3b82f6));
@@ -245,6 +259,13 @@
 
 .supplier-decision-table-head p {
   margin: 0;
+}
+
+.supplier-decision-metric-note {
+  color: var(--text-secondary, var(--theme-color-9ca3af, #9ca3af));
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 760px;
 }
 
 .supplier-decision-table-wrap {

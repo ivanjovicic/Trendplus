@@ -4,9 +4,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Application.Artikli.Common.Interfaces;
+using Application.Config;
+using Application.Logging;
 using Domain.Model;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Application.Behaviors
 {
@@ -19,14 +22,20 @@ namespace Application.Behaviors
     {
         private readonly ILogger<PerformanceLoggingBehavior<TRequest, TResponse>> _logger;
         private readonly IAnalyticsDbContext _analyticsDb;
+        private readonly Microsoft.AspNetCore.Http.IHttpContextAccessor _httpContextAccessor;
+        private readonly IOptions<PerformanceLoggingOptions> _options;
         private const int SlowRequestThresholdMs = 1000;
 
         public PerformanceLoggingBehavior(
             ILogger<PerformanceLoggingBehavior<TRequest, TResponse>> logger,
-            IAnalyticsDbContext analyticsDb)
+            IAnalyticsDbContext analyticsDb,
+            Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor,
+            IOptions<PerformanceLoggingOptions> options)
         {
             _logger = logger;
             _analyticsDb = analyticsDb;
+            _httpContextAccessor = httpContextAccessor;
+            _options = options;
         }
 
         public async Task<TResponse> Handle(
@@ -39,9 +48,39 @@ namespace Application.Behaviors
             TResponse? response = default;
             Exception? exception = null;
             bool isSuccess = true;
+            var createdLocalContext = false;
 
             try
             {
+                // Fallback context initialization when request middleware is not active.
+                var ctx = RequestLogContext.Current;
+                if (string.IsNullOrWhiteSpace(ctx.RequestId) && string.IsNullOrWhiteSpace(ctx.TraceId))
+                {
+                    createdLocalContext = true;
+
+                    var httpCtx = _httpContextAccessor.HttpContext;
+                    ctx.RequestId = httpCtx?.TraceIdentifier ?? Activity.Current?.Id;
+                    ctx.TraceId = Activity.Current?.Id;
+
+                    var cfg = _options.Value;
+                    if (cfg?.CaptureSql == true)
+                    {
+                        var sample = cfg.SampleRate;
+                        if (sample <= 0d) ctx.ShouldCaptureSql = false;
+                        else if (sample >= 1d) ctx.ShouldCaptureSql = true;
+                        else ctx.ShouldCaptureSql = Random.Shared.NextDouble() < sample;
+                    }
+                    else
+                    {
+                        ctx.ShouldCaptureSql = false;
+                    }
+
+                    if (cfg is not null)
+                    {
+                        ctx.MaxQueryLength = cfg.MaxQueryLength;
+                    }
+                }
+
                 response = await next();
                 return response;
             }
@@ -53,6 +92,10 @@ namespace Application.Behaviors
             }
             finally
             {
+                if (createdLocalContext)
+                {
+                    RequestLogContext.Current = new RequestLogContext();
+                }
                 stopwatch.Stop();
                 var durationMs = stopwatch.ElapsedMilliseconds;
 
@@ -60,7 +103,7 @@ namespace Application.Behaviors
                 if (durationMs > SlowRequestThresholdMs)
                 {
                     _logger.LogWarning(
-                        "?? SLOW REQUEST: {RequestName} took {Duration}ms",
+                        "SLOW REQUEST: {RequestName} took {Duration}ms",
                         requestName,
                         durationMs
                     );
@@ -68,7 +111,7 @@ namespace Application.Behaviors
                 else
                 {
                     _logger.LogInformation(
-                        "? {RequestName} completed in {Duration}ms",
+                        "{RequestName} completed in {Duration}ms",
                         requestName,
                         durationMs
                     );

@@ -12,17 +12,22 @@ public sealed class AnalyticsDataQualityHealthService
         _db = db;
     }
 
-    public async Task<AnalyticsDataQualityHealthSnapshot> CaptureAsync(int lookbackDays, CancellationToken ct)
+    public async Task<AnalyticsDataQualityHealthSnapshot> CaptureAsync(int lookbackDays, string? dataScope, CancellationToken ct)
     {
         var safeLookbackDays = Math.Max(1, lookbackDays);
         var windowToUtc = DateTime.UtcNow.Date.AddDays(1).AddTicks(-1);
         var windowFromUtc = DateTime.UtcNow.Date.AddDays(-(safeLookbackDays - 1));
+        var normalizedDataScope = NormalizeDataScope(dataScope);
+        var importedOnly = normalizedDataScope == "imported";
+        var existingOnly = normalizedDataScope == "existing";
 
         var orphanArticleCount = await (
             from a in _db.Artikli.AsNoTracking()
             join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
             from d in dj.DefaultIfEmpty()
             where a.IDDobavljac.HasValue && d == null
+               && (!importedOnly || a.DataOrigin == "access")
+               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             select a.Id)
             .CountAsync(ct);
 
@@ -33,6 +38,8 @@ public sealed class AnalyticsDataQualityHealthService
             join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
             from d in dj.DefaultIfEmpty()
             where pz.DatumProdaje >= windowFromUtc && pz.DatumProdaje <= windowToUtc
+               && (!importedOnly || a.DataOrigin == "access")
+               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new { ps, a, d } by 1 into g
             select new
             {
@@ -63,6 +70,12 @@ public sealed class AnalyticsDataQualityHealthService
                 ? Math.Round((double)(unknownSupplierRevenue / totalRevenue * 100m), 2)
                 : 0d
         };
+    }
+
+    private static string NormalizeDataScope(string? dataScope)
+    {
+        var normalized = (dataScope ?? "all").Trim().ToLowerInvariant();
+        return normalized is "existing" or "imported" ? normalized : "all";
     }
 }
 

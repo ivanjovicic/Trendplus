@@ -2,8 +2,10 @@ using Application.Artikli.Common.Interfaces;
 using Api.Services;
 using Infrastructure.DbContexts;
 using Infrastructure.Seed;
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Infrastructure.Logging;
 
 namespace Api.Services.Startup;
 
@@ -104,8 +106,17 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                 var trendDb = warmupScope.ServiceProvider.GetRequiredService<ITrendplusDbContext>();
                 var analyticsDb = warmupScope.ServiceProvider.GetRequiredService<IAnalyticsDbContext>();
 
-                await ((DbContext)trendDb).Database.ExecuteSqlRawAsync("SELECT 1", ct);
-                await ((DbContext)analyticsDb).Database.ExecuteSqlRawAsync("SELECT 1", ct);
+                var sql = "SELECT 1";
+                var sw = Stopwatch.StartNew();
+                await ((DbContext)trendDb).Database.ExecuteSqlRawAsync(sql, ct);
+                sw.Stop();
+                try { SqlCommandLoggingHelper.LogSqlExecution("trendplus", "ExecuteSqlRaw", sql, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
+
+                sw = Stopwatch.StartNew();
+                await ((DbContext)analyticsDb).Database.ExecuteSqlRawAsync(sql, ct);
+                sw.Stop();
+                try { SqlCommandLoggingHelper.LogSqlExecution("analytics", "ExecuteSqlRaw", sql, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
+
                 _logger.LogInformation("[NeonWarmup] Databases are awake.");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

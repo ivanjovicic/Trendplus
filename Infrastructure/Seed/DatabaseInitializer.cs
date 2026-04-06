@@ -666,16 +666,54 @@ public static class DatabaseInitializer
 
             await using var command = new NpgsqlCommand(sql, connection);
             command.CommandTimeout = 300; // 5 minutes
-            await command.ExecuteNonQueryAsync();
 
-            logger.LogInformation("✔ Executed SQL command successfully.");
-        }
-        catch (PostgresException pgEx)
-        {
-            logger.LogError(pgEx,
-                "Postgres error while executing SQL command. SqlState={SqlState}, Detail={Detail}",
-                pgEx.SqlState, pgEx.Detail);
-            throw;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                var rows = await command.ExecuteNonQueryAsync();
+                sw.Stop();
+                try
+                {
+                    Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                        dbSource: "startup",
+                        commandKind: "ExecuteSqlCommand",
+                        sql: sql,
+                        parameters: command.Parameters,
+                        durationMs: sw.ElapsedMilliseconds,
+                        succeeded: true,
+                        rowsAffected: rows,
+                        exception: null,
+                        requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                        traceId: Application.Logging.RequestLogContext.Current.TraceId);
+                }
+                catch { }
+
+                logger.LogInformation("✔ Executed SQL command successfully.");
+            }
+            catch (PostgresException pgEx)
+            {
+                sw.Stop();
+                try
+                {
+                    Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                        dbSource: "startup",
+                        commandKind: "ExecuteSqlCommand",
+                        sql: sql,
+                        parameters: command.Parameters,
+                        durationMs: sw.ElapsedMilliseconds,
+                        succeeded: false,
+                        rowsAffected: null,
+                        exception: pgEx,
+                        requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                        traceId: Application.Logging.RequestLogContext.Current.TraceId);
+                }
+                catch { }
+
+                logger.LogError(pgEx,
+                    "Postgres error while executing SQL command. SqlState={SqlState}, Detail={Detail}",
+                    pgEx.SqlState, pgEx.Detail);
+                throw;
+            }
         }
         catch (Exception ex)
         {
@@ -2127,7 +2165,7 @@ public static class DatabaseInitializer
             lastSourceLineId = compatibilityBatch.Last().SourceLineId;
         }
 
-        logger.LogInformation("âœ” ReturnFacts incremental backfill complete.");
+        logger.LogInformation("ReturnFacts incremental backfill complete.");
     }
 
     private sealed record ReturnBackfillCompatibilityRow(
@@ -2282,7 +2320,48 @@ public static class DatabaseInitializer
 
                     await using var command = new NpgsqlCommand(batches[i], connection);
                     command.CommandTimeout = commandTimeoutSeconds;
-                    await command.ExecuteNonQueryAsync();
+                    var swInner = System.Diagnostics.Stopwatch.StartNew();
+                    try
+                    {
+                        var rowsInner = await command.ExecuteNonQueryAsync();
+                        swInner.Stop();
+                        try
+                        {
+                            Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                                dbSource: "startup",
+                                commandKind: "ExecuteSqlBatch",
+                                sql: batches[i],
+                                parameters: command.Parameters,
+                                durationMs: swInner.ElapsedMilliseconds,
+                                succeeded: true,
+                                rowsAffected: rowsInner,
+                                exception: null,
+                                requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                                traceId: Application.Logging.RequestLogContext.Current.TraceId);
+                        }
+                        catch { }
+                    }
+                    catch (Exception ex)
+                    {
+                        swInner.Stop();
+                        try
+                        {
+                            Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                                dbSource: "startup",
+                                commandKind: "ExecuteSqlBatch",
+                                sql: batches[i],
+                                parameters: command.Parameters,
+                                durationMs: swInner.ElapsedMilliseconds,
+                                succeeded: false,
+                                rowsAffected: null,
+                                exception: ex,
+                                requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                                traceId: Application.Logging.RequestLogContext.Current.TraceId);
+                        }
+                        catch { }
+
+                        throw;
+                    }
                     // success
                     lastEx = null;
                     break;
@@ -2409,7 +2488,47 @@ public static class DatabaseInitializer
 
                         await using var command = new NpgsqlCommand(sqlForExecution, connection, tx);
                         command.CommandTimeout = commandTimeoutSeconds;
-                        await command.ExecuteNonQueryAsync();
+                        var swTx = System.Diagnostics.Stopwatch.StartNew();
+                        try
+                        {
+                            var rowsTx = await command.ExecuteNonQueryAsync();
+                            swTx.Stop();
+                            try
+                            {
+                                Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                                    dbSource: "startup",
+                                    commandKind: "ExecuteSqlFileTransactional",
+                                    sql: sqlForExecution,
+                                    parameters: command.Parameters,
+                                    durationMs: swTx.ElapsedMilliseconds,
+                                    succeeded: true,
+                                    rowsAffected: rowsTx,
+                                    exception: null,
+                                    requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                                    traceId: Application.Logging.RequestLogContext.Current.TraceId);
+                            }
+                            catch { }
+                        }
+                        catch
+                        {
+                            swTx.Stop();
+                            try
+                            {
+                                Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                                    dbSource: "startup",
+                                    commandKind: "ExecuteSqlFileTransactional",
+                                    sql: sqlForExecution,
+                                    parameters: command.Parameters,
+                                    durationMs: swTx.ElapsedMilliseconds,
+                                    succeeded: false,
+                                    rowsAffected: null,
+                                    exception: null,
+                                    requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                                    traceId: Application.Logging.RequestLogContext.Current.TraceId);
+                            }
+                            catch { }
+                            throw;
+                        }
                         await tx.CommitAsync();
 
                         // Success; clear last exception and break

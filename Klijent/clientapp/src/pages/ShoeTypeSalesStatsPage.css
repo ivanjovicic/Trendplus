@@ -231,6 +231,12 @@
   margin: 0;
 }
 
+.shoetype-decision-metric-note {
+  color: var(--text-secondary, var(--theme-color-94a3b8, #94a3b8));
+  font-size: 12px;
+  margin-top: 4px;
+}
+
 .shoetype-decision-table-wrap {
   border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 10px;

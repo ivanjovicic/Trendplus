@@ -544,6 +544,7 @@ export async function getDataQualityIssues(paramsInput: {
   q?: string;
   sortBy?: DataQualitySortBy;
   sortDir?: DataQualitySortDir;
+  dataScope?: string | null;
 }): Promise<DataQualityIssueListResult> {
   const params = new URLSearchParams();
   params.set("type", paramsInput.type);
@@ -552,6 +553,7 @@ export async function getDataQualityIssues(paramsInput: {
   if (paramsInput.q?.trim()) params.set("q", paramsInput.q.trim());
   if (paramsInput.sortBy) params.set("sortBy", paramsInput.sortBy);
   if (paramsInput.sortDir) params.set("sortDir", paramsInput.sortDir);
+  if (paramsInput.dataScope) params.set("dataScope", paramsInput.dataScope);
 
   return fetchJson(
     "/api/analytics/data-quality/list",
@@ -560,9 +562,13 @@ export async function getDataQualityIssues(paramsInput: {
   );
 }
 
-export async function getAnalyticsDataQualityHealth(lookbackDays?: number): Promise<AnalyticsDataQualityHealth> {
+export async function getAnalyticsDataQualityHealth(
+  lookbackDays?: number,
+  dataScope?: string | null
+): Promise<AnalyticsDataQualityHealth> {
   const params = new URLSearchParams();
   if (lookbackDays != null) params.set("lookbackDays", String(lookbackDays));
+  if (dataScope) params.set("dataScope", dataScope);
 
   return fetchJson(
     "/api/analytics/data-quality/health",

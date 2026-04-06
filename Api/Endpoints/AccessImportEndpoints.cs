@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Infrastructure.DbContexts;
 using System.Data.Odbc;
 using System.Diagnostics;
+using Infrastructure.Logging;
 using System.Net.Http.Json;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
@@ -103,7 +104,7 @@ public static class AccessImportEndpoints
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchDetailFallbackTimeoutSeconds));
                 var batch = await service.GetBatchAsync(batchId, timeoutCts.Token);
                 if (batch is null)
-                    return Results.NotFound(new { error = $"Job {batchId} nije pronađen." });
+                    return Results.NotFound(new { error = $"Job {batchId} nije pronadjen." });
                 CacheBatchSnapshot(cache, batch);
                 return Results.Ok(batch);
             }
@@ -178,7 +179,7 @@ public static class AccessImportEndpoints
             var cancelled = await service.RequestCancellationAsync(batchId, ct);
             return cancelled
                 ? Results.Accepted($"/api/access-import/batches/{batchId}", new { batchId, status = "cancellation-requested" })
-                : Results.NotFound(new { error = $"Batch {batchId} nije pronaÄ‘en ili nije aktivan." });
+                : Results.NotFound(new { error = $"Batch {batchId} nije pronadjen ili nije aktivan." });
         })
         .RequireRateLimiting("writes")
         .WithName("CancelAccessImportBatch");
@@ -191,7 +192,7 @@ public static class AccessImportEndpoints
             var cancelled = await service.RequestCancellationAsync(batchId, ct);
             return cancelled
                 ? Results.Accepted($"/api/access-import/jobs/{batchId}", new { batchId, status = "cancellation-requested" })
-                : Results.NotFound(new { error = $"Job {batchId} nije pronaÄ‘en ili nije aktivan." });
+                : Results.NotFound(new { error = $"Job {batchId} nije pronadjen ili nije aktivan." });
         })
         .RequireRateLimiting("writes")
         .WithName("CancelAccessImportJob");
@@ -207,7 +208,7 @@ public static class AccessImportEndpoints
             var batch = await service.GetBatchAsync(batchId, ct);
             if (batch is null)
             {
-                return Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
+                return Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
             }
 
             try
@@ -254,7 +255,7 @@ public static class AccessImportEndpoints
             var result = await service.DeleteBatchAsync(batchId, includeAnalytics, ct);
             return result.Found
                 ? Results.Ok(result)
-                : Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
+                : Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
         })
         .RequireRateLimiting("writes")
         .WithName("DeleteAccessImportBatch");
@@ -738,9 +739,9 @@ public static class AccessImportEndpoints
         string scope,
         CancellationToken ct)
     {
-        try
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(@"
+            try
+            {
+                var createSql = @"
                 CREATE TABLE IF NOT EXISTS deleted_rows_archive (
                     id BIGSERIAL PRIMARY KEY,
                     batch_id BIGINT NULL,
@@ -751,23 +752,32 @@ public static class AccessImportEndpoints
                     deleted_by TEXT NULL,
                     reason TEXT NULL
                 );
-            ", cancellationToken: ct);
+            ";
+                var sw = Stopwatch.StartNew();
+                await dbContext.Database.ExecuteSqlRawAsync(createSql, cancellationToken: ct);
+                sw.Stop();
+                try { SqlCommandLoggingHelper.LogSqlExecution(scope, "ExecuteSqlRaw", createSql, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
 
-            await dbContext.Database.ExecuteSqlRawAsync(@"
+                var idxSql = @"
                 CREATE INDEX IF NOT EXISTS idx_deleted_rows_archive_table_deleted_at
                     ON deleted_rows_archive(table_name, deleted_at DESC);
-            ", cancellationToken: ct);
+            ";
+                sw = Stopwatch.StartNew();
+                await dbContext.Database.ExecuteSqlRawAsync(idxSql, cancellationToken: ct);
+                sw.Stop();
+                try { SqlCommandLoggingHelper.LogSqlExecution(scope, "ExecuteSqlRaw", idxSql, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
 
-            return true;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(
-                ex,
-                "deleted_rows_archive is unavailable for {Scope}; cleanup will continue without archive writes.",
-                scope);
-            return false;
-        }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                try { SqlCommandLoggingHelper.LogSqlExecution(scope, "ExecuteSqlRaw", "<ddl>", null, 0, false, null, ex, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
+                logger.LogWarning(
+                    ex,
+                    "deleted_rows_archive is unavailable for {Scope}; cleanup will continue without archive writes.",
+                    scope);
+                return false;
+            }
     }
 
     private static async Task TryArchiveRowsAsync(
@@ -786,20 +796,23 @@ public static class AccessImportEndpoints
             ? null
             : $"archive_sp_{Guid.NewGuid():N}";
 
-        try
-        {
-            if (tx is not null && savepointName is not null)
+            try
             {
-                await tx.CreateSavepointAsync(savepointName, ct);
-            }
+                if (tx is not null && savepointName is not null)
+                {
+                    await tx.CreateSavepointAsync(savepointName, ct);
+                }
 
-            await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken: ct);
+                var sw = Stopwatch.StartNew();
+                await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken: ct);
+                sw.Stop();
+                try { SqlCommandLoggingHelper.LogSqlExecution(scope, "ArchiveInsert", sql, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
 
-            if (tx is not null && savepointName is not null)
-            {
-                await tx.ReleaseSavepointAsync(savepointName, ct);
+                if (tx is not null && savepointName is not null)
+                {
+                    await tx.ReleaseSavepointAsync(savepointName, ct);
+                }
             }
-        }
         catch (Exception ex)
         {
             if (tx is not null && savepointName is not null)

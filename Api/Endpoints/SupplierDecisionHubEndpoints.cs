@@ -504,35 +504,78 @@ public static class SupplierDecisionHubEndpoints
         command.Parameters.AddRange(parameters.ToArray());
 
         var results = new List<SupplierScoreRow>();
-        await using var reader = await command.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
         {
-            results.Add(new SupplierScoreRow(
-                GetInt32(reader, "supplier_id"),
-                GetString(reader, "supplier_name"),
-                GetDateTime(reader, "period_from"),
-                GetDateTime(reader, "period_to"),
-                GetDecimal(reader, "revenue"),
-                GetDecimal(reader, "units"),
-                GetDecimal(reader, "fullprice_revenue_share"),
-                GetDecimal(reader, "fullprice_sellthrough"),
-                GetDecimal(reader, "markdown_revenue_share"),
-                GetDecimal(reader, "pre_markdown_margin_pct"),
-                GetDecimal(reader, "dead_stock_rate"),
-                GetDecimal(reader, "unsold_stock_value"),
-                GetDecimal(reader, "repeat_winner_rate"),
-                GetDecimal(reader, "markdown_dependency_score"),
-                GetDecimal(reader, "stock_risk_score"),
-                GetDecimal(reader, "return_rate"),
-                GetDecimal(reader, "category_focus_score"),
-                GetDecimal(reader, "ml_supplier_score"),
-                GetString(reader, "ai_explanation"),
-                GetString(reader, "top_feature_1"),
-                GetString(reader, "top_feature_2"),
-                GetString(reader, "top_feature_3"),
-                GetDecimal(reader, "supplier_quality_index"),
-                GetString(reader, "recommendation_code"),
-                GetDecimal(reader, "confidence_score")));
+            await using var reader = await command.ExecuteReaderAsync(ct);
+
+            while (await reader.ReadAsync(ct))
+            {
+                results.Add(new SupplierScoreRow(
+                    GetInt32(reader, "supplier_id"),
+                    GetString(reader, "supplier_name"),
+                    GetDateTime(reader, "period_from"),
+                    GetDateTime(reader, "period_to"),
+                    GetDecimal(reader, "revenue"),
+                    GetDecimal(reader, "units"),
+                    GetDecimal(reader, "fullprice_revenue_share"),
+                    GetDecimal(reader, "fullprice_sellthrough"),
+                    GetDecimal(reader, "markdown_revenue_share"),
+                    GetDecimal(reader, "pre_markdown_margin_pct"),
+                    GetDecimal(reader, "dead_stock_rate"),
+                    GetDecimal(reader, "unsold_stock_value"),
+                    GetDecimal(reader, "repeat_winner_rate"),
+                    GetDecimal(reader, "markdown_dependency_score"),
+                    GetDecimal(reader, "stock_risk_score"),
+                    GetDecimal(reader, "return_rate"),
+                    GetDecimal(reader, "category_focus_score"),
+                    GetDecimal(reader, "ml_supplier_score"),
+                    GetString(reader, "ai_explanation"),
+                    GetString(reader, "top_feature_1"),
+                    GetString(reader, "top_feature_2"),
+                    GetString(reader, "top_feature_3"),
+                    GetDecimal(reader, "supplier_quality_index"),
+                    GetString(reader, "recommendation_code"),
+                    GetDecimal(reader, "confidence_score")));
+            }
+
+            sw.Stop();
+            try
+            {
+                Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                    dbSource: "analytics",
+                    commandKind: "ExecuteReader",
+                    sql: sql,
+                    parameters: command.Parameters,
+                    durationMs: sw.ElapsedMilliseconds,
+                    succeeded: true,
+                    rowsAffected: null,
+                    exception: null,
+                    requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                    traceId: Application.Logging.RequestLogContext.Current.TraceId);
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            try
+            {
+                Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                    dbSource: "analytics",
+                    commandKind: "ExecuteReader",
+                    sql: sql,
+                    parameters: command.Parameters,
+                    durationMs: sw.ElapsedMilliseconds,
+                    succeeded: false,
+                    rowsAffected: null,
+                    exception: ex,
+                    requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                    traceId: Application.Logging.RequestLogContext.Current.TraceId);
+            }
+            catch { }
+
+            throw;
         }
 
         return results;

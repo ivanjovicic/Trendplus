@@ -1,4 +1,14 @@
-import { makeUrl } from "./analyticsApi";
+import { fetchAnalyticsJson } from "./analyticsHttp";
+
+export interface AnalyticsRecommendation {
+  status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
+  label: "Increase focus" | "Maintain" | "Review" | "Do not trust" | "Insufficient data";
+  summary: string;
+  confidencePct: number;
+  reliabilityPct: number;
+  dataQualityStatus: "good" | "warning" | "critical";
+  reasonCodes: string[];
+}
 
 export interface ShoeTypeSalesStat {
   tipObuceId: number | null;
@@ -9,6 +19,8 @@ export interface ShoeTypeSalesStat {
   posleNivelacijeKolicina: number;
   ukupanPromet: number;
   ukupnaKolicina: number;
+  previousPeriodRevenue: number | null;
+  previousPeriodUnits: number | null;
   brojArtikalaSaNivelacijom: number;
   brojArtikalaUkupno: number;
   revenueWithCost: number;
@@ -16,8 +28,18 @@ export interface ShoeTypeSalesStat {
   marginDataCoveragePct: number | null;
   marginPct: number;
   revenueWithNivelacijaSplit: number;
-  promenaPrometa: number | null;
-  promenaKolicine: number | null;
+  popRevenueChangePct: number | null;
+  popUnitsChangePct: number | null;
+  prePostNivelacijaRevenueImpactPct: number | null;
+  prePostNivelacijaUnitsImpactPct: number | null;
+  prePostNivelacijaRevenueCoveragePct: number | null;
+  sharePct?: number;
+  reliabilityPct?: number;
+  isUnknown?: boolean;
+  recommendation?: AnalyticsRecommendation;
+  // Legacy compatibility aliases (deprecated)
+  promenaPrometa?: number | null;
+  promenaKolicine?: number | null;
 }
 
 export interface ShoeTypeSalesTotals {
@@ -28,8 +50,22 @@ export interface ShoeTypeSalesTotals {
   ukupnaKolicina: number;
   preKolicina: number;
   posleKolicina: number;
+  previousPeriodRevenue: number | null;
+  previousPeriodUnits: number | null;
   brojTipovaObuce: number;
-  promenaPrometaPct: number | null;
+  popRevenueChangePct: number | null;
+  popUnitsChangePct: number | null;
+  prePostNivelacijaRevenueImpactPct: number | null;
+  prePostNivelacijaUnitsImpactPct: number | null;
+  recommendationSummary?: {
+    increaseFocus: number;
+    maintain: number;
+    review: number;
+    doNotTrust: number;
+    insufficientData: number;
+  };
+  // Legacy compatibility alias (deprecated)
+  promenaPrometaPct?: number | null;
 }
 
 export interface ShoeTypeSalesDataQuality {
@@ -56,6 +92,7 @@ export interface ShoeTypeSalesStatsResponse {
   dataWindowTo: string | null;
   sezonaId: number | null;
   storeId: number | null;
+  dataScope?: string | null;
   shoeTypes: ShoeTypeSalesStat[];
   totals: ShoeTypeSalesTotals;
   dataQuality: ShoeTypeSalesDataQuality;
@@ -67,6 +104,8 @@ export interface ShoeTypeSalesStatsQuery {
   fromDate?: string | null;
   toDate?: string | null;
   storeId?: number | null;
+  dataScope?: string | null;
+  signal?: AbortSignal;
 }
 
 export async function getShoeTypeSalesStats(
@@ -77,12 +116,12 @@ export async function getShoeTypeSalesStats(
   if (query.fromDate) params.set("fromDate", query.fromDate);
   if (query.toDate) params.set("toDate", query.toDate);
   if (query.storeId != null) params.set("storeId", String(query.storeId));
+  if (query.dataScope) params.set("dataScope", query.dataScope);
 
-  const response = await fetch(makeUrl("/api/analytics/shoe-type-sales-stats", params));
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Greska pri ucitavanju statistike tipova obuce: ${text}`);
-  }
-
-  return response.json() as Promise<ShoeTypeSalesStatsResponse>;
+  return fetchAnalyticsJson<ShoeTypeSalesStatsResponse>(
+    "/api/analytics/shoe-type-sales-stats",
+    params,
+    "Greska pri ucitavanju statistike tipova obuce",
+    { signal: query.signal }
+  );
 }

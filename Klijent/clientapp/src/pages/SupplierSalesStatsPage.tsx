@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -21,12 +21,20 @@ import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar
 import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
+import { getDataScope } from "../utils/dataScope";
 import "./SupplierSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "custom";
 type SortDir = "asc" | "desc";
-type SortField = "dobavljacNaziv" | "ukupanPromet" | "sharePct" | "marginContribution" | "trendPct" | "status";
-type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji" | "N/A";
+type SortField =
+  | "dobavljacNaziv"
+  | "ukupanPromet"
+  | "sharePct"
+  | "marginContribution"
+  | "popRevenueChangePct"
+  | "prePostNivelacijaRevenueImpactPct"
+  | "status";
+type DecisionStatus = "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
 
 type ActiveFilters = {
   fromDate: string;
@@ -37,38 +45,47 @@ type ActiveFilters = {
 
 type DecisionSupplier = SupplierSalesStat & {
   sharePct: number;
-  marginContribution: number;
-  trendPct: number | null;
   reliabilityPct: number;
-  coveragePct: number;
-  decisionScore: number;
+  splitCoveragePct: number;
+  confidencePct: number;
   status: DecisionStatus;
+  statusLabel: string;
   statusReason: string;
+  reasonCodes: string[];
+  dataQualityStatus: "good" | "warning" | "critical";
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  Pojacaj: 3,
-  Zadrzi: 2,
-  Smanji: 1,
-  "N/A": 0,
+  increase_focus: 5,
+  maintain: 4,
+  review: 3,
+  insufficient_data: 2,
+  do_not_trust: 1,
 };
 
-const UNKNOWN_SUPPLIERS = new Set([
-  "",
-  "NEPOZNATO",
-  "NEPOZNAT DOBAVLJAC",
-  "UNKNOWN SUPPLIER",
-]);
-
 const decisionColumns: AnalyticsTableColumn<DecisionSupplier>[] = [
-  { key: "dobavljacNaziv", header: "Dobavljač", dataType: "text" },
+  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
-  { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
-  { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "marginContribution", header: "Marzni doprinos", dataType: "currency" },
+  { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
+  { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "decisionScore", header: "Skor odluke", dataType: "number" },
+  { key: "confidencePct", header: "Confidence %", dataType: "percent" },
 ];
+
+const REASON_CODE_LABELS: Record<string, string> = {
+  unknown_entity: "Nepoznat entitet",
+  new_entity: "Novi dobavljac",
+  previous_period_missing: "Nedostaje prethodni period",
+  no_previous_baseline: "Nema prethodne baze",
+  missing_cost_coverage: "Nedovoljno pokrice nabavne cene",
+  limited_nivelacija_coverage: "Nizak pre/post split coverage",
+  unknown_heavy_dataset: "Unknown-heavy dataset",
+  tiny_sample: "Premali uzorak",
+  unstable_margin: "Nestabilna marza",
+  pop_unavailable: "PoP nije dostupan",
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -97,24 +114,22 @@ function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDat
   };
 }
 
-function buildPreviousRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
-  const currentFrom = new Date(`${fromDate}T00:00:00Z`);
-  const currentTo = new Date(`${toDate}T23:59:59Z`);
-  const durationMs = currentTo.getTime() - currentFrom.getTime() + 1000;
-
-  const previousTo = new Date(currentFrom.getTime() - 1000);
-  const previousFrom = new Date(previousTo.getTime() - durationMs + 1000);
-
-  return {
-    fromDate: previousFrom.toISOString(),
-    toDate: previousTo.toISOString(),
-  };
-}
-
 function toDateOnly(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
   return parsed.toISOString().slice(0, 10);
+}
+
+function parseDateInputOrDefault(value: string | null, fallback: string): string {
+  if (!value) return fallback;
+  const normalized = toDateOnly(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : fallback;
+}
+
+function parseNullableInt(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -173,17 +188,18 @@ function sortMarker(field: SortField, activeField: SortField, dir: SortDir): str
 }
 
 function statusClass(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "supplier-decision-status status-boost";
-  if (status === "Smanji") return "supplier-decision-status status-reduce";
-  if (status === "N/A") return "supplier-decision-status status-na";
-  return "supplier-decision-status status-keep";
+  if (status === "increase_focus") return "supplier-decision-status status-boost";
+  if (status === "maintain") return "supplier-decision-status status-keep";
+  if (status === "review") return "supplier-decision-status status-reduce";
+  return "supplier-decision-status status-na";
 }
 
 function displayStatusLabel(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "Pojačaj";
-  if (status === "Zadrzi") return "Zadrži";
-  if (status === "Smanji") return "Smanji";
-  return status;
+  if (status === "increase_focus") return "Increase focus";
+  if (status === "maintain") return "Maintain";
+  if (status === "review") return "Review";
+  if (status === "do_not_trust") return "Do not trust";
+  return "Insufficient data";
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -193,55 +209,150 @@ function trendClass(value: number | null | undefined): string {
   return "trend-neutral";
 }
 
-type StatusReasonSignals = {
-  trendPct: number | null;
-  marginPct: number;
-  avgMargin: number;
-  reliabilityPct: number;
-  marginCoveragePct: number | null;
-};
-
 type StatusTooltipData = {
   status: DecisionStatus;
+  statusLabel: string;
   statusReason: string;
   sharePct: number;
   marginPct: number;
-  trendPct: number | null;
+  popRevenueChangePct: number | null;
+  prePostNivelacijaRevenueImpactPct: number | null;
+  previousPeriodRevenue: number | null;
+  splitCoveragePct: number | null;
   reliabilityPct: number;
+  confidencePct: number;
+  reasonCodes: string[];
 };
 
-function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals): string {
-  if (status === "N/A") {
-    return "Artikli bez dodeljenog dobavljaca u bazi; red je prikazan zbog konzistentnosti ukupnog prometa.";
-  }
-
-  const lowReliability = signals.reliabilityPct < 35;
-  const positiveTrend = (signals.trendPct ?? 0) > 0;
-  const negativeTrend = (signals.trendPct ?? 0) < 0;
-  const strongMargin = signals.marginPct >= signals.avgMargin;
-  const limitedMarginCoverage = (signals.marginCoveragePct ?? 0) < 70;
-
-  if (status === "Pojacaj") {
-    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
-    if (limitedMarginCoverage) return "Promet i trend su dobri, ali marza je zasnovana na delimicno pokrivenim nabavnim cenama.";
-    if (positiveTrend && strongMargin) return "Jak promet, zdrava marza i rastuci trend.";
-    if (positiveTrend) return "Dobar promet i pozitivan trend; kandidat za veci fokus.";
-    return "Stabilan doprinos i solidna marza; opravdan fokus u nabavci.";
-  }
-
-  if (status === "Zadrzi") {
-    if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
-    if (limitedMarginCoverage) return "Marza je samo delimicno pokrivena nabavnim cenama; zadrzati dok se podaci ne dopune.";
-    if (negativeTrend && !strongMargin) return "Trend slabi i marza je ispod proseka; zadrzati uz pojacan nadzor.";
-    return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
-  }
-
-  if (negativeTrend) return "Pad trenda uz nizak doprinos; smanjiti fokus i rasteretiti asortiman.";
-  return "Nizak doprinos bez jasnog potencijala rasta; kandidat za smanjenje fokusa.";
+function formatReasonCode(code: string): string {
+  return REASON_CODE_LABELS[code] ?? code;
 }
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${data.status}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
+  const popText = data.popRevenueChangePct != null
+    ? fmtSignedPct(data.popRevenueChangePct, 1)
+    : data.previousPeriodRevenue != null && data.previousPeriodRevenue <= 0
+      ? "Novo / bez prethodne baze"
+      : "N/A";
+  const impactText = data.prePostNivelacijaRevenueImpactPct != null
+    ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
+    : "N/A";
+  const reasons = data.reasonCodes.length > 0
+    ? data.reasonCodes.map(formatReasonCode).join(", ")
+    : "nema dodatnih flagova";
+  return `${data.statusLabel}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Confidence ${fmtPct(data.confidencePct, 0)} | Razlozi: ${reasons}`;
+}
+
+function describePopMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
+  if (supplier.popRevenueChangePct != null && !Number.isNaN(supplier.popRevenueChangePct)) {
+    return {
+      label: fmtSignedPct(supplier.popRevenueChangePct, 2),
+      title: `PoP trend poredi ukupan promet sa prethodnim uporedivim periodom. Prethodni period: ${fmtRsd(supplier.previousPeriodRevenue ?? 0)}.`,
+      className: trendClass(supplier.popRevenueChangePct),
+    };
+  }
+
+  if (supplier.previousPeriodRevenue != null && supplier.previousPeriodRevenue <= 0 && supplier.ukupanPromet > 0) {
+    return {
+      label: "Novo",
+      title: "Dobavljac nije imao promet u prethodnom uporedivom periodu, pa PoP procenat nije smislen.",
+      className: "trend-neutral",
+    };
+  }
+
+  return {
+    label: "N/A",
+    title: "PoP trend nije dostupan jer ne postoji validna prethodna baza za poredjenje.",
+    className: "trend-neutral",
+  };
+}
+
+function describeNivelacijaImpactMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
+  if (supplier.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(supplier.prePostNivelacijaRevenueImpactPct)) {
+    return {
+      label: fmtSignedPct(supplier.prePostNivelacijaRevenueImpactPct, 2),
+      title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokrice: ${fmtPct(supplier.prePostNivelacijaRevenueCoveragePct, 1)} prometa.`,
+      className: trendClass(supplier.prePostNivelacijaRevenueImpactPct),
+    };
+  }
+
+  if ((supplier.prePostNivelacijaRevenueCoveragePct ?? 0) <= 0) {
+    return {
+      label: "N/A",
+      title: "Nema dovoljno artikala sa poznatom istorijom nivelacije za pre/post impact metriku.",
+      className: "trend-neutral",
+    };
+  }
+
+  if (supplier.preNivelacijePromet <= 0 && supplier.posleNivelacijePromet > 0) {
+    return {
+      label: "Bez baze",
+      title: "Postoji promet posle prve nivelacije, ali nema pre-nivelacija baze za smislen procenat promene.",
+      className: "trend-neutral",
+    };
+  }
+
+  return {
+    label: "N/A",
+    title: "Pre/post nivelacija impact nije dostupan za izabrani skup podataka.",
+    className: "trend-neutral",
+  };
+}
+
+function describePopUnitsMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
+  if (supplier.popUnitsChangePct != null && !Number.isNaN(supplier.popUnitsChangePct)) {
+    return {
+      label: fmtSignedPct(supplier.popUnitsChangePct, 2),
+      title: "PoP promena kolicine prema prethodnom uporedivom periodu.",
+      className: trendClass(supplier.popUnitsChangePct),
+    };
+  }
+
+  if (supplier.previousPeriodUnits != null && supplier.previousPeriodUnits <= 0 && supplier.ukupnaKolicina > 0) {
+    return {
+      label: "Novo",
+      title: "Dobavljac nije imao prodatu kolicinu u prethodnom uporedivom periodu.",
+      className: "trend-neutral",
+    };
+  }
+
+  return {
+    label: "N/A",
+    title: "PoP promena kolicine nije dostupna.",
+    className: "trend-neutral",
+  };
+}
+
+function describeNivelacijaUnitsImpactMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
+  if (supplier.prePostNivelacijaUnitsImpactPct != null && !Number.isNaN(supplier.prePostNivelacijaUnitsImpactPct)) {
+    return {
+      label: fmtSignedPct(supplier.prePostNivelacijaUnitsImpactPct, 2),
+      title: "Pre/post promena kolicine unutar artikala sa poznatim prvim datumom nivelacije.",
+      className: trendClass(supplier.prePostNivelacijaUnitsImpactPct),
+    };
+  }
+
+  if ((supplier.prePostNivelacijaRevenueCoveragePct ?? 0) <= 0) {
+    return {
+      label: "N/A",
+      title: "Nema dovoljno artikala sa poznatom istorijom nivelacije za pre/post metriku kolicine.",
+      className: "trend-neutral",
+    };
+  }
+
+  if (supplier.preNivelacijeKolicina <= 0 && supplier.posleNivelacijeKolicina > 0) {
+    return {
+      label: "Bez baze",
+      title: "Postoji kolicina posle prve nivelacije, ali nema pre-nivelacija baze za smislen procenat promene.",
+      className: "trend-neutral",
+    };
+  }
+
+  return {
+    label: "N/A",
+    title: "Pre/post impact kolicine nije dostupan za izabrani skup podataka.",
+    className: "trend-neutral",
+  };
 }
 
 function normalizeName(value: string | null | undefined): string {
@@ -261,35 +372,90 @@ function supplierKey(supplier: { dobavljacId: number | null; dobavljacNaziv: str
 export default function SupplierSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
   const initialRange = useMemo(() => getPresetRange("90d"), []);
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
-  const [sezonaId, setSezonaId] = useState<number | null>(null);
-  const [storeId, setStoreId] = useState<number | null>(null);
+  const initialQueryFilters = useMemo(() => {
+    const queryFromDate = parseDateInputOrDefault(searchParams.get("fromDate"), initialRange.fromDate);
+    const queryToDate = parseDateInputOrDefault(searchParams.get("toDate"), initialRange.toDate);
+    const querySezonaId = parseNullableInt(searchParams.get("sezonaId"));
+    const queryStoreId = parseNullableInt(searchParams.get("storeId"));
+    const hasExplicitDateQuery = searchParams.has("fromDate") || searchParams.has("toDate");
+    const periodPreset: PeriodPreset = hasExplicitDateQuery ? "custom" : "90d";
+
+    return {
+      periodPreset,
+      fromDate: queryFromDate,
+      toDate: queryToDate,
+      sezonaId: querySezonaId,
+      storeId: queryStoreId,
+    };
+  }, [initialRange.fromDate, initialRange.toDate, searchParams]);
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(initialQueryFilters.periodPreset);
+  const [fromDate, setFromDate] = useState(initialQueryFilters.fromDate);
+  const [toDate, setToDate] = useState(initialQueryFilters.toDate);
+  const [sezonaId, setSezonaId] = useState<number | null>(initialQueryFilters.sezonaId);
+  const [storeId, setStoreId] = useState<number | null>(initialQueryFilters.storeId);
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-    fromDate: initialRange.fromDate,
-    toDate: initialRange.toDate,
-    sezonaId: null,
-    storeId: null,
+    fromDate: initialQueryFilters.fromDate,
+    toDate: initialQueryFilters.toDate,
+    sezonaId: initialQueryFilters.sezonaId,
+    storeId: initialQueryFilters.storeId,
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [data, setData] = useState<SupplierSalesStatsResponse | null>(null);
-  const [previousPeriodRevenue, setPreviousPeriodRevenue] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedSupplierKey, setExpandedSupplierKey] = useState<string | null>(null);
+  const activeDataScope = useMemo(
+    () => searchParams.get("dataScope") || getDataScope(),
+    [searchParams]
+  );
+  const includeUnknown = useMemo(
+    () => (searchParams.get("includeUnknown") ?? "true").toLowerCase() !== "false",
+    [searchParams]
+  );
+  const focus = useMemo(() => searchParams.get("focus") ?? "", [searchParams]);
+  const focusSupplierId = useMemo(() => searchParams.get("supplierId"), [searchParams]);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
     return new Date(fromDate) > new Date(toDate);
   }, [fromDate, toDate]);
+
+  useEffect(() => {
+    const queryFromDate = parseDateInputOrDefault(searchParams.get("fromDate"), activeFilters.fromDate);
+    const queryToDate = parseDateInputOrDefault(searchParams.get("toDate"), activeFilters.toDate);
+    const querySezonaId = parseNullableInt(searchParams.get("sezonaId"));
+    const queryStoreId = parseNullableInt(searchParams.get("storeId"));
+    const hasExplicitDateQuery = searchParams.has("fromDate") || searchParams.has("toDate");
+    const queryPreset: PeriodPreset = hasExplicitDateQuery ? "custom" : "90d";
+
+    const isSame =
+      activeFilters.fromDate === queryFromDate &&
+      activeFilters.toDate === queryToDate &&
+      activeFilters.sezonaId === querySezonaId &&
+      activeFilters.storeId === queryStoreId;
+
+    if (isSame) return;
+
+    setPeriodPreset(queryPreset);
+    setFromDate(queryFromDate);
+    setToDate(queryToDate);
+    setSezonaId(querySezonaId);
+    setStoreId(queryStoreId);
+    setActiveFilters({
+      fromDate: queryFromDate,
+      toDate: queryToDate,
+      sezonaId: querySezonaId,
+      storeId: queryStoreId,
+    });
+  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, searchParams]);
 
   useEffect(() => {
     const loadStores = async () => {
@@ -304,124 +470,81 @@ export default function SupplierSalesStatsPage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters) => {
+  const load = useCallback(async (filters: ActiveFilters, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
-    setPreviousPeriodRevenue(null);
 
     try {
       const currentRange = toUtcRange(filters.fromDate, filters.toDate);
 
-      // Load current period first so the page renders immediately.
       const currentResult = await getSupplierSalesStats({
         ...currentRange,
         sezonaId: filters.sezonaId,
         storeId: filters.storeId,
+        dataScope: activeDataScope,
+        signal,
       });
 
       if (requestId !== requestIdRef.current) return;
       setData(currentResult);
       setLoading(false);
 
-      // Load previous period in the background — non-blocking for initial render.
-      const previousRange = buildPreviousRange(filters.fromDate, filters.toDate);
-      try {
-        const previousResult = await getSupplierSalesStats({
-          ...previousRange,
-          storeId: filters.storeId,
-        });
-        if (requestId !== requestIdRef.current) return;
-        setPreviousPeriodRevenue(previousResult.totals.ukupanPromet);
-      } catch {
-        if (requestId === requestIdRef.current) setPreviousPeriodRevenue(null);
-      }
     } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") {
+        return;
+      }
       if (requestId !== requestIdRef.current) return;
       setData(null);
-      setPreviousPeriodRevenue(null);
       setLoading(false);
       setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju podataka o dobavljacima.");
     }
-  }, []);
+  }, [activeDataScope]);
 
   useEffect(() => {
-    void load(activeFilters);
+    const controller = new AbortController();
+    void load(activeFilters, controller.signal);
+    return () => controller.abort();
   }, [activeFilters, load]);
 
   const decisionSuppliers = useMemo<DecisionSupplier[]>(() => {
     const suppliers = data?.suppliers ?? [];
     if (suppliers.length === 0) return [];
 
-    const totalRevenue = suppliers.reduce((sum, item) => sum + item.ukupanPromet, 0);
-    const topShare = suppliers.reduce((max, item) => {
-      const share = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : 0;
-      return Math.max(max, share);
-    }, 0);
-
-    const marginValues = suppliers.map((item) => item.marginPct);
-    const minMargin = Math.min(...marginValues);
-    const maxMargin = Math.max(...marginValues);
-    const marginSpan = maxMargin - minMargin;
-    const avgMargin = marginValues.reduce((sum, value) => sum + value, 0) / marginValues.length;
+    const totalRevenue = data?.totals.ukupanPromet ?? suppliers.reduce((sum, item) => sum + item.ukupanPromet, 0);
 
     return suppliers.map((supplier) => {
-      const sharePct = totalRevenue > 0 ? (supplier.ukupanPromet / totalRevenue) * 100 : 0;
-      const marginContribution = supplier.marginContribution;
-      const trendPct = supplier.promenaPrometa;
-      const coveragePct = supplier.brojArtikalaUkupno > 0
-        ? (supplier.brojArtikalaSaNivelacijom / supplier.brojArtikalaUkupno) * 100
-        : 0;
-      const marginCoveragePct = supplier.marginDataCoveragePct ?? 0;
-
-      const knownSupplier = !supplier.isUnknown && !UNKNOWN_SUPPLIERS.has(normalizeName(supplier.dobavljacNaziv));
-      const reliabilityPct = clamp(coveragePct * 0.6 + marginCoveragePct * 0.2 + (knownSupplier ? 20 : 0), 0, 100);
-
-      const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
-      const marginNorm = marginSpan > 0
-        ? clamp(((supplier.marginPct - minMargin) / marginSpan) * 100, 0, 100)
-        : 50;
-      const trendNorm = trendPct == null ? 50 : clamp(((trendPct + 30) / 60) * 100, 0, 100);
-
-      const decisionScore = Math.round(
-        shareNorm * 0.35 +
-        marginNorm * 0.30 +
-        trendNorm * 0.20 +
-        reliabilityPct * 0.15
-      );
-
-      let status: DecisionStatus = "Smanji";
-      if (supplier.isUnknown) {
-        status = "N/A";
-      } else {
-        if (decisionScore >= 70) status = "Pojacaj";
-        else if (decisionScore >= 45) status = "Zadrzi";
-        if (reliabilityPct < 35 && status === "Pojacaj") {
-          status = "Zadrzi";
-        }
-      }
-
-      const statusReason = buildStatusReason(status, {
-        trendPct,
-        marginPct: supplier.marginPct,
-        avgMargin,
-        reliabilityPct,
-        marginCoveragePct: supplier.marginDataCoveragePct,
-      });
+      const sharePct = supplier.sharePct ?? (totalRevenue > 0 ? (supplier.ukupanPromet / totalRevenue) * 100 : 0);
+      const splitCoveragePct = supplier.prePostNivelacijaRevenueCoveragePct ?? 0;
+      const recommended = supplier.recommendation;
+      const status = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
+      const statusLabel = recommended?.label ?? displayStatusLabel(status);
+      const statusReason = recommended?.summary
+        ?? (supplier.isUnknown
+          ? "Dobavljac je nepoznat u master podacima; signal nije pouzdan za odluku."
+          : "Nedovoljno podataka za pouzdanu preporuku.");
+      const confidencePct = recommended?.confidencePct ?? 0;
+      const reasonCodes = recommended?.reasonCodes ?? [];
+      const dataQualityStatus = recommended?.dataQualityStatus ?? "warning";
+      const reliabilityPct = recommended?.reliabilityPct
+        ?? supplier.reliabilityPct
+        ?? supplier.marginDataCoveragePct
+        ?? 0;
 
       return {
         ...supplier,
         sharePct,
-        marginContribution,
-        trendPct,
         reliabilityPct,
-        coveragePct,
-        decisionScore: supplier.isUnknown ? 0 : decisionScore,
+        splitCoveragePct,
+        confidencePct,
         status,
+        statusLabel,
         statusReason,
+        reasonCodes,
+        dataQualityStatus,
       };
     });
-  }, [data?.suppliers]);
+  }, [data?.suppliers, data?.totals.ukupanPromet]);
 
   const sortedSuppliers = useMemo(() => {
     const rows = [...decisionSuppliers];
@@ -440,14 +563,16 @@ export default function SupplierSalesStatsPage() {
         compare = a.sharePct - b.sharePct;
       } else if (sortField === "marginContribution") {
         compare = a.marginContribution - b.marginContribution;
-      } else if (sortField === "trendPct") {
-        compare = (a.trendPct ?? -9999) - (b.trendPct ?? -9999);
+      } else if (sortField === "popRevenueChangePct") {
+        compare = (a.popRevenueChangePct ?? -9999) - (b.popRevenueChangePct ?? -9999);
+      } else if (sortField === "prePostNivelacijaRevenueImpactPct") {
+        compare = (a.prePostNivelacijaRevenueImpactPct ?? -9999) - (b.prePostNivelacijaRevenueImpactPct ?? -9999);
       } else if (sortField === "status") {
         compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
       }
 
       if (compare === 0) {
-        compare = a.decisionScore - b.decisionScore;
+        compare = a.confidencePct - b.confidencePct;
       }
 
       if (compare === 0) {
@@ -458,16 +583,37 @@ export default function SupplierSalesStatsPage() {
     });
   }, [decisionSuppliers, sortDir, sortField]);
 
+  const visibleSuppliers = useMemo(
+    () => (includeUnknown ? sortedSuppliers : sortedSuppliers.filter((row) => !row.isUnknown)),
+    [includeUnknown, sortedSuppliers]
+  );
+
   const selectedSupplier = useMemo(
-    () => sortedSuppliers.find((row) => supplierKey(row) === expandedSupplierKey) ?? null,
-    [expandedSupplierKey, sortedSuppliers]
+    () => visibleSuppliers.find((row) => supplierKey(row) === expandedSupplierKey) ?? null,
+    [expandedSupplierKey, visibleSuppliers]
   );
 
   useEffect(() => {
-    if (!selectedSupplier && sortedSuppliers.length > 0 && expandedSupplierKey != null) {
+    if (!selectedSupplier && visibleSuppliers.length > 0 && expandedSupplierKey != null) {
       setExpandedSupplierKey(null);
     }
-  }, [expandedSupplierKey, selectedSupplier, sortedSuppliers.length]);
+  }, [expandedSupplierKey, selectedSupplier, visibleSuppliers.length]);
+
+  useEffect(() => {
+    if (!focusSupplierId || visibleSuppliers.length === 0) return;
+
+    const normalizedFocus = focusSupplierId.trim().toLowerCase();
+    const match = visibleSuppliers.find((row) => {
+      if (row.dobavljacId != null) {
+        return String(row.dobavljacId) === normalizedFocus;
+      }
+
+      return normalizeName(row.dobavljacNaziv) === normalizeName(focusSupplierId);
+    });
+
+    if (!match) return;
+    setExpandedSupplierKey(supplierKey(match));
+  }, [focusSupplierId, visibleSuppliers]);
 
   useEffect(() => {
     if (!selectedSupplier || !detailSectionRef.current) return;
@@ -481,8 +627,8 @@ export default function SupplierSalesStatsPage() {
 
   const totalRevenue = data?.totals.ukupanPromet ?? 0;
   const knownSuppliers = useMemo(
-    () => sortedSuppliers.filter((row) => !row.isUnknown),
-    [sortedSuppliers]
+    () => visibleSuppliers.filter((row) => !row.isUnknown),
+    [visibleSuppliers]
   );
 
   const top5SharePct = useMemo(() => {
@@ -500,9 +646,8 @@ export default function SupplierSalesStatsPage() {
   );
 
   const periodGrowthPct = useMemo(() => {
-    if (previousPeriodRevenue == null || previousPeriodRevenue <= 0) return null;
-    return ((totalRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100;
-  }, [previousPeriodRevenue, totalRevenue]);
+    return data?.totals.popRevenueChangePct ?? null;
+  }, [data?.totals.popRevenueChangePct]);
 
   const concentrationData = useMemo(() => {
     if (knownSuppliers.length === 0) return [] as Array<{ name: string; sharePct: number }>;
@@ -524,10 +669,12 @@ export default function SupplierSalesStatsPage() {
   }, [knownSuppliers]);
 
   const supplierCounts = useMemo(() => {
-    const boost = knownSuppliers.filter((row) => row.status === "Pojacaj").length;
-    const keep = knownSuppliers.filter((row) => row.status === "Zadrzi").length;
-    const reduce = knownSuppliers.filter((row) => row.status === "Smanji").length;
-    return { boost, keep, reduce };
+    const increaseFocus = knownSuppliers.filter((row) => row.status === "increase_focus").length;
+    const maintain = knownSuppliers.filter((row) => row.status === "maintain").length;
+    const review = knownSuppliers.filter((row) => row.status === "review").length;
+    const doNotTrust = knownSuppliers.filter((row) => row.status === "do_not_trust").length;
+    const insufficientData = knownSuppliers.filter((row) => row.status === "insufficient_data").length;
+    return { increaseFocus, maintain, review, doNotTrust, insufficientData };
   }, [knownSuppliers]);
 
   const unknownSuppliers = useMemo(
@@ -541,7 +688,7 @@ export default function SupplierSalesStatsPage() {
   }, [activeFilters.sezonaId, data?.sezone]);
 
   const emptyStateHint = useMemo(() => {
-    if (!data || sortedSuppliers.length > 0) return null;
+    if (!data || visibleSuppliers.length > 0) return null;
     if (!data.dataWindowFrom || !data.dataWindowTo) {
       return "Nema podataka za izabrane filtere.";
     }
@@ -565,7 +712,7 @@ export default function SupplierSalesStatsPage() {
     }
 
     return "Nema podataka za izabrane filtere.";
-  }, [activeFilters.fromDate, activeFilters.toDate, data, sortedSuppliers.length]);
+  }, [activeFilters.fromDate, activeFilters.toDate, data, visibleSuppliers.length]);
 
   const qualityNotes = useMemo(() => {
     if (!data) return [] as string[];
@@ -597,8 +744,10 @@ export default function SupplierSalesStatsPage() {
       { key: "toDate", label: "Do", value: activeFilters.toDate },
       { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
       { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+      { key: "dataScope", label: "Data scope", value: activeDataScope },
+      { key: "includeUnknown", label: "Include unknown", value: includeUnknown ? "true" : "false" },
     ],
-    [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel]
+    [activeDataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, includeUnknown]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
@@ -607,22 +756,64 @@ export default function SupplierSalesStatsPage() {
       { key: "suppliers", label: "Dobavljaca", value: data?.totals.brojDobavljaca ?? 0 },
       { key: "unknownSuppliers", label: "Nepoznato/N-A", value: unknownSuppliers.length },
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "totalsPopTrend", label: "Ukupan PoP trend", value: fmtPct(data?.totals.popRevenueChangePct, 1) },
+      { key: "totalsPrePostImpact", label: "Ukupan nivelacija impact", value: fmtPct(data?.totals.prePostNivelacijaRevenueImpactPct, 1) },
       { key: "splitCoverage", label: "Pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
-      { key: "boost", label: "Pojacaj", value: supplierCounts.boost },
-      { key: "keep", label: "Zadrzi", value: supplierCounts.keep },
-      { key: "reduce", label: "Smanji", value: supplierCounts.reduce },
+      { key: "increaseFocus", label: "Increase focus", value: supplierCounts.increaseFocus },
+      { key: "maintain", label: "Maintain", value: supplierCounts.maintain },
+      { key: "review", label: "Review", value: supplierCounts.review },
+      { key: "doNotTrust", label: "Do not trust", value: supplierCounts.doNotTrust },
+      { key: "insufficientData", label: "Insufficient data", value: supplierCounts.insufficientData },
     ],
     [
       data?.dataQuality.missingCostRevenueSharePct,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.generatedAt,
       data?.totals.brojDobavljaca,
-      supplierCounts.boost,
-      supplierCounts.keep,
-      supplierCounts.reduce,
+      data?.totals.popRevenueChangePct,
+      data?.totals.prePostNivelacijaRevenueImpactPct,
+      supplierCounts.increaseFocus,
+      supplierCounts.maintain,
+      supplierCounts.review,
+      supplierCounts.doNotTrust,
+      supplierCounts.insufficientData,
       unknownSuppliers.length,
     ]
   );
+
+  const dataQualityContextQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    const returnParams = new URLSearchParams();
+    params.set("type", "missingSupplier");
+    params.set("originTable", "supplier-sales-stats");
+    params.set("fromDate", activeFilters.fromDate);
+    params.set("toDate", activeFilters.toDate);
+    params.set("focus", focus || "supplier-unknown");
+    params.set("includeUnknown", includeUnknown ? "true" : "false");
+    params.set("dataScope", activeDataScope);
+    returnParams.set("fromDate", activeFilters.fromDate);
+    returnParams.set("toDate", activeFilters.toDate);
+    returnParams.set("dataScope", activeDataScope);
+    returnParams.set("includeUnknown", includeUnknown ? "true" : "false");
+    if (focus) returnParams.set("focus", focus);
+    if (focusSupplierId) returnParams.set("supplierId", focusSupplierId);
+    if (activeFilters.sezonaId != null) params.set("sezonaId", String(activeFilters.sezonaId));
+    if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
+    if (focusSupplierId) params.set("supplierId", focusSupplierId);
+    if (activeFilters.sezonaId != null) returnParams.set("sezonaId", String(activeFilters.sezonaId));
+    if (activeFilters.storeId != null) returnParams.set("storeId", String(activeFilters.storeId));
+    params.set("returnTo", `/analytics/supplier-sales-stats?${returnParams.toString()}`);
+    return params.toString();
+  }, [
+    activeDataScope,
+    activeFilters.fromDate,
+    activeFilters.sezonaId,
+    activeFilters.storeId,
+    activeFilters.toDate,
+    focus,
+    focusSupplierId,
+    includeUnknown,
+  ]);
 
   const openSupplierDetail = useCallback((supplier: DecisionSupplier) => {
     const recordId = supplier.dobavljacId != null
@@ -634,6 +825,10 @@ export default function SupplierSalesStatsPage() {
     params.set("toDate", `${activeFilters.toDate}T23:59:59Z`);
     if (activeFilters.sezonaId != null) params.set("sezonaId", String(activeFilters.sezonaId));
     if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
+    params.set("dataScope", activeDataScope);
+    params.set("includeUnknown", includeUnknown ? "true" : "false");
+    params.set("focus", focus || "supplier-detail");
+    params.set("supplierId", recordId);
 
     saveAnalyticsDetailSnapshot(
       buildAnalyticsDetailSnapshot({
@@ -650,7 +845,18 @@ export default function SupplierSalesStatsPage() {
     navigate(`/analitika/supplier-sales-stats/${recordId}?${params.toString()}`, {
       state: { backgroundLocation: location },
     });
-  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, location, navigate, toolbarFilters]);
+  }, [
+    activeDataScope,
+    activeFilters.fromDate,
+    activeFilters.sezonaId,
+    activeFilters.storeId,
+    activeFilters.toDate,
+    focus,
+    includeUnknown,
+    location,
+    navigate,
+    toolbarFilters,
+  ]);
 
   const applyPreset = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
@@ -680,12 +886,27 @@ export default function SupplierSalesStatsPage() {
       return;
     }
 
-    setActiveFilters({
+    const nextFilters: ActiveFilters = {
       fromDate,
       toDate,
       sezonaId,
       storeId,
-    });
+    };
+    setActiveFilters(nextFilters);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("fromDate", nextFilters.fromDate);
+    nextParams.set("toDate", nextFilters.toDate);
+    if (nextFilters.sezonaId != null) nextParams.set("sezonaId", String(nextFilters.sezonaId));
+    else nextParams.delete("sezonaId");
+    if (nextFilters.storeId != null) nextParams.set("storeId", String(nextFilters.storeId));
+    else nextParams.delete("storeId");
+    nextParams.set("dataScope", activeDataScope);
+    nextParams.set("includeUnknown", includeUnknown ? "true" : "false");
+    if (focus) nextParams.set("focus", focus);
+    else nextParams.delete("focus");
+    nextParams.delete("supplierId");
+    setSearchParams(nextParams, { replace: true });
   };
 
   const handleResetFilters = () => {
@@ -701,6 +922,18 @@ export default function SupplierSalesStatsPage() {
       sezonaId: null,
       storeId: null,
     });
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("fromDate", range.fromDate);
+    nextParams.set("toDate", range.toDate);
+    nextParams.delete("sezonaId");
+    nextParams.delete("storeId");
+    nextParams.set("dataScope", activeDataScope);
+    nextParams.set("includeUnknown", includeUnknown ? "true" : "false");
+    if (focus) nextParams.set("focus", focus);
+    else nextParams.delete("focus");
+    nextParams.delete("supplierId");
+    setSearchParams(nextParams, { replace: true });
   };
 
   const handleSort = (field: SortField) => {
@@ -713,6 +946,12 @@ export default function SupplierSalesStatsPage() {
       setSortDir(field === "dobavljacNaziv" ? "asc" : "desc");
       return field;
     });
+  };
+
+  const handleIncludeUnknownChange = (value: boolean) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("includeUnknown", value ? "true" : "false");
+    setSearchParams(nextParams, { replace: true });
   };
 
   return (
@@ -794,6 +1033,15 @@ export default function SupplierSalesStatsPage() {
           </select>
         </label>
 
+        <label className="supplier-decision-field supplier-decision-field-checkbox">
+          <span>Prikazi unknown</span>
+          <input
+            type="checkbox"
+            checked={includeUnknown}
+            onChange={(event) => handleIncludeUnknownChange(event.target.checked)}
+          />
+        </label>
+
         <div className="supplier-decision-actions">
           <button type="button" onClick={handleApplyFilters} disabled={loading}>
             Primeni
@@ -817,14 +1065,14 @@ export default function SupplierSalesStatsPage() {
           <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
           <div className="supplier-decision-quality-actions">
             <Link
-              to="/analytics/data-quality?type=missingSupplier&originTable=supplier-sales-stats"
+              to={`/analytics/data-quality?${dataQualityContextQuery}`}
               className="supplier-decision-quality-link"
             >
               Otvori Data Quality centar
             </Link>
             {unknownSuppliers.length > 0 ? (
               <Link
-                to="/analytics/data-quality?type=missingSupplier&originTable=supplier-sales-stats"
+                to={`/analytics/data-quality?${dataQualityContextQuery}`}
                 className="supplier-decision-quality-link"
               >
                 Pregledaj artikle bez dobavljaca
@@ -850,7 +1098,7 @@ export default function SupplierSalesStatsPage() {
               <strong>{fmtRsd(totalMarginContribution)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Rast/PAD vs prethodni period</span>
+              <span>Ukupan PoP trend</span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
@@ -884,7 +1132,10 @@ export default function SupplierSalesStatsPage() {
                 <div>
                   <h2>Prioritetna lista dobavljaca</h2>
                   <p>
-                    Pojačaj: {supplierCounts.boost} | Zadrži: {supplierCounts.keep} | Smanji: {supplierCounts.reduce}
+                    Increase focus: {supplierCounts.increaseFocus} | Maintain: {supplierCounts.maintain} | Review: {supplierCounts.review} | Do not trust: {supplierCounts.doNotTrust} | Insufficient data: {supplierCounts.insufficientData}
+                  </p>
+                  <p className="supplier-decision-metric-note">
+                    PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena samo unutar prometa sa poznatim prvim datumom nivelacije.
                   </p>
                   {unknownSuppliers.length > 0 ? (
                     <p className="supplier-unknown-note">
@@ -894,9 +1145,9 @@ export default function SupplierSalesStatsPage() {
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="supplier-sales-stats"
-                  tableTitle="Podrška odluci - dobavljači"
+                  tableTitle="Podrska odluci - dobavljaci"
                   columns={decisionColumns}
-                  rows={sortedSuppliers}
+                  rows={visibleSuppliers}
                   filters={toolbarFilters}
                   metadata={toolbarMetadata}
                   defaultOrientation="landscape"
@@ -909,7 +1160,7 @@ export default function SupplierSalesStatsPage() {
                     <tr>
                       <th>
                         <button type="button" onClick={() => handleSort("dobavljacNaziv")}>
-                          Dobavljač{sortMarker("dobavljacNaziv", sortField, sortDir)} <InfoTip text="Naziv dobavljača. Klikom sortirate abecedno." />
+                          Dobavljac{sortMarker("dobavljacNaziv", sortField, sortDir)} <InfoTip text="Naziv dobavljaca. Klikom sortirate abecedno." />
                         </button>
                       </th>
                       <th className="align-right">
@@ -919,38 +1170,45 @@ export default function SupplierSalesStatsPage() {
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo%{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
+                          Udeo %{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marže: razlika između prodajne vrednosti i nabavne vrednosti za prodatu robu." />
+                          Marzni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marze: razlika izmedju prodajne i nabavne vrednosti za promet sa poznatom nabavnom cenom." />
                         </button>
                       </th>
                       <th className="align-right">
-                          <button type="button" onClick={() => handleSort("trendPct")}>
-                          Trend{sortMarker("trendPct", sortField, sortDir)} <InfoTip text="Promena prometa u poređenju sa prethodnim periodom (procenat)." />
+                        <button type="button" onClick={() => handleSort("popRevenueChangePct")}>
+                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
+                        </button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}>
+                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto sto i PoP trend." />
                         </button>
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Systemska preporuka: Pojačaj / Zadrži / Smanji. Kliknite na red za detaljnije objašnjenje." />
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Sistemska preporuka iz backend recommendation engine-a: Increase focus / Maintain / Review / Do not trust / Insufficient data." />
                         </button>
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedSuppliers.length === 0 ? (
+                    {visibleSuppliers.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="supplier-decision-empty-row">
+                        <td colSpan={8} className="supplier-decision-empty-row">
                           Nema podataka za izabrane filtere.
                         </td>
                       </tr>
                     ) : (
-                      sortedSuppliers.map((supplier) => {
+                      visibleSuppliers.map((supplier) => {
                         const rowKey = supplierKey(supplier);
                         const isExpanded = expandedSupplierKey === rowKey;
+                        const popMetric = describePopMetric(supplier);
+                        const nivelacijaImpactMetric = describeNivelacijaImpactMetric(supplier);
                         return (
                           <tr
                             key={rowKey}
@@ -975,7 +1233,9 @@ export default function SupplierSalesStatsPage() {
                                     originTable: "supplier-sales-stats",
                                     fromDate: activeFilters.fromDate,
                                     toDate: activeFilters.toDate,
+                                    sezonaId: activeFilters.sezonaId,
                                     storeId: activeFilters.storeId,
+                                    dataScope: activeDataScope,
                                   }}
                                 />
                               )}
@@ -983,14 +1243,19 @@ export default function SupplierSalesStatsPage() {
                             <td className="align-right">{fmtRsd(supplier.ukupanPromet)}</td>
                             <td className="align-right">{fmtPct(supplier.sharePct, 2)}</td>
                             <td className="align-right">{fmtRsd(supplier.marginContribution)}</td>
-                            <td className={`align-right ${trendClass(supplier.trendPct)}`}>{fmtSignedPct(supplier.trendPct, 2)}</td>
+                            <td className={["align-right", popMetric.className].join(" ")} title={popMetric.title}>
+                              {popMetric.label}
+                            </td>
+                            <td className={["align-right", nivelacijaImpactMetric.className].join(" ")} title={nivelacijaImpactMetric.title}>
+                              {nivelacijaImpactMetric.label}
+                            </td>
                             <td>
                               <span
                                 className={statusClass(supplier.status)}
                                 title={buildStatusTooltip(supplier)}
                                 aria-label={buildStatusTooltip(supplier)}
                               >
-                                {displayStatusLabel(supplier.status)}
+                                {supplier.statusLabel}
                               </span>
                             </td>
                             <td className="align-center">
@@ -1022,6 +1287,42 @@ export default function SupplierSalesStatsPage() {
               </div>
 
               <div className="supplier-decision-detail-grid">
+                <article>
+                  <span>PoP trend prometa</span>
+                  <strong className={describePopMetric(selectedSupplier).className} title={describePopMetric(selectedSupplier).title}>
+                    {describePopMetric(selectedSupplier).label}
+                  </strong>
+                </article>
+                <article>
+                  <span>Prethodni period promet</span>
+                  <strong>{selectedSupplier.previousPeriodRevenue != null ? fmtRsd(selectedSupplier.previousPeriodRevenue) : "N/A"}</strong>
+                </article>
+                <article>
+                  <span>PoP trend kolicine</span>
+                  <strong className={describePopUnitsMetric(selectedSupplier).className} title={describePopUnitsMetric(selectedSupplier).title}>
+                    {describePopUnitsMetric(selectedSupplier).label}
+                  </strong>
+                </article>
+                <article>
+                  <span>Prethodni period kolicina</span>
+                  <strong>{selectedSupplier.previousPeriodUnits != null ? fmtQty(selectedSupplier.previousPeriodUnits) : "N/A"}</strong>
+                </article>
+                <article>
+                  <span>Nivelacija impact prometa</span>
+                  <strong className={describeNivelacijaImpactMetric(selectedSupplier).className} title={describeNivelacijaImpactMetric(selectedSupplier).title}>
+                    {describeNivelacijaImpactMetric(selectedSupplier).label}
+                  </strong>
+                </article>
+                <article>
+                  <span>Nivelacija impact kolicine</span>
+                  <strong className={describeNivelacijaUnitsImpactMetric(selectedSupplier).className} title={describeNivelacijaUnitsImpactMetric(selectedSupplier).title}>
+                    {describeNivelacijaUnitsImpactMetric(selectedSupplier).label}
+                  </strong>
+                </article>
+                <article>
+                  <span>Pre/post pokrice prometa</span>
+                  <strong>{fmtPct(selectedSupplier.prePostNivelacijaRevenueCoveragePct, 1)}</strong>
+                </article>
                 <article>
                   <span>Pre nivelacije promet</span>
                   <strong>{fmtRsd(selectedSupplier.preNivelacijePromet)}</strong>
@@ -1055,13 +1356,14 @@ export default function SupplierSalesStatsPage() {
                   <strong>{fmtSignedPct(selectedSupplier.marginPct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Decision score</span>
-                  <strong>{selectedSupplier.decisionScore}</strong>
+                  <span>Confidence %</span>
+                  <strong>{fmtPct(selectedSupplier.confidencePct, 0)}</strong>
                 </article>
               </div>
 
               <p className="supplier-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedSupplier.statusReason}
+                {selectedSupplier.reasonCodes.length > 0 ? ` (${selectedSupplier.reasonCodes.map(formatReasonCode).join(", ")})` : ""}
               </p>
             </section>
           ) : null}

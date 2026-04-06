@@ -26,7 +26,8 @@ public sealed record GetDataQualityIssuesQuery(
     int PageSize = 25,
     string? Query = null,
     string? SortBy = null,
-    string? SortDir = null
+    string? SortDir = null,
+    string? DataScope = null
 ) : IRequest<DataQualityIssueListDto>;
 
 public sealed record DataQualityIssueListDto(

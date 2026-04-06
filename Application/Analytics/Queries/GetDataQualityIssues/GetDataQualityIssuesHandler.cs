@@ -24,6 +24,7 @@ public sealed class GetDataQualityIssuesHandler
         var offset = (page - 1) * pageSize;
         var sortBy = NormalizeSortBy(request.SortBy);
         var sortDir = NormalizeSortDir(request.SortDir);
+        var dataScope = NormalizeDataScope(request.DataScope);
 
         var orderClause = BuildOrderClause(sortBy, sortDir);
         var sql = $"""
@@ -61,6 +62,9 @@ public sealed class GetDataQualityIssuesHandler
                 LEFT JOIN "Dobavljaci" d ON a."IDDobavljac" = d."Id"
                 LEFT JOIN "TipoviObuce" t ON a."IDTipObuce" = t."Id"
                 LEFT JOIN sales_30d s ON s.artikal_id = a."Id"
+                WHERE @dataScope = 'all'
+                   OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
+                   OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
             )
             SELECT
                 sku,
@@ -108,6 +112,7 @@ public sealed class GetDataQualityIssuesHandler
             command.Parameters.AddWithValue("queryPattern", $"%{query}%");
             command.Parameters.AddWithValue("pageSize", pageSize);
             command.Parameters.AddWithValue("offset", offset);
+            command.Parameters.AddWithValue("dataScope", dataScope);
 
             var items = new List<DataQualityIssueItemDto>();
             var total = 0;
@@ -158,6 +163,12 @@ public sealed class GetDataQualityIssuesHandler
 
     private static string NormalizeSortDir(string? sortDir)
         => string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "ASC" : "DESC";
+
+    private static string NormalizeDataScope(string? dataScope)
+    {
+        var normalized = (dataScope ?? "all").Trim().ToLowerInvariant();
+        return normalized is "existing" or "imported" ? normalized : "all";
+    }
 
     private static string BuildOrderClause(string sortBy, string sortDir)
     {

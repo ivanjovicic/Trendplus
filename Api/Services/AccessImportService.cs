@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Data.Odbc;
 using System.Globalization;
 using System.Text;
@@ -47,7 +47,7 @@ using NpgsqlTypes;
         }
     }
 
-    // â”€â”€ Table-name candidates (exact then contains, then column-signature fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Table-name candidates (exact then contains, then column-signature fallback) ────────────────
     private static readonly string[] TipoviCandidates        = ["tipoviobuce", "tipobuce", "tipovi_obuce", "footweartypes", "tbltipobuce", "tbltipovi"];
     private static readonly string[] DobavljaciCandidates    = ["dobavljaci", "dobavljac", "suppliers", "tbldobavljaci", "tbldobavljac"];
     private static readonly string[] SezoneCandidates        = ["sezone", "sezona", "seasons", "tblsezone", "tblsezona", "godisnjedoba"];
@@ -57,7 +57,7 @@ using NpgsqlTypes;
     private static readonly string[] DnevnikPromenaCandidates = ["dnevnikpromjena", "dnevnikpromena", "dnevnik_promjena", "dnevnik_promena", "dnevnik", "log", "promena", "promjena", "events", "journal", "tbldnevnikpromena", "tbldnevnikpromjena", "tbldnevnik"];
     private static readonly string[] PovracajCandidates      = ["povracaj_zaglavlje", "povracajzaglavlje", "povracaj", "returns", "returnheader", "vracanje", "tblpovracaj", "tblzapisnikopovracaju", "tblzapisnik"];
     private static readonly string[] PovracajStavkeCandidates2 = ["povracaj_stavke", "povracajstavke", "stavkepovracaja", "returnlines", "returnstems", "tblstavkepovracaja", "tblstavkezapisnika"];
-    // â”€â”€ New movement-type candidates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── New movement-type candidates ─────────────────────────────────────────────────────────────
     private static readonly string[] NivelacijeCandidates    = ["nivelacije", "nivelacija", "priceupdate", "cenovneizmene", "tblnivelacije", "tblnivelacija", "nivelacijeartikala"];
     private static readonly string[] UnosRobeCandidates      = ["unosrobe", "unos_robe", "goodsreceipt", "prijem", "tblunosrobe", "tblprijemsrobe", "tblprijem", "kretanjezalihe"];
     private static readonly string[] PovratniceCandidates    = ["povratnice", "povratnica", "customerreturns", "vracajakupaca", "tblpovratnice", "tblpovratnica", "tblvracanjakupaca"];
@@ -1761,7 +1761,7 @@ using NpgsqlTypes;
     {
         EnsurePlatformSupport();
         if (!File.Exists(accessFilePath))
-            throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", accessFilePath);
+            throw new FileNotFoundException("ACCDB fajl nije pronađen.", accessFilePath);
 
         if (_jobQueue is null)
             throw new InvalidOperationException("Access import background job queue is not configured.");
@@ -1914,7 +1914,7 @@ using NpgsqlTypes;
     {
         EnsurePlatformSupport();
         if (!File.Exists(sourceFilePath))
-            throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", sourceFilePath);
+            throw new FileNotFoundException("ACCDB fajl nije pronađen.", sourceFilePath);
 
         var now = DateTime.UtcNow;
         await EnsureDataImportBatchesTableIfEnabledAsync(ct);
@@ -1999,10 +1999,10 @@ using NpgsqlTypes;
     {
         EnsurePlatformSupport();
         if (!File.Exists(accessFilePath))
-            throw new FileNotFoundException("ACCDB fajl nije pronaÄ‘en.", accessFilePath);
+            throw new FileNotFoundException("ACCDB fajl nije pronađen.", accessFilePath);
 
         var batch = await _trendDb.DataImportBatches.FirstOrDefaultAsync(x => x.Id == batchId, ct)
-            ?? throw new InvalidOperationException($"Batch {batchId} nije pronaÄ‘en.");
+            ?? throw new InvalidOperationException($"Batch {batchId} nije pronađen.");
 
         if (batch.CancellationRequested &&
             (string.Equals(batch.Status, "pending", StringComparison.OrdinalIgnoreCase) ||
@@ -2656,10 +2656,13 @@ using NpgsqlTypes;
         int affected;
         try
         {
+            var sw = Stopwatch.StartNew();
             affected = await _trendDb.Database.ExecuteSqlRawAsync(
                 sql,
                 new object[] { batchId, now, "Cancellation requested by user." },
                 ct);
+            sw.Stop();
+            try { Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution("access-import", "ExecuteSqlRaw", sql, null, sw.ElapsedMilliseconds, true, affected, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
         }
         catch (PostgresException ex) when (
             ex.SqlState == PostgresErrorCodes.UndefinedTable ||
@@ -2874,6 +2877,7 @@ using NpgsqlTypes;
                       AND "CompletedAtUtc" IS NULL;
                     """;
 
+                var sw = Stopwatch.StartNew();
                 await _trendDb.Database.ExecuteSqlRawAsync(
                     sql,
                     new object[]
@@ -2885,6 +2889,8 @@ using NpgsqlTypes;
                         staleBatch.Id
                     },
                     cancellationToken: ct);
+                sw.Stop();
+                try { Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution("access-import", "ExecuteSqlRaw", sql, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
 
                 _logger.LogWarning(
                     "Recovered stale Access import batch. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StartedAtUtc: {StartedAtUtc}. LastHeartbeatUtc: {LastHeartbeatUtc}. RecoveryWindowMinutes: {RecoveryWindowMinutes}.",
@@ -3347,7 +3353,7 @@ using NpgsqlTypes;
         var objekti       = await FindTableAsync(session, tables, ObjekatCandidates, sigRequired: ["idobjekat", "nazivobjekta"], ct: ct);
 
         if (artikli is null)
-            throw new InvalidOperationException("Nije pronaÄ‘ena tabela za artikle u ACCDB fajlu.");
+            throw new InvalidOperationException("Nije pronađena tabela za artikle u ACCDB fajlu.");
 
         if (tipovi is not null)
             await RunImportStepAsync("import", "tipovi_obuce", tipovi, result, async innerCt =>
@@ -3400,7 +3406,7 @@ using NpgsqlTypes;
                 dnevnikImportedDelta,
                 result.BatchId);
             result.Warnings.Add(
-                "Preskočen je import tabela prodaja/povraćaj jer u dnevnik_promena nema novih izmena za incremental batch.");
+                "Preskocen je import tabela prodaja/povracaj jer u dnevnik_promena nema novih izmena za incremental batch.");
         }
 
         var importedProdajaFromLineTable = false;
@@ -5767,7 +5773,7 @@ using NpgsqlTypes;
 
     private void ImportPrenosRobe(OdbcConnection conn, string? table, bool overwriteExisting, AccessImportRunResponse result)
     {
-        // Each transfer row â†’ TWO DnevnikPromena entries: izlaz from source + ulaz to destination
+        // Each transfer row → TWO DnevnikPromena entries: izlaz from source + ulaz to destination
         if (table is null) return;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
@@ -5856,9 +5862,9 @@ using NpgsqlTypes;
             "nabavka iz ",
             "nabavka kod ",
             "povracaj robe u ",
-            "povraÄ‡aj robe u ",
+            "povraćaj robe u ",
             "povracaj u ",
-            "povraÄ‡aj u ",
+            "povraćaj u ",
             "isporuka od "
         };
 
@@ -5898,7 +5904,7 @@ using NpgsqlTypes;
             var id = I(row, "id", "idpovracaj", "returnid");
             var idDobavljac = I(row, "iddobavljac", "dobavljacid", "supplierid") ?? 0;
             var datum = DT(row, "datumazapisnika", "datumpovracaja", "datum", "date") ?? DateTime.UtcNow;
-            var broj = S(row, "brozapisnika", "bÑ€Ð¾Ñ˜Ð·Ð°Ð¿Ð¸ÑÐ½Ð¸ÐºÐ°", "broj", "recordnumber", "returnno")
+            var broj = S(row, "brozapisnika", "bројзаписника", "broj", "recordnumber", "returnno")
                        ?? $"ZP-{datum:yyyyMMdd}-{++seq:D4}";
 
             PovracajZaglavlje? e = null;
@@ -6090,12 +6096,46 @@ using NpgsqlTypes;
         ILogger logger)
     {
         await using var cmd = new NpgsqlCommand(sql, connection, transaction);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            await cmd.ExecuteNonQueryAsync(ct);
+            var rows = await cmd.ExecuteNonQueryAsync(ct);
+            sw.Stop();
+            try
+            {
+                Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                    dbSource: "analytics",
+                    commandKind: "ExecuteNonQuery",
+                    sql: sql,
+                    parameters: cmd.Parameters,
+                    durationMs: sw.ElapsedMilliseconds,
+                    succeeded: true,
+                    rowsAffected: rows,
+                    exception: null,
+                    requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                    traceId: Application.Logging.RequestLogContext.Current.TraceId);
+            }
+            catch { }
         }
         catch (PostgresException ex)
         {
+            sw.Stop();
+            try
+            {
+                Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                    dbSource: "analytics",
+                    commandKind: "ExecuteNonQuery",
+                    sql: sql,
+                    parameters: cmd.Parameters,
+                    durationMs: sw.ElapsedMilliseconds,
+                    succeeded: false,
+                    rowsAffected: null,
+                    exception: ex,
+                    requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                    traceId: Application.Logging.RequestLogContext.Current.TraceId);
+            }
+            catch { }
+
             logger.LogError(ex, "SQL FAILED: {Sql}", sql);
             throw;
         }
@@ -7431,8 +7471,8 @@ using NpgsqlTypes;
     /// Handles missing or misnamed TABLE_TYPE column across ODBC/OLEDB providers.
     /// 
     /// Rules:
-    /// - If TABLE_TYPE column exists â†’ must equal "TABLE"
-    /// - If TABLE_TYPE column missing â†’ assume it's a user table (fail-open)
+    /// - If TABLE_TYPE column exists → must equal "TABLE"
+    /// - If TABLE_TYPE column missing → assume it's a user table (fail-open)
     /// 
     /// INTERNAL: Exposed for testing.
     /// </summary>
@@ -7440,7 +7480,7 @@ using NpgsqlTypes;
     {
         if (schema?.Columns.Count == 0)
         {
-            // Empty schema â†’ assume it's a user table (fail-open)
+            // Empty schema → assume it's a user table (fail-open)
             return true;
         }
 
@@ -7450,7 +7490,7 @@ using NpgsqlTypes;
 
         if (tableTypeCol is null)
         {
-            // Missing column â†’ assume it's a user table (fail-open, safe default)
+            // Missing column → assume it's a user table (fail-open, safe default)
             return true;
         }
 
@@ -7458,7 +7498,7 @@ using NpgsqlTypes;
         {
             var value = row[tableTypeCol.Ordinal];
             if (value is null or DBNull)
-                return true; // Null â†’ assume user table
+                return true; // Null → assume user table
 
             var typeStr = value.ToString() ?? string.Empty;
             return string.Equals(typeStr, "TABLE", StringComparison.OrdinalIgnoreCase);
@@ -7466,7 +7506,7 @@ using NpgsqlTypes;
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[CheckIsUserTable] Exception: {ex.GetType().Name}: {ex.Message}");
-            // On any error â†’ assume it's a user table
+            // On any error → assume it's a user table
             return true;
         }
     }
@@ -7984,14 +8024,14 @@ using NpgsqlTypes;
             return new AccessFileSnapshot(
                 FilePath: tmpPath,
                 IsSnapshot: true,
-                Warning: $"Access baza deluje otvorena (pronaÄ‘en lock fajl '{Path.GetFileName(lockFilePath)}'). Koristi se snapshot kopija '{tmpName}'.");
+                Warning: $"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Koristi se snapshot kopija '{tmpName}'.");
         }
         catch (Exception ex)
         {
             return new AccessFileSnapshot(
                 FilePath: accessFilePath,
                 IsSnapshot: false,
-                Warning: $"Access baza deluje otvorena (pronaÄ‘en lock fajl '{Path.GetFileName(lockFilePath)}'). Snapshot kopija nije uspela ({ex.GetType().Name}). Preporuka: zatvori Access pre importa.");
+                Warning: $"Access baza deluje otvorena (pronađen lock fajl '{Path.GetFileName(lockFilePath)}'). Snapshot kopija nije uspela ({ex.GetType().Name}). Preporuka: zatvori Access pre importa.");
         }
     }
 
@@ -8126,24 +8166,24 @@ using NpgsqlTypes;
             }
 
             var tn = tablePreview.TableName!;
-            AddIf("Id", nullCount, 1, "âš ", warnings, tn, rows);
-            AddIf("Naziv", nullCount, 1, "âš ", warnings, tn, rows);
-            AddIf("Datum", nullCount, 1, "âš ", warnings, tn, rows);
-            AddIf("DatumProdaje", nullCount, 1, "âš ", warnings, tn, rows);
-            AddIf("TipPromene", nullCount, 1, "âš ", warnings, tn, rows);
-            AddIf("IdProdaja", nullCount, 1, "âš ", warnings, tn, rows);
-            AddIf("IdArtikal", nullCount, 1, "âš ", warnings, tn, rows);
-            AddIf("Kolicina", nullCount, 1, "âš ", warnings, tn, rows);
-            AddIf("Cena", nullCount, 1, "âš ", warnings, tn, rows);
+            AddIf("Id", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("Naziv", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("Datum", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("DatumProdaje", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("TipPromene", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("IdProdaja", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("IdArtikal", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("Kolicina", nullCount, 1, "⚠", warnings, tn, rows);
+            AddIf("Cena", nullCount, 1, "⚠", warnings, tn, rows);
 
             foreach (var (k, v) in dupCount.Where(x => x.Value > 0))
             {
-                warnings.Add($"âš  Tabela '{tn}': duplikati u uzorku za '{k}' = {v} (od {rows} redova).");
+                warnings.Add($"⚠ Tabela '{tn}': duplikati u uzorku za '{k}' = {v} (od {rows} redova).");
             }
 
             foreach (var (k, v) in nonPositiveCount.Where(x => x.Value > 0))
             {
-                warnings.Add($"âš  Tabela '{tn}': {v}/{rows} redova u uzorku ima '{k}' <= 0 ili nije broj.");
+                warnings.Add($"⚠ Tabela '{tn}': {v}/{rows} redova u uzorku ima '{k}' <= 0 ili nije broj.");
             }
         }
         catch (Exception ex)

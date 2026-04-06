@@ -15,10 +15,11 @@ public static class DataQualityEndpoints
             AnalyticsDataQualityHealthService healthService,
             IOptions<AnalyticsDataQualityHealthOptions> options,
             int? lookbackDays,
+            string? dataScope,
             CancellationToken ct) =>
         {
             var requestedLookback = lookbackDays ?? options.Value.LookbackDays;
-            var snapshot = await healthService.CaptureAsync(requestedLookback, ct);
+            var snapshot = await healthService.CaptureAsync(requestedLookback, dataScope, ct);
 
             return Results.Ok(new
             {
@@ -62,7 +63,8 @@ public static class DataQualityEndpoints
                 request.PageSize,
                 request.Q,
                 request.SortBy,
-                request.SortDir), ct);
+                request.SortDir,
+                request.DataScope), ct);
 
             return Results.Ok(result);
         })
@@ -76,5 +78,6 @@ public static class DataQualityEndpoints
         int PageSize = 25,
         string? Q = null,
         string? SortBy = null,
-        string? SortDir = null);
+        string? SortDir = null,
+        string? DataScope = null);
 }

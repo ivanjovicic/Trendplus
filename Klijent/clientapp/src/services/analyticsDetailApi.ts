@@ -1,24 +1,29 @@
 import type { AnalyticsDetailResponse } from "../types/analyticsTable";
-
-const API = import.meta.env.VITE_API_BASE_URL as string;
+import { appendDataScopeToParams } from "../utils/dataScope";
+import { ApiHttpError, fetchAnalyticsJson } from "./analyticsHttp";
 
 export async function getAnalyticsDetail(
   table: string,
   id: string,
-  queryString = ""
+  queryString = "",
+  signal?: AbortSignal
 ): Promise<AnalyticsDetailResponse | null> {
-  const suffix = queryString ? (queryString.startsWith("?") ? queryString : `?${queryString}`) : "";
-  const response = await fetch(`${API}/api/analitika/${encodeURIComponent(table)}/${encodeURIComponent(id)}${suffix}`);
-
-  if (response.status === 404) {
-    return null;
+  const params = new URLSearchParams(queryString.startsWith("?") ? queryString.slice(1) : queryString);
+  if (!params.has("dataScope")) {
+    appendDataScopeToParams(params);
   }
+  try {
+    return await fetchAnalyticsJson<AnalyticsDetailResponse>(
+      `/api/analitika/${encodeURIComponent(table)}/${encodeURIComponent(id)}`,
+      params,
+      "Greska pri ucitavanju analytics detalja",
+      { signal, dedupe: false }
+    );
+  } catch (error) {
+    if (error instanceof ApiHttpError && error.status === 404) {
+      return null;
+    }
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    const message = body?.detail ?? body?.title ?? body?.message ?? `HTTP ${response.status}`;
-    throw new Error(message);
+    throw error;
   }
-
-  return response.json() as Promise<AnalyticsDetailResponse>;
 }

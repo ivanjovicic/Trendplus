@@ -64,6 +64,13 @@ function formatDateTime(value: string): string {
   return new Date(value).toLocaleString("sr-RS");
 }
 
+function formatDateOnly(value: string | null): string {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("sr-RS");
+}
+
 function issueLabel(issueType: DataQualityIssueType): string {
   return ISSUE_TABS.find((item) => item.key === issueType)?.label ?? issueType;
 }
@@ -90,6 +97,38 @@ export default function DataQualityPage() {
   const sortDir = normalizeSortDir(searchParams.get("sortDir"));
   const q = searchParams.get("q") ?? "";
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / pageSize));
+  const originTable = searchParams.get("originTable");
+  const contextFromDate = searchParams.get("fromDate");
+  const contextToDate = searchParams.get("toDate");
+  const contextSezonaId = searchParams.get("sezonaId");
+  const contextStoreId = searchParams.get("storeId");
+  const contextDataScope = searchParams.get("dataScope");
+  const contextIncludeUnknown = searchParams.get("includeUnknown");
+  const contextFocus = searchParams.get("focus");
+  const contextSupplierId = searchParams.get("supplierId");
+  const returnTo = searchParams.get("returnTo");
+
+  const supplierContextQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    if (contextFromDate) params.set("fromDate", contextFromDate);
+    if (contextToDate) params.set("toDate", contextToDate);
+    if (contextSezonaId) params.set("sezonaId", contextSezonaId);
+    if (contextStoreId) params.set("storeId", contextStoreId);
+    if (contextDataScope) params.set("dataScope", contextDataScope);
+    if (contextIncludeUnknown) params.set("includeUnknown", contextIncludeUnknown);
+    if (contextSupplierId) params.set("supplierId", contextSupplierId);
+    params.set("focus", contextFocus || "data-quality");
+    return params.toString();
+  }, [
+    contextDataScope,
+    contextFocus,
+    contextFromDate,
+    contextIncludeUnknown,
+    contextSezonaId,
+    contextStoreId,
+    contextSupplierId,
+    contextToDate,
+  ]);
 
   useEffect(() => {
     setSearchDraft(q);
@@ -122,8 +161,9 @@ export default function DataQualityPage() {
         q,
         sortBy,
         sortDir,
+        dataScope: contextDataScope,
       }),
-      getAnalyticsDataQualityHealth(),
+      getAnalyticsDataQualityHealth(undefined, contextDataScope),
     ]);
 
     if (issuesResult.status === "fulfilled") {
@@ -149,7 +189,7 @@ export default function DataQualityPage() {
     }
 
     setLoading(false);
-  }, [issueType, page, pageSize, q, sortBy, sortDir]);
+  }, [contextDataScope, issueType, page, pageSize, q, sortBy, sortDir]);
 
   useEffect(() => {
     void load();
@@ -167,13 +207,45 @@ export default function DataQualityPage() {
       values.push({ key: "q", label: "Pretraga", value: q });
     }
 
-    const origin = searchParams.get("originTable");
-    if (origin) {
-      values.push({ key: "originTable", label: "Otvoreno iz", value: origin });
+    if (originTable) {
+      values.push({ key: "originTable", label: "Otvoreno iz", value: originTable });
+    }
+
+    if (contextFromDate || contextToDate) {
+      values.push({
+        key: "contextPeriod",
+        label: "Kontekst period",
+        value: `${formatDateOnly(contextFromDate)} - ${formatDateOnly(contextToDate)}`,
+      });
+    }
+
+    if (contextSezonaId) {
+      values.push({ key: "contextSezonaId", label: "Kontekst sezona", value: contextSezonaId });
+    }
+
+    if (contextStoreId) {
+      values.push({ key: "contextStoreId", label: "Kontekst objekat", value: contextStoreId });
+    }
+
+    if (contextDataScope) {
+      values.push({ key: "contextDataScope", label: "Data scope", value: contextDataScope });
     }
 
     return values;
-  }, [issueType, page, pageSize, q, searchParams, sortBy, sortDir]);
+  }, [
+    contextDataScope,
+    contextFromDate,
+    contextSezonaId,
+    contextStoreId,
+    contextToDate,
+    issueType,
+    originTable,
+    page,
+    pageSize,
+    q,
+    sortBy,
+    sortDir,
+  ]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "total", label: "Ukupno problema", value: data?.total ?? 0 },
@@ -251,8 +323,10 @@ export default function DataQualityPage() {
           <button type="button" onClick={() => changeTab("missingSupplier")}>
             Artikli bez dobavljaca
           </button>
-          <Link to="/analytics/supplier-sales-stats">Otvori supplier analitiku</Link>
-          <Link to="/analytics/supplier-sales-stats?focus=data-quality">Proveri unknown supplier bucket</Link>
+          <Link to={`/analytics/supplier-sales-stats${supplierContextQuery ? `?${supplierContextQuery}` : ""}`}>
+            Otvori supplier analitiku
+          </Link>
+          {returnTo ? <Link to={returnTo}>Nazad na izvorni kontekst</Link> : null}
         </section>
       ) : null}
 
@@ -313,9 +387,17 @@ export default function DataQualityPage() {
         </div>
       </section>
 
-      {searchParams.get("originTable") ? (
+      {originTable ? (
         <div className="data-quality-origin">
-          Otvoreno iz analytics tabele: <strong>{searchParams.get("originTable")}</strong>
+          Otvoreno iz analytics tabele: <strong>{originTable}</strong>
+          {(contextFromDate || contextToDate) ? (
+            <> | Kontekst perioda: <strong>{formatDateOnly(contextFromDate)} - {formatDateOnly(contextToDate)}</strong></>
+          ) : null}
+          {contextStoreId ? <> | Objekat: <strong>{contextStoreId}</strong></> : null}
+          {contextDataScope ? <> | Scope: <strong>{contextDataScope}</strong></> : null}
+          {contextIncludeUnknown ? <> | Include unknown: <strong>{contextIncludeUnknown}</strong></> : null}
+          {contextFocus ? <> | Focus: <strong>{contextFocus}</strong></> : null}
+          {contextSupplierId ? <> | Supplier: <strong>{contextSupplierId}</strong></> : null}
         </div>
       ) : null}
 

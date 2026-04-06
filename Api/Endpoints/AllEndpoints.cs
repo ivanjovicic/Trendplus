@@ -978,6 +978,7 @@ public static class AllEndpoints
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
             DateTime? fromUtc = null;
@@ -994,8 +995,40 @@ public static class AllEndpoints
                         : date.ToUniversalTime();
                 }
 
+                static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
+                    DateTime? currentFromUtc,
+                    DateTime? currentToUtc)
+                {
+                    if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
+                    {
+                        return (null, null);
+                    }
+
+                    var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
+                    if (inclusiveDurationTicks <= 0)
+                    {
+                        return (null, null);
+                    }
+
+                    var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
+                    var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
+                    return (previousFromUtc, previousToUtc);
+                }
+
+                static string BuildSupplierBucketKey(int? supplierId)
+                    => supplierId.HasValue ? $"id:{supplierId.Value}" : "unknown";
+
+                static string NormalizeDataScope(string? rawScope)
+                {
+                    var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
+                    return normalized is "existing" or "imported" ? normalized : "all";
+                }
+
                 fromUtc = NormalizeUtc(fromDate);
                 toUtc = NormalizeUtc(toDate);
+                var normalizedDataScope = NormalizeDataScope(dataScope);
+                var importedOnly = normalizedDataScope == "imported";
+                var existingOnly = normalizedDataScope == "existing";
 
                 if (sezonaId.HasValue)
                 {
@@ -1030,16 +1063,21 @@ public static class AllEndpoints
                     });
                 }
 
-                var cacheKey = $"supplier-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}";
+                var cacheKey = $"supplier-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}";
                 if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
                 {
                     return Results.Ok(cachedResponse);
                 }
 
-                var dataWindow = await db.ProdajaZaglavlja.AsNoTracking()
-                    .Where(pz => !storeId.HasValue || pz.IDObjekat == storeId.Value)
-                    .GroupBy(_ => 1)
-                    .Select(g => new
+                var dataWindow = await (
+                    from pz in db.ProdajaZaglavlja.AsNoTracking()
+                    join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
+                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                       && (!importedOnly || a.DataOrigin == "access")
+                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                    group pz by 1 into g
+                    select new
                     {
                         fromDate = g.Min(x => (DateTime?)x.DatumProdaje),
                         toDate = g.Max(x => (DateTime?)x.DatumProdaje)
@@ -1059,6 +1097,40 @@ public static class AllEndpoints
                         x => x.Id,
                         x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
                         ct);
+
+                var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
+                var previousSupplierMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
+                decimal? previousPeriodRevenue = null;
+                int? previousPeriodUnits = null;
+
+                if (previousFromUtc.HasValue && previousToUtc.HasValue)
+                {
+                    var previousRows = await (
+                        from ps in db.ProdajaStavke.AsNoTracking()
+                        join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where pz.DatumProdaje >= previousFromUtc.Value
+                           && pz.DatumProdaje <= previousToUtc.Value
+                           && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                           && (!importedOnly || a.DataOrigin == "access")
+                           && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                        group ps by a.IDDobavljac into g
+                        select new
+                        {
+                            SupplierId = g.Key,
+                            Revenue = g.Sum(x => x.Kolicina * x.Cena),
+                            Units = g.Sum(x => x.Kolicina)
+                        })
+                        .ToListAsync(ct);
+
+                    previousPeriodRevenue = previousRows.Sum(x => x.Revenue);
+                    previousPeriodUnits = previousRows.Sum(x => x.Units);
+
+                    previousSupplierMetrics = previousRows.ToDictionary(
+                        x => BuildSupplierBucketKey(x.SupplierId),
+                        x => (x.Revenue, x.Units),
+                        StringComparer.Ordinal);
+                }
 
                 var prvaNivelacijaPoArtiklu = await db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
@@ -1081,6 +1153,8 @@ public static class AllEndpoints
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                       && (!importedOnly || a.DataOrigin == "access")
+                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                     group new
                     {
                         ps.Kolicina,
@@ -1131,6 +1205,16 @@ public static class AllEndpoints
                     })
                     .Select(g =>
                     {
+                        var supplierBucketKey = BuildSupplierBucketKey(g.Key.DobavljacId);
+                        var hasPreviousComparablePeriod = previousFromUtc.HasValue && previousToUtc.HasValue;
+                        var previousRevenueRaw = 0m;
+                        var previousUnitsRaw = 0;
+                        if (hasPreviousComparablePeriod && previousSupplierMetrics.TryGetValue(supplierBucketKey, out var previousMetrics))
+                        {
+                            previousRevenueRaw = previousMetrics.Revenue;
+                            previousUnitsRaw = previousMetrics.Units;
+                        }
+
                         decimal preNivRevenue = 0m;
                         decimal postNivRevenue = 0m;
                         decimal totalRevenue = 0m;
@@ -1199,6 +1283,28 @@ public static class AllEndpoints
                             marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
                             revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                            previousPeriodRevenue = hasPreviousComparablePeriod
+                                ? Math.Round(previousRevenueRaw, 2)
+                                : (decimal?)null,
+                            previousPeriodUnits = hasPreviousComparablePeriod
+                                ? previousUnitsRaw
+                                : (int?)null,
+                            popRevenueChangePct = hasPreviousComparablePeriod && previousRevenueRaw > 0m
+                                ? Math.Round((double)((totalRevenue - previousRevenueRaw) / previousRevenueRaw * 100m), 2)
+                                : (double?)null,
+                            popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
+                                ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
+                                : (double?)null,
+                            prePostNivelacijaRevenueImpactPct = preNivRevenue > 0m
+                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
+                                : (double?)null,
+                            prePostNivelacijaUnitsImpactPct = preNivQty > 0
+                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
+                                : (double?)null,
+                            prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
+                                ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+                                : (double?)null,
+                            // Legacy compatibility aliases (pre/post impact metric in old response shape)
                             promenaPrometa = preNivRevenue > 0m
                                 ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
                                 : (double?)null,
@@ -1280,6 +1386,86 @@ public static class AllEndpoints
                         toUtc);
                 }
 
+                var averageKnownMarginPct = suppliers
+                    .Where(row => !row.isUnknown)
+                    .Select(row => row.marginPct)
+                    .DefaultIfEmpty(0d)
+                    .Average();
+                var unknownSupplierSharePct = dataQuality.unknownSupplierRevenueSharePct ?? 0d;
+
+                var suppliersWithRecommendation = suppliers
+                    .Select(supplier =>
+                    {
+                        var sharePct = totalRevenue > 0m
+                            ? Math.Round((double)(supplier.ukupanPromet / totalRevenue * 100m), 2)
+                            : 0d;
+                        var hasPreviousPeriodWindow = supplier.previousPeriodRevenue is not null;
+                        var isNewSupplier = hasPreviousPeriodWindow
+                            && supplier.previousPeriodRevenue <= 0m
+                            && supplier.ukupanPromet > 0m;
+
+                        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                            IsUnknownEntity: supplier.isUnknown,
+                            TotalRevenue: supplier.ukupanPromet,
+                            TotalUnits: supplier.ukupnaKolicina,
+                            ItemCount: supplier.brojArtikalaUkupno,
+                            SharePct: sharePct,
+                            MarginPct: supplier.marginPct,
+                            MarginCoveragePct: supplier.marginDataCoveragePct,
+                            SplitCoveragePct: supplier.prePostNivelacijaRevenueCoveragePct,
+                            PopRevenueChangePct: supplier.popRevenueChangePct,
+                            PopUnitsChangePct: supplier.popUnitsChangePct,
+                            PreviousPeriodRevenue: supplier.previousPeriodRevenue,
+                            PreviousPeriodUnits: supplier.previousPeriodUnits,
+                            HasPreviousPeriodWindow: hasPreviousPeriodWindow,
+                            IsNewEntity: isNewSupplier,
+                            UnknownBucketSharePct: unknownSupplierSharePct),
+                            averageKnownMarginPct);
+
+                        return new
+                        {
+                            supplier.dobavljacId,
+                            supplier.dobavljacNaziv,
+                            supplier.isUnknown,
+                            supplier.preNivelacijePromet,
+                            supplier.preNivelacijeKolicina,
+                            supplier.posleNivelacijePromet,
+                            supplier.posleNivelacijeKolicina,
+                            supplier.ukupanPromet,
+                            supplier.ukupnaKolicina,
+                            supplier.brojArtikalaSaNivelacijom,
+                            supplier.brojArtikalaUkupno,
+                            supplier.revenueWithCost,
+                            supplier.marginContribution,
+                            supplier.marginDataCoveragePct,
+                            supplier.marginPct,
+                            supplier.revenueWithNivelacijaSplit,
+                            supplier.previousPeriodRevenue,
+                            supplier.previousPeriodUnits,
+                            supplier.popRevenueChangePct,
+                            supplier.popUnitsChangePct,
+                            supplier.prePostNivelacijaRevenueImpactPct,
+                            supplier.prePostNivelacijaUnitsImpactPct,
+                            supplier.prePostNivelacijaRevenueCoveragePct,
+                            sharePct,
+                            reliabilityPct = recommendation.ReliabilityPct,
+                            recommendation = new
+                            {
+                                recommendation.Status,
+                                recommendation.Label,
+                                recommendation.Summary,
+                                recommendation.ConfidencePct,
+                                recommendation.ReliabilityPct,
+                                recommendation.DataQualityStatus,
+                                reasonCodes = recommendation.ReasonCodes
+                            },
+                            // Legacy compatibility aliases (deprecated)
+                            supplier.promenaPrometa,
+                            supplier.promenaKolicine
+                        };
+                    })
+                    .ToList();
+
                 var totals = new
                 {
                     ukupanPromet = totalRevenue,
@@ -1289,7 +1475,32 @@ public static class AllEndpoints
                     ukupnaKolicina = suppliers.Sum(r => r.ukupnaKolicina),
                     preKolicina = suppliers.Sum(r => r.preNivelacijeKolicina),
                     posleKolicina = suppliers.Sum(r => r.posleNivelacijeKolicina),
+                    previousPeriodRevenue = previousPeriodRevenue.HasValue
+                        ? Math.Round(previousPeriodRevenue.Value, 2)
+                        : (decimal?)null,
+                    previousPeriodUnits,
                     brojDobavljaca = suppliers.Count,
+                    popRevenueChangePct = previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
+                        ? Math.Round((double)((totalRevenue - previousPeriodRevenue.Value) / previousPeriodRevenue.Value * 100m), 2)
+                        : (double?)null,
+                    popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
+                        ? Math.Round((suppliers.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
+                        : (double?)null,
+                    prePostNivelacijaRevenueImpactPct = sumPreRevenue > 0m
+                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                        : (double?)null,
+                    prePostNivelacijaUnitsImpactPct = suppliers.Sum(r => r.preNivelacijeKolicina) > 0
+                        ? Math.Round((suppliers.Sum(r => r.posleNivelacijeKolicina) - suppliers.Sum(r => r.preNivelacijeKolicina)) / (double)suppliers.Sum(r => r.preNivelacijeKolicina) * 100d, 2)
+                        : (double?)null,
+                    recommendationSummary = new
+                    {
+                        increaseFocus = suppliersWithRecommendation.Count(x => x.recommendation.Status == "increase_focus"),
+                        maintain = suppliersWithRecommendation.Count(x => x.recommendation.Status == "maintain"),
+                        review = suppliersWithRecommendation.Count(x => x.recommendation.Status == "review"),
+                        doNotTrust = suppliersWithRecommendation.Count(x => x.recommendation.Status == "do_not_trust"),
+                        insufficientData = suppliersWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
+                    },
+                    // Legacy compatibility alias (pre/post impact metric in old response shape)
                     promenaPrometaPct = sumPreRevenue > 0m
                         ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
                         : (double?)null
@@ -1323,7 +1534,8 @@ public static class AllEndpoints
                     dataWindowTo,
                     sezonaId,
                     storeId,
-                    suppliers,
+                    dataScope = normalizedDataScope,
+                    suppliers = suppliersWithRecommendation,
                     totals,
                     dataQuality,
                     sezone
@@ -1360,6 +1572,7 @@ public static class AllEndpoints
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
             DateTime? fromUtc = null;
@@ -1376,8 +1589,40 @@ public static class AllEndpoints
                         : date.ToUniversalTime();
                 }
 
+                static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
+                    DateTime? currentFromUtc,
+                    DateTime? currentToUtc)
+                {
+                    if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
+                    {
+                        return (null, null);
+                    }
+
+                    var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
+                    if (inclusiveDurationTicks <= 0)
+                    {
+                        return (null, null);
+                    }
+
+                    var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
+                    var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
+                    return (previousFromUtc, previousToUtc);
+                }
+
+                static string BuildShoeTypeBucketKey(int? shoeTypeId)
+                    => shoeTypeId.HasValue ? $"id:{shoeTypeId.Value}" : "unknown";
+
+                static string NormalizeDataScope(string? rawScope)
+                {
+                    var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
+                    return normalized is "existing" or "imported" ? normalized : "all";
+                }
+
                 fromUtc = NormalizeUtc(fromDate);
                 toUtc = NormalizeUtc(toDate);
+                var normalizedDataScope = NormalizeDataScope(dataScope);
+                var importedOnly = normalizedDataScope == "imported";
+                var existingOnly = normalizedDataScope == "existing";
 
                 if (sezonaId.HasValue)
                 {
@@ -1412,16 +1657,21 @@ public static class AllEndpoints
                     });
                 }
 
-                var cacheKey = $"shoe-type-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}";
+                var cacheKey = $"shoe-type-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}";
                 if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
                 {
                     return Results.Ok(cachedResponse);
                 }
 
-                var dataWindow = await db.ProdajaZaglavlja.AsNoTracking()
-                    .Where(pz => !storeId.HasValue || pz.IDObjekat == storeId.Value)
-                    .GroupBy(_ => 1)
-                    .Select(g => new
+                var dataWindow = await (
+                    from pz in db.ProdajaZaglavlja.AsNoTracking()
+                    join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
+                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                       && (!importedOnly || a.DataOrigin == "access")
+                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                    group pz by 1 into g
+                    select new
                     {
                         fromDate = g.Min(x => (DateTime?)x.DatumProdaje),
                         toDate = g.Max(x => (DateTime?)x.DatumProdaje)
@@ -1456,6 +1706,39 @@ public static class AllEndpoints
                         x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
                         ct);
 
+                var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
+                var previousShoeTypeMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
+                decimal? previousPeriodRevenue = null;
+                int? previousPeriodUnits = null;
+
+                if (previousFromUtc.HasValue && previousToUtc.HasValue)
+                {
+                    var previousRows = await (
+                        from ps in db.ProdajaStavke.AsNoTracking()
+                        join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where pz.DatumProdaje >= previousFromUtc.Value
+                           && pz.DatumProdaje <= previousToUtc.Value
+                           && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                           && (!importedOnly || a.DataOrigin == "access")
+                           && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                        group ps by a.IDTipObuce into g
+                        select new
+                        {
+                            TipObuceId = g.Key,
+                            Revenue = g.Sum(x => x.Kolicina * x.Cena),
+                            Units = g.Sum(x => x.Kolicina)
+                        })
+                        .ToListAsync(ct);
+
+                    previousPeriodRevenue = previousRows.Sum(x => x.Revenue);
+                    previousPeriodUnits = previousRows.Sum(x => x.Units);
+                    previousShoeTypeMetrics = previousRows.ToDictionary(
+                        x => BuildShoeTypeBucketKey(x.TipObuceId),
+                        x => (x.Revenue, x.Units),
+                        StringComparer.Ordinal);
+                }
+
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
@@ -1463,6 +1746,8 @@ public static class AllEndpoints
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                       && (!importedOnly || a.DataOrigin == "access")
+                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                     group new
                     {
                         ps.Kolicina,
@@ -1497,6 +1782,16 @@ public static class AllEndpoints
                     .GroupBy(s => s.TipObuceId)
                     .Select(g =>
                     {
+                        var shoeTypeBucketKey = BuildShoeTypeBucketKey(g.Key);
+                        var hasPreviousComparablePeriod = previousFromUtc.HasValue && previousToUtc.HasValue;
+                        var previousRevenueRaw = 0m;
+                        var previousUnitsRaw = 0;
+                        if (hasPreviousComparablePeriod && previousShoeTypeMetrics.TryGetValue(shoeTypeBucketKey, out var previousMetrics))
+                        {
+                            previousRevenueRaw = previousMetrics.Revenue;
+                            previousUnitsRaw = previousMetrics.Units;
+                        }
+
                         decimal preNivRevenue = 0m;
                         decimal postNivRevenue = 0m;
                         decimal totalRevenue = 0m;
@@ -1561,6 +1856,28 @@ public static class AllEndpoints
                             marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
                             revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                            previousPeriodRevenue = hasPreviousComparablePeriod
+                                ? Math.Round(previousRevenueRaw, 2)
+                                : (decimal?)null,
+                            previousPeriodUnits = hasPreviousComparablePeriod
+                                ? previousUnitsRaw
+                                : (int?)null,
+                            popRevenueChangePct = hasPreviousComparablePeriod && previousRevenueRaw > 0m
+                                ? Math.Round((double)((totalRevenue - previousRevenueRaw) / previousRevenueRaw * 100m), 2)
+                                : (double?)null,
+                            popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
+                                ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
+                                : (double?)null,
+                            prePostNivelacijaRevenueImpactPct = preNivRevenue > 0m
+                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
+                                : (double?)null,
+                            prePostNivelacijaUnitsImpactPct = preNivQty > 0
+                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
+                                : (double?)null,
+                            prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
+                                ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+                                : (double?)null,
+                            // Legacy compatibility aliases (pre/post impact metric in old response shape)
                             promenaPrometa = preNivRevenue > 0m
                                 ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
                                 : (double?)null,
@@ -1601,6 +1918,87 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
+                var averageMarginPct = shoeTypes
+                    .Where(row => !string.Equals(row.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Select(row => row.marginPct)
+                    .DefaultIfEmpty(0d)
+                    .Average();
+                var unknownTypeSharePct = dataQuality.unknownTypeRevenueSharePct ?? 0d;
+
+                var shoeTypesWithRecommendation = shoeTypes
+                    .Select(row =>
+                    {
+                        var sharePct = totalRevenue > 0m
+                            ? Math.Round((double)(row.ukupanPromet / totalRevenue * 100m), 2)
+                            : 0d;
+                        var hasPreviousPeriodWindow = row.previousPeriodRevenue is not null;
+                        var isNewType = hasPreviousPeriodWindow
+                            && row.previousPeriodRevenue <= 0m
+                            && row.ukupanPromet > 0m;
+                        var isUnknownType = string.Equals(row.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase);
+
+                        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                            IsUnknownEntity: isUnknownType,
+                            TotalRevenue: row.ukupanPromet,
+                            TotalUnits: row.ukupnaKolicina,
+                            ItemCount: row.brojArtikalaUkupno,
+                            SharePct: sharePct,
+                            MarginPct: row.marginPct,
+                            MarginCoveragePct: row.marginDataCoveragePct,
+                            SplitCoveragePct: row.prePostNivelacijaRevenueCoveragePct,
+                            PopRevenueChangePct: row.popRevenueChangePct,
+                            PopUnitsChangePct: row.popUnitsChangePct,
+                            PreviousPeriodRevenue: row.previousPeriodRevenue,
+                            PreviousPeriodUnits: row.previousPeriodUnits,
+                            HasPreviousPeriodWindow: hasPreviousPeriodWindow,
+                            IsNewEntity: isNewType,
+                            UnknownBucketSharePct: unknownTypeSharePct),
+                            averageMarginPct);
+
+                        return new
+                        {
+                            row.tipObuceId,
+                            row.tipObuceNaziv,
+                            isUnknown = isUnknownType,
+                            row.preNivelacijePromet,
+                            row.preNivelacijeKolicina,
+                            row.posleNivelacijePromet,
+                            row.posleNivelacijeKolicina,
+                            row.ukupanPromet,
+                            row.ukupnaKolicina,
+                            row.brojArtikalaSaNivelacijom,
+                            row.brojArtikalaUkupno,
+                            row.revenueWithCost,
+                            row.marginContribution,
+                            row.marginDataCoveragePct,
+                            row.marginPct,
+                            row.revenueWithNivelacijaSplit,
+                            row.previousPeriodRevenue,
+                            row.previousPeriodUnits,
+                            row.popRevenueChangePct,
+                            row.popUnitsChangePct,
+                            row.prePostNivelacijaRevenueImpactPct,
+                            row.prePostNivelacijaUnitsImpactPct,
+                            row.prePostNivelacijaRevenueCoveragePct,
+                            sharePct,
+                            reliabilityPct = recommendation.ReliabilityPct,
+                            recommendation = new
+                            {
+                                recommendation.Status,
+                                recommendation.Label,
+                                recommendation.Summary,
+                                recommendation.ConfidencePct,
+                                recommendation.ReliabilityPct,
+                                recommendation.DataQualityStatus,
+                                reasonCodes = recommendation.ReasonCodes
+                            },
+                            // Legacy compatibility aliases (deprecated)
+                            row.promenaPrometa,
+                            row.promenaKolicine
+                        };
+                    })
+                    .ToList();
+
                 var totals = new
                 {
                     ukupanPromet = totalRevenue,
@@ -1611,6 +2009,31 @@ public static class AllEndpoints
                     preKolicina = shoeTypes.Sum(r => r.preNivelacijeKolicina),
                     posleKolicina = shoeTypes.Sum(r => r.posleNivelacijeKolicina),
                     brojTipovaObuce = shoeTypes.Count,
+                    previousPeriodRevenue = previousPeriodRevenue.HasValue
+                        ? Math.Round(previousPeriodRevenue.Value, 2)
+                        : (decimal?)null,
+                    previousPeriodUnits,
+                    popRevenueChangePct = previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
+                        ? Math.Round((double)((totalRevenue - previousPeriodRevenue.Value) / previousPeriodRevenue.Value * 100m), 2)
+                        : (double?)null,
+                    popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
+                        ? Math.Round((shoeTypes.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
+                        : (double?)null,
+                    prePostNivelacijaRevenueImpactPct = sumPreRevenue > 0m
+                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                        : (double?)null,
+                    prePostNivelacijaUnitsImpactPct = shoeTypes.Sum(r => r.preNivelacijeKolicina) > 0
+                        ? Math.Round((shoeTypes.Sum(r => r.posleNivelacijeKolicina) - shoeTypes.Sum(r => r.preNivelacijeKolicina)) / (double)shoeTypes.Sum(r => r.preNivelacijeKolicina) * 100d, 2)
+                        : (double?)null,
+                    recommendationSummary = new
+                    {
+                        increaseFocus = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "increase_focus"),
+                        maintain = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "maintain"),
+                        review = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "review"),
+                        doNotTrust = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "do_not_trust"),
+                        insufficientData = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
+                    },
+                    // Legacy compatibility alias (pre/post impact metric in old response shape)
                     promenaPrometaPct = sumPreRevenue > 0m
                         ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
                         : (double?)null
@@ -1644,7 +2067,8 @@ public static class AllEndpoints
                     dataWindowTo,
                     sezonaId,
                     storeId,
-                    shoeTypes,
+                    dataScope = normalizedDataScope,
+                    shoeTypes = shoeTypesWithRecommendation,
                     totals,
                     dataQuality,
                     sezone
@@ -1675,11 +2099,13 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/color-sales-stats", async (
             TrendplusDbContext db,
+            IMemoryCache cache,
             ILogger<Program> logger,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
             DateTime? fromUtc = null;
@@ -1699,8 +2125,37 @@ public static class AllEndpoints
                 static string NormalizeColor(string? value) =>
                     string.IsNullOrWhiteSpace(value) ? "Nepoznato" : value.Trim();
 
+                static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
+                    DateTime? currentFromUtc,
+                    DateTime? currentToUtc)
+                {
+                    if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
+                    {
+                        return (null, null);
+                    }
+
+                    var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
+                    if (inclusiveDurationTicks <= 0)
+                    {
+                        return (null, null);
+                    }
+
+                    var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
+                    var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
+                    return (previousFromUtc, previousToUtc);
+                }
+
+                static string NormalizeDataScope(string? rawScope)
+                {
+                    var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
+                    return normalized is "existing" or "imported" ? normalized : "all";
+                }
+
                 fromUtc = NormalizeUtc(fromDate);
                 toUtc = NormalizeUtc(toDate);
+                var normalizedDataScope = NormalizeDataScope(dataScope);
+                var importedOnly = normalizedDataScope == "imported";
+                var existingOnly = normalizedDataScope == "existing";
 
                 if (sezonaId.HasValue)
                 {
@@ -1735,10 +2190,21 @@ public static class AllEndpoints
                     });
                 }
 
-                var dataWindow = await db.ProdajaZaglavlja.AsNoTracking()
-                    .Where(pz => !storeId.HasValue || pz.IDObjekat == storeId.Value)
-                    .GroupBy(_ => 1)
-                    .Select(g => new
+                var cacheKey = $"color-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}";
+                if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
+                {
+                    return Results.Ok(cachedResponse);
+                }
+
+                var dataWindow = await (
+                    from pz in db.ProdajaZaglavlja.AsNoTracking()
+                    join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
+                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                       && (!importedOnly || a.DataOrigin == "access")
+                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                    group pz by 1 into g
+                    select new
                     {
                         fromDate = g.Min(x => (DateTime?)x.DatumProdaje),
                         toDate = g.Max(x => (DateTime?)x.DatumProdaje)
@@ -1769,6 +2235,41 @@ public static class AllEndpoints
                     .GroupBy(n => n.ArtikalId)
                     .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
 
+                var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
+                var previousColorMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
+                decimal? previousPeriodRevenue = null;
+                int? previousPeriodUnits = null;
+
+                if (previousFromUtc.HasValue && previousToUtc.HasValue)
+                {
+                    var previousRowsRaw = await (
+                        from ps in db.ProdajaStavke.AsNoTracking()
+                        join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where pz.DatumProdaje >= previousFromUtc.Value
+                           && pz.DatumProdaje <= previousToUtc.Value
+                           && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                           && (!importedOnly || a.DataOrigin == "access")
+                           && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                        group ps by a.Boja into g
+                        select new
+                        {
+                            Boja = g.Key,
+                            Revenue = g.Sum(x => x.Kolicina * x.Cena),
+                            Units = g.Sum(x => x.Kolicina)
+                        })
+                        .ToListAsync(ct);
+
+                    previousPeriodRevenue = previousRowsRaw.Sum(x => x.Revenue);
+                    previousPeriodUnits = previousRowsRaw.Sum(x => x.Units);
+                    previousColorMetrics = previousRowsRaw
+                        .GroupBy(x => NormalizeColor(x.Boja), StringComparer.Ordinal)
+                        .ToDictionary(
+                            g => g.Key,
+                            g => (g.Sum(x => x.Revenue), g.Sum(x => x.Units)),
+                            StringComparer.Ordinal);
+                }
+
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
@@ -1776,6 +2277,8 @@ public static class AllEndpoints
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                       && (!importedOnly || a.DataOrigin == "access")
+                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                     group new { ps, a, pz } by new
                     {
                         Boja = a.Boja,
@@ -1803,6 +2306,15 @@ public static class AllEndpoints
                     .GroupBy(s => NormalizeColor(s.Boja))
                     .Select(g =>
                     {
+                        var hasPreviousComparablePeriod = previousFromUtc.HasValue && previousToUtc.HasValue;
+                        var previousRevenueRaw = 0m;
+                        var previousUnitsRaw = 0;
+                        if (hasPreviousComparablePeriod && previousColorMetrics.TryGetValue(g.Key, out var previousMetrics))
+                        {
+                            previousRevenueRaw = previousMetrics.Revenue;
+                            previousUnitsRaw = previousMetrics.Units;
+                        }
+
                         decimal preNivRevenue = 0m;
                         decimal postNivRevenue = 0m;
                         decimal totalRevenue = 0m;
@@ -1863,6 +2375,28 @@ public static class AllEndpoints
                             marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
                             revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                            previousPeriodRevenue = hasPreviousComparablePeriod
+                                ? Math.Round(previousRevenueRaw, 2)
+                                : (decimal?)null,
+                            previousPeriodUnits = hasPreviousComparablePeriod
+                                ? previousUnitsRaw
+                                : (int?)null,
+                            popRevenueChangePct = hasPreviousComparablePeriod && previousRevenueRaw > 0m
+                                ? Math.Round((double)((totalRevenue - previousRevenueRaw) / previousRevenueRaw * 100m), 2)
+                                : (double?)null,
+                            popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
+                                ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
+                                : (double?)null,
+                            prePostNivelacijaRevenueImpactPct = preNivRevenue > 0m
+                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
+                                : (double?)null,
+                            prePostNivelacijaUnitsImpactPct = preNivQty > 0
+                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
+                                : (double?)null,
+                            prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
+                                ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+                                : (double?)null,
+                            // Legacy compatibility aliases (pre/post impact metric in old response shape)
                             promenaPrometa = preNivRevenue > 0m
                                 ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
                                 : (double?)null,
@@ -1901,6 +2435,86 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
+                var averageMarginPct = colors
+                    .Where(row => !string.Equals(row.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Select(row => row.marginPct)
+                    .DefaultIfEmpty(0d)
+                    .Average();
+                var unknownColorSharePct = dataQuality.unknownColorRevenueSharePct ?? 0d;
+
+                var colorsWithRecommendation = colors
+                    .Select(row =>
+                    {
+                        var sharePct = totalRevenue > 0m
+                            ? Math.Round((double)(row.ukupanPromet / totalRevenue * 100m), 2)
+                            : 0d;
+                        var hasPreviousPeriodWindow = row.previousPeriodRevenue is not null;
+                        var isNewColor = hasPreviousPeriodWindow
+                            && row.previousPeriodRevenue <= 0m
+                            && row.ukupanPromet > 0m;
+                        var isUnknownColor = string.Equals(row.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase);
+
+                        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                            IsUnknownEntity: isUnknownColor,
+                            TotalRevenue: row.ukupanPromet,
+                            TotalUnits: row.ukupnaKolicina,
+                            ItemCount: row.brojArtikalaUkupno,
+                            SharePct: sharePct,
+                            MarginPct: row.marginPct,
+                            MarginCoveragePct: row.marginDataCoveragePct,
+                            SplitCoveragePct: row.prePostNivelacijaRevenueCoveragePct,
+                            PopRevenueChangePct: row.popRevenueChangePct,
+                            PopUnitsChangePct: row.popUnitsChangePct,
+                            PreviousPeriodRevenue: row.previousPeriodRevenue,
+                            PreviousPeriodUnits: row.previousPeriodUnits,
+                            HasPreviousPeriodWindow: hasPreviousPeriodWindow,
+                            IsNewEntity: isNewColor,
+                            UnknownBucketSharePct: unknownColorSharePct),
+                            averageMarginPct);
+
+                        return new
+                        {
+                            row.boja,
+                            isUnknown = isUnknownColor,
+                            row.preNivelacijePromet,
+                            row.preNivelacijeKolicina,
+                            row.posleNivelacijePromet,
+                            row.posleNivelacijeKolicina,
+                            row.ukupanPromet,
+                            row.ukupnaKolicina,
+                            row.brojArtikalaSaNivelacijom,
+                            row.brojArtikalaUkupno,
+                            row.revenueWithCost,
+                            row.marginContribution,
+                            row.marginDataCoveragePct,
+                            row.marginPct,
+                            row.revenueWithNivelacijaSplit,
+                            row.previousPeriodRevenue,
+                            row.previousPeriodUnits,
+                            row.popRevenueChangePct,
+                            row.popUnitsChangePct,
+                            row.prePostNivelacijaRevenueImpactPct,
+                            row.prePostNivelacijaUnitsImpactPct,
+                            row.prePostNivelacijaRevenueCoveragePct,
+                            sharePct,
+                            reliabilityPct = recommendation.ReliabilityPct,
+                            recommendation = new
+                            {
+                                recommendation.Status,
+                                recommendation.Label,
+                                recommendation.Summary,
+                                recommendation.ConfidencePct,
+                                recommendation.ReliabilityPct,
+                                recommendation.DataQualityStatus,
+                                reasonCodes = recommendation.ReasonCodes
+                            },
+                            // Legacy compatibility aliases (deprecated)
+                            row.promenaPrometa,
+                            row.promenaKolicine
+                        };
+                    })
+                    .ToList();
+
                 var totals = new
                 {
                     ukupanPromet = totalRevenue,
@@ -1911,6 +2525,31 @@ public static class AllEndpoints
                     preKolicina = colors.Sum(r => r.preNivelacijeKolicina),
                     posleKolicina = colors.Sum(r => r.posleNivelacijeKolicina),
                     brojBoja = colors.Count,
+                    previousPeriodRevenue = previousPeriodRevenue.HasValue
+                        ? Math.Round(previousPeriodRevenue.Value, 2)
+                        : (decimal?)null,
+                    previousPeriodUnits,
+                    popRevenueChangePct = previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
+                        ? Math.Round((double)((totalRevenue - previousPeriodRevenue.Value) / previousPeriodRevenue.Value * 100m), 2)
+                        : (double?)null,
+                    popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
+                        ? Math.Round((colors.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
+                        : (double?)null,
+                    prePostNivelacijaRevenueImpactPct = sumPreRevenue > 0m
+                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                        : (double?)null,
+                    prePostNivelacijaUnitsImpactPct = colors.Sum(r => r.preNivelacijeKolicina) > 0
+                        ? Math.Round((colors.Sum(r => r.posleNivelacijeKolicina) - colors.Sum(r => r.preNivelacijeKolicina)) / (double)colors.Sum(r => r.preNivelacijeKolicina) * 100d, 2)
+                        : (double?)null,
+                    recommendationSummary = new
+                    {
+                        increaseFocus = colorsWithRecommendation.Count(x => x.recommendation.Status == "increase_focus"),
+                        maintain = colorsWithRecommendation.Count(x => x.recommendation.Status == "maintain"),
+                        review = colorsWithRecommendation.Count(x => x.recommendation.Status == "review"),
+                        doNotTrust = colorsWithRecommendation.Count(x => x.recommendation.Status == "do_not_trust"),
+                        insufficientData = colorsWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
+                    },
+                    // Legacy compatibility alias (pre/post impact metric in old response shape)
                     promenaPrometaPct = sumPreRevenue > 0m
                         ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
                         : (double?)null
@@ -1935,7 +2574,7 @@ public static class AllEndpoints
                     })
                     .ToList();
 
-                return Results.Ok(new
+                var response = new
                 {
                     generatedAt = DateTime.UtcNow,
                     fromDate = fromUtc,
@@ -1944,11 +2583,15 @@ public static class AllEndpoints
                     dataWindowTo,
                     sezonaId,
                     storeId,
-                    colors,
+                    dataScope = normalizedDataScope,
+                    colors = colorsWithRecommendation,
                     totals,
                     dataQuality,
                     sezone
-                });
+                };
+
+                cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+                return Results.Ok(response);
             }
             catch (Exception ex)
             {

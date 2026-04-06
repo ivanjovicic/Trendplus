@@ -16,7 +16,9 @@ export function setDataScope(scope: DataScope): void {
 }
 
 export function appendDataScopeToParams(params: URLSearchParams): void {
-    params.set("dataScope", getDataScope());
+    if (!params.has("dataScope")) {
+        params.set("dataScope", getDataScope());
+    }
 }
 
 export function getDataScopeStorageKey(): string {

@@ -22,6 +22,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         public int? StoreId { get; init; }
         public int? SupplierId { get; init; }
         public string? SezonaNaziv { get; init; }
+        public string DataScope { get; init; } = "all";
     }
 
     private sealed class SalesRow
@@ -47,6 +48,14 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         public AnalyticsFilters Filters { get; init; } = new();
         public Dictionary<int, DateTime> PrvaNivelacijaPoArtiklu { get; init; } = [];
         public List<SalesRow> SalesRows { get; init; } = [];
+    }
+
+    private sealed class ComparisonMetrics
+    {
+        public decimal? PreviousPeriodRevenue { get; init; }
+        public int? PreviousPeriodUnits { get; init; }
+        public double? PopRevenueChangePct { get; init; }
+        public double? PopUnitsChangePct { get; init; }
     }
 
     private readonly TrendplusDbContext _db;
@@ -125,7 +134,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         }
         else if ((id ?? string.Empty).StartsWith("unknown", StringComparison.OrdinalIgnoreCase))
         {
-            rows = context.SalesRows.Where(x => !x.DobavljacId.HasValue).ToList();
+            rows = context.SalesRows
+                .Where(x => !x.DobavljacId.HasValue || string.Equals(x.DobavljacNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                .ToList();
             title = "Nepoznato";
         }
         else
@@ -133,7 +144,14 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             return null;
         }
 
-        return BuildAggregatedDetail("supplier-sales-stats", id, title, "Prodaja po dobavljacima", rows, context);
+        var comparison = await GetSupplierComparisonMetricsAsync(
+            id ?? string.Empty,
+            context,
+            rows.Sum(x => x.Prihod),
+            rows.Sum(x => x.Kolicina),
+            ct);
+
+        return BuildAggregatedDetail("supplier-sales-stats", id ?? string.Empty, title, "Prodaja po dobavljacima", rows, context, comparison);
     }
 
     private async Task<AnalyticsDetailResponseDto?> GetShoeTypeSalesDetailAsync(string id, IQueryCollection query, CancellationToken ct)
@@ -243,6 +261,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             .GroupBy(n => n.ArtikalId)
             .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
 
+        var importedOnly = string.Equals(filters.DataScope, "imported", StringComparison.OrdinalIgnoreCase);
+        var existingOnly = string.Equals(filters.DataScope, "existing", StringComparison.OrdinalIgnoreCase);
+
         var salesRows = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
             join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
@@ -254,6 +275,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             where (!filters.FromUtc.HasValue || pz.DatumProdaje >= filters.FromUtc.Value)
                && (!filters.ToUtc.HasValue || pz.DatumProdaje <= filters.ToUtc.Value)
                && (!filters.StoreId.HasValue || pz.IDObjekat == filters.StoreId.Value)
+               && (!importedOnly || a.DataOrigin == "access")
+               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             select new SalesRow
             {
                 ArtikalId = a.Id,
@@ -282,6 +305,91 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         };
     }
 
+    private async Task<ComparisonMetrics?> GetSupplierComparisonMetricsAsync(
+        string? id,
+        AnalyticsContext context,
+        decimal currentRevenue,
+        int currentUnits,
+        CancellationToken ct)
+    {
+        var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(context.Filters.FromUtc, context.Filters.ToUtc);
+        if (!previousFromUtc.HasValue || !previousToUtc.HasValue)
+        {
+            return null;
+        }
+
+        var importedOnly = string.Equals(context.Filters.DataScope, "imported", StringComparison.OrdinalIgnoreCase);
+        var existingOnly = string.Equals(context.Filters.DataScope, "existing", StringComparison.OrdinalIgnoreCase);
+
+        decimal previousRevenue;
+        int previousUnits;
+
+        if (int.TryParse(id, out var supplierId))
+        {
+            var aggregate = await (
+                from ps in _db.ProdajaStavke.AsNoTracking()
+                join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                where pz.DatumProdaje >= previousFromUtc.Value
+                   && pz.DatumProdaje <= previousToUtc.Value
+                   && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
+                   && a.IDDobavljac == supplierId
+                   && (!importedOnly || a.DataOrigin == "access")
+                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                group ps by 1 into g
+                select new
+                {
+                    Revenue = g.Sum(x => x.Kolicina * x.Cena),
+                    Units = g.Sum(x => x.Kolicina)
+                })
+                .FirstOrDefaultAsync(ct);
+
+            previousRevenue = aggregate?.Revenue ?? 0m;
+            previousUnits = aggregate?.Units ?? 0;
+        }
+        else if ((id ?? string.Empty).StartsWith("unknown", StringComparison.OrdinalIgnoreCase))
+        {
+            var aggregate = await (
+                from ps in _db.ProdajaStavke.AsNoTracking()
+                join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
+                from d in dj.DefaultIfEmpty()
+                where pz.DatumProdaje >= previousFromUtc.Value
+                   && pz.DatumProdaje <= previousToUtc.Value
+                   && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
+                   && (!a.IDDobavljac.HasValue || d == null || d.Naziv == null || d.Naziv.Trim() == "")
+                   && (!importedOnly || a.DataOrigin == "access")
+                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                group ps by 1 into g
+                select new
+                {
+                    Revenue = g.Sum(x => x.Kolicina * x.Cena),
+                    Units = g.Sum(x => x.Kolicina)
+                })
+                .FirstOrDefaultAsync(ct);
+
+            previousRevenue = aggregate?.Revenue ?? 0m;
+            previousUnits = aggregate?.Units ?? 0;
+        }
+        else
+        {
+            return null;
+        }
+
+        return new ComparisonMetrics
+        {
+            PreviousPeriodRevenue = Math.Round(previousRevenue, 2),
+            PreviousPeriodUnits = previousUnits,
+            PopRevenueChangePct = previousRevenue > 0m
+                ? Math.Round((double)((currentRevenue - previousRevenue) / previousRevenue * 100m), 2)
+                : (double?)null,
+            PopUnitsChangePct = previousUnits > 0
+                ? Math.Round((currentUnits - previousUnits) / (double)previousUnits * 100d, 2)
+                : (double?)null
+        };
+    }
+
     private async Task<AnalyticsFilters> ParseFiltersAsync(IQueryCollection query, CancellationToken ct)
     {
         var sezonaId = TryParseInt(query["sezonaId"]);
@@ -289,6 +397,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var toUtc = NormalizeUtc(TryParseDateTime(query["toDate"]));
         var storeId = TryParseInt(query["storeId"]);
         var supplierId = TryParseInt(query["supplierId"]);
+        var dataScope = NormalizeDataScope(query["dataScope"]);
         string? sezonaNaziv = null;
 
         if (sezonaId.HasValue)
@@ -320,8 +429,29 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             ToUtc = toUtc,
             StoreId = storeId,
             SupplierId = supplierId,
-            SezonaNaziv = sezonaNaziv
+            SezonaNaziv = sezonaNaziv,
+            DataScope = dataScope
         };
+    }
+
+    private static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
+        DateTime? currentFromUtc,
+        DateTime? currentToUtc)
+    {
+        if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
+        {
+            return (null, null);
+        }
+
+        var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
+        if (inclusiveDurationTicks <= 0)
+        {
+            return (null, null);
+        }
+
+        var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
+        var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
+        return (previousFromUtc, previousToUtc);
     }
 
     private static AnalyticsDetailResponseDto? BuildAggregatedDetail(
@@ -330,7 +460,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         string title,
         string subtitle,
         List<SalesRow> rows,
-        AnalyticsContext context)
+        AnalyticsContext context,
+        ComparisonMetrics? comparison = null)
     {
         if (rows.Count == 0)
         {
@@ -343,6 +474,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         int preNivQty = 0;
         int postNivQty = 0;
         int totalQty = 0;
+        decimal revenueWithNivelacijaSplit = 0m;
         var margin = new MarginAccumulator();
 
         var articleIds = new HashSet<int>();
@@ -364,6 +496,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             }
 
             articleIdsWithNivelacija.Add(row.ArtikalId);
+            revenueWithNivelacijaSplit += row.Prihod;
             if (row.DatumProdaje < nivDatum)
             {
                 preNivRevenue += row.Prihod;
@@ -378,13 +511,56 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         var marginSnapshot = margin.Build(totalRevenue);
 
-        var promenaPrometa = preNivRevenue > 0m
+        var prePostNivelacijaRevenueImpactPct = preNivRevenue > 0m
             ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
             : (double?)null;
 
-        var promenaKolicine = preNivQty > 0
+        var prePostNivelacijaUnitsImpactPct = preNivQty > 0
             ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
             : (double?)null;
+
+        var prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
+            ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+            : (double?)null;
+
+        var popRevenueLabel = comparison?.PopRevenueChangePct?.ToString("0.00")
+            ?? (comparison?.PreviousPeriodRevenue.HasValue == true && comparison.PreviousPeriodRevenue.Value <= 0m && totalRevenue > 0m
+                ? "Novo"
+                : null);
+        var popUnitsLabel = comparison?.PopUnitsChangePct?.ToString("0.00")
+            ?? (comparison?.PreviousPeriodUnits.HasValue == true && comparison.PreviousPeriodUnits.Value <= 0 && totalQty > 0
+                ? "Novo"
+                : null);
+        var fields = new List<AnalyticsDetailFieldDto>
+        {
+            Field("ukupanPromet", "Ukupan promet", Math.Round(totalRevenue, 2).ToString("0.00"), "currency", true),
+            Field("ukupnaKolicina", "Ukupna kolicina", totalQty.ToString(), "number")
+        };
+
+        if (comparison is not null)
+        {
+            fields.Add(Field("previousPeriodRevenue", "Prethodni period promet", comparison.PreviousPeriodRevenue?.ToString("0.00"), "currency"));
+            fields.Add(Field("previousPeriodUnits", "Prethodni period kolicina", comparison.PreviousPeriodUnits?.ToString(), "number"));
+            fields.Add(Field("popRevenueChangePct", "PoP trend prometa %", popRevenueLabel, "percent", comparison.PopRevenueChangePct.HasValue));
+            fields.Add(Field("popUnitsChangePct", "PoP trend kolicine %", popUnitsLabel, "percent", comparison.PopUnitsChangePct.HasValue));
+        }
+
+        fields.AddRange(
+        [
+            Field("preNivelacijePromet", "Pre nivelacije promet", Math.Round(preNivRevenue, 2).ToString("0.00"), "currency"),
+            Field("preNivelacijeKolicina", "Pre nivelacije kolicina", preNivQty.ToString(), "number"),
+            Field("posleNivelacijePromet", "Posle nivelacije promet", Math.Round(postNivRevenue, 2).ToString("0.00"), "currency"),
+            Field("posleNivelacijeKolicina", "Posle nivelacije kolicina", postNivQty.ToString(), "number"),
+            Field("prePostNivelacijaRevenueCoveragePct", "Pre/post pokrice prometa %", prePostNivelacijaRevenueCoveragePct?.ToString("0.00"), "percent"),
+            Field("prePostNivelacijaRevenueImpactPct", "Pre/post nivelacija impact %", prePostNivelacijaRevenueImpactPct?.ToString("0.00"), "percent", prePostNivelacijaRevenueImpactPct.HasValue),
+            Field("prePostNivelacijaUnitsImpactPct", "Pre/post nivelacija impact kolicine %", prePostNivelacijaUnitsImpactPct?.ToString("0.00"), "percent"),
+            Field("marginContribution", "Marzni doprinos", marginSnapshot.MarginContribution.ToString("0.00"), "currency"),
+            Field("marginPct", "Marza %", marginSnapshot.MarginPct.ToString("0.00"), "percent"),
+            Field("marginDataCoveragePct", "Pokrice marze %", marginSnapshot.MarginDataCoveragePct?.ToString("0.00"), "percent"),
+            Field("revenueWithCost", "Promet sa poznatom nabavnom cenom", marginSnapshot.RevenueWithCost.ToString("0.00"), "currency"),
+            Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", articleIdsWithNivelacija.Count.ToString(), "number"),
+            Field("brojArtikalaUkupno", "Ukupan broj artikala", articleIds.Count.ToString(), "number")
+        ]);
 
         return new AnalyticsDetailResponseDto
         {
@@ -392,23 +568,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             RecordId = recordId,
             Title = title,
             Subtitle = subtitle,
-            Fields =
-            [
-                Field("ukupanPromet", "Ukupan promet", Math.Round(totalRevenue, 2).ToString("0.00"), "currency", true),
-                Field("ukupnaKolicina", "Ukupna kolicina", totalQty.ToString(), "number"),
-                Field("preNivelacijePromet", "Pre nivelacije promet", Math.Round(preNivRevenue, 2).ToString("0.00"), "currency"),
-                Field("preNivelacijeKolicina", "Pre nivelacije kolicina", preNivQty.ToString(), "number"),
-                Field("posleNivelacijePromet", "Posle nivelacije promet", Math.Round(postNivRevenue, 2).ToString("0.00"), "currency"),
-                Field("posleNivelacijeKolicina", "Posle nivelacije kolicina", postNivQty.ToString(), "number"),
-                Field("promenaPrometa", "Promena prometa %", promenaPrometa?.ToString("0.00"), "percent", promenaPrometa.HasValue),
-                Field("promenaKolicine", "Promena kolicine %", promenaKolicine?.ToString("0.00"), "percent"),
-                Field("marginContribution", "Marzni doprinos", marginSnapshot.MarginContribution.ToString("0.00"), "currency"),
-                Field("marginPct", "Marza %", marginSnapshot.MarginPct.ToString("0.00"), "percent"),
-                Field("marginDataCoveragePct", "Pokrice marze %", marginSnapshot.MarginDataCoveragePct?.ToString("0.00"), "percent"),
-                Field("revenueWithCost", "Promet sa poznatom nabavnom cenom", marginSnapshot.RevenueWithCost.ToString("0.00"), "currency"),
-                Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", articleIdsWithNivelacija.Count.ToString(), "number"),
-                Field("brojArtikalaUkupno", "Ukupan broj artikala", articleIds.Count.ToString(), "number")
-            ],
+            Fields = fields,
             Metadata = BuildFilterMetadata(context.Filters)
         };
     }
@@ -421,7 +581,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Field("fromDate", "Od", filters.FromUtc?.ToString("dd.MM.yyyy"), "date"),
             Field("toDate", "Do", filters.ToUtc?.ToString("dd.MM.yyyy"), "date"),
             Field("storeId", "Objekat", filters.StoreId?.ToString(), "number"),
-            Field("supplierId", "Dobavljac", filters.SupplierId?.ToString(), "number")
+            Field("supplierId", "Dobavljac", filters.SupplierId?.ToString(), "number"),
+            Field("dataScope", "Data scope", filters.DataScope, "text")
         ];
     }
 
@@ -448,6 +609,12 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         return date.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
             : date.ToUniversalTime();
+    }
+
+    private static string NormalizeDataScope(string? rawScope)
+    {
+        var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
+        return normalized is "existing" or "imported" ? normalized : "all";
     }
 
     private static string NormalizeColor(string? value)

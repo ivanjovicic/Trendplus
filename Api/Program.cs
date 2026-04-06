@@ -30,6 +30,7 @@ using Trendplus2.Endpoints;
 using Application.Analytics.Queries.GetInventoryStatus;
 using Application.Analytics.Queries.GetSalesSummary;
 using Application.Analytics.Queries.GetTopProducts;
+using Application.Config;
 using Microsoft.OpenApi.Models;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Memory;
@@ -37,6 +38,7 @@ using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
 using Api.Endpoints;
 using Api.Services.Access;
+using Api.Middleware;
 using Api.Services.Startup;
 using Api.Config;
 using System.Threading.RateLimiting;
@@ -105,6 +107,7 @@ try
     builder.Services.Configure<Infrastructure.Configuration.TrendIngestionOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.TrendIngestionOptions.Section));
     builder.Services.Configure<DocumentExportOptions>(builder.Configuration.GetSection(DocumentExportOptions.Section));
+    builder.Services.Configure<PerformanceLoggingOptions>(builder.Configuration.GetSection(PerformanceLoggingOptions.Section));
     builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
     var documentOptions = builder.Configuration.GetSection(DocumentExportOptions.Section).Get<DocumentExportOptions>() ?? new DocumentExportOptions();
     var resolvedDocumentSigningKey = documentOptions.ResolveSigningKey();
@@ -538,6 +541,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     // 1. Global exception handler (first in pipeline)
     app.UseMiddleware<GlobalExceptionMiddleware>();
+    app.UseMiddleware<SqlLoggingRequestContextMiddleware>();
 
     // 2. Serilog request logging
     app.UseSerilogRequestLogging(opts =>
