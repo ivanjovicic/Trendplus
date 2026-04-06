@@ -87,8 +87,8 @@ const THEMES: Record<ThemeName, Theme> = {
   },
   "soft-gray": {
     name: "soft-gray",
-    displayName: "Soft Gray",
-    description: "Light muted gray palette for low-contrast environments",
+    displayName: "Meka siva",
+    description: "Nježna siva paleta za niskokontrastne prikaze",
     cssVars: withBaseVars({
       "--surface-default": "#f5f6f8",
       "--surface-light": "#ffffff",

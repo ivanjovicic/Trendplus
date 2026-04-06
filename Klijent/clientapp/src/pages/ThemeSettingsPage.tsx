@@ -99,6 +99,7 @@ export default function ThemeSettingsPage() {
           <div className="space-y-2 text-sm text-secondary">
             <p>• <strong>Bilans Stanja — Tamna:</strong> Optimizovana za rad u tamnim uslovima i dugotrajno čitanje</p>
             <p>• <strong>Svetla:</strong> Klasična tema pogodna za rad u osvetljenim prostorima</p>
+            <p>• <strong>Meka siva:</strong> Nježna paleta sa smanjenim kontrastom za manje naprezanje oka</p>
             <p>• <strong>Visoki kontrast:</strong> Maksimalni kontrast teksta za lakše čitanje (WCAG AAA)</p>
           </div>
           <div className="mt-4 text-xs text-muted">
