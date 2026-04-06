@@ -23,10 +23,10 @@ export const INTERACTION_TOKENS = {
   // Interactive background states
   interactive: {
     bg: {
-      default: 'var(--interactive-bg-default, rgba(68, 208, 255, 0.04))',
-      hover: 'var(--interactive-bg-hover, rgba(68, 208, 255, 0.08))',
-      active: 'var(--interactive-bg-active, rgba(68, 208, 255, 0.12))',
-      disabled: 'var(--interactive-bg-disabled, rgba(255, 255, 255, 0.02))',
+      default: 'var(--interactive-bg-default, var(--theme-color-rgba-68-208-255-0p04, rgba(68, 208, 255, 0.04)))',
+      hover: 'var(--interactive-bg-hover, var(--theme-color-rgba-68-208-255-0p08, rgba(68, 208, 255, 0.08)))',
+      active: 'var(--interactive-bg-active, var(--theme-color-rgba-68-208-255-0p12, rgba(68, 208, 255, 0.12)))',
+      disabled: 'var(--interactive-bg-disabled, var(--theme-color-rgba-255-255-255-0p02, rgba(255, 255, 255, 0.02)))',
     },
     border: {
       default: 'var(--border-default)',
@@ -40,9 +40,9 @@ export const INTERACTION_TOKENS = {
   // Elevation/shadow levels
   elevation: {
     none: 'var(--elevation-none, 0 0 0 0 transparent)',
-    subtle: 'var(--elevation-subtle, 0 2px 8px -2px rgba(0, 0, 0, 0.15))',
-    soft: 'var(--elevation-soft, 0 4px 16px -4px rgba(0, 0, 0, 0.25))',
-    medium: 'var(--elevation-medium, 0 8px 32px -8px rgba(0, 0, 0, 0.35))',
+    subtle: 'var(--elevation-subtle, 0 2px 8px -2px var(--theme-color-rgba-0-0-0-0p15, rgba(0, 0, 0, 0.15)))',
+    soft: 'var(--elevation-soft, 0 4px 16px -4px var(--theme-color-rgba-0-0-0-0p25, rgba(0, 0, 0, 0.25)))',
+    medium: 'var(--elevation-medium, 0 8px 32px -8px var(--theme-color-rgba-0-0-0-0p35, rgba(0, 0, 0, 0.35)))',
   },
 
   // Animation timing

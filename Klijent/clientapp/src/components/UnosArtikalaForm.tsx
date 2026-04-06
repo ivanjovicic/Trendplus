@@ -335,7 +335,7 @@ export default function UnosArtikalaForm({
                                                 fontSize: fontSize,
                                                 background: stavka.isExisting ? 'var(--success-10)' : 'var(--surface-elevated)',
                                                 borderColor: stavka.isExisting ? 'var(--success)' : undefined,
-                                                boxShadow: stavka.isExisting ? undefined : 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))',
+                                                boxShadow: stavka.isExisting ? undefined : 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))',
                                                 width: '100%'
                                             }}
                                         />
@@ -352,7 +352,7 @@ export default function UnosArtikalaForm({
                                                 maxHeight: '400px',
                                                 overflowY: 'auto',
                                                 zIndex: 1500,
-                                                boxShadow: 'var(--box-shadow-lg, 0 10px 20px rgba(0, 0, 0, 0.2))',
+                                                boxShadow: 'var(--box-shadow-lg, 0 10px 20px var(--theme-color-rgba-0-0-0-0p2, rgba(0, 0, 0, 0.2)))',
                                                 minWidth: '300px',
                                             }}>
                                                 {filteredArtikli.map((art) => (
@@ -390,7 +390,7 @@ export default function UnosArtikalaForm({
                                                 fontSize: fontSize,
                                                 width: '100%',
                                                 background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
                                             }}
                                         >
                                             <option value="">-- izaberite --</option>
@@ -410,7 +410,7 @@ export default function UnosArtikalaForm({
                                                 fontSize: fontSize,
                                                 width: '100%',
                                                 background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
                                             }}
                                         >
                                             <option value="">-- izaberite --</option>
@@ -433,7 +433,7 @@ export default function UnosArtikalaForm({
                                                 textAlign: 'center',
                                                 width: '100%',
                                                 background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
                                             }}
                                         />
                                     </td>
@@ -452,7 +452,7 @@ export default function UnosArtikalaForm({
                                                 textAlign: 'right',
                                                 width: '100%',
                                                 background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
                                             }}
                                         />
                                     </td>
@@ -471,7 +471,7 @@ export default function UnosArtikalaForm({
                                                 textAlign: 'right',
                                                 width: '100%',
                                                 background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
                                             }}
                                         />
                                     </td>
@@ -488,7 +488,7 @@ export default function UnosArtikalaForm({
                                                 fontSize: fontSize,
                                                 width: '100%',
                                                 background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px rgba(0,0,0,0.04))'
+                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
                                             }}
                                         />
                                     </td>
