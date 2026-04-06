@@ -200,7 +200,7 @@
 .ad-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .ad-tabs button {
   border-radius: 999px;
-  border: 1px solid rgba(140, 164, 220, 0.3);
+  border: 1px solid var(--theme-rgba-140-164-220-0p3, rgba(140, 164, 220, 0.3));
   background: var(--panel, var(--theme-color-rgba-10-17-34-0p9, rgba(10, 17, 34, 0.9)));
   color: var(--text-primary, var(--theme-color-d4e1ff, #d4e1ff));
   padding: 6px 10px;
@@ -208,7 +208,7 @@
   cursor: pointer;
 }
 .ad-tabs button.active {
-  background: linear-gradient(120deg, rgba(61, 217, 164, 0.22), rgba(63, 124, 255, 0.22));
+  background: linear-gradient(120deg, var(--theme-rgba-61-217-164-0p22, rgba(61, 217, 164, 0.22)), var(--theme-rgba-63-124-255-0p22, rgba(63, 124, 255, 0.22)));
   border-color: var(--theme-color-rgba-61-217-164-0p62, rgba(61, 217, 164, 0.62));
 }
 
@@ -222,7 +222,7 @@
 .ad-table-head {
   color: var(--text-secondary, var(--theme-color-9fb2de, #9fb2de));
   font-size: 12px;
-  border-bottom: 1px solid rgba(140, 164, 220, 0.22);
+  border-bottom: 1px solid var(--theme-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22));
   padding-bottom: 8px;
 }
 
@@ -270,7 +270,7 @@
 }
 .ad-validation strong { font-size: 12px; }
 .ad-validation p { margin: 3px 0 0; font-size: 12px; color: var(--text-secondary, var(--theme-color-c8d7f8, #c8d7f8)); }
-.ad-validation.good { border-color: rgba(51, 196, 143, 0.45); }
+.ad-validation.good { border-color: var(--theme-rgba-51-196-143-0p45, rgba(51, 196, 143, 0.45)); }
 .ad-validation.warning { border-color: var(--theme-color-rgba-246-189-98-0p5, rgba(246, 189, 98, 0.5)); }
 .ad-validation.critical { border-color: var(--theme-color-rgba-255-109-109-0p5, rgba(255, 109, 109, 0.5)); }
 
