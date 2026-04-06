@@ -52,7 +52,7 @@ const SORT_OPTIONS = [
 ];
 
 // Google brand colours
-const G_BLUE   = "var(--c-4285f4, #4285F4)";
+const G_BLUE   = "var(--c-4285f4, var(--theme-color-4285f4, var(--theme-color-4285f4, #4285F4)))";
 
 const POPULAR_BRANDS: { group: string; brands: string[] }[] = [
     {
@@ -72,9 +72,9 @@ const POPULAR_BRANDS: { group: string; brands: string[] }[] = [
         brands: ["Timberland", "UGG", "Hunter", "Boss", "Michael Kors", "Liu Jo", "Kurt Geiger", "Mango", "Zara"],
     },
 ];
-const G_RED    = "var(--c-ea4335, #EA4335)";
-const G_YELLOW = "var(--c-fbbc05, #FBBC05)";
-const G_GREEN  = "var(--c-34a853, #34A853)";
+const G_RED    = "var(--c-ea4335, var(--theme-color-ea4335, #EA4335))";
+const G_YELLOW = "var(--c-fbbc05, var(--theme-color-fbbc05, var(--theme-color-fbbc05, #FBBC05)))";
+const G_GREEN  = "var(--c-34a853, var(--theme-color-34a853, var(--theme-color-34a853, #34A853)))";
 const GOOGLE_GRADIENT = `linear-gradient(90deg, ${G_BLUE}, ${G_RED} 33%, ${G_YELLOW} 66%, ${G_GREEN})`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -89,9 +89,9 @@ function PositionBadge({ position }: { position: number }) {
                 fontWeight: 800,
                 borderRadius: 5,
                 padding: "1px 6px",
-                background: top3 ? "var(--success-bg, #dcfce7)" : "var(--surface-default, #f3f4f6)",
-                color:      top3 ? "var(--success-text, #15803d)" : "var(--text-muted, #6b7280)",
-                border: `1px solid ${top3 ? "var(--success-border, #86efac)" : "var(--border-muted, #e5e7eb)"}`,
+                background: top3 ? "var(--success-bg, var(--theme-color-dcfce7, #dcfce7))" : "var(--surface-default, var(--theme-color-f3f4f6, #f3f4f6))",
+                color:      top3 ? "var(--success-text, var(--theme-color-15803d, var(--theme-color-15803d, #15803d)))" : "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))",
+                border: `1px solid ${top3 ? "var(--success-border, var(--theme-color-86efac, var(--theme-color-86efac, #86efac)))" : "var(--border-muted, var(--theme-color-e5e7eb, #e5e7eb))"}`,
                 letterSpacing: "0.01em",
             }}
         >
@@ -101,19 +101,19 @@ function PositionBadge({ position }: { position: number }) {
 }
 
 function StarRating({ rating }: { rating: number }) {
-    if (rating <= 0) return <span style={{ fontSize: 11, color: "var(--text-muted, #d1d5db)" }}>no ratings</span>;
+    if (rating <= 0) return <span style={{ fontSize: 11, color: "var(--text-muted, var(--theme-color-d1d5db, var(--theme-color-d1d5db, #d1d5db)))" }}>no ratings</span>;
     const full  = Math.floor(rating);
     const half  = rating - full >= 0.4;
     const empty = 5 - full - (half ? 1 : 0);
     return (
-        <span title={`${rating.toFixed(1)} / 5`} style={{ color: "var(--c-f59e0b, #f59e0b)", fontSize: 13, letterSpacing: -1 }}>
+        <span title={`${rating.toFixed(1)} / 5`} style={{ color: "var(--c-f59e0b, var(--theme-color-f59e0b, #f59e0b))", fontSize: 13, letterSpacing: -1 }}>
             {"★".repeat(full)}{"½".repeat(half ? 1 : 0)}{"☆".repeat(empty)}
         </span>
     );
 }
 
 function PriceLabel({ price, currency }: { price: number | null; currency: string | null }) {
-    if (price == null) return <span style={{ color: "var(--c-d1d5db, #d1d5db)" }}>Price N/A</span>;
+    if (price == null) return <span style={{ color: "var(--c-d1d5db, var(--theme-color-d1d5db, var(--theme-color-d1d5db, #d1d5db)))" }}>Price N/A</span>;
     const sym = currency === "EUR" ? "€" : currency === "USD" ? "$" : currency === "GBP" ? "£" : currency ?? "";
     return (
         <span style={{ fontWeight: 800, fontSize: 15, color: G_BLUE }}>
@@ -137,11 +137,11 @@ function CategoryPanel({
 }) {
     return (
         <div style={{ minWidth: 210 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted, #6b7280)", marginBottom: 8, letterSpacing: "0.06em" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginBottom: 8, letterSpacing: "0.06em" }}>
                 Categories in DB
             </div>
             {categories.length === 0 && (
-                <div style={{ color: "var(--text-secondary, #9ca3af)", fontSize: 12, fontStyle: "italic" }}>No data — sync first</div>
+                <div style={{ color: "var(--text-secondary, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))", fontSize: 12, fontStyle: "italic" }}>No data — sync first</div>
             )}
             {categories.map((c) => {
                 const key    = c.category ?? "";
@@ -152,17 +152,17 @@ function CategoryPanel({
                         style={{
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             padding: "6px 10px", borderRadius: 8, marginBottom: 4,
-                            background: active ? G_BLUE : "var(--c-f9fafb, #f9fafb)",
-                            border: `1px solid ${active ? G_BLUE : "var(--c-e5e7eb, #e5e7eb)"}`,
+                            background: active ? G_BLUE : "var(--c-f9fafb, var(--theme-color-f9fafb, #f9fafb))",
+                            border: `1px solid ${active ? G_BLUE : "var(--c-e5e7eb, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))"}`,
                             cursor: "pointer", transition: "all .12s",
                         }}
                         onClick={() => onSelect(key)}
                     >
                         <div>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: active ? "var(--text-on-primary, #ffffff)" : "var(--text-primary, #111827)" }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: active ? "var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))" : "var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)))" }}>
                                 {c.category ?? "—"}
                             </div>
-                            <div style={{ fontSize: 10, color: active ? "rgba(255,255,255,.7)" : "var(--text-secondary, #9ca3af)" }}>
+                            <div style={{ fontSize: 10, color: active ? "var(--theme-color-rgba-255-255-255-p7, rgba(255,255,255,.7))" : "var(--text-secondary, var(--theme-color-9ca3af, #9ca3af))" }}>
                                 {c.count} items
                                 {c.avgPrice != null ? ` · €${c.avgPrice.toFixed(0)}` : ""}
                             </div>
@@ -170,7 +170,7 @@ function CategoryPanel({
                         <button
                             onClick={(e) => { e.stopPropagation(); onDelete(key); }}
                             title="Delete category"
-                            style={{ background: "none", border: "none", cursor: "pointer", color: active ? "rgba(255,255,255,.7)" : "var(--c-d1d5db, #d1d5db)", fontSize: 14, lineHeight: 1, padding: "0 2px" }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: active ? "var(--theme-color-rgba-255-255-255-p7, rgba(255,255,255,.7))" : "var(--c-d1d5db, var(--theme-color-d1d5db, var(--theme-color-d1d5db, #d1d5db)))", fontSize: 14, lineHeight: 1, padding: "0 2px" }}
                         >
                             ✕
                         </button>
@@ -186,8 +186,8 @@ function CategoryPanel({
 function GoogleShoeCard({ shoe }: { shoe: GoogleShoppingProduct }) {
     return (
         <div
-            style={{ background: "var(--surface-card, white)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", transition: "box-shadow .15s, transform .15s" }}
-            onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "var(--box-shadow-md, 0 8px 24px rgba(0,0,0,.12))"; el.style.transform = "translateY(-2px)"; }}
+            style={{ background: "var(--surface-card, white)", border: "1px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", transition: "box-shadow .15s, transform .15s" }}
+            onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "var(--box-shadow-md, 0 8px 24px var(--theme-color-rgba-0-0-0-p12, rgba(0,0,0,.12)))"; el.style.transform = "translateY(-2px)"; }}
             onMouseLeave={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = ""; el.style.transform = ""; }}
         >
             {/* Google colour strip */}
@@ -195,7 +195,7 @@ function GoogleShoeCard({ shoe }: { shoe: GoogleShoppingProduct }) {
 
             {/* Image */}
             <a href={shoe.productUrl ?? "#"} target="_blank" rel="noopener noreferrer" tabIndex={-1}>
-                <div style={{ width: "100%", height: 175, background: "var(--surface-default, #f9fafb)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative" }}>
+                <div style={{ width: "100%", height: 175, background: "var(--surface-default, var(--theme-color-f9fafb, var(--theme-color-f9fafb, #f9fafb)))", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative" }}>
                     {shoe.imageUrl ? (
                         <img
                             src={shoe.imageUrl}
@@ -216,7 +216,7 @@ function GoogleShoeCard({ shoe }: { shoe: GoogleShoppingProduct }) {
             {/* Body */}
             <div style={{ padding: "10px 12px 12px", flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
                 {shoe.brand && (
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary, #9ca3af)", letterSpacing: "0.04em" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))", letterSpacing: "0.04em" }}>
                         {shoe.brand}
                     </span>
                 )}
@@ -225,7 +225,7 @@ function GoogleShoeCard({ shoe }: { shoe: GoogleShoppingProduct }) {
                     href={shoe.productUrl ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary, #111827)", lineHeight: 1.35, textDecoration: "none" }}
+                    style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)))", lineHeight: 1.35, textDecoration: "none" }}
                     title={shoe.title ?? ""}
                 >
                     {shoe.title && shoe.title.length > 70 ? shoe.title.slice(0, 68) + "…" : shoe.title ?? "—"}
@@ -234,7 +234,7 @@ function GoogleShoeCard({ shoe }: { shoe: GoogleShoppingProduct }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
                     <StarRating rating={shoe.rating} />
                     {shoe.reviewCount > 0 && (
-                        <span style={{ fontSize: 10, color: "var(--c-6b7280, #6b7280)" }}>({shoe.reviewCount.toLocaleString()})</span>
+                        <span style={{ fontSize: 10, color: "var(--c-6b7280, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))" }}>({shoe.reviewCount.toLocaleString()})</span>
                     )}
                 </div>
 
@@ -242,11 +242,11 @@ function GoogleShoeCard({ shoe }: { shoe: GoogleShoppingProduct }) {
                     <PriceLabel price={shoe.price} currency={shoe.currency} />
                     <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                         {shoe.trendScore > 0 && (
-                            <span style={{ fontSize: 9, background: "var(--warning-bg, #fef3c7)", color: "var(--warning-text, #92400e)", borderRadius: 4, padding: "1px 5px", border: "1px solid var(--warning-border, #fde68a)", fontWeight: 700 }}>
+                            <span style={{ fontSize: 9, background: "var(--warning-bg, var(--theme-color-fef3c7, var(--theme-color-fef3c7, #fef3c7)))", color: "var(--warning-text, var(--theme-color-92400e, var(--theme-color-92400e, #92400e)))", borderRadius: 4, padding: "1px 5px", border: "1px solid var(--warning-border, var(--theme-color-fde68a, var(--theme-color-fde68a, #fde68a)))", fontWeight: 700 }}>
                                 ◆ {shoe.trendScore.toFixed(1)}
                             </span>
                         )}
-                        <span style={{ fontSize: 10, background: "var(--surface-variant, #eff6ff)", color: G_BLUE, borderRadius: 5, padding: "1px 6px", border: `1px solid ${G_BLUE}33`, fontWeight: 600 }}>
+                        <span style={{ fontSize: 10, background: "var(--surface-variant, var(--theme-color-eff6ff, var(--theme-color-eff6ff, #eff6ff)))", color: G_BLUE, borderRadius: 5, padding: "1px 6px", border: `1px solid ${G_BLUE}33`, fontWeight: 600 }}>
                             Google
                         </span>
                     </div>
@@ -354,10 +354,10 @@ export default function GoogleShoppingTrendsPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ fontSize: 30 }}>🛍️</span>
                     <div>
-                        <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--text-primary, #111827)", margin: 0 }}>
+                        <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--text-primary, var(--theme-color-111827, #111827))", margin: 0 }}>
                             Google Shopping Trends
                         </h1>
-                        <p style={{ color: "var(--text-muted, #6b7280)", marginTop: 2, marginBottom: 0, fontSize: 14 }}>
+                        <p style={{ color: "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginTop: 2, marginBottom: 0, fontSize: 14 }}>
                             Fetch top-ranked shoe listings from Google Shopping via SerpAPI and track them over time.
                             Uses the same API key as Amazon (<code>appsettings.json → SerpApi:ApiKey</code>).
                         </p>
@@ -366,22 +366,22 @@ export default function GoogleShoppingTrendsPage() {
             </div>
 
             {/* ── Sync card ── */}
-            <div style={{ background: "var(--surface-card, #ffffff)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px rgba(0,0,0,.06))" }}>
+            <div style={{ background: "var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))", border: "1px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px var(--theme-color-rgba-0-0-0-p06, rgba(0,0,0,.06)))" }}>
                 {/* Google colour bar */}
                 <div style={{ height: 4, borderRadius: 4, background: GOOGLE_GRADIENT, marginBottom: 14 }} />
 
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-111827, #111827)", marginBottom: 12 }}>🔄 Sync from Google Shopping</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-111827, var(--theme-color-111827, var(--theme-color-111827, #111827)))", marginBottom: 12 }}>🔄 Sync from Google Shopping</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
 
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, #6b7280)", marginBottom: 4 }}>Tip cipele</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginBottom: 4 }}>Tip cipele</label>
                         <div>
                             <input
                                 value={syncType}
                                 onChange={(e) => setSyncType(e.target.value)}
                                 list="goo-shoe-type-list"
                                 placeholder="e.g. sneakers"
-                                style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 200 }}
+                                style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", fontSize: 13, width: 200 }}
                             />
                             <datalist id="goo-shoe-type-list">
                                 {SHOE_TYPES.map((t) => <option key={t} value={t} />)}
@@ -391,11 +391,11 @@ export default function GoogleShoppingTrendsPage() {
 
                     {/* Gender */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, #6b7280)", marginBottom: 4 }}>Pol</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginBottom: 4 }}>Pol</label>
                         <select
                             value={syncGender}
                             onChange={(e) => setSyncGender(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, minWidth: 120, background: "var(--surface-card, #ffffff)" }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", fontSize: 13, minWidth: 120, background: "var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))" }}
                         >
                             {GENDER_OPTIONS.map((g) => (
                                 <option key={g.value} value={g.value}>{g.label}</option>
@@ -404,22 +404,22 @@ export default function GoogleShoppingTrendsPage() {
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, #6b7280)", marginBottom: 4 }}>Min price (€)</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginBottom: 4 }}>Min price (€)</label>
                         <input
                             type="number" min={0} placeholder="e.g. 20"
                             value={syncMinPrice}
                             onChange={(e) => setSyncMinPrice(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 100 }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", fontSize: 13, width: 100 }}
                         />
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, #6b7280)", marginBottom: 4 }}>Max price (€)</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginBottom: 4 }}>Max price (€)</label>
                         <input
                             type="number" min={0} placeholder="e.g. 150"
                             value={syncMaxPrice}
                             onChange={(e) => setSyncMaxPrice(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 100 }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, var(--theme-color-e5e7eb, #e5e7eb))", fontSize: 13, width: 100 }}
                         />
                     </div>
 
@@ -428,8 +428,8 @@ export default function GoogleShoppingTrendsPage() {
                         disabled={syncing || !syncType.trim()}
                             style={{
                             padding: "8px 20px", borderRadius: 8,
-                            background: syncing ? "var(--border-muted, #e5e7eb)" : "var(--brand-google, #4285F4)",
-                            color: syncing ? "var(--text-muted, #9ca3af)" : "var(--text-on-primary, #ffffff)",
+                            background: syncing ? "var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))" : "var(--brand-google, var(--theme-color-4285f4, var(--theme-color-4285f4, #4285F4)))",
+                            color: syncing ? "var(--text-muted, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))" : "var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))",
                             border: "none", fontWeight: 700, fontSize: 13,
                             cursor: syncing ? "not-allowed" : "pointer",
                             transition: "all .15s",
@@ -442,10 +442,10 @@ export default function GoogleShoppingTrendsPage() {
                 {syncMsg && (
                     <div style={{
                         marginTop: 10, padding: "7px 12px", borderRadius: 8,
-                        background: syncMsg.ok ? "var(--c-ecfdf5, #ecfdf5)" : "var(--c-fff1f2, #fff1f2)",
-                        color: syncMsg.ok ? "var(--c-065f46, #065f46)" : "var(--c-be123c, #be123c)",
+                        background: syncMsg.ok ? "var(--c-ecfdf5, var(--theme-color-ecfdf5, var(--theme-color-ecfdf5, #ecfdf5)))" : "var(--c-fff1f2, var(--theme-color-fff1f2, var(--theme-color-fff1f2, #fff1f2)))",
+                        color: syncMsg.ok ? "var(--c-065f46, var(--theme-color-065f46, var(--theme-color-065f46, #065f46)))" : "var(--c-be123c, var(--theme-color-be123c, var(--theme-color-be123c, #be123c)))",
                         fontSize: 13, fontWeight: 600,
-                        border: `1px solid ${syncMsg.ok ? "var(--c-a7f3d0, #a7f3d0)" : "var(--c-fecdd3, #fecdd3)"}`,
+                        border: `1px solid ${syncMsg.ok ? "var(--c-a7f3d0, var(--theme-color-a7f3d0, var(--theme-color-a7f3d0, #a7f3d0)))" : "var(--c-fecdd3, var(--theme-color-fecdd3, var(--theme-color-fecdd3, #fecdd3)))"}`,
                     }}>
                         {syncMsg.text}
                     </div>
@@ -472,9 +472,9 @@ export default function GoogleShoppingTrendsPage() {
                         <div style={{ marginBottom: 14 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                                 <div>
-                                    <span style={{ fontWeight: 700, fontSize: 16, color: "var(--c-111827, #111827)", textTransform: "capitalize" }}>{selectedType}</span>
+                                    <span style={{ fontWeight: 700, fontSize: 16, color: "var(--c-111827, var(--theme-color-111827, var(--theme-color-111827, #111827)))", textTransform: "capitalize" }}>{selectedType}</span>
                                     {total > 0 && (
-                                        <span style={{ marginLeft: 8, fontSize: 13, color: "var(--c-6b7280, #6b7280)" }}>
+                                        <span style={{ marginLeft: 8, fontSize: 13, color: "var(--c-6b7280, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))" }}>
                                             {items.length}/{total} items
                                         </span>
                                     )}
@@ -483,7 +483,7 @@ export default function GoogleShoppingTrendsPage() {
                                     <select
                                         value={brandFilter}
                                         onChange={(e) => setBrandFilter(e.target.value)}
-                                        style={{ padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${brandFilter !== "all" ? "var(--c-6366f1, #6366f1)" : "var(--c-e5e7eb, #e5e7eb)"}`, fontSize: 12, fontWeight: brandFilter !== "all" ? 700 : 400, color: brandFilter !== "all" ? "var(--c-4f46e5, #4f46e5)" : "var(--c-374151, #374151)", background: brandFilter !== "all" ? "var(--c-eef2ff, #eef2ff)" : "var(--surface-default, #ffffff)", cursor: "pointer" }}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${brandFilter !== "all" ? "var(--c-6366f1, var(--theme-color-6366f1, var(--theme-color-6366f1, #6366f1)))" : "var(--c-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb))"}`, fontSize: 12, fontWeight: brandFilter !== "all" ? 700 : 400, color: brandFilter !== "all" ? "var(--c-4f46e5, var(--theme-color-4f46e5, var(--theme-color-4f46e5, #4f46e5)))" : "var(--c-374151, var(--theme-color-374151, var(--theme-color-374151, #374151)))", background: brandFilter !== "all" ? "var(--c-eef2ff, var(--theme-color-eef2ff, var(--theme-color-eef2ff, #eef2ff)))" : "var(--surface-default, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))", cursor: "pointer" }}
                                     >
                                         <option value="all">🏷 Svi brendovi</option>
                                         {POPULAR_BRANDS.map(({ group, brands }) => (
@@ -495,11 +495,11 @@ export default function GoogleShoppingTrendsPage() {
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value)}
-                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid var(--c-e5e7eb, #e5e7eb)", fontSize: 12, fontWeight: 600, background: "var(--surface-default, #ffffff)", cursor: "pointer" }}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid var(--c-e5e7eb, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", fontSize: 12, fontWeight: 600, background: "var(--surface-default, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))", cursor: "pointer" }}
                                     >
                                         {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </select>
-                                    {loadingItems && <span style={{ fontSize: 12, color: "var(--c-9ca3af, #9ca3af)" }}>⏳ Loading…</span>}
+                                    {loadingItems && <span style={{ fontSize: 12, color: "var(--c-9ca3af, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))" }}>⏳ Loading…</span>}
                                 </div>
                             </div>
                             {/* Gender filter tabs */}
@@ -510,9 +510,9 @@ export default function GoogleShoppingTrendsPage() {
                                         onClick={() => setBrowseGender(g.value)}
                                         style={{
                                             padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-                                            border: `1.5px solid ${browseGender === g.value ? G_BLUE : "var(--c-e5e7eb, #e5e7eb)"}`,
-                                            background: browseGender === g.value ? G_BLUE : "var(--surface-default, #ffffff)",
-                                            color: browseGender === g.value ? "var(--text-on-primary, #ffffff)" : "var(--c-374151, #374151)",
+                                            border: `1.5px solid ${browseGender === g.value ? G_BLUE : "var(--c-e5e7eb, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))"}`,
+                                            background: browseGender === g.value ? G_BLUE : "var(--surface-default, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))",
+                                            color: browseGender === g.value ? "var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))" : "var(--c-374151, var(--theme-color-374151, var(--theme-color-374151, #374151)))",
                                             cursor: "pointer", transition: "all .12s",
                                         }}
                                     >
@@ -524,7 +524,7 @@ export default function GoogleShoppingTrendsPage() {
                     )}
 
                     {!selectedType && categories.length === 0 && (
-                        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--c-9ca3af, #9ca3af)" }}>
+                        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--c-9ca3af, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))" }}>
                             <div style={{ fontSize: 40 }}>🛍️</div>
                             <div style={{ fontWeight: 600, marginTop: 12 }}>No data yet</div>
                             <div style={{ fontSize: 13, marginTop: 4 }}>Use the sync panel above to fetch shoes from Google Shopping.</div>
@@ -544,7 +544,7 @@ export default function GoogleShoppingTrendsPage() {
                                     </div>
                                 )}
                                 {displayedItems.length === 0 && selectedType && !loadingItems && (
-                                    <div style={{ textAlign: "center", padding: 40, background: "var(--c-f9fafb, #f9fafb)", borderRadius: 14, color: "var(--c-6b7280, #6b7280)" }}>
+                                    <div style={{ textAlign: "center", padding: 40, background: "var(--c-f9fafb, var(--theme-color-f9fafb, var(--theme-color-f9fafb, #f9fafb)))", borderRadius: 14, color: "var(--c-6b7280, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))" }}>
                                         <div style={{ fontSize: 32 }}>💭</div>
                                         {brandFilter !== "all"
                                             ? <><div style={{ marginTop: 8, fontWeight: 600 }}>Nema rezultata za brend "{brandFilter}"</div><div style={{ fontSize: 13, marginTop: 4 }}>Probaj drugi brend ili učitaj više stranica.</div></>
@@ -564,8 +564,8 @@ export default function GoogleShoppingTrendsPage() {
                                 disabled={loadingMore}
                                 style={{
                                     padding: "10px 32px", borderRadius: 10,
-                                    background: loadingMore ? "var(--c-e5e7eb, #e5e7eb)" : G_BLUE,
-                                    color: loadingMore ? "var(--c-9ca3af, #9ca3af)" : "var(--text-on-primary, #ffffff)",
+                                    background: loadingMore ? "var(--c-e5e7eb, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))" : G_BLUE,
+                                    color: loadingMore ? "var(--c-9ca3af, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))" : "var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))",
                                     border: "none", fontWeight: 700, fontSize: 14,
                                     cursor: loadingMore ? "not-allowed" : "pointer",
                                     transition: "all .15s",

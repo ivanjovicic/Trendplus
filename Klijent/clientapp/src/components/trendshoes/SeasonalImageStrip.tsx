@@ -28,7 +28,7 @@ export default function SeasonalImageStrip() {
             style={{
                 marginTop: 24,
                 padding: "12px 0",
-                borderTop: "1px solid var(--border-muted, #e5e7eb)",
+                borderTop: "1px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))",
                 display: "flex",
                 gap: 12,
                 overflowX: "auto",

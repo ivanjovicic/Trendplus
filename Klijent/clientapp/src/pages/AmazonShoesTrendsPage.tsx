@@ -306,29 +306,29 @@ export default function AmazonShoesTrendsPage() {
 
             {/* ── Header ── */}
             <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--text-strong, #111827)", margin: 0 }}>
+                <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--text-strong, var(--theme-color-111827, var(--theme-color-111827, #111827)))", margin: 0 }}>
                     🛍 Amazon Shoe Trends
                 </h1>
-                <p style={{ color: "var(--text-muted, #6b7280)", marginTop: 4, marginBottom: 0, fontSize: 14 }}>
+                <p style={{ color: "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginTop: 4, marginBottom: 0, fontSize: 14 }}>
                     Fetch top-rated shoes from Amazon via SerpAPI and track them over time. Data is stored in the Analytics DB.
                 </p>
             </div>
 
             {/* ── Sync card ── */}
-            <div style={{ background: "var(--surface-card, #ffffff)", border: "1px solid var(--border-muted, #e5e7eb)", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px rgba(0,0,0,.06))" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong, #111827)", marginBottom: 12 }}>🔄 Sync from Amazon</div>
+            <div style={{ background: "var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))", border: "1px solid var(--border-muted, var(--theme-color-e5e7eb, #e5e7eb))", borderRadius: 14, padding: "18px 20px", marginBottom: 20, boxShadow: "var(--box-shadow-xs, 0 1px 4px var(--theme-color-rgba-0-0-0-p06, rgba(0,0,0,.06)))" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong, var(--theme-color-111827, var(--theme-color-111827, #111827)))", marginBottom: 12 }}>🔄 Sync from Amazon</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
 
                     {/* Type */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, #6b7280)", marginBottom: 4 }}>Tip cipele</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginBottom: 4 }}>Tip cipele</label>
                         <div style={{ position: "relative" }}>
                             <input
                                 value={syncType}
                                 onChange={(e) => setSyncType(e.target.value)}
                                 list="shoe-type-list"
                                 placeholder="e.g. sneakers"
-                                style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 200 }}
+                                style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", fontSize: 13, width: 200 }}
                             />
                             <datalist id="shoe-type-list">
                                 {SHOE_TYPES.map((t) => <option key={t} value={t} />)}
@@ -338,11 +338,11 @@ export default function AmazonShoesTrendsPage() {
 
                     {/* Gender */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, #6b7280)", marginBottom: 4 }}>Pol</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginBottom: 4 }}>Pol</label>
                         <select
                             value={syncGender}
                             onChange={(e) => setSyncGender(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, minWidth: 120, background: "var(--surface-card, #ffffff)" }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", fontSize: 13, minWidth: 120, background: "var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))" }}
                         >
                             {GENDER_OPTIONS.map((g) => (
                                 <option key={g.value} value={g.value}>{g.label}</option>
@@ -352,23 +352,23 @@ export default function AmazonShoesTrendsPage() {
 
                     {/* Min price */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, #6b7280)", marginBottom: 4 }}>Min price</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginBottom: 4 }}>Min price</label>
                         <input
                             type="number" min={0} placeholder="e.g. 20"
                             value={syncMinPrice}
                             onChange={(e) => setSyncMinPrice(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 100 }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", fontSize: 13, width: 100 }}
                         />
                     </div>
 
                     {/* Max price */}
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, #6b7280)", marginBottom: 4 }}>Max price</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))", marginBottom: 4 }}>Max price</label>
                         <input
                             type="number" min={0} placeholder="e.g. 150"
                             value={syncMaxPrice}
                             onChange={(e) => setSyncMaxPrice(e.target.value)}
-                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 13, width: 100 }}
+                            style={{ padding: "7px 10px", borderRadius: 8, border: "1.5px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", fontSize: 13, width: 100 }}
                         />
                     </div>
 
@@ -377,8 +377,8 @@ export default function AmazonShoesTrendsPage() {
                         disabled={syncing || !syncType.trim()}
                         style={{
                             padding: "8px 20px", borderRadius: 8,
-                            background: syncing ? "var(--border-muted, #e5e7eb)" : "var(--accent, #4f46e5)",
-                            color: syncing ? "var(--text-muted, #9ca3af)" : "var(--text-on-accent, white)",
+                            background: syncing ? "var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))" : "var(--accent, var(--theme-color-4f46e5, var(--theme-color-4f46e5, #4f46e5)))",
+                            color: syncing ? "var(--text-muted, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))" : "var(--text-on-accent, white)",
                             border: "none", fontWeight: 700, fontSize: 13,
                             cursor: syncing ? "not-allowed" : "pointer",
                             transition: "all .15s",
@@ -391,16 +391,16 @@ export default function AmazonShoesTrendsPage() {
                 {syncMsg && (
                     <div style={{
                         marginTop: 10, padding: "7px 12px", borderRadius: 8,
-                        background: syncMsg.ok ? "var(--success-bg, #ecfdf5)" : "var(--error-bg, #fff1f2)",
-                        color: syncMsg.ok ? "var(--success-text, #065f46)" : "var(--error-text, #be123c)",
+                        background: syncMsg.ok ? "var(--success-bg, var(--theme-color-ecfdf5, var(--theme-color-ecfdf5, #ecfdf5)))" : "var(--error-bg, var(--theme-color-fff1f2, #fff1f2))",
+                        color: syncMsg.ok ? "var(--success-text, var(--theme-color-065f46, var(--theme-color-065f46, #065f46)))" : "var(--error-text, var(--theme-color-be123c, var(--theme-color-be123c, #be123c)))",
                         fontSize: 13, fontWeight: 600,
-                        border: `1px solid ${syncMsg.ok ? "var(--success-border, #a7f3d0)" : "var(--error-border, #fecdd3)"}`,
+                        border: `1px solid ${syncMsg.ok ? "var(--success-border, var(--theme-color-a7f3d0, var(--theme-color-a7f3d0, #a7f3d0)))" : "var(--error-border, var(--theme-color-fecdd3, var(--theme-color-fecdd3, #fecdd3)))"}`,
                     }}>
                         {syncMsg.text}
                     </div>
                 )}
 
-                <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-secondary, #9ca3af)" }}>
+                <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-secondary, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))" }}>
                     Requires a valid SerpAPI key in <code>appsettings.json → SerpApi:ApiKey</code>.
                     Uses domain <strong>{""}</strong> configured in <code>SerpApi:AmazonDomain</code>.
                 </div>
@@ -427,9 +427,9 @@ export default function AmazonShoesTrendsPage() {
                         <div style={{ marginBottom: 14 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                                 <div>
-                                    <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary, #111827)", textTransform: "capitalize" }}>{selectedType}</span>
+                                    <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)))", textTransform: "capitalize" }}>{selectedType}</span>
                                     {total > 0 && (
-                                        <span style={{ marginLeft: 8, fontSize: 13, color: "var(--text-muted, #6b7280)" }}>
+                                        <span style={{ marginLeft: 8, fontSize: 13, color: "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))" }}>
                                             {items.length}/{total} items
                                         </span>
                                     )}
@@ -438,7 +438,7 @@ export default function AmazonShoesTrendsPage() {
                                     <select
                                         value={brandFilter}
                                         onChange={(e) => setBrandFilter(e.target.value)}
-                                        style={{ padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${brandFilter !== "all" ? "var(--accent, #6366f1)" : "var(--border-muted, #e5e7eb)"}`, fontSize: 12, fontWeight: brandFilter !== "all" ? 700 : 400, color: brandFilter !== "all" ? "var(--accent, #4f46e5)" : "var(--text-secondary, #374151)", background: brandFilter !== "all" ? "var(--accent-100, #eef2ff)" : "var(--surface-light, #ffffff)", cursor: "pointer" }}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: `1.5px solid ${brandFilter !== "all" ? "var(--accent, var(--theme-color-6366f1, var(--theme-color-6366f1, #6366f1)))" : "var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))"}`, fontSize: 12, fontWeight: brandFilter !== "all" ? 700 : 400, color: brandFilter !== "all" ? "var(--accent, var(--theme-color-4f46e5, var(--theme-color-4f46e5, #4f46e5)))" : "var(--text-secondary, var(--theme-color-374151, var(--theme-color-374151, #374151)))", background: brandFilter !== "all" ? "var(--accent-100, var(--theme-color-eef2ff, var(--theme-color-eef2ff, #eef2ff)))" : "var(--surface-light, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))", cursor: "pointer" }}
                                     >
                                         <option value="all">🏷 Svi brendovi</option>
                                         {POPULAR_BRANDS.map(({ group, brands }) => (
@@ -450,11 +450,11 @@ export default function AmazonShoesTrendsPage() {
                                         <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value)}
-                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid var(--border-muted, #e5e7eb)", fontSize: 12, fontWeight: 600, background: "var(--surface-light, #ffffff)", cursor: "pointer" }}
+                                        style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", fontSize: 12, fontWeight: 600, background: "var(--surface-light, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))", cursor: "pointer" }}
                                     >
                                         {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </select>
-                                    {loadingItems && <span style={{ fontSize: 12, color: "var(--text-muted, #9ca3af)" }}>⏳ Loading…</span>}
+                                    {loadingItems && <span style={{ fontSize: 12, color: "var(--text-muted, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))" }}>⏳ Loading…</span>}
                                 </div>
                             </div>
                             {/* Gender filter tabs */}
@@ -465,9 +465,9 @@ export default function AmazonShoesTrendsPage() {
                                         onClick={() => setBrowseGender(g.value)}
                                         style={{
                                             padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-                                            border: `1.5px solid ${browseGender === g.value ? "var(--accent, #4f46e5)" : "var(--border-muted, #e5e7eb)"}`,
-                                            background: browseGender === g.value ? "var(--accent, #4f46e5)" : "var(--surface-light, #ffffff)",
-                                            color: browseGender === g.value ? "var(--text-on-primary, #ffffff)" : "var(--text-secondary, #374151)",
+                                            border: `1.5px solid ${browseGender === g.value ? "var(--accent, var(--theme-color-4f46e5, var(--theme-color-4f46e5, #4f46e5)))" : "var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))"}`,
+                                            background: browseGender === g.value ? "var(--accent, var(--theme-color-4f46e5, var(--theme-color-4f46e5, #4f46e5)))" : "var(--surface-light, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))",
+                                            color: browseGender === g.value ? "var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))" : "var(--text-secondary, var(--theme-color-374151, var(--theme-color-374151, #374151)))",
                                             cursor: "pointer", transition: "all .12s",
                                         }}
                                     >
@@ -479,7 +479,7 @@ export default function AmazonShoesTrendsPage() {
                     )}
 
                     {!selectedType && categories.length === 0 && (
-                        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-muted, #9ca3af)" }}>
+                        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-muted, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))" }}>
                             <div style={{ fontSize: 40 }}>🛍</div>
                             <div style={{ fontWeight: 600, marginTop: 12 }}>No data yet</div>
                             <div style={{ fontSize: 13, marginTop: 4 }}>Use the sync panel above to fetch shoes from Amazon.</div>
@@ -499,7 +499,7 @@ export default function AmazonShoesTrendsPage() {
                                     </div>
                                 )}
                                 {displayedItems.length === 0 && selectedType && !loadingItems && (
-                                    <div style={{ textAlign: "center", padding: 40, background: "var(--surface-default, #f9fafb)", borderRadius: 14, color: "var(--muted, #6b7280)" }}>
+                                    <div style={{ textAlign: "center", padding: 40, background: "var(--surface-default, var(--theme-color-f9fafb, var(--theme-color-f9fafb, #f9fafb)))", borderRadius: 14, color: "var(--muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))" }}>
                                         <div style={{ fontSize: 32 }}>💭</div>
                                         {brandFilter !== "all"
                                             ? <><div style={{ marginTop: 8, fontWeight: 600 }}>Nema rezultata za brend "{brandFilter}"</div><div style={{ fontSize: 13, marginTop: 4 }}>Probaj drugi brend ili učitaj više stranica.</div></>
@@ -519,8 +519,8 @@ export default function AmazonShoesTrendsPage() {
                                 disabled={loadingMore}
                                 style={{
                                     padding: "10px 32px", borderRadius: 10,
-                                    background: loadingMore ? "var(--border-muted, #e5e7eb)" : "var(--accent, #4f46e5)",
-                                    color: loadingMore ? "var(--text-muted, #9ca3af)" : "var(--text-on-primary, #ffffff)",
+                                    background: loadingMore ? "var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))" : "var(--accent, var(--theme-color-4f46e5, var(--theme-color-4f46e5, #4f46e5)))",
+                                    color: loadingMore ? "var(--text-muted, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))" : "var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))",
                                     border: "none", fontWeight: 700, fontSize: 14,
                                     cursor: loadingMore ? "not-allowed" : "pointer",
                                     transition: "all .15s",

@@ -141,7 +141,7 @@
     position: absolute;
     top: 10px;
     right: 10px;
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--theme-color-rgba-255-255-255-0p9, rgba(255, 255, 255, 0.9));
     border: none;
     border-radius: 50%;
     width: 40px;
@@ -159,7 +159,7 @@
 
 .carousel-close-button:hover { transform: scale(1.1); background: var(--c-fff); }
 
-.carousel-hint-text { margin: 0; color: rgba(255, 255, 255, 0.7); font-size: 0.8rem; text-align: center; }
+.carousel-hint-text { margin: 0; color: var(--theme-color-rgba-255-255-255-0p7, rgba(255, 255, 255, 0.7)); font-size: 0.8rem; text-align: center; }
 
 .carousel-link { color: var(--link); font-weight: 600; text-decoration: none; }
 .carousel-link:hover { text-decoration: underline; }
@@ -184,9 +184,9 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 10;
     box-shadow: 
-        0 4px 6px rgba(0, 0, 0, 0.05),
-        0 10px 15px rgba(0, 0, 0, 0.05),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        0 4px 6px var(--theme-color-rgba-0-0-0-0p05, rgba(0, 0, 0, 0.05)),
+        0 10px 15px var(--theme-color-rgba-0-0-0-0p05, rgba(0, 0, 0, 0.05)),
+        inset 0 1px 0 var(--theme-color-rgba-255-255-255-0p9, rgba(255, 255, 255, 0.9));
 }
 
 .carousel-nav-btn:focus,
@@ -200,16 +200,16 @@
     transform: translateY(-50%) scale(1.05);
     border-color: var(--border-default);
     box-shadow: 
-        0 6px 12px rgba(0, 0, 0, 0.08),
-        0 15px 25px rgba(0, 0, 0, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 1);
+        0 6px 12px var(--theme-color-rgba-0-0-0-0p08, rgba(0, 0, 0, 0.08)),
+        0 15px 25px var(--theme-color-rgba-0-0-0-0p08, rgba(0, 0, 0, 0.08)),
+        inset 0 1px 0 var(--theme-color-rgba-255-255-255-1, rgba(255, 255, 255, 1));
 }
 
 .carousel-nav-btn:active {
     transform: translateY(-50%) scale(0.95);
     box-shadow: 
-        0 2px 4px rgba(0, 0, 0, 0.1),
-        inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        0 2px 4px var(--theme-color-rgba-0-0-0-0p1, rgba(0, 0, 0, 0.1)),
+        inset 0 2px 4px var(--theme-color-rgba-0-0-0-0p1, rgba(0, 0, 0, 0.1));
 }
 
 /* Arrow icons inside buttons */

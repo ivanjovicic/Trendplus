@@ -23,9 +23,9 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
       <div className="h-[240px]">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
           <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={"var(--border-default, #233042)"} />
-              <XAxis dataKey="name" tick={{ fill: "var(--text-muted, #92a4bf)", fontSize: 12 }} />
-              <YAxis tick={{ fill: "var(--text-muted, #92a4bf)", fontSize: 12 }} unit="%" />
+              <CartesianGrid strokeDasharray="3 3" stroke={"var(--border-default, var(--theme-color-233042, var(--theme-color-233042, #233042)))"} />
+              <XAxis dataKey="name" tick={{ fill: "var(--text-muted, var(--theme-color-92a4bf, var(--theme-color-92a4bf, #92a4bf)))", fontSize: 12 }} />
+              <YAxis tick={{ fill: "var(--text-muted, var(--theme-color-92a4bf, var(--theme-color-92a4bf, #92a4bf)))", fontSize: 12 }} unit="%" />
               <Tooltip
                 contentStyle={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
                 formatter={(value: number | string | undefined) => `${value ?? 0}%`}
@@ -34,12 +34,12 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
                   return point ? `Vel. ${label} | stvarno ${point.actual ?? 0}% | idealno ${point.ideal ?? 0}% | odstupanje ${point.deviation ?? 0}pp` : `Vel. ${label}`;
                 }}
               />
-              <Legend wrapperStyle={{ color: "var(--text-primary, #dbe6fb)", fontSize: 12, paddingTop: 12 }} />
+              <Legend wrapperStyle={{ color: "var(--text-primary, var(--theme-color-dbe6fb, var(--theme-color-dbe6fb, #dbe6fb)))", fontSize: 12, paddingTop: 12 }} />
             <Bar dataKey="actual" radius={[6, 6, 0, 0]} name="Stvarno">
-              {chartData.map((item) => <Cell key={item.name} fill={item.isDeadSize ? "var(--error, #ffb4c2)" : item.isCoreSizeMissing ? "var(--warning, #ffd590)" : "var(--accent, #44d0ff)"} />)}
+              {chartData.map((item) => <Cell key={item.name} fill={item.isDeadSize ? "var(--error, var(--theme-color-ffb4c2, var(--theme-color-ffb4c2, #ffb4c2)))" : item.isCoreSizeMissing ? "var(--warning, var(--theme-color-ffd590, var(--theme-color-ffd590, #ffd590)))" : "var(--accent, var(--theme-color-44d0ff, var(--theme-color-44d0ff, #44d0ff)))"} />)}
             </Bar>
-              <Line type="monotone" dataKey="ideal" stroke={"var(--warning, #ffd590)"} strokeWidth={2} dot={false} name="Idealno" />
-              <ReferenceLine y={0} stroke={"var(--border-hover, #334055)"} />
+              <Line type="monotone" dataKey="ideal" stroke={"var(--warning, var(--theme-color-ffd590, var(--theme-color-ffd590, #ffd590)))"} strokeWidth={2} dot={false} name="Idealno" />
+              <ReferenceLine y={0} stroke={"var(--border-hover, var(--theme-color-334055, var(--theme-color-334055, #334055)))"} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

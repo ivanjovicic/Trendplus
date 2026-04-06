@@ -182,7 +182,7 @@ export default function SeasonalImageCarousel() {
                         {/* Attribution */}
                         {selectedImage.photographerName && (
                             <div className="carousel-modal-attribution">
-                                <p style={{ margin: 0, color: 'var(--text-primary-dark, #333)', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                                <p style={{ margin: 0, color: 'var(--text-primary-dark, var(--theme-color-333, var(--theme-color-333, #333)))', fontSize: '0.85rem', lineHeight: '1.4' }}>
                                     📷 Photo by{' '}
                                     <a href={selectedImage.photographerUrl || '#'} target="_blank" rel="noopener noreferrer" className="carousel-link">
                                         {selectedImage.photographerName}

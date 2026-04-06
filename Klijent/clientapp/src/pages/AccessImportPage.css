@@ -6,7 +6,7 @@
     border: 1px solid var(--border-default);
     border-radius: 16px;
     padding: 16px;
-    box-shadow: 0 24px 40px -32px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 24px 40px -32px var(--theme-color-rgba-0-0-0-0p45, rgba(0, 0, 0, 0.45));
 }
 
 .accimport-title {

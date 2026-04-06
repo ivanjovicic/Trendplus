@@ -12,13 +12,13 @@ interface Props {
     multiple?: boolean;
 }
 
-const FOCUS_RING = "var(--focus-ring, #2563eb)";
-const BORDER_DEFAULT = "var(--border-default, #d1d5db)";
-const SURFACE_DEFAULT = "var(--surface-default, #ffffff)";
-const SURFACE_ELEVATED = "var(--surface-elevated, #f3f4f6)";
-const SURFACE_LIGHT = "var(--surface-light, #ffffff)";
-const TEXT_MUTED = "var(--text-muted, #6b7280)";
-const FOCUS_RING_SHADOW = "var(--focus-ring-shadow, rgba(37, 99, 235, 0.08))";
+const FOCUS_RING = "var(--focus-ring, var(--theme-color-2563eb, var(--theme-color-2563eb, #2563eb)))";
+const BORDER_DEFAULT = "var(--border-default, var(--theme-color-d1d5db, #d1d5db))";
+const SURFACE_DEFAULT = "var(--surface-default, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))";
+const SURFACE_ELEVATED = "var(--surface-elevated, var(--theme-color-f3f4f6, #f3f4f6))";
+const SURFACE_LIGHT = "var(--surface-light, var(--theme-color-ffffff, #ffffff))";
+const TEXT_MUTED = "var(--text-muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280)))";
+const FOCUS_RING_SHADOW = "var(--focus-ring-shadow, var(--theme-color-rgba-37-99-235-0p08, rgba(37, 99, 235, 0.08)))";
 
 export default function SearchableSelect({ label, value, onChange, options = popularBrands as any, placeholder, multiple = false }: Props) {
     const [query, setQuery] = useState("");
@@ -226,10 +226,10 @@ export default function SearchableSelect({ label, value, onChange, options = pop
                                             ? SURFACE_ELEVATED
                                             : "transparent",
                                     color: isActive
-                                        ? "var(--text-on-primary, #ffffff)"
+                                        ? "var(--text-on-primary, var(--theme-color-ffffff, #ffffff))"
                                         : isSelected
-                                            ? "var(--text-primary, #0f172a)"
-                                            : "var(--text-primary, #0f172a)",
+                                            ? "var(--text-primary, var(--theme-color-0f172a, var(--theme-color-0f172a, #0f172a)))"
+                                            : "var(--text-primary, var(--theme-color-0f172a, var(--theme-color-0f172a, #0f172a)))",
                                     fontWeight: isActive ? 700 : (isSelected ? 600 : 500),
                                     borderBottom: `1px solid ${SURFACE_LIGHT}`,
                                 }}
@@ -240,7 +240,7 @@ export default function SearchableSelect({ label, value, onChange, options = pop
                                     <span
                                         style={{
                                             fontSize: 12,
-                                            color: isActive ? "var(--text-on-primary, #ffffff)" : FOCUS_RING,
+                                            color: isActive ? "var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))" : FOCUS_RING,
                                             fontWeight: 700,
                                         }}
                                     >

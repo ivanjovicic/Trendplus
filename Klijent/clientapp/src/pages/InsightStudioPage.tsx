@@ -126,26 +126,26 @@ const PERIOD_PRESETS = [
 ];
 
 const PAL = {
-  blue: "var(--c-4f8ef7, #4F8EF7)",
-  green: "var(--c-4caf82, #4CAF82)",
-  yellow: "var(--c-f5c542, #F5C542)",
-  orange: "var(--c-f97316, #F97316)",
-  red: "var(--c-e05c5c, #E05C5C)",
-  purple: "var(--c-9b72cf, #9B72CF)",
-  cyan: "var(--c-22d3ee, #22D3EE)",
-  pink: "var(--c-f472b6, #F472B6)",
-  bg: "var(--c-0d0f14, #0D0F14)",
-  card: "var(--c-161a23, #161A23)",
-  cardHover: "var(--c-1e2332, #1E2332)",
-  border: "var(--c-2a3045, #2A3045)",
-  textPrimary: "var(--c-e8ecf4, #E8ECF4)",
-  textSecondary: "var(--c-8a95b0, #8A95B0)",
-  textMuted: "var(--c-4a5270, #4A5270)",
+  blue: "var(--c-4f8ef7, var(--theme-color-4f8ef7, #4F8EF7))",
+  green: "var(--c-4caf82, var(--theme-color-4caf82, var(--theme-color-4caf82, #4CAF82)))",
+  yellow: "var(--c-f5c542, var(--theme-color-f5c542, #F5C542))",
+  orange: "var(--c-f97316, var(--theme-color-f97316, #F97316))",
+  red: "var(--c-e05c5c, var(--theme-color-e05c5c, #E05C5C))",
+  purple: "var(--c-9b72cf, var(--theme-color-9b72cf, var(--theme-color-9b72cf, #9B72CF)))",
+  cyan: "var(--c-22d3ee, var(--theme-color-22d3ee, #22D3EE))",
+  pink: "var(--c-f472b6, var(--theme-color-f472b6, var(--theme-color-f472b6, #F472B6)))",
+  bg: "var(--c-0d0f14, var(--theme-color-0d0f14, #0D0F14))",
+  card: "var(--c-161a23, var(--theme-color-161a23, var(--theme-color-161a23, #161A23)))",
+  cardHover: "var(--c-1e2332, var(--theme-color-1e2332, var(--theme-color-1e2332, #1E2332)))",
+  border: "var(--c-2a3045, var(--theme-color-2a3045, #2A3045))",
+  textPrimary: "var(--c-e8ecf4, var(--theme-color-e8ecf4, #E8ECF4))",
+  textSecondary: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))",
+  textMuted: "var(--c-4a5270, var(--theme-color-4a5270, var(--theme-color-4a5270, #4A5270)))",
 };
 
 const DONUT_COLORS = [PAL.blue, PAL.yellow, PAL.green, PAL.purple, PAL.red, PAL.orange, PAL.cyan, PAL.pink];
 
-const TIER_COLORS: Record<string, string> = { GOLD: "var(--c-f5c542, #F5C542)", SILVER: "var(--c-8a95b0, #8A95B0)", BRONZE: "var(--c-f97316, #F97316)", AT_RISK: "var(--c-e05c5c, #E05C5C)" };
+const TIER_COLORS: Record<string, string> = { GOLD: "var(--c-f5c542, var(--theme-color-f5c542, var(--theme-color-f5c542, #F5C542)))", SILVER: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", BRONZE: "var(--c-f97316, var(--theme-color-f97316, var(--theme-color-f97316, #F97316)))", AT_RISK: "var(--c-e05c5c, var(--theme-color-e05c5c, var(--theme-color-e05c5c, #E05C5C)))" };
 const TIER_LABELS: Record<string, string> = { GOLD: "Zlato", SILVER: "Srebro", BRONZE: "Bronza", AT_RISK: "Rizik" };
 
 const QUAD_COLORS: Record<string, string> = { STAR: PAL.green, NICHE_GEM: PAL.purple, VOLUME_TRAP: PAL.yellow, DEAD_WEIGHT: PAL.red };
@@ -434,7 +434,7 @@ function AlertBanner({ severity, children }: { severity: "info" | "warning" | "d
   );
 }
 
-const tooltipStyle: CSSProperties = { background: "var(--c-1e2332, #1E2332)", border: "1px solid var(--c-2a3045, #2A3045)", borderRadius: 8, fontSize: 12 };
+const tooltipStyle: CSSProperties = { background: "var(--c-1e2332, var(--theme-color-1e2332, var(--theme-color-1e2332, #1E2332)))", border: "1px solid var(--c-2a3045, var(--theme-color-2a3045, var(--theme-color-2a3045, #2A3045)))", borderRadius: 8, fontSize: 12 };
 
 // ══════════════════════════════════════════════════════════════════
 // TAB 1: PREGLED (Command Center)
@@ -680,7 +680,7 @@ function SupplierTab({
                     );
                   }}
                   className={`cursor-pointer border-b border-[var(--border-default)] transition hover:bg-[var(--surface-light)] ${
-                    displayed?.dobavljacId === s.dobavljacId ? "bg-[var(--surface-elevated)] ring-1 ring-inset ring-[#32579e]" : ""
+                    displayed?.dobavljacId === s.dobavljacId ? "bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--theme-color-32579e, #32579e)]" : ""
                   }`}
                 >
                   <td className="px-3 py-2 text-[var(--text-primary)]">{i + 1}</td>
@@ -732,10 +732,10 @@ function SupplierTab({
                   { name: "Diverz", v: displayed.diversityScore },
                   { name: "Pouzdanost", v: displayed.reliabilityScore },
                 ]} barSize={24}>
-                  <CartesianGrid stroke="var(--c-2a3045, #2A3045)" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 100]} tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: "var(--c-e8ecf4, #E8ECF4)" }} />
+                  <CartesianGrid stroke="var(--c-2a3045, var(--theme-color-2a3045, var(--theme-color-2a3045, #2A3045)))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 100]} tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: "var(--c-e8ecf4, var(--theme-color-e8ecf4, var(--theme-color-e8ecf4, #E8ECF4)))" }} />
                   <Bar dataKey="v" fill={PAL.blue} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -853,7 +853,7 @@ function CategoryTab({
       <div className="flex gap-2 flex-wrap">
         {subTabs.map(t => (
           <button key={t.key} onClick={() => setSubTab(t.key)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subTab === t.key ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)]"}`}>
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subTab === t.key ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)]"}`}>
             {t.label}
           </button>
         ))}
@@ -866,9 +866,9 @@ function CategoryTab({
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={byCategory.slice(0, 8)} layout="vertical" barSize={18}>
-                  <CartesianGrid stroke="var(--c-2a3045, #2A3045)" horizontal={false} />
-                  <XAxis type="number" tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtRsd(Number(v))} />
-                  <YAxis type="category" dataKey="kategorija" tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 10 }} axisLine={false} tickLine={false} width={80} />
+                  <CartesianGrid stroke="var(--c-2a3045, var(--theme-color-2a3045, var(--theme-color-2a3045, #2A3045)))" horizontal={false} />
+                  <XAxis type="number" tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtRsd(Number(v))} />
+                  <YAxis type="category" dataKey="kategorija" tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 10 }} axisLine={false} tickLine={false} width={80} />
                   <Tooltip contentStyle={tooltipStyle} formatter={(v: number | string | undefined) => [fmtRsd(Number(v ?? 0)), "Prihod"]} />
                   <Bar dataKey="totalRevenue" fill={PAL.blue} radius={[0, 4, 4, 0]}>
                     {byCategory.slice(0, 8).map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
@@ -929,7 +929,7 @@ function CategoryTab({
                   {byGender.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
                 </Pie>
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: number | string | undefined) => [fmtRsd(Number(v ?? 0)), "Prihod"]} />
-                <Legend formatter={(v) => <span style={{ color: "var(--c-8a95b0, #8A95B0)", fontSize: 12 }}>{v}</span>} />
+                <Legend formatter={(v) => <span style={{ color: "var(--c-8a95b0, var(--theme-color-8a95b0, #8A95B0))", fontSize: 12 }}>{v}</span>} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -1110,11 +1110,11 @@ function MatrixTab({
         <div className="h-[350px]">
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
-              <CartesianGrid stroke="var(--c-2a3045, #2A3045)" />
-              <XAxis type="number" dataKey="x" name="Velocity" tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 10 }} axisLine={false}
-                label={{ value: "Velocity →", position: "insideBottom", offset: -10, fill: "var(--c-8a95b0, #8A95B0)", fontSize: 11 }} />
-              <YAxis type="number" dataKey="y" name="Marža%" tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 10 }} axisLine={false}
-                label={{ value: "Marža% →", angle: -90, position: "insideLeft", fill: "var(--c-8a95b0, #8A95B0)", fontSize: 11 }} />
+              <CartesianGrid stroke="var(--c-2a3045, var(--theme-color-2a3045, var(--theme-color-2a3045, #2A3045)))" />
+              <XAxis type="number" dataKey="x" name="Velocity" tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 10 }} axisLine={false}
+                label={{ value: "Velocity →", position: "insideBottom", offset: -10, fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 11 }} />
+              <YAxis type="number" dataKey="y" name="Marža%" tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 10 }} axisLine={false}
+                label={{ value: "Marža% →", angle: -90, position: "insideLeft", fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 11 }} />
               <ZAxis type="number" dataKey="z" range={[30, 400]} name="Prihod" />
               <ReferenceLine y={medianMargin} stroke={PAL.yellow} strokeDasharray="4 4" label={{ value: `Median marža ${medianMargin.toFixed(0)}%`, fill: PAL.yellow, fontSize: 9 }} />
               <ReferenceLine x={medianVelocity} stroke={PAL.yellow} strokeDasharray="4 4" label={{ value: `Median vel ${medianVelocity.toFixed(2)}`, fill: PAL.yellow, fontSize: 9 }} />
@@ -1192,8 +1192,8 @@ function DailyTab({
         Primarni prikaz koristi intelligence inventory signal layer. Legacy depletion forecast ostaje fallback ako signal cache nije spreman.
       </div>
       <div className="flex gap-2">
-        <button onClick={() => setSubView("analiza")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "analiza" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📊 Dnevna Analiza</button>
-        <button onClick={() => setSubView("heatmap")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "heatmap" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>🔥 Heatmap</button>
+        <button onClick={() => setSubView("analiza")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "analiza" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>📊 Dnevna Analiza</button>
+        <button onClick={() => setSubView("heatmap")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "heatmap" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>🔥 Heatmap</button>
       </div>
 
       {subView === "analiza" && (
@@ -1218,9 +1218,9 @@ function DailyTab({
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.dailyData}>
-                    <CartesianGrid stroke="var(--c-2a3045, #2A3045)" />
-                    <XAxis dataKey="date" tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 9 }} axisLine={false} tickLine={false} interval={Math.floor(data.dailyData.length / 10)} />
-                    <YAxis tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtRsd(v)} width={70} />
+                    <CartesianGrid stroke="var(--c-2a3045, var(--theme-color-2a3045, var(--theme-color-2a3045, #2A3045)))" />
+                    <XAxis dataKey="date" tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 9 }} axisLine={false} tickLine={false} interval={Math.floor(data.dailyData.length / 10)} />
+                    <YAxis tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtRsd(v)} width={70} />
                     <Tooltip contentStyle={tooltipStyle} formatter={(v: number | string | undefined) => [fmtRsd(Number(v ?? 0)), "Prihod"]} />
                     <ReferenceLine y={data.meanRevenue} stroke={PAL.yellow} strokeDasharray="4 4" label={{ value: "Prosek", fill: PAL.yellow, fontSize: 10 }} />
                     <Line type="monotone" dataKey="revenue" stroke={PAL.blue} strokeWidth={1.5}
@@ -1275,9 +1275,9 @@ function DailyTab({
               <div className="h-[180px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={heatmap.byDay} barSize={36}>
-                    <CartesianGrid stroke="var(--c-2a3045, #2A3045)" vertical={false} />
-                    <XAxis dataKey="dayName" tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "var(--c-8a95b0, #8A95B0)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtRsd(v)} />
+                    <CartesianGrid stroke="var(--c-2a3045, var(--theme-color-2a3045, var(--theme-color-2a3045, #2A3045)))" vertical={false} />
+                    <XAxis dataKey="dayName" tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtRsd(v)} />
                     <Tooltip contentStyle={tooltipStyle} formatter={(v: number | string | undefined) => [fmtRsd(Number(v ?? 0)), "Avg Prihod"]} />
                     <Bar dataKey="avgRevenue" fill={PAL.blue} radius={[4, 4, 0, 0]}>
                       {heatmap.byDay.map((d, i) => {
@@ -1317,8 +1317,8 @@ function AbcLifecycleTab({
     <div className="space-y-5">
       <SectionHeader title="ABC Klasifikacija & Životni Ciklus Proizvoda" subtitle="Pareto analiza prihoda i klasifikacija faze životnog ciklusa" />
       <div className="flex gap-2">
-        <button onClick={() => setSubView("abc")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "abc" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📊 ABC</button>
-        <button onClick={() => setSubView("lifecycle")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "lifecycle" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>🔄 Životni Ciklus</button>
+        <button onClick={() => setSubView("abc")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "abc" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>📊 ABC</button>
+        <button onClick={() => setSubView("lifecycle")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "lifecycle" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>🔄 Životni Ciklus</button>
       </div>
 
       {subView === "abc" && (
@@ -1360,7 +1360,7 @@ function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: Abc
                   {donutData.map((_, i) => <Cell key={i} fill={[PAL.green, PAL.yellow, PAL.red][i]} />)}
                 </Pie>
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: number | string | undefined) => [fmtRsd(Number(v ?? 0)), "Prihod"]} />
-                <Legend formatter={v => <span style={{ color: "var(--c-8a95b0, #8A95B0)", fontSize: 11 }}>{v}</span>} />
+                <Legend formatter={v => <span style={{ color: "var(--c-8a95b0, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))", fontSize: 11 }}>{v}</span>} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -1507,8 +1507,8 @@ function StockTab({
     <div className="space-y-5">
       <SectionHeader title="Stanje Zaliha & Prognoza Iscrpljenja" subtitle="Aging analiza + automatski forecast datuma OOS-a" />
       <div className="flex gap-2">
-        <button onClick={() => setSubView("aging")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "aging" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📦 Aging</button>
-        <button onClick={() => setSubView("depletion")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "depletion" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📉 Deplecija</button>
+        <button onClick={() => setSubView("aging")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "aging" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>📦 Aging</button>
+        <button onClick={() => setSubView("depletion")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "depletion" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>📉 Deplecija</button>
       </div>
 
       {subView === "aging" && (
@@ -1724,9 +1724,9 @@ function ReorderTab2({
       {/* Sub navigation for smart reorder */}
       {useSmart && (
         <div className="flex gap-2">
-          <button onClick={() => setSubView("artikli")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "artikli" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📋 Po artiklima</button>
-          <button onClick={() => setSubView("kategorije")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "kategorije" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>📊 Po kategorijama</button>
-          <button onClick={() => setSubView("dobavljaci")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "dobavljaci" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)]"}`}>🏭 Po dobavljačima</button>
+          <button onClick={() => setSubView("artikli")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "artikli" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>📋 Po artiklima</button>
+          <button onClick={() => setSubView("kategorije")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "kategorije" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>📊 Po kategorijama</button>
+          <button onClick={() => setSubView("dobavljaci")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "dobavljaci" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>🏭 Po dobavljačima</button>
         </div>
       )}
 
@@ -2207,7 +2207,7 @@ export default function InsightStudioPage() {
         <span className="text-xs text-[var(--text-primary)] mr-1">Period:</span>
         {PERIOD_PRESETS.map(p => (
           <button key={p.days} onClick={() => handlePeriodChange(p.days)}
-            className={`rounded-lg px-3 py-1 text-xs font-medium transition ${periodDays === p.days ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-light)]"}`}>
+            className={`rounded-lg px-3 py-1 text-xs font-medium transition ${periodDays === p.days ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-light)]"}`}>
             {p.label}
           </button>
         ))}
@@ -2236,7 +2236,7 @@ export default function InsightStudioPage() {
         {TABS.map(t => (
           <button key={t.key} onClick={() => handleTabChange(t.key)}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition whitespace-nowrap ${
-              activeTab === t.key ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[#32579e]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-light)]"
+              activeTab === t.key ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-light)]"
             }`}>
             <span>{t.icon}</span>
             <span>{t.label}</span>

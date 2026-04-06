@@ -80,7 +80,7 @@
 }
 
 .data-quality-health-card.ok {
-  border-color: var(--success, #16a34a);
+  border-color: var(--success, var(--theme-color-16a34a, var(--theme-color-16a34a, #16a34a)));
 }
 
 .data-quality-quick-actions {

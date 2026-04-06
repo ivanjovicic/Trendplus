@@ -14,7 +14,7 @@ export function LoadingSkeleton({ type = "stats", count = 1 }: LoadingSkeletonPr
                         key={idx}
                         className="skeleton-card rounded-lg p-6"
                         style={{
-                            background: "linear-gradient(90deg, var(--surface-elevated, #f3f4f6) 25%, var(--surface-default, #e5e7eb) 50%, var(--surface-elevated, #f3f4f6) 75%)",
+                            background: "linear-gradient(90deg, var(--surface-elevated, var(--theme-color-f3f4f6, #f3f4f6)) 25%, var(--surface-default, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb))) 50%, var(--surface-elevated, var(--theme-color-f3f4f6, var(--theme-color-f3f4f6, #f3f4f6))) 75%)",
                             backgroundSize: "200% 100%",
                             animation: "shimmer 1.5s infinite",
                             height: "100px",
@@ -33,7 +33,7 @@ export function LoadingSkeleton({ type = "stats", count = 1 }: LoadingSkeletonPr
                         key={idx}
                         className="skeleton-card rounded-lg p-4"
                         style={{
-                            background: "linear-gradient(90deg, var(--surface-elevated, #f3f4f6) 25%, var(--surface-default, #e5e7eb) 50%, var(--surface-elevated, #f3f4f6) 75%)",
+                            background: "linear-gradient(90deg, var(--surface-elevated, var(--theme-color-f3f4f6, var(--theme-color-f3f4f6, #f3f4f6))) 25%, var(--surface-default, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb))) 50%, var(--surface-elevated, var(--theme-color-f3f4f6, var(--theme-color-f3f4f6, #f3f4f6))) 75%)",
                             backgroundSize: "200% 100%",
                             animation: "shimmer 1.5s infinite",
                             height: "150px",
@@ -55,7 +55,7 @@ export function LoadingSkeleton({ type = "stats", count = 1 }: LoadingSkeletonPr
                                         <div
                                             className="skeleton-text rounded"
                                             style={{
-                                                background: "var(--surface-default, #e5e7eb)",
+                                                background: "var(--surface-default, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))",
                                                 height: "16px",
                                             }}
                                         />
@@ -71,7 +71,7 @@ export function LoadingSkeleton({ type = "stats", count = 1 }: LoadingSkeletonPr
                                             <div
                                                 className="skeleton-text rounded"
                                                 style={{
-                                                    background: "linear-gradient(90deg, var(--surface-elevated, #f3f4f6) 25%, var(--surface-default, #e5e7eb) 50%, var(--surface-elevated, #f3f4f6) 75%)",
+                                                    background: "linear-gradient(90deg, var(--surface-elevated, var(--theme-color-f3f4f6, var(--theme-color-f3f4f6, #f3f4f6))) 25%, var(--surface-default, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb))) 50%, var(--surface-elevated, var(--theme-color-f3f4f6, var(--theme-color-f3f4f6, #f3f4f6))) 75%)",
                                                     backgroundSize: "200% 100%",
                                                     animation: "shimmer 1.5s infinite",
                                                     height: "16px",

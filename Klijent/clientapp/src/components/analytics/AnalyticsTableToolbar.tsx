@@ -138,7 +138,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
           </button>
 
           {menuOpen ? (
-            <div className="absolute right-0 z-20 mt-2 min-w-[180px] rounded-xl border border-border bg-surface p-1 shadow-[0_12px_30px_-12px_rgba(0,0,0,0.9)]">
+            <div className="absolute right-0 z-20 mt-2 min-w-[180px] rounded-xl border border-border bg-surface p-1 shadow-[0_12px_30px_-12px_var(--theme-color-rgba-0-0-0-0p9, rgba(0,0,0,0.9))]">
               {(["pdf", "xlsx", "csv"] as ExportFormat[]).map((option) => (
                 <button
                   key={option}

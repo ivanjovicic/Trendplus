@@ -21,19 +21,19 @@ interface PovracajWizardProps {
   onCancel?: () => void;
 }
 
-const themeBorder = "var(--border-default, #2f323b)";
-const themeSurface = "var(--surface-default, #14161d)";
-const themeSurfaceLight = "var(--surface-light, #1a1b1f)";
-const themeElevation = "var(--surface-elevated, #222734)";
-const textPrimary = "var(--text-primary, #dbe6fb)";
-const textSecondary = "var(--text-secondary, #9aa9c6)";
-const textMuted = "var(--text-muted, #9aabc7)";
-const successColor = "var(--success, #10b981)";
-const borderAccent = "var(--border-hover, #4763a6)";
-const primaryAccent = "var(--primary, #3760b7)";
-const dangerAccent = "var(--error, #ef4444)";
-const textOnPrimary = "var(--text-on-primary, #ffffff)";
-const textOnError = "var(--text-on-error, #ffffff)";
+const themeBorder = "var(--border-default, var(--theme-color-2f323b, var(--theme-color-2f323b, #2f323b)))";
+const themeSurface = "var(--surface-default, var(--theme-color-14161d, #14161d))";
+const themeSurfaceLight = "var(--surface-light, var(--theme-color-1a1b1f, var(--theme-color-1a1b1f, #1a1b1f)))";
+const themeElevation = "var(--surface-elevated, var(--theme-color-222734, #222734))";
+const textPrimary = "var(--text-primary, var(--theme-color-dbe6fb, var(--theme-color-dbe6fb, #dbe6fb)))";
+const textSecondary = "var(--text-secondary, var(--theme-color-9aa9c6, var(--theme-color-9aa9c6, #9aa9c6)))";
+const textMuted = "var(--text-muted, var(--theme-color-9aabc7, #9aabc7))";
+const successColor = "var(--success, var(--theme-color-10b981, var(--theme-color-10b981, #10b981)))";
+const borderAccent = "var(--border-hover, var(--theme-color-4763a6, var(--theme-color-4763a6, #4763a6)))";
+const primaryAccent = "var(--primary, var(--theme-color-3760b7, var(--theme-color-3760b7, #3760b7)))";
+const dangerAccent = "var(--error, var(--theme-color-ef4444, var(--theme-color-ef4444, #ef4444)))";
+const textOnPrimary = "var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))";
+const textOnError = "var(--text-on-error, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))";
 
 export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
@@ -329,7 +329,7 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
                     style={{ backgroundColor: themeSurfaceLight, color: textPrimary }}
                   >
                     {filteredArtikli.map((artikal) => (
-                      <tr key={artikal.id} className="hover:bg-[var(--surface-elevated,#1f2330)]">
+                      <tr key={artikal.id} className="hover:bg-[var(--surface-elevated, var(--theme-color-1f2330, var(--theme-color-1f2330, #1f2330)))]">
                         <td className="px-3 py-2">
                           <input
                             type="checkbox"
@@ -460,7 +460,7 @@ export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardPr
                                 className="rounded-md border px-2 py-1 text-xs font-semibold"
                                 style={{
                                   borderColor: dangerAccent,
-                                  backgroundColor: "var(--error, #ef4444)",
+                                  backgroundColor: "var(--error, var(--theme-color-ef4444, var(--theme-color-ef4444, #ef4444)))",
                                   color: textOnError,
                                   opacity: 0.9,
                                 }}

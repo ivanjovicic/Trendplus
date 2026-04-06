@@ -498,7 +498,7 @@ export default function UnosArtikalaForm({
                                             disabled={stavke.length === 1}
                                             className="rounded px-3 py-2 text-sm font-semibold"
                                             style={{
-                                                background: stavke.length === 1 ? 'var(--muted, #9ca3af)' : 'var(--danger)',
+                                                background: stavke.length === 1 ? 'var(--muted, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)))' : 'var(--danger)',
                                                 color: 'var(--on-danger, white)',
                                                 padding: '8px 14px',
                                                 borderRadius: '6px',

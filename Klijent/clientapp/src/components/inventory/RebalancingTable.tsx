@@ -83,7 +83,7 @@ export function RebalancingTable({
                       <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatCurrency(item.expectedSavedSales)}</td>
                       <td className="max-w-[220px] truncate px-4 py-3 text-[var(--text-primary)]">{item.reason}</td>
                       <td className="px-4 py-3 text-right">
-                        <button type="button" aria-label={`Uporedi lokacije ${fromStore} i ${toStore}`} onClick={() => onCompareStores(item.fromStoreId, item.toStoreId)} className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-primary)] transition-all duration-200 hover:border-[var(--border-default)] hover:bg-[var(--surface-light)] hover:text-white hover:shadow-md focus:outline-none focus-visible:border-[var(--border-default)] focus-visible:ring-2 focus-visible:ring-[#44d0ff] focus-visible:ring-opacity-30">
+                        <button type="button" aria-label={`Uporedi lokacije ${fromStore} i ${toStore}`} onClick={() => onCompareStores(item.fromStoreId, item.toStoreId)} className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-primary)] transition-all duration-200 hover:border-[var(--border-default)] hover:bg-[var(--surface-light)] hover:text-white hover:shadow-md focus:outline-none focus-visible:border-[var(--border-default)] focus-visible:ring-2 focus-visible:ring-[var(--theme-color-44d0ff, #44d0ff)] focus-visible:ring-opacity-30">
                           Uporedi lokacije
                         </button>
                       </td>

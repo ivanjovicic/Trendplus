@@ -525,7 +525,7 @@ export default function InventoryPage() {
   return (
     <ErrorBoundary fallback={<div className="rounded-3xl border border-[var(--error)] bg-[var(--surface-darker)] p-8 text-center text-[var(--error)]">Bilans stanja trenutno nije mogao da se prikaze. Osvezi stranicu ili pokusaj ponovo za nekoliko trenutaka.</div>}>
       <div className="space-y-6">
-      <section className="overflow-hidden rounded-[30px] border border-muted bg-[radial-gradient(circle_at_top_left,rgba(68,208,255,0.1),transparent_32%),var(--surface-elevated)] p-6 shadow-xl">
+      <section className="overflow-hidden rounded-[30px] border border-muted bg-[radial-gradient(circle_at_top_left,var(--theme-color-rgba-68-208-255-0p1, rgba(68,208,255,0.1)),transparent_32%),var(--surface-elevated)] p-6 shadow-xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-[760px]">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-muted bg-[var(--surface-darker)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--info)]"><Warehouse size={14} />Bilans stanja</div>

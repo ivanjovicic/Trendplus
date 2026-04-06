@@ -29,17 +29,17 @@ type QuadrantPoint = QuadrantItem & {
 };
 
 const quadrantColors: Record<string, string> = {
-  EXPAND: "var(--success, #22c55e)",
-  EXPAND_SELECTIVELY: "var(--success, #84cc16)",
-  HOLD: "var(--info, #60a5fa)",
-  PRICE_NEGOTIATE: "var(--warning, #f59e0b)",
-  ASSORTMENT_REDUCE: "var(--error, #ef4444)",
-  OOS_FALSE_NEGATIVE: "var(--error, #fb7185)",
-  REVIEW_QUALITY: "var(--warning, #f97316)",
+  EXPAND: "var(--success, var(--theme-color-22c55e, var(--theme-color-22c55e, #22c55e)))",
+  EXPAND_SELECTIVELY: "var(--success, var(--theme-color-84cc16, var(--theme-color-84cc16, #84cc16)))",
+  HOLD: "var(--info, var(--theme-color-60a5fa, var(--theme-color-60a5fa, #60a5fa)))",
+  PRICE_NEGOTIATE: "var(--warning, var(--theme-color-f59e0b, var(--theme-color-f59e0b, #f59e0b)))",
+  ASSORTMENT_REDUCE: "var(--error, var(--theme-color-ef4444, var(--theme-color-ef4444, #ef4444)))",
+  OOS_FALSE_NEGATIVE: "var(--error, var(--theme-color-fb7185, #fb7185))",
+  REVIEW_QUALITY: "var(--warning, var(--theme-color-f97316, var(--theme-color-f97316, #f97316)))",
 };
 
 function quadrantColor(code: string) {
-  return quadrantColors[code] ?? "var(--text-muted, #94a3b8)";
+  return quadrantColors[code] ?? "var(--text-muted, var(--theme-color-94a3b8, var(--theme-color-94a3b8, #94a3b8)))";
 }
 
 export default function SupplierDecisionQuadrant({
@@ -110,14 +110,14 @@ export default function SupplierDecisionQuadrant({
         <div className="supplier-decision-chart-shell">
           <ResponsiveContainer width="100%" height={360}>
             <ScatterChart margin={{ top: 24, right: 24, bottom: 24, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.16)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-color-rgba-148-163-184-0p16, rgba(148, 163, 184, 0.16))" />
               <XAxis
                 type="number"
                 dataKey="markdownDependency"
                 name="Zavisnost od sniženja"
                 domain={[0, 100]}
                 tickFormatter={(value) => formatPercentValue(Number(value), 0)}
-                stroke="var(--border-muted, #9fb4d8)"
+                stroke="var(--border-muted, var(--theme-color-9fb4d8, var(--theme-color-9fb4d8, #9fb4d8)))"
               />
               <YAxis
                 type="number"
@@ -125,7 +125,7 @@ export default function SupplierDecisionQuadrant({
                 name="Sell-through bez sniženja"
                 domain={[0, 1]}
                 tickFormatter={(value) => formatRatioPercent(Number(value), 0)}
-                stroke="var(--border-muted, #9fb4d8)"
+                stroke="var(--border-muted, var(--theme-color-9fb4d8, var(--theme-color-9fb4d8, #9fb4d8)))"
               />
               <ZAxis type="number" dataKey="revenue" range={[120, 900]} />
               <Tooltip
@@ -156,7 +156,7 @@ export default function SupplierDecisionQuadrant({
               />
               <Scatter
                 data={data}
-                fill="var(--info, #60a5fa)"
+                fill="var(--info, var(--theme-color-60a5fa, var(--theme-color-60a5fa, #60a5fa)))"
                 onClick={(event: unknown) => {
                   const point = (event as { payload?: QuadrantPoint } | null)?.payload;
                   if (point?.supplierId) {

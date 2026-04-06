@@ -146,7 +146,7 @@ export default function WorkerStatusAlert() {
         <div style={{ marginTop: 8 }}>
           {health ? (
             <>
-              <div className="grid grid-cols-3 gap-2 mb-3 p-2 rounded" style={{ background: "rgba(255,255,255,0.5)" }}>
+              <div className="grid grid-cols-3 gap-2 mb-3 p-2 rounded" style={{ background: "var(--theme-color-rgba-255-255-255-0p5, rgba(255,255,255,0.5))" }}>
                 <div className="text-center">
                   <div className="text-2xl font-bold">{health.healthyWorkers}</div>
                   <div className="text-xs opacity-70">Zdravi</div>
@@ -171,7 +171,7 @@ export default function WorkerStatusAlert() {
                     key={idx}
                     className="p-2 mb-1 rounded text-sm"
                     style={{
-                      background: worker.status === "Error" || worker.isStale ? "rgba(220,38,38,0.06)" : "rgba(255,255,255,0.5)",
+                      background: worker.status === "Error" || worker.isStale ? "var(--theme-color-rgba-220-38-38-0p06, rgba(220,38,38,0.06))" : "var(--theme-color-rgba-255-255-255-0p5, rgba(255,255,255,0.5))",
                     }}
                   >
                     <div className="flex justify-between items-center">
@@ -185,7 +185,7 @@ export default function WorkerStatusAlert() {
                     {worker.message && <div className="mt-1 opacity-80 text-[11px]">{worker.message}</div>}
 
                     {worker.lastError && (
-                      <div className="mt-1 p-1 rounded text-[11px]" style={{ color: "var(--error)", background: "rgba(220,38,38,0.1)" }}>
+                      <div className="mt-1 p-1 rounded text-[11px]" style={{ color: "var(--error)", background: "var(--theme-color-rgba-220-38-38-0p1, rgba(220,38,38,0.1))" }}>
                         ERR {worker.lastError}
                         {worker.errorCount > 1 && ` (${worker.errorCount}x)`}
                       </div>
