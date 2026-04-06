@@ -17,14 +17,7 @@ export function InventoryPageShell({
 }) {
   return (
     <div className="space-y-4">
-      <section
-        className="rounded-2xl border p-4 sm:p-5"
-        style={{
-          background: "linear-gradient(135deg, var(--surface-elevated) 0%, var(--surface-elevated-light) 50%, var(--surface-elevated-dark) 100%)",
-          borderColor: "var(--border-default)",
-          boxShadow: "0 16px 40px -30px var(--card-shadow)",
-        }}
-      >
+      <section className="rounded-2xl border p-4 sm:p-5 card-theme">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
