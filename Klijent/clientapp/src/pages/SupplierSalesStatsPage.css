@@ -130,13 +130,13 @@
 
 .supplier-decision-message.error {
   background: var(--error-10, var(--theme-color-rgba-127-29-29-0p3, rgba(127, 29, 29, 0.3)));
-  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35)));
+  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p35, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35))));
   color: var(--error-text, var(--theme-color-fecaca, #fecaca));
 }
 
 .supplier-decision-message.info {
   background: var(--info-10, var(--theme-color-rgba-59-130-246-0p12, rgba(59, 130, 246, 0.12)));
-  border: 1px solid var(--info-border, rgba(96, 165, 250, 0.3));
+  border: 1px solid var(--info-border, var(--theme-color-rgba-96-165-250-0p3, rgba(96, 165, 250, 0.3)));
   color: var(--info-text, var(--theme-color-bfdbfe, #bfdbfe));
 }
 
@@ -148,7 +148,7 @@
 }
 
 .supplier-decision-quality-link {
-  border: 1px solid var(--border-default, rgba(96, 165, 250, 0.35));
+  border: 1px solid var(--border-default, var(--theme-color-rgba-96-165-250-0p35, rgba(96, 165, 250, 0.35)));
   border-radius: 999px;
   color: var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb));
   display: inline-flex;
@@ -303,7 +303,7 @@
 }
 
 .supplier-decision-table tr.expanded-row {
-  background: var(--accent-primary-10, rgba(37, 99, 235, 0.12));
+  background: var(--accent-primary-10, var(--theme-color-rgba-37-99-235-0p12, rgba(37, 99, 235, 0.12)));
 }
 
 .align-right {
@@ -337,14 +337,14 @@
 }
 
 .supplier-decision-status.status-reduce {
-  background: var(--error-10, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15)));
-  border: 1px solid var(--error-border, rgba(248, 113, 113, 0.45));
+  background: var(--error-10, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15))));
+  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45)));
   color: var(--error, var(--theme-color-fca5a5, #fca5a5));
 }
 
 .supplier-decision-status.status-na {
-  background: var(--surface-card, var(--theme-color-rgba-148-163-184-0p15, rgba(148, 163, 184, 0.15)));
-  border: 1px solid var(--border-default, rgba(148, 163, 184, 0.45));
+  background: var(--surface-card, var(--theme-color-rgba-148-163-184-0p15, var(--theme-color-rgba-148-163-184-0p15, rgba(148, 163, 184, 0.15))));
+  border: 1px solid var(--border-default, var(--theme-color-rgba-148-163-184-0p45, rgba(148, 163, 184, 0.45)));
   color: var(--text-secondary, var(--theme-color-94a3b8, #94a3b8));
 }
 

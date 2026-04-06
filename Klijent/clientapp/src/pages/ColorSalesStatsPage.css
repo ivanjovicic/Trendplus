@@ -124,13 +124,13 @@
 
 .color-decision-message.loading {
   background: var(--accent-soft, var(--theme-color-rgba-59-130-246-0p12, rgba(59, 130, 246, 0.12)));
-  border: 1px solid var(--accent-border, rgba(96, 165, 250, 0.3));
+  border: 1px solid var(--accent-border, var(--theme-color-rgba-96-165-250-0p3, rgba(96, 165, 250, 0.3)));
   color: var(--accent-text, var(--theme-color-bfdbfe, #bfdbfe));
 }
 
 .color-decision-message.error {
   background: var(--error-soft, var(--theme-color-rgba-127-29-29-0p3, rgba(127, 29, 29, 0.3)));
-  border: 1px solid var(--error-border, rgba(248, 113, 113, 0.35));
+  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35)));
   color: var(--error-text, var(--theme-color-fecaca, #fecaca));
 }
 
@@ -308,19 +308,19 @@
 
 .color-decision-status.status-boost {
   background: var(--success-soft, var(--theme-color-rgba-52-211-153-0p15, rgba(52, 211, 153, 0.15)));
-  border: 1px solid var(--success-border, rgba(52, 211, 153, 0.45));
+  border: 1px solid var(--success-border, var(--theme-color-rgba-52-211-153-0p45, rgba(52, 211, 153, 0.45)));
   color: var(--success, var(--theme-color-6ee7b7, #6ee7b7));
 }
 
 .color-decision-status.status-keep {
-  background: var(--warning-soft, rgba(251, 191, 36, 0.15));
+  background: var(--warning-soft, var(--theme-color-rgba-251-191-36-0p15, rgba(251, 191, 36, 0.15)));
   border: 1px solid var(--warning-border, var(--theme-color-rgba-251-191-36-0p45, rgba(251, 191, 36, 0.45)));
   color: var(--warning, var(--theme-color-fcd34d, #fcd34d));
 }
 
 .color-decision-status.status-reduce {
-  background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15)));
-  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45)));
+  background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15))));
+  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45))));
   color: var(--error, var(--theme-color-fca5a5, #fca5a5));
 }
 

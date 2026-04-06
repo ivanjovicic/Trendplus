@@ -132,7 +132,7 @@
 
 .shoetype-decision-message.error {
   background: var(--error-soft, var(--theme-color-rgba-127-29-29-0p3, rgba(127, 29, 29, 0.3)));
-  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35)));
+  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p35, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35))));
   color: var(--error-text, var(--theme-color-fecaca, #fecaca));
 }
 
@@ -287,7 +287,7 @@
 }
 
 .shoetype-decision-table tr.expanded-row {
-  background: var(--accent-soft, rgba(37, 99, 235, 0.12));
+  background: var(--accent-soft, var(--theme-color-rgba-37-99-235-0p12, rgba(37, 99, 235, 0.12)));
 }
 
 .align-right {
@@ -316,13 +316,13 @@
 
 .shoetype-decision-status.status-keep {
   background: var(--warning-soft, var(--theme-color-rgba-251-191-36-0p15, rgba(251, 191, 36, 0.15)));
-  border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.45));
+  border: 1px solid var(--warning-border, var(--theme-color-rgba-251-191-36-0p45, rgba(251, 191, 36, 0.45)));
   color: var(--warning, var(--theme-color-fcd34d, #fcd34d));
 }
 
 .shoetype-decision-status.status-reduce {
-  background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15)));
-  border: 1px solid var(--error-border, rgba(248, 113, 113, 0.45));
+  background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15))));
+  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45)));
   color: var(--error, var(--theme-color-fca5a5, #fca5a5));
 }
 

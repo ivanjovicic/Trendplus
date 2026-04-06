@@ -65,7 +65,7 @@
 .pnp-decision-field select:focus,
 .pnp-decision-field input:focus {
   border-color: var(--accent-primary, var(--theme-color-3b82f6, #3b82f6));
-  box-shadow: var(--focus-ring, 0 0 0 3px rgba(59, 130, 246, 0.18));
+  box-shadow: var(--focus-ring, 0 0 0 3px var(--theme-color-rgba-59-130-246-0p18, rgba(59, 130, 246, 0.18)));
   outline: none;
 }
 
@@ -113,7 +113,7 @@
 
 .pnp-decision-message.error {
   background: var(--theme-color-rgba-127-29-29-0p3, rgba(127, 29, 29, 0.3));
-  border: 1px solid var(--theme-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35));
+  border: 1px solid var(--theme-rgba-248-113-113-0p35, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35)));
   color: var(--theme-color-fecaca, #fecaca);
 }
 
@@ -308,13 +308,13 @@
 
 .pnp-decision-status.status-keep {
   background: var(--theme-color-rgba-251-191-36-0p15, rgba(251, 191, 36, 0.15));
-  border: 1px solid var(--theme-rgba-251-191-36-0p45, rgba(251, 191, 36, 0.45));
+  border: 1px solid var(--theme-rgba-251-191-36-0p45, var(--theme-color-rgba-251-191-36-0p45, rgba(251, 191, 36, 0.45)));
   color: var(--theme-color-fcd34d, #fcd34d);
 }
 
 .pnp-decision-status.status-reduce {
-  background: var(--theme-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15));
-  border: 1px solid var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45));
+  background: var(--theme-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15)));
+  border: 1px solid var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45)));
   color: #fca5a5;
 }
 

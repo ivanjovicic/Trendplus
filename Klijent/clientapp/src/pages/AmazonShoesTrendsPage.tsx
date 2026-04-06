@@ -148,7 +148,7 @@ function CategoryPanel({
 function ShoeCard({ shoe }: { shoe: AmazonShoeProduct }) {
     return (
         <div className="bg-surface border border-muted rounded-xl overflow-hidden flex flex-col transition-shadow transform-gpu cursor-default"
-            onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "var(--box-shadow-md, 0 8px 24px rgba(0,0,0,.12))"; el.style.transform = "translateY(-2px)"; }}
+            onMouseEnter={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = "var(--box-shadow-md, 0 8px 24px var(--theme-color-rgba-0-0-0-p12, rgba(0,0,0,.12)))"; el.style.transform = "translateY(-2px)"; }}
             onMouseLeave={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.boxShadow = ""; el.style.transform = ""; }}
         >
             {/* Image */}
