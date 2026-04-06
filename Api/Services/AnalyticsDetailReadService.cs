@@ -2,6 +2,7 @@ using Api.Models;
 using Application.Analytics;
 using Domain.Model;
 using Infrastructure.DbContexts;
+using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -105,18 +106,18 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Subtitle = detail.NazivArtikla,
             Fields =
             [
-                Field("datum", "Datum", detail.Datum.ToLocalTime().ToString("dd.MM.yyyy HH:mm"), "datetime"),
-                Field("artikalId", "Artikal ID", detail.ArtikalId?.ToString(), "number"),
+                Field("datum", "Datum", detail.Datum.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture), "datetime"),
+                Field("artikalId", "Artikal ID", detail.ArtikalId?.ToString(CultureInfo.InvariantCulture), "number"),
                 Field("nazivArtikla", "Naziv artikla", detail.NazivArtikla, "text"),
-                Field("kolicina", "Kolicina", detail.Kolicina?.ToString(), "number"),
-                Field("staraCena", "Stara cena", detail.StaraCena?.ToString("0.00"), "currency"),
-                Field("novaCena", "Nova cena", detail.NovaCena?.ToString("0.00"), "currency", detail.StaraCena != detail.NovaCena),
-                Field("iznos", "Iznos", detail.Iznos.ToString("0.00"), "currency", true),
+                Field("kolicina", "Kolicina", detail.Kolicina?.ToString(CultureInfo.InvariantCulture), "number"),
+                Field("staraCena", "Stara cena", detail.StaraCena?.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+                Field("novaCena", "Nova cena", detail.NovaCena?.ToString("0.00", CultureInfo.InvariantCulture), "currency", detail.StaraCena != detail.NovaCena),
+                Field("iznos", "Iznos", detail.Iznos.ToString("0.00", CultureInfo.InvariantCulture), "currency", true),
                 Field("brojRacuna", "Broj racuna", detail.BrojRacuna, "text"),
                 Field("korisnikIme", "Korisnik", detail.KorisnikIme, "text"),
                 Field("komentar", "Komentar", detail.Komentar, "text"),
                 Field("dataOrigin", "Data origin", detail.DataOrigin, "text"),
-                Field("sourceId", "Source ID", detail.SourceId.ToString(), "number")
+                Field("sourceId", "Source ID", detail.SourceId.ToString(CultureInfo.InvariantCulture), "number")
             ]
         };
     }
@@ -221,7 +222,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         var fields = new List<AnalyticsDetailFieldDto>
         {
-            Field("artikalId", "Artikal ID", artikalId.ToString(), "number"),
+            Field("artikalId", "Artikal ID", artikalId.ToString(CultureInfo.InvariantCulture), "number"),
             Field("sifra", "SKU", article?.PLU?.Trim() ?? rows[0].SifraArtikla, "text"),
             Field("nazivArtikla", "Naziv artikla", article?.Naziv?.Trim() ?? rows[0].NazivArtikla, "text"),
             Field("boja", "Boja", NormalizeColor(article?.Boja ?? rows[0].Boja), "text")
@@ -287,7 +288,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 ProductCostLegacy = a.NabavnaCena,
                 DatumProdaje = pz.DatumProdaje,
                 NazivArtikla = a.Naziv ?? $"Artikal {a.Id}",
-                SifraArtikla = a.PLU ?? a.Id.ToString(),
+                SifraArtikla = a.PLU ?? a.Id.ToString(CultureInfo.InvariantCulture),
                 DobavljacId = d != null ? d.Id : null,
                 DobavljacNaziv = d != null && !string.IsNullOrWhiteSpace(d.Naziv) ? d.Naziv! : "Nepoznato",
                 TipObuceId = t != null ? t.Id : null,
@@ -523,43 +524,43 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
             : (double?)null;
 
-        var popRevenueLabel = comparison?.PopRevenueChangePct?.ToString("0.00")
+        var popRevenueLabel = comparison?.PopRevenueChangePct?.ToString("0.00", CultureInfo.InvariantCulture)
             ?? (comparison?.PreviousPeriodRevenue.HasValue == true && comparison.PreviousPeriodRevenue.Value <= 0m && totalRevenue > 0m
                 ? "Novo"
                 : null);
-        var popUnitsLabel = comparison?.PopUnitsChangePct?.ToString("0.00")
+        var popUnitsLabel = comparison?.PopUnitsChangePct?.ToString("0.00", CultureInfo.InvariantCulture)
             ?? (comparison?.PreviousPeriodUnits.HasValue == true && comparison.PreviousPeriodUnits.Value <= 0 && totalQty > 0
                 ? "Novo"
                 : null);
         var fields = new List<AnalyticsDetailFieldDto>
         {
-            Field("ukupanPromet", "Ukupan promet", Math.Round(totalRevenue, 2).ToString("0.00"), "currency", true),
-            Field("ukupnaKolicina", "Ukupna kolicina", totalQty.ToString(), "number")
+            Field("ukupanPromet", "Ukupan promet", Math.Round(totalRevenue, 2).ToString("0.00", CultureInfo.InvariantCulture), "currency", true),
+            Field("ukupnaKolicina", "Ukupna kolicina", totalQty.ToString(CultureInfo.InvariantCulture), "number")
         };
 
         if (comparison is not null)
         {
-            fields.Add(Field("previousPeriodRevenue", "Prethodni period promet", comparison.PreviousPeriodRevenue?.ToString("0.00"), "currency"));
-            fields.Add(Field("previousPeriodUnits", "Prethodni period kolicina", comparison.PreviousPeriodUnits?.ToString(), "number"));
+            fields.Add(Field("previousPeriodRevenue", "Prethodni period promet", comparison.PreviousPeriodRevenue?.ToString("0.00", CultureInfo.InvariantCulture), "currency"));
+            fields.Add(Field("previousPeriodUnits", "Prethodni period kolicina", comparison.PreviousPeriodUnits?.ToString(CultureInfo.InvariantCulture), "number"));
             fields.Add(Field("popRevenueChangePct", "PoP trend prometa %", popRevenueLabel, "percent", comparison.PopRevenueChangePct.HasValue));
             fields.Add(Field("popUnitsChangePct", "PoP trend kolicine %", popUnitsLabel, "percent", comparison.PopUnitsChangePct.HasValue));
         }
 
         fields.AddRange(
         [
-            Field("preNivelacijePromet", "Pre nivelacije promet", Math.Round(preNivRevenue, 2).ToString("0.00"), "currency"),
-            Field("preNivelacijeKolicina", "Pre nivelacije kolicina", preNivQty.ToString(), "number"),
-            Field("posleNivelacijePromet", "Posle nivelacije promet", Math.Round(postNivRevenue, 2).ToString("0.00"), "currency"),
-            Field("posleNivelacijeKolicina", "Posle nivelacije kolicina", postNivQty.ToString(), "number"),
-            Field("prePostNivelacijaRevenueCoveragePct", "Pre/post pokrice prometa %", prePostNivelacijaRevenueCoveragePct?.ToString("0.00"), "percent"),
-            Field("prePostNivelacijaRevenueImpactPct", "Pre/post nivelacija impact %", prePostNivelacijaRevenueImpactPct?.ToString("0.00"), "percent", prePostNivelacijaRevenueImpactPct.HasValue),
-            Field("prePostNivelacijaUnitsImpactPct", "Pre/post nivelacija impact kolicine %", prePostNivelacijaUnitsImpactPct?.ToString("0.00"), "percent"),
-            Field("marginContribution", "Marzni doprinos", marginSnapshot.MarginContribution.ToString("0.00"), "currency"),
-            Field("marginPct", "Marza %", marginSnapshot.MarginPct.ToString("0.00"), "percent"),
-            Field("marginDataCoveragePct", "Pokrice marze %", marginSnapshot.MarginDataCoveragePct?.ToString("0.00"), "percent"),
-            Field("revenueWithCost", "Promet sa poznatom nabavnom cenom", marginSnapshot.RevenueWithCost.ToString("0.00"), "currency"),
-            Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", articleIdsWithNivelacija.Count.ToString(), "number"),
-            Field("brojArtikalaUkupno", "Ukupan broj artikala", articleIds.Count.ToString(), "number")
+            Field("preNivelacijePromet", "Pre nivelacije promet", Math.Round(preNivRevenue, 2).ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("preNivelacijeKolicina", "Pre nivelacije kolicina", preNivQty.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("posleNivelacijePromet", "Posle nivelacije promet", Math.Round(postNivRevenue, 2).ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("posleNivelacijeKolicina", "Posle nivelacije kolicina", postNivQty.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("prePostNivelacijaRevenueCoveragePct", "Pre/post pokrice prometa %", prePostNivelacijaRevenueCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("prePostNivelacijaRevenueImpactPct", "Pre/post nivelacija impact %", prePostNivelacijaRevenueImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent", prePostNivelacijaRevenueImpactPct.HasValue),
+            Field("prePostNivelacijaUnitsImpactPct", "Pre/post nivelacija impact kolicine %", prePostNivelacijaUnitsImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("marginContribution", "Marzni doprinos", marginSnapshot.MarginContribution.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("marginPct", "Marza %", marginSnapshot.MarginPct.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("marginDataCoveragePct", "Pokrice marze %", marginSnapshot.MarginDataCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("revenueWithCost", "Promet sa poznatom nabavnom cenom", marginSnapshot.RevenueWithCost.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", articleIdsWithNivelacija.Count.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("brojArtikalaUkupno", "Ukupan broj artikala", articleIds.Count.ToString(CultureInfo.InvariantCulture), "number")
         ]);
 
         return new AnalyticsDetailResponseDto
@@ -577,11 +578,11 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
     {
         return
         [
-            Field("sezona", "Sezona", filters.SezonaNaziv ?? filters.SezonaId?.ToString(), "text"),
-            Field("fromDate", "Od", filters.FromUtc?.ToString("dd.MM.yyyy"), "date"),
-            Field("toDate", "Do", filters.ToUtc?.ToString("dd.MM.yyyy"), "date"),
-            Field("storeId", "Objekat", filters.StoreId?.ToString(), "number"),
-            Field("supplierId", "Dobavljac", filters.SupplierId?.ToString(), "number"),
+            Field("sezona", "Sezona", filters.SezonaNaziv ?? filters.SezonaId?.ToString(CultureInfo.InvariantCulture), "text"),
+            Field("fromDate", "Od", filters.FromUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
+            Field("toDate", "Do", filters.ToUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
+            Field("storeId", "Objekat", filters.StoreId?.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("supplierId", "Dobavljac", filters.SupplierId?.ToString(CultureInfo.InvariantCulture), "number"),
             Field("dataScope", "Data scope", filters.DataScope, "text")
         ];
     }

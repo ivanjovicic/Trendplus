@@ -7390,7 +7390,7 @@ using NpgsqlTypes;
     /// </summary>
     internal static string? ResolveTableName(DataRow row, DataTable schema)
     {
-        if (row is null || schema?.Columns.Count == 0)
+        if (row is null || schema is null || schema.Columns.Count == 0)
             return null;
 
         try
@@ -7478,7 +7478,7 @@ using NpgsqlTypes;
     /// </summary>
     internal static bool CheckIsUserTable(DataRow row, DataTable schema)
     {
-        if (schema?.Columns.Count == 0)
+        if (schema is null || schema.Columns.Count == 0)
         {
             // Empty schema → assume it's a user table (fail-open)
             return true;

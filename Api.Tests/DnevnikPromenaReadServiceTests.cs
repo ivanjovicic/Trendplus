@@ -4,6 +4,7 @@ using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.CodeAnalysis;
 using Xunit;
 
 namespace Api.Tests;
@@ -13,7 +14,11 @@ public sealed class DnevnikPromenaReadServiceTests
     [Fact]
     public async Task GetByIdAsync_ReturnsTrendplusDetail_WhenRecordExists()
     {
-        var (trendDb, analyticsDb) = CreateContexts();
+        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        {
+            return;
+        }
+
         var uniqueId = CreateUniqueId();
         var artikalId = uniqueId;
         var movementId = uniqueId + 1;
@@ -70,7 +75,11 @@ public sealed class DnevnikPromenaReadServiceTests
     [Fact]
     public async Task GetPagedAsync_ReturnsProjectedItems_FromTrendplus()
     {
-        var (trendDb, analyticsDb) = CreateContexts();
+        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        {
+            return;
+        }
+
         var uniqueId = CreateUniqueId() + 2_000;
         var artikalId = uniqueId;
         var movementId = uniqueId + 1;
@@ -126,7 +135,11 @@ public sealed class DnevnikPromenaReadServiceTests
     [Fact]
     public async Task GetByIdAsync_ReturnsAnalyticsFallback_WhenTrendplusRecordMissing()
     {
-        var (trendDb, analyticsDb) = CreateContexts();
+        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        {
+            return;
+        }
+
         var uniqueId = CreateUniqueId() + 1000;
         var artikalId = uniqueId;
         var sourceId = uniqueId + 1;
@@ -183,7 +196,10 @@ public sealed class DnevnikPromenaReadServiceTests
     [Fact]
     public async Task GetByIdAsync_ReturnsNull_WhenRecordDoesNotExist()
     {
-        var (trendDb, analyticsDb) = CreateContexts();
+        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        {
+            return;
+        }
 
         try
         {
@@ -197,19 +213,39 @@ public sealed class DnevnikPromenaReadServiceTests
         }
     }
 
-    private static (TrendplusDbContext trendDb, AnalyticsDbContext analyticsDb) CreateContexts()
+    private static bool TryCreateContexts(
+        [NotNullWhen(true)] out TrendplusDbContext? trendDb,
+        [NotNullWhen(true)] out AnalyticsDbContext? analyticsDb)
     {
+        trendDb = null;
+        analyticsDb = null;
+
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: false)
             .AddJsonFile("appsettings.Development.json", optional: true)
             .Build();
 
-        var trendConnection = configuration.GetConnectionString("DefaultConnection");
-        var analyticsConnection = configuration.GetConnectionString("AnalyticsConnection") ?? trendConnection;
+        if (!IntegrationDbGuard.TryResolveConnectionString(
+                configuration.GetConnectionString("DefaultConnection"),
+                out var trendConnection))
+        {
+            return false;
+        }
 
-        Assert.False(string.IsNullOrWhiteSpace(trendConnection));
-        Assert.False(string.IsNullOrWhiteSpace(analyticsConnection));
+        if (!IntegrationDbGuard.TryResolveConnectionString(
+                configuration.GetConnectionString("AnalyticsConnection") ?? trendConnection,
+                out var analyticsConnection))
+        {
+            return false;
+        }
+
+        if (!IntegrationDbGuard.TryEnsureAvailable(
+            ("DefaultConnection", trendConnection),
+            ("AnalyticsConnection", analyticsConnection)))
+        {
+            return false;
+        }
 
         var trendOptions = new DbContextOptionsBuilder<TrendplusDbContext>()
             .UseNpgsql(trendConnection)
@@ -219,7 +255,9 @@ public sealed class DnevnikPromenaReadServiceTests
             .UseNpgsql(analyticsConnection)
             .Options;
 
-        return (new TrendplusDbContext(trendOptions), new AnalyticsDbContext(analyticsOptions));
+        trendDb = new TrendplusDbContext(trendOptions);
+        analyticsDb = new AnalyticsDbContext(analyticsOptions);
+        return true;
     }
 
     private static int CreateUniqueId()

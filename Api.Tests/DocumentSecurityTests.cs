@@ -40,7 +40,13 @@ public class DocumentSecurityTests
         var service = CreateService();
         var documentId = Guid.NewGuid();
         var token = service.Create(documentId, DateTime.UtcNow.AddMinutes(5));
-        var tampered = $"{token[..^1]}A";
+        var parts = token.Split('.', 2);
+        Assert.Equal(2, parts.Length);
+
+        var payloadBytes = Base64UrlDecode(parts[0]);
+        payloadBytes[0] ^= 0x01;
+        var tamperedPayload = Base64UrlEncode(payloadBytes);
+        var tampered = $"{tamperedPayload}.{parts[1]}";
 
         Assert.False(service.TryValidate(documentId, tampered));
     }
@@ -81,5 +87,12 @@ public class DocumentSecurityTests
     private static string Base64UrlEncode(byte[] bytes)
     {
         return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
+
+    private static byte[] Base64UrlDecode(string value)
+    {
+        var normalized = value.Replace('-', '+').Replace('_', '/');
+        normalized = normalized.PadRight(normalized.Length + (4 - normalized.Length % 4) % 4, '=');
+        return Convert.FromBase64String(normalized);
     }
 }

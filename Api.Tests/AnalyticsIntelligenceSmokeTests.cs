@@ -10,7 +10,10 @@ public sealed class AnalyticsIntelligenceSmokeTests
     [Fact]
     public async Task ProductDemandSignalsView_Exists_WithExpectedColumns_AndQueryExecutes()
     {
-        var connectionString = GetAnalyticsConnectionString();
+        if (!TryGetAnalyticsConnectionString(out var connectionString))
+        {
+            return;
+        }
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -76,7 +79,10 @@ public sealed class AnalyticsIntelligenceSmokeTests
     [Fact]
     public async Task IntelligenceEndpointQueries_ExecuteAgainstMaterializedCaches()
     {
-        var connectionString = GetAnalyticsConnectionString();
+        if (!TryGetAnalyticsConnectionString(out var connectionString))
+        {
+            return;
+        }
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -167,7 +173,7 @@ public sealed class AnalyticsIntelligenceSmokeTests
         Assert.True(trend.TotalCount >= trend.Items.Count);
     }
 
-    private static string GetAnalyticsConnectionString()
+    private static bool TryGetAnalyticsConnectionString(out string connectionString)
     {
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
@@ -175,11 +181,23 @@ public sealed class AnalyticsIntelligenceSmokeTests
             .AddJsonFile("appsettings.Development.json", optional: true)
             .Build();
 
-        var connectionString = configuration.GetConnectionString("AnalyticsConnection")
+        var resolved = configuration.GetConnectionString("AnalyticsConnection")
             ?? configuration.GetConnectionString("DefaultConnection");
 
-        Assert.False(string.IsNullOrWhiteSpace(connectionString));
-        return connectionString!;
+        if (!IntegrationDbGuard.TryResolveConnectionString(resolved, out var validConnectionString))
+        {
+            connectionString = string.Empty;
+            return false;
+        }
+
+        if (!IntegrationDbGuard.TryEnsureAvailable(("AnalyticsConnection", validConnectionString)))
+        {
+            connectionString = string.Empty;
+            return false;
+        }
+
+        connectionString = validConnectionString;
+        return true;
     }
 
     private static async Task BootstrapIntelligenceSqlAsync(NpgsqlConnection connection, params string[] relativePaths)

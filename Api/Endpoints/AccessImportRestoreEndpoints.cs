@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -14,9 +15,9 @@ namespace Api.Endpoints
             {
                 var body = await JsonSerializer.DeserializeAsync<RestoreRequest>(req.Body);
                 var ids = body?.Ids ?? Array.Empty<int>();
-                if (!ids.Any()) return Results.BadRequest(new { error = "ids required" });
+                if (ids.Length == 0) return Results.BadRequest(new { error = "ids required" });
 
-                var idList = string.Join(',', ids.Select(i => i.ToString()));
+                var idList = string.Join(',', ids.Select(i => i.ToString(CultureInfo.InvariantCulture)));
 
                 var sql = $@"
 SELECT string_agg(sql_stmt, E'\n\n') FROM (
@@ -32,7 +33,7 @@ SELECT string_agg(sql_stmt, E'\n\n') FROM (
                     using var cmd = conn.CreateCommand();
                     cmd.CommandText = sql;
                     var result = await cmd.ExecuteScalarAsync();
-                    script = result?.ToString() ?? string.Empty;
+                    script = Convert.ToString(result, CultureInfo.InvariantCulture) ?? string.Empty;
                 }
                 finally
                 {
@@ -43,6 +44,9 @@ SELECT string_agg(sql_stmt, E'\n\n') FROM (
             }).WithTags("AccessImport");
         }
 
-        private class RestoreRequest { public int[] Ids { get; set; } }
+        private sealed class RestoreRequest
+        {
+            public int[] Ids { get; set; } = Array.Empty<int>();
+        }
     }
 }
