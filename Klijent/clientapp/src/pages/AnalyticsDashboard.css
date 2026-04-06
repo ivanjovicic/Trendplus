@@ -109,8 +109,8 @@
 .analytics-controls button,
 .analytics-custom-range button {
   cursor: pointer;
-  background: var(--accent, var(--theme-color-2563eb, #2563eb));
-  border-color: var(--theme-color-rgba-0-0-0-0p06, rgba(0,0,0,0.06));
+  background: var(--accent-primary, var(--info));
+  border-color: var(--accent-primary, var(--info));
   color: var(--text-on-primary, var(--theme-color-ffffff, #ffffff));
   font-weight: 600;
 }
@@ -170,7 +170,7 @@
   height: 38px;
   border-radius: 10px;
   border: 1px solid var(--panel-border);
-  background: var(--theme-color-rgba-9-17-36-0p92, rgba(9, 17, 36, 0.92));
+  background: var(--surface-light, var(--panel));
   color: var(--text);
   padding: 0 12px;
   font-size: 13px;
@@ -187,8 +187,8 @@
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  border: 1px solid var(--theme-color-rgba-138-160-214-0p26, var(--theme-color-rgba-138-160-214-0p26, var(--theme-color-rgba-138-160-214-0p26, rgba(138, 160, 214, 0.26))));
-  background: var(--chip-bg, var(--theme-color-rgba-8-15-31-0p76, rgba(8, 15, 31, 0.76)));
+  border: 1px solid var(--border-hover, var(--panel-border));
+  background: var(--surface-darker, var(--surface-default));
   color: var(--text-primary);
   font-size: 12px;
   padding: 6px 10px;
@@ -262,8 +262,8 @@
 
 .metric-card {
   border-radius: 12px;
-  border: 1px solid var(--theme-color-rgba-138-160-214-0p22, var(--theme-color-rgba-138-160-214-0p22, var(--theme-color-rgba-138-160-214-0p22, rgba(138, 160, 214, 0.22))));
-  background: var(--theme-color-rgba-8-15-31-0p84, rgba(8, 15, 31, 0.84));
+  border: 1px solid var(--panel-border);
+  background: var(--surface-light, var(--panel));
   padding: 12px;
   display: grid;
   gap: 8px;
@@ -273,7 +273,7 @@
 
 .metric-card:hover {
   transform: translateY(-2px);
-  border-color: var(--theme-color-rgba-255-255-255-0p3, rgba(255, 255, 255, 0.3));
+  border-color: var(--border-hover, var(--panel-border));
 }
 
 .metric-card > span {
@@ -327,7 +327,7 @@
   gap: 10px;
   border-radius: 10px;
   border: 1px solid var(--border-hover, var(--theme-color-rgba-138-160-214-0p24, var(--theme-color-rgba-138-160-214-0p24, rgba(138, 160, 214, 0.24))));
-  background: var(--panel, var(--theme-color-rgba-10-19-38-0p78, rgba(10, 19, 38, 0.78)));
+  background: var(--surface-light, var(--panel));
   padding: 10px 11px;
   margin-bottom: 8px;
 }
@@ -399,8 +399,8 @@
 
 .validation-card {
   border-radius: 10px;
-  border: 1px solid var(--theme-color-rgba-138-160-214-0p22, var(--theme-color-rgba-138-160-214-0p22, var(--theme-color-rgba-138-160-214-0p22, rgba(138, 160, 214, 0.22))));
-  background: var(--theme-color-rgba-8-15-31-0p8, rgba(8, 15, 31, 0.8));
+  border: 1px solid var(--panel-border);
+  background: var(--surface-light, var(--panel));
   padding: 10px;
 }
 
@@ -451,8 +451,8 @@
 
 .stock-card {
   border-radius: 10px;
-  border: 1px solid var(--theme-rgba-138-160-214-0p25, var(--theme-color-rgba-138-160-214-0p25, var(--theme-color-rgba-138-160-214-0p25, rgba(138, 160, 214, 0.25))));
-  background: var(--theme-color-rgba-8-15-31-0p76, rgba(8, 15, 31, 0.76));
+  border: 1px solid var(--panel-border);
+  background: var(--surface-light, var(--panel));
   padding: 11px;
   display: grid;
   gap: 6px;
@@ -493,9 +493,9 @@
 .analytics-export-button {
   height: 38px;
   border-radius: 10px;
-  border: 1px solid var(--theme-color-rgba-138-160-214-0p3, rgba(138, 160, 214, 0.3));
-  background: var(--theme-color-rgba-7-14-29-0p78, rgba(7, 14, 29, 0.78));
-  color: var(--text-secondary, var(--theme-color-dce6ff, #dce6ff));
+  border: 1px solid var(--border-default, var(--panel-border));
+  background: var(--surface-darker, var(--surface-default));
+  color: var(--text-primary);
   padding: 0 14px;
   font-size: 12px;
   font-weight: 600;
@@ -509,9 +509,9 @@
 
 .top-tabs button {
   border-radius: 999px;
-  border: 1px solid var(--theme-color-rgba-138-160-214-0p3, rgba(138, 160, 214, 0.3));
-  background: var(--theme-color-rgba-7-14-29-0p78, rgba(7, 14, 29, 0.78));
-  color: var(--text-secondary, var(--theme-color-c9d8ff, #c9d8ff));
+  border: 1px solid var(--border-default, var(--panel-border));
+  background: var(--surface-darker, var(--surface-default));
+  color: var(--text-secondary);
   padding: 8px 12px;
   font-size: 12px;
   cursor: pointer;
@@ -546,7 +546,7 @@
   font-weight: 600;
   position: sticky;
   top: 0;
-  background: var(--theme-color-rgba-11-20-40-0p95, rgba(11, 20, 40, 0.95));
+  background: var(--surface-darker, var(--surface-default));
   z-index: 1;
   overflow: visible;
 }
@@ -616,9 +616,9 @@
 
 .analytics-empty {
   border-radius: 10px;
-  border: 1px dashed var(--theme-color-rgba-138-160-214-0p45, var(--theme-color-rgba-138-160-214-0p45, var(--theme-color-rgba-138-160-214-0p45, rgba(138, 160, 214, 0.45))));
-  background: var(--theme-color-rgba-8-16-33-0p7, rgba(8, 16, 33, 0.7));
-  color: var(--text-secondary, var(--theme-color-c6d4f8, #c6d4f8));
+  border: 1px dashed var(--border-hover, var(--panel-border));
+  background: var(--surface-darker, var(--surface-default));
+  color: var(--text-secondary);
   padding: 10px 12px;
   font-size: 13px;
 }
@@ -641,8 +641,8 @@
 
 .glossary-card {
   border-radius: 10px;
-  border: 1px solid var(--theme-color-rgba-138-160-214-0p25, var(--theme-color-rgba-138-160-214-0p25, var(--theme-color-rgba-138-160-214-0p25, rgba(138, 160, 214, 0.25))));
-  background: var(--theme-color-rgba-8-15-31-0p75, rgba(8, 15, 31, 0.75));
+  border: 1px solid var(--panel-border);
+  background: var(--surface-light, var(--panel));
   padding: 10px;
 }
 

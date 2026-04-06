@@ -1,4 +1,8 @@
 .data-quality-page {
+  --dq-panel-bg: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface-default) 100%);
+  --dq-chip-bg: var(--surface-darker, var(--surface-default));
+  --dq-hover: var(--surface-light, var(--surface-elevated));
+  --dq-shadow: 0 8px 24px rgba(var(--success-rgb, 22, 185, 129), 0.04);
   display: grid;
   gap: 1rem;
 }
@@ -9,8 +13,9 @@
 .data-quality-origin {
   border: 1px solid var(--border-default);
   border-radius: 20px;
-  background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface-default) 100%);
+  background: var(--dq-panel-bg);
   padding: 1rem 1.25rem;
+  box-shadow: var(--dq-shadow);
 }
 
 .data-quality-header {
@@ -48,8 +53,9 @@
 .data-quality-quick-actions {
   border: 1px solid var(--border-default);
   border-radius: 20px;
-  background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface-default) 100%);
+  background: var(--dq-panel-bg);
   padding: 1rem 1.25rem;
+  box-shadow: var(--dq-shadow);
 }
 
 .data-quality-health-card {
@@ -76,11 +82,13 @@
 }
 
 .data-quality-health-card.warning {
-  border-color: var(--warning);
+  border-color: rgba(var(--warning-rgb, 245, 158, 11), 0.45);
+  background: linear-gradient(180deg, var(--warning-soft, rgba(var(--warning-rgb, 245, 158, 11), 0.12)) 0%, var(--surface-default) 100%);
 }
 
 .data-quality-health-card.ok {
-  border-color: var(--success, var(--theme-color-16a34a, #16a34a));
+  border-color: rgba(var(--success-rgb, 22, 185, 129), 0.45);
+  background: linear-gradient(180deg, var(--success-soft, rgba(var(--success-rgb, 22, 185, 129), 0.12)) 0%, var(--surface-default) 100%);
 }
 
 .data-quality-quick-actions {
@@ -94,37 +102,64 @@
 .data-quality-quick-actions a {
   border: 1px solid var(--border-default);
   border-radius: 999px;
-  background: var(--surface-default);
+  background: var(--dq-chip-bg);
   color: var(--text-primary);
   padding: 0.75rem 1rem;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.data-quality-quick-actions button:hover,
+.data-quality-quick-actions a:hover {
+  background: var(--dq-hover);
+  border-color: var(--border-hover, var(--border-default));
+  transform: translateY(-1px);
+}
+
+.data-quality-quick-actions button:focus-visible,
+.data-quality-quick-actions a:focus-visible,
+.data-quality-tab:focus-visible,
+.data-quality-search button:focus-visible,
+.data-quality-pagination button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .data-quality-tab {
   border: 1px solid var(--border-default);
-  background: var(--surface-default);
+  background: var(--dq-chip-bg);
   color: var(--text-secondary);
   border-radius: 999px;
   padding: 0.7rem 1rem;
   font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.data-quality-tab:hover {
+  border-color: var(--border-hover, var(--border-default));
+  background: var(--dq-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .data-quality-tab.active.danger {
-  border-color: var(--error);
+  border-color: rgba(var(--error-rgb, 239, 68, 68), 0.45);
   background: var(--error-soft);
   color: var(--error);
 }
 
 .data-quality-tab.active.warning {
-  border-color: var(--warning);
+  border-color: rgba(var(--warning-rgb, 245, 158, 11), 0.45);
   background: var(--warning-soft);
   color: var(--warning);
 }
 
 .data-quality-tab.active.neutral {
   border-color: var(--accent-primary);
-  background: var(--surface-darker);
+  background: var(--info-soft, rgba(var(--info-rgb, 59, 130, 246), 0.12));
   color: var(--accent-primary);
 }
 
@@ -145,9 +180,17 @@
 .data-quality-selects select {
   border: 1px solid var(--border-default);
   border-radius: 12px;
-  background: var(--surface-default);
+  background: var(--surface-light, var(--surface-default));
   color: var(--text-primary);
   padding: 0.75rem 0.85rem;
+  min-height: 44px;
+}
+
+.data-quality-search input:focus,
+.data-quality-selects select:focus {
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--focus-ring-shadow, rgba(37, 99, 235, 0.12));
+  outline: none;
 }
 
 .data-quality-search input {
@@ -162,6 +205,20 @@
   color: var(--text-on-primary);
   padding: 0.75rem 1rem;
   font-weight: 700;
+  min-height: 44px;
+  cursor: pointer;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.data-quality-search button:hover,
+.data-quality-pagination button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.data-quality-pagination button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .data-quality-selects {
@@ -210,6 +267,18 @@
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  background: var(--surface-darker, var(--surface-default));
+  z-index: 1;
+}
+
+.data-quality-table tbody tr:nth-child(even) {
+  background: rgba(var(--info-rgb, 59, 130, 246), 0.03);
+}
+
+.data-quality-table tbody tr:hover {
+  background: rgba(var(--info-rgb, 59, 130, 246), 0.07);
 }
 
 .data-quality-name {
@@ -237,16 +306,19 @@
 
 .badge-danger {
   background: var(--error-soft);
+  border: 1px solid rgba(var(--error-rgb, 239, 68, 68), 0.35);
   color: var(--error);
 }
 
 .badge-warning {
   background: var(--warning-soft);
+  border: 1px solid rgba(var(--warning-rgb, 245, 158, 11), 0.35);
   color: var(--warning);
 }
 
 .badge-neutral {
   background: var(--neutral-soft);
+  border: 1px solid rgba(var(--info-rgb, 59, 130, 246), 0.25);
   color: var(--accent-primary);
 }
 
@@ -259,14 +331,15 @@
 .data-quality-loading,
 .data-quality-error,
 .data-quality-empty {
-  border: 1px solid var(--border-muted);
+  border: 1px solid var(--border-default);
   border-radius: 16px;
   padding: 1rem 1.25rem;
-  background: var(--surface-default);
+  background: var(--surface-light, var(--surface-default));
 }
 
 .data-quality-error {
-  background: var(--error-soft);
+  background: linear-gradient(180deg, var(--error-soft) 0%, var(--surface-default) 100%);
+  border-color: rgba(var(--error-rgb, 239, 68, 68), 0.4);
   color: var(--error);
 }
 
@@ -280,6 +353,12 @@
 }
 
 .data-quality-origin {
+  color: var(--text-secondary);
+  border-color: rgba(var(--warning-rgb, 245, 158, 11), 0.35);
+  background: linear-gradient(180deg, var(--warning-soft, rgba(var(--warning-rgb, 245, 158, 11), 0.12)) 0%, var(--surface-default) 100%);
+}
+
+.data-quality-origin strong {
   color: var(--warning);
 }
 
