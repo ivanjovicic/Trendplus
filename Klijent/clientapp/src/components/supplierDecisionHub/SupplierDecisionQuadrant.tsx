@@ -110,7 +110,7 @@ export default function SupplierDecisionQuadrant({
         <div className="supplier-decision-chart-shell">
           <ResponsiveContainer width="100%" height={360}>
             <ScatterChart margin={{ top: 24, right: 24, bottom: 24, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-color-rgba-148-163-184-0p16, var(--theme-color-rgba-148-163-184-0p16, rgba(148, 163, 184, 0.16)))" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-color-rgba-148-163-184-0p16, var(--theme-color-rgba-148-163-184-0p16, var(--theme-color-rgba-148-163-184-0p16, rgba(148, 163, 184, 0.16))))" />
               <XAxis
                 type="number"
                 dataKey="markdownDependency"

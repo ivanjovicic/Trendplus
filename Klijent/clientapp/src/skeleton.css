@@ -109,8 +109,8 @@
     --shadow-sm: 0 1px 2px var(--theme-color-rgba-0-0-0-0p06, rgba(0,0,0,0.06));
     --shadow-md: 0 8px 20px var(--theme-color-rgba-0-0-0-0p10, rgba(0,0,0,0.10));
 
-    --focus-ring: 0 0 0 4px var(--theme-rgba-37-99-235-0p18, rgba(37, 99, 235, 0.18));
-    --focus-ring-success: 0 0 0 4px var(--theme-rgba-5-150-105-0p18, rgba(5, 150, 105, 0.18));
+    --focus-ring: 0 0 0 4px var(--theme-rgba-37-99-235-0p18, var(--theme-color-rgba-37-99-235-0p18, rgba(37, 99, 235, 0.18)));
+    --focus-ring-success: 0 0 0 4px var(--theme-rgba-5-150-105-0p18, var(--theme-color-rgba-5-150-105-0p18, rgba(5, 150, 105, 0.18)));
 }
 
 /* Soft Gray theme fallback for no-JS cases */
@@ -133,7 +133,7 @@
     --shadow-sm: 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04));
     --shadow-md: 0 8px 20px var(--theme-color-rgba-0-0-0-0p06, rgba(0,0,0,0.06));
 
-    --focus-ring: 0 0 0 4px var(--theme-color-rgba-148-163-184-0p18, rgba(148,163,184,0.18));
+    --focus-ring: 0 0 0 4px var(--theme-color-rgba-148-163-184-0p18, var(--theme-color-rgba-148-163-184-0p18, rgba(148,163,184,0.18)));
     --focus-ring-success: 0 0 0 4px var(--theme-color-rgba-16-185-129-0p18, rgba(16,185,129,0.18));
 }
 

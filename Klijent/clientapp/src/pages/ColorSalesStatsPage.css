@@ -130,7 +130,7 @@
 
 .color-decision-message.error {
   background: var(--error-soft, var(--theme-color-rgba-127-29-29-0p3, rgba(127, 29, 29, 0.3)));
-  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35)));
+  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p35, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35))));
   color: var(--error-text, var(--theme-color-fecaca, #fecaca));
 }
 
@@ -319,8 +319,8 @@
 }
 
 .color-decision-status.status-reduce {
-  background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15))));
-  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45))));
+  background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15)))));
+  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45)))));
   color: var(--error, var(--theme-color-fca5a5, #fca5a5));
 }
 

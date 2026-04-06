@@ -26,7 +26,7 @@ export const INTERACTION_TOKENS = {
       default: 'var(--interactive-bg-default, var(--theme-color-rgba-68-208-255-0p04, rgba(68, 208, 255, 0.04)))',
       hover: 'var(--interactive-bg-hover, var(--theme-color-rgba-68-208-255-0p08, rgba(68, 208, 255, 0.08)))',
       active: 'var(--interactive-bg-active, var(--theme-color-rgba-68-208-255-0p12, rgba(68, 208, 255, 0.12)))',
-      disabled: 'var(--interactive-bg-disabled, var(--theme-color-rgba-255-255-255-0p02, rgba(255, 255, 255, 0.02)))',
+      disabled: 'var(--interactive-bg-disabled, var(--theme-color-rgba-255-255-255-0p02, var(--theme-color-rgba-255-255-255-0p02, rgba(255, 255, 255, 0.02))))',
     },
     border: {
       default: 'var(--border-default)',

@@ -47,7 +47,7 @@ const COMMON_VARS: Record<string, string> = {
   "--success-soft": "var(--theme-color-rgba-16-185-129-0p15, rgba(16, 185, 129, 0.15))",
   "--warning-soft": "var(--theme-color-rgba-245-158-11-0p15, rgba(245, 158, 11, 0.15))",
   "--error-soft": "var(--theme-color-rgba-239-68-68-0p15, rgba(239, 68, 68, 0.15))",
-  "--neutral-soft": "var(--theme-color-rgba-140-164-220-0p14, rgba(140, 164, 220, 0.14))",
+  "--neutral-soft": "var(--theme-color-rgba-140-164-220-0p14, var(--theme-color-rgba-140-164-220-0p14, rgba(140, 164, 220, 0.14)))",
   "--info-soft": "var(--theme-color-rgba-59-130-246-0p12, rgba(59, 130, 246, 0.12))",
   "--warning-strong": "var(--theme-color-f97316, #f97316)",
   "--success-rgb": "22,185,129",

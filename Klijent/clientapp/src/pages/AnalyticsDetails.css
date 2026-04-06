@@ -2,7 +2,7 @@
   --bg: var(--surface-default, var(--theme-color-070b16, #070b16));
   --panel: var(--surface-elevated, var(--theme-color-rgba-15-23-45-0p78, rgba(15, 23, 45, 0.78)));
   --panel-2: var(--surface-elevated, var(--theme-color-rgba-10-17-34-0p85, rgba(10, 17, 34, 0.85)));
-  --line: var(--theme-color-rgba-140-164-220-0p28, var(--theme-color-rgba-140-164-220-0p28, rgba(140, 164, 220, 0.28)));
+  --line: var(--theme-color-rgba-140-164-220-0p28, var(--theme-color-rgba-140-164-220-0p28, var(--theme-color-rgba-140-164-220-0p28, rgba(140, 164, 220, 0.28))));
   --text: var(--text-primary, var(--theme-color-e7eeff, #e7eeff));
   --muted: var(--text-secondary, var(--theme-color-9fb2de, #9fb2de));
   --good: var(--success, var(--theme-color-33c48f, #33c48f));
@@ -110,7 +110,7 @@
 .ad-skeleton {
   height: 108px;
   border-radius: 12px;
-  background: linear-gradient(110deg, var(--theme-color-rgba-60-81-127-0p25, rgba(60, 81, 127, 0.25)), var(--theme-color-rgba-102-129-189-0p42, var(--theme-color-rgba-102-129-189-0p42, rgba(102, 129, 189, 0.42))), var(--theme-color-rgba-60-81-127-0p25, rgba(60, 81, 127, 0.25)));
+  background: linear-gradient(110deg, var(--theme-color-rgba-60-81-127-0p25, rgba(60, 81, 127, 0.25)), var(--theme-color-rgba-102-129-189-0p42, var(--theme-color-rgba-102-129-189-0p42, var(--theme-color-rgba-102-129-189-0p42, rgba(102, 129, 189, 0.42)))), var(--theme-color-rgba-60-81-127-0p25, rgba(60, 81, 127, 0.25)));
   background-size: 220% 100%;
   animation: ad-shimmer 1.3s linear infinite;
 }
@@ -133,7 +133,7 @@
 .ad-kpi-card {
   border-radius: 12px;
   background: var(--panel-2);
-  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22)));
+  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22))));
   padding: 12px;
   display: grid;
   gap: 6px;
@@ -145,7 +145,7 @@
 
 .ad-risk-card {
   border-radius: 12px;
-  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22)));
+  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22))));
   background: var(--panel-2);
   padding: 12px;
   display: grid;
@@ -165,7 +165,7 @@
 .ad-insight-list { display: grid; gap: 8px; }
 .ad-insight {
   border-radius: 10px;
-  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22)));
+  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22))));
   padding: 10px;
   background: var(--panel-2);
 }
@@ -180,7 +180,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border-bottom: 1px solid var(--theme-color-rgba-140-164-220-0p18, var(--theme-color-rgba-140-164-220-0p18, rgba(140, 164, 220, 0.18)));
+  border-bottom: 1px solid var(--theme-color-rgba-140-164-220-0p18, var(--theme-color-rgba-140-164-220-0p18, var(--theme-color-rgba-140-164-220-0p18, rgba(140, 164, 220, 0.18))));
   padding: 8px 0;
   font-size: 13px;
 }
@@ -222,13 +222,13 @@
 .ad-table-head {
   color: var(--text-secondary, var(--theme-color-9fb2de, #9fb2de));
   font-size: 12px;
-  border-bottom: 1px solid var(--theme-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22)));
+  border-bottom: 1px solid var(--theme-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22))));
   padding-bottom: 8px;
 }
 
 .ad-table-row {
   padding: 8px 0;
-  border-bottom: 1px solid var(--theme-color-rgba-140-164-220-0p15, var(--theme-color-rgba-140-164-220-0p15, rgba(140, 164, 220, 0.15)));
+  border-bottom: 1px solid var(--theme-color-rgba-140-164-220-0p15, var(--theme-color-rgba-140-164-220-0p15, var(--theme-color-rgba-140-164-220-0p15, rgba(140, 164, 220, 0.15))));
   font-size: 12px;
 }
 
@@ -248,12 +248,12 @@
 }
 .status-tag.good { border-color: var(--success-border, var(--theme-color-rgba-51-196-143-0p45, rgba(51, 196, 143, 0.45))); color: var(--success-text, var(--theme-color-9ff3d0, #9ff3d0)); background: var(--success-soft, var(--theme-color-rgba-51-196-143-0p16, rgba(51, 196, 143, 0.16))); }
 .status-tag.warning { border-color: var(--warning-border, var(--theme-color-rgba-246-189-98-0p5, rgba(246, 189, 98, 0.5))); color: var(--warning-text, var(--theme-color-ffe5b8, #ffe5b8)); background: var(--warning-soft, var(--theme-color-rgba-246-189-98-0p16, rgba(246, 189, 98, 0.16))); }
-.status-tag.critical { border-color: var(--error-border, var(--theme-color-rgba-255-109-109-0p5, rgba(255, 109, 109, 0.5))); color: var(--error-text, var(--theme-color-ffd1d1, #ffd1d1)); background: var(--error-soft, var(--theme-color-rgba-255-109-109-0p16, var(--theme-color-rgba-255-109-109-0p16, rgba(255, 109, 109, 0.16)))); }
-.status-tag.neutral { border-color: var(--neutral-border, var(--theme-color-rgba-140-164-220-0p4, rgba(140, 164, 220, 0.4))); color: var(--text-secondary, var(--theme-color-d5e1ff, #d5e1ff)); background: var(--neutral-soft, var(--theme-color-rgba-140-164-220-0p14, var(--theme-color-rgba-140-164-220-0p14, rgba(140, 164, 220, 0.14)))); }
+.status-tag.critical { border-color: var(--error-border, var(--theme-color-rgba-255-109-109-0p5, rgba(255, 109, 109, 0.5))); color: var(--error-text, var(--theme-color-ffd1d1, #ffd1d1)); background: var(--error-soft, var(--theme-color-rgba-255-109-109-0p16, var(--theme-color-rgba-255-109-109-0p16, var(--theme-color-rgba-255-109-109-0p16, rgba(255, 109, 109, 0.16))))); }
+.status-tag.neutral { border-color: var(--neutral-border, var(--theme-color-rgba-140-164-220-0p4, rgba(140, 164, 220, 0.4))); color: var(--text-secondary, var(--theme-color-d5e1ff, #d5e1ff)); background: var(--neutral-soft, var(--theme-color-rgba-140-164-220-0p14, var(--theme-color-rgba-140-164-220-0p14, var(--theme-color-rgba-140-164-220-0p14, rgba(140, 164, 220, 0.14))))); }
 
 .ad-action {
   border-radius: 10px;
-  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22)));
+  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22))));
   background: var(--panel-2);
   padding: 10px;
   margin-bottom: 8px;
@@ -263,7 +263,7 @@
 
 .ad-validation {
   border-radius: 10px;
-  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22)));
+  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22))));
   background: var(--panel-2);
   padding: 8px 10px;
   margin-top: 8px;
@@ -291,7 +291,7 @@
   max-height: calc(100vh - 32px);
   overflow: auto;
   background: var(--panel, var(--theme-color-rgba-11-19-36-0p95, rgba(11, 19, 36, 0.95)));
-  border: 1px solid var(--theme-color-rgba-140-164-220-0p32, var(--theme-color-rgba-140-164-220-0p32, rgba(140, 164, 220, 0.32)));
+  border: 1px solid var(--theme-color-rgba-140-164-220-0p32, var(--theme-color-rgba-140-164-220-0p32, var(--theme-color-rgba-140-164-220-0p32, rgba(140, 164, 220, 0.32))));
   border-radius: 14px;
   padding: 14px;
   box-shadow: var(--elevation-5, 0 28px 50px var(--theme-color-rgba-1-4-12-0p55, rgba(1, 4, 12, 0.55)));
@@ -308,7 +308,7 @@
 .ad-modal-close {
   height: 32px;
   border-radius: 8px;
-  border: 1px solid var(--theme-color-rgba-140-164-220-0p34, var(--theme-color-rgba-140-164-220-0p34, rgba(140, 164, 220, 0.34)));
+  border: 1px solid var(--theme-color-rgba-140-164-220-0p34, var(--theme-color-rgba-140-164-220-0p34, var(--theme-color-rgba-140-164-220-0p34, rgba(140, 164, 220, 0.34))));
   background: var(--theme-color-rgba-10-17-34-0p94, rgba(10, 17, 34, 0.94));
   color: var(--text);
   padding: 0 10px;
@@ -321,7 +321,7 @@
 
 .ad-empty {
   border-radius: 10px;
-  border: 1px dashed var(--theme-color-rgba-140-164-220-0p45, var(--theme-color-rgba-140-164-220-0p45, rgba(140, 164, 220, 0.45)));
+  border: 1px dashed var(--theme-color-rgba-140-164-220-0p45, var(--theme-color-rgba-140-164-220-0p45, var(--theme-color-rgba-140-164-220-0p45, rgba(140, 164, 220, 0.45))));
   background: var(--panel, var(--theme-color-rgba-10-17-34-0p75, rgba(10, 17, 34, 0.75)));
   color: var(--text-secondary, var(--theme-color-c9d8f8, #c9d8f8));
   padding: 10px;

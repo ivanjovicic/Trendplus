@@ -37,13 +37,13 @@
     border-radius: 10px;
     object-fit: cover;
     background: var(--surface-elevated);
-    box-shadow: var(--box-shadow-sm, 0 4px 12px rgba(0, 0, 0, 0.1));
+    box-shadow: var(--box-shadow-sm, 0 4px 12px var(--theme-color-rgba-0-0-0-0p1, rgba(0, 0, 0, 0.1)));
     transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
 }
 
 .carousel-img:hover {
     transform: scale(1.02);
-    box-shadow: var(--box-shadow-md, 0 8px 24px rgba(0, 0, 0, 0.2));
+    box-shadow: var(--box-shadow-md, 0 8px 24px var(--theme-color-rgba-0-0-0-0p2, rgba(0, 0, 0, 0.2)));
     filter: brightness(1.05);
 }
 
@@ -71,7 +71,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-md, 0 4px 20px rgba(0, 0, 0, 0.3));
+    box-shadow: var(--shadow-md, 0 4px 20px var(--theme-color-rgba-0-0-0-0p3, rgba(0, 0, 0, 0.3)));
     border: 2px solid var(--surface-inverse-outline);
 }
 
@@ -126,7 +126,7 @@
     height: auto;
     object-fit: contain;
     border-radius: 8px;
-    box-shadow: var(--box-shadow-xl, 0 20px 60px rgba(0,0,0,0.5));
+    box-shadow: var(--box-shadow-xl, 0 20px 60px var(--theme-color-rgba-0-0-0-0p5, rgba(0,0,0,0.5)));
 }
 
 .carousel-modal-attribution {

@@ -330,7 +330,7 @@ select {
 
 select:focus {
   outline: none;
-  box-shadow: 0 0 0 6px var(--theme-rgba-68-208-255-0p08, rgba(68, 208, 255, 0.08));
+  box-shadow: 0 0 0 6px var(--theme-rgba-68-208-255-0p08, var(--theme-color-rgba-68-208-255-0p08, rgba(68, 208, 255, 0.08)));
   border-color: var(--focus-ring);
 }
 
@@ -380,10 +380,10 @@ select:focus {
 
 /* Additional semantic tokens for components */
 :root {
-  --overlay: var(--theme-rgba-0-0-0-0p5, rgba(0, 0, 0, 0.5));
+  --overlay: var(--theme-rgba-0-0-0-0p5, var(--theme-color-rgba-0-0-0-0p5, rgba(0, 0, 0, 0.5)));
   --overlay-strong: var(--theme-color-rgba-0-0-0-0p75, rgba(0, 0, 0, 0.75));
-  --modal-overlay: var(--theme-rgba-0-0-0-0p88, rgba(0, 0, 0, 0.88));
-  --surface-inverse: var(--theme-rgba-255-255-255-0p95, rgba(255, 255, 255, 0.95));
+  --modal-overlay: var(--theme-rgba-0-0-0-0p88, var(--theme-color-rgba-0-0-0-0p88, rgba(0, 0, 0, 0.88)));
+  --surface-inverse: var(--theme-rgba-255-255-255-0p95, var(--theme-color-rgba-255-255-255-0p95, rgba(255, 255, 255, 0.95)));
   --surface-inverse-outline: var(--theme-color-rgba-255-255-255-0p5, rgba(255, 255, 255, 0.5));
   --icon-stroke: var(--c-374151, var(--theme-color-374151, #374151));
   --text-on-dark: var(--c-ffffff, var(--theme-color-ffffff, #ffffff));
@@ -393,10 +393,10 @@ select:focus {
 
 /* Interaction & shadow tokens */
 :root {
-  --box-shadow-xs: 0 1px 2px var(--theme-rgba-0-0-0-0p06, rgba(0,0,0,0.06));
+  --box-shadow-xs: 0 1px 2px var(--theme-rgba-0-0-0-0p06, var(--theme-color-rgba-0-0-0-0p06, rgba(0,0,0,0.06)));
   --box-shadow-sm: 0 4px 6px -1px var(--theme-color-rgba-0-0-0-0p1, rgba(0,0,0,0.1));
   --box-shadow-md: 0 10px 20px var(--theme-color-rgba-0-0-0-0p12, rgba(0,0,0,0.12));
-  --modal-box-shadow: 0 20px 25px -5px var(--theme-rgba-0-0-0-0p3, rgba(0,0,0,0.3));
+  --modal-box-shadow: 0 20px 25px -5px var(--theme-rgba-0-0-0-0p3, var(--theme-color-rgba-0-0-0-0p3, rgba(0,0,0,0.3)));
   --toast-box-shadow: 0 4px 6px -1px var(--theme-color-rgba-0-0-0-0p1, rgba(0,0,0,0.1));
   --surface-muted: var(--theme-color-rgba-0-0-0-0p05, rgba(0,0,0,0.05));
 }
