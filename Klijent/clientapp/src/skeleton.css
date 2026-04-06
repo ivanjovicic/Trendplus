@@ -154,7 +154,7 @@ html, body {
 .field-label {
     display: block;
     font-weight: 600;
-    color: var(--text-secondary, var(--theme-color-374151, var(--theme-color-374151, #374151)));
+    color: var(--text-secondary, var(--theme-color-374151, #374151));
     margin: 0.75rem 0 0.35rem;
     letter-spacing: 0.2px;
 }
@@ -180,7 +180,7 @@ html, body {
 }
 
 .input-big::placeholder {
-    color: var(--muted, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)));
+    color: var(--muted, var(--theme-color-9ca3af, #9ca3af));
 }
 
 .input-big:hover {
@@ -196,8 +196,8 @@ html, body {
 select.input-big {
     appearance: none;
     background-image:
-        linear-gradient(45deg, transparent 50%, var(--muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280))) 50%),
-            linear-gradient(135deg, var(--muted, var(--theme-color-6b7280, var(--theme-color-6b7280, #6b7280))) 50%, transparent 50%);
+        linear-gradient(45deg, transparent 50%, var(--muted, var(--theme-color-6b7280, #6b7280)) 50%),
+            linear-gradient(135deg, var(--muted, var(--theme-color-6b7280, #6b7280)) 50%, transparent 50%);
     background-position:
         calc(100% - 18px) calc(50% - 3px),
         calc(100% - 12px) calc(50% - 3px);
@@ -228,7 +228,7 @@ textarea.input-big {
 
     cursor: pointer;
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-600) 100%);
-    color: var(--c-ffffff, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+    color: var(--c-ffffff, var(--theme-color-ffffff, #ffffff));
     box-shadow: 0 4px 12px var(--theme-color-rgba-37-99-235-0p18, rgba(37, 99, 235, 0.18));
     transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
 }
@@ -253,7 +253,7 @@ textarea.input-big {
 /* Error/Success messages */
 .error-msg {
     color: var(--danger);
-    background: var(--error-10, var(--theme-color-fef2f2, var(--theme-color-fef2f2, #fef2f2)));
+    background: var(--error-10, var(--theme-color-fef2f2, #fef2f2));
     border: 1px solid var(--error, var(--theme-color-fecaca, #fecaca));
     border-radius: 8px;
     padding: 10px 12px;
@@ -262,8 +262,8 @@ textarea.input-big {
 
 .success-msg {
     color: var(--success);
-    background: var(--success-10, var(--theme-color-ecfdf5, var(--theme-color-ecfdf5, #ecfdf5)));
-    border: 1px solid var(--success, var(--theme-color-a7f3d0, var(--theme-color-a7f3d0, #a7f3d0)));
+    background: var(--success-10, var(--theme-color-ecfdf5, #ecfdf5));
+    border: 1px solid var(--success, var(--theme-color-a7f3d0, #a7f3d0));
     border-radius: 8px;
     padding: 10px 12px;
     font-size: 0.875rem;
@@ -279,8 +279,8 @@ textarea.input-big {
 .table th {
     position: sticky;
     top: 0;
-    background: var(--bg, var(--theme-color-f3f4f6, var(--theme-color-f3f4f6, #f3f4f6)));
-    border-bottom: 2px solid var(--border, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)));
+    background: var(--bg, var(--theme-color-f3f4f6, #f3f4f6));
+    border-bottom: 2px solid var(--border, var(--theme-color-e5e7eb, #e5e7eb));
     text-align: left;
     padding: 10px;
     font-size: 0.875rem;
@@ -289,11 +289,11 @@ textarea.input-big {
 
 .table td {
     padding: 10px;
-    border-bottom: 1px solid var(--border, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)));
+    border-bottom: 1px solid var(--border, var(--theme-color-e5e7eb, #e5e7eb));
 }
 
 .table tbody tr:nth-child(even) {
-    background: var(--surface-2, var(--theme-color-fafafa, var(--theme-color-fafafa, #fafafa)));
+    background: var(--surface-2, var(--theme-color-fafafa, #fafafa));
 }
 
 .table tbody tr:hover {
@@ -302,8 +302,8 @@ textarea.input-big {
 
 /* Small utility */
 .kbd {
-    background: var(--surface, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
-    border: 1px solid var(--border, var(--theme-color-d1d5db, var(--theme-color-d1d5db, #d1d5db)));
+    background: var(--surface, var(--theme-color-ffffff, #ffffff));
+    border: 1px solid var(--border, var(--theme-color-d1d5db, #d1d5db));
     border-radius: 6px;
     padding: 2px 6px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -322,7 +322,7 @@ textarea.input-big {
 .dropdown-item {
     padding: 10px 12px;
     cursor: pointer;
-    border-bottom: 1px solid var(--bg, var(--theme-color-f3f4f6, var(--theme-color-f3f4f6, #f3f4f6)));
+    border-bottom: 1px solid var(--bg, var(--theme-color-f3f4f6, #f3f4f6));
     transition: background 120ms ease;
     font-size: 0.875rem;
 }
@@ -345,7 +345,7 @@ textarea.input-big {
 
 /* Toolbar / summary row */
 .toolbar {
-    background: var(--surface, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+    background: var(--surface, var(--theme-color-ffffff, #ffffff));
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 10px 12px;
@@ -354,22 +354,22 @@ textarea.input-big {
 
 /* Button variants */
 .button-secondary {
-    background: linear-gradient(135deg, var(--surface-2, var(--theme-color-f3f4f6, var(--theme-color-f3f4f6, #f3f4f6))) 0%, var(--surface-default, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb))) 100%);
-    color: var(--text, var(--theme-color-111827, var(--theme-color-111827, #111827)));
-    border: 1px solid var(--border, var(--theme-color-d1d5db, var(--theme-color-d1d5db, #d1d5db)));
+    background: linear-gradient(135deg, var(--surface-2, var(--theme-color-f3f4f6, #f3f4f6)) 0%, var(--surface-default, var(--theme-color-e5e7eb, #e5e7eb)) 100%);
+    color: var(--text, var(--theme-color-111827, #111827));
+    border: 1px solid var(--border, var(--theme-color-d1d5db, #d1d5db));
     box-shadow: var(--shadow-sm);
 }
 
 .button-danger {
-    background: linear-gradient(135deg, var(--error, var(--theme-color-ef4444, var(--theme-color-ef4444, #ef4444))) 0%, var(--danger, var(--theme-color-dc2626, var(--theme-color-dc2626, #dc2626))) 100%);
-    color: var(--c-fff, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+    background: linear-gradient(135deg, var(--error, var(--theme-color-ef4444, #ef4444)) 0%, var(--danger, var(--theme-color-dc2626, #dc2626)) 100%);
+    color: var(--c-fff, var(--theme-color-ffffff, #ffffff));
     border: 1px solid var(--theme-color-rgba-220-38-38-0p35, rgba(220,38,38,0.35));
     box-shadow: 0 4px 12px var(--theme-color-rgba-220-38-38-0p20, rgba(220,38,38,0.20));
 }
 
 .button-success {
-    background: linear-gradient(135deg, var(--success, var(--theme-color-10b981, var(--theme-color-10b981, #10b981))) 0%, var(--success, var(--theme-color-059669, var(--theme-color-059669, #059669))) 100%);
-    color: var(--c-fff, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+    background: linear-gradient(135deg, var(--success, var(--theme-color-10b981, #10b981)) 0%, var(--success, var(--theme-color-059669, #059669)) 100%);
+    color: var(--c-fff, var(--theme-color-ffffff, #ffffff));
     border: 1px solid var(--theme-color-rgba-5-150-105-0p35, rgba(5,150,105,0.35));
     box-shadow: 0 4px 12px var(--theme-color-rgba-5-150-105-0p20, rgba(5,150,105,0.20));
 }

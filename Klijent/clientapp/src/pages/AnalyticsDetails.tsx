@@ -355,16 +355,16 @@ export default function AnalyticsDetails() {
                 <div className="ad-chart">
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={trend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, var(--theme-color-2a3556, var(--theme-color-2a3556, #2a3556)))" />
-                      <XAxis dataKey="date" tick={{ fill: "var(--text-secondary, var(--theme-color-9fb2de, var(--theme-color-9fb2de, #9fb2de)))", fontSize: 12 }} />
-                      <YAxis tick={{ fill: "var(--text-secondary, var(--theme-color-9fb2de, var(--theme-color-9fb2de, #9fb2de)))", fontSize: 12 }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, var(--theme-color-2a3556, #2a3556))" />
+                      <XAxis dataKey="date" tick={{ fill: "var(--text-secondary, var(--theme-color-9fb2de, #9fb2de))", fontSize: 12 }} />
+                      <YAxis tick={{ fill: "var(--text-secondary, var(--theme-color-9fb2de, #9fb2de))", fontSize: 12 }} />
                       <Tooltip
                         formatter={(v: number | string | undefined, n?: string) => [fmtCur(Number(v ?? 0)), n ?? "vrednost"]}
-                        contentStyle={{ background: "var(--surface-elev-1, var(--theme-color-0f1730, var(--theme-color-0f1730, #0f1730)))", border: "1px solid var(--border-default, var(--theme-color-32406b, #32406b))" }}
+                        contentStyle={{ background: "var(--surface-elev-1, var(--theme-color-0f1730, #0f1730))", border: "1px solid var(--border-default, var(--theme-color-32406b, #32406b))" }}
                       />
-                      <Line type="monotone" dataKey="revenue" stroke="var(--series-revenue, var(--theme-color-40d69f, var(--theme-color-40d69f, #40d69f)))" strokeWidth={2.2} dot={false} name="Promet" />
-                      <Line type="monotone" dataKey="ma7" stroke="var(--series-ma7, var(--theme-color-6ca8ff, var(--theme-color-6ca8ff, #6ca8ff)))" strokeWidth={2} dot={false} name="MA7" />
-                      <Line type="monotone" dataKey="ma30" stroke="var(--series-ma30, var(--theme-color-ffbe5a, var(--theme-color-ffbe5a, #ffbe5a)))" strokeWidth={2} dot={false} name="MA30" />
+                      <Line type="monotone" dataKey="revenue" stroke="var(--series-revenue, var(--theme-color-40d69f, #40d69f))" strokeWidth={2.2} dot={false} name="Promet" />
+                      <Line type="monotone" dataKey="ma7" stroke="var(--series-ma7, var(--theme-color-6ca8ff, #6ca8ff))" strokeWidth={2} dot={false} name="MA7" />
+                      <Line type="monotone" dataKey="ma30" stroke="var(--series-ma30, var(--theme-color-ffbe5a, #ffbe5a))" strokeWidth={2} dot={false} name="MA30" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

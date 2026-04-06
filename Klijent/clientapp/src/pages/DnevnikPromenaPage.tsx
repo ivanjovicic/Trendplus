@@ -62,12 +62,12 @@ function formatDate(dateStr: string) {
 
 function getTipPromeneStyle(tip: string): React.CSSProperties {
   const tipLower = tip.toLowerCase();
-  if (tipLower.includes("prodaja")) return { backgroundColor: "var(--success, var(--theme-color-10b981, #10b981))", color: "var(--text-primary, var(--theme-color-0f172a, var(--theme-color-0f172a, #0f172a)))" };
-  if (tipLower.includes("nivelacija")) return { backgroundColor: "var(--error, var(--theme-color-ef4444, var(--theme-color-ef4444, #ef4444)))", color: "var(--text-primary, var(--theme-color-0f172a, #0f172a))" };
-  if (tipLower.includes("unos")) return { backgroundColor: "var(--info, var(--theme-color-3b82f6, #3b82f6))", color: "var(--text-primary, var(--theme-color-0f172a, var(--theme-color-0f172a, #0f172a)))" };
-  if (tipLower.includes("korekcija")) return { backgroundColor: "var(--warning, var(--theme-color-f59e0b, var(--theme-color-f59e0b, #f59e0b)))", color: "var(--surface-default, var(--theme-color-f4f7fb, #f4f7fb))" };
-  if (tipLower.includes("povracaj")) return { backgroundColor: "var(--gray-600, var(--theme-color-475569, var(--theme-color-475569, #475569)))", color: "var(--text-primary, var(--theme-color-0f172a, var(--theme-color-0f172a, #0f172a)))" };
-  return { backgroundColor: "var(--gray-500, var(--theme-color-64748b, var(--theme-color-64748b, #64748b)))", color: "var(--text-primary, var(--theme-color-0f172a, var(--theme-color-0f172a, #0f172a)))" };
+  if (tipLower.includes("prodaja")) return { backgroundColor: "var(--success, var(--theme-color-10b981, #10b981))", color: "var(--text-primary, var(--theme-color-0f172a, #0f172a))" };
+  if (tipLower.includes("nivelacija")) return { backgroundColor: "var(--error, var(--theme-color-ef4444, #ef4444))", color: "var(--text-primary, var(--theme-color-0f172a, #0f172a))" };
+  if (tipLower.includes("unos")) return { backgroundColor: "var(--info, var(--theme-color-3b82f6, #3b82f6))", color: "var(--text-primary, var(--theme-color-0f172a, #0f172a))" };
+  if (tipLower.includes("korekcija")) return { backgroundColor: "var(--warning, var(--theme-color-f59e0b, #f59e0b))", color: "var(--surface-default, var(--theme-color-f4f7fb, #f4f7fb))" };
+  if (tipLower.includes("povracaj")) return { backgroundColor: "var(--gray-600, var(--theme-color-475569, #475569))", color: "var(--text-primary, var(--theme-color-0f172a, #0f172a))" };
+  return { backgroundColor: "var(--gray-500, var(--theme-color-64748b, #64748b))", color: "var(--text-primary, var(--theme-color-0f172a, #0f172a))" };
 }
 
 export default function DnevnikPromenaPage() {
@@ -198,8 +198,8 @@ export default function DnevnikPromenaPage() {
   const renderSortIndicator = (column: "datum" | "tipPromene" | "iznos" | "naziv") => {
     if (sortBy !== column) return <ArrowUpDown size={12} className="ml-1 inline opacity-40" />;
     return sortDir === "asc"
-      ? <ArrowUp size={12} className="ml-1 inline" style={{ color: "var(--info, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6)))" }} />
-        : <ArrowDown size={12} className="ml-1 inline" style={{ color: "var(--info, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6)))" }} />;
+      ? <ArrowUp size={12} className="ml-1 inline" style={{ color: "var(--info, var(--theme-color-3b82f6, #3b82f6))" }} />
+        : <ArrowDown size={12} className="ml-1 inline" style={{ color: "var(--info, var(--theme-color-3b82f6, #3b82f6))" }} />;
   };
 
 
@@ -264,7 +264,7 @@ export default function DnevnikPromenaPage() {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="rounded-xl border px-3 py-2 text-xs font-semibold text-contrast transition hover:opacity-90"
-            style={{ borderColor: "var(--info, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6)))", backgroundColor: "var(--info, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6)))" }}
+            style={{ borderColor: "var(--info, var(--theme-color-3b82f6, #3b82f6))", backgroundColor: "var(--info, var(--theme-color-3b82f6, #3b82f6))" }}
           >
             {showFilters ? "Sakrij filtere" : `Filteri ${activeFiltersCount > 0 ? `(${activeFiltersCount})` : ""}`}
           </button>
@@ -444,16 +444,16 @@ export default function DnevnikPromenaPage() {
                     <td className="px-3 py-3 font-medium">{item.artikalNaziv || "-"}</td>
                     <td className="px-3 py-3 text-secondary">{item.dobavljacNaziv || "-"}</td>
                     <td className="px-3 py-3 font-mono text-xs text-secondary">{item.brojRacuna || "-"}</td>
-                    <td className="px-3 py-3 text-right font-semibold" style={{ color: item.iznos >= 0 ? "var(--success, var(--theme-color-10b981, var(--theme-color-10b981, #10b981)))" : "var(--error, var(--theme-color-ef4444, var(--theme-color-ef4444, #ef4444)))" }}>{item.iznos.toFixed(2)} RSD</td>
+                    <td className="px-3 py-3 text-right font-semibold" style={{ color: item.iznos >= 0 ? "var(--success, var(--theme-color-10b981, #10b981))" : "var(--error, var(--theme-color-ef4444, #ef4444))" }}>{item.iznos.toFixed(2)} RSD</td>
                     <td className="px-3 py-3 text-center text-xs text-secondary">{item.staraProdajnaCena != null ? `${item.staraProdajnaCena.toFixed(2)} RSD` : "-"}</td>
-                    <td className="px-3 py-3 text-center text-xs font-semibold" style={{ color: "var(--success, var(--theme-color-10b981, var(--theme-color-10b981, #10b981)))" }}>{item.novaProdajnaCena != null ? `${item.novaProdajnaCena.toFixed(2)} RSD` : "-"}</td>
+                    <td className="px-3 py-3 text-center text-xs font-semibold" style={{ color: "var(--success, var(--theme-color-10b981, #10b981))" }}>{item.novaProdajnaCena != null ? `${item.novaProdajnaCena.toFixed(2)} RSD` : "-"}</td>
                     <td className="max-w-[220px] px-3 py-3 text-xs text-secondary">{item.komentar || "-"}</td>
                     <td className="px-3 py-3 text-xs text-secondary">{item.korisnikIme || "-"}</td>
                     <td className="px-3 py-3 text-center">
                       <button
                         type="button"
                         className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold text-contrast transition hover:opacity-90"
-                        style={{ borderColor: "var(--info, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6)))", backgroundColor: "var(--info, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6)))" }}
+                        style={{ borderColor: "var(--info, var(--theme-color-3b82f6, #3b82f6))", backgroundColor: "var(--info, var(--theme-color-3b82f6, #3b82f6))" }}
                         onClick={(e) => {
                           e.stopPropagation();
                           openDetail(item.id);

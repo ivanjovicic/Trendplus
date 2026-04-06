@@ -1,8 +1,8 @@
 .shoetype-decision-page {
-  background: var(--surface-elevated, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+  background: var(--surface-elevated, var(--theme-color-ffffff, #ffffff));
   border: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
   border-radius: 14px;
-  color: var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)));
+  color: var(--text-primary, var(--theme-color-111827, #111827));
   padding: 16px;
 }
 
@@ -15,7 +15,7 @@
 }
 
 .shoetype-decision-title {
-  color: var(--text-primary, var(--theme-color-f9fafb, var(--theme-color-f9fafb, #f9fafb)));
+  color: var(--text-primary, var(--theme-color-f9fafb, #f9fafb));
   font-size: 24px;
   font-weight: 700;
   margin: 0 0 4px;
@@ -36,8 +36,8 @@
 }
 
 .shoetype-decision-filters {
-  background: var(--surface-darker, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
-  border: 1px solid var(--border-default, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)));
+  background: var(--surface-darker, var(--theme-color-ffffff, #ffffff));
+  border: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
   border-radius: 10px;
   align-items: flex-end;
   display: flex;
@@ -55,17 +55,17 @@
 }
 
 .shoetype-decision-field span {
-  color: var(--text-secondary, var(--theme-color-94a3b8, var(--theme-color-94a3b8, #94a3b8)));
+  color: var(--text-secondary, var(--theme-color-94a3b8, #94a3b8));
   font-size: 12px;
   font-weight: 600;
 }
 
 .shoetype-decision-field select,
 .shoetype-decision-field input {
-  background: var(--surface-elevated, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
-  border: 1px solid var(--border-default, var(--theme-color-d1d5db, var(--theme-color-d1d5db, #d1d5db)));
+  background: var(--surface-elevated, var(--theme-color-ffffff, #ffffff));
+  border: 1px solid var(--border-default, var(--theme-color-d1d5db, #d1d5db));
   border-radius: 8px;
-  color: var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)));
+  color: var(--text-primary, var(--theme-color-111827, #111827));
   font-size: 13px;
   padding: 8px 10px;
 }
@@ -96,10 +96,10 @@
 }
 
 .shoetype-decision-actions button {
-  background: var(--accent-primary, var(--theme-color-2563eb, var(--theme-color-2563eb, #2563eb)));
+  background: var(--accent-primary, var(--theme-color-2563eb, #2563eb));
   border: 0;
   border-radius: 8px;
-  color: var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+  color: var(--text-on-primary, var(--theme-color-ffffff, #ffffff));
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
@@ -108,8 +108,8 @@
 
 .shoetype-decision-actions button.secondary {
   background: transparent;
-  border: 1px solid var(--border-strong, var(--theme-color-d1d5db, var(--theme-color-d1d5db, #d1d5db)));
-  color: var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)));
+  border: 1px solid var(--border-strong, var(--theme-color-d1d5db, #d1d5db));
+  color: var(--text-primary, var(--theme-color-111827, #111827));
 }
 
 .shoetype-decision-actions button:disabled {
@@ -127,19 +127,19 @@
 .shoetype-decision-message.loading {
   background: var(--accent-soft, var(--theme-color-rgba-59-130-246-0p12, rgba(59, 130, 246, 0.12)));
   border: 1px solid var(--accent-border, var(--theme-color-rgba-96-165-250-0p3, rgba(96, 165, 250, 0.3)));
-  color: var(--accent-text, var(--theme-color-bfdbfe, var(--theme-color-bfdbfe, #bfdbfe)));
+  color: var(--accent-text, var(--theme-color-bfdbfe, #bfdbfe));
 }
 
 .shoetype-decision-message.error {
   background: var(--error-soft, var(--theme-color-rgba-127-29-29-0p3, rgba(127, 29, 29, 0.3)));
   border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35)));
-  color: var(--error-text, var(--theme-color-fecaca, var(--theme-color-fecaca, #fecaca)));
+  color: var(--error-text, var(--theme-color-fecaca, #fecaca));
 }
 
 .shoetype-decision-message.info {
   background: var(--accent-soft, var(--theme-color-rgba-59-130-246-0p12, rgba(59, 130, 246, 0.12)));
   border: 1px solid var(--accent-border, var(--theme-color-rgba-96-165-250-0p3, rgba(96, 165, 250, 0.3)));
-  color: var(--accent-text, var(--theme-color-bfdbfe, var(--theme-color-bfdbfe, #bfdbfe)));
+  color: var(--accent-text, var(--theme-color-bfdbfe, #bfdbfe));
 }
 
 .shoetype-decision-kpis {
@@ -150,21 +150,21 @@
 }
 
 .shoetype-decision-kpi {
-  background: var(--surface-darker, var(--theme-color-0b1220, var(--theme-color-0b1220, #0b1220)));
-  border: 1px solid var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  background: var(--surface-darker, var(--theme-color-0b1220, #0b1220));
+  border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 10px;
   padding: 12px;
 }
 
 .shoetype-decision-kpi span {
-  color: var(--text-secondary, var(--theme-color-94a3b8, var(--theme-color-94a3b8, #94a3b8)));
+  color: var(--text-secondary, var(--theme-color-94a3b8, #94a3b8));
   display: block;
   font-size: 12px;
   font-weight: 600;
 }
 
 .shoetype-decision-kpi strong {
-  color: var(--text-primary, var(--theme-color-f8fafc, var(--theme-color-f8fafc, #f8fafc)));
+  color: var(--text-primary, var(--theme-color-f8fafc, #f8fafc));
   display: block;
   font-size: 22px;
   font-weight: 700;
@@ -172,7 +172,7 @@
 }
 
 .shoetype-decision-kpi strong.trend-up {
-  color: var(--success, var(--theme-color-34d399, var(--theme-color-34d399, #34d399)));
+  color: var(--success, var(--theme-color-34d399, #34d399));
 }
 
 .shoetype-decision-kpi strong.trend-down {
@@ -186,20 +186,20 @@
 }
 
 .shoetype-decision-card {
-  background: var(--surface-darker, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
-  border: 1px solid var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  background: var(--surface-darker, var(--theme-color-ffffff, #ffffff));
+  border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 10px;
   padding: 12px;
 }
 
 .shoetype-decision-card h2 {
-  color: var(--text-primary, var(--theme-color-f8fafc, var(--theme-color-f8fafc, #f8fafc)));
+  color: var(--text-primary, var(--theme-color-f8fafc, #f8fafc));
   font-size: 16px;
   margin: 0 0 4px;
 }
 
 .shoetype-decision-card p {
-  color: var(--text-secondary, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)));
+  color: var(--text-secondary, var(--theme-color-9ca3af, #9ca3af));
   font-size: 12px;
   margin: 0 0 12px;
 }
@@ -210,9 +210,9 @@
 
 .shoetype-decision-empty {
   align-items: center;
-  border: 1px dashed var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  border: 1px dashed var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 8px;
-  color: var(--text-secondary, var(--theme-color-94a3b8, var(--theme-color-94a3b8, #94a3b8)));
+  color: var(--text-secondary, var(--theme-color-94a3b8, #94a3b8));
   display: flex;
   font-size: 13px;
   justify-content: center;
@@ -245,8 +245,8 @@
 }
 
 .shoetype-decision-table th {
-  background: var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
-  border-bottom: 1px solid var(--border-default, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)));
+  background: var(--surface-card, var(--theme-color-ffffff, #ffffff));
+  border-bottom: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
   padding: 10px 12px;
   position: sticky;
   top: 0;
@@ -276,7 +276,7 @@
 }
 
 .shoetype-decision-table td {
-  border-bottom: 1px solid var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  border-bottom: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   color: var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb));
   font-size: 13px;
   padding: 10px 12px;
@@ -317,32 +317,32 @@
 .shoetype-decision-status.status-keep {
   background: var(--warning-soft, var(--theme-color-rgba-251-191-36-0p15, rgba(251, 191, 36, 0.15)));
   border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.45));
-  color: var(--warning, var(--theme-color-fcd34d, var(--theme-color-fcd34d, #fcd34d)));
+  color: var(--warning, var(--theme-color-fcd34d, #fcd34d));
 }
 
 .shoetype-decision-status.status-reduce {
   background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15)));
   border: 1px solid var(--error-border, rgba(248, 113, 113, 0.45));
-  color: var(--error, var(--theme-color-fca5a5, var(--theme-color-fca5a5, #fca5a5)));
+  color: var(--error, var(--theme-color-fca5a5, #fca5a5));
 }
 
 .trend-up {
-  color: var(--success, var(--theme-color-34d399, var(--theme-color-34d399, #34d399)));
+  color: var(--success, var(--theme-color-34d399, #34d399));
 }
 
 .trend-down {
-  color: var(--error, var(--theme-color-f87171, var(--theme-color-f87171, #f87171)));
+  color: var(--error, var(--theme-color-f87171, #f87171));
 }
 
 .trend-neutral {
-  color: var(--info, var(--theme-color-93c5fd, var(--theme-color-93c5fd, #93c5fd)));
+  color: var(--info, var(--theme-color-93c5fd, #93c5fd));
 }
 
 .shoetype-decision-detail-btn {
   background: transparent;
   border: 1px solid var(--border-strong, var(--theme-color-374151, #374151));
   border-radius: 6px;
-  color: var(--text-primary, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)));
+  color: var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb));
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
@@ -356,8 +356,8 @@
 }
 
 .shoetype-decision-detail {
-  background: var(--surface-darker, var(--theme-color-0b1220, var(--theme-color-0b1220, #0b1220)));
-  border: 1px solid var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  background: var(--surface-darker, var(--theme-color-0b1220, #0b1220));
+  border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 10px;
   margin-top: 12px;
   padding: 12px;
@@ -372,16 +372,16 @@
 }
 
 .shoetype-decision-detail-head h3 {
-  color: var(--text-primary, var(--theme-color-f8fafc, var(--theme-color-f8fafc, #f8fafc)));
+  color: var(--text-primary, var(--theme-color-f8fafc, #f8fafc));
   font-size: 16px;
   margin: 0;
 }
 
 .shoetype-decision-detail-head button {
-  background: var(--accent-primary, var(--theme-color-2563eb, var(--theme-color-2563eb, #2563eb)));
+  background: var(--accent-primary, var(--theme-color-2563eb, #2563eb));
   border: 0;
   border-radius: 8px;
-  color: var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+  color: var(--text-on-primary, var(--theme-color-ffffff, #ffffff));
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
@@ -395,27 +395,27 @@
 }
 
 .shoetype-decision-detail-grid article {
-  background: var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
-  border: 1px solid var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  background: var(--surface-card, var(--theme-color-ffffff, #ffffff));
+  border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 8px;
   padding: 9px;
 }
 
 .shoetype-decision-detail-grid article span {
-  color: var(--text-secondary, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)));
+  color: var(--text-secondary, var(--theme-color-9ca3af, #9ca3af));
   display: block;
   font-size: 11px;
 }
 
 .shoetype-decision-detail-grid article strong {
-  color: var(--text-primary, var(--theme-color-f8fafc, var(--theme-color-f8fafc, #f8fafc)));
+  color: var(--text-primary, var(--theme-color-f8fafc, #f8fafc));
   display: block;
   font-size: 15px;
   margin-top: 5px;
 }
 
 .shoetype-decision-reason {
-  color: var(--text-secondary, var(--theme-color-cbd5e1, var(--theme-color-cbd5e1, #cbd5e1)));
+  color: var(--text-secondary, var(--theme-color-cbd5e1, #cbd5e1));
   font-size: 13px;
   margin: 12px 0 0;
 }

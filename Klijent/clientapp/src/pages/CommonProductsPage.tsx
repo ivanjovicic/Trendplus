@@ -85,8 +85,8 @@ export default function CommonProductsPage() {
           flexWrap: 'wrap',
           padding: 12,
           borderRadius: 12,
-          background: 'var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))',
-          border: '1px solid var(--border-muted, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))'
+          background: 'var(--surface-card, var(--theme-color-ffffff, #ffffff))',
+          border: '1px solid var(--border-muted, var(--theme-color-e5e7eb, #e5e7eb))'
         }}>
           <div style={{ minWidth: 160 }}>
             <label className="field-label">Pol</label>
@@ -145,14 +145,14 @@ export default function CommonProductsPage() {
       {!loading && items?.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
           {items.map((m, idx) => (
-            <div key={idx} style={{ border: '1px solid var(--border-muted, var(--theme-color-e5e7eb, #e5e7eb))', borderRadius: 12, padding: 16, background: 'var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)))' }}>
+            <div key={idx} style={{ border: '1px solid var(--border-muted, var(--theme-color-e5e7eb, #e5e7eb))', borderRadius: 12, padding: 16, background: 'var(--surface-card, var(--theme-color-ffffff, #ffffff))' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div style={{ fontWeight: 700 }}>{m.brand} • {m.type}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted, var(--theme-color-6b7280, #6b7280))' }}>Score: <b>{m.score}</b>/100</div>
               </div>
 
-              <div style={{ height: 8, background: 'var(--surface-light, var(--theme-color-f3f4f6, var(--theme-color-f3f4f6, #f3f4f6)))', borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
-                <div style={{ width: `${m.score}%`, height: '100%', background: m.score > 80 ? 'var(--success, var(--theme-color-16a34a, var(--theme-color-16a34a, #16a34a)))' : 'var(--warning, var(--theme-color-f97316, var(--theme-color-f97316, #f97316)))' }} />
+              <div style={{ height: 8, background: 'var(--surface-light, var(--theme-color-f3f4f6, #f3f4f6))', borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
+                <div style={{ width: `${m.score}%`, height: '100%', background: m.score > 80 ? 'var(--success, var(--theme-color-16a34a, #16a34a))' : 'var(--warning, var(--theme-color-f97316, #f97316))' }} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -161,8 +161,8 @@ export default function CommonProductsPage() {
                     <img src={m.zalando.image} alt={m.zalando.name} style={{ width: '100%', borderRadius: 8 }} onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=No+Image' }} />
                   ) : null}
                   <div style={{ fontWeight: 600, marginTop: 8 }}>{m.zalando.name}</div>
-                  <div style={{ color: 'var(--success, var(--theme-color-059669, var(--theme-color-059669, #059669)))', fontWeight: 700 }}>{typeof m.zalando.price === 'number' ? `€${(m.zalando.price as number).toFixed(2)}` : m.zalando.price}</div>
-                  {m.zalando.url && <a href={m.zalando.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent, var(--theme-color-2563eb, var(--theme-color-2563eb, #2563eb)))' }}>Open Zalando →</a>}
+                  <div style={{ color: 'var(--success, var(--theme-color-059669, #059669))', fontWeight: 700 }}>{typeof m.zalando.price === 'number' ? `€${(m.zalando.price as number).toFixed(2)}` : m.zalando.price}</div>
+                  {m.zalando.url && <a href={m.zalando.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent, var(--theme-color-2563eb, #2563eb))' }}>Open Zalando →</a>}
                 </div>
 
                 <div>
@@ -170,8 +170,8 @@ export default function CommonProductsPage() {
                     <img src={m.deichmann.image} alt={m.deichmann.name} style={{ width: '100%', borderRadius: 8 }} onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=No+Image' }} />
                   ) : null}
                   <div style={{ fontWeight: 600, marginTop: 8 }}>{m.deichmann.name}</div>
-                  <div style={{ color: 'var(--success, var(--theme-color-059669, var(--theme-color-059669, #059669)))', fontWeight: 700 }}>{typeof m.deichmann.price === 'number' ? `€${(m.deichmann.price as number).toFixed(2)}` : m.deichmann.price}</div>
-                  {m.deichmann.url && <a href={m.deichmann.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent, var(--theme-color-2563eb, var(--theme-color-2563eb, #2563eb)))' }}>Open Deichmann →</a>}
+                  <div style={{ color: 'var(--success, var(--theme-color-059669, #059669))', fontWeight: 700 }}>{typeof m.deichmann.price === 'number' ? `€${(m.deichmann.price as number).toFixed(2)}` : m.deichmann.price}</div>
+                  {m.deichmann.url && <a href={m.deichmann.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent, var(--theme-color-2563eb, #2563eb))' }}>Open Deichmann →</a>}
                 </div>
               </div>
             </div>

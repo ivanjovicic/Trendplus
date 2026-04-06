@@ -19,26 +19,26 @@ import { fetchDashboard, type DashboardItem, type DashboardRun } from "../servic
 // â”€â”€ Design tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PAL = {
-    blue:          "var(--c-4f8ef7, var(--theme-color-4f8ef7, var(--theme-color-4f8ef7, #4F8EF7)))",
+    blue:          "var(--c-4f8ef7, var(--theme-color-4f8ef7, #4F8EF7))",
     green:         "var(--c-4caf82, var(--theme-color-4caf82, #4CAF82))",
     yellow:        "var(--c-f5c542, var(--theme-color-f5c542, #F5C542))",
-    orange:        "var(--c-f97316, var(--theme-color-f97316, var(--theme-color-f97316, #F97316)))",
+    orange:        "var(--c-f97316, var(--theme-color-f97316, #F97316))",
     red:           "var(--c-e05c5c, var(--theme-color-e05c5c, #E05C5C))",
     purple:        "var(--c-9b72cf, var(--theme-color-9b72cf, #9B72CF))",
-    cyan:          "var(--c-22d3ee, var(--theme-color-22d3ee, var(--theme-color-22d3ee, #22D3EE)))",
+    cyan:          "var(--c-22d3ee, var(--theme-color-22d3ee, #22D3EE))",
     bg:            "var(--surface-default, var(--theme-color-0d0f14, #0D0F14))",
-    card:          "var(--surface-elevated, var(--theme-color-161a23, var(--theme-color-161a23, #161A23)))",
+    card:          "var(--surface-elevated, var(--theme-color-161a23, #161A23))",
     cardHover:     "var(--surface-elevated, var(--theme-color-1c2133, #1C2133))",
     border:        "var(--border-default, var(--theme-color-2a3045, #2A3045))",
     borderLight:   "var(--border-default, var(--theme-color-212840, #212840))",
-    textPrimary:   "var(--text-primary, var(--theme-color-e8ecf4, var(--theme-color-e8ecf4, #E8ECF4)))",
-    textSecondary: "var(--text-secondary, var(--theme-color-8a95b0, var(--theme-color-8a95b0, #8A95B0)))",
-    textMuted:     "var(--text-muted, var(--theme-color-4a5477, var(--theme-color-4a5477, #4A5477)))",
+    textPrimary:   "var(--text-primary, var(--theme-color-e8ecf4, #E8ECF4))",
+    textSecondary: "var(--text-secondary, var(--theme-color-8a95b0, #8A95B0))",
+    textMuted:     "var(--text-muted, var(--theme-color-4a5477, #4A5477))",
 };
 
-const TOP1_BG = "var(--surface-darker, var(--theme-color-1a1800, var(--theme-color-1a1800, #1A1800)))";
-const TOP2_BG = "var(--surface-elevated, var(--theme-color-111822, var(--theme-color-111822, #111822)))";
-const TOP3_BG = "var(--surface-default, var(--theme-color-140f1f, var(--theme-color-140f1f, #140F1F)))";
+const TOP1_BG = "var(--surface-darker, var(--theme-color-1a1800, #1A1800))";
+const TOP2_BG = "var(--surface-elevated, var(--theme-color-111822, #111822))";
+const TOP3_BG = "var(--surface-default, var(--theme-color-140f1f, #140F1F))";
 
 // â”€â”€ Component score colors (dark-mode palette) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -54,10 +54,10 @@ const COMPONENT_COLORS: Record<string, string> = {
 // â”€â”€ Source colors (dark-mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SOURCE_COLOR: Record<string, { bg: string; text: string; border: string }> = {
-    zalando:   { bg: "var(--source-zalando-bg, var(--theme-color-2a1700, #2A1700))", text: "var(--source-zalando-text, var(--theme-color-f97316, var(--theme-color-f97316, #F97316)))", border: "var(--source-zalando-border, var(--theme-color-7c3416, var(--theme-color-7c3416, #7C3416)))" },
-    aboutyou:  { bg: "var(--source-aboutyou-bg, var(--theme-color-1e1230, var(--theme-color-1e1230, #1E1230)))", text: "var(--source-aboutyou-text, var(--theme-color-c084fc, var(--theme-color-c084fc, #C084FC)))", border: "var(--source-aboutyou-border, var(--theme-color-6d28d9, var(--theme-color-6d28d9, #6D28D9)))" },
-    deichmann: { bg: "var(--source-deichmann-bg, var(--theme-color-2a0a10, var(--theme-color-2a0a10, #2A0A10)))", text: "var(--source-deichmann-text, var(--theme-color-f87171, var(--theme-color-f87171, #F87171)))", border: "var(--source-deichmann-border, var(--theme-color-7c2d2d, var(--theme-color-7c2d2d, #7C2D2D)))" },
-    humanic:   { bg: "var(--source-humanic-bg, var(--theme-color-0a1f14, var(--theme-color-0a1f14, #0A1F14)))", text: "var(--source-humanic-text, var(--theme-color-4caf82, var(--theme-color-4caf82, #4CAF82)))", border: "var(--source-humanic-border, var(--theme-color-1a5c35, var(--theme-color-1a5c35, #1A5C35)))" },
+    zalando:   { bg: "var(--source-zalando-bg, var(--theme-color-2a1700, #2A1700))", text: "var(--source-zalando-text, var(--theme-color-f97316, #F97316))", border: "var(--source-zalando-border, var(--theme-color-7c3416, #7C3416))" },
+    aboutyou:  { bg: "var(--source-aboutyou-bg, var(--theme-color-1e1230, #1E1230))", text: "var(--source-aboutyou-text, var(--theme-color-c084fc, #C084FC))", border: "var(--source-aboutyou-border, var(--theme-color-6d28d9, #6D28D9))" },
+    deichmann: { bg: "var(--source-deichmann-bg, var(--theme-color-2a0a10, #2A0A10))", text: "var(--source-deichmann-text, var(--theme-color-f87171, #F87171))", border: "var(--source-deichmann-border, var(--theme-color-7c2d2d, #7C2D2D))" },
+    humanic:   { bg: "var(--source-humanic-bg, var(--theme-color-0a1f14, #0A1F14))", text: "var(--source-humanic-text, var(--theme-color-4caf82, #4CAF82))", border: "var(--source-humanic-border, var(--theme-color-1a5c35, #1A5C35))" },
 };
 const SOURCE_EMOJI: Record<string, string> = {
     zalando: "[ZAL]", aboutyou: "[AY]", deichmann: "[DEICH]", humanic: "[HUM]",
@@ -80,9 +80,9 @@ const COMPONENT_LABELS: Record<string, string> = {
 function momentumColor(mn: number | null): string {
     if (mn === null) return PAL.textMuted;
     if (mn > 0.3)  return PAL.green;
-    if (mn > 0)    return "var(--green-light, var(--theme-color-86efac, var(--theme-color-86efac, #86EFAC)))";
+    if (mn > 0)    return "var(--green-light, var(--theme-color-86efac, #86EFAC))";
     if (mn < -0.3) return PAL.red;
-    if (mn < 0)    return "var(--red-light, var(--theme-color-fca5a5, var(--theme-color-fca5a5, #FCA5A5)))";
+    if (mn < 0)    return "var(--red-light, var(--theme-color-fca5a5, #FCA5A5))";
     return PAL.textMuted;
 }
 
@@ -287,7 +287,7 @@ function DashboardRow({
                             </span>
                         )}
                         {(item.sources ?? []).map((src) => {
-                            const c = SOURCE_COLOR[src] ?? { bg: "var(--surface-darker, var(--theme-color-1a2235, var(--theme-color-1a2235, #1A2235)))", text: PAL.textSecondary, border: PAL.border };
+                            const c = SOURCE_COLOR[src] ?? { bg: "var(--surface-darker, var(--theme-color-1a2235, #1A2235))", text: PAL.textSecondary, border: PAL.border };
                             return (
                                 <span key={src} style={{ fontSize: 10, background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: 5, padding: "1px 6px", fontWeight: 600 }}>
                                     {SOURCE_EMOJI[src] ?? "ðŸ›"} {src}
@@ -597,7 +597,7 @@ export function TrendDashboard() {
                                 padding: "7px 16px",
                                 borderRadius: 8,
                                 border: `1.5px solid ${loading ? PAL.border : PAL.blue}`,
-                                background: loading ? "var(--surface-darker, var(--theme-color-1a2235, var(--theme-color-1a2235, #1A2235)))" : PAL.blue + "22",
+                                background: loading ? "var(--surface-darker, var(--theme-color-1a2235, #1A2235))" : PAL.blue + "22",
                                 color: loading ? PAL.textMuted : PAL.blue,
                                 fontWeight: 700,
                                 fontSize: 13,
@@ -677,7 +677,7 @@ export function TrendDashboard() {
                                     onClick={() => toggleMarket(m)}
                                     style={{
                                         fontSize: 11,
-                                        background: active ? "var(--surface-active, var(--theme-color-1a2a40, var(--theme-color-1a2a40, #1A2A40)))" : "transparent",
+                                        background: active ? "var(--surface-active, var(--theme-color-1a2a40, #1A2A40))" : "transparent",
                                         color: active ? PAL.blue : PAL.textMuted,
                                         border: `1px solid ${active ? PAL.blue + "55" : PAL.borderLight}`,
                                         borderRadius: 6,
@@ -787,7 +787,7 @@ export function TrendDashboard() {
                             </div>
                         )}
                         {!hasActiveFilters && data?.message?.includes("not yet initialized") && (
-                            <div style={{ marginTop: 14, fontSize: 12, background: "var(--surface-darker, var(--theme-color-0a1f14, var(--theme-color-0a1f14, #0A1F14)))", border: `1px solid var(--source-humanic-border, var(--theme-color-1a5c35, var(--theme-color-1a5c35, #1A5C35)))`, borderRadius: 8, padding: "8px 16px", color: PAL.green, display: "inline-block" }}>
+                            <div style={{ marginTop: 14, fontSize: 12, background: "var(--surface-darker, var(--theme-color-0a1f14, #0A1F14))", border: `1px solid var(--source-humanic-border, var(--theme-color-1a5c35, #1A5C35))`, borderRadius: 8, padding: "8px 16px", color: PAL.green, display: "inline-block" }}>
                                 Pokreni: <code>Database/Analytics/004_AddScraperScoringTables.sql</code>
                             </div>
                         )}
@@ -799,7 +799,7 @@ export function TrendDashboard() {
                     <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                             <thead>
-                                <tr style={{ background: "var(--surface-darker, var(--theme-color-0f1320, var(--theme-color-0f1320, #0F1320)))" }}>
+                                <tr style={{ background: "var(--surface-darker, var(--theme-color-0f1320, #0F1320))" }}>
                                     <th style={{ padding: "9px 4px", fontWeight: 700, color: PAL.textMuted, fontSize: 11, textAlign: "center", borderBottom: `1px solid ${PAL.border}` }}>#</th>
                                     <th style={{ padding: "9px 4px", borderBottom: `1px solid ${PAL.border}` }}></th>
                                     <th style={{ padding: "9px 6px", fontWeight: 700, color: PAL.textMuted, fontSize: 11, textAlign: "left", borderBottom: `1px solid ${PAL.border}` }}>
@@ -851,7 +851,7 @@ export function TrendDashboard() {
                         gap: 14,
                         flexWrap: "wrap",
                         alignItems: "center",
-                        background: "var(--surface-darker, var(--theme-color-0f1320, var(--theme-color-0f1320, #0F1320)))",
+                        background: "var(--surface-darker, var(--theme-color-0f1320, #0F1320))",
                     }}>
                         <span style={{ fontSize: 11, color: PAL.textMuted, fontWeight: 600 }}>Score bar:</span>
                         {Object.entries(COMPONENT_LABELS).map(([k, label]) => (

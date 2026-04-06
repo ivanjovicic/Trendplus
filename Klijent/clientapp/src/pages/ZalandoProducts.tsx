@@ -52,7 +52,7 @@ export default function ZalandoProducts() {
       <h2 style={{ marginBottom: 12 }}>Zalando proizvodi ({items.length})</h2>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
         {items.map((p) => (
-          <div key={p.id} style={{ border: "1px solid var(--c-e5e7eb, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)))", padding: 10, borderRadius: 8 }}>
+          <div key={p.id} style={{ border: "1px solid var(--c-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb))", padding: 10, borderRadius: 8 }}>
             {p.imageUrl ? (
               <img src={p.imageUrl} alt={p.name} style={{ width: "100%", borderRadius: 8, objectFit: "cover", height: 180 }} />
             ) : (
@@ -62,11 +62,11 @@ export default function ZalandoProducts() {
             <div style={{ paddingTop: 8 }}>
               <h3 style={{ margin: 0, fontSize: "1rem" }}>{p.brand}</h3>
               <p style={{ margin: "6px 0", fontWeight: 600 }}>{p.name}</p>
-              <p style={{ margin: "6px 0", color: "var(--c-059669, var(--theme-color-059669, var(--theme-color-059669, #059669)))", fontWeight: 700 }}>
+              <p style={{ margin: "6px 0", color: "var(--c-059669, var(--theme-color-059669, #059669))", fontWeight: 700 }}>
                 {p.price != null ? `${p.price} RSD` : "-"}
               </p>
               {p.url && (
-                <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--c-2563eb, var(--theme-color-2563eb, var(--theme-color-2563eb, #2563eb)))" }}>
+                <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--c-2563eb, var(--theme-color-2563eb, #2563eb))" }}>
                   Pogledaj
                 </a>
               )}

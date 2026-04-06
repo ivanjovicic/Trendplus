@@ -45,7 +45,7 @@ export default function ReleaseCalendar() {
                     <button
                         onClick={() => setRefreshToggle((t) => t + 1)}
                         className="button-big"
-                        style={{ background: 'var(--c-3b82f6, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6)))', marginLeft: 8 }}
+                        style={{ background: 'var(--c-3b82f6, var(--theme-color-3b82f6, #3b82f6))', marginLeft: 8 }}
                     >
                         🔄 Refresh
                     </button>
@@ -53,7 +53,7 @@ export default function ReleaseCalendar() {
             </div>
 
             {loading && <div>Loading...</div>}
-            {error && <div style={{ color: 'var(--c-dc2626, var(--theme-color-dc2626, var(--theme-color-dc2626, #dc2626)))' }}>Error: {error}</div>}
+            {error && <div style={{ color: 'var(--c-dc2626, var(--theme-color-dc2626, #dc2626))' }}>Error: {error}</div>}
 
             {!loading && !error && (
                 <div style={{ display: 'grid', gap: 12 }}>
@@ -63,7 +63,7 @@ export default function ReleaseCalendar() {
                             <div>
                                 <div style={{ fontWeight: 700 }}>{p.brand} - {p.name}</div>
                                 <div>Price: {p.price}</div>
-                                {p.coming_soon && <div style={{ color: 'var(--c-059669, var(--theme-color-059669, var(--theme-color-059669, #059669)))', fontWeight: 700 }}>Coming: {p.release_date}</div>}
+                                {p.coming_soon && <div style={{ color: 'var(--c-059669, var(--theme-color-059669, #059669))', fontWeight: 700 }}>Coming: {p.release_date}</div>}
                             </div>
                         </div>
                     ))}

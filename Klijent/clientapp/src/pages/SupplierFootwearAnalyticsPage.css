@@ -1,8 +1,8 @@
 .sf-decision-page {
-  background: var(--surface-elevated, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+  background: var(--surface-elevated, var(--theme-color-ffffff, #ffffff));
   border: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
   border-radius: 14px;
-  color: var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)));
+  color: var(--text-primary, var(--theme-color-111827, #111827));
   padding: 16px;
 }
 
@@ -36,8 +36,8 @@
 }
 
 .sf-decision-filters {
-  background: var(--surface-darker, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
-  border: 1px solid var(--border-default, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)));
+  background: var(--surface-darker, var(--theme-color-ffffff, #ffffff));
+  border: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
   border-radius: 10px;
   display: grid;
   gap: 10px;
@@ -60,10 +60,10 @@
 
 .sf-decision-field select,
 .sf-decision-field input {
-  background: var(--surface-elevated, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
-  border: 1px solid var(--border-default, var(--theme-color-d1d5db, var(--theme-color-d1d5db, #d1d5db)));
+  background: var(--surface-elevated, var(--theme-color-ffffff, #ffffff));
+  border: 1px solid var(--border-default, var(--theme-color-d1d5db, #d1d5db));
   border-radius: 8px;
-  color: var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)));
+  color: var(--text-primary, var(--theme-color-111827, #111827));
   font-size: 13px;
   padding: 8px 10px;
 }
@@ -81,7 +81,7 @@
 
 .sf-decision-field select:focus,
 .sf-decision-field input:focus {
-  border-color: var(--accent-primary, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6)));
+  border-color: var(--accent-primary, var(--theme-color-3b82f6, #3b82f6));
   box-shadow: 0 0 0 3px var(--theme-color-rgba-59-130-246-0p18, rgba(59, 130, 246, 0.18));
   outline: none;
 }
@@ -94,10 +94,10 @@
 }
 
 .sf-decision-actions button {
-  background: var(--accent-primary, var(--theme-color-2563eb, var(--theme-color-2563eb, #2563eb)));
+  background: var(--accent-primary, var(--theme-color-2563eb, #2563eb));
   border: 0;
   border-radius: 8px;
-  color: var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+  color: var(--text-on-primary, var(--theme-color-ffffff, #ffffff));
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
@@ -125,19 +125,19 @@
 .sf-decision-message.loading {
   background: var(--accent-soft, var(--theme-color-rgba-59-130-246-0p12, rgba(59, 130, 246, 0.12)));
   border: 1px solid var(--accent-border, rgba(96, 165, 250, 0.3));
-  color: var(--info, var(--theme-color-bfdbfe, var(--theme-color-bfdbfe, #bfdbfe)));
+  color: var(--info, var(--theme-color-bfdbfe, #bfdbfe));
 }
 
 .sf-decision-message.error {
   background: var(--error-soft, var(--theme-color-rgba-127-29-29-0p3, rgba(127, 29, 29, 0.3)));
   border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p35, rgba(248, 113, 113, 0.35)));
-  color: var(--error, var(--theme-color-fecaca, var(--theme-color-fecaca, #fecaca)));
+  color: var(--error, var(--theme-color-fecaca, #fecaca));
 }
 
 .sf-decision-message.info {
-  background: var(--info-soft, color-mix(in srgb, var(--accent-primary, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6))) 16%, transparent));
-  border: 1px solid var(--info-border, color-mix(in srgb, var(--accent-primary, var(--theme-color-3b82f6, var(--theme-color-3b82f6, #3b82f6))) 36%, transparent));
-  color: var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)));
+  background: var(--info-soft, color-mix(in srgb, var(--accent-primary, var(--theme-color-3b82f6, #3b82f6)) 16%, transparent));
+  border: 1px solid var(--info-border, color-mix(in srgb, var(--accent-primary, var(--theme-color-3b82f6, #3b82f6)) 36%, transparent));
+  color: var(--text-primary, var(--theme-color-111827, #111827));
 }
 
 .sf-decision-message.suggestion {
@@ -148,10 +148,10 @@
 }
 
 .sf-decision-message.suggestion button {
-  background: var(--accent-primary, var(--theme-color-2563eb, var(--theme-color-2563eb, #2563eb)));
+  background: var(--accent-primary, var(--theme-color-2563eb, #2563eb));
   border: 0;
   border-radius: 8px;
-  color: var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+  color: var(--text-on-primary, var(--theme-color-ffffff, #ffffff));
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
@@ -166,21 +166,21 @@
 }
 
 .sf-decision-kpi {
-  background: var(--surface-darker, var(--theme-color-0b1220, var(--theme-color-0b1220, #0b1220)));
-  border: 1px solid var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  background: var(--surface-darker, var(--theme-color-0b1220, #0b1220));
+  border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 10px;
   padding: 12px;
 }
 
 .sf-decision-kpi span {
-  color: var(--text-secondary, var(--theme-color-94a3b8, var(--theme-color-94a3b8, #94a3b8)));
+  color: var(--text-secondary, var(--theme-color-94a3b8, #94a3b8));
   display: block;
   font-size: 12px;
   font-weight: 600;
 }
 
 .sf-decision-kpi strong {
-  color: var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)));
+  color: var(--text-primary, var(--theme-color-111827, #111827));
   display: block;
   font-size: 22px;
   font-weight: 700;
@@ -194,20 +194,20 @@
 }
 
 .sf-decision-card {
-  background: var(--surface-darker, var(--theme-color-0b1220, var(--theme-color-0b1220, #0b1220)));
+  background: var(--surface-darker, var(--theme-color-0b1220, #0b1220));
   border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 10px;
   padding: 12px;
 }
 
 .sf-decision-card h2 {
-  color: var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)));
+  color: var(--text-primary, var(--theme-color-111827, #111827));
   font-size: 16px;
   margin: 0 0 4px;
 }
 
 .sf-decision-card {
-  background: var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+  background: var(--surface-card, var(--theme-color-ffffff, #ffffff));
   font-size: 12px;
   margin: 0 0 12px;
 }
@@ -220,7 +220,7 @@
   align-items: center;
   border: 1px dashed var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 8px;
-  color: var(--text-secondary, var(--theme-color-94a3b8, var(--theme-color-94a3b8, #94a3b8)));
+  color: var(--text-secondary, var(--theme-color-94a3b8, #94a3b8));
   display: flex;
   font-size: 13px;
   justify-content: center;
@@ -240,7 +240,7 @@
 }
 
 .sf-decision-table-wrap {
-  border: 1px solid var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 10px;
   max-height: 620px;
   overflow-x: auto;
@@ -254,7 +254,7 @@
 }
 
 .sf-decision-table th {
-  background: var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+  background: var(--surface-card, var(--theme-color-ffffff, #ffffff));
   border-bottom: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
   padding: 10px 12px;
   position: sticky;
@@ -280,7 +280,7 @@
 
 .sf-decision-table td {
   border-bottom: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
-  color: var(--text-primary, var(--theme-color-111827, var(--theme-color-111827, #111827)));
+  color: var(--text-primary, var(--theme-color-111827, #111827));
   font-size: 13px;
   padding: 10px 12px;
 }
@@ -314,33 +314,33 @@
 .sf-decision-status.status-boost {
   background: var(--success-soft, var(--theme-color-rgba-52-211-153-0p15, rgba(52, 211, 153, 0.15)));
   border: 1px solid var(--success-border, var(--theme-color-rgba-52-211-153-0p45, rgba(52, 211, 153, 0.45)));
-  color: var(--success, var(--theme-color-6ee7b7, var(--theme-color-6ee7b7, #6ee7b7)));
+  color: var(--success, var(--theme-color-6ee7b7, #6ee7b7));
 }
 
 .sf-decision-status.status-keep {
   background: var(--warning-soft, var(--theme-color-rgba-251-191-36-0p15, rgba(251, 191, 36, 0.15)));
   border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.45));
-  color: var(--warning, var(--theme-color-fcd34d, var(--theme-color-fcd34d, #fcd34d)));
+  color: var(--warning, var(--theme-color-fcd34d, #fcd34d));
 }
 
 .sf-decision-status.status-reduce {
   background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15)));
   border: 1px solid var(--error-border, rgba(248, 113, 113, 0.45));
-  color: var(--error, var(--theme-color-fca5a5, var(--theme-color-fca5a5, #fca5a5)));
+  color: var(--error, var(--theme-color-fca5a5, #fca5a5));
 }
 
 .sf-mini-note {
-  color: var(--text-secondary, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)));
+  color: var(--text-secondary, var(--theme-color-9ca3af, #9ca3af));
   font-size: 11px;
   margin-top: 2px;
 }
 
 .trend-up {
-  color: var(--success, var(--theme-color-34d399, var(--theme-color-34d399, #34d399)));
+  color: var(--success, var(--theme-color-34d399, #34d399));
 }
 
 .trend-down {
-  color: var(--error, var(--theme-color-f87171, var(--theme-color-f87171, #f87171)));
+  color: var(--error, var(--theme-color-f87171, #f87171));
 }
 
 .trend-neutral {
@@ -351,7 +351,7 @@
   background: transparent;
   border: 1px solid var(--border-strong, var(--theme-color-374151, #374151));
   border-radius: 6px;
-  color: var(--text-primary, var(--theme-color-e5e7eb, var(--theme-color-e5e7eb, #e5e7eb)));
+  color: var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb));
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
@@ -359,14 +359,14 @@
 }
 
 .sf-decision-empty-row {
-  color: var(--text-secondary, var(--theme-color-94a3b8, var(--theme-color-94a3b8, #94a3b8)));
+  color: var(--text-secondary, var(--theme-color-94a3b8, #94a3b8));
   padding: 20px !important;
   text-align: center;
 }
 
 .sf-decision-detail {
-  background: var(--surface-darker, var(--theme-color-0b1220, var(--theme-color-0b1220, #0b1220)));
-  border: 1px solid var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  background: var(--surface-darker, var(--theme-color-0b1220, #0b1220));
+  border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 10px;
   margin-top: 12px;
   padding: 12px;
@@ -381,16 +381,16 @@
 }
 
 .sf-decision-detail-head h3 {
-  color: var(--text-primary, var(--theme-color-f8fafc, var(--theme-color-f8fafc, #f8fafc)));
+  color: var(--text-primary, var(--theme-color-f8fafc, #f8fafc));
   font-size: 16px;
   margin: 0;
 }
 
 .sf-decision-detail-head button {
-  background: var(--accent-primary, var(--theme-color-2563eb, var(--theme-color-2563eb, #2563eb)));
+  background: var(--accent-primary, var(--theme-color-2563eb, #2563eb));
   border: 0;
   border-radius: 8px;
-  color: var(--text-on-primary, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
+  color: var(--text-on-primary, var(--theme-color-ffffff, #ffffff));
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
@@ -404,27 +404,27 @@
 }
 
 .sf-decision-detail-grid article {
-  background: var(--surface-card, var(--theme-color-ffffff, var(--theme-color-ffffff, #ffffff)));
-  border: 1px solid var(--border-default, var(--theme-color-1f2937, var(--theme-color-1f2937, #1f2937)));
+  background: var(--surface-card, var(--theme-color-ffffff, #ffffff));
+  border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 8px;
   padding: 9px;
 }
 
 .sf-decision-detail-grid article span {
-  color: var(--text-secondary, var(--theme-color-9ca3af, var(--theme-color-9ca3af, #9ca3af)));
+  color: var(--text-secondary, var(--theme-color-9ca3af, #9ca3af));
   display: block;
   font-size: 11px;
 }
 
 .sf-decision-detail-grid article strong {
-  color: var(--text-primary, var(--theme-color-f8fafc, var(--theme-color-f8fafc, #f8fafc)));
+  color: var(--text-primary, var(--theme-color-f8fafc, #f8fafc));
   display: block;
   font-size: 15px;
   margin-top: 5px;
 }
 
 .sf-decision-reason {
-  color: var(--text-secondary, var(--theme-color-cbd5e1, var(--theme-color-cbd5e1, #cbd5e1)));
+  color: var(--text-secondary, var(--theme-color-cbd5e1, #cbd5e1));
   font-size: 13px;
   margin: 12px 0 0;
 }
