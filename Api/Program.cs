@@ -180,6 +180,7 @@ try
 builder.Services.AddScoped<IOutboxService, OutboxService>();
 builder.Services.AddScoped<IDnevnikPromenaReadService, DnevnikPromenaReadService>();
 builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadService>();
+builder.Services.AddScoped<IDailySalesStatsService, DailySalesStatsService>();
 builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IDocumentQueueStore, DocumentQueueStore>();
@@ -608,6 +609,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapOutboxEndpoints();
     app.MapAnalyticsTableEndpoints();
     app.MapDataQualityEndpoints();
+    app.MapDailySalesStatsEndpoints();
     app.MapDocumentEndpoints();
     // Transfer endpoints
     app.MapTransferEndpoints();

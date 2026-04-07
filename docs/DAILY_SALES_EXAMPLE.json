@@ -1,0 +1,88 @@
+{
+  "requestedFrom": "2026-01-01T00:00:00Z",
+  "requestedTo": "2026-01-03T00:00:00Z",
+  "storeId": 1,
+  "topN": 3,
+  "dataScope": "all",
+  "topSuppliers": [
+    {
+      "supplierId": 12,
+      "supplierName": "Dobavljac A",
+      "isUnknown": false,
+      "totalQty": 42,
+      "totalRevenue": 126000.00
+    },
+    {
+      "supplierId": 8,
+      "supplierName": "Dobavljac B",
+      "isUnknown": false,
+      "totalQty": 31,
+      "totalRevenue": 84550.00
+    },
+    {
+      "supplierId": null,
+      "supplierName": "Nepoznato",
+      "isUnknown": true,
+      "totalQty": 11,
+      "totalRevenue": 19800.00
+    }
+  ],
+  "topSuppliersOrder": [
+    "Dobavljac A",
+    "Dobavljac B",
+    "Nepoznato"
+  ],
+  "dateRows": [
+    {
+      "date": "2026-01-03T00:00:00Z",
+      "firstShiftTotalItems": 19,
+      "secondShiftTotalItems": 14,
+      "totalRevenue": 53200.00,
+      "topSupplierCounts": [
+        12,
+        8,
+        4
+      ],
+      "othersCount": 9,
+      "totalItemsSold": 33
+    },
+    {
+      "date": "2026-01-02T00:00:00Z",
+      "firstShiftTotalItems": 15,
+      "secondShiftTotalItems": 10,
+      "totalRevenue": 40150.00,
+      "topSupplierCounts": [
+        11,
+        7,
+        3
+      ],
+      "othersCount": 4,
+      "totalItemsSold": 25
+    },
+    {
+      "date": "2026-01-01T00:00:00Z",
+      "firstShiftTotalItems": 9,
+      "secondShiftTotalItems": 7,
+      "totalRevenue": 23600.00,
+      "topSupplierCounts": [
+        6,
+        5,
+        4
+      ],
+      "othersCount": 1,
+      "totalItemsSold": 16
+    }
+  ],
+  "metadata": {
+    "totalDays": 3,
+    "uniqueSuppliersInRange": 7,
+    "unknownSupplierPct": 13.10,
+    "unknownSupplierItems": 11,
+    "offShiftItems": 2,
+    "offShiftRevenue": 1200.00,
+    "totalItemsInRange": 84,
+    "warnings": [
+      "Prodaja van smena 06-14 i 14-22 nije ukljucena u tabelarne kolicine."
+    ]
+  }
+}

@@ -46,6 +46,7 @@ import SupplierFootwearAnalyticsPage from "./pages/SupplierFootwearAnalyticsPage
 import SupplierDecisionHubPage from "./pages/SupplierDecisionHubPage";
 import SupplierSalesStatsPage from "./pages/SupplierSalesStatsPage";
 import ShoeTypeSalesStatsPage from "./pages/ShoeTypeSalesStatsPage";
+import DailySalesStatsPage from "./pages/DailySalesStatsPage";
 import ColorSalesStatsPage from "./pages/ColorSalesStatsPage";
 import InventoryPage from "./pages/InventoryPage";
 import UnosHubPage from "./pages/UnosHubPage";
@@ -78,6 +79,7 @@ function AppShell() {
                 <Route path="/analytics" element={<AnalyticsDashboard />} />
                 <Route path="/analytics/supplier-sales-stats" element={<SupplierSalesStatsPage />} />
                 <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+                <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
                 <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
                 <Route path="/analytics/data-quality" element={<DataQualityPage />} />
                 <Route path="/analytics/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
