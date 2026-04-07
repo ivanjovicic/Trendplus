@@ -33,6 +33,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
   documentType?: string;
   templateName?: string;
   templateVersion?: number;
+  extraActions?: React.ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [modalOpen, setModalOpen] = React.useState(false);
@@ -167,6 +168,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
           <InfoTip text="Otvori print layout sa podešavanjima za izveštaj." />
         </button>
 
+        {props.extraActions ?? null}
         <span className="text-xs text-muted">Redova: {payload.rows.length}</span>
         {statusText ? <span className="text-xs text-[var(--accent-success)]">{statusText}</span> : null}
       </div>

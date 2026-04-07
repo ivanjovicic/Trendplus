@@ -43,6 +43,10 @@
   padding: 0.9rem;
 }
 
+.daily-sales-shift-head {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
 .daily-sales-shift-head label,
 .daily-sales-filters label {
   display: flex;
@@ -60,6 +64,17 @@
   background: var(--surface-primary);
   color: var(--text-primary);
   padding: 0.55rem 0.7rem;
+}
+
+.daily-sales-shift-label span {
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+.daily-sales-shift-head input {
+  min-height: 2.25rem;
+  font-size: 0.82rem;
 }
 
 .daily-sales-actions {
@@ -284,5 +299,16 @@
 
   .daily-sales-actions button {
     flex: 1;
+  }
+}
+
+@media print {
+  .daily-sales-shift-label span {
+    font-size: 0.68rem;
+  }
+
+  .daily-sales-shift-head input {
+    min-height: 1.75rem;
+    font-size: 0.72rem;
   }
 }
