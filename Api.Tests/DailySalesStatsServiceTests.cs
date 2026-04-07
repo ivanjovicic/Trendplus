@@ -131,6 +131,51 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal("imported", imported.DataScope);
     }
 
+    [Fact]
+    public async Task GetDailySalesAsync_WhenTimestampsAreMidnight_MapsRowsToFirstShiftWithWarning()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 40,
+                DatumProdaje = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 41,
+                DatumProdaje = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 50, IdProdaja = 40, IdArtikal = 101, Kolicina = 6, Cena = 100m },
+            new ProdajaStavka { Id = 51, IdProdaja = 41, IdArtikal = 102, Kolicina = 4, Cena = 50m });
+
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            requestedFromUtc: new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+            storeId: 1,
+            topN: 5,
+            dataScope: "all",
+            ct: CancellationToken.None);
+
+        var row = Assert.Single(result.DateRows);
+        Assert.Equal(10, row.FirstShiftTotalItems);
+        Assert.Equal(0, row.SecondShiftTotalItems);
+        Assert.Equal(10, row.TotalItemsSold);
+        Assert.Equal(0, result.Metadata.OffShiftItems);
+        Assert.Contains(result.Metadata.Warnings, x => x.Contains("Satnica prodaje nije dostupna", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static TrendplusDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<TrendplusDbContext>()

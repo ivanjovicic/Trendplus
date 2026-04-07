@@ -26,6 +26,10 @@ export interface DailySalesMetadata {
   offShiftItems: number;
   offShiftRevenue: number;
   totalItemsInRange: number;
+  /** ISO 8601 date string — earliest sale date available in the whole dataset. Null if no data. */
+  minAvailableDate: string | null;
+  /** ISO 8601 date string — latest sale date available in the whole dataset. Null if no data. */
+  maxAvailableDate: string | null;
   warnings: string[];
 }
 

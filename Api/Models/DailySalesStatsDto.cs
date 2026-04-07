@@ -42,5 +42,9 @@ public sealed class DailySalesMetadata
     public int OffShiftItems { get; set; }
     public decimal OffShiftRevenue { get; set; }
     public int TotalItemsInRange { get; set; }
+    /// <summary>Earliest available sale date in the whole dataset (null if no data at all).</summary>
+    public DateTime? MinAvailableDate { get; set; }
+    /// <summary>Latest available sale date in the whole dataset (null if no data at all).</summary>
+    public DateTime? MaxAvailableDate { get; set; }
     public List<string> Warnings { get; set; } = [];
 }

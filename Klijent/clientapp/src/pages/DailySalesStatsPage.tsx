@@ -34,7 +34,10 @@ type ActiveFilters = {
 const DEFAULT_TOP_N = 15;
 
 function toDateInput(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: string; toDate: string } {
@@ -78,7 +81,19 @@ function fmtRsd(value: number): string {
 }
 
 function fmtDate(value: string): string {
-  const parsed = new Date(value);
+  const normalized = value.slice(0, 10);
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleDateString("sr-RS");
+  }
+
+  const [, yearRaw, monthRaw, dayRaw] = match;
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const parsed = new Date(year, month - 1, day);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("sr-RS");
 }
@@ -128,7 +143,7 @@ export default function DailySalesStatsPage() {
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
-    return new Date(fromDate) > new Date(toDate);
+    return fromDate > toDate;
   }, [fromDate, toDate]);
 
   useEffect(() => {
@@ -337,6 +352,20 @@ export default function DailySalesStatsPage() {
     updateQueryParams(next);
   };
 
+  const handleJumpToAvailableData = () => {
+    const min = data?.metadata.minAvailableDate;
+    const max = data?.metadata.maxAvailableDate;
+    if (!min || !max) return;
+    const newFrom = min.slice(0, 10);
+    const newTo = max.slice(0, 10);
+    const next = { fromDate: newFrom, toDate: newTo, storeId, topN };
+    setPeriodPreset("custom");
+    setFromDate(newFrom);
+    setToDate(newTo);
+    setActiveFilters(next);
+    updateQueryParams(next);
+  };
+
   return (
     <div className="daily-sales-page">
       <header className="daily-sales-header">
@@ -469,7 +498,18 @@ export default function DailySalesStatsPage() {
             </article>
           </section>
 
-          {data.metadata.warnings.length > 0 ? (
+          {data.metadata.totalItemsInRange === 0 && data.metadata.minAvailableDate ? (
+            <section className="daily-sales-no-data-banner">
+              <p>
+                Nema prodaje u izabranom periodu. Podaci su dostupni od{" "}
+                <strong>{fmtDate(data.metadata.minAvailableDate)}</strong> do{" "}
+                <strong>{fmtDate(data.metadata.maxAvailableDate!)}</strong>.
+              </p>
+              <button type="button" onClick={handleJumpToAvailableData}>
+                Prikazi dostupne podatke
+              </button>
+            </section>
+          ) : data.metadata.warnings.length > 0 ? (
             <section className="daily-sales-warnings">
               {data.metadata.warnings.map((warning) => (
                 <p key={warning}>{warning}</p>

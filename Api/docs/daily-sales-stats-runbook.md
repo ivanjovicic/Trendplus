@@ -50,6 +50,9 @@ If no date range is provided, default window is last 30 days (inclusive).
   - `offShiftItems`
   - `offShiftRevenue`
   - warnings list
+- If source rows contain only midnight timestamps (`00:00`) and no usable hour distribution,
+  endpoint applies fallback mapping to first shift and emits warning:
+  - `Satnica prodaje nije dostupna (00:00); kolicine su mapirane u prvu smenu.`
 
 ## Response Contract (summary)
 
@@ -98,6 +101,8 @@ For very large windows or high concurrency, keep `topN` conservative and maintai
    - check article supplier mapping quality (`IDDobavljac`)
 3. Off-shift warning appears:
    - inspect sales timestamps outside 06-22 operational window
-4. Slow query:
+4. Midnight-only timestamps (all 00:00:00):
+   - endpoint will fallback-map quantities to first shift
+   - verify source system captures real time-of-sale if shift analytics must be strict
+5. Slow query:
    - verify indexes exist and run `EXPLAIN ANALYZE` on staging/production snapshot
-

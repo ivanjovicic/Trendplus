@@ -82,9 +82,15 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var supplierTotals = new Dictionary<string, SupplierAccumulator>(StringComparer.Ordinal);
         var warnings = new List<string>();
 
+        var hasClassifiedShiftRows = aggregates.Any(x => ResolveShift(x.HourOfDay) is 1 or 2);
+        var hasAnyRows = aggregates.Any(x => x.Qty != 0);
+        var useMidnightFallback = !hasClassifiedShiftRows && hasAnyRows;
+
         var offShiftItems = 0;
         var offShiftRevenue = 0m;
         var totalItemsInRange = 0;
+        var fallbackMappedItems = 0;
+        var fallbackMappedRevenue = 0m;
 
         foreach (var row in aggregates)
         {
@@ -101,6 +107,13 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             }
 
             var shift = ResolveShift(row.HourOfDay);
+            if (shift == 0 && useMidnightFallback && row.HourOfDay == 0)
+            {
+                shift = 1;
+                fallbackMappedItems += row.Qty;
+                fallbackMappedRevenue += row.Revenue;
+            }
+
             if (shift == 0)
             {
                 offShiftItems += row.Qty;
@@ -224,9 +237,44 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             warnings.Add("Veliki udeo prodaje ima nepoznatog dobavljaca (20%+).");
         }
 
+        if (useMidnightFallback)
+        {
+            warnings.Add("Satnica prodaje nije dostupna (00:00); kolicine su mapirane u prvu smenu.");
+            _logger.LogWarning(
+                "Daily-sales fallback applied: midnight-only timestamps mapped to first shift. MappedItems={MappedItems} MappedRevenue={MappedRevenue}",
+                fallbackMappedItems,
+                fallbackMappedRevenue);
+        }
+
         if (offShiftItems > 0)
         {
             warnings.Add("Prodaja van smena 06-14 i 14-22 nije ukljucena u tabelarne kolicine.");
+        }
+
+        // When no items found in the requested range, query the overall available range so the
+        // frontend can show a helpful "data available from X to Y" message.
+        DateTime? minAvailableDate = null;
+        DateTime? maxAvailableDate = null;
+        if (totalItemsInRange == 0)
+        {
+            var availabilityQuery = _db.ProdajaZaglavlja.AsNoTracking();
+            if (storeId.HasValue)
+                availabilityQuery = availabilityQuery.Where(pz => pz.IDObjekat == storeId.Value);
+
+            var minRaw = await availabilityQuery.MinAsync(pz => (DateTime?)pz.DatumProdaje, ct);
+            var maxRaw = await availabilityQuery.MaxAsync(pz => (DateTime?)pz.DatumProdaje, ct);
+
+            if (minRaw.HasValue)
+            {
+                minAvailableDate = DateTime.SpecifyKind(minRaw.Value.Date, DateTimeKind.Utc);
+                maxAvailableDate = DateTime.SpecifyKind(maxRaw!.Value.Date, DateTimeKind.Utc);
+                warnings.Add(
+                    $"Nema podataka za izabrani period. Podaci su dostupni od {minAvailableDate.Value:yyyy-MM-dd} do {maxAvailableDate.Value:yyyy-MM-dd}.");
+            }
+            else
+            {
+                warnings.Add("Nema podataka o prodaji u bazi.");
+            }
         }
 
         var response = new DailySalesTableResponse
@@ -250,6 +298,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 OffShiftItems = offShiftItems,
                 OffShiftRevenue = decimal.Round(offShiftRevenue, 2, MidpointRounding.AwayFromZero),
                 TotalItemsInRange = totalItemsInRange,
+                MinAvailableDate = minAvailableDate,
+                MaxAvailableDate = maxAvailableDate,
                 Warnings = warnings
             }
         };
