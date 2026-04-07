@@ -310,7 +310,7 @@ export default function AccessImportPage() {
             const data = await previewAccessImport(file, useRootFile);
             setPreview(data);
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Greska pri analizi ACCDB fajla.");
+            setError(e instanceof Error ? e.message : "Greska pri analizi Access fajla.");
         } finally {
             setLoadingPreview(false);
         }
@@ -495,7 +495,7 @@ export default function AccessImportPage() {
             />
 
             <div className="accimport-page">
-            <h1 className="accimport-title">Access Import (TRENDPLUS.accdb)</h1>
+            <h1 className="accimport-title">Access Import (TRENDPLUS.accdb/.mdb)</h1>
             <p className="accimport-subtitle">
                 ETL pipeline: Access -&gt; Trendplus DB + Analytics DB. Podrska za upsert, analizu seme, batch istoriju i kaskadno brisanje.
             </p>
@@ -557,10 +557,10 @@ export default function AccessImportPage() {
                 <div className="accimport-filterbar">
                     {/* File source */}
                     <div className="accimport-field" style={{ gridColumn: "1 / -1" }}>
-                        <span className="accimport-label">Izvor ACCDB fajla</span>
+                        <span className="accimport-label">Izvor Access fajla (.accdb/.mdb)</span>
                         <label className="accimport-checkbox-row">
                             <input type="checkbox" checked={useRootFile} onChange={(e) => setUseRootFile(e.target.checked)} />
-                            Koristi TRENDPLUS.accdb automatski (root ili parent folder)
+                            Koristi TRENDPLUS.accdb/.mdb automatski (root ili parent folder)
                         </label>
                     </div>
 
@@ -569,7 +569,7 @@ export default function AccessImportPage() {
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".accdb"
+                            accept=".accdb,.mdb"
                             style={{ display: "none" }}
                             onChange={(e) => {
                                 const selected = e.target.files?.[0] ?? null;
@@ -583,9 +583,9 @@ export default function AccessImportPage() {
                                 className="accimport-btn accimport-btn-secondary"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={useRootFile}
-                                title={useRootFile ? "Iskljuci automatski fajl da bi izabrao rucno." : "Izaberi .accdb fajl"}
+                                title={useRootFile ? "Iskljuci automatski fajl da bi izabrao rucno." : "Izaberi .accdb ili .mdb fajl"}
                             >
-                                Browse .accdb
+                                Browse .accdb/.mdb
                             </button>
                             {file && (
                                 <button type="button" className="accimport-btn accimport-btn-clear" onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
@@ -634,7 +634,7 @@ export default function AccessImportPage() {
                         )}
                         {!sourceSelected && (
                             <div className="accimport-hint">
-                                Izaberi fajl ili ukljuci automatski TRENDPLUS.accdb.
+                                Izaberi fajl ili ukljuci automatski TRENDPLUS.accdb/.mdb.
                             </div>
                         )}
                     </div>
@@ -670,7 +670,7 @@ export default function AccessImportPage() {
                             <span className="accimport-label">Trenutni izvor</span>
                             <div className="accimport-source-row">
                                 <span className={`accimport-file-name ${sourceSelected ? "has-file" : ""}`}>
-                                    {useRootFile ? "TRENDPLUS.accdb (automatski)" : file ? file.name : "Nije izabran fajl"}
+                                    {useRootFile ? "TRENDPLUS.accdb/.mdb (automatski)" : file ? file.name : "Nije izabran fajl"}
                                 </span>
                                 <button className="accimport-btn accimport-btn-secondary" type="button" onClick={() => setActiveTab("source")} disabled={busy}>
                                     Promeni izvor
@@ -710,7 +710,7 @@ export default function AccessImportPage() {
                             )}
                             {!sourceSelected && (
                                 <div className="accimport-hint">
-                                    Izaberi fajl ili ukljuci automatski TRENDPLUS.accdb.
+                                    Izaberi fajl ili ukljuci automatski TRENDPLUS.accdb/.mdb.
                                 </div>
                             )}
                         </div>
@@ -721,7 +721,7 @@ export default function AccessImportPage() {
                             Pokrenite analizu seme (ili izaberite izvor) da vidite rezultat.
                         </div>
                     )}
-                    {loadingPreview && <div className="accimport-empty-state">Analiziram ACCDB fajl...</div>}
+                    {loadingPreview && <div className="accimport-empty-state">Analiziram Access fajl (.accdb/.mdb)...</div>}
                     {preview && (
                         <div className="accimport-card">
                             <h3 className="accimport-card-title">
