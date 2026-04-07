@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import InfoTip from "../components/ui/InfoTip";
+import { savePrintPayload } from "../services/analyticsTableState";
 import { getStores } from "../services/analyticsApi";
 import {
   getDailySalesStats,
@@ -32,6 +33,9 @@ type ActiveFilters = {
 };
 
 const DEFAULT_TOP_N = 15;
+const BLANK_SUPPLIER_COLUMN_COUNT = 16;
+const BLANK_PRINT_ROW_COUNT = 32;
+const SHIFT_PLACEHOLDER = "__________";
 
 function toDateInput(date: Date): string {
   const year = date.getFullYear();
@@ -107,6 +111,20 @@ function sum(values: number[]): number {
   return values.reduce((acc, value) => acc + value, 0);
 }
 
+function hasMissingShiftSummary(row: DailySalesRow): boolean {
+  return row.totalItemsSold > 0 && row.firstShiftTotalItems === 0 && row.secondShiftTotalItems === 0;
+}
+
+function shiftExportValue(row: DailySalesRow, shift: "first" | "second"): string | number {
+  if (hasMissingShiftSummary(row)) return SHIFT_PLACEHOLDER;
+  return shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems;
+}
+
+function shiftDisplayValue(row: DailySalesRow, shift: "first" | "second"): string {
+  const value = shiftExportValue(row, shift);
+  return typeof value === "number" ? fmtNumber(value) : value;
+}
+
 export default function DailySalesStatsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestIdRef = useRef(0);
@@ -125,8 +143,8 @@ export default function DailySalesStatsPage() {
   const [toDate, setToDate] = useState(queryToDate);
   const [storeId, setStoreId] = useState<number | null>(queryStoreId);
   const [topN, setTopN] = useState<number>(queryTopN);
-  const [firstShiftNote, setFirstShiftNote] = useState("_______");
-  const [secondShiftNote, setSecondShiftNote] = useState("_______");
+  const [firstShiftNote, setFirstShiftNote] = useState("");
+  const [secondShiftNote, setSecondShiftNote] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
     fromDate: queryFromDate,
     toDate: queryToDate,
@@ -250,8 +268,8 @@ export default function DailySalesStatsPage() {
   const toolbarColumns = useMemo<AnalyticsTableColumn<DailySalesRow>[]>(() => {
     const baseColumns: AnalyticsTableColumn<DailySalesRow>[] = [
       { key: "date", header: "Datum", dataType: "date", getValue: (row) => row.date },
-      { key: "firstShiftTotalItems", header: "Prva smena (kom.)", dataType: "number" },
-      { key: "secondShiftTotalItems", header: "Druga smena (kom.)", dataType: "number" },
+      { key: "firstShiftTotalItems", header: "Prva smena (kom.)", dataType: "number", getValue: (row) => shiftExportValue(row, "first") },
+      { key: "secondShiftTotalItems", header: "Druga smena (kom.)", dataType: "number", getValue: (row) => shiftExportValue(row, "second") },
       { key: "totalRevenue", header: "Ukupan prihod", dataType: "currency" },
     ];
 
@@ -284,8 +302,8 @@ export default function DailySalesStatsPage() {
     { key: "requestedTo", label: "Requested to", value: data?.requestedTo ?? "" },
     { key: "totalDays", label: "Broj dana", value: data?.metadata.totalDays ?? 0 },
     { key: "unknownSupplierPct", label: "Unknown supplier %", value: data?.metadata.unknownSupplierPct ?? 0 },
-    { key: "firstShiftHeader", label: "Prva smena", value: firstShiftNote },
-    { key: "secondShiftHeader", label: "Druga smena", value: secondShiftNote },
+    { key: "firstShiftHeader", label: "Prva smena", value: firstShiftNote.trim() || SHIFT_PLACEHOLDER },
+    { key: "secondShiftHeader", label: "Druga smena", value: secondShiftNote.trim() || SHIFT_PLACEHOLDER },
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings.join(" | ") ?? "" },
   ], [data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, firstShiftNote, secondShiftNote]);
 
@@ -369,6 +387,46 @@ export default function DailySalesStatsPage() {
     updateQueryParams(next);
   };
 
+  const handlePrintBlank = useCallback(() => {
+    const blankSupplierColumns = Array.from({ length: BLANK_SUPPLIER_COLUMN_COUNT }, (_, index) => ({
+      key: `supplierBlank${index + 1}`,
+      header: `Dobavljac ${index + 1}`,
+      dataType: "text",
+    }));
+
+    const blankColumns = [
+      { key: "date", header: "Datum", dataType: "date" },
+      { key: "firstShiftTotalItems", header: "Prva smena (ime: __________)", dataType: "text" },
+      { key: "secondShiftTotalItems", header: "Druga smena (ime: __________)", dataType: "text" },
+      { key: "totalRevenue", header: "Prihod dana", dataType: "currency" },
+      ...blankSupplierColumns,
+      { key: "othersCount", header: "Ostali (kom.)", dataType: "number" },
+      { key: "totalItemsSold", header: "Ukupno kom", dataType: "number" },
+    ];
+
+    const rowCount = Math.max(BLANK_PRINT_ROW_COUNT, sortedRows.length);
+    const blankRows = Array.from({ length: rowCount }, () =>
+      Object.fromEntries(blankColumns.map((column) => [column.key, ""]))
+    );
+
+    const stateKey = savePrintPayload({
+      tableKey: "daily-sales-stats-blank",
+      tableTitle: "Dnevna prodaja po smeni i dobavljacima (prazan obrazac)",
+      columns: blankColumns,
+      rows: blankRows,
+      filters: [],
+      metadata: [],
+      locale: "sr-RS",
+      documentType: "daily-sales-blank",
+    });
+
+    window.open(
+      `/print/analytics/${encodeURIComponent("daily-sales-stats")}?stateKey=${encodeURIComponent(stateKey)}`,
+      "_blank",
+      "noopener"
+    );
+  }, [sortedRows.length]);
+
   return (
     <div className="daily-sales-page">
       <header className="daily-sales-header">
@@ -385,24 +443,7 @@ export default function DailySalesStatsPage() {
         ) : null}
       </header>
 
-      <section className="daily-sales-shift-head">
-        <label>
-          <span>Prva smena:</span>
-          <input
-            value={firstShiftNote}
-            onChange={(event) => setFirstShiftNote(event.target.value)}
-            placeholder="_______"
-          />
-        </label>
-        <label>
-          <span>Druga smena:</span>
-          <input
-            value={secondShiftNote}
-            onChange={(event) => setSecondShiftNote(event.target.value)}
-            placeholder="_______"
-          />
-        </label>
-      </section>
+      {/* Removed daily-sales-shift-head section with Prva smena and Druga smena inputs as requested */}
 
       <section className="daily-sales-filters">
         <label>
@@ -536,6 +577,16 @@ export default function DailySalesStatsPage() {
                 filters={toolbarFilters}
                 metadata={toolbarMetadata}
                 defaultOrientation="landscape"
+                extraActions={(
+                  <button
+                    type="button"
+                    onClick={handlePrintBlank}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+                    title="Otvori prazan obrazac za rucno popunjavanje"
+                  >
+                    Stampaj prazno
+                  </button>
+                )}
               />
             </div>
 
@@ -599,8 +650,8 @@ export default function DailySalesStatsPage() {
                       return (
                         <tr key={row.date} className={mismatch ? "row-mismatch" : ""}>
                           <td>{fmtDate(row.date)}</td>
-                          <td className="align-right">{fmtNumber(row.firstShiftTotalItems)}</td>
-                          <td className="align-right">{fmtNumber(row.secondShiftTotalItems)}</td>
+                          <td className="align-right">{shiftDisplayValue(row, "first")}</td>
+                          <td className="align-right">{shiftDisplayValue(row, "second")}</td>
                           <td className="align-right">{fmtRsd(row.totalRevenue)}</td>
                           {supplierHeaders.map((_, index) => (
                             <td key={`${row.date}-supplier-${index}`} className="align-right">
