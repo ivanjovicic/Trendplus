@@ -306,6 +306,9 @@ export default function DailySalesStatsPage() {
     const range = getPresetRange(preset);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
+    const next = { fromDate: range.fromDate, toDate: range.toDate, storeId, topN };
+    setActiveFilters(next);
+    updateQueryParams(next);
   };
 
   const updateQueryParams = (filters: ActiveFilters) => {

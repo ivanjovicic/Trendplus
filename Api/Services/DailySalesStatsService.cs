@@ -84,7 +84,20 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var hasClassifiedShiftRows = aggregates.Any(x => ResolveShift(x.HourOfDay) is 1 or 2);
         var hasAnyRows = aggregates.Any(x => x.Qty != 0);
-        var useMidnightFallback = !hasClassifiedShiftRows && hasAnyRows;
+        var useNoTimeDataFallback = !hasClassifiedShiftRows && hasAnyRows;
+
+        if (useNoTimeDataFallback && aggregates.Count > 0)
+        {
+            var hourDistribution = aggregates
+                .GroupBy(x => x.HourOfDay)
+                .OrderBy(g => g.Key)
+                .Select(g => $"{g.Key}h={g.Sum(x => x.Qty)}")
+                .ToList();
+            _logger.LogWarning(
+                "Daily-sales: no shift-classifiable hours detected. Remapping all to shift 1. HourDistribution=[{Hours}] TotalRows={TotalRows}",
+                string.Join(", ", hourDistribution),
+                aggregates.Count);
+        }
 
         var offShiftItems = 0;
         var offShiftRevenue = 0m;
@@ -107,7 +120,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             }
 
             var shift = ResolveShift(row.HourOfDay);
-            if (shift == 0 && useMidnightFallback && row.HourOfDay == 0)
+            if (shift == 0 && useNoTimeDataFallback)
             {
                 shift = 1;
                 fallbackMappedItems += row.Qty;
@@ -237,9 +250,9 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             warnings.Add("Veliki udeo prodaje ima nepoznatog dobavljaca (20%+).");
         }
 
-        if (useMidnightFallback)
+        if (useNoTimeDataFallback)
         {
-            warnings.Add("Satnica prodaje nije dostupna (00:00); kolicine su mapirane u prvu smenu.");
+            warnings.Add("Satnica prodaje nije dostupna; kolicine su mapirane u prvu smenu.");
             _logger.LogWarning(
                 "Daily-sales fallback applied: midnight-only timestamps mapped to first shift. MappedItems={MappedItems} MappedRevenue={MappedRevenue}",
                 fallbackMappedItems,

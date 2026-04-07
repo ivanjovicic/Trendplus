@@ -176,6 +176,51 @@ public sealed class DailySalesStatsServiceTests
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("Satnica prodaje nije dostupna", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task GetDailySalesAsync_WhenAllHoursAreOffShiftButNotMidnight_MapsRowsToFirstShift()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        // Simulate production scenario where DatumProdaje = DateTime.UtcNow at 2 AM UTC
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 60,
+                DatumProdaje = new DateTime(2026, 3, 10, 2, 47, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 61,
+                DatumProdaje = new DateTime(2026, 3, 11, 3, 15, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            });
+
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 70, IdProdaja = 60, IdArtikal = 101, Kolicina = 5, Cena = 100m },
+            new ProdajaStavka { Id = 71, IdProdaja = 61, IdArtikal = 102, Kolicina = 3, Cena = 50m });
+
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            requestedFromUtc: new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 3, 11, 0, 0, 0, DateTimeKind.Utc),
+            storeId: 1,
+            topN: 5,
+            dataScope: "all",
+            ct: CancellationToken.None);
+
+        // Both days should have data mapped to first shift
+        Assert.Equal(2, result.DateRows.Count);
+        Assert.Equal(8, result.DateRows.Sum(r => r.FirstShiftTotalItems));
+        Assert.Equal(0, result.Metadata.OffShiftItems);
+        Assert.Contains(result.Metadata.Warnings, x => x.Contains("Satnica prodaje nije dostupna", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static TrendplusDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<TrendplusDbContext>()
