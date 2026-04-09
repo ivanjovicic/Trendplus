@@ -357,7 +357,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         if (string.IsNullOrWhiteSpace(supplierName))
         {
-            return $"Dobavljac #{supplierId.Value}";
+            // If supplier name is missing, return empty string so UI can render a blank header
+            return string.Empty;
         }
 
         return supplierName.Trim();

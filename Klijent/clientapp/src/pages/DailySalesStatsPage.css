@@ -116,6 +116,13 @@
 
 .daily-sales-message.loading {
   border-color: var(--accent-warning);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.daily-sales-inline-spinner {
+  flex-shrink: 0;
 }
 
 .daily-sales-kpis {
@@ -247,6 +254,16 @@
   cursor: pointer;
 }
 
+.sort-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 0.85rem;
+  background: var(--surface-elevated);
+  border-radius: 6px;
+  padding: 0 6px;
+  line-height: 1;
+}
+
 .daily-sales-table td {
   border-bottom: 1px solid var(--border-default);
   padding: 0.55rem 0.6rem;
@@ -310,5 +327,20 @@
   .daily-sales-shift-head input {
     min-height: 1.75rem;
     font-size: 0.72rem;
+  }
+
+  /* Hide empty-row message and banners when printing an empty table */
+  .daily-sales-empty-row {
+    color: transparent !important;
+  }
+  .daily-sales-no-data-banner,
+  .daily-sales-message {
+    display: none !important;
+  }
+
+  /* Ensure generated range and headers print */
+  .daily-sales-generated {
+    display: block !important;
+    color: var(--text-primary) !important;
   }
 }

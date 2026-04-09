@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import InfoTip from "../components/ui/InfoTip";
@@ -12,6 +12,7 @@ import {
 import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
+import UltraSpinner from "../components/ui/UltraSpinner";
 import "./DailySalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "custom";
@@ -102,9 +103,29 @@ function fmtDate(value: string): string {
   return parsed.toLocaleDateString("sr-RS");
 }
 
-function sortMarker(field: SortKey, active: SortKey, dir: SortDir): string {
-  if (field !== active) return "";
-  return dir === "asc" ? " ^" : " v";
+function fmtDateShort(value: string | null | undefined): string {
+  if (!value) return "";
+  const normalized = value.slice(0, 10);
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const [, y, m, d] = match;
+    const yearShort = y.slice(2);
+    return `${d}.${m}.${yearShort}`;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const dd = String(parsed.getDate()).padStart(2, "0");
+  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+  const yy = String(parsed.getFullYear()).slice(2);
+  return `${dd}.${mm}.${yy}`;
+}
+
+function sortMarker(field: SortKey, active: SortKey, dir: SortDir): ReactNode | null {
+  if (field !== active) return null;
+  // Use simple Unicode badges; kept small to avoid encoding issues in common setups
+  const up = "▲";
+  const down = "▼";
+  return <span className="sort-badge">{dir === "asc" ? up : down}</span>;
 }
 
 function sum(values: number[]): number {
@@ -273,13 +294,16 @@ export default function DailySalesStatsPage() {
       { key: "totalRevenue", header: "Ukupan prihod", dataType: "currency" },
     ];
 
-    const supplierColumns: AnalyticsTableColumn<DailySalesRow>[] = supplierHeaders.map((name, index) => ({
-      key: `supplier:${index}`,
-      header: name,
-      dataType: "number",
-      getValue: (row) => row.topSupplierCounts[index] ?? 0,
-      detailLabel: `${name} (kom.)`,
-    }));
+    const supplierColumns: AnalyticsTableColumn<DailySalesRow>[] = supplierHeaders.map((name, index) => {
+      const displayName = sortedRows.length === 0 ? "" : name;
+      return {
+        key: `supplier:${index}`,
+        header: displayName,
+        dataType: "number",
+        getValue: (row) => row.topSupplierCounts[index] ?? 0,
+        detailLabel: `${displayName} (kom.)`,
+      };
+    });
 
     return [
       ...baseColumns,
@@ -287,21 +311,21 @@ export default function DailySalesStatsPage() {
       { key: "othersCount", header: "Ostali (kom.)", dataType: "number" },
       { key: "totalItemsSold", header: "Ukupno proizvoda", dataType: "number" },
     ];
-  }, [supplierHeaders]);
+  }, [supplierHeaders, sortedRows.length]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "fromDate", label: "Od", value: activeFilters.fromDate },
     { key: "toDate", label: "Do", value: activeFilters.toDate },
     { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
     { key: "topN", label: "Top dobavljaca", value: activeFilters.topN },
-    { key: "dataScope", label: "Data scope", value: queryDataScope },
+    { key: "dataScope", label: "Opseg podataka", value: queryDataScope },
   ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, queryDataScope]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
-    { key: "requestedFrom", label: "Requested from", value: data?.requestedFrom ?? "" },
-    { key: "requestedTo", label: "Requested to", value: data?.requestedTo ?? "" },
+    { key: "requestedFrom", label: "Zahtevan od", value: data?.requestedFrom ?? "" },
+    { key: "requestedTo", label: "Zahtevan do", value: data?.requestedTo ?? "" },
     { key: "totalDays", label: "Broj dana", value: data?.metadata.totalDays ?? 0 },
-    { key: "unknownSupplierPct", label: "Unknown supplier %", value: data?.metadata.unknownSupplierPct ?? 0 },
+    { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljaca %", value: data?.metadata.unknownSupplierPct ?? 0 },
     { key: "firstShiftHeader", label: "Prva smena", value: firstShiftNote.trim() || SHIFT_PLACEHOLDER },
     { key: "secondShiftHeader", label: "Druga smena", value: secondShiftNote.trim() || SHIFT_PLACEHOLDER },
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings.join(" | ") ?? "" },
@@ -436,11 +460,9 @@ export default function DailySalesStatsPage() {
             Dnevni pregled smenskih kolicina, prihoda i top dobavljaca po prodatim komadima.
           </p>
         </div>
-        {data ? (
-          <div className="daily-sales-generated">
-            Opseg: {fmtDate(data.requestedFrom)} - {fmtDate(data.requestedTo)}
-          </div>
-        ) : null}
+        <div className="daily-sales-generated">
+          Opseg: {fmtDateShort(data?.requestedFrom ?? fromDate)} - {fmtDateShort(data?.requestedTo ?? toDate)}
+        </div>
       </header>
 
       {/* Removed daily-sales-shift-head section with Prva smena and Druga smena inputs as requested */}
@@ -519,7 +541,12 @@ export default function DailySalesStatsPage() {
         <div className="daily-sales-message error">Datum od ne moze biti posle datuma do.</div>
       ) : null}
       {error ? <div className="daily-sales-message error">{error}</div> : null}
-      {loading ? <div className="daily-sales-message loading">Ucitavam dnevne podatke...</div> : null}
+      {loading ? (
+        <div className="daily-sales-message loading">
+          <UltraSpinner size="sm" label="Loading daily sales data" className="daily-sales-inline-spinner" />
+          <span>Ucitavam dnevne podatke...</span>
+        </div>
+      ) : null}
 
       {!loading && data ? (
         <>
@@ -537,7 +564,7 @@ export default function DailySalesStatsPage() {
               <strong>{fmtNumber(data.metadata.totalDays)}</strong>
             </article>
             <article>
-              <span>Unknown supplier %</span>
+              <span>Udeo nepoznatih dobavljaca %</span>
               <strong>{data.metadata.unknownSupplierPct.toLocaleString("sr-RS", { maximumFractionDigits: 2 })}%</strong>
             </article>
           </section>
@@ -616,13 +643,16 @@ export default function DailySalesStatsPage() {
                         Prihod dana{sortMarker("totalRevenue", sortKey, sortDir)}
                       </button>
                     </th>
-                    {supplierHeaders.map((name, index) => (
-                      <th key={`supplier-header-${name}-${index}`} className="align-right">
-                        <button type="button" onClick={() => handleSort(`supplier:${index}`)}>
-                          {name}{sortMarker(`supplier:${index}`, sortKey, sortDir)}
-                        </button>
-                      </th>
-                    ))}
+                    {supplierHeaders.map((name, index) => {
+                      const displayName = sortedRows.length === 0 ? "" : name;
+                      return (
+                        <th key={`supplier-header-${index}`} className="align-right">
+                          <button type="button" onClick={() => handleSort(`supplier:${index}`)}>
+                            {displayName}{sortMarker(`supplier:${index}`, sortKey, sortDir)}
+                          </button>
+                        </th>
+                      );
+                    })}
                     <th className="align-right">
                       <button type="button" onClick={() => handleSort("othersCount")}>
                         Ostali{sortMarker("othersCount", sortKey, sortDir)}{" "}

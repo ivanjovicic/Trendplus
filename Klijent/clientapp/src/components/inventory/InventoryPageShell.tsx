@@ -1,4 +1,5 @@
 ﻿import type { LucideIcon } from "lucide-react";
+import UltraSpinner from "../ui/UltraSpinner";
 
 type Tone = "neutral" | "positive" | "warning" | "danger";
 
@@ -95,8 +96,12 @@ export function InventoryState({
 
   return (
     <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center">
+      {tone === "warning" ? (
+        <div className="mb-3 flex justify-center">
+          <UltraSpinner size="sm" label="Loading data" />
+        </div>
+      ) : null}
       <p className={`text-sm ${toneClass}`}>{message}</p>
     </div>
   );
 }
-
