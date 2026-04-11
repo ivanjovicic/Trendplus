@@ -149,7 +149,7 @@ function smoothScrollToElement(element: HTMLElement, durationMs = 850): void {
   }
 
   const startY = window.scrollY;
-  const targetY = element.getBoundingClientRect().top + window.scrollY;
+  const targetY = element.getBoundingClientRect().top + window.scrollY - 100;
   const distance = targetY - startY;
   if (Math.abs(distance) < 2) return;
 
