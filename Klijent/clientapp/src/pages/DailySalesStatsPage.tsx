@@ -291,8 +291,8 @@ export default function DailySalesStatsPage() {
   const toolbarColumns = useMemo<AnalyticsTableColumn<DailySalesRow>[]>(() => {
     const baseColumns: AnalyticsTableColumn<DailySalesRow>[] = [
       { key: "date", header: "Datum", dataType: "date", getValue: (row) => row.date },
-      { key: "firstShiftTotalItems", header: "Prva smena (kom.)", dataType: "number", getValue: (row) => shiftExportValue(row, "first") },
-      { key: "secondShiftTotalItems", header: "Druga smena (kom.)", dataType: "number", getValue: (row) => shiftExportValue(row, "second") },
+      { key: "firstShiftTotalItems", header: "Prva smena (kom.)", dataType: "number", getValue: () => "" },
+      { key: "secondShiftTotalItems", header: "Druga smena (kom.)", dataType: "number", getValue: () => "" },
       { key: "totalRevenue", header: "Ukupan prihod", dataType: "currency" },
     ];
 
