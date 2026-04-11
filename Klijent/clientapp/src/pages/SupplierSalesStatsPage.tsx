@@ -1164,8 +1164,14 @@ export default function SupplierSalesStatsPage() {
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
                       <Tooltip
+                        contentStyle={{
+                          background: "var(--surface-elevated, var(--theme-color-0f1730, #0f1730))",
+                          border: "1px solid var(--border-default, var(--theme-color-32406b, #32406b))",
+                          color: "var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb))",
+                          borderRadius: "8px",
+                          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                        }}
                         formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`}
-                        labelStyle={{ color: "var(--text-primary)" }}
                       />
                       <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} name="Udeo prometa %" />
                     </BarChart>
@@ -1187,8 +1193,14 @@ export default function SupplierSalesStatsPage() {
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
                       <Tooltip
+                        contentStyle={{
+                          background: "var(--surface-elevated, var(--theme-color-0f1730, #0f1730))",
+                          border: "1px solid var(--border-default, var(--theme-color-32406b, #32406b))",
+                          color: "var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb))",
+                          borderRadius: "8px",
+                          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                        }}
                         formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
-                        labelStyle={{ color: "var(--text-primary)" }}
                       />
                       <Legend />
                       <Bar dataKey="udelPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo prometa %" />
