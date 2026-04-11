@@ -1203,6 +1203,125 @@ export default function DailySalesStatsPage() {
             </article>
           </section>
 
+          <section className="daily-sales-table-card">
+            <div className="daily-sales-table-head">
+              <div>
+                <h2>Tabela po danima</h2>
+                <p>
+                  Top dobavljaci su odredjeni globalno za izabrani opseg, a kolone prikazuju dnevne komade.
+                </p>
+              </div>
+              <AnalyticsTableToolbar
+                tableKey="daily-sales-stats"
+                tableTitle="Dnevna prodaja po smeni i dobavljacima"
+                columns={toolbarColumns}
+                rows={sortedRows}
+                filters={toolbarFilters}
+                metadata={toolbarMetadata}
+                defaultOrientation="landscape"
+                extraActions={(
+                  <button
+                    type="button"
+                    onClick={handlePrintBlank}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+                    title="Otvori prazan obrazac za rucno popunjavanje"
+                  >
+                    Stampaj prazno
+                  </button>
+                )}
+              />
+            </div>
+
+            <div className="daily-sales-table-wrap">
+              <table className="daily-sales-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <button type="button" onClick={() => handleSort("date")}>
+                        Datum{sortMarker("date", sortKey, sortDir)}
+                      </button>
+                    </th>
+                    <th className="align-right">
+                      <button type="button" onClick={() => handleSort("firstShiftTotalItems")}>
+                        Prva smena{sortMarker("firstShiftTotalItems", sortKey, sortDir)}{" "}
+                        <InfoTip text="Suma komada prodatih od 06:00 do 13:59." />
+                      </button>
+                    </th>
+                    <th className="align-right">
+                      <button type="button" onClick={() => handleSort("secondShiftTotalItems")}>
+                        Druga smena{sortMarker("secondShiftTotalItems", sortKey, sortDir)}{" "}
+                        <InfoTip text="Suma komada prodatih od 14:00 do 21:59." />
+                      </button>
+                    </th>
+                    <th className="align-right">
+                      <button type="button" onClick={() => handleSort("totalRevenue")}>
+                        Prihod dana{sortMarker("totalRevenue", sortKey, sortDir)}
+                      </button>
+                    </th>
+                    {supplierHeaders.map((name, index) => {
+                      const displayName = sortedRows.length === 0 ? "" : name;
+                      return (
+                        <th key={`supplier-header-${index}`} className="align-right">
+                          <button type="button" onClick={() => handleSort(`supplier:${index}`)}>
+                            {displayName}{sortMarker(`supplier:${index}`, sortKey, sortDir)}
+                          </button>
+                        </th>
+                      );
+                    })}
+                    <th className="align-right">
+                      <button type="button" onClick={() => handleSort("othersCount")}>
+                        Ostali{sortMarker("othersCount", sortKey, sortDir)}{" "}
+                        <InfoTip text="Komadi dobavljaca koji nisu u top N listi za izabrani opseg." />
+                      </button>
+                    </th>
+                    <th className="align-right">
+                      <button type="button" onClick={() => handleSort("totalItemsSold")}>
+                        Ukupno kom{sortMarker("totalItemsSold", sortKey, sortDir)}
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={7 + supplierHeaders.length} className="daily-sales-empty-row">
+                        Nema podataka za izabrane filtere.
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedRows.map((row) => {
+                      const supplierTotal = sum(row.topSupplierCounts) + row.othersCount;
+                      const mismatch = supplierTotal !== row.totalItemsSold;
+                      return (
+                        <tr key={row.date} className={mismatch ? "row-mismatch" : ""}>
+                          <td>{fmtDate(row.date)}</td>
+                          <td className="align-right">{shiftDisplayValue(row, "first")}</td>
+                          <td className="align-right">{shiftDisplayValue(row, "second")}</td>
+                          <td className="align-right">{fmtRsd(row.totalRevenue)}</td>
+                          {supplierHeaders.map((_, index) => (
+                            <td key={`${row.date}-supplier-${index}`} className="align-right">
+                              {fmtNumber(row.topSupplierCounts[index] ?? 0)}
+                            </td>
+                          ))}
+                          <td className="align-right">{fmtNumber(row.othersCount)}</td>
+                          <td className="align-right">
+                            {fmtNumber(row.totalItemsSold)}
+                            {mismatch ? <span className="mismatch-badge">Check</span> : null}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {mismatchCount > 0 ? (
+              <p className="daily-sales-footnote">
+                Upozorenje: {mismatchCount} redova ima mismatch izmedju total kolone i top+others sabiranja.
+              </p>
+            ) : null}
+          </section>
+
           {data.metadata.totalItemsInRange === 0 && data.metadata.minAvailableDate ? (
             <section className="daily-sales-no-data-banner">
               <p>
@@ -1516,124 +1635,6 @@ export default function DailySalesStatsPage() {
             </article>
           </section>
 
-          <section className="daily-sales-table-card">
-            <div className="daily-sales-table-head">
-              <div>
-                <h2>Tabela po danima</h2>
-                <p>
-                  Top dobavljaci su odredjeni globalno za izabrani opseg, a kolone prikazuju dnevne komade.
-                </p>
-              </div>
-              <AnalyticsTableToolbar
-                tableKey="daily-sales-stats"
-                tableTitle="Dnevna prodaja po smeni i dobavljacima"
-                columns={toolbarColumns}
-                rows={sortedRows}
-                filters={toolbarFilters}
-                metadata={toolbarMetadata}
-                defaultOrientation="landscape"
-                extraActions={(
-                  <button
-                    type="button"
-                    onClick={handlePrintBlank}
-                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-                    title="Otvori prazan obrazac za rucno popunjavanje"
-                  >
-                    Stampaj prazno
-                  </button>
-                )}
-              />
-            </div>
-
-            <div className="daily-sales-table-wrap">
-              <table className="daily-sales-table">
-                <thead>
-                  <tr>
-                    <th>
-                      <button type="button" onClick={() => handleSort("date")}>
-                        Datum{sortMarker("date", sortKey, sortDir)}
-                      </button>
-                    </th>
-                    <th className="align-right">
-                      <button type="button" onClick={() => handleSort("firstShiftTotalItems")}>
-                        Prva smena{sortMarker("firstShiftTotalItems", sortKey, sortDir)}{" "}
-                        <InfoTip text="Suma komada prodatih od 06:00 do 13:59." />
-                      </button>
-                    </th>
-                    <th className="align-right">
-                      <button type="button" onClick={() => handleSort("secondShiftTotalItems")}>
-                        Druga smena{sortMarker("secondShiftTotalItems", sortKey, sortDir)}{" "}
-                        <InfoTip text="Suma komada prodatih od 14:00 do 21:59." />
-                      </button>
-                    </th>
-                    <th className="align-right">
-                      <button type="button" onClick={() => handleSort("totalRevenue")}>
-                        Prihod dana{sortMarker("totalRevenue", sortKey, sortDir)}
-                      </button>
-                    </th>
-                    {supplierHeaders.map((name, index) => {
-                      const displayName = sortedRows.length === 0 ? "" : name;
-                      return (
-                        <th key={`supplier-header-${index}`} className="align-right">
-                          <button type="button" onClick={() => handleSort(`supplier:${index}`)}>
-                            {displayName}{sortMarker(`supplier:${index}`, sortKey, sortDir)}
-                          </button>
-                        </th>
-                      );
-                    })}
-                    <th className="align-right">
-                      <button type="button" onClick={() => handleSort("othersCount")}>
-                        Ostali{sortMarker("othersCount", sortKey, sortDir)}{" "}
-                        <InfoTip text="Komadi dobavljaca koji nisu u top N listi za izabrani opseg." />
-                      </button>
-                    </th>
-                    <th className="align-right">
-                      <button type="button" onClick={() => handleSort("totalItemsSold")}>
-                        Ukupno kom{sortMarker("totalItemsSold", sortKey, sortDir)}
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={7 + supplierHeaders.length} className="daily-sales-empty-row">
-                        Nema podataka za izabrane filtere.
-                      </td>
-                    </tr>
-                  ) : (
-                    sortedRows.map((row) => {
-                      const supplierTotal = sum(row.topSupplierCounts) + row.othersCount;
-                      const mismatch = supplierTotal !== row.totalItemsSold;
-                      return (
-                        <tr key={row.date} className={mismatch ? "row-mismatch" : ""}>
-                          <td>{fmtDate(row.date)}</td>
-                          <td className="align-right">{shiftDisplayValue(row, "first")}</td>
-                          <td className="align-right">{shiftDisplayValue(row, "second")}</td>
-                          <td className="align-right">{fmtRsd(row.totalRevenue)}</td>
-                          {supplierHeaders.map((_, index) => (
-                            <td key={`${row.date}-supplier-${index}`} className="align-right">
-                              {fmtNumber(row.topSupplierCounts[index] ?? 0)}
-                            </td>
-                          ))}
-                          <td className="align-right">{fmtNumber(row.othersCount)}</td>
-                          <td className="align-right">
-                            {fmtNumber(row.totalItemsSold)}
-                            {mismatch ? <span className="mismatch-badge">Check</span> : null}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {mismatchCount > 0 ? (
-              <p className="daily-sales-footnote">
-                Upozorenje: {mismatchCount} redova ima mismatch izmedju total kolone i top+others sabiranja.
-              </p>
-            ) : null}
-          </section>
         </>
       ) : null}
     </div>
