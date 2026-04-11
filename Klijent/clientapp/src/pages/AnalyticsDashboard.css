@@ -110,6 +110,15 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.15);
 }
 
+[data-theme="dark"] .info-tip-portal,
+[data-theme="inventory-dark"] .info-tip-portal,
+[data-theme="high-contrast"] .info-tip-portal {
+  background: #03111f;
+  color: #d9e8f8;
+  border-color: rgba(96, 165, 250, 0.55);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(96, 165, 250, 0.25);
+}
+
 .analytics-controls {
   display: flex;
   align-items: center;
