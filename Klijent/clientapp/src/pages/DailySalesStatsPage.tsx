@@ -422,8 +422,8 @@ export default function DailySalesStatsPage() {
 
     const blankColumns = [
       { key: "date", header: "Datum", dataType: "date" },
-      { key: "firstShiftTotalItems", header: "Prva smena (ime: _________________________________)", dataType: "text" },
-      { key: "secondShiftTotalItems", header: "Druga smena (ime: _________________________________)", dataType: "text" },
+      { key: "firstShiftTotalItems", header: "Prva smena (ime: ________)", dataType: "text" },
+      { key: "secondShiftTotalItems", header: "Druga smena (ime: ________)", dataType: "text" },
       { key: "totalRevenue", header: "Prihod dana", dataType: "currency" },
       ...blankSupplierColumns,
       { key: "othersCount", header: "Ostali (kom.)", dataType: "number" },
