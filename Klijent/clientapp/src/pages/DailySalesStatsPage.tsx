@@ -1077,8 +1077,6 @@ export default function DailySalesStatsPage() {
         </div>
       </header>
 
-      {/* Removed daily-sales-shift-head section with Prva smena and Druga smena inputs as requested */}
-
       <section className="daily-sales-filters">
         <label>
           <span>Period</span>
@@ -1296,12 +1294,13 @@ export default function DailySalesStatsPage() {
                     contentStyle={CHART_TOOLTIP_STYLE}
                     labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                     labelFormatter={(_, payload) => payload?.[0]?.payload?.fullLabel ?? ""}
-                    formatter={(value: number | string | undefined, name: string) => {
+                    formatter={(value: number | string | undefined, name: string | undefined) => {
+                      const seriesName = name ?? "";
                       const numericValue = typeof value === "number" ? value : Number(value ?? 0);
-                      if (name === "Prihod" || name === "Prihod MA7") {
-                        return [fmtRsdShort(numericValue), name];
+                      if (seriesName === "Prihod" || seriesName === "Prihod MA7") {
+                        return [fmtRsdShort(numericValue), seriesName];
                       }
-                      return [fmtNumber(Math.round(numericValue)), name];
+                      return [fmtNumber(Math.round(numericValue)), seriesName];
                     }}
                   />
                   <Legend wrapperStyle={CHART_LEGEND_STYLE} />
@@ -1336,7 +1335,7 @@ export default function DailySalesStatsPage() {
                       contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                       labelFormatter={(_, payload) => payload?.[0]?.payload?.fullLabel ?? ""}
-                      formatter={(value: number | string | undefined, name: string) => [fmtNumber(Number(value ?? 0)), name]}
+                      formatter={(value: number | string | undefined, name: string | undefined) => [fmtNumber(Number(value ?? 0)), name ?? ""]}
                     />
                     <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                     <Bar dataKey="firstShiftTotalItems" name="Prva smena" stackId="shift" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
@@ -1381,11 +1380,12 @@ export default function DailySalesStatsPage() {
                     <Tooltip
                       contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={CHART_TOOLTIP_LABEL_STYLE}
-                      formatter={(value: number | string | undefined, name: string, payload) => {
+                      formatter={(value: number | string | undefined, name: string | undefined, payload) => {
+                        const seriesName = name ?? "";
                         const row = payload?.payload as SupplierConcentrationPoint | undefined;
                         const numericValue = typeof value === "number" ? value : Number(value ?? 0);
-                        if (name === "Udeo komada") return [fmtPct(numericValue, 1), name];
-                        return [row ? fmtNumber(row.totalQty) : fmtNumber(numericValue), name];
+                        if (seriesName === "Udeo komada") return [fmtPct(numericValue, 1), seriesName];
+                        return [row ? fmtNumber(row.totalQty) : fmtNumber(numericValue), seriesName];
                       }}
                     />
                     <Legend wrapperStyle={CHART_LEGEND_STYLE} />
@@ -1434,10 +1434,11 @@ export default function DailySalesStatsPage() {
                     <Tooltip
                       contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={CHART_TOOLTIP_LABEL_STYLE}
-                      formatter={(value: number | string | undefined, name: string) => {
+                      formatter={(value: number | string | undefined, name: string | undefined) => {
+                        const seriesName = name ?? "";
                         const numericValue = typeof value === "number" ? value : Number(value ?? 0);
-                        if (name === "Avg prihod") return [fmtRsdShort(numericValue), name];
-                        return [fmtNumber(Math.round(numericValue)), name];
+                        if (seriesName === "Avg prihod") return [fmtRsdShort(numericValue), seriesName];
+                        return [fmtNumber(Math.round(numericValue)), seriesName];
                       }}
                     />
                     <Legend wrapperStyle={CHART_LEGEND_STYLE} />
