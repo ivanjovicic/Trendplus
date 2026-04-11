@@ -1187,7 +1187,7 @@ export default function SupplierSalesStatsPage() {
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
                       <Tooltip
-                        formatter={(value: number | string | undefined, name: string) => [`${fmtPct(Number(value ?? 0), 1)}`, name]}
+                        formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
                         labelStyle={{ color: "var(--text-primary)" }}
                       />
                       <Legend />
