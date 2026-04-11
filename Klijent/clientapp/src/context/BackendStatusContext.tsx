@@ -1,6 +1,12 @@
 import { createContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePingControl } from "./PingControlContext";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import {
+    BACKEND_REACHABLE_EVENT,
+    type BackendReachabilityDetail,
+    notifyBackendReachable,
+} from "./backendReachabilityEvents";
+import { apiUrl } from "../utils/apiUrl";
 
 export type BackendStatus = {
     online: boolean;
@@ -19,22 +25,40 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
     const [checking, setChecking] = useState(true);
     const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
     const onlineRef = useRef(true);
+    const lastReachableAtRef = useRef<number | null>(null);
     const { apiPingEnabled } = usePingControl();
 
     const ONLINE_POLL_INTERVAL_MS = import.meta.env.DEV ? 30_000 : 60_000;
-    const OFFLINE_POLL_INTERVAL_MS = import.meta.env.DEV ? 4_000 : 6_000;  // faster reconnect detection
-    const HEALTH_TIMEOUT_MS = import.meta.env.DEV ? 5_000 : 8_000;  // shorter health check timeout
+    const OFFLINE_POLL_INTERVAL_MS = import.meta.env.DEV ? 4_000 : 6_000;
+    const HEALTH_TIMEOUT_MS = import.meta.env.DEV ? 5_000 : 8_000;
+    const HEALTH_FAILURE_GRACE_MS = import.meta.env.DEV ? 15_000 : 45_000;
 
     useEffect(() => {
         onlineRef.current = online;
     }, [online]);
 
     useEffect(() => {
+        const handleReachable = (event: Event) => {
+            const detail = (event as CustomEvent<BackendReachabilityDetail>).detail;
+            const checkedAt = detail?.checkedAt ?? Date.now();
+            lastReachableAtRef.current = checkedAt;
+            setOnline(true);
+            setChecking(false);
+            setLastCheckedAt(checkedAt);
+        };
+
+        window.addEventListener(BACKEND_REACHABLE_EVENT, handleReachable as EventListener);
+
+        return () => {
+            window.removeEventListener(BACKEND_REACHABLE_EVENT, handleReachable as EventListener);
+        };
+    }, []);
+
+    useEffect(() => {
         let cancelled = false;
         let timeoutId: number | null = null;
 
-        const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
-        const healthUrl = import.meta.env.DEV || !apiBase ? "/health" : `${apiBase}/health`;
+        const healthUrl = apiUrl("/health");
 
         const pingBackend = async () => {
             if (cancelled) return;
@@ -43,14 +67,31 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
             try {
                 const res = await fetchWithTimeout(healthUrl, undefined, HEALTH_TIMEOUT_MS);
                 if (cancelled) return;
-                setOnline(res.ok);
+                const checkedAt = Date.now();
+                notifyBackendReachable({
+                    checkedAt,
+                    source: "health",
+                    status: res.status,
+                    url: healthUrl,
+                });
+                lastReachableAtRef.current = checkedAt;
+                setOnline(true);
+                setLastCheckedAt(checkedAt);
             } catch {
                 if (cancelled) return;
-                setOnline(false);
+                const checkedAt = Date.now();
+                const lastReachableAt = lastReachableAtRef.current;
+                const hasRecentSuccessfulRequest =
+                    lastReachableAt !== null && checkedAt - lastReachableAt < HEALTH_FAILURE_GRACE_MS;
+
+                if (!hasRecentSuccessfulRequest) {
+                    setOnline(false);
+                }
+
+                setLastCheckedAt(checkedAt);
             } finally {
                 if (cancelled) return;
                 setChecking(false);
-                setLastCheckedAt(Date.now());
             }
         };
 

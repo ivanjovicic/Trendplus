@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { notifyBackendReachable } from "./backendReachabilityEvents";
 
 type RequestActivityState = {
   activeRequests: number;
@@ -107,7 +108,13 @@ export const RequestActivityProvider: React.FC<{ children: React.ReactNode }> = 
       }
 
       try {
-        return await originalFetch(input, init);
+        const response = await originalFetch(input, init);
+        notifyBackendReachable({
+          source: "request",
+          status: response.status,
+          url: response.url || toRequestUrl(input),
+        });
+        return response;
       } finally {
         if (mountedRef.current) {
           setActiveRequests((current) => Math.max(0, current - 1));
