@@ -400,6 +400,21 @@
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+.shoetype-decision-detail-section-title {
+  color: var(--text-secondary, var(--theme-color-cbd5e1, #cbd5e1));
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 16px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
+}
+
+.shoetype-decision-detail-section-title:first-of-type {
+  margin-top: 0;
+}
+
 .shoetype-decision-detail-grid article {
   background: var(--surface-card, var(--theme-color-ffffff, #ffffff));
   border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));

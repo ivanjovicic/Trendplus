@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -29,8 +30,10 @@ type SortDir = "asc" | "desc";
 type SortField =
   | "tipObuceNaziv"
   | "ukupanPromet"
+  | "ukupnaKolicina"
   | "sharePct"
   | "marginContribution"
+  | "marginPct"
   | "popRevenueChangePct"
   | "prePostNivelacijaRevenueImpactPct"
   | "status";
@@ -69,8 +72,10 @@ const UNKNOWN_TYPES = new Set([
 const decisionColumns: AnalyticsTableColumn<DecisionShoeType>[] = [
   { key: "tipObuceNaziv", header: "Tip obuće", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
+  { key: "ukupnaKolicina", header: "Količina", dataType: "number" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
   { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
+  { key: "marginPct", header: "Marža %", dataType: "percent" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
@@ -523,10 +528,14 @@ export default function ShoeTypeSalesStatsPage() {
         compare = a.tipObuceNaziv.localeCompare(b.tipObuceNaziv, "sr");
       } else if (sortField === "ukupanPromet") {
         compare = a.ukupanPromet - b.ukupanPromet;
+      } else if (sortField === "ukupnaKolicina") {
+        compare = a.ukupnaKolicina - b.ukupnaKolicina;
       } else if (sortField === "sharePct") {
         compare = a.sharePct - b.sharePct;
       } else if (sortField === "marginContribution") {
         compare = a.marginContribution - b.marginContribution;
+      } else if (sortField === "marginPct") {
+        compare = a.marginPct - b.marginPct;
       } else if (sortField === "popRevenueChangePct") {
         compare = (a.popRevenueChangePct ?? -9999) - (b.popRevenueChangePct ?? -9999);
       } else if (sortField === "prePostNivelacijaRevenueImpactPct") {
@@ -596,6 +605,30 @@ export default function ShoeTypeSalesStatsPage() {
 
     return topRows;
   }, [sortedRows]);
+
+  const comparisonData = useMemo(() => {
+    if (sortedRows.length === 0 || totalMarginContribution <= 0)
+      return [] as Array<{ name: string; udelPrometa: number; udelZarade: number }>;
+
+    const ranked = [...sortedRows].sort((a, b) => b.ukupanPromet - a.ukupanPromet);
+
+    return ranked.slice(0, 8).map((row) => ({
+      name: row.tipObuceNaziv,
+      udelPrometa: Number(row.sharePct.toFixed(1)),
+      udelZarade: Number(
+        (totalMarginContribution > 0
+          ? (row.marginContribution / totalMarginContribution) * 100
+          : 0
+        ).toFixed(1)
+      ),
+    }));
+  }, [sortedRows, totalMarginContribution]);
+
+  const avgMarginPct = useMemo(() => {
+    if (decisionRows.length === 0) return 0;
+    const sum = decisionRows.reduce((acc, row) => acc + row.marginPct, 0);
+    return sum / decisionRows.length;
+  }, [decisionRows]);
 
   const counts = useMemo(() => {
     const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
@@ -895,12 +928,20 @@ export default function ShoeTypeSalesStatsPage() {
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Udeo top 5 tipova <InfoTip text="Procenat koji čine top 5 tipova obuće u ukupnom prometu." /></span>
-              <strong>{fmtPct(top5SharePct)}</strong>
+              <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih tipova obuće." /></span>
+              <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
               <span>Ukupan marzni doprinos <InfoTip text="Zbir maržnog doprinosa (razlika nabavne i prodajne vrednosti) svih tipova." /></span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
+            </article>
+            <article className="shoetype-decision-kpi">
+              <span>Prosečna marža <InfoTip text="Prosečan procenat marže za sve tipove obuće." /></span>
+              <strong>{fmtPct(avgMarginPct, 1)}</strong>
+            </article>
+            <article className="shoetype-decision-kpi">
+              <span>Udeo top 5 tipova <InfoTip text="Procenat koji čine top 5 tipova obuće u ukupnom prometu." /></span>
+              <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
               <span>Rast/PAD vs prethodni period <InfoTip text="Procenat promene ukupnog prometa u odnosu na isti period prošle godine." /></span>
@@ -929,6 +970,39 @@ export default function ShoeTypeSalesStatsPage() {
               )}
             </article>
 
+            <article className="shoetype-decision-card">
+              <h2>Promet vs Zarada</h2>
+              <p>Poredjenje udela u prometu i udela u zaradi — gde promet vara, a profit govori istinu.</p>
+              {comparisonData.length > 0 ? (
+                <div className="shoetype-decision-chart-wrap">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                    <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--surface-elevated, var(--theme-color-0f1730, #0f1730))",
+                          border: "1px solid var(--border-default, var(--theme-color-32406b, #32406b))",
+                          color: "var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb))",
+                          borderRadius: "8px",
+                          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                        }}
+                        formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
+                      />
+                      <Legend />
+                      <Bar dataKey="udelPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo prometa %" />
+                      <Bar dataKey="udelZarade" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo zarade %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="shoetype-decision-empty">Nema podataka za poredjenje.</div>
+              )}
+            </article>
+          </section>
+
+          <section className="shoetype-decision-panels">
             <article className="shoetype-decision-card">
               <div className="shoetype-decision-table-head">
                 <div>
@@ -966,6 +1040,11 @@ export default function ShoeTypeSalesStatsPage() {
                         </button>
                       </th>
                       <th className="align-right">
+                        <button type="button" onClick={() => handleSort("ukupnaKolicina")}>
+                          Količina{sortMarker("ukupnaKolicina", sortField, sortDir)} <InfoTip text="Ukupan broj prodatih komada u izabranom periodu." />
+                        </button>
+                      </th>
+                      <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
                           Udeo%{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
                         </button>
@@ -973,6 +1052,11 @@ export default function ShoeTypeSalesStatsPage() {
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
                           Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marže: razlika između prodajne vrednosti i nabavne vrednosti za prodatu robu." />
+                        </button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("marginPct")}>
+                          Marža %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat marže: (prodajna - nabavna) / prodajna vrednost." />
                         </button>
                       </th>
                       <th className="align-right">
@@ -996,7 +1080,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <tbody>
                     {sortedRows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="shoetype-decision-empty-row">
+                        <td colSpan={10} className="shoetype-decision-empty-row">
                           Nema podataka za izabrane filtere.
                         </td>
                       </tr>
@@ -1023,8 +1107,10 @@ export default function ShoeTypeSalesStatsPage() {
                               />
                             </td>
                             <td className="align-right">{fmtRsd(row.ukupanPromet)}</td>
+                            <td className="align-right">{fmtQty(row.ukupnaKolicina)}</td>
                             <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
                             <td className="align-right">{fmtRsd(row.marginContribution)}</td>
+                            <td className="align-right">{fmtPct(row.marginPct, 1)}</td>
                             <td className={["align-right", popMetric.className].join(" ")} title={popMetric.title}>{popMetric.label}</td>
                             <td className={["align-right", nivelacijaImpactMetric.className].join(" ")} title={nivelacijaImpactMetric.title}>{nivelacijaImpactMetric.label}</td>
                             <td>
@@ -1062,6 +1148,43 @@ export default function ShoeTypeSalesStatsPage() {
                 <button type="button" onClick={() => openDetail(selectedRow)}>Otvori puni detalj</button>
               </div>
 
+              <h4 className="shoetype-decision-detail-section-title">Poslovni pokazatelji</h4>
+              <div className="shoetype-decision-detail-grid">
+                <article>
+                  <span>Promet <InfoTip text="Ukupna vrednost prodaje ovog tipa obuće u izabranom periodu." /></span>
+                  <strong>{fmtRsd(selectedRow.ukupanPromet)}</strong>
+                </article>
+                <article>
+                  <span>Količina <InfoTip text="Ukupan broj prodatih komada ovog tipa obuće." /></span>
+                  <strong>{fmtQty(selectedRow.ukupnaKolicina)}</strong>
+                </article>
+                <article>
+                  <span>Realna zarada <InfoTip text="Maržni doprinos: razlika između prodajne i nabavne vrednosti." /></span>
+                  <strong>{fmtRsd(selectedRow.marginContribution)}</strong>
+                </article>
+                <article>
+                  <span>Marža % <InfoTip text="Procenat marže kao razlika između prodajne i nabavne vrednosti." /></span>
+                  <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
+                </article>
+                <article>
+                  <span>Udeo u prometu <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnom prometu." /></span>
+                  <strong>{fmtPct(selectedRow.sharePct, 2)}</strong>
+                </article>
+                <article>
+                  <span>Udeo u zaradi <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnoj zaradi (maržnom doprinosu)." /></span>
+                  <strong>{fmtPct(totalMarginContribution > 0 ? (selectedRow.marginContribution / totalMarginContribution) * 100 : 0, 2)}</strong>
+                </article>
+                <article>
+                  <span>Udeo u količini <InfoTip text="Procenat koji ovaj tip obuće čini u ukupno prodatoj količini." /></span>
+                  <strong>{fmtPct((data?.totals.ukupnaKolicina ?? 0) > 0 ? (selectedRow.ukupnaKolicina / (data?.totals.ukupnaKolicina ?? 1)) * 100 : 0, 2)}</strong>
+                </article>
+                <article>
+                  <span>Broj artikala <InfoTip text="Ukupan broj različitih artikala ovog tipa obuće koji su prodati." /></span>
+                  <strong>{selectedRow.brojArtikalaUkupno}</strong>
+                </article>
+              </div>
+
+              <h4 className="shoetype-decision-detail-section-title">Trend u odnosu na prethodni period</h4>
               <div className="shoetype-decision-detail-grid">
                 <article>
                   <span>PoP trend prometa <InfoTip text="Procenat promene prometa ovog tipa obuće u odnosu na prethodni uporediv period." /></span>
@@ -1073,6 +1196,20 @@ export default function ShoeTypeSalesStatsPage() {
                   <span>Prethodni period promet <InfoTip text="Ukupan promet ovog tipa obuće u prethodnom periodu (iste dužine kao trenutni)." /></span>
                   <strong>{selectedRow.previousPeriodRevenue != null ? fmtRsd(selectedRow.previousPeriodRevenue) : "N/A"}</strong>
                 </article>
+                <article>
+                  <span>PoP trend količine <InfoTip text="Procenat promene prodatih komada u odnosu na prethodni uporediv period." /></span>
+                  <strong className={trendClass(selectedRow.popUnitsChangePct ?? null)}>
+                    {fmtSignedPct(selectedRow.popUnitsChangePct)}
+                  </strong>
+                </article>
+                <article>
+                  <span>Prethodni period količina <InfoTip text="Broj prodatih komada ovog tipa u prethodnom periodu." /></span>
+                  <strong>{selectedRow.previousPeriodUnits != null ? fmtQty(selectedRow.previousPeriodUnits) : "N/A"}</strong>
+                </article>
+              </div>
+
+              <h4 className="shoetype-decision-detail-section-title">Nivelacija</h4>
+              <div className="shoetype-decision-detail-grid">
                 <article>
                   <span>Nivelacija impact prometa <InfoTip text="Procenat promene prometa pre i posle računovodstvene nivelacije (ažuriranja cena)." /></span>
                   <strong className={describeNivelacijaImpactMetric(selectedRow).className} title={describeNivelacijaImpactMetric(selectedRow).title}>
@@ -1107,6 +1244,10 @@ export default function ShoeTypeSalesStatsPage() {
                   <span>Artikli sa nivelacijom <InfoTip text="Broj artikala sa registrovnom nivelacijom / ukupan broj artikala ovog tipa." /></span>
                   <strong>{selectedRow.brojArtikalaSaNivelacijom} / {selectedRow.brojArtikalaUkupno}</strong>
                 </article>
+              </div>
+
+              <h4 className="shoetype-decision-detail-section-title">Kvalitet podataka</h4>
+              <div className="shoetype-decision-detail-grid">
                 <article>
                   <span>Pouzdanost podataka <InfoTip text="Procenat kvalitete i trenutnosti podataka koji su korišćeni za analizu." /></span>
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
@@ -1120,11 +1261,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{fmtPct(selectedRow.fallbackCostCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Marža % <InfoTip text="Procenat marže kao razlika između prodajne i nabavne vrednosti." /></span>
-                  <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
-                </article>
-                <article>
-                  <span>Skor odluke <InfoTip text="Numerička vrednost koja odražava kvalitet preporuke (viši skor = pouzdanija preporuka)." /></span>
+                  <span>Sigurnost preporuke <InfoTip text="Numerička vrednost koja odražava kvalitet preporuke (viši skor = pouzdanija preporuka)." /></span>
                   <strong>{selectedRow.decisionScore}</strong>
                 </article>
               </div>
