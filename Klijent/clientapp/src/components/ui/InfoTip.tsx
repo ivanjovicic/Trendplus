@@ -34,9 +34,7 @@ export default function InfoTip({ text }: { text: string }) {
         onMouseLeave={hide}
         onFocus={show}
         onBlur={hide}
-      >
-        i
-      </span>
+      />
       {rect &&
         createPortal(
           <span
