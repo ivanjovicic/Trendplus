@@ -40,10 +40,10 @@ import type {
 import type { DocumentOperationResponse } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
 import { appendDataScopeToParams } from "../utils/dataScope";
-import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import { fetchWithTimeout, FetchTimeoutError } from "../utils/fetchWithTimeout";
 
 const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
-const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = 60_000;
+const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = 20_000; // Reduced from 60s for faster timeout detection
 const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
@@ -72,6 +72,34 @@ function appendFilterParams(
   if (supplierId != null) params.append("supplierId", String(supplierId));
 }
 
+/**
+ * Fetch with retry on timeout (for cold-start backends).
+ * Tries with shorter timeout first, then retries with longer timeout if first attempt times out.
+ */
+async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessage?: string): Promise<T> {
+  const firstAttemptTimeoutMs = Math.min(10_000, timeoutMs);
+  
+  try {
+    const res = await fetchWithTimeout(url, undefined, firstAttemptTimeoutMs);
+    if (!res.ok) {
+      throw new Error(await parseApiError(res, errorMessage));
+    }
+    return (await res.json()) as T;
+  } catch (error) {
+    // Don't retry on non-timeout errors
+    if (!(error instanceof FetchTimeoutError)) {
+      throw error;
+    }
+
+    // First attempt timed out - retry with longer timeout
+    const res = await fetchWithTimeout(url, undefined, timeoutMs);
+    if (!res.ok) {
+      throw new Error(await parseApiError(res, errorMessage));
+    }
+    return (await res.json()) as T;
+  }
+}
+
 async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage?: string): Promise<T> {
   // Ensure analytics endpoints include the global dataScope param so the header select affects charts/tables
   const finalParams = params ? new URLSearchParams(params.toString()) : new URLSearchParams();
@@ -96,12 +124,7 @@ async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage
   }
 
   const request = (async () => {
-    const res = await fetchWithTimeout(url, undefined, DEFAULT_ANALYTICS_GET_TIMEOUT_MS);
-    if (!res.ok) {
-      throw new Error(await parseApiError(res, errorMessage));
-    }
-
-    const data = (await res.json()) as T;
+    const data = await fetchJsonWithRetry<T>(url, DEFAULT_ANALYTICS_GET_TIMEOUT_MS, errorMessage);
     if (cacheTtlMs > 0) {
       responseCache.set(url, { expiresAt: Date.now() + cacheTtlMs, value: data });
     }
@@ -123,19 +146,44 @@ async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage
 }
 
 async function postJson<T>(path: string, body: unknown, errorMessage?: string): Promise<T> {
-  const response = await fetchWithTimeout(makeUrl(path), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  }, 60_000);
+  const timeoutMs = DEFAULT_ANALYTICS_GET_TIMEOUT_MS;
+  const firstAttemptTimeoutMs = Math.min(10_000, timeoutMs);
+  
+  try {
+    const response = await fetchWithTimeout(makeUrl(path), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }, firstAttemptTimeoutMs);
 
-  if (!response.ok) {
-    throw new Error(await parseApiError(response, errorMessage));
+    if (!response.ok) {
+      throw new Error(await parseApiError(response, errorMessage));
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    // Don't retry on non-timeout errors
+    if (!(error instanceof FetchTimeoutError)) {
+      throw error;
+    }
+
+    // First attempt timed out - retry with longer timeout
+    const response = await fetchWithTimeout(makeUrl(path), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }, timeoutMs);
+
+    if (!response.ok) {
+      throw new Error(await parseApiError(response, errorMessage));
+    }
+
+    return (await response.json()) as T;
   }
-
-  return (await response.json()) as T;
 }
 
 function resolveClientCacheTtl(path: string): number {

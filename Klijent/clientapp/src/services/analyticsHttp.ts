@@ -17,7 +17,7 @@ export class ApiHttpError extends Error {
   }
 }
 
-const DEFAULT_TIMEOUT_MS = 60_000;
+const DEFAULT_TIMEOUT_MS = 20_000; // Reduced from 60s for faster timeout detection
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
 
 async function parseApiError(res: Response, fallbackMessage?: string): Promise<string> {
@@ -44,6 +44,45 @@ async function parseApiError(res: Response, fallbackMessage?: string): Promise<s
   return fallbackMessage ?? `HTTP ${res.status}`;
 }
 
+/**
+ * Sends a request with automatic retry if backend appears to be cold-starting.
+ * First attempt has a short timeout for quick failure detection.
+ * If it fails, retries with longer timeout.
+ */
+async function fetchWithRetry<T>(
+  url: string,
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+  fallbackMessage?: string
+): Promise<T> {
+  // First attempt with shorter timeout
+  const firstAttemptTimeoutMs = Math.min(10_000, timeoutMs);
+  
+  try {
+    const response = await fetchWithTimeout(url, { signal }, firstAttemptTimeoutMs);
+    if (!response.ok) {
+      throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
+    }
+    return (await response.json()) as T;
+  } catch (error) {
+    // Don't retry on abort or non-timeout errors
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+    
+    if (!(error instanceof FetchTimeoutError)) {
+      throw error;
+    }
+
+    // First attempt timed out - retry with longer timeout (for cold-start backends)
+    const response = await fetchWithTimeout(url, { signal }, timeoutMs);
+    if (!response.ok) {
+      throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
+    }
+    return (await response.json()) as T;
+  }
+}
+
 export async function fetchAnalyticsJson<T>(
   path: string,
   params?: URLSearchParams,
@@ -64,12 +103,7 @@ export async function fetchAnalyticsJson<T>(
 
   const request = (async () => {
     try {
-      const response = await fetchWithTimeout(url, { signal: options?.signal }, timeoutMs);
-      if (!response.ok) {
-        throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
-      }
-
-      return (await response.json()) as T;
+      return await fetchWithRetry<T>(url, options?.signal, timeoutMs, fallbackMessage);
     } catch (error) {
       if (error instanceof FetchTimeoutError) {
         throw new Error(fallbackMessage ? `${fallbackMessage}: zahtev je istekao.` : error.message);

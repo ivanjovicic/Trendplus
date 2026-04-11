@@ -180,6 +180,9 @@ export default function DailySalesStatsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
+  // Memoize queryDataScope to prevent unnecessary re-renders and request cancellations
+  const memoizedQueryDataScope = useMemo(() => queryDataScope, [queryDataScope]);
+
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
     return fromDate > toDate;
@@ -208,7 +211,7 @@ export default function DailySalesStatsPage() {
         toDate: filters.toDate,
         storeId: filters.storeId,
         topN: filters.topN,
-        dataScope: queryDataScope,
+        dataScope: memoizedQueryDataScope,
         signal,
       });
 
@@ -226,7 +229,7 @@ export default function DailySalesStatsPage() {
         setLoading(false);
       }
     }
-  }, [queryDataScope]);
+  }, [memoizedQueryDataScope]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -318,8 +321,8 @@ export default function DailySalesStatsPage() {
     { key: "toDate", label: "Do", value: activeFilters.toDate },
     { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
     { key: "topN", label: "Top dobavljaca", value: activeFilters.topN },
-    { key: "dataScope", label: "Opseg podataka", value: queryDataScope },
-  ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, queryDataScope]);
+    { key: "dataScope", label: "Opseg podataka", value: memoizedQueryDataScope },
+  ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, memoizedQueryDataScope]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "requestedFrom", label: "Zahtevan od", value: data?.requestedFrom ?? "" },
@@ -359,7 +362,7 @@ export default function DailySalesStatsPage() {
     params.set("toDate", filters.toDate);
     if (filters.storeId != null) params.set("storeId", String(filters.storeId));
     params.set("topN", String(filters.topN));
-    params.set("dataScope", queryDataScope);
+    params.set("dataScope", memoizedQueryDataScope);
     setSearchParams(params, { replace: true });
   };
 

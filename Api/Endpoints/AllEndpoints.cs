@@ -1391,6 +1391,8 @@ public static class AllEndpoints
                     .Select(row => row.marginPct)
                     .DefaultIfEmpty(0d)
                     .Average();
+                var totalMarginContribution = suppliers.Sum(row => row.marginContribution);
+                var totalUnits = suppliers.Sum(row => row.ukupnaKolicina);
                 var unknownSupplierSharePct = dataQuality.unknownSupplierRevenueSharePct ?? 0d;
 
                 var suppliersWithRecommendation = suppliers
@@ -1398,6 +1400,12 @@ public static class AllEndpoints
                     {
                         var sharePct = totalRevenue > 0m
                             ? Math.Round((double)(supplier.ukupanPromet / totalRevenue * 100m), 2)
+                            : 0d;
+                        var shareOfProfit = totalMarginContribution > 0m
+                            ? Math.Round((double)(supplier.marginContribution / totalMarginContribution * 100m), 2)
+                            : 0d;
+                        var shareOfUnits = totalUnits > 0
+                            ? Math.Round((double)supplier.ukupnaKolicina / totalUnits * 100d, 2)
                             : 0d;
                         var hasPreviousPeriodWindow = supplier.previousPeriodRevenue is not null;
                         var isNewSupplier = hasPreviousPeriodWindow
@@ -1448,6 +1456,8 @@ public static class AllEndpoints
                             supplier.prePostNivelacijaUnitsImpactPct,
                             supplier.prePostNivelacijaRevenueCoveragePct,
                             sharePct,
+                            shareOfProfit,
+                            shareOfUnits,
                             reliabilityPct = recommendation.ReliabilityPct,
                             recommendation = new
                             {
@@ -1470,6 +1480,7 @@ public static class AllEndpoints
                 {
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = suppliers.Sum(r => r.marginContribution),
+                    prosecnaMarza = Math.Round(averageKnownMarginPct, 2),
                     prePromet = sumPreRevenue,
                     poslePromet = sumPostRevenue,
                     ukupnaKolicina = suppliers.Sum(r => r.ukupnaKolicina),

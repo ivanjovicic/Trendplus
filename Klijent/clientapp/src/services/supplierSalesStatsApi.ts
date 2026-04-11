@@ -34,6 +34,8 @@ export interface SupplierSalesStat {
   prePostNivelacijaUnitsImpactPct: number | null;
   prePostNivelacijaRevenueCoveragePct: number | null;
   sharePct?: number;
+  shareOfProfit?: number;
+  shareOfUnits?: number;
   reliabilityPct?: number;
   recommendation?: AnalyticsRecommendation;
   // Legacy compatibility aliases (deprecated)
@@ -44,6 +46,7 @@ export interface SupplierSalesStat {
 export interface SupplierSalesTotals {
   ukupanPromet: number;
   ukupanMarzniDoprinos: number;
+  prosecnaMarza: number;
   prePromet: number;
   poslePromet: number;
   ukupnaKolicina: number;

@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -29,8 +30,11 @@ type SortDir = "asc" | "desc";
 type SortField =
   | "dobavljacNaziv"
   | "ukupanPromet"
+  | "ukupnaKolicina"
   | "sharePct"
   | "marginContribution"
+  | "marginPct"
+  | "shareOfProfit"
   | "popRevenueChangePct"
   | "prePostNivelacijaRevenueImpactPct"
   | "status";
@@ -45,6 +49,8 @@ type ActiveFilters = {
 
 type DecisionSupplier = SupplierSalesStat & {
   sharePct: number;
+  shareOfProfit: number;
+  shareOfUnits: number;
   reliabilityPct: number;
   splitCoveragePct: number;
   confidencePct: number;
@@ -66,12 +72,13 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
 const decisionColumns: AnalyticsTableColumn<DecisionSupplier>[] = [
   { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
-  { key: "sharePct", header: "Udeo %", dataType: "percent" },
-  { key: "marginContribution", header: "Marzni doprinos", dataType: "currency" },
+  { key: "ukupnaKolicina", header: "Kolicina", dataType: "number" },
+  { key: "sharePct", header: "Udeo prometa %", dataType: "percent" },
+  { key: "marginContribution", header: "Realna zarada", dataType: "currency" },
+  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  { key: "shareOfProfit", header: "Udeo zarade %", dataType: "percent" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
-  { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "confidencePct", header: "Confidence %", dataType: "percent" },
 ];
 
 const REASON_CODE_LABELS: Record<string, string> = {
@@ -195,11 +202,19 @@ function statusClass(status: DecisionStatus): string {
 }
 
 function displayStatusLabel(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Increase focus";
-  if (status === "maintain") return "Maintain";
-  if (status === "review") return "Review";
-  if (status === "do_not_trust") return "Do not trust";
-  return "Insufficient data";
+  if (status === "increase_focus") return "Pojacaj";
+  if (status === "maintain") return "Zadrzi";
+  if (status === "review") return "Oprez";
+  if (status === "do_not_trust") return "Smanji";
+  return "Nedovoljno podataka";
+}
+
+function statusLabelSr(status: DecisionStatus): string {
+  if (status === "increase_focus") return "Pojacaj";
+  if (status === "maintain") return "Zadrzi";
+  if (status === "review") return "Oprez";
+  if (status === "do_not_trust") return "Smanji";
+  return "N/A";
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -512,9 +527,13 @@ export default function SupplierSalesStatsPage() {
     if (suppliers.length === 0) return [];
 
     const totalRevenue = data?.totals.ukupanPromet ?? suppliers.reduce((sum, item) => sum + item.ukupanPromet, 0);
+    const totalMarginContribution = data?.totals.ukupanMarzniDoprinos ?? suppliers.reduce((sum, item) => sum + item.marginContribution, 0);
+    const totalUnits = data?.totals.ukupnaKolicina ?? suppliers.reduce((sum, item) => sum + item.ukupnaKolicina, 0);
 
     return suppliers.map((supplier) => {
       const sharePct = supplier.sharePct ?? (totalRevenue > 0 ? (supplier.ukupanPromet / totalRevenue) * 100 : 0);
+      const shareOfProfit = supplier.shareOfProfit ?? (totalMarginContribution > 0 ? (supplier.marginContribution / totalMarginContribution) * 100 : 0);
+      const shareOfUnits = supplier.shareOfUnits ?? (totalUnits > 0 ? (supplier.ukupnaKolicina / totalUnits) * 100 : 0);
       const splitCoveragePct = supplier.prePostNivelacijaRevenueCoveragePct ?? 0;
       const recommended = supplier.recommendation;
       const status = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
@@ -534,6 +553,8 @@ export default function SupplierSalesStatsPage() {
       return {
         ...supplier,
         sharePct,
+        shareOfProfit,
+        shareOfUnits,
         reliabilityPct,
         splitCoveragePct,
         confidencePct,
@@ -559,10 +580,16 @@ export default function SupplierSalesStatsPage() {
         compare = a.dobavljacNaziv.localeCompare(b.dobavljacNaziv, "sr");
       } else if (sortField === "ukupanPromet") {
         compare = a.ukupanPromet - b.ukupanPromet;
+      } else if (sortField === "ukupnaKolicina") {
+        compare = a.ukupnaKolicina - b.ukupnaKolicina;
       } else if (sortField === "sharePct") {
         compare = a.sharePct - b.sharePct;
       } else if (sortField === "marginContribution") {
         compare = a.marginContribution - b.marginContribution;
+      } else if (sortField === "marginPct") {
+        compare = a.marginPct - b.marginPct;
+      } else if (sortField === "shareOfProfit") {
+        compare = a.shareOfProfit - b.shareOfProfit;
       } else if (sortField === "popRevenueChangePct") {
         compare = (a.popRevenueChangePct ?? -9999) - (b.popRevenueChangePct ?? -9999);
       } else if (sortField === "prePostNivelacijaRevenueImpactPct") {
@@ -666,6 +693,20 @@ export default function SupplierSalesStatsPage() {
     }
 
     return topRows;
+  }, [knownSuppliers]);
+
+  const comparisonData = useMemo(() => {
+    if (knownSuppliers.length === 0) return [] as Array<{ name: string; udelPrometa: number; udelZarade: number; marza: number }>;
+
+    const ranked = [...knownSuppliers]
+      .sort((a, b) => b.ukupanPromet - a.ukupanPromet);
+
+    return ranked.slice(0, 8).map((row) => ({
+      name: row.dobavljacNaziv,
+      udelPrometa: Number(row.sharePct.toFixed(1)),
+      udelZarade: Number(row.shareOfProfit.toFixed(1)),
+      marza: Number(row.marginPct.toFixed(1)),
+    }));
   }, [knownSuppliers]);
 
   const supplierCounts = useMemo(() => {
@@ -1090,12 +1131,20 @@ export default function SupplierSalesStatsPage() {
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Udeo top 5 dobavljaca</span>
-              <strong>{fmtPct(top5SharePct)}</strong>
+              <span>Ukupno prodato</span>
+              <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Ukupan marzni doprinos</span>
+              <span>Ukupna realna zarada</span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
+            </article>
+            <article className="supplier-decision-kpi">
+              <span>Prosecna marza</span>
+              <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
+            </article>
+            <article className="supplier-decision-kpi">
+              <span>Udeo top 5 dobavljaca</span>
+              <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="supplier-decision-kpi">
               <span>Ukupan PoP trend</span>
@@ -1105,7 +1154,7 @@ export default function SupplierSalesStatsPage() {
 
           <section className="supplier-decision-panels">
             <article className="supplier-decision-card">
-              <h2>Koncentracija prometa po dobavljacima</h2>
+              <h2>Koncentracija prometa</h2>
               <p>Top udeo prometa za brzu procenu gde je biznis koncentrisan.</p>
               {concentrationData.length > 0 ? (
                 <div className="supplier-decision-chart-wrap">
@@ -1118,7 +1167,7 @@ export default function SupplierSalesStatsPage() {
                         formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`}
                         labelStyle={{ color: "var(--text-primary)" }}
                       />
-                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
+                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} name="Udeo prometa %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1128,14 +1177,41 @@ export default function SupplierSalesStatsPage() {
             </article>
 
             <article className="supplier-decision-card">
+              <h2>Promet vs Zarada</h2>
+              <p>Poredjenje udela u prometu i udela u zaradi - gde promet vara, a profit govori istinu.</p>
+              {comparisonData.length > 0 ? (
+                <div className="supplier-decision-chart-wrap">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                    <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
+                      <Tooltip
+                        formatter={(value: number | string | undefined, name: string) => [`${fmtPct(Number(value ?? 0), 1)}`, name]}
+                        labelStyle={{ color: "var(--text-primary)" }}
+                      />
+                      <Legend />
+                      <Bar dataKey="udelPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo prometa %" />
+                      <Bar dataKey="udelZarade" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo zarade %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="supplier-decision-empty">Nema podataka za poredjenje.</div>
+              )}
+            </article>
+          </section>
+
+          <section className="supplier-decision-panels">
+            <article className="supplier-decision-card">
               <div className="supplier-decision-table-head">
                 <div>
                   <h2>Prioritetna lista dobavljaca</h2>
                   <p>
-                    Increase focus: {supplierCounts.increaseFocus} | Maintain: {supplierCounts.maintain} | Review: {supplierCounts.review} | Do not trust: {supplierCounts.doNotTrust} | Insufficient data: {supplierCounts.insufficientData}
+                    Pojacaj: {supplierCounts.increaseFocus} | Zadrzi: {supplierCounts.maintain} | Oprez: {supplierCounts.review} | Smanji: {supplierCounts.doNotTrust} | N/A: {supplierCounts.insufficientData}
                   </p>
                   <p className="supplier-decision-metric-note">
-                    PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena samo unutar prometa sa poznatim prvim datumom nivelacije.
+                    Preporuka uzima u obzir promet, kolicinu, realnu zaradu, marzni procenat i PoP trend.
                   </p>
                   {unknownSuppliers.length > 0 ? (
                     <p className="supplier-unknown-note">
@@ -1169,28 +1245,38 @@ export default function SupplierSalesStatsPage() {
                         </button>
                       </th>
                       <th className="align-right">
+                        <button type="button" onClick={() => handleSort("ukupnaKolicina")}>
+                          Kolicina{sortMarker("ukupnaKolicina", sortField, sortDir)} <InfoTip text="Ukupan broj prodatih artikala/pari." />
+                        </button>
+                      </th>
+                      <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo %{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
+                          Udeo prometa{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Marzni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marze: razlika izmedju prodajne i nabavne vrednosti za promet sa poznatom nabavnom cenom." />
+                          Realna zarada{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Razlika izmedju prodajne i nabavne vrednosti. Sa poznatom nabavnom cenom." />
+                        </button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("marginPct")}>
+                          Marza %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat marze: (zarada / prihod sa poznatom cenom) * 100." />
+                        </button>
+                      </th>
+                      <th className="align-right">
+                        <button type="button" onClick={() => handleSort("shareOfProfit")}>
+                          Udeo zarade{sortMarker("shareOfProfit", sortField, sortDir)} <InfoTip text="Udeo ovog dobavljaca u ukupnoj realnoj zaradi." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("popRevenueChangePct")}>
-                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
-                        </button>
-                      </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}>
-                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto sto i PoP trend." />
+                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Promena prometa vs prethodni period." />
                         </button>
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Sistemska preporuka iz backend recommendation engine-a: Increase focus / Maintain / Review / Do not trust / Insufficient data." />
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Pojacaj / Zadrzi / Oprez / Smanji - na osnovu kombinacije prometa, zarade, marze i trenda." />
                         </button>
                       </th>
                       <th className="align-center">Detalj</th>
@@ -1199,7 +1285,7 @@ export default function SupplierSalesStatsPage() {
                   <tbody>
                     {visibleSuppliers.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="supplier-decision-empty-row">
+                        <td colSpan={10} className="supplier-decision-empty-row">
                           Nema podataka za izabrane filtere.
                         </td>
                       </tr>
@@ -1208,13 +1294,20 @@ export default function SupplierSalesStatsPage() {
                         const rowKey = supplierKey(supplier);
                         const isExpanded = expandedSupplierKey === rowKey;
                         const popMetric = describePopMetric(supplier);
-                        const nivelacijaImpactMetric = describeNivelacijaImpactMetric(supplier);
+                        const profitVsRevenueMismatch = !supplier.isUnknown
+                          && supplier.sharePct > 5
+                          && supplier.shareOfProfit < supplier.sharePct * 0.5;
+                        const highProfitLowRevenue = !supplier.isUnknown
+                          && supplier.shareOfProfit > supplier.sharePct * 1.5
+                          && supplier.sharePct < 10;
                         return (
                           <tr
                             key={rowKey}
                             className={[
                               isExpanded ? "expanded-row" : "",
                               supplier.isUnknown ? "supplier-unknown-row" : "",
+                              profitVsRevenueMismatch ? "supplier-mismatch-row" : "",
+                              highProfitLowRevenue ? "supplier-high-profit-row" : "",
                             ].filter(Boolean).join(" ")}
                           >
                             <td>
@@ -1241,13 +1334,13 @@ export default function SupplierSalesStatsPage() {
                               )}
                             </td>
                             <td className="align-right">{fmtRsd(supplier.ukupanPromet)}</td>
-                            <td className="align-right">{fmtPct(supplier.sharePct, 2)}</td>
+                            <td className="align-right">{fmtQty(supplier.ukupnaKolicina)}</td>
+                            <td className="align-right">{fmtPct(supplier.sharePct, 1)}</td>
                             <td className="align-right">{fmtRsd(supplier.marginContribution)}</td>
+                            <td className="align-right">{fmtPct(supplier.marginPct, 1)}</td>
+                            <td className="align-right">{fmtPct(supplier.shareOfProfit, 1)}</td>
                             <td className={["align-right", popMetric.className].join(" ")} title={popMetric.title}>
                               {popMetric.label}
-                            </td>
-                            <td className={["align-right", nivelacijaImpactMetric.className].join(" ")} title={nivelacijaImpactMetric.title}>
-                              {nivelacijaImpactMetric.label}
                             </td>
                             <td>
                               <span
@@ -1255,8 +1348,14 @@ export default function SupplierSalesStatsPage() {
                                 title={buildStatusTooltip(supplier)}
                                 aria-label={buildStatusTooltip(supplier)}
                               >
-                                {supplier.statusLabel}
+                                {statusLabelSr(supplier.status)}
                               </span>
+                              {supplier.statusReason ? (
+                                <span className="supplier-status-reason" title={supplier.statusReason}>
+                                  {" "}
+                                  <InfoTip text={supplier.statusReason} />
+                                </span>
+                              ) : null}
                             </td>
                             <td className="align-center">
                               <button
@@ -1280,12 +1379,60 @@ export default function SupplierSalesStatsPage() {
           {selectedSupplier ? (
             <section className="supplier-decision-detail" ref={detailSectionRef}>
               <div className="supplier-decision-detail-head">
-                <h3>Detalj odluke: {selectedSupplier.dobavljacNaziv}</h3>
-                <button type="button" onClick={() => openSupplierDetail(selectedSupplier)}>
-                  Otvori puni detalj
-                </button>
+                <h3>Detalj: {selectedSupplier.dobavljacNaziv}</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className={`supplier-decision-status ${statusClass(selectedSupplier.status)}`}>
+                    {statusLabelSr(selectedSupplier.status)}
+                  </span>
+                  <button type="button" onClick={() => openSupplierDetail(selectedSupplier)}>
+                    Otvori puni detalj
+                  </button>
+                </div>
               </div>
 
+              {/* Poslovni pokazatelji */}
+              <h4 className="supplier-detail-section-title">Poslovni pokazatelji</h4>
+              <div className="supplier-decision-detail-grid">
+                <article>
+                  <span>Promet</span>
+                  <strong>{fmtRsd(selectedSupplier.ukupanPromet)}</strong>
+                </article>
+                <article>
+                  <span>Prodata kolicina</span>
+                  <strong>{fmtQty(selectedSupplier.ukupnaKolicina)}</strong>
+                </article>
+                <article>
+                  <span>Realna zarada</span>
+                  <strong className={selectedSupplier.marginContribution > 0 ? "trend-up" : selectedSupplier.marginContribution < 0 ? "trend-down" : ""}>
+                    {fmtRsd(selectedSupplier.marginContribution)}
+                  </strong>
+                </article>
+                <article>
+                  <span>Marza %</span>
+                  <strong className={selectedSupplier.marginPct != null && selectedSupplier.marginPct > 0 ? "trend-up" : selectedSupplier.marginPct != null && selectedSupplier.marginPct < 0 ? "trend-down" : ""}>
+                    {fmtSignedPct(selectedSupplier.marginPct, 2)}
+                  </strong>
+                </article>
+                <article>
+                  <span>Udeo u prometu</span>
+                  <strong>{fmtPct(selectedSupplier.sharePct, 1)}</strong>
+                </article>
+                <article>
+                  <span>Udeo u zaradi</span>
+                  <strong>{fmtPct(selectedSupplier.shareOfProfit, 1)}</strong>
+                </article>
+                <article>
+                  <span>Udeo u kolicini</span>
+                  <strong>{fmtPct(selectedSupplier.shareOfUnits, 1)}</strong>
+                </article>
+                <article>
+                  <span>Broj artikala</span>
+                  <strong>{selectedSupplier.brojArtikalaUkupno}</strong>
+                </article>
+              </div>
+
+              {/* PoP trendovi */}
+              <h4 className="supplier-detail-section-title">Trend u odnosu na prethodni period</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
                   <span>PoP trend prometa</span>
@@ -1307,44 +1454,38 @@ export default function SupplierSalesStatsPage() {
                   <span>Prethodni period kolicina</span>
                   <strong>{selectedSupplier.previousPeriodUnits != null ? fmtQty(selectedSupplier.previousPeriodUnits) : "N/A"}</strong>
                 </article>
+              </div>
+
+              {/* Nivelacija detalji */}
+              <h4 className="supplier-detail-section-title">Nivelacija</h4>
+              <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>Nivelacija impact prometa</span>
+                  <span>Impact na promet</span>
                   <strong className={describeNivelacijaImpactMetric(selectedSupplier).className} title={describeNivelacijaImpactMetric(selectedSupplier).title}>
                     {describeNivelacijaImpactMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Nivelacija impact kolicine</span>
+                  <span>Impact na kolicinu</span>
                   <strong className={describeNivelacijaUnitsImpactMetric(selectedSupplier).className} title={describeNivelacijaUnitsImpactMetric(selectedSupplier).title}>
                     {describeNivelacijaUnitsImpactMetric(selectedSupplier).label}
                   </strong>
-                </article>
-                <article>
-                  <span>Pre/post pokrice prometa</span>
-                  <strong>{fmtPct(selectedSupplier.prePostNivelacijaRevenueCoveragePct, 1)}</strong>
-                </article>
-                <article>
-                  <span>Pre nivelacije promet</span>
-                  <strong>{fmtRsd(selectedSupplier.preNivelacijePromet)}</strong>
-                </article>
-                <article>
-                  <span>Posle nivelacije promet</span>
-                  <strong>{fmtRsd(selectedSupplier.posleNivelacijePromet)}</strong>
-                </article>
-                <article>
-                  <span>Pre nivo kolicina</span>
-                  <strong>{fmtQty(selectedSupplier.preNivelacijeKolicina)}</strong>
-                </article>
-                <article>
-                  <span>Posle nivo kolicina</span>
-                  <strong>{fmtQty(selectedSupplier.posleNivelacijeKolicina)}</strong>
                 </article>
                 <article>
                   <span>Artikli sa nivelacijom</span>
                   <strong>{selectedSupplier.brojArtikalaSaNivelacijom} / {selectedSupplier.brojArtikalaUkupno}</strong>
                 </article>
                 <article>
-                  <span>Pouzdanost podataka</span>
+                  <span>Pre/post pokrice</span>
+                  <strong>{fmtPct(selectedSupplier.prePostNivelacijaRevenueCoveragePct, 1)}</strong>
+                </article>
+              </div>
+
+              {/* Kvalitet podataka */}
+              <h4 className="supplier-detail-section-title">Kvalitet podataka</h4>
+              <div className="supplier-decision-detail-grid">
+                <article>
+                  <span>Pouzdanost</span>
                   <strong>{fmtPct(selectedSupplier.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
@@ -1352,11 +1493,7 @@ export default function SupplierSalesStatsPage() {
                   <strong>{fmtPct(selectedSupplier.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Marza %</span>
-                  <strong>{fmtSignedPct(selectedSupplier.marginPct, 2)}</strong>
-                </article>
-                <article>
-                  <span>Confidence %</span>
+                  <span>Confidence</span>
                   <strong>{fmtPct(selectedSupplier.confidencePct, 0)}</strong>
                 </article>
               </div>
