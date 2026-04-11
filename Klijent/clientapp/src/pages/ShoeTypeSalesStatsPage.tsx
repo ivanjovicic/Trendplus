@@ -230,27 +230,27 @@ function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals)
   const limitedSplitCoverage = (signals.splitCoveragePct ?? 0) > 0 && (signals.splitCoveragePct ?? 0) < 60;
 
   if (status === "Pojacaj") {
-    if (!signals.hasPreviousPeriodWindow) return "Promet i marza su jaki, ali uporediv prethodni period nije dostupan.";
-    if (signals.isNewType) return "Tip obuce je nov u odnosu na prethodni uporediv period; pratiti signal pre jacanja fokusa.";
-    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
-    if (limitedMarginCoverage) return "Promet i PoP trend su dobri, ali marza je zasnovana na delimicno pokrivenim nabavnim cenama.";
+    if (!signals.hasPreviousPeriodWindow) return "Promet i marža su jaki, ali uporediv prethodni period nije dostupan.";
+    if (signals.isNewType) return "Tip obuće je nov u odnosu na prethodni uporediv period; pratiti signal pre jačanja fokusa.";
+    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre većeg ulaganja.";
+    if (limitedMarginCoverage) return "Promet i PoP trend su dobri, ali marža je zasnovana na delimično pokrivenim nabavnim cenama.";
     if (limitedSplitCoverage) return "PoP signal je dobar, ali pre/post nivelacija impact pokriva samo deo prometa.";
-    if (positivePoP && strongMargin) return "Jak promet, zdrava marza i rast prema prethodnom uporedivom periodu.";
-    if (positivePoP) return "Dobar promet i pozitivan PoP trend; kandidat za veci fokus.";
-    return "Stabilan doprinos i solidna marza; opravdan fokus u nabavci.";
+    if (positivePoP && strongMargin) return "Jak promet, zdrava marža i rast prema prethodnom uporedivom periodu.";
+    if (positivePoP) return "Dobar promet i pozitivan PoP trend; kandidat za veći fokus.";
+    return "Stabilan doprinos i solidna marža; opravdan fokus u nabavci.";
   }
 
   if (status === "Zadrzi") {
-    if (!signals.hasPreviousPeriodWindow) return "Uporediv prethodni period nije dostupan; odluku drzati konzervativnom.";
-    if (signals.isNewType) return "Tip obuce je nov u odnosu na prethodni uporediv period; zadrzati dok se signal ne stabilizuje.";
-    if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
-    if (limitedMarginCoverage) return "Marza je samo delimicno pokrivena nabavnim cenama; zadrzati dok se podaci ne dopune.";
-    if (negativePoP && !strongMargin) return "PoP trend slabi i marza je ispod proseka; zadrzati uz pojacan nadzor.";
+    if (!signals.hasPreviousPeriodWindow) return "Uporediv prethodni period nije dostupan; odluku držati konzervativnom.";
+    if (signals.isNewType) return "Tip obuće je nov u odnosu na prethodni uporediv period; zadržati dok se signal ne stabilizuje.";
+    if (lowReliability) return "Niska pouzdanost podataka; odluku držati konzervativnom dok se signal ne stabilizuje.";
+    if (limitedMarginCoverage) return "Marža je samo delimično pokrivena nabavnim cenama; zadržati dok se podaci ne dopune.";
+    if (negativePoP && !strongMargin) return "PoP trend slabi i marža je ispod proseka; zadržati uz pojačan nadzor.";
     return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
   }
 
-  if (!signals.hasPreviousPeriodWindow) return "Nema uporedivog prethodnog perioda, a signal doprinosa nije dovoljno jak za veci fokus.";
-  if (signals.isNewType) return "Tip obuce je nov i jos nema stabilnu istoriju; ne siriti fokus dok se signal ne potvrdi.";
+  if (!signals.hasPreviousPeriodWindow) return "Nema uporedivog prethodnog perioda, a signal doprinosa nije dovoljno jak za veći fokus.";
+  if (signals.isNewType) return "Tip obuće je nov i još nema stabilnu istoriju; ne širiti fokus dok se signal ne potvrdi.";
   if (negativePoP) return "Pad u odnosu na prethodni uporediv period uz nizak doprinos; smanjiti fokus.";
   return "Nizak doprinos bez jasnog potencijala rasta; kandidat za smanjenje fokusa.";
 }
@@ -264,7 +264,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
-  return `${data.status}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
+  return `${data.status}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
 }
 
 function describePopMetric(item: ShoeTypeSalesStat): { label: string; title: string; className: string } {
@@ -647,19 +647,19 @@ export default function ShoeTypeSalesStatsPage() {
     const unknownShare = data.dataQuality.unknownTypeRevenueSharePct;
 
     if (splitCoverage != null && splitCoverage < 60) {
-      notes.push(`Uporediv pre/posle signal trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa ga treba citati kao delimican.`);
+      notes.push(`Uporediv pre/posle signal trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa ga treba čitati kao delimičan.`);
     }
 
     if (historicalCostShare != null && historicalCostShare < 100) {
-      notes.push(`Istorijska nabavna cena postoji za ${fmtPct(historicalCostShare, 1)} prometa; marza za ostatak nije istorijski potvrdena na prodajnoj stavci.`);
+      notes.push(`Istorijska nabavna cena postoji za ${fmtPct(historicalCostShare, 1)} prometa; marža za ostatak nije istorijski potvrdena na prodajnoj stavci.`);
     }
 
     if (estimatedCostShare != null && estimatedCostShare > 0) {
-      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marza je procenjena iz trenutnog master troska artikla, pa je treba citati oprezno.`);
+      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marža je procenjena iz trenutnog master troška artikla, pa je treba čitati oprezno.`);
     }
 
     if (unknownShare != null && unknownShare > 0) {
-      notes.push(`Nepoznati tipovi obuce ucestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
+      notes.push(`Nepoznati tipovi obuće učestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
     }
 
     return notes;
@@ -713,7 +713,7 @@ export default function ShoeTypeSalesStatsPage() {
         table: "shoe-type-sales-stats",
         recordId,
         title: row.tipObuceNaziv,
-        subtitle: "Shoe type decision detail",
+        subtitle: "Detaljni pregled odluke po tipu obuće",
         columns: decisionColumns,
         row,
         metadata: toolbarFilters,
@@ -794,7 +794,7 @@ export default function ShoeTypeSalesStatsPage() {
         <div>
           <h1 className="shoetype-decision-title">Prodaja po tipu obuce</h1>
           <p className="shoetype-decision-subtitle">
-            Decision-support pogled za asortimanski fokus po tipu obuce.
+            Podrška odluci sa asortimanski fokus po tipu obuće.
           </p>
         </div>
         {data?.generatedAt ? (
@@ -891,19 +891,19 @@ export default function ShoeTypeSalesStatsPage() {
         <>
           <section className="shoetype-decision-kpis">
             <article className="shoetype-decision-kpi">
-              <span>Ukupan promet</span>
+              <span>Ukupan promet <InfoTip text="Zbir vrednosti svih prodaja svih tipova obuće u periodu." /></span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Udeo top 5 tipova</span>
+              <span>Udeo top 5 tipova <InfoTip text="Procenat koji čine top 5 tipova obuće u ukupnom prometu." /></span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Ukupan marzni doprinos</span>
+              <span>Ukupan marzni doprinos <InfoTip text="Zbir maržnog doprinosa (razlika nabavne i prodajne vrednosti) svih tipova." /></span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Rast/PAD vs prethodni period</span>
+              <span>Rast/PAD vs prethodni period <InfoTip text="Procenat promene ukupnog prometa u odnosu na isti period prošle godine." /></span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
@@ -1064,67 +1064,67 @@ export default function ShoeTypeSalesStatsPage() {
 
               <div className="shoetype-decision-detail-grid">
                 <article>
-                  <span>PoP trend prometa</span>
+                  <span>PoP trend prometa <InfoTip text="Procenat promene prometa ovog tipa obuće u odnosu na prethodni uporediv period." /></span>
                   <strong className={describePopMetric(selectedRow).className} title={describePopMetric(selectedRow).title}>
                     {describePopMetric(selectedRow).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Prethodni period promet</span>
+                  <span>Prethodni period promet <InfoTip text="Ukupan promet ovog tipa obuće u prethodnom periodu (iste dužine kao trenutni)." /></span>
                   <strong>{selectedRow.previousPeriodRevenue != null ? fmtRsd(selectedRow.previousPeriodRevenue) : "N/A"}</strong>
                 </article>
                 <article>
-                  <span>Nivelacija impact prometa</span>
+                  <span>Nivelacija impact prometa <InfoTip text="Procenat promene prometa pre i posle računovodstvene nivelacije (ažuriranja cena)." /></span>
                   <strong className={describeNivelacijaImpactMetric(selectedRow).className} title={describeNivelacijaImpactMetric(selectedRow).title}>
                     {describeNivelacijaImpactMetric(selectedRow).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Pre/post pokrice prometa</span>
+                  <span>Pre/post pokrice prometa <InfoTip text="Procenat prometa koji dolazi od artikala sa prodajom i pre i posle nivelacije." /></span>
                   <strong>{fmtPct(selectedRow.prePostNivelacijaRevenueCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Uporedivi artikli</span>
+                  <span>Uporedivi artikli <InfoTip text="Broj artikala sa prodajom i pre i posle nivelacije (koristi se za proračun pre/post uticaja)." /></span>
                   <strong>{selectedRow.prePostComparableArticleCount ?? 0}</strong>
                 </article>
                 <article>
-                  <span>Pre nivelacije promet</span>
+                  <span>Pre nivelacije promet <InfoTip text="Zbir vrednosti prodaja pre prvog datuma nivelacije (ažuriranja cene) za ovaj tip." /></span>
                   <strong>{fmtRsd(selectedRow.preNivelacijePromet)}</strong>
                 </article>
                 <article>
-                  <span>Posle nivelacije promet</span>
+                  <span>Posle nivelacije promet <InfoTip text="Zbir vrednosti prodaja od prvog datuma nivelacije (ažuriranja cene) nadalje." /></span>
                   <strong>{fmtRsd(selectedRow.posleNivelacijePromet)}</strong>
                 </article>
                 <article>
-                  <span>Pre nivo kolicina</span>
+                  <span>Pre nivo količina <InfoTip text="Ukupan broj prodanih komada pre prvog datuma nivelacije." /></span>
                   <strong>{fmtQty(selectedRow.preNivelacijeKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Posle nivo kolicina</span>
+                  <span>Posle nivo količina <InfoTip text="Ukupan broj prodanih komada od prvog datuma nivelacije nadalje." /></span>
                   <strong>{fmtQty(selectedRow.posleNivelacijeKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Artikli sa nivelacijom</span>
+                  <span>Artikli sa nivelacijom <InfoTip text="Broj artikala sa registrovnom nivelacijom / ukupan broj artikala ovog tipa." /></span>
                   <strong>{selectedRow.brojArtikalaSaNivelacijom} / {selectedRow.brojArtikalaUkupno}</strong>
                 </article>
                 <article>
-                  <span>Pouzdanost podataka</span>
+                  <span>Pouzdanost podataka <InfoTip text="Procenat kvalitete i trenutnosti podataka koji su korišćeni za analizu." /></span>
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Istorijsko pokrice marze</span>
+                  <span>Istorijsko pokrice marže <InfoTip text="Procenat prometa sa poznatom nabavnom cenom iz prodajnog transakcija." /></span>
                   <strong>{fmtPct(selectedRow.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Master fallback trosak</span>
+                  <span>Master fallback trošak <InfoTip text="Procenat prometa gde je nabavna cena procenjena iz trenutnog master troška artikla." /></span>
                   <strong>{fmtPct(selectedRow.fallbackCostCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Marza %</span>
+                  <span>Marža % <InfoTip text="Procenat marže kao razlika između prodajne i nabavne vrednosti." /></span>
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Decision score</span>
+                  <span>Skor odluke <InfoTip text="Numerička vrednost koja odražava kvalitet preporuke (viši skor = pouzdanija preporuka)." /></span>
                   <strong>{selectedRow.decisionScore}</strong>
                 </article>
               </div>
@@ -1137,7 +1137,7 @@ export default function ShoeTypeSalesStatsPage() {
 
               {selectedRow.estimatedCostRevenue > 0 ? (
                 <p className="shoetype-decision-reason">
-                  <strong>Napomena za marzu:</strong> Marza je delom procenjena iz trenutnog master troska artikla za {fmtPct(selectedRow.fallbackCostCoveragePct, 1)} prometa.
+                  <strong>Napomena za marža:</strong> Marža je delom procenjena iz trenutnog master troška artikla za {fmtPct(selectedRow.fallbackCostCoveragePct, 1)} prometa.
                 </p>
               ) : null}
 
