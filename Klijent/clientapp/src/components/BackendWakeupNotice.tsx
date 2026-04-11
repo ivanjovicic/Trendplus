@@ -5,9 +5,9 @@ import UltraSpinner from "./ui/UltraSpinner";
 function buildWaitHint(seconds: number): string {
   if (seconds >= 90) {
     const minutes = Math.max(1, Math.round(seconds / 60));
-    return `about ${minutes} minutes`;
+    return `oko ${minutes} minuta`;
   }
-  return "about a minute";
+  return "oko minut";
 }
 
 export default function BackendWakeupNotice() {
@@ -29,11 +29,11 @@ export default function BackendWakeupNotice() {
             {checking ? (
               <>&#x21bb; Proverava se&hellip;</>
             ) : (
-              <><AlertTriangle size={14} /> Backend offline</>
+              <><AlertTriangle size={14} /> Backend nije dostupan</>
             )}
           </span>
         </div>
-        <h2>{checking ? "Proverava se konekcija…" : "Backend trenutno nedostupan"}</h2>
+        <h2>{checking ? "Provera konekcije…" : "Backend trenutno nedostupan"}</h2>
         <p>
           Server se možda budi iz režima spavanja. Sačekajte {buildWaitHint(wakeupSeconds)} i ostavite tab otvoren.
         </p>

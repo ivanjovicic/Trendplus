@@ -67,16 +67,26 @@
   border: 1.5px solid var(--accent-primary, #3b82f6);
   color: var(--accent-primary, #3b82f6);
   background: transparent;
-  font-size: 9px;
-  font-weight: 700;
-  font-style: italic;
-  line-height: 1;
+  font-size: 0;
   cursor: help;
   z-index: 30;
   vertical-align: middle;
   flex-shrink: 0;
   user-select: none;
   transition: opacity 0.15s;
+}
+
+.info-tip::before {
+  content: "i";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  color: inherit;
 }
 
 .info-tip:hover,
