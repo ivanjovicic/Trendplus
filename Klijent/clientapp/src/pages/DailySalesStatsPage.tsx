@@ -141,9 +141,8 @@ function shiftExportValue(row: DailySalesRow, shift: "first" | "second"): string
   return shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems;
 }
 
-function shiftDisplayValue(row: DailySalesRow, shift: "first" | "second"): string {
-  const value = shiftExportValue(row, shift);
-  return typeof value === "number" ? fmtNumber(value) : value;
+function shiftDisplayValue(_row: DailySalesRow, _shift: "first" | "second"): string {
+  return "";
 }
 
 export default function DailySalesStatsPage() {
@@ -423,8 +422,8 @@ export default function DailySalesStatsPage() {
 
     const blankColumns = [
       { key: "date", header: "Datum", dataType: "date" },
-      { key: "firstShiftTotalItems", header: "Prva smena (ime: __________)", dataType: "text" },
-      { key: "secondShiftTotalItems", header: "Druga smena (ime: __________)", dataType: "text" },
+      { key: "firstShiftTotalItems", header: "Prva smena (ime: _________________________________)", dataType: "text" },
+      { key: "secondShiftTotalItems", header: "Druga smena (ime: _________________________________)", dataType: "text" },
       { key: "totalRevenue", header: "Prihod dana", dataType: "currency" },
       ...blankSupplierColumns,
       { key: "othersCount", header: "Ostali (kom.)", dataType: "number" },
