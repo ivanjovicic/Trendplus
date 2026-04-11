@@ -22,8 +22,8 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
     const { apiPingEnabled } = usePingControl();
 
     const ONLINE_POLL_INTERVAL_MS = import.meta.env.DEV ? 30_000 : 60_000;
-    const OFFLINE_POLL_INTERVAL_MS = import.meta.env.DEV ? 8_000 : 12_000;
-    const HEALTH_TIMEOUT_MS = import.meta.env.DEV ? 8_000 : 12_000;
+    const OFFLINE_POLL_INTERVAL_MS = import.meta.env.DEV ? 4_000 : 6_000;  // faster reconnect detection
+    const HEALTH_TIMEOUT_MS = import.meta.env.DEV ? 5_000 : 8_000;  // shorter health check timeout
 
     useEffect(() => {
         onlineRef.current = online;
