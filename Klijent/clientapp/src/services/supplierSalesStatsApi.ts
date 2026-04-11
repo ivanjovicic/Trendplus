@@ -25,14 +25,18 @@ export interface SupplierSalesStat {
   brojArtikalaSaNivelacijom: number;
   brojArtikalaUkupno: number;
   revenueWithCost: number;
+  estimatedCostRevenue: number;
   marginContribution: number;
   marginDataCoveragePct: number | null;
+  fallbackCostCoveragePct: number | null;
   marginPct: number;
   popRevenueChangePct: number | null;
   popUnitsChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
   prePostNivelacijaUnitsImpactPct: number | null;
   prePostNivelacijaRevenueCoveragePct: number | null;
+  prePostSignalNote?: string | null;
+  prePostComparableArticleCount?: number;
   sharePct?: number;
   shareOfProfit?: number;
   shareOfUnits?: number;
@@ -74,6 +78,8 @@ export interface SupplierSalesDataQuality {
   missingCostQty: number;
   missingCostRevenue: number;
   missingCostRevenueSharePct: number | null;
+  estimatedCostRevenue?: number;
+  estimatedCostRevenueSharePct?: number | null;
   unknownSupplierRevenue: number;
   unknownSupplierRevenueSharePct: number | null;
   revenueWithNivelacijaSplit: number;

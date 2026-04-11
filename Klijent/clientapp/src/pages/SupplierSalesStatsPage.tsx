@@ -72,10 +72,10 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
 const decisionColumns: AnalyticsTableColumn<DecisionSupplier>[] = [
   { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
-  { key: "ukupnaKolicina", header: "Kolicina", dataType: "number" },
+  { key: "ukupnaKolicina", header: "Količina", dataType: "number" },
   { key: "sharePct", header: "Udeo prometa %", dataType: "percent" },
   { key: "marginContribution", header: "Realna zarada", dataType: "currency" },
-  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  { key: "marginPct", header: "Marža %", dataType: "percent" },
   { key: "shareOfProfit", header: "Udeo zarade %", dataType: "percent" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
@@ -90,7 +90,7 @@ const REASON_CODE_LABELS: Record<string, string> = {
   limited_nivelacija_coverage: "Nizak pre/post split coverage",
   unknown_heavy_dataset: "Unknown-heavy dataset",
   tiny_sample: "Premali uzorak",
-  unstable_margin: "Nestabilna marza",
+  unstable_margin: "Nestabilna marža",
   pop_unavailable: "PoP nije dostupan",
 };
 
@@ -202,16 +202,16 @@ function statusClass(status: DecisionStatus): string {
 }
 
 function displayStatusLabel(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Pojacaj";
-  if (status === "maintain") return "Zadrzi";
+  if (status === "increase_focus") return "Pojačaj";
+  if (status === "maintain") return "Zadrži";
   if (status === "review") return "Oprez";
   if (status === "do_not_trust") return "Smanji";
   return "Nedovoljno podataka";
 }
 
 function statusLabelSr(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Pojacaj";
-  if (status === "maintain") return "Zadrzi";
+  if (status === "increase_focus") return "Pojačaj";
+  if (status === "maintain") return "Zadrži";
   if (status === "review") return "Oprez";
   if (status === "do_not_trust") return "Smanji";
   return "N/A";
@@ -254,8 +254,8 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     : "N/A";
   const reasons = data.reasonCodes.length > 0
     ? data.reasonCodes.map(formatReasonCode).join(", ")
-    : "nema dodatnih flagova";
-  return `${data.statusLabel}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Confidence ${fmtPct(data.confidencePct, 0)} | Razlozi: ${reasons}`;
+    : "Nema dodatnih napomena";
+  return `${data.statusLabel}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrivanje ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Sigurnost ${fmtPct(data.confidencePct, 0)} | Razlozi: ${reasons}`;
 }
 
 function describePopMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
@@ -284,17 +284,26 @@ function describePopMetric(supplier: SupplierSalesStat): { label: string; title:
 
 function describeNivelacijaImpactMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
   if (supplier.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(supplier.prePostNivelacijaRevenueImpactPct)) {
+    const noteSuffix = supplier.prePostSignalNote ? ` Napomena: ${supplier.prePostSignalNote}` : "";
     return {
       label: fmtSignedPct(supplier.prePostNivelacijaRevenueImpactPct, 2),
-      title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokrice: ${fmtPct(supplier.prePostNivelacijaRevenueCoveragePct, 1)} prometa.`,
+      title: `Pre/post nivelacija impact meri promenu prometa samo na uporedivim artiklima sa prodajom i pre i posle prve nivelacije. Pokrice: ${fmtPct(supplier.prePostNivelacijaRevenueCoveragePct, 1)} prometa.${noteSuffix}`,
       className: trendClass(supplier.prePostNivelacijaRevenueImpactPct),
+    };
+  }
+
+  if (supplier.prePostSignalNote) {
+    return {
+      label: "Low signal",
+      title: supplier.prePostSignalNote,
+      className: "trend-neutral",
     };
   }
 
   if ((supplier.prePostNivelacijaRevenueCoveragePct ?? 0) <= 0) {
     return {
       label: "N/A",
-      title: "Nema dovoljno artikala sa poznatom istorijom nivelacije za pre/post impact metriku.",
+      title: "Nema dovoljno uporedivih artikala sa prodajom i pre i posle prve nivelacije za pre/post impact metriku.",
       className: "trend-neutral",
     };
   }
@@ -326,7 +335,7 @@ function describePopUnitsMetric(supplier: SupplierSalesStat): { label: string; t
   if (supplier.previousPeriodUnits != null && supplier.previousPeriodUnits <= 0 && supplier.ukupnaKolicina > 0) {
     return {
       label: "Novo",
-      title: "Dobavljac nije imao prodatu kolicinu u prethodnom uporedivom periodu.",
+      title: "Dobavljac nije imao prodatu količinu u prethodnom uporedivom periodu.",
       className: "trend-neutral",
     };
   }
@@ -340,17 +349,26 @@ function describePopUnitsMetric(supplier: SupplierSalesStat): { label: string; t
 
 function describeNivelacijaUnitsImpactMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
   if (supplier.prePostNivelacijaUnitsImpactPct != null && !Number.isNaN(supplier.prePostNivelacijaUnitsImpactPct)) {
+    const noteSuffix = supplier.prePostSignalNote ? ` Napomena: ${supplier.prePostSignalNote}` : "";
     return {
       label: fmtSignedPct(supplier.prePostNivelacijaUnitsImpactPct, 2),
-      title: "Pre/post promena kolicine unutar artikala sa poznatim prvim datumom nivelacije.",
+      title: `Pre/post promena količine unutar uporedivih artikala sa prodajom i pre i posle prve nivelacije.${noteSuffix}`,
       className: trendClass(supplier.prePostNivelacijaUnitsImpactPct),
+    };
+  }
+
+  if (supplier.prePostSignalNote) {
+    return {
+      label: "Low signal",
+      title: supplier.prePostSignalNote,
+      className: "trend-neutral",
     };
   }
 
   if ((supplier.prePostNivelacijaRevenueCoveragePct ?? 0) <= 0) {
     return {
       label: "N/A",
-      title: "Nema dovoljno artikala sa poznatom istorijom nivelacije za pre/post metriku kolicine.",
+      title: "Nema dovoljno uporedivih artikala sa prodajom i pre i posle prve nivelacije za pre/post metriku kolicine.",
       className: "trend-neutral",
     };
   }
@@ -761,15 +779,20 @@ export default function SupplierSalesStatsPage() {
     const notes: string[] = [];
     const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct;
     const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
-    const knownCostShare = missingCostShare == null ? null : Math.max(0, 100 - missingCostShare);
+    const historicalCostShare = missingCostShare == null ? null : Math.max(0, 100 - missingCostShare);
+    const estimatedCostShare = data.dataQuality.estimatedCostRevenueSharePct;
     const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct;
 
     if (splitCoverage != null && splitCoverage < 60) {
-      notes.push(`Pre/posle nivelacije trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa taj signal treba citati kao delimican.`);
+      notes.push(`Uporediv pre/posle signal trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa ga treba citati kao delimican.`);
     }
 
-    if (knownCostShare != null && knownCostShare < 100) {
-      notes.push(`Marza i marzni doprinos su zasnovani na ${fmtPct(knownCostShare, 1)} prometa sa poznatom nabavnom cenom.`);
+    if (historicalCostShare != null && historicalCostShare < 100) {
+      notes.push(`Istorijska nabavna cena postoji za ${fmtPct(historicalCostShare, 1)} prometa; marza za ostatak nije istorijski potvrdena na prodajnoj stavci.`);
+    }
+
+    if (estimatedCostShare != null && estimatedCostShare > 0) {
+      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marza je procenjena iz trenutnog master troska artikla, pa je treba citati oprezno.`);
     }
 
     if (unknownShare != null && unknownShare > 0) {
@@ -785,8 +808,8 @@ export default function SupplierSalesStatsPage() {
       { key: "toDate", label: "Do", value: activeFilters.toDate },
       { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
       { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
-      { key: "dataScope", label: "Data scope", value: activeDataScope },
-      { key: "includeUnknown", label: "Include unknown", value: includeUnknown ? "true" : "false" },
+      { key: "dataScope", label: "Opseg podataka", value: activeDataScope },
+      { key: "includeUnknown", label: "Uključi nepoznate", value: includeUnknown ? "da" : "ne" },
     ],
     [activeDataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, includeUnknown]
   );
@@ -796,15 +819,15 @@ export default function SupplierSalesStatsPage() {
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "suppliers", label: "Dobavljaca", value: data?.totals.brojDobavljaca ?? 0 },
       { key: "unknownSuppliers", label: "Nepoznato/N-A", value: unknownSuppliers.length },
-      { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "marginCoverage", label: "Promet sa istorijskom nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "totalsPopTrend", label: "Ukupan PoP trend", value: fmtPct(data?.totals.popRevenueChangePct, 1) },
-      { key: "totalsPrePostImpact", label: "Ukupan nivelacija impact", value: fmtPct(data?.totals.prePostNivelacijaRevenueImpactPct, 1) },
-      { key: "splitCoverage", label: "Pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
-      { key: "increaseFocus", label: "Increase focus", value: supplierCounts.increaseFocus },
-      { key: "maintain", label: "Maintain", value: supplierCounts.maintain },
-      { key: "review", label: "Review", value: supplierCounts.review },
-      { key: "doNotTrust", label: "Do not trust", value: supplierCounts.doNotTrust },
-      { key: "insufficientData", label: "Insufficient data", value: supplierCounts.insufficientData },
+      { key: "totalsPrePostImpact", label: "Ukupan nivelacija uticaj", value: fmtPct(data?.totals.prePostNivelacijaRevenueImpactPct, 1) },
+      { key: "splitCoverage", label: "Uporedivo pre/post pokrivanje", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
+      { key: "increaseFocus", label: "Pojačaj fokus", value: supplierCounts.increaseFocus },
+      { key: "maintain", label: "Zadrži", value: supplierCounts.maintain },
+      { key: "review", label: "U pregledu", value: supplierCounts.review },
+      { key: "doNotTrust", label: "Smanji", value: supplierCounts.doNotTrust },
+      { key: "insufficientData", label: "Nedovoljno podataka", value: supplierCounts.insufficientData },
     ],
     [
       data?.dataQuality.missingCostRevenueSharePct,
@@ -1127,27 +1150,27 @@ export default function SupplierSalesStatsPage() {
         <>
           <section className="supplier-decision-kpis">
             <article className="supplier-decision-kpi">
-              <span>Ukupan promet</span>
+              <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljača u izabranom periodu (RSD)." /></span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Ukupno prodato</span>
+              <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljača." /></span>
               <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Ukupna realna zarada</span>
+              <span>Ukupna realna zarada <InfoTip text="Zbir realnih zarada (marže) svih dobavljača." /></span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Prosecna marza</span>
+              <span>Prosečna marža <InfoTip text="Prosečan procenat marže za sve dobavljače." /></span>
               <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Udeo top 5 dobavljaca</span>
+              <span>Udeo top 5 dobavljača <InfoTip text="Procenat ukupnog prometa koji dolazi od 5 najvećih dobavljača." /></span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Ukupan PoP trend</span>
+              <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa prema istom periodu prošle godine." /></span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
@@ -1220,10 +1243,10 @@ export default function SupplierSalesStatsPage() {
                 <div>
                   <h2>Prioritetna lista dobavljaca</h2>
                   <p>
-                    Pojacaj: {supplierCounts.increaseFocus} | Zadrzi: {supplierCounts.maintain} | Oprez: {supplierCounts.review} | Smanji: {supplierCounts.doNotTrust} | N/A: {supplierCounts.insufficientData}
+                    Pojačaj: {supplierCounts.increaseFocus} | Zadrži: {supplierCounts.maintain} | Oprez: {supplierCounts.review} | Smanji: {supplierCounts.doNotTrust} | N/A: {supplierCounts.insufficientData}
                   </p>
                   <p className="supplier-decision-metric-note">
-                    Preporuka uzima u obzir promet, kolicinu, realnu zaradu, marzni procenat i PoP trend.
+                    Preporuka uzima u obzir promet, količinu, realnu zaradu, marzni procenat i PoP trend.
                   </p>
                   {unknownSuppliers.length > 0 ? (
                     <p className="supplier-unknown-note">
@@ -1258,27 +1281,27 @@ export default function SupplierSalesStatsPage() {
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("ukupnaKolicina")}>
-                          Kolicina{sortMarker("ukupnaKolicina", sortField, sortDir)} <InfoTip text="Ukupan broj prodatih artikala/pari." />
+                          Količina{sortMarker("ukupnaKolicina", sortField, sortDir)} <InfoTip text="Ukupan broj prodatih komada." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo prometa{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
+                          Udeo prometa{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Koliki procenat ukupnog prometa čini ovaj dobavljač." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Realna zarada{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Razlika izmedju prodajne i nabavne vrednosti. Sa poznatom nabavnom cenom." />
+                          Realna zarada{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Razlika između prodajne i nabavne vrednosti. Sa poznatom nabavnom cenom." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginPct")}>
-                          Marza %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat marze: (zarada / prihod sa poznatom cenom) * 100." />
+                          Marža %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat marže: (realna zarada / promet sa poznatom cenom) * 100." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("shareOfProfit")}>
-                          Udeo zarade{sortMarker("shareOfProfit", sortField, sortDir)} <InfoTip text="Udeo ovog dobavljaca u ukupnoj realnoj zaradi." />
+                          Udeo zarade{sortMarker("shareOfProfit", sortField, sortDir)} <InfoTip text="Udeo ovog dobavljača u ukupnoj realnoj zaradi (%)." />
                         </button>
                       </th>
                       <th className="align-right">
@@ -1288,10 +1311,12 @@ export default function SupplierSalesStatsPage() {
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Pojacaj / Zadrzi / Oprez / Smanji - na osnovu kombinacije prometa, zarade, marze i trenda." />
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Pojačaj fokus, Zadrži, U pregledu ili Smanji - preporuka bazirana na prometu, zaradi, marži i trendu." />
                         </button>
                       </th>
-                      <th className="align-center">Detalj</th>
+                      <th className="align-center">
+                        Detalj <InfoTip text="Prikaži detaljne analitike za ovog dobavljača." />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1406,39 +1431,39 @@ export default function SupplierSalesStatsPage() {
               <h4 className="supplier-detail-section-title">Poslovni pokazatelji</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>Promet</span>
+                  <span>Promet <InfoTip text="Ukupna vrednost prodaje ovog dobavljača." /></span>
                   <strong>{fmtRsd(selectedSupplier.ukupanPromet)}</strong>
                 </article>
                 <article>
-                  <span>Prodata kolicina</span>
+                  <span>Prodata količina <InfoTip text="Ukupan broj prodatih komada." /></span>
                   <strong>{fmtQty(selectedSupplier.ukupnaKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Realna zarada</span>
+                  <span>Realna zarada <InfoTip text="Razlika između prodajne i nabavne vrednosti." /></span>
                   <strong className={selectedSupplier.marginContribution > 0 ? "trend-up" : selectedSupplier.marginContribution < 0 ? "trend-down" : ""}>
                     {fmtRsd(selectedSupplier.marginContribution)}
                   </strong>
                 </article>
                 <article>
-                  <span>Marza %</span>
+                  <span>Marža % <InfoTip text="Procenat realnih zarada u odnosu na promet sa poznatom cenom." /></span>
                   <strong className={selectedSupplier.marginPct != null && selectedSupplier.marginPct > 0 ? "trend-up" : selectedSupplier.marginPct != null && selectedSupplier.marginPct < 0 ? "trend-down" : ""}>
                     {fmtSignedPct(selectedSupplier.marginPct, 2)}
                   </strong>
                 </article>
                 <article>
-                  <span>Udeo u prometu</span>
+                  <span>Udeo u prometu <InfoTip text="Koliki deo ukupnog prometa čini ovaj dobavljač (%)." /></span>
                   <strong>{fmtPct(selectedSupplier.sharePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Udeo u zaradi</span>
+                  <span>Udeo u zaradi <InfoTip text="Koliki deo ukupne zarade čini ovaj dobavljač (%)." /></span>
                   <strong>{fmtPct(selectedSupplier.shareOfProfit, 1)}</strong>
                 </article>
                 <article>
-                  <span>Udeo u kolicini</span>
+                  <span>Udeo u količini <InfoTip text="Koliki deo ukupne prodane količine čini ovaj dobavljač (%)." /></span>
                   <strong>{fmtPct(selectedSupplier.shareOfUnits, 1)}</strong>
                 </article>
                 <article>
-                  <span>Broj artikala</span>
+                  <span>Broj artikala <InfoTip text="Ukupan broj različitih proizvoda/stilova od ovog dobavljača." /></span>
                   <strong>{selectedSupplier.brojArtikalaUkupno}</strong>
                 </article>
               </div>
@@ -1447,23 +1472,23 @@ export default function SupplierSalesStatsPage() {
               <h4 className="supplier-detail-section-title">Trend u odnosu na prethodni period</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>PoP trend prometa</span>
+                  <span>PoP trend prometa <InfoTip text="Promena vrednosti prometa u odnosu na isti period prethodne godine (%)." /></span>
                   <strong className={describePopMetric(selectedSupplier).className} title={describePopMetric(selectedSupplier).title}>
                     {describePopMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Prethodni period promet</span>
+                  <span>Prethodni period promet <InfoTip text="Vrednost prometa u istom periodu prethodne godine." /></span>
                   <strong>{selectedSupplier.previousPeriodRevenue != null ? fmtRsd(selectedSupplier.previousPeriodRevenue) : "N/A"}</strong>
                 </article>
                 <article>
-                  <span>PoP trend kolicine</span>
+                  <span>PoP trend količine <InfoTip text="Promena količine prodanih komada u odnosu na isti period prethodne godine (%)." /></span>
                   <strong className={describePopUnitsMetric(selectedSupplier).className} title={describePopUnitsMetric(selectedSupplier).title}>
                     {describePopUnitsMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Prethodni period kolicina</span>
+                  <span>Prethodni period količina <InfoTip text="Količina prodanih komada u istom periodu prethodne godine." /></span>
                   <strong>{selectedSupplier.previousPeriodUnits != null ? fmtQty(selectedSupplier.previousPeriodUnits) : "N/A"}</strong>
                 </article>
               </div>
@@ -1472,24 +1497,28 @@ export default function SupplierSalesStatsPage() {
               <h4 className="supplier-detail-section-title">Nivelacija</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>Impact na promet</span>
+                  <span>Uticaj na promet <InfoTip text="Promenjenost vrednosti prometa pre i posle primene nivelacije na артиклима koji imaju prodaju u oba perioda (%)." /></span>
                   <strong className={describeNivelacijaImpactMetric(selectedSupplier).className} title={describeNivelacijaImpactMetric(selectedSupplier).title}>
                     {describeNivelacijaImpactMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Impact na kolicinu</span>
+                  <span>Uticaj na količinu <InfoTip text="Promenjenost količine prodanih komada pre i posle primene nivelacije (%)." /></span>
                   <strong className={describeNivelacijaUnitsImpactMetric(selectedSupplier).className} title={describeNivelacijaUnitsImpactMetric(selectedSupplier).title}>
                     {describeNivelacijaUnitsImpactMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Artikli sa nivelacijom</span>
+                  <span>Artikli sa nivelacijom <InfoTip text="Broj artikala koji imaju primenljive nivelacije / Ukupan broj artikala." /></span>
                   <strong>{selectedSupplier.brojArtikalaSaNivelacijom} / {selectedSupplier.brojArtikalaUkupno}</strong>
                 </article>
                 <article>
-                  <span>Pre/post pokrice</span>
+                  <span>Pre/post pokrivanje <InfoTip text="Procenat prometa koji se može meriti za pre/post nivelaciju analizu." /></span>
                   <strong>{fmtPct(selectedSupplier.prePostNivelacijaRevenueCoveragePct, 1)}</strong>
+                </article>
+                <article>
+                  <span>Uporedivi artikli <InfoTip text="Broj artikala sa prodajom i u pre i u post nivelaciji periodu." /></span>
+                  <strong>{selectedSupplier.prePostComparableArticleCount ?? 0}</strong>
                 </article>
               </div>
 
@@ -1497,18 +1526,34 @@ export default function SupplierSalesStatsPage() {
               <h4 className="supplier-detail-section-title">Kvalitet podataka</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>Pouzdanost</span>
+                  <span>Pouzdanost <InfoTip text="Procenat procenjen na osnovu dostupnosti podataka, signala i konzistentnosti." /></span>
                   <strong>{fmtPct(selectedSupplier.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Pokrice marze</span>
+                  <span>Istorijsko pokrivanje marže <InfoTip text="Procenat prometa sa poznatom istorijskom nabavnom cenom (sa prodajne stavke)." /></span>
                   <strong>{fmtPct(selectedSupplier.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Confidence</span>
+                  <span>Master fallback trošak <InfoTip text="Procenat prometa gde je nabavna cena procenjena iz trenutnog master troška artikla." /></span>
+                  <strong>{fmtPct(selectedSupplier.fallbackCostCoveragePct, 1)}</strong>
+                </article>
+                <article>
+                  <span>Sigurnost preporuke <InfoTip text="Ukupna sigurnost preporuke bazirana na svim dostupnim signalima (0-100%)." /></span>
                   <strong>{fmtPct(selectedSupplier.confidencePct, 0)}</strong>
                 </article>
               </div>
+
+              {selectedSupplier.prePostSignalNote ? (
+                <p className="supplier-decision-reason">
+                  <strong>Napomena za pre/post signal:</strong> {selectedSupplier.prePostSignalNote}
+                </p>
+              ) : null}
+
+              {selectedSupplier.estimatedCostRevenue > 0 ? (
+                <p className="supplier-decision-reason">
+                  <strong>Napomena za maržu:</strong> Marža je delom procenjena iz trenutnog master troška artikla za {fmtPct(selectedSupplier.fallbackCostCoveragePct, 1)} prometa.
+                </p>
+              ) : null}
 
               <p className="supplier-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedSupplier.statusReason}

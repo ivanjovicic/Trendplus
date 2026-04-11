@@ -24,8 +24,10 @@ export interface ShoeTypeSalesStat {
   brojArtikalaSaNivelacijom: number;
   brojArtikalaUkupno: number;
   revenueWithCost: number;
+  estimatedCostRevenue: number;
   marginContribution: number;
   marginDataCoveragePct: number | null;
+  fallbackCostCoveragePct: number | null;
   marginPct: number;
   revenueWithNivelacijaSplit: number;
   popRevenueChangePct: number | null;
@@ -33,6 +35,8 @@ export interface ShoeTypeSalesStat {
   prePostNivelacijaRevenueImpactPct: number | null;
   prePostNivelacijaUnitsImpactPct: number | null;
   prePostNivelacijaRevenueCoveragePct: number | null;
+  prePostSignalNote?: string | null;
+  prePostComparableArticleCount?: number;
   sharePct?: number;
   reliabilityPct?: number;
   isUnknown?: boolean;
@@ -71,6 +75,8 @@ export interface ShoeTypeSalesTotals {
 export interface ShoeTypeSalesDataQuality {
   missingCostRevenue: number;
   missingCostRevenueSharePct: number | null;
+  estimatedCostRevenue?: number;
+  estimatedCostRevenueSharePct?: number | null;
   unknownTypeRevenue: number;
   unknownTypeRevenueSharePct: number | null;
   revenueWithNivelacijaSplit: number;

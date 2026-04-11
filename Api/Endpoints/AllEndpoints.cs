@@ -1215,17 +1215,11 @@ public static class AllEndpoints
                             previousUnitsRaw = previousMetrics.Units;
                         }
 
-                        decimal preNivRevenue = 0m;
-                        decimal postNivRevenue = 0m;
                         decimal totalRevenue = 0m;
-                        int preNivQty = 0;
-                        int postNivQty = 0;
                         int totalQty = 0;
-                        decimal revenueWithNivelacijaSplit = 0m;
                         var margin = new MarginAccumulator();
 
                         var articleIds = new HashSet<int>();
-                        var articleIdsWithNivelacija = new HashSet<int>();
 
                         foreach (var s in g)
                         {
@@ -1235,29 +1229,19 @@ public static class AllEndpoints
                             margin.Add(
                                 s.Prihod,
                                 s.Kolicina,
-                                AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy));
-
-                            if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
-                            {
-                                continue;
-                            }
-
-                            articleIdsWithNivelacija.Add(s.ArtikalId);
-                            revenueWithNivelacijaSplit += s.Prihod;
-
-                            if (s.DatumProdaje < nivDatum)
-                            {
-                                preNivRevenue += s.Prihod;
-                                preNivQty += s.Kolicina;
-                            }
-                            else
-                            {
-                                postNivRevenue += s.Prihod;
-                                postNivQty += s.Kolicina;
-                            }
+                                s.SaleLineCost,
+                                s.ProductCostRsd,
+                                s.ProductCostLegacy);
                         }
 
                         var marginSnapshot = margin.Build(totalRevenue);
+                        var splitSnapshot = AnalyticsNivelacijaSplitPolicy.Build(
+                            g,
+                            prvaNivelacijaPoArtiklu,
+                            sale => sale.ArtikalId,
+                            sale => sale.DatumProdaje,
+                            sale => sale.Prihod,
+                            sale => sale.Kolicina);
 
                         var normalizedSupplierName = string.IsNullOrWhiteSpace(g.Key.DobavljacNaziv)
                             ? "Nepoznato"
@@ -1270,19 +1254,22 @@ public static class AllEndpoints
                             dobavljacId = g.Key.DobavljacId,
                             dobavljacNaziv = normalizedSupplierName,
                             isUnknown,
-                            preNivelacijePromet = Math.Round(preNivRevenue, 2),
-                            preNivelacijeKolicina = preNivQty,
-                            posleNivelacijePromet = Math.Round(postNivRevenue, 2),
-                            posleNivelacijeKolicina = postNivQty,
+                            preNivelacijePromet = splitSnapshot.PreRevenue,
+                            preNivelacijeKolicina = splitSnapshot.PreQuantity,
+                            posleNivelacijePromet = splitSnapshot.PostRevenue,
+                            posleNivelacijeKolicina = splitSnapshot.PostQuantity,
                             ukupanPromet = Math.Round(totalRevenue, 2),
                             ukupnaKolicina = totalQty,
-                            brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
+                            brojArtikalaSaNivelacijom = splitSnapshot.ArticleCountWithNivelacija,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = marginSnapshot.RevenueWithCost,
+                            revenueWithCost = marginSnapshot.HistoricalCostRevenue,
+                            estimatedCostRevenue = marginSnapshot.EstimatedCostRevenue,
                             marginContribution = marginSnapshot.MarginContribution,
-                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                            marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
-                            revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                            revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
+                            comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
                             previousPeriodRevenue = hasPreviousComparablePeriod
                                 ? Math.Round(previousRevenueRaw, 2)
                                 : (decimal?)null,
@@ -1295,22 +1282,14 @@ public static class AllEndpoints
                             popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
                                 ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
                                 : (double?)null,
-                            prePostNivelacijaRevenueImpactPct = preNivRevenue > 0m
-                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
-                                : (double?)null,
-                            prePostNivelacijaUnitsImpactPct = preNivQty > 0
-                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
-                                : (double?)null,
-                            prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
-                                : (double?)null,
+                            prePostNivelacijaRevenueImpactPct = splitSnapshot.RevenueImpactPct,
+                            prePostNivelacijaUnitsImpactPct = splitSnapshot.UnitsImpactPct,
+                            prePostNivelacijaRevenueCoveragePct = splitSnapshot.ComparableRevenueCoveragePct,
+                            prePostSignalNote = splitSnapshot.SignalNote,
+                            prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
                             // Legacy compatibility aliases (pre/post impact metric in old response shape)
-                            promenaPrometa = preNivRevenue > 0m
-                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
-                                : (double?)null,
-                            promenaKolicine = preNivQty > 0
-                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
-                                : (double?)null
+                            promenaPrometa = splitSnapshot.RevenueImpactPct,
+                            promenaKolicine = splitSnapshot.UnitsImpactPct
                         };
                     })
                     .OrderByDescending(x => x.ukupanPromet)
@@ -1335,15 +1314,13 @@ public static class AllEndpoints
                 var sumPreRevenue = suppliers.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = suppliers.Sum(r => r.posleNivelacijePromet);
                 var totalRevenue = suppliers.Sum(r => r.ukupanPromet);
-                var revenueWithNivelacijaSplit = suppliers.Sum(r => r.revenueWithNivelacijaSplit);
+                var comparableRevenueWithNivelacijaSplit = suppliers.Sum(r => r.comparableRevenueWithNivelacijaSplit);
                 var unknownSupplierRevenue = suppliers.Where(r => r.isUnknown).Sum(r => r.ukupanPromet);
-                var totalRevenueWithCost = stavke.Sum(s =>
-                    AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy).HasValue
-                        ? s.Prihod
-                        : 0m);
-                var missingCostRevenue = totalRevenue - totalRevenueWithCost;
+                var totalRevenueWithHistoricalCost = suppliers.Sum(r => r.revenueWithCost);
+                var estimatedCostRevenue = suppliers.Sum(r => r.estimatedCostRevenue);
+                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost;
                 var missingCostQty = stavke.Sum(s =>
-                    AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy).HasValue
+                    AnalyticsMarginPolicy.IsReliableCost(s.SaleLineCost)
                         ? 0
                         : s.Kolicina);
 
@@ -1354,20 +1331,24 @@ public static class AllEndpoints
                     missingCostRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
+                    estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
+                    estimatedCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(estimatedCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
                     unknownSupplierRevenue = Math.Round(unknownSupplierRevenue, 2),
                     unknownSupplierRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(unknownSupplierRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
-                    revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                    revenueWithNivelacijaSplit = Math.Round(comparableRevenueWithNivelacijaSplit, 2),
                     revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+                        ? Math.Round((double)(comparableRevenueWithNivelacijaSplit / totalRevenue * 100m), 2)
                         : (double?)null
                 };
 
                 if (dataQuality.missingCostRevenueSharePct.HasValue && dataQuality.missingCostRevenueSharePct.Value >= 10d)
                 {
                     logger.LogWarning(
-                        "Supplier-sales-stats margin reliability degraded due to missing purchase cost. MissingCostRevenueSharePct={MissingCostRevenueSharePct} BatchStoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                        "Supplier-sales-stats margin reliability degraded due to missing historical purchase cost. MissingCostRevenueSharePct={MissingCostRevenueSharePct} BatchStoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
                         dataQuality.missingCostRevenueSharePct.Value,
                         storeId,
                         sezonaId,
@@ -1378,7 +1359,7 @@ public static class AllEndpoints
                 if (dataQuality.revenueWithNivelacijaSplitSharePct.HasValue && dataQuality.revenueWithNivelacijaSplitSharePct.Value < 60d)
                 {
                     logger.LogInformation(
-                        "Supplier-sales-stats pre/post split covers only part of revenue. CoveragePct={CoveragePct} StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                        "Supplier-sales-stats comparable pre/post split covers only part of revenue. CoveragePct={CoveragePct} StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
                         dataQuality.revenueWithNivelacijaSplitSharePct.Value,
                         storeId,
                         sezonaId,
@@ -1444,10 +1425,13 @@ public static class AllEndpoints
                             supplier.brojArtikalaSaNivelacijom,
                             supplier.brojArtikalaUkupno,
                             supplier.revenueWithCost,
+                            supplier.estimatedCostRevenue,
                             supplier.marginContribution,
                             supplier.marginDataCoveragePct,
+                            supplier.fallbackCostCoveragePct,
                             supplier.marginPct,
                             supplier.revenueWithNivelacijaSplit,
+                            supplier.comparableRevenueWithNivelacijaSplit,
                             supplier.previousPeriodRevenue,
                             supplier.previousPeriodUnits,
                             supplier.popRevenueChangePct,
@@ -1455,6 +1439,8 @@ public static class AllEndpoints
                             supplier.prePostNivelacijaRevenueImpactPct,
                             supplier.prePostNivelacijaUnitsImpactPct,
                             supplier.prePostNivelacijaRevenueCoveragePct,
+                            supplier.prePostSignalNote,
+                            supplier.prePostComparableArticleCount,
                             sharePct,
                             shareOfProfit,
                             shareOfUnits,
@@ -1803,17 +1789,11 @@ public static class AllEndpoints
                             previousUnitsRaw = previousMetrics.Units;
                         }
 
-                        decimal preNivRevenue = 0m;
-                        decimal postNivRevenue = 0m;
                         decimal totalRevenue = 0m;
-                        int preNivQty = 0;
-                        int postNivQty = 0;
                         int totalQty = 0;
-                        decimal revenueWithNivelacijaSplit = 0m;
                         var margin = new MarginAccumulator();
 
                         var articleIds = new HashSet<int>();
-                        var articleIdsWithNivelacija = new HashSet<int>();
 
                         foreach (var s in g)
                         {
@@ -1823,29 +1803,19 @@ public static class AllEndpoints
                             margin.Add(
                                 s.Prihod,
                                 s.Kolicina,
-                                AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy));
-
-                            if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
-                            {
-                                continue;
-                            }
-
-                            articleIdsWithNivelacija.Add(s.ArtikalId);
-                            revenueWithNivelacijaSplit += s.Prihod;
-
-                            if (s.DatumProdaje < nivDatum)
-                            {
-                                preNivRevenue += s.Prihod;
-                                preNivQty += s.Kolicina;
-                            }
-                            else
-                            {
-                                postNivRevenue += s.Prihod;
-                                postNivQty += s.Kolicina;
-                            }
+                                s.SaleLineCost,
+                                s.ProductCostRsd,
+                                s.ProductCostLegacy);
                         }
 
                         var marginSnapshot = margin.Build(totalRevenue);
+                        var splitSnapshot = AnalyticsNivelacijaSplitPolicy.Build(
+                            g,
+                            prvaNivelacijaPoArtiklu,
+                            sale => sale.ArtikalId,
+                            sale => sale.DatumProdaje,
+                            sale => sale.Prihod,
+                            sale => sale.Kolicina);
                         var tipObuceNaziv = g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var naziv)
                             ? naziv
                             : "Nepoznato";
@@ -1854,19 +1824,22 @@ public static class AllEndpoints
                         {
                             tipObuceId = g.Key,
                             tipObuceNaziv = tipObuceNaziv,
-                            preNivelacijePromet = Math.Round(preNivRevenue, 2),
-                            preNivelacijeKolicina = preNivQty,
-                            posleNivelacijePromet = Math.Round(postNivRevenue, 2),
-                            posleNivelacijeKolicina = postNivQty,
+                            preNivelacijePromet = splitSnapshot.PreRevenue,
+                            preNivelacijeKolicina = splitSnapshot.PreQuantity,
+                            posleNivelacijePromet = splitSnapshot.PostRevenue,
+                            posleNivelacijeKolicina = splitSnapshot.PostQuantity,
                             ukupanPromet = Math.Round(totalRevenue, 2),
                             ukupnaKolicina = totalQty,
-                            brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
+                            brojArtikalaSaNivelacijom = splitSnapshot.ArticleCountWithNivelacija,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = marginSnapshot.RevenueWithCost,
+                            revenueWithCost = marginSnapshot.HistoricalCostRevenue,
+                            estimatedCostRevenue = marginSnapshot.EstimatedCostRevenue,
                             marginContribution = marginSnapshot.MarginContribution,
-                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                            marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
-                            revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                            revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
+                            comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
                             previousPeriodRevenue = hasPreviousComparablePeriod
                                 ? Math.Round(previousRevenueRaw, 2)
                                 : (decimal?)null,
@@ -1879,22 +1852,14 @@ public static class AllEndpoints
                             popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
                                 ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
                                 : (double?)null,
-                            prePostNivelacijaRevenueImpactPct = preNivRevenue > 0m
-                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
-                                : (double?)null,
-                            prePostNivelacijaUnitsImpactPct = preNivQty > 0
-                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
-                                : (double?)null,
-                            prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
-                                : (double?)null,
+                            prePostNivelacijaRevenueImpactPct = splitSnapshot.RevenueImpactPct,
+                            prePostNivelacijaUnitsImpactPct = splitSnapshot.UnitsImpactPct,
+                            prePostNivelacijaRevenueCoveragePct = splitSnapshot.ComparableRevenueCoveragePct,
+                            prePostSignalNote = splitSnapshot.SignalNote,
+                            prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
                             // Legacy compatibility aliases (pre/post impact metric in old response shape)
-                            promenaPrometa = preNivRevenue > 0m
-                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
-                                : (double?)null,
-                            promenaKolicine = preNivQty > 0
-                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
-                                : (double?)null
+                            promenaPrometa = splitSnapshot.RevenueImpactPct,
+                            promenaKolicine = splitSnapshot.UnitsImpactPct
                         };
                     })
                     .OrderByDescending(x => x.ukupanPromet)
@@ -1903,12 +1868,10 @@ public static class AllEndpoints
                 var sumPreRevenue = shoeTypes.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = shoeTypes.Sum(r => r.posleNivelacijePromet);
                 var totalRevenue = shoeTypes.Sum(r => r.ukupanPromet);
-                var revenueWithNivelacijaSplit = shoeTypes.Sum(r => r.revenueWithNivelacijaSplit);
-                var totalRevenueWithCost = stavke.Sum(s =>
-                    AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy).HasValue
-                        ? s.Prihod
-                        : 0m);
-                var missingCostRevenue = totalRevenue - totalRevenueWithCost;
+                var comparableRevenueWithNivelacijaSplit = shoeTypes.Sum(r => r.comparableRevenueWithNivelacijaSplit);
+                var totalRevenueWithHistoricalCost = shoeTypes.Sum(r => r.revenueWithCost);
+                var estimatedCostRevenue = shoeTypes.Sum(r => r.estimatedCostRevenue);
+                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost;
                 var unknownTypeRevenue = shoeTypes
                     .Where(r => string.Equals(r.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
                     .Sum(r => r.ukupanPromet);
@@ -1919,13 +1882,17 @@ public static class AllEndpoints
                     missingCostRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
+                    estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
+                    estimatedCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(estimatedCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
                     unknownTypeRevenue = Math.Round(unknownTypeRevenue, 2),
                     unknownTypeRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(unknownTypeRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
-                    revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                    revenueWithNivelacijaSplit = Math.Round(comparableRevenueWithNivelacijaSplit, 2),
                     revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+                        ? Math.Round((double)(comparableRevenueWithNivelacijaSplit / totalRevenue * 100m), 2)
                         : (double?)null
                 };
 
@@ -1980,10 +1947,13 @@ public static class AllEndpoints
                             row.brojArtikalaSaNivelacijom,
                             row.brojArtikalaUkupno,
                             row.revenueWithCost,
+                            row.estimatedCostRevenue,
                             row.marginContribution,
                             row.marginDataCoveragePct,
+                            row.fallbackCostCoveragePct,
                             row.marginPct,
                             row.revenueWithNivelacijaSplit,
+                            row.comparableRevenueWithNivelacijaSplit,
                             row.previousPeriodRevenue,
                             row.previousPeriodUnits,
                             row.popRevenueChangePct,
@@ -1991,6 +1961,8 @@ public static class AllEndpoints
                             row.prePostNivelacijaRevenueImpactPct,
                             row.prePostNivelacijaUnitsImpactPct,
                             row.prePostNivelacijaRevenueCoveragePct,
+                            row.prePostSignalNote,
+                            row.prePostComparableArticleCount,
                             sharePct,
                             reliabilityPct = recommendation.ReliabilityPct,
                             recommendation = new
@@ -2326,17 +2298,11 @@ public static class AllEndpoints
                             previousUnitsRaw = previousMetrics.Units;
                         }
 
-                        decimal preNivRevenue = 0m;
-                        decimal postNivRevenue = 0m;
                         decimal totalRevenue = 0m;
-                        int preNivQty = 0;
-                        int postNivQty = 0;
                         int totalQty = 0;
-                        decimal revenueWithNivelacijaSplit = 0m;
                         var margin = new MarginAccumulator();
 
                         var articleIds = new HashSet<int>();
-                        var articleIdsWithNivelacija = new HashSet<int>();
 
                         foreach (var s in g)
                         {
@@ -2346,46 +2312,39 @@ public static class AllEndpoints
                             margin.Add(
                                 s.Prihod,
                                 s.Kolicina,
-                                AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy));
-
-                            if (!prvaNivelacijaPoArtiklu.TryGetValue(s.ArtikalId, out var nivDatum))
-                            {
-                                continue;
-                            }
-
-                            articleIdsWithNivelacija.Add(s.ArtikalId);
-                            revenueWithNivelacijaSplit += s.Prihod;
-
-                            if (s.DatumProdaje < nivDatum)
-                            {
-                                preNivRevenue += s.Prihod;
-                                preNivQty += s.Kolicina;
-                            }
-                            else
-                            {
-                                postNivRevenue += s.Prihod;
-                                postNivQty += s.Kolicina;
-                            }
+                                s.SaleLineCost,
+                                s.ProductCostRsd,
+                                s.ProductCostLegacy);
                         }
 
                         var marginSnapshot = margin.Build(totalRevenue);
+                        var splitSnapshot = AnalyticsNivelacijaSplitPolicy.Build(
+                            g,
+                            prvaNivelacijaPoArtiklu,
+                            sale => sale.ArtikalId,
+                            sale => sale.DatumProdaje,
+                            sale => sale.Prihod,
+                            sale => sale.Kolicina);
 
                         return new
                         {
                             boja = g.Key,
-                            preNivelacijePromet = Math.Round(preNivRevenue, 2),
-                            preNivelacijeKolicina = preNivQty,
-                            posleNivelacijePromet = Math.Round(postNivRevenue, 2),
-                            posleNivelacijeKolicina = postNivQty,
+                            preNivelacijePromet = splitSnapshot.PreRevenue,
+                            preNivelacijeKolicina = splitSnapshot.PreQuantity,
+                            posleNivelacijePromet = splitSnapshot.PostRevenue,
+                            posleNivelacijeKolicina = splitSnapshot.PostQuantity,
                             ukupanPromet = Math.Round(totalRevenue, 2),
                             ukupnaKolicina = totalQty,
-                            brojArtikalaSaNivelacijom = articleIdsWithNivelacija.Count,
+                            brojArtikalaSaNivelacijom = splitSnapshot.ArticleCountWithNivelacija,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = marginSnapshot.RevenueWithCost,
+                            revenueWithCost = marginSnapshot.HistoricalCostRevenue,
+                            estimatedCostRevenue = marginSnapshot.EstimatedCostRevenue,
                             marginContribution = marginSnapshot.MarginContribution,
-                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
+                            marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
-                            revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                            revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
+                            comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
                             previousPeriodRevenue = hasPreviousComparablePeriod
                                 ? Math.Round(previousRevenueRaw, 2)
                                 : (decimal?)null,
@@ -2398,22 +2357,14 @@ public static class AllEndpoints
                             popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
                                 ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
                                 : (double?)null,
-                            prePostNivelacijaRevenueImpactPct = preNivRevenue > 0m
-                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
-                                : (double?)null,
-                            prePostNivelacijaUnitsImpactPct = preNivQty > 0
-                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
-                                : (double?)null,
-                            prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
-                                : (double?)null,
+                            prePostNivelacijaRevenueImpactPct = splitSnapshot.RevenueImpactPct,
+                            prePostNivelacijaUnitsImpactPct = splitSnapshot.UnitsImpactPct,
+                            prePostNivelacijaRevenueCoveragePct = splitSnapshot.ComparableRevenueCoveragePct,
+                            prePostSignalNote = splitSnapshot.SignalNote,
+                            prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
                             // Legacy compatibility aliases (pre/post impact metric in old response shape)
-                            promenaPrometa = preNivRevenue > 0m
-                                ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
-                                : (double?)null,
-                            promenaKolicine = preNivQty > 0
-                                ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
-                                : (double?)null
+                            promenaPrometa = splitSnapshot.RevenueImpactPct,
+                            promenaKolicine = splitSnapshot.UnitsImpactPct
                         };
                     })
                     .OrderByDescending(x => x.ukupanPromet)
@@ -2422,10 +2373,10 @@ public static class AllEndpoints
                 var sumPreRevenue = colors.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = colors.Sum(r => r.posleNivelacijePromet);
                 var totalRevenue = colors.Sum(r => r.ukupanPromet);
-                var revenueWithNivelacijaSplit = colors.Sum(r => r.revenueWithNivelacijaSplit);
-                var missingCostRevenue = stavke.Where(s =>
-                        !AnalyticsMarginPolicy.ResolveUnitCost(s.SaleLineCost, s.ProductCostRsd, s.ProductCostLegacy).HasValue)
-                    .Sum(s => s.Prihod);
+                var comparableRevenueWithNivelacijaSplit = colors.Sum(r => r.comparableRevenueWithNivelacijaSplit);
+                var totalRevenueWithHistoricalCost = colors.Sum(r => r.revenueWithCost);
+                var estimatedCostRevenue = colors.Sum(r => r.estimatedCostRevenue);
+                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost;
                 var unknownColorRevenue = colors
                     .Where(r => string.Equals(r.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
                     .Sum(r => r.ukupanPromet);
@@ -2436,13 +2387,17 @@ public static class AllEndpoints
                     missingCostRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
+                    estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
+                    estimatedCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(estimatedCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
                     unknownColorRevenue = Math.Round(unknownColorRevenue, 2),
                     unknownColorRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(unknownColorRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
-                    revenueWithNivelacijaSplit = Math.Round(revenueWithNivelacijaSplit, 2),
+                    revenueWithNivelacijaSplit = Math.Round(comparableRevenueWithNivelacijaSplit, 2),
                     revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
+                        ? Math.Round((double)(comparableRevenueWithNivelacijaSplit / totalRevenue * 100m), 2)
                         : (double?)null
                 };
 
@@ -2496,10 +2451,13 @@ public static class AllEndpoints
                             row.brojArtikalaSaNivelacijom,
                             row.brojArtikalaUkupno,
                             row.revenueWithCost,
+                            row.estimatedCostRevenue,
                             row.marginContribution,
                             row.marginDataCoveragePct,
+                            row.fallbackCostCoveragePct,
                             row.marginPct,
                             row.revenueWithNivelacijaSplit,
+                            row.comparableRevenueWithNivelacijaSplit,
                             row.previousPeriodRevenue,
                             row.previousPeriodUnits,
                             row.popRevenueChangePct,
@@ -2507,6 +2465,8 @@ public static class AllEndpoints
                             row.prePostNivelacijaRevenueImpactPct,
                             row.prePostNivelacijaUnitsImpactPct,
                             row.prePostNivelacijaRevenueCoveragePct,
+                            row.prePostSignalNote,
+                            row.prePostComparableArticleCount,
                             sharePct,
                             reliabilityPct = recommendation.ReliabilityPct,
                             recommendation = new

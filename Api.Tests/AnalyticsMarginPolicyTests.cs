@@ -40,6 +40,24 @@ public sealed class AnalyticsMarginPolicyTests
     }
 
     [Fact]
+    public void ResolveUnitCostWithSource_DistinguishesHistoricalFromFallbackCost()
+    {
+        var historical = AnalyticsMarginPolicy.ResolveUnitCostWithSource(
+            saleLineCost: 820m,
+            productCostRsd: 900m,
+            productCostLegacy: 950m);
+        var fallback = AnalyticsMarginPolicy.ResolveUnitCostWithSource(
+            saleLineCost: null,
+            productCostRsd: 780m,
+            productCostLegacy: 910m);
+
+        Assert.Equal(820m, historical.UnitCost);
+        Assert.Equal(MarginCostSource.Historical, historical.Source);
+        Assert.Equal(780m, fallback.UnitCost);
+        Assert.Equal(MarginCostSource.ProductFallbackRsd, fallback.Source);
+    }
+
+    [Fact]
     public void MarginAccumulator_BuildsContributionAndCoverage_ForKnownCostRows()
     {
         var accumulator = new MarginAccumulator();
@@ -54,6 +72,10 @@ public sealed class AnalyticsMarginPolicyTests
         Assert.Equal(300m, snapshot.MarginContribution);
         Assert.Equal(37.5d, snapshot.MarginPct);
         Assert.Equal(80d, snapshot.MarginDataCoveragePct);
+        Assert.Equal(800m, snapshot.HistoricalCostRevenue);
+        Assert.Equal(0m, snapshot.EstimatedCostRevenue);
+        Assert.Equal(80d, snapshot.HistoricalMarginCoveragePct);
+        Assert.Equal(0d, snapshot.FallbackCostCoveragePct);
     }
 
     [Fact]
@@ -73,6 +95,8 @@ public sealed class AnalyticsMarginPolicyTests
         Assert.Equal(100m, snapshot.MarginContribution);
         Assert.Equal(50d, snapshot.MarginPct);
         Assert.Equal(20.51d, snapshot.MarginDataCoveragePct);
+        Assert.Equal(200m, snapshot.HistoricalCostRevenue);
+        Assert.Equal(0m, snapshot.EstimatedCostRevenue);
     }
 
     [Fact]
@@ -90,5 +114,24 @@ public sealed class AnalyticsMarginPolicyTests
         Assert.Equal(50m, snapshot.MarginContribution);
         Assert.Equal(20d, snapshot.MarginPct);
         Assert.Equal(100d, snapshot.MarginDataCoveragePct);
+        Assert.Equal(250m, snapshot.HistoricalCostRevenue);
+        Assert.Equal(0m, snapshot.EstimatedCostRevenue);
+    }
+
+    [Fact]
+    public void MarginAccumulator_TracksHistoricalAndFallbackCoverageSeparately()
+    {
+        var accumulator = new MarginAccumulator();
+
+        accumulator.Add(revenue: 500m, quantity: 2m, saleLineCost: 200m, productCostRsd: 250m, productCostLegacy: 260m);
+        accumulator.Add(revenue: 300m, quantity: 1m, saleLineCost: null, productCostRsd: 100m, productCostLegacy: 110m);
+
+        var snapshot = accumulator.Build(totalRevenue: 1_000m);
+
+        Assert.Equal(800m, snapshot.RevenueWithCost);
+        Assert.Equal(500m, snapshot.HistoricalCostRevenue);
+        Assert.Equal(300m, snapshot.EstimatedCostRevenue);
+        Assert.Equal(50d, snapshot.HistoricalMarginCoveragePct);
+        Assert.Equal(30d, snapshot.FallbackCostCoveragePct);
     }
 }

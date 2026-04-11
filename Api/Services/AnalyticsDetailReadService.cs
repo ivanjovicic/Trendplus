@@ -469,17 +469,11 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             return null;
         }
 
-        decimal preNivRevenue = 0m;
-        decimal postNivRevenue = 0m;
         decimal totalRevenue = 0m;
-        int preNivQty = 0;
-        int postNivQty = 0;
         int totalQty = 0;
-        decimal revenueWithNivelacijaSplit = 0m;
         var margin = new MarginAccumulator();
 
         var articleIds = new HashSet<int>();
-        var articleIdsWithNivelacija = new HashSet<int>();
 
         foreach (var row in rows)
         {
@@ -489,40 +483,20 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             margin.Add(
                 row.Prihod,
                 row.Kolicina,
-                AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.ProductCostRsd, row.ProductCostLegacy));
-
-            if (!context.PrvaNivelacijaPoArtiklu.TryGetValue(row.ArtikalId, out var nivDatum))
-            {
-                continue;
-            }
-
-            articleIdsWithNivelacija.Add(row.ArtikalId);
-            revenueWithNivelacijaSplit += row.Prihod;
-            if (row.DatumProdaje < nivDatum)
-            {
-                preNivRevenue += row.Prihod;
-                preNivQty += row.Kolicina;
-            }
-            else
-            {
-                postNivRevenue += row.Prihod;
-                postNivQty += row.Kolicina;
-            }
+                row.SaleLineCost,
+                row.ProductCostRsd,
+                row.ProductCostLegacy);
         }
 
         var marginSnapshot = margin.Build(totalRevenue);
-
-        var prePostNivelacijaRevenueImpactPct = preNivRevenue > 0m
-            ? Math.Round((double)((postNivRevenue - preNivRevenue) / preNivRevenue * 100m), 2)
-            : (double?)null;
-
-        var prePostNivelacijaUnitsImpactPct = preNivQty > 0
-            ? Math.Round((postNivQty - preNivQty) / (double)preNivQty * 100d, 2)
-            : (double?)null;
-
-        var prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
-            ? Math.Round((double)(revenueWithNivelacijaSplit / totalRevenue * 100m), 2)
-            : (double?)null;
+        var splitSnapshot = AnalyticsNivelacijaSplitPolicy.Build(
+            rows,
+            context.PrvaNivelacijaPoArtiklu,
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina);
+        var estimatedMargin = marginSnapshot.EstimatedCostRevenue > 0m;
 
         var popRevenueLabel = comparison?.PopRevenueChangePct?.ToString("0.00", CultureInfo.InvariantCulture)
             ?? (comparison?.PreviousPeriodRevenue.HasValue == true && comparison.PreviousPeriodRevenue.Value <= 0m && totalRevenue > 0m
@@ -548,20 +522,38 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         fields.AddRange(
         [
-            Field("preNivelacijePromet", "Pre nivelacije promet", Math.Round(preNivRevenue, 2).ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("preNivelacijeKolicina", "Pre nivelacije kolicina", preNivQty.ToString(CultureInfo.InvariantCulture), "number"),
-            Field("posleNivelacijePromet", "Posle nivelacije promet", Math.Round(postNivRevenue, 2).ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("posleNivelacijeKolicina", "Posle nivelacije kolicina", postNivQty.ToString(CultureInfo.InvariantCulture), "number"),
-            Field("prePostNivelacijaRevenueCoveragePct", "Pre/post pokrice prometa %", prePostNivelacijaRevenueCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("prePostNivelacijaRevenueImpactPct", "Pre/post nivelacija impact %", prePostNivelacijaRevenueImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent", prePostNivelacijaRevenueImpactPct.HasValue),
-            Field("prePostNivelacijaUnitsImpactPct", "Pre/post nivelacija impact kolicine %", prePostNivelacijaUnitsImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("marginContribution", "Marzni doprinos", marginSnapshot.MarginContribution.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("marginPct", "Marza %", marginSnapshot.MarginPct.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("marginDataCoveragePct", "Pokrice marze %", marginSnapshot.MarginDataCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("revenueWithCost", "Promet sa poznatom nabavnom cenom", marginSnapshot.RevenueWithCost.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", articleIdsWithNivelacija.Count.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("preNivelacijePromet", "Pre nivelacije promet", splitSnapshot.PreRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("preNivelacijeKolicina", "Pre nivelacije kolicina", splitSnapshot.PreQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("posleNivelacijePromet", "Posle nivelacije promet", splitSnapshot.PostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("posleNivelacijeKolicina", "Posle nivelacije kolicina", splitSnapshot.PostQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("prePostNivelacijaRevenueCoveragePct", "Pre/post uporedivo pokrice prometa %", splitSnapshot.ComparableRevenueCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("prePostNivelacijaRevenueImpactPct", "Pre/post nivelacija impact %", splitSnapshot.RevenueImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent", splitSnapshot.RevenueImpactPct.HasValue),
+            Field("prePostNivelacijaUnitsImpactPct", "Pre/post nivelacija impact kolicine %", splitSnapshot.UnitsImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("prePostComparableArticleCount", "Artikli sa uporedivim pre/post signalom", splitSnapshot.ComparableArticleCount.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("marginContribution", estimatedMargin ? "Procenjeni marzni doprinos" : "Marzni doprinos", marginSnapshot.MarginContribution.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("marginPct", estimatedMargin ? "Procenjena marza %" : "Marza %", marginSnapshot.MarginPct.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("marginDataCoveragePct", "Pokrice istorijske marze %", marginSnapshot.HistoricalMarginCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("fallbackCostCoveragePct", "Promet procenjen iz master troska %", marginSnapshot.FallbackCostCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("revenueWithCost", "Promet sa istorijskom nabavnom cenom", marginSnapshot.HistoricalCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("estimatedCostRevenue", "Promet procenjen iz master troska", marginSnapshot.EstimatedCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", splitSnapshot.ArticleCountWithNivelacija.ToString(CultureInfo.InvariantCulture), "number"),
             Field("brojArtikalaUkupno", "Ukupan broj artikala", articleIds.Count.ToString(CultureInfo.InvariantCulture), "number")
         ]);
+
+        if (!string.IsNullOrWhiteSpace(splitSnapshot.SignalNote))
+        {
+            fields.Add(Field("prePostSignalNote", "Napomena za pre/post signal", splitSnapshot.SignalNote, "text"));
+        }
+
+        if (estimatedMargin)
+        {
+            var estimatedShareText = marginSnapshot.FallbackCostCoveragePct?.ToString("0.##", CultureInfo.InvariantCulture) ?? "0";
+            fields.Add(Field(
+                "marginEstimationNote",
+                "Napomena za marzu",
+                $"Istorijska nabavna cena nije sacuvana na prodajnim stavkama za {estimatedShareText}% prometa, pa je marza za taj deo procenjena iz trenutnog master troska artikla.",
+                "text"));
+        }
 
         return new AnalyticsDetailResponseDto
         {
