@@ -547,24 +547,22 @@ textarea.input-big {
 
 .backend-wakeup-overlay {
     position: fixed;
-    inset: 0;
-    z-index: 95;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    background: var(--theme-color-rgba-2-6-23-0p66, rgba(2,6,23,0.66));
-    backdrop-filter: blur(6px);
+    top: 5.25rem;
+    right: 1rem;
+    z-index: 85;
+    width: min(calc(100vw - 2rem), 420px);
+    pointer-events: none;
 }
 
 .backend-wakeup-overlay__panel {
-    width: min(100%, 640px);
+    width: 100%;
     border-radius: 20px;
     border: 1px solid var(--border-strong);
     background: linear-gradient(165deg, var(--surface, #12161f) 0%, var(--surface-2, #161c28) 100%);
     color: var(--text);
     box-shadow: 0 28px 70px var(--theme-color-rgba-0-0-0-0p50, rgba(0,0,0,0.50));
     padding: 1.15rem 1.2rem;
+    pointer-events: auto;
 }
 
 .backend-wakeup-overlay__icon-row {
@@ -627,5 +625,12 @@ textarea.input-big {
     .backend-wakeup-overlay__icon-row {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .backend-wakeup-overlay {
+        top: auto;
+        right: 0.75rem;
+        bottom: 4.75rem;
+        width: min(calc(100vw - 1.5rem), 360px);
     }
 }

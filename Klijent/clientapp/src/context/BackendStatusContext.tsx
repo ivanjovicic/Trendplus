@@ -74,9 +74,6 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
                     status: res.status,
                     url: healthUrl,
                 });
-                lastReachableAtRef.current = checkedAt;
-                setOnline(true);
-                setLastCheckedAt(checkedAt);
             } catch {
                 if (cancelled) return;
                 const checkedAt = Date.now();

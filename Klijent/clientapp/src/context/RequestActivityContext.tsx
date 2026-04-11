@@ -88,6 +88,20 @@ function shouldTrackRequest(input: RequestInfo | URL): boolean {
   return false;
 }
 
+function shouldConfirmBackendReachability(input: RequestInfo | URL, response: Response): boolean {
+  const url = parseUrl(response.url || toRequestUrl(input));
+  if (!url) return false;
+
+  const pathname = url.pathname.toLowerCase();
+
+  if (TRACKED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    return true;
+  }
+
+  const apiOrigin = getOrigin(import.meta.env.VITE_API_BASE_URL);
+  return Boolean(apiOrigin && url.origin === apiOrigin);
+}
+
 export const RequestActivityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeRequests, setActiveRequests] = useState(0);
   const mountedRef = useRef(true);
@@ -109,11 +123,13 @@ export const RequestActivityProvider: React.FC<{ children: React.ReactNode }> = 
 
       try {
         const response = await originalFetch(input, init);
-        notifyBackendReachable({
-          source: "request",
-          status: response.status,
-          url: response.url || toRequestUrl(input),
-        });
+        if (shouldConfirmBackendReachability(input, response)) {
+          notifyBackendReachable({
+            source: "request",
+            status: response.status,
+            url: response.url || toRequestUrl(input),
+          });
+        }
         return response;
       } finally {
         if (mountedRef.current) {
