@@ -4073,6 +4073,15 @@ using NpgsqlTypes;
         var existing = ToFirstDictionary(_trendDb.ProdajaStavke.AsNoTracking().ToList(), x => x.Id);
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+
+        // Build a composite-key multiset to detect duplicate inserts when Access rows lack a stable id.
+        // Key = (IdProdaja, IdArtikal, Cena), Value = count of existing rows with that combo.
+        var existingCompositeKeys = new Dictionary<(int, int, decimal), int>();
+        foreach (var e in existing.Values)
+        {
+            var ck = (e.IdProdaja, e.IdArtikal, e.Cena);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
             var saleIds = (await _trendDb.ProdajaZaglavlja
                     .AsNoTracking()
                     .Select(x => x.Id)
@@ -4190,6 +4199,14 @@ using NpgsqlTypes;
             }
             else
             {
+                // Composite-key dedup: skip if an identical (idProdaja, idArtikal, cena) row already exists.
+                var compositeKey = (idProdaja.Value, idArtikal.Value, cena);
+                if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+                {
+                    existingCompositeKeys[compositeKey] = ckCount - 1;
+                    continue;
+                }
+
                 var assignedId = sourceId;
                 if (assignedId <= 0 || usedIds.Contains(assignedId))
                     assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
@@ -4206,6 +4223,8 @@ using NpgsqlTypes;
                 };
                 _trendDb.ProdajaStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
+                // Track newly inserted row in composite key set to prevent duplicates within the same batch.
+                existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 result.ProdajaStavkeInserted++;
                 TrackTrendWrite();
             }
@@ -4262,6 +4281,13 @@ using NpgsqlTypes;
         var dbExistingIds = existing.Keys.ToHashSet();
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+        // Composite-key multiset to detect duplicate inserts when Access rows lack a stable id.
+        var existingCompositeKeys = new Dictionary<(string, int, DateTime, decimal), int>();
+        foreach (var v in existing.Values)
+        {
+            var ck = (v.TipPromene ?? "", v.ArtikalId ?? 0, v.Datum, v.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
         var supplierByKey = _trendDb.Dobavljaci
             .AsNoTracking()
             .Where(x => !string.IsNullOrWhiteSpace(x.Naziv))
@@ -4278,6 +4304,8 @@ using NpgsqlTypes;
             var datum = DT(row, "datum", "datumizmene", "datumdokumenta", "datumprocene", "date", "eventdate", "datumpromena") ?? DateTime.UtcNow;
             var iznos = D(row, "iznos", "cena", "prodajnacena", "saleprice", "amount", "total", "vrednost", "ukupno",
                           "novacena", "novaprodajnacena", "iznospromene") ?? 0m;
+            var artikalId = I(row, "idartikal", "idartikal", "artikalid", "artiklid", "productid", "idproizvoda",
+                            "artikal", "sifra", "sifraartikla", "kodartikla");
 
             DnevnikPromena? e = null;
             var sourceId = id.GetValueOrDefault();
@@ -4287,6 +4315,14 @@ using NpgsqlTypes;
             var isInsert = false;
             if (e is null)
             {
+                // Composite-key dedup: skip if an identical (TipPromene, ArtikalId, Datum, Iznos) row already exists.
+                var compositeKey = (tip, artikalId ?? 0, datum, iznos);
+                if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+                {
+                    existingCompositeKeys[compositeKey] = ckCount - 1;
+                    continue;
+                }
+
                 var assignedId = sourceId;
                 if (assignedId <= 0 || usedIds.Contains(assignedId))
                     assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
@@ -4297,6 +4333,7 @@ using NpgsqlTypes;
                 _trendDb.DnevnikPromena.Add(e);
                 existing[assignedId] = e;
                 result.DnevnikInserted++;
+                existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 isInsert = true;
             }
             else if (overwriteExisting)
@@ -4333,8 +4370,7 @@ using NpgsqlTypes;
             }
 
             e.DobavljacId = dobavljacId;
-            e.ArtikalId = I(row, "idartikal", "idartikal", "artikalid", "artiklid", "productid", "idproizvoda",
-                            "artikal", "sifra", "sifraartikla", "kodartikla");
+            e.ArtikalId = artikalId;
             e.StaraProdajnaCena = D(row, "staracena", "stara", "staraprodajnacena", "cenabefore", "oldprice", "cenabefore");
             e.NovaProdajnaCena = D(row, "novacena", "nova", "novaprodajnacena", "cenaafter", "newprice");
             e.Komentar = komentar;
@@ -4621,6 +4657,14 @@ using NpgsqlTypes;
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var povracajIds = _trendDb.PovracajZaglavlja.AsNoTracking().Select(x => x.Id).ToHashSet();
 
+        // Composite-key multiset to detect duplicate inserts when Access rows lack a stable id.
+        var existingCompositeKeys = new Dictionary<(int, int, decimal), int>();
+        foreach (var v in existing.Values)
+        {
+            var ck = (v.IdPovracaj, v.IdArtikal, v.Cena);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
+
         await foreach (var row in ReadRowsForTableAsync(session, table, "povracaj_stavke", ct))
         {
             MarkSourceRow(result, "povracaj_stavke");
@@ -4657,6 +4701,14 @@ using NpgsqlTypes;
             }
             else
             {
+                // Composite-key dedup: skip if an identical (IdPovracaj, IdArtikal, Cena) row already exists.
+                var compositeKey = (idPovracaj.Value, idArtikal.Value, cena);
+                if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+                {
+                    existingCompositeKeys[compositeKey] = ckCount - 1;
+                    continue;
+                }
+
                 var assignedId = sourceId;
                 if (assignedId <= 0 || usedIds.Contains(assignedId))
                     assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
@@ -4675,6 +4727,7 @@ using NpgsqlTypes;
                 };
                 _trendDb.PovracajStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
+                existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 result.PovracajStavkeInserted++;
                 TrackTrendWrite();
             }
@@ -4694,6 +4747,14 @@ using NpgsqlTypes;
 
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+
+        // Composite-key multiset to detect duplicate inserts on re-import.
+        var existingCompositeKeys = new Dictionary<(int, DateTime, decimal), int>();
+        foreach (var d in dnevnikById.Values.Where(x => x.TipPromene == TipPromeneConstants.Nivelacija))
+        {
+            var ck = (d.ArtikalId ?? 0, d.Datum, d.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
 
         await foreach (var row in ReadRowsForTableAsync(session, table, "nivelacije", ct))
         {
@@ -4720,11 +4781,20 @@ using NpgsqlTypes;
                 ?? sourceDnevnik?.Datum
                 ?? DateTime.UtcNow;
 
+            // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
+            var compositeKey = (idArtikal.Value, eventDate, iznos);
+            if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+            {
+                existingCompositeKeys[compositeKey] = ckCount - 1;
+                continue;
+            }
+
             var assignedId = srcId > 0 && !usedIds.Contains(srcId)
                 ? srcId
                 : AllocateNextId(usedIds, ref next);
 
             usedIds.Add(assignedId);
+            existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = assignedId,
@@ -4760,6 +4830,15 @@ using NpgsqlTypes;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
+        // Composite-key multiset to detect duplicate inserts on re-import.
+        var existingCompositeKeys = new Dictionary<(int, DateTime, decimal), int>();
+        foreach (var d in _trendDb.DnevnikPromena.AsNoTracking()
+            .Where(x => x.TipPromene == TipPromeneConstants.UlazRobe))
+        {
+            var ck = (d.ArtikalId ?? 0, d.Datum, d.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
+
         await foreach (var row in ReadRowsForTableAsync(session, table, "unos_robe", ct))
         {
             MarkSourceRow(result, "unos_robe");
@@ -4773,21 +4852,33 @@ using NpgsqlTypes;
 
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
             var nabavnaCena = D(row, "nabavnacena", "purchaseprice", "cena", "nc") ?? 0m;
+            var datum = DT(row, "datum", "datumunosarobe", "datumulaza", "date") ?? DateTime.UtcNow;
+            var iznos = nabavnaCena * kolicina;
             var srcId = I(row, "iddnevnik", "id", "idlog") ?? 0;
+
+            // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
+            var compositeKey = (idArtikal.Value, datum, iznos);
+            if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+            {
+                existingCompositeKeys[compositeKey] = ckCount - 1;
+                continue;
+            }
+
             var assignedId = srcId > 0 && !usedIds.Contains(srcId)
                 ? srcId
                 : AllocateNextId(usedIds, ref next);
 
             usedIds.Add(assignedId);
+            existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = assignedId,
                 TipPromene = TipPromeneConstants.UlazRobe,
-                Datum = DT(row, "datum", "datumunosarobe", "datumulaza", "date") ?? DateTime.UtcNow,
+                Datum = datum,
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
                 NovaProdajnaCena = nabavnaCena,
-                Iznos = nabavnaCena * kolicina,
+                Iznos = iznos,
                 DobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid"),
                 IDObjekat = I(row, "idobjekat", "storeid"),
                 RedniBroj = I(row, "rednibr", "rbr", "seqno"),
@@ -4813,6 +4904,15 @@ using NpgsqlTypes;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
+        // Composite-key multiset to detect duplicate inserts on re-import.
+        var existingCompositeKeys = new Dictionary<(int, DateTime, decimal), int>();
+        foreach (var d in _trendDb.DnevnikPromena.AsNoTracking()
+            .Where(x => x.TipPromene == TipPromeneConstants.PovratKupca))
+        {
+            var ck = (d.ArtikalId ?? 0, d.Datum, d.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
+
         await foreach (var row in ReadRowsForTableAsync(session, table, "povratnice", ct))
         {
             MarkSourceRow(result, "povratnice");
@@ -4826,21 +4926,33 @@ using NpgsqlTypes;
 
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
             var cena = D(row, "cena", "prodajnacena", "unitprice", "pc") ?? 0m;
+            var datum = DT(row, "datum", "datumpovratnice", "date") ?? DateTime.UtcNow;
+            var iznos = cena * kolicina;
             var srcId = I(row, "iddnevnik", "id", "idpovratnice", "idlog") ?? 0;
+
+            // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
+            var compositeKey = (idArtikal.Value, datum, iznos);
+            if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+            {
+                existingCompositeKeys[compositeKey] = ckCount - 1;
+                continue;
+            }
+
             var assignedId = srcId > 0 && !usedIds.Contains(srcId)
                 ? srcId
                 : AllocateNextId(usedIds, ref next);
 
             usedIds.Add(assignedId);
+            existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = assignedId,
                 TipPromene = TipPromeneConstants.PovratKupca,
-                Datum = DT(row, "datum", "datumpovratnice", "date") ?? DateTime.UtcNow,
+                Datum = datum,
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
                 NovaProdajnaCena = cena,
-                Iznos = cena * kolicina,
+                Iznos = iznos,
                 IDObjekat = I(row, "idobjekat", "storeid"),
                 RedniBroj = I(row, "rednibr", "rbr"),
                 Komentar = S(row, "razlog", "reason", "napomena"),
@@ -4864,6 +4976,16 @@ using NpgsqlTypes;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
+        // Composite-key multiset to detect duplicate transfer entries on re-import.
+        // Key includes TipPromene to distinguish izlaz/ulaz pairs.
+        var existingCompositeKeys = new Dictionary<(string, int, DateTime, decimal), int>();
+        foreach (var d in _trendDb.DnevnikPromena.AsNoTracking()
+            .Where(x => x.TipPromene == TipPromeneConstants.PrenosIzlaz || x.TipPromene == TipPromeneConstants.PrenosUlaz))
+        {
+            var ck = (d.TipPromene ?? "", d.ArtikalId ?? 0, d.Datum, d.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
+
         await foreach (var row in ReadRowsForTableAsync(session, table, "prenos_robe", ct))
         {
             MarkSourceRow(result, "prenos_robe");
@@ -4878,11 +5000,25 @@ using NpgsqlTypes;
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
             var datum = DT(row, "datum", "datumprenos", "datumtransfera", "date") ?? DateTime.UtcNow;
             var cena = D(row, "cena", "nabavnacena", "prodajnacena") ?? 0m;
+            var iznos = cena * kolicina;
             var idIz = I(row, "idobjekatiz", "idobjekatizlaza", "fromstore", "idobjekat");
             var idU = I(row, "idobjekatulaz", "idobjekatdolaz", "tostore", "idobjekatodredista");
             var brDok = S(row, "iddnevnik", "brdokumenta", "brprenos");
 
+            // Composite-key dedup for izlaz entry.
+            var ckIzlaz = (TipPromeneConstants.PrenosIzlaz, idArtikal.Value, datum, iznos);
+            if (existingCompositeKeys.TryGetValue(ckIzlaz, out var ckOutCount) && ckOutCount > 0)
+            {
+                // Both izlaz and ulaz already exist — skip the whole pair.
+                existingCompositeKeys[ckIzlaz] = ckOutCount - 1;
+                var ckUlaz = (TipPromeneConstants.PrenosUlaz, idArtikal.Value, datum, iznos);
+                if (existingCompositeKeys.TryGetValue(ckUlaz, out var ckInCount) && ckInCount > 0)
+                    existingCompositeKeys[ckUlaz] = ckInCount - 1;
+                continue;
+            }
+
             var idOut = AllocateNextId(usedIds, ref next);
+            existingCompositeKeys[ckIzlaz] = existingCompositeKeys.GetValueOrDefault(ckIzlaz) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = idOut,
@@ -4891,7 +5027,7 @@ using NpgsqlTypes;
                 ArtikalId = idArtikal.Value,
                 Kolicina = -kolicina,
                 NovaProdajnaCena = cena,
-                Iznos = cena * kolicina,
+                Iznos = iznos,
                 IDObjekat = idIz,
                 BrojRacuna = brDok,
                 DataOrigin = "access"
@@ -4903,6 +5039,8 @@ using NpgsqlTypes;
             TrackAnalyticsStoreId(idIz);
 
             var idIn = AllocateNextId(usedIds, ref next);
+            var ckUlazNew = (TipPromeneConstants.PrenosUlaz, idArtikal.Value, datum, iznos);
+            existingCompositeKeys[ckUlazNew] = existingCompositeKeys.GetValueOrDefault(ckUlazNew) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = idIn,
@@ -4911,7 +5049,7 @@ using NpgsqlTypes;
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
                 NovaProdajnaCena = cena,
-                Iznos = cena * kolicina,
+                Iznos = iznos,
                 IDObjekat = idU,
                 BrojRacuna = brDok,
                 DataOrigin = "access"
@@ -5147,6 +5285,14 @@ using NpgsqlTypes;
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var saleIds = _trendDb.ProdajaZaglavlja.Select(x => x.Id).ToHashSet();
 
+        // Build a composite-key multiset to detect duplicate inserts when Access rows lack a stable id.
+        var existingCompositeKeys = new Dictionary<(int, int, decimal), int>();
+        foreach (var e in existing.Values)
+        {
+            var ck = (e.IdProdaja, e.IdArtikal, e.Cena);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
+
         foreach (var row in ReadRows(conn, table))
         {
             var idProdaja = I(row, "idprodaja", "saleid", "idzaglavlje");
@@ -5170,6 +5316,14 @@ using NpgsqlTypes;
             }
             else
             {
+                // Composite-key dedup: skip if an identical (idProdaja, idArtikal, cena) row already exists.
+                var compositeKey = (idProdaja.Value, idArtikal.Value, cena);
+                if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+                {
+                    existingCompositeKeys[compositeKey] = ckCount - 1;
+                    continue;
+                }
+
                 var assignedId = sourceId;
                 if (assignedId <= 0 || usedIds.Contains(assignedId))
                     assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
@@ -5186,6 +5340,7 @@ using NpgsqlTypes;
                 };
                 _trendDb.ProdajaStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
+                existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 result.ProdajaStavkeInserted++;
             }
         }
@@ -5488,6 +5643,14 @@ using NpgsqlTypes;
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var povracajIds = _trendDb.PovracajZaglavlja.Select(x => x.Id).ToHashSet();
 
+        // Composite-key multiset to detect duplicate inserts when Access rows lack a stable id.
+        var existingCompositeKeys = new Dictionary<(int, int, decimal), int>();
+        foreach (var v in existing.Values)
+        {
+            var ck = (v.IdPovracaj, v.IdArtikal, v.Cena);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
+
         foreach (var row in ReadRows(conn, table))
         {
             var idPovracaj = I(row, "idpovracaj", "returnid", "idzaglavlje");
@@ -5515,6 +5678,14 @@ using NpgsqlTypes;
             }
             else
             {
+                // Composite-key dedup: skip if an identical (IdPovracaj, IdArtikal, Cena) row already exists.
+                var compositeKey = (idPovracaj.Value, idArtikal.Value, cena);
+                if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+                {
+                    existingCompositeKeys[compositeKey] = ckCount - 1;
+                    continue;
+                }
+
                 var assignedId = sourceId;
                 if (assignedId <= 0 || usedIds.Contains(assignedId))
                     assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
@@ -5533,6 +5704,7 @@ using NpgsqlTypes;
                 };
                 _trendDb.PovracajStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
+                existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 result.PovracajStavkeInserted++;
             }
         }
@@ -5544,6 +5716,13 @@ using NpgsqlTypes;
         var dbExistingIds = existing.Keys.ToHashSet();
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+        // Composite-key multiset to detect duplicate inserts when Access rows lack a stable id.
+        var existingCompositeKeys = new Dictionary<(string, int, DateTime, decimal), int>();
+        foreach (var v in existing.Values)
+        {
+            var ck = (v.TipPromene ?? "", v.ArtikalId ?? 0, v.Datum, v.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
         var supplierByKey = _trendDb.Dobavljaci
             .AsNoTracking()
             .Where(x => !string.IsNullOrWhiteSpace(x.Naziv))
@@ -5559,6 +5738,8 @@ using NpgsqlTypes;
             var datum = DT(row, "datum", "datumizmene", "datumdokumenta", "datumprocene", "date", "eventdate", "datumpromena") ?? DateTime.UtcNow;
             var iznos = D(row, "iznos", "cena", "prodajnacena", "saleprice", "amount", "total", "vrednost", "ukupno",
                           "novacena", "novaprodajnacena", "iznospromene") ?? 0m;
+            var artikalId = I(row, "idartikal", "idartikal", "artikalid", "artiklid", "productid", "idproizvoda",
+                            "artikal", "sifra", "sifraartikla", "kodartikla");
 
             DnevnikPromena? e = null;
             var sourceId = id.GetValueOrDefault();
@@ -5567,6 +5748,14 @@ using NpgsqlTypes;
 
             if (e is null)
             {
+                // Composite-key dedup: skip if an identical (TipPromene, ArtikalId, Datum, Iznos) row already exists.
+                var compositeKey = (tip, artikalId ?? 0, datum, iznos);
+                if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+                {
+                    existingCompositeKeys[compositeKey] = ckCount - 1;
+                    continue;
+                }
+
                 var assignedId = sourceId;
                 if (assignedId <= 0 || usedIds.Contains(assignedId))
                     assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
@@ -5576,6 +5765,7 @@ using NpgsqlTypes;
                 e = new DnevnikPromena { Id = assignedId, DataOrigin = "access" };
                 _trendDb.DnevnikPromena.Add(e);
                 existing[assignedId] = e;
+                existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 result.DnevnikInserted++;
             }
             else if (overwriteExisting)
@@ -5611,8 +5801,7 @@ using NpgsqlTypes;
             }
 
             e.DobavljacId = dobavljacId;
-            e.ArtikalId = I(row, "idartikal", "idartikal", "artikalid", "artiklid", "productid", "idproizvoda",
-                            "artikal", "sifra", "sifraartikla", "kodartikla");
+            e.ArtikalId = artikalId;
             e.StaraProdajnaCena = D(row, "staracena", "stara", "staraprodajnacena", "cenabefore", "oldprice", "cenabefore");
             e.NovaProdajnaCena = D(row, "novacena", "nova", "novaprodajnacena", "cenaafter", "newprice");
             e.Komentar = komentar;
@@ -5662,6 +5851,15 @@ using NpgsqlTypes;
 
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+
+        // Composite-key multiset to detect duplicate inserts on re-import.
+        var existingCompositeKeys = new Dictionary<(int, DateTime, decimal), int>();
+        foreach (var d in dnevnikById.Values.Where(x => x.TipPromene == TipPromeneConstants.Nivelacija))
+        {
+            var ck = (d.ArtikalId ?? 0, d.Datum, d.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
+
         foreach (var row in ReadRows(conn, table))
         {
             var idArtikal = I(row, "idartikal", "artikalid", "productid", "id_artikal");
@@ -5679,9 +5877,18 @@ using NpgsqlTypes;
                 ?? sourceDnevnik?.Datum
                 ?? DateTime.UtcNow;
 
+            // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
+            var compositeKey = (idArtikal.Value, eventDate, iznos);
+            if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+            {
+                existingCompositeKeys[compositeKey] = ckCount - 1;
+                continue;
+            }
+
             var assignedId = (srcId > 0 && !usedIds.Contains(srcId))
                 ? srcId : AllocateNextId(usedIds, ref next);
             usedIds.Add(assignedId);
+            existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = assignedId,
@@ -5707,6 +5914,14 @@ using NpgsqlTypes;
         if (table is null) return;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+        // Composite-key multiset to detect duplicate inserts on re-import.
+        var existingCompositeKeys = new Dictionary<(int, DateTime, decimal), int>();
+        foreach (var d in _trendDb.DnevnikPromena.AsNoTracking()
+            .Where(x => x.TipPromene == TipPromeneConstants.UlazRobe))
+        {
+            var ck = (d.ArtikalId ?? 0, d.Datum, d.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
         foreach (var row in ReadRows(conn, table))
         {
             var idArtikal = I(row, "idartikal", "artikalid", "productid");
@@ -5714,19 +5929,31 @@ using NpgsqlTypes;
             MarkAccepted(result, "unos_robe");
             var kolicina     = I(row, "kolicina", "qty", "quantity") ?? 1;
             var nabavnaCena  = D(row, "nabavnacena", "purchaseprice", "cena", "nc") ?? 0m;
+            var datum        = DT(row, "datum", "datumunosarobe", "datumulaza", "date") ?? DateTime.UtcNow;
+            var iznos        = nabavnaCena * kolicina;
             var srcId        = I(row, "iddnevnik", "id", "idlog") ?? 0;
+
+            // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
+            var compositeKey = (idArtikal.Value, datum, iznos);
+            if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+            {
+                existingCompositeKeys[compositeKey] = ckCount - 1;
+                continue;
+            }
+
             var assignedId   = (srcId > 0 && !usedIds.Contains(srcId))
                 ? srcId : AllocateNextId(usedIds, ref next);
             usedIds.Add(assignedId);
+            existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = assignedId,
                 TipPromene = TipPromeneConstants.UlazRobe,
-                Datum = DT(row, "datum", "datumunosarobe", "datumulaza", "date") ?? DateTime.UtcNow,
+                Datum = datum,
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
                 NovaProdajnaCena = nabavnaCena,
-                Iznos = nabavnaCena * kolicina,
+                Iznos = iznos,
                 DobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid"),
                 IDObjekat = I(row, "idobjekat", "storeid"),
                 RedniBroj = I(row, "rednibr", "rbr", "seqno"),
@@ -5742,6 +5969,14 @@ using NpgsqlTypes;
         if (table is null) return;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+        // Composite-key multiset to detect duplicate inserts on re-import.
+        var existingCompositeKeys = new Dictionary<(int, DateTime, decimal), int>();
+        foreach (var d in _trendDb.DnevnikPromena.AsNoTracking()
+            .Where(x => x.TipPromene == TipPromeneConstants.PovratKupca))
+        {
+            var ck = (d.ArtikalId ?? 0, d.Datum, d.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
         foreach (var row in ReadRows(conn, table))
         {
             var idArtikal = I(row, "idartikal", "artikalid", "productid");
@@ -5749,19 +5984,31 @@ using NpgsqlTypes;
             MarkAccepted(result, "povratnice");
             var kolicina  = I(row, "kolicina", "qty", "quantity") ?? 1;
             var cena      = D(row, "cena", "prodajnacena", "unitprice", "pc") ?? 0m;
+            var datum     = DT(row, "datum", "datumpovratnice", "date") ?? DateTime.UtcNow;
+            var iznos     = cena * kolicina;
             var srcId     = I(row, "iddnevnik", "id", "idpovratnice", "idlog") ?? 0;
+
+            // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
+            var compositeKey = (idArtikal.Value, datum, iznos);
+            if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+            {
+                existingCompositeKeys[compositeKey] = ckCount - 1;
+                continue;
+            }
+
             var assignedId = (srcId > 0 && !usedIds.Contains(srcId))
                 ? srcId : AllocateNextId(usedIds, ref next);
             usedIds.Add(assignedId);
+            existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = assignedId,
                 TipPromene = TipPromeneConstants.PovratKupca,
-                Datum = DT(row, "datum", "datumpovratnice", "date") ?? DateTime.UtcNow,
+                Datum = datum,
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
                 NovaProdajnaCena = cena,
-                Iznos = cena * kolicina,
+                Iznos = iznos,
                 IDObjekat = I(row, "idobjekat", "storeid"),
                 RedniBroj = I(row, "rednibr", "rbr"),
                 Komentar = S(row, "razlog", "reason", "napomena"),
@@ -5777,6 +6024,14 @@ using NpgsqlTypes;
         if (table is null) return;
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
+        // Composite-key multiset to detect duplicate transfer entries on re-import.
+        var existingCompositeKeys = new Dictionary<(string, int, DateTime, decimal), int>();
+        foreach (var d in _trendDb.DnevnikPromena.AsNoTracking()
+            .Where(x => x.TipPromene == TipPromeneConstants.PrenosIzlaz || x.TipPromene == TipPromeneConstants.PrenosUlaz))
+        {
+            var ck = (d.TipPromene ?? "", d.ArtikalId ?? 0, d.Datum, d.Iznos);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
         foreach (var row in ReadRows(conn, table))
         {
             var idArtikal = I(row, "idartikal", "artikalid", "productid");
@@ -5785,25 +6040,41 @@ using NpgsqlTypes;
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
             var datum    = DT(row, "datum", "datumprenos", "datumtransfera", "date") ?? DateTime.UtcNow;
             var cena     = D(row, "cena", "nabavnacena", "prodajnacena") ?? 0m;
+            var iznos    = cena * kolicina;
             var idIz     = I(row, "idobjekatiz", "idobjekatizlaza", "fromstore", "idobjekat");
             var idU      = I(row, "idobjekatulaz", "idobjekatdolaz", "tostore", "idobjekatodredista");
             var brDok    = S(row, "iddnevnik", "brdokumenta", "brprenos");
+
+            // Composite-key dedup for izlaz entry.
+            var ckIzlaz = (TipPromeneConstants.PrenosIzlaz, idArtikal.Value, datum, iznos);
+            if (existingCompositeKeys.TryGetValue(ckIzlaz, out var ckOutCount) && ckOutCount > 0)
+            {
+                existingCompositeKeys[ckIzlaz] = ckOutCount - 1;
+                var ckUlaz = (TipPromeneConstants.PrenosUlaz, idArtikal.Value, datum, iznos);
+                if (existingCompositeKeys.TryGetValue(ckUlaz, out var ckInCount) && ckInCount > 0)
+                    existingCompositeKeys[ckUlaz] = ckInCount - 1;
+                continue;
+            }
+
             // Prenos izlaz (source store)
             var idOut = AllocateNextId(usedIds, ref next);
+            existingCompositeKeys[ckIzlaz] = existingCompositeKeys.GetValueOrDefault(ckIzlaz) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = idOut, TipPromene = TipPromeneConstants.PrenosIzlaz, Datum = datum,
                 ArtikalId = idArtikal.Value, Kolicina = -kolicina,
-                NovaProdajnaCena = cena, Iznos = cena * kolicina,
+                NovaProdajnaCena = cena, Iznos = iznos,
                 IDObjekat = idIz, BrojRacuna = brDok, DataOrigin = "access"
             });
             // Prenos ulaz (destination store)
             var idIn = AllocateNextId(usedIds, ref next);
+            var ckUlazNew = (TipPromeneConstants.PrenosUlaz, idArtikal.Value, datum, iznos);
+            existingCompositeKeys[ckUlazNew] = existingCompositeKeys.GetValueOrDefault(ckUlazNew) + 1;
             _trendDb.DnevnikPromena.Add(new DnevnikPromena
             {
                 Id = idIn, TipPromene = TipPromeneConstants.PrenosUlaz, Datum = datum,
                 ArtikalId = idArtikal.Value, Kolicina = kolicina,
-                NovaProdajnaCena = cena, Iznos = cena * kolicina,
+                NovaProdajnaCena = cena, Iznos = iznos,
                 IDObjekat = idU, BrojRacuna = brDok, DataOrigin = "access"
             });
             result.PrenosRobeInserted += 2;
