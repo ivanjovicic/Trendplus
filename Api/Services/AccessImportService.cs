@@ -5807,9 +5807,20 @@ using NpgsqlTypes;
         int maxStavkaId = await _trendDb.ProdajaStavke.AsNoTracking().AnyAsync(ct)
             ? await _trendDb.ProdajaStavke.AsNoTracking().MaxAsync(x => x.Id, ct)
             : 0;
+
+        // Composite-key dedup: track existing stavke to avoid re-inserting on repeated imports
+        var existingCompositeKeys = new Dictionary<(int, int, decimal), int>();
+        foreach (var es in _trendDb.ProdajaStavke.AsNoTracking())
+        {
+            var ck = (es.IdProdaja, es.IdArtikal, es.Cena);
+            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+        }
+        var consumedExistingCompositeKeys = new Dictionary<(int, int, decimal), int>();
+
         var insertedProdaja = 0;
         var updatedProdaja = 0;
         var insertedStavke = 0;
+        var skippedDuplicateStavke = 0;
         var flushProbeCounter = 0;
 
         foreach (var grp in groups)
@@ -5881,6 +5892,18 @@ using NpgsqlTypes;
             {
                 var stavkaCena = (d.NovaProdajnaCena ?? d.StaraProdajnaCena ?? (d.Iznos > 0 ? d.Iznos : null)) ?? 0m;
                 var stavkaQty = (d.Kolicina.HasValue && d.Kolicina.Value > 0) ? d.Kolicina.Value : 1;
+
+                // Composite-key dedup: skip if this (IdProdaja, IdArtikal, Cena) already exists
+                var compositeKey = (zaglavlje.Id, d.ArtikalId!.Value, stavkaCena);
+                existingCompositeKeys.TryGetValue(compositeKey, out var existingCount);
+                consumedExistingCompositeKeys.TryGetValue(compositeKey, out var consumedCount);
+                if (consumedCount < existingCount)
+                {
+                    consumedExistingCompositeKeys[compositeKey] = consumedCount + 1;
+                    skippedDuplicateStavke++;
+                    continue;
+                }
+
                 _trendDb.ProdajaStavke.Add(new Domain.Model.Prodaja.ProdajaStavka
                 {
                     Id = ++maxStavkaId,
@@ -5907,12 +5930,15 @@ using NpgsqlTypes;
         var summary = $"Sintetizovano {insertedProdaja} prodaja i {insertedStavke} stavki iz DnevnikPromena (nije pronadjena posebna tabela prodaje).";
         if (updatedProdaja > 0)
             summary += $" Azurirano zaglavlja: {updatedProdaja}.";
+        if (skippedDuplicateStavke > 0)
+            summary += $" Preskoceno dupliranih stavki: {skippedDuplicateStavke}.";
         result.Warnings.Add(summary);
         _logger.LogInformation(
-            "Access import synthesized prodaja from dnevnik. ProdajaInserted: {ProdajaInserted}. ProdajaUpdated: {ProdajaUpdated}. ProdajaStavkeInserted: {ProdajaStavkeInserted}.",
+            "Access import synthesized prodaja from dnevnik. ProdajaInserted: {ProdajaInserted}. ProdajaUpdated: {ProdajaUpdated}. ProdajaStavkeInserted: {ProdajaStavkeInserted}. SkippedDuplicateStavke: {SkippedDuplicateStavke}.",
             insertedProdaja,
             updatedProdaja,
-            insertedStavke);
+            insertedStavke,
+            skippedDuplicateStavke);
     }
 
     private void ImportPovracajStavke(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)

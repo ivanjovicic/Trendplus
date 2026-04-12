@@ -250,6 +250,24 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 $"Dokumenti oznaceni kao DUG pojavljuju se {debtReceiptHeaders.Count} put(a) sa ukupno {decimal.Round(debtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
         }
 
+        // Defense-in-depth: detect duplicate stavke that inflate totals
+        var duplicateStavkeGroups = await _db.ProdajaStavke.AsNoTracking()
+            .Join(_db.ProdajaZaglavlja.AsNoTracking(),
+                ps => ps.IdProdaja, pz => pz.Id,
+                (ps, pz) => new { ps.IdProdaja, ps.IdArtikal, ps.Cena, pz.DatumProdaje })
+            .Where(x => x.DatumProdaje >= fromDateUtc && x.DatumProdaje < toDateExclusiveUtc)
+            .GroupBy(x => new { x.IdProdaja, x.IdArtikal, x.Cena })
+            .Where(g => g.Count() > 1)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        if (duplicateStavkeGroups.Count > 0)
+        {
+            var totalExcess = duplicateStavkeGroups.Sum(g => g.Count - 1);
+            warnings.Add(
+                $"Detektovano je {duplicateStavkeGroups.Count} grupa dupliranih stavki prodaje (isti racun/artikal/cena). Ukupno {totalExcess} visak redova moze uvecavati prikazane iznose.");
+        }
+
         var hasClassifiedShiftRows = aggregates.Any(x => ResolveShift(x.HourOfDay) is 1 or 2);
         var hasAnyRows = aggregates.Any(x => x.Qty != 0);
         var useNoTimeDataFallback = !hasClassifiedShiftRows && hasAnyRows;
