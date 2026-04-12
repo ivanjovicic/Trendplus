@@ -1,0 +1,561 @@
+Version =19
+VersionRequired =19
+Checksum =122771768
+Begin Form
+    RecordSelectors = NotDefault
+    MaxButton = NotDefault
+    MinButton = NotDefault
+    AutoCenter = NotDefault
+    NavigationButtons = NotDefault
+    DividingLines = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularFamily =0
+    BorderStyle =1
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =8447
+    DatasheetFontHeight =10
+    ItemSuffix =12
+    Left =5355
+    Top =120
+    Right =13800
+    Bottom =7695
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xbbc1b34eae51e340
+    End
+    GUID = Begin
+        0xa22b76d3dd4e1c49b22fddedfe5fe851
+    End
+    NameMap = Begin
+        0x0acc0e5500000000000000000000000000000000000000000c00000003000000 ,
+        0x0000000000000000000000000000
+    End
+    Caption ="Dnevnik promena"
+    OnClose ="[Event Procedure]"
+    DatasheetFontName ="Arial"
+    OnLoad ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin ListBox
+            SpecialEffect =2
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin PageBreak
+            Width =283
+        End
+        Begin ToggleButton
+            Width =283
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =7596
+            BackColor =-2147483633
+            Name ="Detail"
+            GUID = Begin
+                0x0c569e625774a94b91ede378dd2d18fb
+            End
+            Begin
+                Begin ListBox
+                    ColumnHeads = NotDefault
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    ColumnCount =7
+                    Left =226
+                    Top =283
+                    Width =7980
+                    Height =5272
+                    Name ="lstDnevnik"
+                    RowSourceType ="Table/Query"
+                    ColumnWidths ="0;0;1423;1448;1448;1448;1419"
+                    OnDblClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xdfd84779761ec94bbb9abfabb7f9ca3b
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =396
+                    Top =5839
+                    Width =1191
+                    Height =624
+                    TabIndex =1
+                    Name ="cmdPresek"
+                    Caption ="Presek stanja"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x1065876f3400d14bbea63a1372b98acc
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =2154
+                    Top =5839
+                    Width =1191
+                    Height =624
+                    TabIndex =2
+                    Name ="cmdIzmeni"
+                    Caption ="Izmeni"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xd56b842eb959ce4b8d7f4a65cb59847c
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =2154
+                    Top =6746
+                    Width =1191
+                    Height =624
+                    TabIndex =6
+                    Name ="cmdUbaciPrenos"
+                    Caption ="Ubaci prenos"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xc14ff285c8288d4eada74e78db5a9305
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =396
+                    Top =6746
+                    Width =1191
+                    Height =624
+                    TabIndex =5
+                    Name ="cmdUbaciUnos"
+                    Caption ="Ubaci unos"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x2e9aca245d3e2344806067cd7feede6a
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =5782
+                    Top =5839
+                    Width =1191
+                    Height =624
+                    TabIndex =4
+                    Name ="cmdUbaciProdaju"
+                    Caption ="Ubaci prodaju"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xf2103c46d89e7748ac4a5ae483c492b8
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3968
+                    Top =6746
+                    Width =1191
+                    Height =624
+                    TabIndex =7
+                    Name ="cmdUbaciNivelaciju"
+                    Caption ="Ubaci nivelaciju"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x8bf7fa6156c4aa469fe5a1e978b1838e
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =7313
+                    Top =6236
+                    Width =576
+                    Height =621
+                    TabIndex =3
+                    Name ="cmdIzvestaj"
+                    Caption ="Command9"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000010000000100000000100040000000000800000000000000000000000 ,
+                        0x0000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff00c0c0c00000ffff00ff000000c0c0c000 ,
+                        0xffff0000ffffff00dadadadadadadada000000000000ad000ffffffffff0d000 ,
+                        0x0fffffff0000700d0ffffff0788707da0fffff0788e770ad0f7fff08888780da ,
+                        0x0ff0ff08e88780ad0ff70f07ee8770da0fff00f078870dad0f00000f0000dada ,
+                        0x0ff000fffff0adad0fff000ffff0dada0ffff000fff0adad0ffffffffff0dada ,
+                        0x000000000000adad000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    ControlTipText ="Pregled izvestaja"
+                    GUID = Begin
+                        0x4ec7077aead7c642adede32527ce1f8a
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3968
+                    Top =5839
+                    Width =1191
+                    Height =624
+                    TabIndex =8
+                    Name ="cmdIzbrisi"
+                    Caption ="Izbrisi"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xd47c8f9341634847bd1400d7399f9fbb
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =5782
+                    Top =6746
+                    Width =1191
+                    Height =624
+                    TabIndex =9
+                    Name ="cmdUbaciPovracaj"
+                    Caption ="Ubaci zapisnik o povracaju"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x73bc1dff17ed1444aab75ccc76723be1
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+
+Private rstDnevnik As New ADODB.Recordset
+
+Private Sub cmdIzbrisi_Click()
+    lngIDDnevnik = lstDnevnik.Column(0, lstDnevnik.ListIndex + 1)
+    lngRedniBroj = lstDnevnik.Column(1, lstDnevnik.ListIndex + 1)
+    dateDatum = lstDnevnik.Column(2, lstDnevnik.ListIndex + 1)
+    strBrojKalkulacije = lstDnevnik.Column(4, lstDnevnik.ListIndex + 1)
+    VratiUnazad lngRedniBroj
+    boolIzmena = True
+    strTipPromene = lstDnevnik.Column(3, lstDnevnik.ListIndex + 1)
+    
+    If MsgBox("Obrisati promenu " & strTipPromene & "(" & strBrojKalkulacije & ")" & " od " & dateDatum, vbYesNo, "Brisanje!") = vbYes Then
+        
+        Select Case strTipPromene
+            Case "PRODAJA"
+                Dim rstIzbrisiProdaja As New ADODB.Recordset
+                rstIzbrisiProdaja.Open "SELECT * FROM tblProdaja WHERE IDDnevnik=" & lngIDDnevnik, cnnVeza, adOpenKeyset, adLockOptimistic
+                Do Until rstIzbrisiProdaja.EOF
+                    lngIDArtikal = rstIzbrisiProdaja!IDArtikal
+                    If PrikaziPromene_UPPP("PONISTI") = -1 Then
+                    End If
+                    rstIzbrisiProdaja.MoveNext
+                Loop
+                DoCmd.RunSQL "DELETE * FROM tblProdaja WHERE IDDnevnik=" & lngIDDnevnik
+                rstIzbrisiProdaja.Close
+            Case "UNOS ROBE"
+                Dim rstIzbrisiUnos As New ADODB.Recordset
+                rstIzbrisiUnos.Open "SELECT * FROM tblUnosRobe WHERE IDDnevnik=" & lngIDDnevnik, cnnVeza, adOpenKeyset, adLockOptimistic
+                Do Until rstIzbrisiUnos.EOF
+                    lngIDArtikal = rstIzbrisiUnos!IDArtikal
+                    If PrikaziPromene_UPPP("PONISTI") = -1 Then
+                    End If
+                    rstIzbrisiUnos.MoveNext
+                Loop
+                DoCmd.RunSQL "DELETE * FROM tblUnosRobe WHERE IDDnevnik=" & lngIDDnevnik
+                rstIzbrisiUnos.Close
+            Case "PRENOS ROBE"
+                Dim rstIzbrisiPrenos As New ADODB.Recordset
+                rstIzbrisiPrenos.Open "SELECT * FROM tblPrenosRobe WHERE IDDnevnik=" & lngIDDnevnik, cnnVeza, adOpenKeyset, adLockOptimistic
+                Do Until rstIzbrisiPrenos.EOF
+                    lngIDArtikal = rstIzbrisiPrenos!IDArtikal
+                    If PrikaziPromene_UPPP("PONISTI") = -1 Then
+                    End If
+                    rstIzbrisiPrenos.MoveNext
+                Loop
+                DoCmd.RunSQL "DELETE * FROM tblPrenosRobe WHERE IDDnevnik=" & lngIDDnevnik
+                DoCmd.RunSQL "DELETE * FROM tblUnosRobe WHERE IDDnevnik=" & lngIDDnevnik
+                rstIzbrisiPrenos.Close
+            Case "NIVELACIJA"
+                Dim rstIzbrisiNivelacija As New ADODB.Recordset
+                rstIzbrisiNivelacija.Open "SELECT * FROM tblNivelacije WHERE IDDnevnik=" & lngIDDnevnik, cnnVeza, adOpenKeyset, adLockOptimistic
+                Do Until rstIzbrisiNivelacija.EOF
+                    lngIDArtikal = rstIzbrisiNivelacija!IDArtikal
+                    curStaraCena = rstIzbrisiNivelacija!StaraCena
+                    If PrikaziPromene_Nivelacija("PONISTI") = -1 Then
+                    End If
+                    rstIzbrisiNivelacija.MoveNext
+                Loop
+                DoCmd.RunSQL "DELETE * FROM tblNivelacije WHERE IDDnevnik=" & lngIDDnevnik
+                rstIzbrisiNivelacija.Close
+            Case "POVRATNICA"
+                Dim rstIzbrisiPovratnica As New ADODB.Recordset
+                rstIzbrisiPovratnica.Open "SELECT * FROM tblPovratnice WHERE IDDnevnik=" & lngIDDnevnik, cnnVeza, adOpenKeyset, adLockOptimistic
+                Do Until rstIzbrisiPovratnica.EOF
+                    lngIDArtikal = rstIzbrisiPovratnica!IDArtikal
+                    If PrikaziPromene_UPPP("PONISTI") = -1 Then
+                    End If
+                    rstIzbrisiPovratnica.MoveNext
+                Loop
+                DoCmd.RunSQL "DELETE * FROM tblPovratnice WHERE IDDnevnik=" & lngIDDnevnik
+                rstIzbrisiPovratnica.Close
+        End Select
+        
+        DoCmd.RunSQL "DELETE * FROM tblDnevnikPromena WHERE IDDnevnik=" & lngIDDnevnik
+        lstDnevnik.Requery
+        PrikaziNaslov
+    
+    End If
+    
+    Sadasnjost lngRedniBroj
+    boolIzmena = False
+End Sub
+
+Private Sub cmdIzmeni_Click()
+    lngIDDnevnik = lstDnevnik.Column(0, lstDnevnik.ListIndex + 1)
+    lngRedniBroj = lstDnevnik.Column(1, lstDnevnik.ListIndex + 1)
+    dateDatum = lstDnevnik.Column(2, lstDnevnik.ListIndex + 1)
+    strBrojKalkulacije = lstDnevnik.Column(4, lstDnevnik.ListIndex + 1)
+    strNapomena = lstDnevnik.Column(6, lstDnevnik.ListIndex + 1)
+    VratiUnazad lngRedniBroj
+    boolIzmena = True
+    strTipPromene = lstDnevnik.Column(3, lstDnevnik.ListIndex + 1)
+    
+    Select Case strTipPromene
+        Case "NIVELACIJA"
+            DoCmd.OpenForm "frmNivelacija", , , , , acDialog, CStr(lngRedniBroj)
+        Case "PRENOS ROBE"
+            Dim strPrenosIz As String, strPrenosU As String
+            rstDnevnik.Open "SELECT * FROM tblDnevnikPromena ORDER BY RedniBroj", cnnVeza, adOpenKeyset, adLockOptimistic
+            rstDnevnik.Find "RedniBroj=" & CStr(lstDnevnik.Column(1, lstDnevnik.ListIndex + 1))
+            For intBrojac = 1 To 2
+                If rstDnevnik!TipPromene = "PRENOS ROBE" Then
+                    strPrenosIz = CStr(rstDnevnik!IDObjekat)
+                ElseIf rstDnevnik!TipPromene = "UNOS ROBE" Then
+                    strPrenosU = CStr(rstDnevnik!IDObjekat)
+                End If
+                rstDnevnik.MoveNext
+            Next intBrojac
+            rstDnevnik.Close
+            DoCmd.OpenForm "frmPrenosRobe", , , , , acDialog, CStr(lstDnevnik.Column(0, lstDnevnik.ListIndex + 1)) & ";" & strPrenosIz & ";" & strPrenosU
+        Case "UNOS ROBE"
+            DoCmd.OpenForm "frmUnosArtikal", , , , , acDialog
+        Case "PRODAJA"
+            DoCmd.OpenForm "frmProdaja", , , , , acDialog
+        Case "POVRATNICA"
+            DoCmd.OpenForm "frmProdaja", , , , , acDialog
+    End Select
+    
+    lstDnevnik.Requery
+    PrikaziNaslov
+    
+End Sub
+
+'Zbog: lngRedniBroj = lstDnevnik.Column(1, lstDnevnik.ListIndex + 1), tj TEKUCEG IZABRANOG rednog broja
+'sva ubacivanja se vrse PRE trenutno izabrane promene
+Private Sub cmdPresek_Click()
+        
+    boolIzmena = True
+    lngRedniBroj = lstDnevnik.Column(1, lstDnevnik.ListIndex + 1)
+    dateDatum = lstDnevnik.Column(2, lstDnevnik.ListIndex + 1)
+    VratiUnazad lngRedniBroj
+    DoCmd.OpenForm "frmPregled", , , , , acDialog, "Presek na dan"
+    boolIzmena = False
+    
+End Sub
+
+
+Private Sub cmdUbaciNivelaciju_Click()
+    
+    lngRedniBroj = lstDnevnik.Column(1, lstDnevnik.ListIndex + 1)
+    dateDatum = lstDnevnik.Column(2, lstDnevnik.ListIndex + 1)
+    boolIzmena = False
+    VratiUnazad lngRedniBroj
+    DoCmd.OpenForm "frmNivelacija", , , , , acDialog
+    lstDnevnik.Requery
+    PrikaziNaslov
+    
+End Sub
+
+Private Sub cmdUbaciPovracaj_Click()
+    
+    lngRedniBroj = lstDnevnik.Column(1, lstDnevnik.ListIndex + 1)
+    dateDatum = lstDnevnik.Column(2, lstDnevnik.ListIndex + 1)
+    boolIzmena = False
+    VratiUnazad lngRedniBroj
+    strTipPromene = "POVRATNICA"
+    DoCmd.OpenForm "frmUnosDobavljac", , , , , acDialog
+    lstDnevnik.Requery
+    PrikaziNaslov
+
+End Sub
+
+Private Sub cmdUbaciPrenos_Click()
+    
+    lngRedniBroj = lstDnevnik.Column(1, lstDnevnik.ListIndex + 1)
+    dateDatum = lstDnevnik.Column(2, lstDnevnik.ListIndex + 1)
+    boolIzmena = False
+    VratiUnazad lngRedniBroj
+    DoCmd.OpenForm "frmPrenosRobe", , , , , acDialog
+    lstDnevnik.Requery
+    PrikaziNaslov
+    
+End Sub
+
+Private Sub cmdUbaciProdaju_Click()
+    
+    lngRedniBroj = lstDnevnik.Column(1, lstDnevnik.ListIndex + 1)
+    dateDatum = lstDnevnik.Column(2, lstDnevnik.ListIndex + 1)
+    boolIzmena = False
+    VratiUnazad lngRedniBroj
+    strTipPromene = "PRODAJA"
+    DoCmd.OpenForm "frmProdaja", , , , , acDialog
+    lstDnevnik.Requery
+    PrikaziNaslov
+    
+End Sub
+
+Private Sub cmdUbaciUnos_Click()
+    
+    lngRedniBroj = lstDnevnik.Column(1, lstDnevnik.ListIndex + 1)
+    dateDatum = lstDnevnik.Column(2, lstDnevnik.ListIndex + 1)
+    boolIzmena = False
+    VratiUnazad lngRedniBroj
+    strTipPromene = "UNOS ROBE"
+    DoCmd.OpenForm "frmUnosDobavljac", , , , , acDialog
+    lstDnevnik.Requery
+    PrikaziNaslov
+    
+End Sub
+
+Private Sub Form_Close()
+    lngRedniBroj = lngMaxRedniBroj
+    boolIzmena = False
+    dateDatum = Date
+End Sub
+
+Private Sub Form_Load()
+
+    lstDnevnik.RowSource = "SELECT IDDnevnik, RedniBroj, Datum, TipPromene, BrojKalkulacije, IznosPromene, Napomena FROM tblDnevnikPromena WHERE IDObjekat=" & _
+        lngIDObjekat & " ORDER BY RedniBroj ASC"
+    boolDugme = False
+    PrikaziNaslov
+    
+End Sub
+
+
+Private Sub lstDnevnik_DblClick(Cancel As Integer)
+   
+    rstDnevnik.Open "SELECT * FROM tblDnevnikPromena WHERE RedniBroj=" & _
+    CStr(lstDnevnik.Column(1, lstDnevnik.ListIndex + 1)) & " AND IDObjekat=" & lngIDObjekat, cnnVeza, adOpenKeyset, adLockOptimistic
+            
+    If IsShiftKeyDown = False Then
+        strBrojKalkulacije = rstDnevnik!BrojKalkulacije
+        Dim strNovBrojKalkulacije As String
+        strNovBrojKalkulacije = InputBox("Broj kalkulacije:", "Promena broja kalkulacije", strBrojKalkulacije)
+        If Not strNovBrojKalkulacije = "" Then
+            strBrojKalkulacije = strNovBrojKalkulacije
+            rstDnevnik!BrojKalkulacije = strBrojKalkulacije
+            rstDnevnik.Update
+            lstDnevnik.Requery
+        End If
+    Else
+        If Not IsNull(rstDnevnik!Napomena) Then
+            strKomentar = rstDnevnik!Napomena
+        Else
+            strKomentar = ""
+        End If
+        Dim strNovKomentar As String
+        strNovKomentar = InputBox("Komentar:", "Promena komentara", strKomentar)
+        If Not strNovKomentar = "" Then
+            strKomentar = strNovKomentar
+            rstDnevnik!Napomena = strKomentar
+            rstDnevnik.Update
+            lstDnevnik.Requery
+        End If
+    End If
+        
+    rstDnevnik.Close
+    
+End Sub
+
+Private Sub PrikaziNaslov()
+            
+    Dim rstDnevnik As New ADODB.Recordset
+    rstDnevnik.Open "SELECT SUM(IznosPromene) AS DnevnikVrednost FROM tblDnevnikPromena WHERE IDObjekat=" & lngIDObjekat, cnnVeza, adOpenKeyset, adLockOptimistic
+    On Error Resume Next
+    Form.Caption = "Dnevnik promena za objekat " & NazivObjekta & "; Stanje: " & Format(CStr(rstDnevnik!DnevnikVrednost), "currency")
+    rstDnevnik.Close
+
+End Sub
+Private Sub cmdIzvestaj_Click()
+'On Error GoTo Err_cmdIzvestaj_Click
+    
+    lngIDDnevnik = lstDnevnik.Column(0, lstDnevnik.ListIndex + 1)
+
+    Dim stDocName As String
+
+    Select Case lstDnevnik.Column(3, lstDnevnik.ListIndex + 1)
+        Case "NIVELACIJA"
+            stDocName = "rptNivelacija"
+            DoCmd.OpenReport stDocName, acPreview, , "tblDnevnikPromena.IDDnevnik=" & CStr(lngIDDnevnik), acDialog
+        Case "PRENOS ROBE"
+            Dim rstProvera As New ADODB.Recordset
+            rstProvera.Open "SELECT IDArtikalPrenos FROM tblPrenosRobe WHERE IDDnevnik=" & lngIDDnevnik, cnnVeza, adOpenKeyset, adLockOptimistic
+            strUObjekat = KojiObjekat(rstProvera!IDArtikalPrenos)
+            rstProvera.Close
+            stDocName = "rptPrenos"
+            DoCmd.OpenReport stDocName, acPreview, , "tblDnevnikPromena.IDDnevnik=" & CStr(lngIDDnevnik), acDialog
+        Case "UNOS ROBE"
+             stDocName = "rptUnos"
+            DoCmd.OpenReport stDocName, acPreview, , "tblDnevnikPromena.IDDnevnik=" & CStr(lngIDDnevnik), acDialog
+        Case "POVRATNICA"
+            stDocName = "rptPovratnica"
+            DoCmd.OpenReport stDocName, acPreview, , "tblDnevnikPromena.IDDnevnik=" & CStr(lngIDDnevnik), acDialog
+        Case "PRODAJA"
+            stDocName = "rptProdaja"
+            DoCmd.OpenReport stDocName, acPreview, , "tblDnevnikPromena.IDDnevnik=" & CStr(lngIDDnevnik), acDialog
+    End Select
+
+'Exit_cmdIzvestaj_Click:
+'    Exit Sub
+
+'Err_cmdIzvestaj_Click:
+'    MsgBox Err.Description
+'    Resume Exit_cmdIzvestaj_Click
+    
+End Sub

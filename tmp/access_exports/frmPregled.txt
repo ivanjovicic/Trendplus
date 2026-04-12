@@ -1,0 +1,572 @@
+Version =19
+VersionRequired =19
+Checksum =119539063
+Begin Form
+    RecordSelectors = NotDefault
+    MaxButton = NotDefault
+    MinButton = NotDefault
+    AutoCenter = NotDefault
+    NavigationButtons = NotDefault
+    DividingLines = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularFamily =0
+    BorderStyle =1
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =10885
+    DatasheetFontHeight =10
+    ItemSuffix =9
+    Left =4755
+    Top =90
+    Right =15645
+    Bottom =9030
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x1bfe36add665e340
+    End
+    GUID = Begin
+        0xfbf2f29d79726941b829474ea8f43371
+    End
+    NameMap = Begin
+        0x0acc0e5500000000000000000000000000000000000000000c00000003000000 ,
+        0x0000000000000000000000000000
+    End
+    Caption ="Pregled"
+    DatasheetFontName ="Arial"
+    PrtMip = Begin
+        0xa3050000a1050000a1050000a105000000000000201c0000e010000001000000 ,
+        0x010000006801000000000000a10700000100000001000000
+    End
+    PrtDevMode = Begin
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x010401089c00d80403ef80070100090000000000640001000700580201000100 ,
+        0x5802010000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000001000000 ,
+        0x0200000001000000010000000000000000000000000000000000000001080000 ,
+        0x4800500020004c0061007300650072004a006500740020005000310030003000 ,
+        0x3500000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000b4050000b409000000000000 ,
+        0x00000000b4050000ec0500000000000004000000ec130000c819000001000000 ,
+        0x0000000000000000000000000000000000000000000000000100000001000000 ,
+        0x030000000000000064000000010000000f270000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000001000000 ,
+        0x0000000000000000000000000000000001000000000000009600000000000000 ,
+        0x3400000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000040170000e2200000ffffffff0000000000000000 ,
+        0x0000000001000000000000000000000000000000000000000000000012000000 ,
+        0x0000000001000000000000000100000001000000000000000100000000000000 ,
+        0x0000000002000000010000000000000000000000010000000100000001000000 ,
+        0x0000000000000000020000000000000000000000010000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x40170000e2200000000000000000000000000000000000000000000064000000 ,
+        0x0000000000000000000000006400000000000000000000000000000000000000 ,
+        0x0200000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000100000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000001000000010000000000000000000000 ,
+        0x0000000000000000000000000100000001000000
+    End
+    PrtDevNames = Begin
+        0x08001a002c000100000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000055534230303100
+    End
+    OnLoad ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin ListBox
+            SpecialEffect =2
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =8957
+            BackColor =-2147483633
+            Name ="Detail"
+            GUID = Begin
+                0x36b9d5b1474663469f4f25d61ff9d9b0
+            End
+            Begin
+                Begin ListBox
+                    ColumnHeads = NotDefault
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    ColumnCount =10
+                    Left =396
+                    Top =283
+                    Width =10096
+                    Height =7779
+                    Name ="lstPregled"
+                    RowSourceType ="Table/Query"
+                    ColumnWidths ="0;1701;1701;853;1990;1423;680;1701;1701"
+                    OnDblClick ="[Event Procedure]"
+                    OnKeyDown ="[Event Procedure]"
+                    GUID = Begin
+                        0x6dd00721e3022849a5f387887221a735
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =93
+                    Left =510
+                    Top =8477
+                    Width =4479
+                    Height =340
+                    TabIndex =1
+                    Name ="chkLager"
+                    DefaultValue ="True"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x9a359d6c9444344fac700c1442883695
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =247
+                            Left =740
+                            Top =8447
+                            Width =2895
+                            Height =240
+                            Name ="labLager"
+                            Caption ="Prikazi samo artikle kojih ima na lageru"
+                            GUID = Begin
+                                0x645598bc1dcaa846bc3e33d5ec78fa5e
+                            End
+                        End
+                    End
+                End
+                Begin ComboBox
+                    LimitToList = NotDefault
+                    RowSourceTypeInt =1
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    ListWidth =1440
+                    Left =7084
+                    Top =8333
+                    Width =2948
+                    Height =283
+                    TabIndex =2
+                    GUID = Begin
+                        0x2bd16be1a424684ebd874dea358caa2f
+                    End
+                    Name ="cmbSortiraj"
+                    RowSourceType ="Value List"
+                    ColumnWidths ="1440"
+                    AfterUpdate ="[Event Procedure]"
+                    DefaultValue ="\"Artikal\""
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =5953
+                            Top =8333
+                            Width =1080
+                            Height =245
+                            Name ="labSortiraj"
+                            Caption ="Sortiraj po:"
+                            GUID = Begin
+                                0x0f9ebe9b68247249892872b52651b1e7
+                            End
+                        End
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =247
+                    Left =3741
+                    Top =8277
+                    Width =576
+                    Height =456
+                    TabIndex =3
+                    Name ="cmdIzvestaj"
+                    Caption ="Command6"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000010000000100000000100040000000000800000000000000000000000 ,
+                        0x0000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff00c0c0c00000ffff00ff000000c0c0c000 ,
+                        0xffff0000ffffff00dadadadadadadada000000000000ad000ffffffffff0d000 ,
+                        0x0fffffff0000700d0ffffff0788707da0fffff0788e770ad0f7fff08888780da ,
+                        0x0ff0ff08e88780ad0ff70f07ee8770da0fff00f078870dad0f00000f0000dada ,
+                        0x0ff000fffff0adad0fff000ffff0dada0ffff000fff0adad0ffffffffff0dada ,
+                        0x000000000000adad000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    ControlTipText ="Pregled izvestaja"
+                    GUID = Begin
+                        0x6d36e4a0c258f945b701ec5b358a1147
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =247
+                    Left =4422
+                    Top =8277
+                    Width =576
+                    Height =456
+                    TabIndex =4
+                    Name ="cmdFiskalna"
+                    Caption ="cmdFiskalna"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000010000000100000000100200000000000000400000000000000000000 ,
+                        0x0000000000000000c0a8a0ff807060ff807060ff807060ff807060ff807060ff ,
+                        0x807060ff807060ff807060ff807060ff807060ff807060ff0000000000000000 ,
+                        0x0000000000000000c0b0a0fffff8f0fffff8f0fffff8f0fffff8f0fffff8f0ff ,
+                        0xfff8f0fffff8f0fffff0f0fffff0f0fffff0f0ff807060ff0000000000000000 ,
+                        0x0000000000000000c0b0a0fffff8fffffff8f0fffff8f0fffff8f0fffff8f0ff ,
+                        0xfff8f0fffff8f0fffff8f0fffff8f0fffff8f0ff807060ff0000000000000000 ,
+                        0x0000000000000000c0b0a0fffff8ffffe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0ff ,
+                        0xe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0fffff8f0ffb0a090ffffffff50ffffff20 ,
+                        0xffffff0000000000c0b0a0fffff8fffffff8f0fffff8f0fffff8f0fffff8f0ff ,
+                        0xfff8f0fffff8f0fffff0f0fffff0f0fffff8f0ffd0d0c0ff805030ffe0c0b090 ,
+                        0xffffff1000000000c0b0a0fffff8ffffe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0ff ,
+                        0xe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0fffff8f0ffe0e0e0ff905830ff905840ff ,
+                        0xe0c8c0a000000000c0b0a0fffffffffffff8fffffff8f0fffff8f0fffff8f0ff ,
+                        0xfff8f0fffff8f0fffff8f0fffff8f0fffff8f0ffe0e0e0ffb06030ffc06830ff ,
+                        0x905840ffc0907040c0b8a0ffffffffffe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0ff ,
+                        0xe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0fffff8f0ffe0e0e0fff0a880ffe08050ff ,
+                        0xc06030ff905840ffc0b8a0fffffffffffffffffffffffffffff8fffffff8ffff ,
+                        0xfff8f0fffff8f0fffff8f0fffff8f0fffff8ffffe0e0e0ffffa880ffffb890ff ,
+                        0xa07050ffc0907020d0b8b0ffffffffffe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0ff ,
+                        0xe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0fffff8fffff0e8e0ffc08060ffb07860ff ,
+                        0xf0e0e09000000000d0b8b0ffffffffffffffffffffffffffffffffffffffffff ,
+                        0xfff8fffffff8fffffff8f0fffff8f0fffff8ffffd0d0d0ffc09070fff0d8d080 ,
+                        0xffffff2000000000d0b8b0ffffffffffe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0ff ,
+                        0xe0d0d0ffe0d0d0ffe0d0d0ffe0d0d0fffff8ffffb0a8a0ffffffff60ffffff20 ,
+                        0x0000000000000000d0b8b0ffffffffffffffffffffffffffffffffffffffffff ,
+                        0xfffffffffffffffffff8fffffff8fffffff8ffff908870ffffffff30ffffff10 ,
+                        0x0000000000000000d0b8b0ffd0b8b0ffd0b8b0ffd0b8b0ffd0b8b0ffd0b8b0ff ,
+                        0xd0b8a0ffd0b8a0ffc0b8a0ffc0b8a0ffc0b0a0ffc0b0a0ff0000000000000000 ,
+                        0x0000000000000000909090ffe0e0e0ff909090ffffffffff707070e0ffffffff ,
+                        0x808080ffffffffff808080ffffffffff707070ffd0c8c0ff0000000000000000 ,
+                        0x0000000000000000d0c8d0ff505050ffb0b8b0ff202820ff30283050202820ff ,
+                        0x30283040202820ff40404080202820ff40383060202820ff0000000000000000 ,
+                        0x0000000000000000
+                    End
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    ControlTipText ="Izvezi u fiskalnu kasu"
+                    GUID = Begin
+                        0x44384b315718104dab887291d277a650
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =5102
+                    Top =8277
+                    Width =576
+                    Height =456
+                    TabIndex =5
+                    Name ="cmdSlobodniRB"
+                    Caption ="cmdFiskalna"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000010000000100000000100040000000000800000000000000000000000 ,
+                        0x0000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff00c0c0c00000ffff00ff000000c0c0c000 ,
+                        0xffff0000ffffff00dadadadadadadadaadada00000adadaddad00bbbbb00dada ,
+                        0xad0bbbbbbbbb0dadd0bbbbbbbbbbb0daa0bbb00000bbb0ad0bbb0bbbbb0bbb0a ,
+                        0x0bb0bbbbbbb0bb0d0bbbbbbbbbbbbb0a0bbbbbbbbbbbbb0d0bbb00bbb00bbb0a ,
+                        0xa0bb00bbb00bb0add0bbbbbbbbbbb0daad0bbbbbbbbb0daddad00bbbbb00dada ,
+                        0xadada00000adadad000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    ControlTipText ="Slobodni redni brojevi"
+                    GUID = Begin
+                        0x113fbd71b85bbd44aa4fd18ef5b933b1
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+
+Private strSortiraj As String
+
+Private Sub chkLager_Click()
+    'Promenjena odluka o prikazivanju artikala cija je kolicina 0, osvezavam prikaz
+    Prikazi
+End Sub
+
+Private Sub cmbSortiraj_AfterUpdate()
+    'Promenjen izbor sortiranja, osvezavam prikaz
+    Prikazi
+End Sub
+
+
+Private Sub cmdFiskalna_Click()
+    '1   311171  000000000000    850.00  €   0   0   1.000   0.00    0.000
+    'IDArtikal, Artikal, PLU, Naziv, Dobavljac, Kolicina, ProdajnaCena, NabavnaCena, Komentar
+    Dim strPutanja As String
+    Dim dlgSaveFile As FileDialog
+    Set dlgSaveFile = Application.FileDialog(msoFileDialogSaveAs)
+    
+    With dlgSaveFile
+        .Title = "Izvezi u fajl za Galeb fiskalnu kasu"
+        .AllowMultiSelect = False
+        .InitialFileName = strExportPutanja
+        If .Show = True Then
+            strPutanja = .SelectedItems(1)
+            If InStr(strPutanja, ".") = 0 Then strPutanja = strPutanja & ".txt"
+        Else
+            Exit Sub
+        End If
+    End With
+    
+    
+    Open strPutanja For Output As #14
+    For intBrojac = 1 To lstPregled.ListCount - 1
+        If Not Val(lstPregled.Column(2, intBrojac)) = 0 Then
+            If Len(lstPregled.Column(1, intBrojac) & " " & lstPregled.Column(3, intBrojac)) <= 15 Then
+                Print #14, lstPregled.Column(2, intBrojac) & Chr(9) & lstPregled.Column(1, intBrojac) & " " & lstPregled.Column(3, intBrojac) & Chr(9) & "000000000000" & Chr(9) & lstPregled.Column(6, intBrojac) & Chr(9) & "4" & Chr(9) & "0" & Chr(9) & "0" & Chr(9) & lstPregled.Column(5, intBrojac) & Chr(9) & "0.00" & Chr(9) & "0.000"
+            Else
+                Print #14, lstPregled.Column(2, intBrojac) & Chr(9) & Left(lstPregled.Column(1, intBrojac) & " " & lstPregled.Column(3, intBrojac), 15) & Chr(9) & "000000000000" & Chr(9) & lstPregled.Column(6, intBrojac) & Chr(9) & "4" & Chr(9) & "0" & Chr(9) & "0" & Chr(9) & lstPregled.Column(5, intBrojac) & Chr(9) & "0.00" & Chr(9) & "0.000"
+            End If
+        End If
+    Next intBrojac
+    Close #14
+End Sub
+
+Private Sub cmdSlobodniRB_Click()
+    Dim rstSlobodni As New ADODB.Recordset
+    Dim strPutanja As String
+    Dim dlgSaveFile As FileDialog
+    Set dlgSaveFile = Application.FileDialog(msoFileDialogSaveAs)
+    
+    With dlgSaveFile
+        .Title = "Sacuvaj slobodne redne brojeve u tekstualni fajl"
+        .AllowMultiSelect = False
+        .InitialFileName = strExportPutanja
+        If .Show = True Then
+            strPutanja = .SelectedItems(1)
+            If InStr(strPutanja, ".") = 0 Then strPutanja = strPutanja & ".txt"
+        Else
+            Exit Sub
+        End If
+    End With
+    
+    Open strPutanja For Output As #14
+    
+    rstSlobodni.Open "SELECT PLU FROM tblArtikli WHERE Kolicina>0 AND IDObjekat=" & lngIDObjekat, cnnVeza, adOpenKeyset, adLockOptimistic
+    
+    For intBrojac = 1 To 2499
+        rstSlobodni.Find ("PLU=" & Str(intBrojac))
+        If rstSlobodni.EOF Then
+            rstSlobodni.MoveFirst
+            Print #14, intBrojac
+        End If
+    Next intBrojac
+    
+    rstSlobodni.Close
+    Close #14
+End Sub
+
+Private Sub Form_Load()
+    'Punim combo box Sortiraj
+    cmbSortiraj.AddItem ("Artikal")
+    cmbSortiraj.AddItem ("Sifra")
+    cmbSortiraj.AddItem ("Tip obuce")
+    cmbSortiraj.AddItem ("Dobavljac")
+    cmbSortiraj.AddItem ("Kolicina")
+    cmbSortiraj.AddItem ("Prodajna cena")
+    cmbSortiraj.AddItem ("Nabavna cena")
+    cmbSortiraj.AddItem ("Sezona")
+    'i prikazujem multi-column listu lstPregled
+    Prikazi
+End Sub
+
+Private Sub Prikazi()
+
+    
+    
+    'string koji cu kasnije da iskoristim u SQLu za sortiranje, u zavisnosti od izabranog u combo boxu
+    Select Case cmbSortiraj.Value
+        Case "Artikal"
+            strSortiraj = "Artikal,ProdajnaCena"
+        Case "Sifra"
+            strSortiraj = "PLU,Artikal"
+        Case "Tip obuce"
+            strSortiraj = "Naziv,Artikal"
+        Case "Dobavljac"
+            strSortiraj = "Dobavljac,Artikal"
+        Case "Kolicina"
+            strSortiraj = "Kolicina,Artikal"
+        Case "Prodajna cena"
+            strSortiraj = "ProdajnaCena,Artikal"
+        Case "Nabavna cena"
+            strSortiraj = "NabavnaCena,Artikal"
+        Case "Sezona"
+            strSortiraj = "Sezona,Artikal"
+    End Select
+    
+    'SQL upit: povezane tabele Artikli i Dobavljaci da bi u prikazu dobio imena dobavljaca, a ne ID-jeve
+    'takodje sortiram tabelu u zavisnosti od izabrane opcije
+    Dim strUpit As String
+    If boolIzmena = False And lngRedniBroj = lngMaxRedniBroj Then
+        If chkLager.Value = True Then
+            strUpit = "SELECT IDArtikal, Artikal, PLU, Naziv, Dobavljac, Kolicina, ProdajnaCena, NabavnaCena, Sezona, Komentar" & _
+            " FROM ((tblArtikli INNER JOIN tblDobavljaci ON tblArtikli.IDDobavljac = tblDobavljaci.IDDobavljac)" & _
+            " INNER JOIN tblTipObuce ON tblArtikli.IDTipObuce=tblTipObuce.IDTipObuce)" & _
+            " INNER JOIN tblSezona ON tblArtikli.IDSezona=tblSezona.IDSezona" & _
+            " WHERE IDObjekat=" & lngIDObjekat & " AND Kolicina>0 ORDER BY " & strSortiraj
+        Else
+            strUpit = "SELECT IDArtikal, Artikal, PLU, Naziv, Dobavljac, Kolicina, ProdajnaCena, NabavnaCena, Sezona, Komentar" & _
+            " FROM ((tblArtikli INNER JOIN tblDobavljaci ON tblArtikli.IDDobavljac = tblDobavljaci.IDDobavljac)" & _
+            " INNER JOIN tblTipObuce ON tblArtikli.IDTipObuce=tblTipObuce.IDTipObuce)" & _
+            " INNER JOIN tblSezona ON tblArtikli.IDSezona=tblSezona.IDSezona" & _
+            " WHERE IDObjekat=" & lngIDObjekat & " ORDER BY " & strSortiraj
+        End If
+    Else
+        If chkLager.Value = True Then
+            strUpit = "SELECT IDArtikal, Artikal, PLU, Naziv, Dobavljac, Kolicina, ProdajnaCena, NabavnaCena, Sezona, Komentar" & _
+            " FROM ((tblArtikliProslost INNER JOIN tblDobavljaci ON tblArtikliProslost.IDDobavljac = tblDobavljaci.IDDobavljac)" & _
+            " INNER JOIN tblTipObuce ON tblArtikliProslost.IDTipObuce=tblTipObuce.IDTipObuce)" & _
+            " INNER JOIN tblSezona ON tblArtikliProslost.IDSezona=tblSezona.IDSezona" & _
+            " WHERE IDObjekat=" & lngIDObjekat & " AND Kolicina>0 ORDER BY " & strSortiraj
+        Else
+            strUpit = "SELECT IDArtikal, Artikal, PLU, Naziv, Dobavljac, Kolicina, ProdajnaCena, NabavnaCena, Sezona, Komentar" & _
+            " FROM ((tblArtikliProslost INNER JOIN tblDobavljaci ON tblArtikliProslost.IDDobavljac = tblDobavljaci.IDDobavljac)" & _
+            " INNER JOIN tblTipObuce ON tblArtikliProslost.IDTipObuce=tblTipObuce.IDTipObuce)" & _
+            " INNER JOIN tblSezona ON tblArtikliProslost.IDSezona=tblSezona.IDSezona" & _
+            " WHERE IDObjekat=" & lngIDObjekat & " ORDER BY " & strSortiraj
+        End If
+    End If
+    
+    Form.RecordSource = strUpit
+    lstPregled.RowSource = strUpit
+    PrikaziNaslov
+
+End Sub
+Private Sub cmdIzvestaj_Click()
+On Error GoTo Err_cmdIzvestaj_Click
+
+    Dim stDocName As String
+    
+    If lngRedniBroj = lngMaxRedniBroj Then
+        stDocName = "rptPopis"
+        DoCmd.OpenReport stDocName, acViewPreview, , "tblArtikli.IDObjekat=" & lngIDObjekat & " AND tblArtikli.Kolicina>0", acDialog, strSortiraj
+    Else
+        stDocName = "rptPopisProslost"
+        DoCmd.OpenReport stDocName, acViewPreview, , "tblArtikliProslost.IDObjekat=" & lngIDObjekat & " AND tblArtikliProslost.Kolicina>0", acDialog, strSortiraj
+    End If
+
+Exit_cmdIzvestaj_Click:
+    Exit Sub
+
+Err_cmdIzvestaj_Click:
+    MsgBox Err.Description
+    Resume Exit_cmdIzvestaj_Click
+    
+End Sub
+
+Private Sub lstPregled_DblClick(Cancel As Integer)
+    Izaberi
+End Sub
+
+Private Sub PrikaziNaslov()
+
+    Dim rstNaslov As New ADODB.Recordset
+    If boolIzmena = False And lngRedniBroj = lngMaxRedniBroj Then
+        rstNaslov.Open "SELECT SUM(Kolicina * ProdajnaCena) AS Vrednost FROM tblArtikli WHERE IDObjekat=" & _
+        lngIDObjekat, cnnVeza, adOpenKeyset, adLockOptimistic
+    Else
+        rstNaslov.Open "SELECT SUM(Kolicina * ProdajnaCena) AS Vrednost FROM tblArtikliProslost WHERE IDObjekat=" & _
+        lngIDObjekat, cnnVeza, adOpenKeyset, adLockOptimistic
+    End If
+    
+    Form.Caption = "Stanje u objektu " & NazivObjekta & " na dan " & dateDatum & ": " & Format(rstNaslov!Vrednost, "currency")
+    rstNaslov.Close
+
+End Sub
+
+Private Sub Izaberi()
+    If lstPregled.ListIndex >= 0 Then
+        lngIDArtikal = lstPregled.Column(0, lstPregled.ListIndex + 1)
+        PronadjiArtikal
+        If IsShiftKeyDown = False Then
+            DoCmd.OpenForm "frmPromenaArtikla", , , , , acDialog
+            If boolPonisti = False Then
+                lstPregled.Requery
+                PrikaziNaslov
+            End If
+        Else
+            DoCmd.OpenForm "frmKartica", , , , , acDialog
+        End If
+    End If
+End Sub
+
+Private Sub lstPregled_KeyDown(KeyCode As Integer, Shift As Integer)
+    If KeyCode = vbKeyReturn Then
+        Izaberi
+        lstPregled.SetFocus
+    End If
+End Sub

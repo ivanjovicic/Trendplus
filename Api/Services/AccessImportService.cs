@@ -1020,6 +1020,171 @@ using NpgsqlTypes;
             _analyticsDeltaStoreIds.Add(storeId.Value);
     }
 
+    private static bool IsStandardReceiptNumber(string? brojRacuna)
+    {
+        if (string.IsNullOrWhiteSpace(brojRacuna))
+            return false;
+
+        foreach (var ch in brojRacuna.Trim())
+        {
+            if (!char.IsDigit(ch))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsDebtReceiptNumber(string? brojRacuna)
+        => string.Equals(brojRacuna?.Trim(), "DUG", StringComparison.OrdinalIgnoreCase);
+
+    private async Task AppendImportedSalesDiagnosticsAsync(AccessImportRunResponse result, CancellationToken ct)
+    {
+        var importedSaleIds = _analyticsDeltaSaleIds
+            .Where(x => x > 0)
+            .Distinct()
+            .ToArray();
+        if (importedSaleIds.Length == 0)
+            return;
+
+        var saleHeaders = await _trendDb.ProdajaZaglavlja
+            .AsNoTracking()
+            .Where(x => importedSaleIds.Contains(x.Id))
+            .Select(x => new
+            {
+                SaleId = x.Id,
+                SaleDate = x.DatumProdaje.Date,
+                x.BrojRacuna,
+                x.IDObjekat
+            })
+            .ToListAsync(ct);
+        if (saleHeaders.Count == 0)
+            return;
+
+        var saleTypeCandidates = TipPromeneConstants.ProdajaTypes.ToArray();
+        var lineTotals = await _trendDb.ProdajaStavke
+            .AsNoTracking()
+            .Where(x => importedSaleIds.Contains(x.IdProdaja))
+            .GroupBy(x => x.IdProdaja)
+            .Select(g => new
+            {
+                SaleId = g.Key,
+                LineTotal = g.Sum(x => x.Kolicina * x.Cena)
+            })
+            .ToListAsync(ct);
+        var lineTotalsBySaleId = lineTotals.ToDictionary(x => x.SaleId, x => x.LineTotal);
+
+        var dnevnikTotals = await _trendDb.DnevnikPromena
+            .AsNoTracking()
+            .Where(x => importedSaleIds.Contains(x.Id) && saleTypeCandidates.Contains(x.TipPromene))
+            .GroupBy(x => x.Id)
+            .Select(g => new
+            {
+                SaleId = g.Key,
+                DnevnikTotal = g.Sum(x => x.Iznos < 0 ? -x.Iznos : x.Iznos)
+            })
+            .ToListAsync(ct);
+        var dnevnikTotalsBySaleId = dnevnikTotals.ToDictionary(x => x.SaleId, x => x.DnevnikTotal);
+
+        var duplicateReceiptGroups = saleHeaders
+            .Where(x => !string.IsNullOrWhiteSpace(x.BrojRacuna))
+            .GroupBy(x => new
+            {
+                x.SaleDate,
+                x.BrojRacuna,
+                x.IDObjekat
+            })
+            .Where(g => g.Count() > 1)
+            .Select(g => new
+            {
+                g.Key.SaleDate,
+                g.Key.BrojRacuna,
+                g.Key.IDObjekat,
+                HeaderCount = g.Count()
+            })
+            .OrderByDescending(x => x.HeaderCount)
+            .ThenBy(x => x.SaleDate)
+            .ToList();
+
+        if (duplicateReceiptGroups.Count > 0)
+        {
+            var sample = string.Join(
+                ", ",
+                duplicateReceiptGroups
+                    .Take(3)
+                    .Select(x => $"{x.BrojRacuna}/{x.IDObjekat ?? 0} ({x.HeaderCount}x)"));
+            var suffix = duplicateReceiptGroups.Count > 3 ? " ..." : string.Empty;
+            result.Warnings.Add(
+                $"Import rekonsilijacija: detektovano je {duplicateReceiptGroups.Count} grupa dupliranih racuna u upravo uvezenoj prodaji. Primeri: {sample}{suffix}.");
+        }
+
+        var receiptDiagnostics = saleHeaders
+            .Select(x => new
+            {
+                x.SaleId,
+                x.SaleDate,
+                x.BrojRacuna,
+                x.IDObjekat,
+                Revenue = lineTotalsBySaleId.TryGetValue(x.SaleId, out var lineTotal)
+                    ? lineTotal
+                    : dnevnikTotalsBySaleId.TryGetValue(x.SaleId, out var dnevnikTotal)
+                        ? dnevnikTotal
+                        : 0m
+            })
+            .ToList();
+
+        var receiptAmountMismatches = receiptDiagnostics
+            .Where(x => lineTotalsBySaleId.TryGetValue(x.SaleId, out var lineTotal)
+                        && dnevnikTotalsBySaleId.TryGetValue(x.SaleId, out var dnevnikTotal)
+                        && decimal.Abs(lineTotal - dnevnikTotal) > 0.01m)
+            .Select(x => new
+            {
+                x.BrojRacuna,
+                LineTotal = lineTotalsBySaleId[x.SaleId],
+                DnevnikTotal = dnevnikTotalsBySaleId[x.SaleId],
+                Difference = decimal.Abs(lineTotalsBySaleId[x.SaleId] - dnevnikTotalsBySaleId[x.SaleId])
+            })
+            .OrderByDescending(x => x.Difference)
+            .ToList();
+
+        if (receiptAmountMismatches.Count > 0)
+        {
+            var sample = string.Join(
+                ", ",
+                receiptAmountMismatches
+                    .Take(3)
+                    .Select(x => $"{x.BrojRacuna ?? "(bez broja)"} ({x.LineTotal:0.##} vs {x.DnevnikTotal:0.##})"));
+            var suffix = receiptAmountMismatches.Count > 3 ? " ..." : string.Empty;
+            result.Warnings.Add(
+                $"Import rekonsilijacija: {receiptAmountMismatches.Count} racuna ima mismatch izmedju dnevnika i stavki. Primeri: {sample}{suffix}.");
+        }
+
+        var nonStandardReceipts = receiptDiagnostics
+            .Where(x => !IsStandardReceiptNumber(x.BrojRacuna))
+            .OrderByDescending(x => x.Revenue)
+            .ThenBy(x => x.SaleDate)
+            .ToList();
+        if (nonStandardReceipts.Count > 0)
+        {
+            var sample = string.Join(
+                ", ",
+                nonStandardReceipts
+                    .Take(3)
+                    .Select(x => $"{(string.IsNullOrWhiteSpace(x.BrojRacuna) ? "(prazno)" : x.BrojRacuna)}/{x.IDObjekat ?? 0}"));
+            var suffix = nonStandardReceipts.Count > 3 ? " ..." : string.Empty;
+            result.Warnings.Add(
+                $"Import quality: {nonStandardReceipts.Count} prodajnih dokumenata ima nestandardni broj racuna. Njihov promet je {decimal.Round(nonStandardReceipts.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
+        }
+
+        var debtReceipts = nonStandardReceipts
+            .Where(x => IsDebtReceiptNumber(x.BrojRacuna))
+            .ToList();
+        if (debtReceipts.Count > 0)
+        {
+            result.Warnings.Add(
+                $"Import quality: dokument DUG pojavljuje se {debtReceipts.Count} put(a) sa ukupno {decimal.Round(debtReceipts.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
+        }
+    }
+
     private TimeSpan GetBatchHeartbeatPersistInterval()
         => TimeSpan.FromSeconds(Math.Max(1, Math.Max(_options.HeartbeatIntervalSeconds, _options.StatusUpdateThrottleSeconds)));
 
@@ -2110,6 +2275,18 @@ using NpgsqlTypes;
 
                 if (includeAnalytics)
                     await SyncAnalyticsAsync(result, ct);
+
+                if (_analyticsCache is not null)
+                {
+                    try
+                    {
+                        await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
+                    }
+                    catch (Exception cacheEx)
+                    {
+                        _logger.LogWarning(cacheEx, "Analytics cache invalidation failed after Access import. BatchId: {BatchId}.", batch.Id);
+                    }
+                }
 
                 result.Status = "completed";
                 result.CompletedAtUtc = DateTime.UtcNow;
@@ -3359,6 +3536,65 @@ using NpgsqlTypes;
     private static bool IsLegacySchemaArtifact(PostgresException ex)
         => ex.SqlState is PostgresErrorCodes.UndefinedColumn or PostgresErrorCodes.UndefinedTable;
 
+    private bool ShouldResetAccessSalesSnapshot(bool overwriteExisting)
+        => overwriteExisting && !IsIncrementalWriteMode();
+
+    private async Task ResetAccessSalesSnapshotAsync(AccessImportRunResponse result, CancellationToken ct)
+    {
+        var batchId = result.BatchId;
+        var analyticsSalesLineFactsDeleted = 0;
+        var analyticsSalesFactsDeleted = 0;
+
+        if (result.IncludeAnalytics)
+        {
+            analyticsSalesLineFactsDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.SalesLineFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+                "SalesLineFacts",
+                "pre-import-reset",
+                batchId);
+            analyticsSalesFactsDeleted = await ExecuteDeleteCompatAsync(
+                () => _analyticsDb.SalesFacts.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+                "SalesFacts",
+                "pre-import-reset",
+                batchId);
+        }
+
+        var trendSalesLinesDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.ProdajaStavke
+                .Where(s => _trendDb.ProdajaZaglavlja
+                    .Where(z => z.DataOrigin == "access")
+                    .Select(z => z.Id)
+                    .Contains(s.IdProdaja))
+                .ExecuteDeleteAsync(ct),
+            "prodaja_stavke",
+            "pre-import-reset",
+            batchId);
+        var trendSalesHeadersDeleted = await ExecuteDeleteCompatAsync(
+            () => _trendDb.ProdajaZaglavlja.Where(x => x.DataOrigin == "access").ExecuteDeleteAsync(ct),
+            "prodaja_zaglavlje",
+            "pre-import-reset",
+            batchId);
+
+        var totalDeleted =
+            analyticsSalesLineFactsDeleted +
+            analyticsSalesFactsDeleted +
+            trendSalesLinesDeleted +
+            trendSalesHeadersDeleted;
+
+        if (totalDeleted <= 0)
+            return;
+
+        result.Warnings.Add(
+            $"Pre punog importa obrisan je prethodni Access snapshot prodaje: zaglavlja={trendSalesHeadersDeleted}, stavke={trendSalesLinesDeleted}, analytics facts={analyticsSalesFactsDeleted}, analytics lines={analyticsSalesLineFactsDeleted}.");
+        _logger.LogInformation(
+            "Access sales snapshot reset completed before full import. BatchId: {BatchId}. SalesHeadersDeleted: {SalesHeadersDeleted}. SalesLinesDeleted: {SalesLinesDeleted}. SalesFactsDeleted: {SalesFactsDeleted}. SalesLineFactsDeleted: {SalesLineFactsDeleted}.",
+            batchId,
+            trendSalesHeadersDeleted,
+            trendSalesLinesDeleted,
+            analyticsSalesFactsDeleted,
+            analyticsSalesLineFactsDeleted);
+    }
+
     private async Task ImportTrendplusAsync(
         IAccessDataReaderSession session,
         bool overwriteExisting,
@@ -3439,6 +3675,17 @@ using NpgsqlTypes;
                 "Preskocen je import tabela prodaja/povracaj jer u dnevnik_promena nema novih izmena za incremental batch.");
         }
 
+        if (!skipLinkedByDnevnikTrigger &&
+            ShouldResetAccessSalesSnapshot(overwriteExisting) &&
+            (prodaja is not null || prodajaStavke is not null || dnevnik is not null))
+        {
+            await RunImportStepAsync("reset-snapshot", "prodaja", prodaja ?? prodajaStavke ?? dnevnik ?? "prodaja", result, async innerCt =>
+            {
+                await ResetAccessSalesSnapshotAsync(result, innerCt);
+                await FlushTrendWritesAsync(force: true, innerCt);
+            }, ct);
+        }
+
         var importedProdajaFromLineTable = false;
         var synthesizedProdajaFromDnevnik = false;
         if (!skipLinkedByDnevnikTrigger && prodaja is not null && await IsProdajaLineTableAsync(session, prodaja, ct))
@@ -3504,6 +3751,8 @@ using NpgsqlTypes;
             await RunImportStepAsync("import", "prenos_robe", prenosRobe, result, innerCt =>
                 ImportPrenosRobeAsync(session, prenosRobe, overwriteExisting, result, innerCt), ct);
         await FlushTrendWritesAsync(force: true, ct);
+
+        await AppendImportedSalesDiagnosticsAsync(result, ct);
 
         if (!skipLinkedByDnevnikTrigger &&
             prodaja is null &&
@@ -4104,14 +4353,15 @@ using NpgsqlTypes;
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
-        // Build a composite-key multiset to detect duplicate inserts when Access rows lack a stable id.
-        // Key = (IdProdaja, IdArtikal, Cena), Value = count of existing rows with that combo.
+        // Snapshot existing composite-key counts so we can preserve legitimate duplicate source rows
+        // while still avoiding re-inserting occurrences that are already present in PostgreSQL.
         var existingCompositeKeys = new Dictionary<(int, int, decimal), int>();
         foreach (var e in existing.Values)
         {
             var ck = (e.IdProdaja, e.IdArtikal, e.Cena);
             existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
         }
+        var consumedExistingCompositeKeys = new Dictionary<(int, int, decimal), int>();
             var saleIds = (await _trendDb.ProdajaZaglavlja
                     .AsNoTracking()
                     .Select(x => x.Id)
@@ -4229,11 +4479,12 @@ using NpgsqlTypes;
             }
             else
             {
-                // Composite-key dedup: skip if an identical (idProdaja, idArtikal, cena) row already exists.
                 var compositeKey = (idProdaja.Value, idArtikal.Value, cena);
-                if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
+                existingCompositeKeys.TryGetValue(compositeKey, out var existingCompositeCount);
+                consumedExistingCompositeKeys.TryGetValue(compositeKey, out var consumedExistingCompositeCount);
+                if (consumedExistingCompositeCount < existingCompositeCount)
                 {
-                    existingCompositeKeys[compositeKey] = ckCount - 1;
+                    consumedExistingCompositeKeys[compositeKey] = consumedExistingCompositeCount + 1;
                     continue;
                 }
 
@@ -4253,8 +4504,6 @@ using NpgsqlTypes;
                 };
                 _trendDb.ProdajaStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
-                // Track newly inserted row in composite key set to prevent duplicates within the same batch.
-                existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 result.ProdajaStavkeInserted++;
                 TrackTrendWrite();
             }

@@ -42,6 +42,14 @@ public sealed class DailySalesMetadata
     public int OffShiftItems { get; set; }
     public decimal OffShiftRevenue { get; set; }
     public int TotalItemsInRange { get; set; }
+    public int DuplicateReceiptGroupCount { get; set; }
+    public int DuplicateReceiptHeaderCount { get; set; }
+    public int ReceiptAmountMismatchCount { get; set; }
+    public decimal ReceiptAmountMismatchRevenue { get; set; }
+    public int NonStandardReceiptCount { get; set; }
+    public decimal NonStandardReceiptRevenue { get; set; }
+    public int DebtReceiptCount { get; set; }
+    public decimal DebtReceiptRevenue { get; set; }
     /// <summary>Earliest available sale date in the whole dataset (null if no data at all).</summary>
     public DateTime? MinAvailableDate { get; set; }
     /// <summary>Latest available sale date in the whole dataset (null if no data at all).</summary>

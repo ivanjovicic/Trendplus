@@ -1,0 +1,618 @@
+Version =19
+VersionRequired =19
+Checksum =58816616
+Begin Report
+    LayoutForPrint = NotDefault
+    AutoCenter = NotDefault
+    FilterOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularFamily =127
+    DateGrouping =1
+    GrpKeepTogether =1
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =9014
+    DatasheetFontHeight =10
+    ItemSuffix =29
+    Top =480
+    Bottom =480
+    DatasheetGridlinesColor =12632256
+    Filter ="tblDnevnikPromena.IDDnevnik=1754671499"
+    RecSrcDt = Begin
+        0x3f34a4383f81e340
+    End
+    GUID = Begin
+        0x4023ebe4bb9f8e43a36162e35285c614
+    End
+    NameMap = Begin
+        0x0acc0e55000000008965412bd6e778438ccbe27245b823e000000000b8090b0e ,
+        0x9643e4400000000000000000740062006c004f0062006a0065006b0061007400 ,
+        0x00000000000010263cec29b20249a6487242187b3c82000000004082090e9643 ,
+        0xe44001000000c461f170740062006c0044006e00650076006e0069006b005000 ,
+        0x72006f006d0065006e00610000000000000044c327a880b1f54ca14ada646397 ,
+        0x73a5000000005f78110e9643e44001000000c461f170740062006c0054006900 ,
+        0x70004f006200750063006500000000000000320ad0575f0b4244acdcede4854f ,
+        0xb24400000000ace5090e9643e44001000000c461f170740062006c0044006f00 ,
+        0x6200610076006c006a00610063006900000000000000d3d774019d28204bb9f8 ,
+        0x538c903d811b00000000fc11e868a165e64001000000c461f170740062006c00 ,
+        0x41007200740069006b006c00690000000000000088310769e3be394992ce1373 ,
+        0xcee34be60000000071120e0e9643e44001000000c461f170740062006c005000 ,
+        0x72006f00640061006a0061000000000000004f577c9cbebfeb4db5dfe20bd9b5 ,
+        0xc4410700000010263cec29b20249a6487242187b3c8244006100740075006d00 ,
+        0x00000000000081682a70ffa07f4890c4eecdda66e07307000000d3d774019d28 ,
+        0x204bb9f8538c903d811b41007200740069006b0061006c00000000000000ed1d ,
+        0x93eb6c3b4c4f9e404201585970ea0700000010263cec29b20249a6487242187b ,
+        0x3c824900440044006e00650076006e0069006b00000000000000e46ab9c159de ,
+        0xc142959dbf1bf00bbcf207000000320ad0575f0b4244acdcede4854fb2444400 ,
+        0x6f006200610076006c006a006100630000000000000079845a0fd2cbd6468954 ,
+        0x3a848c8e9a28070000008965412bd6e778438ccbe27245b823e049006d006500 ,
+        0x000000000000c2becc21cb5210409ce58bc5751ee9b8070000008965412bd6e7 ,
+        0x78438ccbe27245b823e044006900720065006b0074006f007200000000000000 ,
+        0x51c04588a578744fb46fb8f848080cb30700000088310769e3be394992ce1373 ,
+        0xcee34be64b006f006c006900630069006e006100000000000000cc32888e2925 ,
+        0x2b4ca6825ab0b4c666200700000088310769e3be394992ce1373cee34be65000 ,
+        0x72006f00640061006a006e006100430065006e00610000000000000089c47b22 ,
+        0xba61694ba583629c77a8aff50700000044c327a880b1f54ca14ada64639773a5 ,
+        0x4e0061007a006900760000000000000019f679db9b328542980f0db3264ee47f ,
+        0x070000008965412bd6e778438ccbe27245b823e0490044004f0062006a006500 ,
+        0x6b006100740000000000000065e280cf18da7d44b8222f360bd7f9a007000000 ,
+        0x10263cec29b20249a6487242187b3c82490044004f0062006a0065006b006100 ,
+        0x7400000000000000936de1980ee93e499e510fe15f748c2207000000320ad057 ,
+        0x5f0b4244acdcede4854fb2444900440044006f006200610076006c006a006100 ,
+        0x630000000000000054ed0af35929424aa59b57d40ca46b3707000000d3d77401 ,
+        0x9d28204bb9f8538c903d811b4900440044006f006200610076006c006a006100 ,
+        0x6300000000000000e8494c2bfcb6ae4a87e4887c73d1bfb00700000044c327a8 ,
+        0x80b1f54ca14ada64639773a5490044005400690070004f006200750063006500 ,
+        0x00000000000059ef5cf5c3bc3147b150dea611514db307000000d3d774019d28 ,
+        0x204bb9f8538c903d811b490044005400690070004f0062007500630065000000 ,
+        0x00000000be8225f26713a049a9dcb1f7a50a1b1b07000000d3d774019d28204b ,
+        0xb9f8538c903d811b4900440041007200740069006b0061006c00000000000000 ,
+        0xa589091e75012c4a968f2e175fe8984a0700000088310769e3be394992ce1373 ,
+        0xcee34be64900440041007200740069006b0061006c00000000000000863a7411 ,
+        0x901d8b40a9f6e219d2fff4d10700000088310769e3be394992ce1373cee34be6 ,
+        0x4900440044006e00650076006e0069006b00000000000000baf06f053bd4c24c ,
+        0xba00064138e3bb46060000004023ebe4bb9f8e43a36162e35285c6144b006f00 ,
+        0x6c006900630069006e006100000000000000ec5619d33b6bca4b9e02eb7cb4db ,
+        0xbf56060000004023ebe4bb9f8e43a36162e35285c614500072006f0064006100 ,
+        0x6a006e006100430065006e006100000000000000000000000000000000000000 ,
+        0x000000000c000000040000000000000000000000000000000000
+    End
+    RecordSource ="SELECT tblDnevnikPromena.Datum, tblArtikli.Artikal, tblDnevnikPromena.IDDnevnik,"
+        " tblDobavljaci.Dobavljac, tblObjekat.Ime, tblObjekat.Direktor, tblProdaja.Kolici"
+        "na, tblProdaja.ProdajnaCena, tblTipObuce.Naziv FROM (tblObjekat INNER JOIN tblDn"
+        "evnikPromena ON tblObjekat.IDObjekat=tblDnevnikPromena.IDObjekat) INNER JOIN ((t"
+        "blTipObuce INNER JOIN (tblDobavljaci INNER JOIN tblArtikli ON tblDobavljaci.IDDo"
+        "bavljac=tblArtikli.IDDobavljac) ON tblTipObuce.IDTipObuce=tblArtikli.IDTipObuce)"
+        " INNER JOIN tblProdaja ON tblArtikli.IDArtikal=tblProdaja.IDArtikal) ON tblDnevn"
+        "ikPromena.IDDnevnik=tblProdaja.IDDnevnik; "
+    Caption ="Prodaja"
+    DatasheetFontName ="Arial"
+    PrtMip = Begin
+        0xa7050000a3050000a3050000a305000000000000362300008001000001000000 ,
+        0x010000006801000000000000a10700000100000001000000
+    End
+    PrtDevMode = Begin
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x010403009c00340313ef000001000900ea0a6f08640001000100580201000100 ,
+        0x5802030000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x000000000000000000000000000000000000000000000000000000005344444d ,
+        0x00060000000600004850204c617365724a65742050726f204d31326100000000 ,
+        0x0000000000000000000000000000000000000000000000000000000001000000 ,
+        0x0000000000000000010000000100000001000000010000000100000001000000 ,
+        0x0100000001000000010000000100000001000000010000000100000001000000 ,
+        0x010000000100000001000000010000000000000001000000010000001a041000 ,
+        0x0000000000000000000000000f0000002d000000000000000000000001000000 ,
+        0x000000000000000080808000ff000000ffff000000ff000000ffff000000ff00 ,
+        0xff00ff0000000000000000000000000000000000280000006400000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000000000000de030000de0300000000000000000000 ,
+        0x0080000000000000000000000100000000000000000000000000000000000000 ,
+        0x0000000000000000000000007b7f71b134030000000000000000000084000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000000000000
+    End
+    PrtDevNames = Begin
+        0x08001d0032000100000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000000000000000055534230303100
+    End
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            FontItalic = NotDefault
+            BackStyle =0
+            TextAlign =1
+            TextFontFamily =18
+            FontSize =11
+            FontWeight =700
+            ForeColor =8388608
+            FontName ="Times New Roman"
+        End
+        Begin Rectangle
+            BackStyle =0
+            BorderWidth =1
+            Width =850
+            Height =850
+            BorderColor =8388608
+        End
+        Begin Line
+            Width =1701
+            BorderColor =8388608
+        End
+        Begin Image
+            OldBorderStyle =0
+            PictureAlignment =2
+            Width =1701
+            Height =1701
+        End
+        Begin CheckBox
+            LabelX =230
+            LabelY =-30
+        End
+        Begin BoundObjectFrame
+            Width =4536
+            Height =2835
+            LabelX =-1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            BackStyle =0
+            Width =1701
+            LabelX =-1701
+            FontName ="Arial"
+        End
+        Begin ListBox
+            OldBorderStyle =0
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Arial"
+        End
+        Begin ComboBox
+            OldBorderStyle =0
+            BackStyle =0
+            Width =1701
+            LabelX =-1701
+            FontName ="Arial"
+        End
+        Begin Subform
+            OldBorderStyle =0
+            Width =1701
+            Height =1701
+        End
+        Begin UnboundObjectFrame
+            Width =4536
+            Height =2835
+        End
+        Begin BreakLevel
+            ControlSource ="Artikal"
+        End
+        Begin FormHeader
+            KeepTogether = NotDefault
+            Height =1303
+            Name ="ReportHeader"
+            GUID = Begin
+                0x4454c12cc09c2f4e9725c6988f6b29fc
+            End
+            Begin
+                Begin Label
+                    BackStyle =1
+                    Left =3127
+                    Top =113
+                    Width =1485
+                    Height =510
+                    FontSize =20
+                    Name ="Label14"
+                    Caption ="Prodaja"
+                    GUID = Begin
+                        0xdb7e96bdd7d56b4f934c89d671cf0cab
+                    End
+                End
+                Begin Label
+                    TextAlign =3
+                    Left =1020
+                    Top =792
+                    Width =1200
+                    Height =360
+                    FontSize =14
+                    Name ="Ime_Label"
+                    Caption ="u objektu"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0x90c7c31d6866714abefd313061133800
+                    End
+                End
+                Begin TextBox
+                    FontItalic = NotDefault
+                    TextAlign =2
+                    TextFontFamily =18
+                    IMESentenceMode =3
+                    Left =2277
+                    Top =794
+                    Width =2151
+                    Height =345
+                    FontSize =14
+                    FontWeight =700
+                    ForeColor =8388608
+                    Name ="Ime"
+                    ControlSource ="Ime"
+                    FontName ="Times New Roman"
+                    GUID = Begin
+                        0x4da55241300a8d48bfb888dc596264b9
+                    End
+                End
+                Begin Label
+                    Left =4485
+                    Top =795
+                    Width =1005
+                    Height =360
+                    FontSize =14
+                    Name ="IDDnevnik_Label"
+                    Caption ="na dan"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0x8513213c1d25f04789ffa844fcef6319
+                    End
+                End
+                Begin TextBox
+                    FontItalic = NotDefault
+                    TextAlign =2
+                    TextFontFamily =18
+                    IMESentenceMode =3
+                    Left =5555
+                    Top =793
+                    Width =2151
+                    Height =345
+                    FontSize =14
+                    FontWeight =700
+                    TabIndex =1
+                    ForeColor =8388608
+                    Name ="Text28"
+                    ControlSource ="Datum"
+                    FontName ="Times New Roman"
+                    GUID = Begin
+                        0xbe9ba0fb895472409b9470c100c83283
+                    End
+                End
+            End
+        End
+        Begin PageHeader
+            Height =414
+            Name ="PageHeaderSection"
+            GUID = Begin
+                0x3a130163dc2d014bb9867cf13c445b93
+            End
+            Begin
+                Begin Label
+                    Left =57
+                    Top =57
+                    Width =1869
+                    Height =300
+                    FontSize =12
+                    Name ="Artikal_Label"
+                    Caption ="Artikal"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0xc47396bd178a6f4fa393805ef9e4f21a
+                    End
+                End
+                Begin Label
+                    TextAlign =3
+                    Left =3685
+                    Top =56
+                    Width =969
+                    Height =300
+                    FontSize =12
+                    Name ="Kolicina_Label"
+                    Caption ="Kolicina"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0x9ff341ad4a9f1341bb280b5019dd4939
+                    End
+                End
+                Begin Label
+                    TextAlign =3
+                    Left =4705
+                    Top =56
+                    Width =1884
+                    Height =300
+                    FontSize =12
+                    Name ="ProdajnaCena_Label"
+                    Caption ="Prodajna cena"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0x701ada15e213644a88fde3bc49a00d16
+                    End
+                End
+                Begin Label
+                    Left =1984
+                    Top =56
+                    Width =1658
+                    Height =300
+                    FontSize =12
+                    Name ="Naziv_Label"
+                    Caption ="Tip obuce"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0x669c42945940dd47bed2a5f76c5d0d1a
+                    End
+                End
+                Begin Line
+                    LineSlant = NotDefault
+                    BorderWidth =2
+                    Left =57
+                    Top =342
+                    Width =8900
+                    Name ="Line17"
+                    GUID = Begin
+                        0xbdeb122a3b83f543b45b6b0986458df1
+                    End
+                End
+                Begin Label
+                    TextAlign =3
+                    Left =6633
+                    Top =56
+                    Width =2319
+                    Height =300
+                    FontSize =12
+                    Name ="Label21"
+                    Caption ="Vrednost"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0xf854b8f91e94214e90403d9840fcc8b4
+                    End
+                End
+            End
+        End
+        Begin Section
+            KeepTogether = NotDefault
+            Height =384
+            Name ="Detail"
+            GUID = Begin
+                0xe7fd800d231a8e42a43c8681d95aaf62
+            End
+            Begin
+                Begin TextBox
+                    OldBorderStyle =1
+                    BorderWidth =1
+                    IMESentenceMode =3
+                    Left =57
+                    Top =57
+                    Width =1869
+                    Height =270
+                    FontSize =10
+                    Name ="Artikal"
+                    ControlSource ="Artikal"
+                    GUID = Begin
+                        0xad149f1a250ace468504ce5871d3f8d2
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OldBorderStyle =1
+                    BorderWidth =1
+                    IMESentenceMode =3
+                    Left =3690
+                    Top =60
+                    Width =969
+                    Height =270
+                    FontSize =10
+                    TabIndex =1
+                    Name ="Kolicina"
+                    ControlSource ="Kolicina"
+                    GUID = Begin
+                        0xbaf06f053bd4c24cba00064138e3bb46
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OldBorderStyle =1
+                    BorderWidth =1
+                    IMESentenceMode =3
+                    Left =4705
+                    Top =56
+                    Width =1884
+                    Height =270
+                    FontSize =10
+                    TabIndex =2
+                    Name ="ProdajnaCena"
+                    ControlSource ="ProdajnaCena"
+                    Format ="#,##0.00\" Din.\";-#,##0.00\" Din.\""
+                    GUID = Begin
+                        0xec5619d33b6bca4b9e02eb7cb4dbbf56
+                    End
+                End
+                Begin TextBox
+                    OldBorderStyle =1
+                    BorderWidth =1
+                    IMESentenceMode =3
+                    Left =1984
+                    Top =56
+                    Width =1658
+                    Height =270
+                    FontSize =10
+                    TabIndex =3
+                    Name ="Naziv"
+                    ControlSource ="Naziv"
+                    GUID = Begin
+                        0x29f58e4075805842bb26ccdf88d72d85
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OldBorderStyle =1
+                    BorderWidth =1
+                    IMESentenceMode =3
+                    Left =6633
+                    Top =56
+                    Width =2319
+                    Height =270
+                    FontSize =10
+                    TabIndex =4
+                    Name ="Text22"
+                    ControlSource ="=-[Kolicina]*[ProdajnaCena]"
+                    Format ="#,##0.00\" Din.\";-#,##0.00\" Din.\""
+                    GUID = Begin
+                        0xd3f134763a942b4fb174fcfa96baeb34
+                    End
+                End
+            End
+        End
+        Begin PageFooter
+            Height =566
+            Name ="PageFooterSection"
+            GUID = Begin
+                0x72668bb58c3ca543a0e67c75178c798b
+            End
+            Begin
+                Begin TextBox
+                    FontItalic = NotDefault
+                    TextAlign =3
+                    TextFontFamily =18
+                    IMESentenceMode =3
+                    Left =4564
+                    Top =228
+                    Width =4393
+                    Height =300
+                    FontSize =9
+                    FontWeight =700
+                    ForeColor =8388608
+                    Name ="Text16"
+                    ControlSource ="=\"Strana \" & [Page] & \" od \" & [Pages]"
+                    FontName ="Times New Roman"
+                    GUID = Begin
+                        0x164678cd6b0fa74c8df108191b6a033b
+                    End
+                End
+                Begin Line
+                    BorderWidth =3
+                    Left =57
+                    Top =228
+                    Width =8900
+                    BorderColor =12632256
+                    Name ="Line18"
+                    GUID = Begin
+                        0x43cf0d4398b1f64ba77030cfb732d682
+                    End
+                End
+            End
+        End
+        Begin FormFooter
+            KeepTogether = NotDefault
+            Height =2097
+            Name ="ReportFooter"
+            GUID = Begin
+                0x41534460880c5a46a9a970615da96278
+            End
+            Begin
+                Begin TextBox
+                    FontItalic = NotDefault
+                    TextFontFamily =18
+                    IMESentenceMode =3
+                    Left =6556
+                    Top =56
+                    Width =2384
+                    Height =340
+                    FontSize =12
+                    FontWeight =600
+                    ForeColor =8388608
+                    Name ="Text19"
+                    ControlSource ="=-Sum([Kolicina]*[ProdajnaCena])"
+                    Format ="#,##0.00\" Din.\";-#,##0.00\" Din.\""
+                    FontName ="Times New Roman"
+                    GUID = Begin
+                        0x76ea356bd4c49649a9b843c755e210df
+                    End
+                    Begin
+                        Begin Label
+                            TextAlign =0
+                            Left =5272
+                            Top =56
+                            Width =1230
+                            Height =300
+                            FontSize =12
+                            Name ="Label20"
+                            Caption ="Ukupno:"
+                            GUID = Begin
+                                0x7a7a16ee874e0140a590f4676600618f
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    FontItalic = NotDefault
+                    TextFontFamily =18
+                    IMESentenceMode =3
+                    Left =737
+                    Top =793
+                    Width =2151
+                    Height =345
+                    FontSize =12
+                    FontWeight =700
+                    TabIndex =1
+                    ForeColor =8388608
+                    Name ="Text24"
+                    ControlSource ="Ime"
+                    FontName ="Times New Roman"
+                    GUID = Begin
+                        0x3ebd05c388c2ea4a9499ba4dce74c2d4
+                    End
+                    Begin
+                        Begin Label
+                            Left =283
+                            Top =793
+                            Width =351
+                            Height =345
+                            FontSize =12
+                            Name ="Label23"
+                            Caption ="Za"
+                            Tag ="DetachedLabel"
+                            GUID = Begin
+                                0xaaa0b7d7f7482546ae6be1bb0df14d73
+                            End
+                        End
+                    End
+                End
+                Begin Line
+                    Left =283
+                    Top =1984
+                    Width =2664
+                    Name ="Line25"
+                    GUID = Begin
+                        0xa080a5fe21a99c4e832d003b2e6c8bbb
+                    End
+                End
+                Begin TextBox
+                    IMESentenceMode =3
+                    Left =283
+                    Top =1133
+                    Width =2608
+                    Height =341
+                    FontSize =14
+                    FontWeight =700
+                    TabIndex =2
+                    Name ="Text26"
+                    ControlSource ="Direktor"
+                    GUID = Begin
+                        0xe7b193334fa8984a8db41ea0a4dcb0ff
+                    End
+                End
+            End
+        End
+    End
+End

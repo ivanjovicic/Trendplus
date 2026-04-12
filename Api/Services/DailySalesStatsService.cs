@@ -43,6 +43,132 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var fromDateUtc = DateTime.SpecifyKind(requestedFromUtc.Date, DateTimeKind.Utc);
         var toDateUtc = DateTime.SpecifyKind(requestedToUtc.Date, DateTimeKind.Utc);
         var toDateExclusiveUtc = toDateUtc.AddDays(1);
+        var saleTypeCandidates = TipPromeneConstants.ProdajaTypes.ToArray();
+
+        var receiptHeaders = await _db.ProdajaZaglavlja
+            .AsNoTracking()
+            .Where(pz => pz.DatumProdaje >= fromDateUtc
+                         && pz.DatumProdaje < toDateExclusiveUtc
+                         && (!storeId.HasValue || pz.IDObjekat == storeId.Value))
+            .Select(pz => new
+            {
+                SaleId = pz.Id,
+                SaleDate = pz.DatumProdaje.Date,
+                pz.BrojRacuna,
+                pz.IDObjekat
+            })
+            .ToListAsync(ct);
+
+        var duplicateReceiptGroups = receiptHeaders
+            .Where(x => !string.IsNullOrWhiteSpace(x.BrojRacuna))
+            .GroupBy(x => new
+            {
+                x.SaleDate,
+                x.BrojRacuna,
+                x.IDObjekat
+            })
+            .Where(g => g.Count() > 1)
+            .Select(g => new
+            {
+                g.Key.SaleDate,
+                g.Key.BrojRacuna,
+                g.Key.IDObjekat,
+                HeaderCount = g.Count()
+            })
+            .OrderByDescending(x => x.HeaderCount)
+            .ThenBy(x => x.SaleDate)
+            .ToList();
+
+        var receiptLineTotals = await (
+            from ps in _db.ProdajaStavke.AsNoTracking()
+            join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            where pz.DatumProdaje >= fromDateUtc
+               && pz.DatumProdaje < toDateExclusiveUtc
+               && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+            group new
+            {
+                ps.Kolicina,
+                ps.Cena
+            } by new
+            {
+                SaleId = pz.Id,
+                SaleDate = pz.DatumProdaje.Date,
+                pz.BrojRacuna,
+                pz.IDObjekat
+            }
+            into g
+            select new
+            {
+                g.Key.SaleId,
+                g.Key.SaleDate,
+                g.Key.BrojRacuna,
+                g.Key.IDObjekat,
+                LineTotal = g.Sum(x => x.Kolicina * x.Cena)
+            })
+            .ToListAsync(ct);
+
+        var dnevnikSaleTotals = await _db.DnevnikPromena
+            .AsNoTracking()
+            .Where(d => d.Datum >= fromDateUtc
+                        && d.Datum < toDateExclusiveUtc
+                        && (!storeId.HasValue || d.IDObjekat == storeId.Value)
+                        && saleTypeCandidates.Contains(d.TipPromene))
+            .GroupBy(d => new
+            {
+                SaleId = d.Id,
+                SaleDate = d.Datum.Date,
+                d.BrojRacuna,
+                d.IDObjekat
+            })
+            .Select(g => new
+            {
+                g.Key.SaleId,
+                g.Key.SaleDate,
+                g.Key.BrojRacuna,
+                g.Key.IDObjekat,
+                DnevnikTotal = g.Sum(x => x.Iznos < 0 ? -x.Iznos : x.Iznos)
+            })
+            .ToListAsync(ct);
+
+        var dnevnikTotalsBySaleId = dnevnikSaleTotals.ToDictionary(x => x.SaleId);
+        var receiptLineTotalsBySaleId = receiptLineTotals.ToDictionary(x => x.SaleId);
+        var receiptAmountMismatches = receiptLineTotals
+            .Where(x => dnevnikTotalsBySaleId.TryGetValue(x.SaleId, out var dnevnik)
+                        && decimal.Abs(x.LineTotal - dnevnik.DnevnikTotal) > 0.01m)
+            .Select(x => new
+            {
+                x.SaleId,
+                x.SaleDate,
+                x.BrojRacuna,
+                x.IDObjekat,
+                x.LineTotal,
+                DnevnikTotal = dnevnikTotalsBySaleId[x.SaleId].DnevnikTotal,
+                Difference = decimal.Abs(x.LineTotal - dnevnikTotalsBySaleId[x.SaleId].DnevnikTotal)
+            })
+            .OrderByDescending(x => x.Difference)
+            .ToList();
+
+        var nonStandardReceiptHeaders = receiptHeaders
+            .Where(x => !IsStandardReceiptNumber(x.BrojRacuna))
+            .Select(x => new
+            {
+                x.SaleId,
+                x.SaleDate,
+                x.BrojRacuna,
+                x.IDObjekat,
+                Revenue = receiptLineTotalsBySaleId.TryGetValue(x.SaleId, out var lineTotal)
+                    ? lineTotal.LineTotal
+                    : dnevnikTotalsBySaleId.TryGetValue(x.SaleId, out var dnevnik)
+                        ? dnevnik.DnevnikTotal
+                        : 0m
+            })
+            .OrderByDescending(x => x.Revenue)
+            .ThenBy(x => x.SaleDate)
+            .ToList();
+
+        var debtReceiptHeaders = nonStandardReceiptHeaders
+            .Where(x => IsDebtReceiptNumber(x.BrojRacuna))
+            .ToList();
 
         var aggregates = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
@@ -81,6 +207,48 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var dayAccumulators = new Dictionary<DateTime, DayAccumulator>();
         var supplierTotals = new Dictionary<string, SupplierAccumulator>(StringComparer.Ordinal);
         var warnings = new List<string>();
+
+        if (duplicateReceiptGroups.Count > 0)
+        {
+            var sample = string.Join(
+                ", ",
+                duplicateReceiptGroups
+                    .Take(3)
+                    .Select(x => $"{x.BrojRacuna}/{x.IDObjekat ?? 0} ({x.HeaderCount}x)"));
+            var suffix = duplicateReceiptGroups.Count > 3 ? " ..." : string.Empty;
+            warnings.Add(
+                $"Detektovano je {duplicateReceiptGroups.Count} grupa dupliranih racuna za isti datum/objekat. Primeri: {sample}{suffix}.");
+        }
+
+        if (receiptAmountMismatches.Count > 0)
+        {
+            var sample = string.Join(
+                ", ",
+                receiptAmountMismatches
+                    .Take(3)
+                    .Select(x => $"{x.BrojRacuna ?? x.SaleId.ToString()} ({x.LineTotal:0.##} vs {x.DnevnikTotal:0.##})"));
+            var suffix = receiptAmountMismatches.Count > 3 ? " ..." : string.Empty;
+            warnings.Add(
+                $"Detektovano je {receiptAmountMismatches.Count} racuna gde zbir stavki ne odgovara dnevniku prodaje. Primeri: {sample}{suffix}.");
+        }
+
+        if (nonStandardReceiptHeaders.Count > 0)
+        {
+            var sample = string.Join(
+                ", ",
+                nonStandardReceiptHeaders
+                    .Take(3)
+                    .Select(x => $"{(string.IsNullOrWhiteSpace(x.BrojRacuna) ? "(prazno)" : x.BrojRacuna)}/{x.IDObjekat ?? 0}"));
+            var suffix = nonStandardReceiptHeaders.Count > 3 ? " ..." : string.Empty;
+            warnings.Add(
+                $"Detektovano je {nonStandardReceiptHeaders.Count} prodajnih dokumenata sa nestandardnim brojem racuna. Promet tih dokumenata je {decimal.Round(nonStandardReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
+        }
+
+        if (debtReceiptHeaders.Count > 0)
+        {
+            warnings.Add(
+                $"Dokumenti oznaceni kao DUG pojavljuju se {debtReceiptHeaders.Count} put(a) sa ukupno {decimal.Round(debtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
+        }
 
         var hasClassifiedShiftRows = aggregates.Any(x => ResolveShift(x.HourOfDay) is 1 or 2);
         var hasAnyRows = aggregates.Any(x => x.Qty != 0);
@@ -313,6 +481,14 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 OffShiftItems = offShiftItems,
                 OffShiftRevenue = decimal.Round(offShiftRevenue, 2, MidpointRounding.AwayFromZero),
                 TotalItemsInRange = totalItemsInRange,
+                DuplicateReceiptGroupCount = duplicateReceiptGroups.Count,
+                DuplicateReceiptHeaderCount = duplicateReceiptGroups.Sum(x => Math.Max(0, x.HeaderCount - 1)),
+                ReceiptAmountMismatchCount = receiptAmountMismatches.Count,
+                ReceiptAmountMismatchRevenue = decimal.Round(receiptAmountMismatches.Sum(x => x.Difference), 2, MidpointRounding.AwayFromZero),
+                NonStandardReceiptCount = nonStandardReceiptHeaders.Count,
+                NonStandardReceiptRevenue = decimal.Round(nonStandardReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
+                DebtReceiptCount = debtReceiptHeaders.Count,
+                DebtReceiptRevenue = decimal.Round(debtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
                 MinAvailableDate = minAvailableDate,
                 MaxAvailableDate = maxAvailableDate,
                 Warnings = warnings
@@ -385,6 +561,23 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         return $"{supplier.SupplierName} (unknown)";
     }
+
+    private static bool IsStandardReceiptNumber(string? brojRacuna)
+    {
+        if (string.IsNullOrWhiteSpace(brojRacuna))
+            return false;
+
+        foreach (var ch in brojRacuna.Trim())
+        {
+            if (!char.IsDigit(ch))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsDebtReceiptNumber(string? brojRacuna)
+        => string.Equals(brojRacuna?.Trim(), "DUG", StringComparison.OrdinalIgnoreCase);
 
     private sealed class SalesAggregateRow
     {

@@ -1,0 +1,739 @@
+Version =19
+VersionRequired =19
+Checksum =-58816631
+Begin Form
+    RecordSelectors = NotDefault
+    MaxButton = NotDefault
+    MinButton = NotDefault
+    AutoCenter = NotDefault
+    NavigationButtons = NotDefault
+    DividingLines = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    ViewsAllowed =2
+    TabularFamily =0
+    BorderStyle =1
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =7483
+    DatasheetFontHeight =10
+    ItemSuffix =43
+    Left =6420
+    Top =165
+    Right =13905
+    Bottom =6330
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xfd29b741574de340
+    End
+    GUID = Begin
+        0xa1a41a76f92b6540b915a8e8f9821736
+    End
+    NameMap = Begin
+        0x0acc0e55000000008965412bd6e778438ccbe27245b823e000000000b8090b0e ,
+        0x9643e4400104030101000000740062006c004f0062006a0065006b0061007400 ,
+        0x00000000000019f679db9b328542980f0db3264ee47f070000008965412bd6e7 ,
+        0x78438ccbe27245b823e0490044004f0062006a0065006b006100740000000000 ,
+        0x000079845a0fd2cbd64689543a848c8e9a28070000008965412bd6e778438ccb ,
+        0xe27245b823e049006d0065000000000000000000000000000000000000000000 ,
+        0x00000c000000030000000000000000000000000000000000
+    End
+    Caption ="Trend PLUS robno knjigovodstvo v5, (c) Srdjan Kitic 2008"
+    OnClose ="[Event Procedure]"
+    DatasheetFontName ="Arial"
+    PrtMip = Begin
+        0xa3050000a1050000a1050000a105000000000000201c0000e010000001000000 ,
+        0x010000006801000000000000a10700000100000001000000
+    End
+    PrtDevMode = Begin
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x010401089c00d80403ef80070100090000000000640001000700580201000100 ,
+        0x5802010000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000001000000 ,
+        0x0200000001000000010000000000000000000000000000000000000001080000 ,
+        0x4800500020004c0061007300650072004a006500740020005000310030003000 ,
+        0x3500000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000b4050000b409000000000000 ,
+        0x00000000b4050000ec0500000000000004000000ec130000c819000001000000 ,
+        0x0000000000000000000000000000000000000000000000000100000001000000 ,
+        0x030000000000000064000000010000000f270000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000001000000 ,
+        0x0000000000000000000000000000000001000000000000009600000000000000 ,
+        0x3400000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000040170000e2200000ffffffff0000000000000000 ,
+        0x0000000001000000000000000000000000000000000000000000000012000000 ,
+        0x0000000001000000000000000100000001000000000000000100000000000000 ,
+        0x0000000002000000010000000000000000000000010000000100000001000000 ,
+        0x0000000000000000020000000000000000000000010000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x40170000e2200000000000000000000000000000000000000000000064000000 ,
+        0x0000000000000000000000006400000000000000000000000000000000000000 ,
+        0x0200000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000100000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000001000000010000000000000000000000 ,
+        0x0000000000000000000000000100000001000000
+    End
+    PrtDevNames = Begin
+        0x08001a002c000100000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000055534230303100
+    End
+    OnLoad ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin CustomControl
+            SpecialEffect =2
+            Width =4536
+            Height =2835
+        End
+        Begin ToggleButton
+            Width =283
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =6179
+            BackColor =12632256
+            Name ="Detail"
+            GUID = Begin
+                0x0a755389f345234c940720010ca25313
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =453
+                    Top =283
+                    Width =1134
+                    Height =794
+                    Name ="cmdProzorProdaja"
+                    Caption ="Prodaja"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x1bff02558e98cc4fb88aa2553edb56e3
+                    End
+                End
+                Begin ComboBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    ColumnCount =2
+                    ListWidth =1440
+                    Left =3628
+                    Top =340
+                    Width =1871
+                    Height =283
+                    TabIndex =15
+                    ColumnInfo ="\"\";\"\";\"Naziv objekta\";\"\";\"10\";\"30\""
+                    GUID = Begin
+                        0x4d8c682da3839442bf6d7517daad5af7
+                    End
+                    Name ="cmbObjekat"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT tblObjekat.IDObjekat, tblObjekat.Ime FROM tblObjekat ORDER BY [Ime]; "
+                    ColumnWidths ="0;1440"
+                    AfterUpdate ="[Event Procedure]"
+                    BaseInfo ="\"SELECT tblObjekat.IDObjekat, tblObjekat.Ime FROM tblObjekat ORDER BY [Ime]; \""
+                        ";\"tblObjekat\";\"\";\"IDObjekat\";\"Ime\";\"PrimaryKey\""
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =2437
+                            Top =340
+                            Width =975
+                            Height =245
+                            Name ="labObjekat"
+                            Caption ="Objekat:"
+                            GUID = Begin
+                                0x5c5939056f53e544944056b123e555af
+                            End
+                        End
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =453
+                    Top =3685
+                    Width =1134
+                    Height =794
+                    TabIndex =9
+                    Name ="cmdPregled"
+                    Caption ="Pregled"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x3b4ebd6c40c2a04eab79489958b4d756
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =1870
+                    Top =1417
+                    Width =1134
+                    Height =794
+                    TabIndex =2
+                    Name ="cmdPrenos"
+                    Caption ="Prenos"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x051d4759fc78804b90248c78cbfa507c
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =453
+                    Top =1417
+                    Width =1134
+                    Height =794
+                    TabIndex =1
+                    Name ="cmdUnos"
+                    Caption ="Unos"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x75005e5d71d3b1489b45200b74c6e359
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3344
+                    Top =1417
+                    Width =1134
+                    Height =794
+                    TabIndex =3
+                    Name ="cmdNivelacija"
+                    Caption ="Nivelacija"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x4845762629f608499455a7c1a7bd3b19
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =1870
+                    Top =2551
+                    Width =1134
+                    Height =794
+                    TabIndex =6
+                    Name ="cmdTipObuce"
+                    Caption ="Tip obuce"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x394d974172e2ed4cbb2bb9dcbc831242
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3344
+                    Top =2551
+                    Width =1134
+                    Height =794
+                    TabIndex =7
+                    Name ="cmdDobavljac"
+                    Caption ="Dobavljac"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x3e1a205ac8a8904381d1174d42bf377c
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =4762
+                    Top =2551
+                    Width =1134
+                    Height =794
+                    TabIndex =8
+                    Name ="cmdObjekat"
+                    Caption ="Objekat"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x53a176b28730534db9d8631bb877fa72
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =1870
+                    Top =3685
+                    Width =1134
+                    Height =794
+                    TabIndex =10
+                    Name ="cmdDnevnik"
+                    Caption ="Dnevnik promena"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xbfe3db8e625bb64c9a21bea44b072be4
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =4762
+                    Top =4818
+                    Width =1134
+                    Height =794
+                    TabIndex =14
+                    Name ="cmdResetuj"
+                    Caption ="Resetuj bazu"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x4096a92ff3bf4d419a50f91d92a0689c
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =6066
+                    Top =1417
+                    Width =1134
+                    Height =794
+                    TabIndex =5
+                    Name ="cmdPromenaArtikla"
+                    Caption ="Promena artikla"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x3bcde9afd2d0c4459482817841153ce3
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3344
+                    Top =3685
+                    Width =1134
+                    Height =794
+                    TabIndex =11
+                    Name ="cmdKartica"
+                    Caption ="Prikaz kartice"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x2aafe1999d2e0b4f9d22a177c77724df
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =4762
+                    Top =1417
+                    Width =1134
+                    Height =794
+                    TabIndex =4
+                    Name ="cmdPovratnica"
+                    Caption ="Zapisnik o povracaju"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x1ca3131959fd334ea47a28a6e518e5e3
+                    End
+                End
+                Begin TextBox
+                    Locked = NotDefault
+                    SpecialEffect =4
+                    OldBorderStyle =1
+                    BorderWidth =3
+                    OverlapFlags =85
+                    BackStyle =0
+                    IMESentenceMode =3
+                    Left =3628
+                    Top =793
+                    Width =1634
+                    Height =280
+                    TabIndex =16
+                    Name ="dateGlavni"
+                    Format ="Long Date"
+                    OnExit ="[Event Procedure]"
+                    OnDblClick ="=PopupCalendar(Screen.ActiveControl)"
+                    GUID = Begin
+                        0x099728dc232b2f459f138768d8b4b374
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =2437
+                            Top =793
+                            Width =765
+                            Height =240
+                            Name ="labDatum"
+                            Caption ="Datum:"
+                            GUID = Begin
+                                0x9e52c8be0f014d43ac76b606f372f3e1
+                            End
+                        End
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =4762
+                    Top =3685
+                    Width =1134
+                    Height =794
+                    TabIndex =12
+                    Name ="cmdStatistika"
+                    Caption ="Statistika"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x4571529185e62544baf17b2b34c77bea
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3344
+                    Top =4818
+                    Width =1134
+                    Height =794
+                    TabIndex =13
+                    Name ="cmbPodesavanja"
+                    Caption ="Podesavanja"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xb599f40c44df264dbb68f795c5c5365f
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =453
+                    Top =4818
+                    Width =1134
+                    Height =794
+                    TabIndex =17
+                    Name ="cmdProveriBazu"
+                    Caption ="Proveri bazu"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xda9e6161f4234f42aa9f5f5b86114789
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =1870
+                    Top =4818
+                    Width =1134
+                    Height =794
+                    TabIndex =18
+                    Name ="cmdDetaljaProvera"
+                    Caption ="Oporavak"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xe1ee33faaf8aa64d9e3e20a71402f2e6
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =453
+                    Top =2551
+                    Width =1134
+                    Height =794
+                    TabIndex =19
+                    Name ="cmdSezona"
+                    Caption ="Sezona"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xa37535014ea5334bae56ae44694fb1fe
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =6066
+                    Top =3685
+                    Width =1134
+                    Height =794
+                    TabIndex =20
+                    Name ="cmdLager"
+                    Caption ="Lager"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xca9fc18aa8f59d4ab53511ab575e1e95
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =113
+                    Top =5725
+                    Width =6690
+                    Height =227
+                    Name ="labGlavni"
+                    Caption ="labGlavni"
+                    GUID = Begin
+                        0x9fdd27f151078940b8ce41a9c00ac85e
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+
+Private Sub cmbPodesavanja_Click()
+    DoCmd.OpenForm "frmPodesavanja", , , , , acDialog
+    UcitajPodesavanja
+End Sub
+
+Private Sub cmdDetaljaProvera_Click()
+    Dim rstDnevnik As New ADODB.Recordset
+    Dim prevDate As Date
+    Dim pogresni As String
+    
+    Open "pogresni.txt" For Output As #67
+    
+    rstDnevnik.Open "SELECT * FROM tblDnevnikPromena WHERE IDObjekat = " & _
+        CStr(lngIDObjekat) & " ORDER BY RedniBroj ASC", cnnVeza, adOpenKeyset, adLockOptimistic
+    
+    Do Until rstDnevnik.EOF
+        
+        If Not rstDnevnik.BOF Then
+            If CLng(prevDate) > CLng(rstDnevnik!Datum) Then
+                pogresni = CStr(rstDnevnik!RedniBroj)
+                Print #67, pogresni
+            End If
+                
+        End If
+        prevDate = rstDnevnik!Datum
+        rstDnevnik.MoveNext
+    
+    Loop
+    
+    Close #67
+    
+    rstDnevnik.Close
+    
+    'If MsgBox("Program ce pokusati oporavak osnovne tabele, moguc gubitak podataka! Nastavljate?", vbYesNo) = vbYes Then
+    '    DetaljnaProvera
+    'End If
+End Sub
+
+Private Sub cmdDnevnik_Click()
+    dateDatum = dateGlavni.Value
+    DoCmd.OpenForm "frmDnevnik", , , , , acDialog
+End Sub
+
+Private Sub cmdDobavljac_Click()
+    DoCmd.OpenForm "frmDobavljaci", , , , , acDialog
+End Sub
+
+
+Private Sub cmdKartica_Click()
+    DoCmd.OpenForm "frmPretraga", , , , , acDialog, "frmKartica"
+End Sub
+
+Private Sub cmdLager_Click()
+    DoCmd.OpenForm "frmLager", , , , , acDialog
+End Sub
+
+Private Sub cmdNivelacija_Click()
+    strTipPromene = "NIVELACIJA"
+    boolIzmena = False
+    dateDatum = dateGlavni.Value
+    DoCmd.OpenForm "frmNivelacija", , , , , acDialog
+
+End Sub
+
+Private Sub cmbObjekat_AfterUpdate()
+    lngIDObjekat = cmbObjekat.Value
+End Sub
+
+
+Private Sub cmdObjekat_Click()
+    DoCmd.OpenForm "frmObjekat", , , , , acDialog
+End Sub
+
+
+Private Sub cmdPovratnica_Click()
+    strTipPromene = "POVRATNICA"
+    boolIzmena = False
+    dateDatum = dateGlavni.Value
+    DoCmd.OpenForm "frmUnosDobavljac", , , , , acDialog
+    
+End Sub
+
+Private Sub cmdPrenos_Click()
+    boolIzmena = False
+    dateDatum = dateGlavni.Value
+    strTipPromene = "PRENOS ROBE"
+    DoCmd.OpenForm "frmPrenosRobe", , , , , acDialog
+
+    cmbObjekat.Value = lngIDObjekat
+End Sub
+
+Private Sub cmdPromenaArtikla_Click()
+    DoCmd.OpenForm "frmPretraga", , , , , acDialog, "frmPromenaArtikla"
+End Sub
+
+Private Sub cmdProveriBazu_Click()
+    If Integritet = True Then
+        MsgBox "Integritet OK", vbInformation, "Provera ispravnosti baze"
+        If boolDesilaSePromena = True Then
+            UradiBackup
+        End If
+    Else
+        MsgBox "Integritet nije odrzan. Koristite najsveziju backup bazu!", vbCritical, "Provera ispravnosti baze"
+    End If
+End Sub
+
+Private Sub cmdResetuj_Click()
+        
+    DoCmd.OpenForm "frmReset", , , , , acDialog
+    
+'    If MsgBox("SVI PODACI U BAZI PODATAKA CE BITI IZBRISANI I BAZA CE SE VRATITI U INICIJALNO STANJE!" & _
+'    Chr(13) & Chr(13) & "Nastavljate?", vbYesNo, "Upozorenje!") = vbYes Then
+'        DoCmd.RunSQL "DELETE * FROM tblArtikli"
+'        DoCmd.RunSQL "DELETE * FROM tblArtikliProslost"
+'        DoCmd.RunSQL "DELETE * FROM tblDnevnikPromena"
+'        DoCmd.RunSQL "DELETE * FROM tblUnosRobe"
+'        DoCmd.RunSQL "DELETE * FROM tblUnosPrivremena"
+'        DoCmd.RunSQL "DELETE * FROM tblNivelacije"
+'        DoCmd.RunSQL "DELETE * FROM tblNivelacijePrivremena"
+'        DoCmd.RunSQL "DELETE * FROM tblPrenosRobe"
+'        DoCmd.RunSQL "DELETE * FROM tblPrenosPrivremena"
+'        DoCmd.RunSQL "DELETE * FROM tblProdaja"
+'        DoCmd.RunSQL "DELETE * FROM tblProdajaPrivremena"
+'        DoCmd.RunSQL "DELETE * FROM tblDobavljaci"
+'        DoCmd.RunSQL "DELETE * FROM tblTipObuce"
+'    End If
+
+End Sub
+
+Private Sub cmdSezona_Click()
+    DoCmd.OpenForm "frmSezona", , , , , acDialog
+End Sub
+
+Private Sub cmdStatistika_Click()
+    DoCmd.OpenForm "frmStatistika", , , , , acDialog
+End Sub
+
+Private Sub cmdUnos_Click()
+    strTipPromene = "UNOS ROBE"
+    boolIzmena = False
+    dateDatum = dateGlavni.Value
+    DoCmd.OpenForm "frmUnosDobavljac", , , , , acDialog
+
+End Sub
+
+Private Sub cmdPregled_Click()
+    
+    DoCmd.OpenForm "frmPregled", , , , , acDialog
+
+End Sub
+
+Private Sub cmdProzorProdaja_Click()
+    
+    strTipPromene = "PRODAJA"
+    boolIzmena = False
+    DoCmd.OpenForm "frmProdaja", , , , , acDialog
+    
+End Sub
+
+Private Sub cmdTipObuce_Click()
+    DoCmd.OpenForm "frmTipObuce", , , , , acDialog
+End Sub
+
+Private Sub dateGlavni_Exit(Cancel As Integer)
+    Dim dateMaxDatum As Date
+    On Error Resume Next
+    dateMaxDatum = DMax("Datum", "tblDnevnikPromena")
+    If dateGlavni.Text >= dateMaxDatum Then
+        dateDatum = dateGlavni.Value
+        If lngRedniBroj < lngMaxRedniBroj Then
+            Sadasnjost lngRedniBroj
+            lngRedniBroj = lngMaxRedniBroj
+        End If
+    Else
+        If MsgBox("Datum koji ste izabrali je manji od datuma poslednjeg unosa u bazu!" & Chr(13) & _
+                "Promena ce biti ubacena nakon poslednjeg unosa tog dana. Nastavljate?", vbOKCancel) = vbOK Then
+            dateDatum = dateGlavni.Value
+            On Error GoTo NajmanjiDatum
+            lngRedniBroj = DMax("RedniBroj", "tblDnevnikPromena", "Datum <= DateValue('" & CStr(dateDatum) & "')") + 1
+            VratiUnazad lngRedniBroj
+            UbaciRedniBroj lngRedniBroj
+        Else
+            dateGlavni.Value = dateDatum
+        End If
+        
+    End If
+    lngIDSezona = Sezona(dateDatum)
+    labGlavni.Caption = NazivSezone
+    Exit Sub
+
+NajmanjiDatum:
+    lngRedniBroj = 1
+    dateGlavni.Value = dateDatum
+    Resume Next
+End Sub
+
+Private Sub Form_Close()
+    cmdProveriBazu_Click
+    DoCmd.SetWarnings True
+End Sub
+
+Private Sub Form_Load()
+    DoCmd.SetWarnings False
+    
+    Set cnnVeza = CurrentProject.Connection
+    boolDesilaSePromena = False
+    cmbObjekat.Value = cmbObjekat.ItemData(0)
+
+    UcitajPodesavanja
+
+    lngIDObjekat = cmbObjekat.Value
+    
+    If Not IsNull(DMax("RedniBroj", "tblDnevnikPromena")) Then
+        lngMaxRedniBroj = DMax("RedniBroj", "tblDnevnikPromena")
+        dateDatum = DatumDnevnik
+        If DateValue(dateDatum) < DateValue(Date) Then
+            dateDatum = Date
+        End If
+    Else
+        lngMaxRedniBroj = 0
+        dateDatum = Date
+    End If
+    
+    dateGlavni.Value = dateDatum
+    lngRedniBroj = lngMaxRedniBroj
+    boolIzmena = False
+    lngIDSezona = Sezona(dateDatum)
+    labGlavni.Caption = NazivSezone
+    
+End Sub

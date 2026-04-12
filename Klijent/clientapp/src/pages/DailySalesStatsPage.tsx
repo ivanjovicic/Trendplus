@@ -856,13 +856,52 @@ export default function DailySalesStatsPage() {
       description: "Dani sa prometom bez pouzdanog razdvajanja po smenama.",
     },
     {
+      key: "duplicateReceipts",
+      label: "Dupli racuni",
+      value: fmtNumber(data?.metadata.duplicateReceiptGroupCount ?? 0),
+      tone: (data?.metadata.duplicateReceiptGroupCount ?? 0) > 0 ? "danger" : "good",
+      description: "Isti broj racuna vise puta za isti datum i objekat.",
+    },
+    {
+      key: "receiptMismatch",
+      label: "Racun mismatch",
+      value: fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0),
+      tone: (data?.metadata.receiptAmountMismatchCount ?? 0) > 0 ? "danger" : "good",
+      description: "Racuni gde dnevnik i suma stavki ne daju isti iznos.",
+    },
+    {
+      key: "nonStandardReceipts",
+      label: "Nestandardni racuni",
+      value: fmtNumber(data?.metadata.nonStandardReceiptCount ?? 0),
+      tone: (data?.metadata.nonStandardReceiptCount ?? 0) > 0 ? "warning" : "good",
+      description: "Dokumenti sa nenumerickim brojem racuna, npr. DUG.",
+    },
+    {
+      key: "nonStandardRevenue",
+      label: "Nestandardni RSD",
+      value: fmtRsdShort(data?.metadata.nonStandardReceiptRevenue ?? 0),
+      tone: (data?.metadata.nonStandardReceiptRevenue ?? 0) > 0 ? "warning" : "good",
+      description: "Promet ostvaren kroz nestandardne prodajne dokumente.",
+    },
+    {
       key: "suppliers",
       label: "Aktivni dobavljaci",
       value: fmtNumber(data?.metadata.uniqueSuppliersInRange ?? 0),
       tone: "info",
       description: "Broj dobavljaca sa prometom u opsegu.",
     },
-  ]), [data?.metadata.offShiftItems, data?.metadata.offShiftRevenue, data?.metadata.uniqueSuppliersInRange, data?.metadata.unknownSupplierPct, mismatchCount, missingShiftCount]);
+  ]), [
+    data?.metadata.duplicateReceiptGroupCount,
+    data?.metadata.nonStandardReceiptCount,
+    data?.metadata.nonStandardReceiptRevenue,
+    data?.metadata.offShiftItems,
+    data?.metadata.offShiftRevenue,
+    data?.metadata.receiptAmountMismatchCount,
+    data?.metadata.uniqueSuppliersInRange,
+    data?.metadata.unknownSupplierPct,
+    mismatchCount,
+    missingShiftCount,
+  ]);
 
   const decisionInsights = useMemo<InsightCard[]>(() => {
     const insights: InsightCard[] = [];
@@ -913,6 +952,22 @@ export default function DailySalesStatsPage() {
       });
     }
 
+    if ((data?.metadata.duplicateReceiptGroupCount ?? 0) > 0 || (data?.metadata.receiptAmountMismatchCount ?? 0) > 0) {
+      insights.push({
+        title: "Prodaja trazi rekonsilijaciju",
+        detail: `Duplih racuna je ${fmtNumber(data?.metadata.duplicateReceiptGroupCount ?? 0)}, a racuna sa mismatch-om izmedju dnevnika i stavki ${fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0)}.`,
+        tone: "danger",
+      });
+    }
+
+    if ((data?.metadata.nonStandardReceiptCount ?? 0) > 0) {
+      insights.push({
+        title: "Postoje nestandardni dokumenti prodaje",
+        detail: `${fmtNumber(data?.metadata.nonStandardReceiptCount ?? 0)} dokumenta nose ${fmtRsdShort(data?.metadata.nonStandardReceiptRevenue ?? 0)}. DUG se pojavljuje ${fmtNumber(data?.metadata.debtReceiptCount ?? 0)} put(a).`,
+        tone: "warning",
+      });
+    }
+
     if ((data?.metadata.offShiftItems ?? 0) > 0) {
       insights.push({
         title: "Ima prodaje van smene",
@@ -930,7 +985,24 @@ export default function DailySalesStatsPage() {
     }
 
     return insights.slice(0, 4);
-  }, [comparisonCards, currentSummary.firstShiftSharePct, currentSummary.secondShiftSharePct, data?.metadata.offShiftItems, data?.metadata.offShiftRevenue, data?.metadata.unknownSupplierPct, mismatchCount, missingShiftCount, previousRange.fromDate, previousRange.toDate, supplierConcentration.top3QtySharePct]);
+  }, [
+    comparisonCards,
+    data?.metadata.debtReceiptCount,
+    currentSummary.firstShiftSharePct,
+    currentSummary.secondShiftSharePct,
+    data?.metadata.duplicateReceiptGroupCount,
+    data?.metadata.nonStandardReceiptCount,
+    data?.metadata.nonStandardReceiptRevenue,
+    data?.metadata.offShiftItems,
+    data?.metadata.offShiftRevenue,
+    data?.metadata.receiptAmountMismatchCount,
+    data?.metadata.unknownSupplierPct,
+    mismatchCount,
+    missingShiftCount,
+    previousRange.fromDate,
+    previousRange.toDate,
+    supplierConcentration.top3QtySharePct,
+  ]);
 
   const dayPatternSummary = useMemo(() => {
     const strongestDay = weekdayData.reduce<WeekdayPoint | null>((best, row) => (!best || row.avgRevenue > best.avgRevenue ? row : best), null);

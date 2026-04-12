@@ -1,0 +1,843 @@
+Version =19
+VersionRequired =19
+Checksum =-58816546
+Begin Form
+    RecordSelectors = NotDefault
+    MaxButton = NotDefault
+    MinButton = NotDefault
+    AutoCenter = NotDefault
+    NavigationButtons = NotDefault
+    DividingLines = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularFamily =0
+    BorderStyle =3
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =8190
+    DatasheetFontHeight =10
+    ItemSuffix =37
+    Left =5835
+    Top =30
+    Right =5835
+    Bottom =30
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xdb9ebd91dd69e340
+    End
+    GUID = Begin
+        0x462489bff8f3c54aa5a88cbf220e4959
+    End
+    NameMap = Begin
+        0x0acc0e5500000000320ad0575f0b4244acdcede4854fb24400000000ace5090e ,
+        0x9643e4400000000000000000740062006c0044006f006200610076006c006a00 ,
+        0x610063006900000000000000936de1980ee93e499e510fe15f748c2207000000 ,
+        0x320ad0575f0b4244acdcede4854fb2444900440044006f006200610076006c00 ,
+        0x6a0061006300000000000000e46ab9c159dec142959dbf1bf00bbcf207000000 ,
+        0x320ad0575f0b4244acdcede4854fb24444006f006200610076006c006a006100 ,
+        0x630000000000000044c327a880b1f54ca14ada64639773a5000000005f78110e ,
+        0x9643e44001000000c4614e5e740062006c005400690070004f00620075006300 ,
+        0x6500000000000000e8494c2bfcb6ae4a87e4887c73d1bfb00700000044c327a8 ,
+        0x80b1f54ca14ada64639773a5490044005400690070004f006200750063006500 ,
+        0x00000000000089c47b22ba61694ba583629c77a8aff50700000044c327a880b1 ,
+        0xf54ca14ada64639773a54e0061007a00690076000000000000001e87cf1b65ac ,
+        0x03408ee6824ffe526cf400000000f314110e9643e44001000000c4614e5e7400 ,
+        0x62006c00530065007a006f006e006100000000000000da2a65eee7801044b6c5 ,
+        0x6f613f07ca09070000001e87cf1b65ac03408ee6824ffe526cf4490044005300 ,
+        0x65007a006f006e006100000000000000a99806cb69a3e945b06f0df03eb952d8 ,
+        0x070000001e87cf1b65ac03408ee6824ffe526cf4530065007a006f006e006100 ,
+        0x000000000000000000000000000000000000000000000c000000040000000000 ,
+        0x000000000000000000000000
+    End
+    Caption ="Statistika"
+    DatasheetFontName ="Arial"
+    PrtMip = Begin
+        0xa0050000a0050000a0050000a005000000000000201c0000e010000001000000 ,
+        0x010000006801000000000000a10700000100000001000000
+    End
+    PrtDevMode = Begin
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x010401089c00d80403ef80070100090000000000640001000700580201000100 ,
+        0x5802010000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000001000000 ,
+        0x0200000001000000010000000000000000000000000000000000000001080000 ,
+        0x4800500020004c0061007300650072004a006500740020005000310030003000 ,
+        0x3500000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000b4050000b409000000000000 ,
+        0x00000000b4050000ec0500000000000004000000ec130000c819000001000000 ,
+        0x0000000000000000000000000000000000000000000000000100000001000000 ,
+        0x030000000000000064000000010000000f270000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000001000000 ,
+        0x0000000000000000000000000000000001000000000000009600000000000000 ,
+        0x3400000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000040170000e2200000ffffffff0000000000000000 ,
+        0x0000000001000000000000000000000000000000000000000000000012000000 ,
+        0x0000000001000000000000000100000001000000000000000100000000000000 ,
+        0x0000000002000000010000000000000000000000010000000100000001000000 ,
+        0x0000000000000000020000000000000000000000010000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x40170000e2200000000000000000000000000000000000000000000064000000 ,
+        0x0000000000000000000000006400000000000000000000000000000000000000 ,
+        0x0200000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000100000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000001000000010000000000000000000000 ,
+        0x0000000000000000000000000100000001000000
+    End
+    PrtDevNames = Begin
+        0x08001a002c000100000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000055534230303100
+    End
+    OnLoad ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin ListBox
+            SpecialEffect =2
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Tab
+            Width =5103
+            Height =3402
+            FontName ="Tahoma"
+        End
+        Begin Page
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            Height =9807
+            BackColor =-2147483633
+            Name ="Detail"
+            GUID = Begin
+                0x3bf787e70fb31540b5625a7e19caa200
+            End
+            Begin
+                Begin Tab
+                    OverlapFlags =85
+                    Top =60
+                    Width =8190
+                    Height =6375
+                    Name ="tabStatistika"
+                    GUID = Begin
+                        0x4d8d67b0218c504caf4507bcc0285d5b
+                    End
+                    Begin
+                        Begin Page
+                            OverlapFlags =215
+                            Left =135
+                            Top =465
+                            Width =7920
+                            Height =5835
+                            Name ="pageProdaja"
+                            Caption ="Prodaja"
+                            GUID = Begin
+                                0x831c5bf262110345b855156cdf03ef3a
+                            End
+                            Begin
+                                Begin ListBox
+                                    ColumnHeads = NotDefault
+                                    RowSourceTypeInt =1
+                                    OverlapFlags =215
+                                    IMESentenceMode =3
+                                    ColumnCount =6
+                                    Left =226
+                                    Top =566
+                                    Width =7634
+                                    Height =5612
+                                    Name ="lstTopArtikli"
+                                    RowSourceType ="Value List"
+                                    ColumnWidths ="0;1701;1134;1701;1134;1701"
+                                    GUID = Begin
+                                        0x45712418c2177848a637c8aca01f1d68
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =215
+                            Left =135
+                            Top =465
+                            Width =7920
+                            Height =5835
+                            Name ="pageNabavljeno"
+                            Caption ="Nabavljeno"
+                            GUID = Begin
+                                0x6afc0c08e1bf4645bccd26617cbee397
+                            End
+                            Begin
+                                Begin ListBox
+                                    ColumnHeads = NotDefault
+                                    RowSourceTypeInt =1
+                                    OverlapFlags =247
+                                    IMESentenceMode =3
+                                    ColumnCount =6
+                                    Left =226
+                                    Top =566
+                                    Width =7634
+                                    Height =5612
+                                    Name ="lstTopNabavljeno"
+                                    RowSourceType ="Value List"
+                                    ColumnWidths ="0;1701;1134;1701;1134;1701"
+                                    GUID = Begin
+                                        0x924175c4cfdef04faa1dd43b57e83b6c
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    Locked = NotDefault
+                    SpecialEffect =4
+                    OldBorderStyle =1
+                    BorderWidth =3
+                    OverlapFlags =85
+                    BackStyle =0
+                    IMESentenceMode =3
+                    Left =793
+                    Top =9146
+                    Width =1985
+                    Height =280
+                    TabIndex =1
+                    Name ="txtDatumOd"
+                    Format ="Long Date"
+                    OnDblClick ="=PopupCalendar(Form.ActiveControl)"
+                    DefaultValue ="=Date()"
+                    GUID = Begin
+                        0xc1b1b11b38c60b4c8538b6eb0909af5d
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =226
+                            Top =9146
+                            Width =465
+                            Height =240
+                            Name ="Label4"
+                            Caption ="Od:"
+                            GUID = Begin
+                                0x7c5f698b1a1f984e818c7d16a50feae9
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    Locked = NotDefault
+                    SpecialEffect =4
+                    OldBorderStyle =1
+                    BorderWidth =3
+                    OverlapFlags =85
+                    BackStyle =0
+                    IMESentenceMode =3
+                    Left =3683
+                    Top =9146
+                    Width =1985
+                    Height =280
+                    TabIndex =2
+                    Name ="txtDatumDo"
+                    Format ="Long Date"
+                    OnDblClick ="=PopupCalendar(Form.ActiveControl)"
+                    DefaultValue ="=Date()"
+                    GUID = Begin
+                        0x0c95b798851c69478d2430ab929b6723
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =3004
+                            Top =9147
+                            Width =465
+                            Height =240
+                            Name ="Label6"
+                            Caption ="Do:"
+                            GUID = Begin
+                                0x312486ee85b53249a79909a967781324
+                            End
+                        End
+                    End
+                End
+                Begin CommandButton
+                    Default = NotDefault
+                    OverlapFlags =85
+                    Left =6009
+                    Top =9014
+                    Width =1871
+                    Height =529
+                    TabIndex =3
+                    Name ="cmdObradi"
+                    Caption ="Obradi"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xa69cc93b5452a847b6af581183e10698
+                    End
+                End
+                Begin ComboBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    ColumnCount =2
+                    ListWidth =1440
+                    Left =4419
+                    Top =7659
+                    Width =2332
+                    Height =280
+                    TabIndex =4
+                    ColumnInfo ="\"\";\"\";\"Dobavljac\";\"\";\"10\";\"30\""
+                    GUID = Begin
+                        0x31f6b54dd49d1040b09b24c772f25f51
+                    End
+                    Name ="cmbDobavljac"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT tblDobavljaci.IDDobavljac, tblDobavljaci.Dobavljac FROM tblDobavljaci ORD"
+                        "ER BY [Dobavljac]; "
+                    ColumnWidths ="0;1440"
+                    BaseInfo ="\"SELECT tblDobavljaci.IDDobavljac, tblDobavljaci.Dobavljac FROM tblDobavljaci O"
+                        "RDER BY [Dobavljac]; \";\"tblDobavljaci\";\"\";\"IDDobavljac\";\"Dobavljac\";\"P"
+                        "rimaryKey\""
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =3458
+                            Top =7654
+                            Width =840
+                            Height =255
+                            Name ="Dobavljac_Label"
+                            Caption ="Dobavljac:"
+                            GUID = Begin
+                                0x571fad9832f2af45873803eba6745cec
+                            End
+                        End
+                    End
+                End
+                Begin ComboBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    ColumnCount =2
+                    ListWidth =1440
+                    Left =4426
+                    Top =8056
+                    Width =2324
+                    Height =283
+                    TabIndex =5
+                    ColumnInfo ="\"\";\"\";\"Tip obuce\";\"\";\"10\";\"40\""
+                    GUID = Begin
+                        0xabb95c485bf0854aa58155d901d9aab0
+                    End
+                    Name ="cmbTipObuce"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT tblTipObuce.IDTipObuce, tblTipObuce.Naziv FROM tblTipObuce ORDER BY [Nazi"
+                        "v]; "
+                    ColumnWidths ="0;1440"
+                    BaseInfo ="\"SELECT tblTipObuce.IDTipObuce, tblTipObuce.Naziv FROM tblTipObuce ORDER BY [Na"
+                        "ziv]; \";\"tblTipObuce\";\"\";\"IDTipObuce\";\"Naziv\";\"PrimaryKey\""
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =3458
+                            Top =8051
+                            Width =825
+                            Height =255
+                            Name ="Tip obuce_Label"
+                            Caption ="Tip obuce:"
+                            EventProcPrefix ="Tip_obuce_Label"
+                            GUID = Begin
+                                0x48445a79ddadf14c8d76ee741ae42bbd
+                            End
+                        End
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =283
+                    Top =7230
+                    Width =1928
+                    Height =340
+                    TabIndex =6
+                    Name ="chkSnizeni"
+                    DefaultValue ="False"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x88565c4bbaf7964e8e5e48d04b48192b
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =247
+                            Left =510
+                            Top =7206
+                            Width =5010
+                            Height =240
+                            Name ="labSnizeni"
+                            Caption ="Zanemari artikle cija je prodajna cena manja od nabavne uvecane za"
+                            GUID = Begin
+                                0x5917fe72352e8349b547b38a818baf61
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    Enabled = NotDefault
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    Left =5555
+                    Top =7200
+                    Width =741
+                    TabIndex =7
+                    Name ="txtProcenat"
+                    DefaultValue ="30"
+                    GUID = Begin
+                        0x2093d48a43360544b09eb0ef671d9e48
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =6349
+                            Top =7200
+                            Width =960
+                            Height =240
+                            Name ="labProcenat"
+                            Caption ="procenata"
+                            GUID = Begin
+                                0xe36f20ece4b6e448a6586e14aff1155d
+                            End
+                        End
+                    End
+                End
+                Begin ComboBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    ColumnCount =2
+                    ListWidth =1440
+                    Left =4422
+                    Top =8447
+                    Width =2325
+                    Height =284
+                    TabIndex =8
+                    ColumnInfo ="\"\";\"\";\"\";\"\";\"10\";\"100\""
+                    GUID = Begin
+                        0xcf23ee34c4e60f4cae2f2b45d8d85e6b
+                    End
+                    Name ="cmbSezona"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT tblSezona.IDSezona, tblSezona.Sezona FROM tblSezona; "
+                    ColumnWidths ="0;1440"
+                    BaseInfo ="\"SELECT tblSezona.IDSezona, tblSezona.Sezona FROM tblSezona; \";\"tblSezona\";\""
+                        "\";\"IDSezona\";\"Sezona\";\"PrimaryKey\""
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =3458
+                            Top =8447
+                            Width =660
+                            Height =240
+                            Name ="labSezona"
+                            Caption ="Sezona:"
+                            GUID = Begin
+                                0x934ad0992346b24b88a2a7db4677c63e
+                            End
+                        End
+                    End
+                End
+                Begin OptionGroup
+                    OverlapFlags =85
+                    Left =283
+                    Top =7654
+                    Width =1952
+                    Height =1273
+                    TabIndex =9
+                    Name ="frmIzbor"
+                    DefaultValue ="1"
+                    GUID = Begin
+                        0x8df80959516ca74eaff0151d73c38ae6
+                    End
+                    Begin
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =469
+                            Top =7892
+                            OptionValue =1
+                            Name ="Option27"
+                            GUID = Begin
+                                0x1c5b03749219bd4ab4e821fe8314ec5f
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =699
+                                    Top =7864
+                                    Width =600
+                                    Height =240
+                                    Name ="Label28"
+                                    Caption ="Grupno"
+                                    GUID = Begin
+                                        0x9d2be0ac3196824ca73342da1fcf63e5
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =469
+                            Top =8222
+                            OptionValue =2
+                            Name ="Option29"
+                            GUID = Begin
+                                0x5449bf6b3b7dc24ebf94b63cf3b847bb
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =699
+                                    Top =8194
+                                    Width =1350
+                                    Height =240
+                                    Name ="Label30"
+                                    Caption ="Prikaz po artiklima"
+                                    GUID = Begin
+                                        0x3a917b8cc58e904fb88cc2d18e3ec657
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =469
+                            Top =8552
+                            OptionValue =3
+                            Name ="Option31"
+                            GUID = Begin
+                                0xdd2a597b078fd74a88a44bee920a61fd
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =699
+                                    Top =8524
+                                    Width =795
+                                    Height =240
+                                    Name ="Label32"
+                                    Caption ="Finansijski"
+                                    GUID = Begin
+                                        0x5c50224c7a2d994d8ebd7eb80b7dca6b
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =283
+                    Top =6663
+                    Width =1928
+                    Height =340
+                    TabIndex =10
+                    Name ="chkPrvaProdajna"
+                    DefaultValue ="False"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x66403a42609aec4e99b38f1eca49613b
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =255
+                            Left =510
+                            Top =6645
+                            Width =5055
+                            Height =240
+                            Name ="labPrvaProdajna"
+                            Caption ="Zanemari artikle cija je prodajna cena manja od pocetne umanjene za"
+                            GUID = Begin
+                                0x3aa19969031b6841b17542e1f8fb32f4
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    Enabled = NotDefault
+                    OverlapFlags =247
+                    IMESentenceMode =3
+                    Left =5555
+                    Top =6633
+                    Width =741
+                    TabIndex =11
+                    Name ="txtPrvaProdajna"
+                    DefaultValue ="0"
+                    GUID = Begin
+                        0x1f78190139d46649b9a7d6163cd7b61d
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =6349
+                            Top =6633
+                            Width =960
+                            Height =240
+                            Name ="labPrvaProcenat"
+                            Caption ="procenata"
+                            GUID = Begin
+                                0xbf76012f20d2404c8b551ce12e945dc6
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+
+Private Evro As Currency
+
+Private Sub chkPrvaProdajna_Click()
+    If chkPrvaProdajna.Value = False Then
+        txtPrvaProdajna.Enabled = False
+    Else
+        txtPrvaProdajna.Enabled = True
+    End If
+End Sub
+
+Private Sub chkSnizeni_Click()
+    If chkSnizeni.Value = False Then
+        txtProcenat.Enabled = False
+    Else
+        txtProcenat.Enabled = True
+    End If
+End Sub
+
+
+
+Private Sub cmdObradi_Click()
+    Dim rstStatProdaja As New ADODB.Recordset
+    Dim rstStatUneto As New ADODB.Recordset
+    
+    Dim strStatDob As String
+    Dim strStatTip As String
+    Dim strStatSezona As String
+    Dim strDatumOd As String
+    Dim strDatumDo As String
+    Dim intUkupnoProdato As Integer
+    Dim intUkupnoNabavljeno As Integer
+    Dim curUkupnoProdato As Currency
+    Dim curUkupnoNabavljeno As Currency
+    
+    strDatumOd = DatePart("m", DateValue(txtDatumOd.Value)) & "/" & DatePart("d", DateValue(txtDatumOd.Value)) & "/" & DatePart("yyyy", DateValue(txtDatumOd.Value))
+    strDatumDo = DatePart("m", DateValue(txtDatumDo.Value)) & "/" & DatePart("d", DateValue(txtDatumDo.Value)) & "/" & DatePart("yyyy", DateValue(txtDatumDo.Value))
+    
+    If Not IsNull(cmbDobavljac.Value) Then
+        strStatDob = " AND IDDobavljac=" & CStr(cmbDobavljac.Value)
+    Else
+        strStatDob = ""
+    End If
+    If Not IsNull(cmbTipObuce.Value) Then
+        strStatTip = " AND IDTipObuce=" & CStr(cmbTipObuce.Value)
+    Else
+        strStatTip = ""
+    End If
+    If Not IsNull(cmbSezona.Value) Then
+        strStatSezona = " AND IDSezona=" & CStr(cmbSezona.Value)
+    Else
+        strStatSezona = ""
+    End If
+
+    Dim strSQL As String
+    
+    strSQL = "SELECT * FROM tblDnevnikPromena WHERE IDObjekat=" & lngIDObjekat & " AND (DateValue(Datum)>DateValue(#" & strDatumOd & _
+    "#) AND DateValue(Datum)<DateValue(#" & strDatumDo & "#))"
+    CreateAccessQuery "qryDnevnik", strSQL
+    
+    strSQL = "SELECT * FROM tblArtikli WHERE IDObjekat=" & lngIDObjekat & strStatDob & strStatTip & strStatSezona
+    CreateAccessQuery "qryArtikli", strSQL
+    
+    strSQL = "SELECT * FROM tblProdaja WHERE IDDnevnik IN (SELECT IDDnevnik FROM qryDnevnik)" & _
+    " AND IDArtikal IN (SELECT IDArtikal FROM qryArtikli)"
+    CreateAccessQuery "qryProdaja", strSQL
+    
+    rstStatProdaja.Open "SELECT IDArtikal, ProdajnaCena, SUM(Kolicina) AS Prodato FROM qryProdaja" & _
+    " GROUP BY IDArtikal, ProdajnaCena ORDER BY IDArtikal", cnnVeza, adOpenKeyset, adLockOptimistic
+
+    rstStatUneto.Open "SELECT IDArtikal, ProdajnaCena, Uneto FROM qryUnetoUkupno" & _
+    " ORDER BY IDArtikal DESC", cnnVeza, adOpenDynamic, adLockOptimistic
+    
+    lstTopArtikli.RowSource = ""
+    lstTopNabavljeno.RowSource = ""
+    lstTopNabavljeno.AddItem "IDArtikal;Artikal;Dobavljac;Tip obuce;Nabavljeno;Nabavna cena"
+    lstTopArtikli.AddItem "IDArtikal;Artikal;Dobavljac;Tip obuce;Prodato;Prodajna cena"
+    
+        Do Until rstStatProdaja.EOF
+            lngIDArtikal = rstStatProdaja!IDArtikal
+            If PronadjiArtikal = True And _
+            (chkSnizeni.Value = False Or curNabavnaCena * Evro * (1 + (CSng(txtProcenat.Value)) / 100) <= rstStatProdaja!ProdajnaCena) And _
+            (chkPrvaProdajna.Value = False Or curPrvaProdajnaCena * (1 - (CSng(txtPrvaProdajna.Value)) / 100) <= rstStatProdaja!ProdajnaCena) _
+            Then
+                strNazivDobavljaca = NazivDobavljaca
+                strNazivObuce = NazivObuce
+                If frmIzbor.Value = 2 Then
+                    lstTopArtikli.AddItem lngIDArtikal & ";" & strArtikal & ";" & strNazivDobavljaca & ";" & strNazivObuce & _
+                    ";" & rstStatProdaja!Prodato & ";" & CStr(rstStatProdaja!ProdajnaCena)
+                ElseIf frmIzbor.Value = 1 Then
+                    intUkupnoProdato = intUkupnoProdato + rstStatProdaja!Prodato
+                ElseIf frmIzbor.Value = 3 Then
+                    curUkupnoProdato = curUkupnoProdato + rstStatProdaja!Prodato * rstStatProdaja!ProdajnaCena * 0.847
+                End If
+            End If
+            rstStatProdaja.MoveNext
+        Loop
+        
+        If frmIzbor.Value = 1 Or frmIzbor.Value = 3 Then
+            If IsNull(cmbDobavljac.Value) Then
+                strNazivDobavljaca = "Svi dobavljaci"
+            End If
+            If IsNull(cmbTipObuce.Value) Then
+                strNazivObuce = "Svi tipovi"
+            End If
+            If frmIzbor.Value = 1 Then
+                lstTopArtikli.AddItem "1" & ";Ukupno;" & strNazivDobavljaca & ";" & strNazivObuce & ";" & intUkupnoProdato
+            Else
+                lstTopArtikli.AddItem "1" & ";Ukupno bez PDVa;" & strNazivDobavljaca & ";" & strNazivObuce & ";" & curUkupnoProdato
+            End If
+        End If
+        
+
+        
+        Do Until rstStatUneto.EOF
+            lngIDArtikal = rstStatUneto!IDArtikal
+            If PronadjiArtikal = True And rstStatUneto!Uneto > 0 Then
+                
+                ' Ovo ispod nije tacno, moram da povezem prodaju i unos
+                ' And (chkSnizeni.Value = False Or curNabavnaCena * Evro * (1 + (CSng(txtProcenat.Value)) / 100) <= rstStatUneto!ProdajnaCena) Then
+                
+                
+                strNazivDobavljaca = NazivDobavljaca
+                strNazivObuce = NazivObuce
+                If frmIzbor.Value = 2 Then
+                    lstTopNabavljeno.AddItem lngIDArtikal & ";" & strArtikal & ";" & strNazivDobavljaca & ";" & strNazivObuce & _
+                    ";" & rstStatUneto!Uneto & ";" & CStr(curNabavnaCena * Evro)
+                ElseIf frmIzbor.Value = 1 Then
+                    intUkupnoNabavljeno = intUkupnoNabavljeno + rstStatUneto!Uneto
+                ElseIf frmIzbor.Value = 3 Then
+                    curUkupnoNabavljeno = curUkupnoNabavljeno + rstStatUneto!Uneto * curNabavnaCena * Evro
+                End If
+            End If
+            rstStatUneto.MoveNext
+        Loop
+        
+        If frmIzbor.Value = 1 Or frmIzbor.Value = 3 Then
+            If IsNull(cmbDobavljac.Value) Then
+                strNazivDobavljaca = "Svi dobavljaci"
+            End If
+            If IsNull(cmbTipObuce.Value) Then
+                strNazivObuce = "Svi tipovi"
+            End If
+            If frmIzbor.Value = 1 Then
+                lstTopNabavljeno.AddItem "1" & ";Ukupno;" & strNazivDobavljaca & ";" & strNazivObuce & ";" & intUkupnoNabavljeno
+            Else
+                lstTopNabavljeno.AddItem "1" & ";Ukupno;" & strNazivDobavljaca & ";" & strNazivObuce & ";" & curUkupnoNabavljeno
+            End If
+        End If
+    
+    rstStatProdaja.Close
+    rstStatUneto.Close
+    
+    DoCmd.DeleteObject acQuery, "qryArtikli"
+    DoCmd.DeleteObject acQuery, "qryDnevnik"
+    DoCmd.DeleteObject acQuery, "qryProdaja"
+    
+End Sub
+
+Private Sub Form_Load()
+    On Error GoTo Izlaz
+    Evro = InputBox("Unesite trenutan kurs dinara prema evru:")
+    lstTopArtikli.AddItem "IDArtikal;Artikal;Dobavljac;Tip obuce;Prodato;Prodajna cena"
+    lstTopNabavljeno.AddItem "IDArtikal;Artikal;Dobavljac;Tip obuce;Nabavljeno;Nabavna cena"
+    Exit Sub
+    
+Izlaz:
+    DoCmd.Close
+End Sub
+Sub CreateAccessQuery(QueryName As String, SQLStr As String)
+
+'  1/2/06 - Carl for : Oz
+'  requies references : MS Active X Data Objects libs and MS Active X Ext
+
+Dim cmd As ADODB.Command
+Dim cat As ADOX.Catalog
+
+Set cat = New ADOX.Catalog
+Set cmd = New ADODB.Command
+
+cat.ActiveConnection = cnnVeza
+
+cmd.CommandText = SQLStr
+cat.Views.Append QueryName, cmd
+
+Set cat = Nothing
+Set cmd = Nothing
+
+End Sub
