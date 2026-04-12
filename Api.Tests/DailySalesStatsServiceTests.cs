@@ -67,10 +67,10 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(2, result.TopSuppliersOrder.Count);
 
         var dayOne = Assert.Single(result.DateRows, x => x.Date.Date == new DateTime(2026, 1, 1).Date);
-        Assert.Equal(5, dayOne.FirstShiftTotalItems);
+        Assert.Equal(7, dayOne.FirstShiftTotalItems);
         Assert.Equal(3, dayOne.SecondShiftTotalItems);
-        Assert.Equal(1100m, dayOne.TotalRevenue);
-        Assert.Equal(8, dayOne.TotalItemsSold);
+        Assert.Equal(1300m, dayOne.TotalRevenue);
+        Assert.Equal(10, dayOne.TotalItemsSold);
         Assert.Equal(dayOne.TotalItemsSold, dayOne.OthersCount + dayOne.TopSupplierCounts.Sum());
 
         var dayTwo = Assert.Single(result.DateRows, x => x.Date.Date == new DateTime(2026, 1, 2).Date);
@@ -84,7 +84,7 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(0m, dayThree.TotalRevenue);
 
         Assert.Equal(2, result.Metadata.OffShiftItems);
-        Assert.True(result.Metadata.UnknownSupplierPct > 30m);
+        Assert.True(result.Metadata.UnknownSupplierPct > 20m);
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("van smena", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -219,6 +219,47 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(8, result.DateRows.Sum(r => r.FirstShiftTotalItems));
         Assert.Equal(0, result.Metadata.OffShiftItems);
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("Satnica prodaje nije dostupna", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_CountsRepeatedReceiptLines_WithoutFalseDuplicateWarning()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        db.ProdajaZaglavlja.Add(
+            new ProdajaZaglavlje
+            {
+                Id = 80,
+                BrojRacuna = "DUG",
+                DatumProdaje = new DateTime(2026, 3, 26, 0, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            });
+
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 81, IdProdaja = 80, IdArtikal = 101, Kolicina = 1, Cena = 100m },
+            new ProdajaStavka { Id = 82, IdProdaja = 80, IdArtikal = 101, Kolicina = 1, Cena = 100m },
+            new ProdajaStavka { Id = 83, IdProdaja = 80, IdArtikal = 101, Kolicina = 1, Cena = 100m });
+
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            requestedFromUtc: new DateTime(2026, 3, 26, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 3, 26, 0, 0, 0, DateTimeKind.Utc),
+            storeId: 1,
+            topN: 5,
+            dataScope: "all",
+            ct: CancellationToken.None);
+
+        var row = Assert.Single(result.DateRows);
+        Assert.Equal(3, row.TotalItemsSold);
+        Assert.Equal(3, row.FirstShiftTotalItems);
+        Assert.Equal(300m, row.TotalRevenue);
+        Assert.Equal(1, result.Metadata.NonStandardReceiptCount);
+        Assert.Equal(1, result.Metadata.DebtReceiptCount);
+        Assert.DoesNotContain(result.Metadata.Warnings, x => x.Contains("dupliranih stavki prodaje", StringComparison.OrdinalIgnoreCase));
     }
 
     private static TrendplusDbContext CreateDbContext()

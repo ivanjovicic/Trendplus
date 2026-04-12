@@ -1,5 +1,17 @@
 # Forensic Investigation: `/analytics/daily-sales` Data Integrity
 
+> Superseded on 2026-04-13 by a follow-up verification against the current `Trend plus.mdb` snapshot and Neon PostgreSQL.
+>
+> Corrected conclusion for the disputed dates `2026-03-15`, `2026-03-20`, `2026-03-21`, `2026-03-23`, `2026-03-26`, and `2026-03-27`:
+>
+> - Access MDB truth matches PostgreSQL imported truth for all disputed dates.
+> - The frontend table renders backend values directly; no frontend date-shift or aggregation bug was confirmed.
+> - The earlier claim that `(IdProdaja, IdArtikal, Cena)` repeats prove import corruption was too strong. The same repeated line patterns exist in the Access source and can represent legitimate sold quantity.
+> - The dates that looked "inflated" are explained by source documents already present in MDB, including non-standard receipts such as `korekcija` on `2026-03-23` and `DUG` on `2026-03-26`.
+> - Reimport is not required for the disputed dates.
+>
+> The code was updated to remove the false-positive duplicate-line warning from `DailySalesStatsService`, because that warning could misclassify legitimate repeated source rows as data corruption.
+
 **Date:** 2026-04-13  
 **Status:** ROOT CAUSES IDENTIFIED, FIXES APPLIED  
 **Database State:** EMPTY (all data deleted by `cleanup-non-access` between Apr 4–12)
