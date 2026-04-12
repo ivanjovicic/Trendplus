@@ -4717,17 +4717,28 @@ using NpgsqlTypes;
         var pendingHeadersByBusinessKey = new Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje>(StringComparer.OrdinalIgnoreCase);
         var pendingHeaderIdsByBusinessKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var updatedHeaderIds = new HashSet<int>();
+        var missingDnevnikHeaderRowCount = 0;
+        var missingDnevnikHeaderIds = new HashSet<int>();
         var flushProbeCounter = 0;
 
         await foreach (var row in ReadRowsForTableAsync(session, table, "prodaja_stavke", ct))
         {
-            MarkSourceRow(result, "prodaja_zaglavlje");
-            MarkSourceRow(result, "prodaja_stavke");
-
             var sourceSaleId = I(row, "iddnevnik", "idprodaja", "saleid", "iddnevnikpromene", "iddnevnikpromena");
             var idArtikal = I(row, "idartikal", "artikalid", "artiklid", "productid");
             if (!sourceSaleId.HasValue || sourceSaleId.Value <= 0 || !idArtikal.HasValue || idArtikal.Value <= 0)
                 continue;
+
+            MarkSourceRow(result, "prodaja_zaglavlje");
+            MarkSourceRow(result, "prodaja_stavke");
+
+            dnevnikById.TryGetValue(sourceSaleId.Value, out var dnevnik);
+            var rowSaleDate = DT(row, "datumprodaje", "datum", "saledate");
+            if (dnevnik is null && !rowSaleDate.HasValue)
+            {
+                missingDnevnikHeaderRowCount++;
+                missingDnevnikHeaderIds.Add(sourceSaleId.Value);
+                continue;
+            }
 
             MarkAccepted(result, "prodaja_zaglavlje");
             TrackIncrementalAcceptedRow("prodaja_zaglavlje", row);
@@ -4746,7 +4757,6 @@ using NpgsqlTypes;
 
             if (!existingZaglavlja.TryGetValue(sourceSaleId.Value, out var zaglavlje))
             {
-                dnevnikById.TryGetValue(sourceSaleId.Value, out var dnevnik);
                 var brojRacuna = dnevnik?.BrojRacuna ?? brojRacunaFromRow;
                 var businessKey = BuildProdajaHeaderBusinessKey(sourceSaleId.Value, brojRacuna);
 
@@ -4756,7 +4766,7 @@ using NpgsqlTypes;
                     {
                         Id = sourceSaleId.Value,
                         BrojRacuna = brojRacuna,
-                        DatumProdaje = dnevnik?.Datum ?? DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
+                        DatumProdaje = dnevnik?.Datum ?? rowSaleDate!.Value,
                         NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                         IDObjekat = idObjekat,
                         DataOrigin = "access"
@@ -4834,6 +4844,14 @@ using NpgsqlTypes;
             _logger.LogDebug(
                 "Access import prodaja header-id map refreshed after buffered ingest. HeaderKeys: {HeaderKeys}.",
                 pendingHeaderIdsByBusinessKey.Count);
+        }
+
+        if (missingDnevnikHeaderRowCount > 0)
+        {
+            var sample = string.Join(", ", missingDnevnikHeaderIds.Take(10));
+            var suffix = missingDnevnikHeaderIds.Count > 10 ? " ..." : string.Empty;
+            result.Warnings.Add(
+                $"Tabela '{table}' ima {missingDnevnikHeaderRowCount} stavki prodaje bez odgovarajuceg reda u DnevnikPromena i bez validnog datuma. Preskoceno je {missingDnevnikHeaderIds.Count} racuna kako bi se izbeglo upisivanje datuma importa kao datuma prodaje. Primeri IDDnevnik: {sample}{suffix}.");
         }
     }
 
@@ -8463,12 +8481,15 @@ using NpgsqlTypes;
                     {
                         Id = id.Value,
                         BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
-                        DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
+                        DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.MinValue,
                         NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                         IDObjekat = I(row, "idobjekat", "storeid") ?? 0,
                         KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
                         DataOrigin = "access"
                     };
+
+                    if (e.DatumProdaje == DateTime.MinValue)
+                        continue;
 
                     _trendDb.ProdajaZaglavlja.Add(e);
                     result.ProdajaInserted++;
