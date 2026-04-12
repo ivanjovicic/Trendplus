@@ -173,6 +173,7 @@ namespace Api.Models
         public int SeasonsDimDeleted { get; set; }
         public int FootwearTypesDimDeleted { get; set; }
         public int StoresDimDeleted { get; set; }
+        public int SummaryRowsDeleted { get; set; }
         public bool CacheInvalidated { get; set; }
         public int DnevnikDeleted { get; set; }
         public int PovracajDeleted { get; set; }

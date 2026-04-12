@@ -129,9 +129,11 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
             if (shift == 0)
             {
+                // Data with timestamps outside shift hours (e.g. imported Access data at midnight)
+                // is mapped to first shift so it still counts in daily totals and supplier breakdown.
+                shift = 1;
                 offShiftItems += row.Qty;
                 offShiftRevenue += row.Revenue;
-                continue;
             }
 
             supplierAccumulator.TotalQty += row.Qty;
@@ -261,7 +263,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         if (offShiftItems > 0)
         {
-            warnings.Add("Prodaja van smena 06-14 i 14-22 nije ukljucena u tabelarne kolicine.");
+            warnings.Add($"Prodaja van smena (06-14 / 14-22) mapirana u prvu smenu: {offShiftItems} kom, {offShiftRevenue:N2} RSD.");
         }
 
         // When no items found in the requested range, query the overall available range so the

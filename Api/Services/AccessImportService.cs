@@ -2956,6 +2956,7 @@ using NpgsqlTypes;
         var seasDeleted = 0;
         var typeDeleted = 0;
         var storeDeleted = 0;
+        var summaryDeleted = 0;
 
         Task ArchiveTrendAsync(string tableName, string sql, params object[] parameters)
             => TryArchiveInsertCompatAsync(
@@ -3088,6 +3089,13 @@ using NpgsqlTypes;
         {
             var accessStoreIds = await LoadAccessStoreIdsCompatAsync(batchId, ct);
 
+            // Collect distinct sale dates BEFORE deleting SalesFacts (needed for summary table cleanup)
+            var accessSaleDates = await _analyticsDb.SalesFacts
+                .Where(x => x.DataOrigin == "access")
+                .Select(x => x.SaleTimestampUtc.Date)
+                .Distinct()
+                .ToArrayAsync(ct);
+
             // Delete analytics data imported from Access (DataOrigin="access")
             // Note: per-batch FK does not exist in analytics tables, so this removes all Access-origin rows.
             await ArchiveAnalyticsAsync("SalesFacts", @"
@@ -3182,6 +3190,27 @@ using NpgsqlTypes;
                 "StoresDim",
                 "delete-batch-analytics",
                 batchId);
+
+            // Delete pre-aggregated summary rows for dates affected by this batch.
+            // These tables have no DataOrigin column — cleaned up by date.
+            if (accessSaleDates.Length > 0)
+            {
+                var summaryDateArray = accessSaleDates.Select(DateOnly.FromDateTime).ToArray();
+                foreach (var tbl in new[] { "AnalyticsDailySummary", "AnalyticsCategorySummary",
+                                            "AnalyticsSupplierSummary", "AnalyticsGenderSummary",
+                                            "AnalyticsTopProducts" })
+                {
+                    var capturedTbl = tbl;
+                    summaryDeleted += await ExecuteDeleteCompatAsync(
+                        () => _analyticsDb.Database.ExecuteSqlRawAsync(
+                            $"DELETE FROM \"{capturedTbl}\" WHERE \"Date\" = ANY(@p0)",
+                            new NpgsqlParameter { ParameterName = "p0", Value = summaryDateArray,
+                                                  NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Date }),
+                        capturedTbl,
+                        "delete-batch-analytics-summary",
+                        batchId);
+                }
+            }
         }
 
         await ExecuteDeleteCompatAsync(
@@ -3203,8 +3232,8 @@ using NpgsqlTypes;
         }
 
         _logger.LogInformation(
-            "Deleted access-import batch {BatchId}: artikli={Ar}, prodaja={Pv}/{Sv}, dnevnik={Dn}, povracaj={Pv2}/{PvS}, sezone={Se}, dobavljaci={Do}, tipovi={Ti}, analytics={IncludeAnalytics} pd={Pd}/sf={Sf}/slf={Slf}/im={Im}/sup={Sup}/seas={Seas}/types={Types}/stores={Stores}, cacheInvalidated={CacheInvalidated}. TableName: {TableName}. Operation: {Operation}.",
-            batchId, arDeleted, pvDeleted, svDeleted, dnDeleted, pvDeleted2, pvStavkeDeleted, seDeleted, doDeleted, tiDeleted, includeAnalytics, pdDeleted, sfDeleted, slfDeleted, imDeleted, suppDeleted, seasDeleted, typeDeleted, storeDeleted, cacheInvalidated, "all", "delete-batch");
+            "Deleted access-import batch {BatchId}: artikli={Ar}, prodaja={Pv}/{Sv}, dnevnik={Dn}, povracaj={Pv2}/{PvS}, sezone={Se}, dobavljaci={Do}, tipovi={Ti}, analytics={IncludeAnalytics} pd={Pd}/sf={Sf}/slf={Slf}/im={Im}/sup={Sup}/seas={Seas}/types={Types}/stores={Stores}/summary={Summary}, cacheInvalidated={CacheInvalidated}. TableName: {TableName}. Operation: {Operation}.",
+            batchId, arDeleted, pvDeleted, svDeleted, dnDeleted, pvDeleted2, pvStavkeDeleted, seDeleted, doDeleted, tiDeleted, includeAnalytics, pdDeleted, sfDeleted, slfDeleted, imDeleted, suppDeleted, seasDeleted, typeDeleted, storeDeleted, summaryDeleted, cacheInvalidated, "all", "delete-batch");
 
         return new DeleteBatchResult
         {
@@ -3228,6 +3257,7 @@ using NpgsqlTypes;
             SeasonsDimDeleted = seasDeleted,
             FootwearTypesDimDeleted = typeDeleted,
             StoresDimDeleted = storeDeleted,
+            SummaryRowsDeleted = summaryDeleted,
             CacheInvalidated = cacheInvalidated
         };
     }
