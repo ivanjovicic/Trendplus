@@ -1,3 +1,4 @@
+using System.Globalization;
 using Api.Models;
 using Domain.Model;
 using Domain.Model.Prodaja;
@@ -19,6 +20,9 @@ public interface IDailySalesStatsService
 
 public sealed class DailySalesStatsService : IDailySalesStatsService
 {
+    private static readonly string[] ExcludedDailySalesReceiptNumbers = ["DUG", "KOREKCIJA"];
+    private static readonly string[] ExcludedDailySalesReceiptNumbersForQuery = ["DUG", "dug", "Dug", "KOREKCIJA", "korekcija", "Korekcija"];
+
     private readonly TrendplusDbContext _db;
     private readonly ILogger<DailySalesStatsService> _logger;
 
@@ -44,6 +48,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var toDateUtc = DateTime.SpecifyKind(requestedToUtc.Date, DateTimeKind.Utc);
         var toDateExclusiveUtc = toDateUtc.AddDays(1);
         var saleTypeCandidates = TipPromeneConstants.ProdajaTypes.ToArray();
+        var excludedReceiptNumbersForQuery = ExcludedDailySalesReceiptNumbersForQuery;
 
         var receiptHeaders = await _db.ProdajaZaglavlja
             .AsNoTracking()
@@ -59,7 +64,11 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             })
             .ToListAsync(ct);
 
-        var duplicateReceiptGroups = receiptHeaders
+        var includedReceiptHeaders = receiptHeaders
+            .Where(x => !IsExcludedFromDailySales(x.BrojRacuna))
+            .ToList();
+
+        var duplicateReceiptGroups = includedReceiptHeaders
             .Where(x => !string.IsNullOrWhiteSpace(x.BrojRacuna))
             .GroupBy(x => new
             {
@@ -112,6 +121,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             .Where(d => d.Datum >= fromDateUtc
                         && d.Datum < toDateExclusiveUtc
                         && (!storeId.HasValue || d.IDObjekat == storeId.Value)
+                        && !excludedReceiptNumbersForQuery.Contains((d.BrojRacuna ?? string.Empty).Trim())
                         && saleTypeCandidates.Contains(d.TipPromene))
             .GroupBy(d => new
             {
@@ -132,7 +142,12 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var dnevnikTotalsBySaleId = dnevnikSaleTotals.ToDictionary(x => x.SaleId);
         var receiptLineTotalsBySaleId = receiptLineTotals.ToDictionary(x => x.SaleId);
+        var includedReceiptSaleIds = includedReceiptHeaders
+            .Select(x => x.SaleId)
+            .ToHashSet();
+
         var receiptAmountMismatches = receiptLineTotals
+            .Where(x => includedReceiptSaleIds.Contains(x.SaleId))
             .Where(x => dnevnikTotalsBySaleId.TryGetValue(x.SaleId, out var dnevnik)
                         && decimal.Abs(x.LineTotal - dnevnik.DnevnikTotal) > 0.01m)
             .Select(x => new
@@ -148,7 +163,38 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             .OrderByDescending(x => x.Difference)
             .ToList();
 
-        var nonStandardReceiptHeaders = receiptHeaders
+        var excludedReceiptHeaders = await (
+            from ps in _db.ProdajaStavke.AsNoTracking()
+            join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            where pz.DatumProdaje >= fromDateUtc
+               && pz.DatumProdaje < toDateExclusiveUtc
+               && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+               && excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+            group new
+            {
+                ps.Kolicina,
+                ps.Cena
+            } by new
+            {
+                SaleId = pz.Id,
+                SaleDate = pz.DatumProdaje.Date,
+                pz.BrojRacuna,
+                pz.IDObjekat
+            }
+            into g
+            select new
+            {
+                g.Key.SaleId,
+                g.Key.SaleDate,
+                g.Key.BrojRacuna,
+                g.Key.IDObjekat,
+                Revenue = g.Sum(x => x.Kolicina * x.Cena)
+            })
+            .OrderByDescending(x => x.Revenue)
+            .ThenBy(x => x.SaleDate)
+            .ToListAsync(ct);
+
+        var nonStandardReceiptHeaders = includedReceiptHeaders
             .Where(x => !IsStandardReceiptNumber(x.BrojRacuna))
             .Select(x => new
             {
@@ -170,6 +216,10 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             .Where(x => IsDebtReceiptNumber(x.BrojRacuna))
             .ToList();
 
+        var excludedDebtReceiptHeaders = excludedReceiptHeaders
+            .Where(x => IsDebtReceiptNumber(x.BrojRacuna))
+            .ToList();
+
         var aggregates = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
             join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
@@ -179,6 +229,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                    && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new
@@ -220,13 +271,25 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 $"Detektovano je {duplicateReceiptGroups.Count} grupa dupliranih racuna za isti datum/objekat. Primeri: {sample}{suffix}.");
         }
 
+        if (excludedReceiptHeaders.Count > 0)
+        {
+            var sample = string.Join(
+                ", ",
+                excludedReceiptHeaders
+                    .Take(3)
+                    .Select(x => $"{(string.IsNullOrWhiteSpace(x.BrojRacuna) ? "(prazno)" : x.BrojRacuna)}/{x.IDObjekat ?? 0}"));
+            var suffix = excludedReceiptHeaders.Count > 3 ? " ..." : string.Empty;
+            warnings.Add(
+                $"Iz dnevne prodaje su iskljucena {excludedReceiptHeaders.Count} dokumenta tipa DUG/korekcija u ukupnom iznosu od {decimal.Round(excludedReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
+        }
+
         if (receiptAmountMismatches.Count > 0)
         {
             var sample = string.Join(
                 ", ",
                 receiptAmountMismatches
                     .Take(3)
-                    .Select(x => $"{x.BrojRacuna ?? x.SaleId.ToString()} ({x.LineTotal:0.##} vs {x.DnevnikTotal:0.##})"));
+                    .Select(x => $"{x.BrojRacuna ?? x.SaleId.ToString(CultureInfo.InvariantCulture)} ({x.LineTotal:0.##} vs {x.DnevnikTotal:0.##})"));
             var suffix = receiptAmountMismatches.Count > 3 ? " ..." : string.Empty;
             warnings.Add(
                 $"Detektovano je {receiptAmountMismatches.Count} racuna gde zbir stavki ne odgovara dnevniku prodaje. Primeri: {sample}{suffix}.");
@@ -244,10 +307,10 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 $"Detektovano je {nonStandardReceiptHeaders.Count} prodajnih dokumenata sa nestandardnim brojem racuna. Promet tih dokumenata je {decimal.Round(nonStandardReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
         }
 
-        if (debtReceiptHeaders.Count > 0)
+        if (excludedDebtReceiptHeaders.Count > 0)
         {
             warnings.Add(
-                $"Dokumenti oznaceni kao DUG pojavljuju se {debtReceiptHeaders.Count} put(a) sa ukupno {decimal.Round(debtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
+            $"Dokumenti oznaceni kao DUG su iskljuceni iz dnevne prodaje {excludedDebtReceiptHeaders.Count} put(a) sa ukupno {decimal.Round(excludedDebtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
         }
 
         var hasClassifiedShiftRows = aggregates.Any(x => ResolveShift(x.HourOfDay) is 1 or 2);
@@ -487,23 +550,26 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 ReceiptAmountMismatchRevenue = decimal.Round(receiptAmountMismatches.Sum(x => x.Difference), 2, MidpointRounding.AwayFromZero),
                 NonStandardReceiptCount = nonStandardReceiptHeaders.Count,
                 NonStandardReceiptRevenue = decimal.Round(nonStandardReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
-                DebtReceiptCount = debtReceiptHeaders.Count,
-                DebtReceiptRevenue = decimal.Round(debtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
+                DebtReceiptCount = excludedDebtReceiptHeaders.Count,
+                DebtReceiptRevenue = decimal.Round(excludedDebtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
                 MinAvailableDate = minAvailableDate,
                 MaxAvailableDate = maxAvailableDate,
                 Warnings = warnings
             }
         };
 
-        _logger.LogInformation(
-            "Daily-sales generated. From={FromDate} To={ToDate} StoreId={StoreId} TopN={TopN} Rows={Rows} UniqueSuppliers={UniqueSuppliers} UnknownPct={UnknownPct}",
-            response.RequestedFrom,
-            response.RequestedTo,
-            response.StoreId,
-            response.TopN,
-            response.DateRows.Count,
-            response.Metadata.UniqueSuppliersInRange,
-            response.Metadata.UnknownSupplierPct);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Daily-sales generated. From={FromDate} To={ToDate} StoreId={StoreId} TopN={TopN} Rows={Rows} UniqueSuppliers={UniqueSuppliers} UnknownPct={UnknownPct}",
+                response.RequestedFrom,
+                response.RequestedTo,
+                response.StoreId,
+                response.TopN,
+                response.DateRows.Count,
+                response.Metadata.UniqueSuppliersInRange,
+                response.Metadata.UnknownSupplierPct);
+        }
 
         return response;
     }
@@ -578,6 +644,12 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
     private static bool IsDebtReceiptNumber(string? brojRacuna)
         => string.Equals(brojRacuna?.Trim(), "DUG", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCorrectionReceiptNumber(string? brojRacuna)
+        => string.Equals(brojRacuna?.Trim(), "KOREKCIJA", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsExcludedFromDailySales(string? brojRacuna)
+        => IsDebtReceiptNumber(brojRacuna) || IsCorrectionReceiptNumber(brojRacuna);
 
     private sealed class SalesAggregateRow
     {

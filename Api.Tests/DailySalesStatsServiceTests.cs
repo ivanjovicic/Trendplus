@@ -231,8 +231,8 @@ public sealed class DailySalesStatsServiceTests
             new ProdajaZaglavlje
             {
                 Id = 80,
-                BrojRacuna = "DUG",
-                DatumProdaje = new DateTime(2026, 3, 26, 0, 0, 0, DateTimeKind.Utc),
+                BrojRacuna = "312",
+                DatumProdaje = new DateTime(2026, 3, 26, 9, 0, 0, DateTimeKind.Utc),
                 IDObjekat = 1,
                 DataOrigin = "access"
             });
@@ -257,9 +257,66 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(3, row.TotalItemsSold);
         Assert.Equal(3, row.FirstShiftTotalItems);
         Assert.Equal(300m, row.TotalRevenue);
-        Assert.Equal(1, result.Metadata.NonStandardReceiptCount);
-        Assert.Equal(1, result.Metadata.DebtReceiptCount);
+        Assert.Equal(0, result.Metadata.NonStandardReceiptCount);
+        Assert.Equal(0, result.Metadata.DebtReceiptCount);
         Assert.DoesNotContain(result.Metadata.Warnings, x => x.Contains("dupliranih stavki prodaje", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_ExcludesDugAndKorekcijaFromDailyTotals()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 90,
+                BrojRacuna = "313",
+                DatumProdaje = new DateTime(2026, 3, 23, 9, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 91,
+                BrojRacuna = "DUG",
+                DatumProdaje = new DateTime(2026, 3, 23, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 92,
+                BrojRacuna = "korekcija",
+                DatumProdaje = new DateTime(2026, 3, 23, 11, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            });
+
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 90, IdProdaja = 90, IdArtikal = 101, Kolicina = 2, Cena = 100m },
+            new ProdajaStavka { Id = 91, IdProdaja = 91, IdArtikal = 101, Kolicina = 3, Cena = 50m },
+            new ProdajaStavka { Id = 92, IdProdaja = 92, IdArtikal = 102, Kolicina = 1, Cena = 250m });
+
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            requestedFromUtc: new DateTime(2026, 3, 23, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 3, 23, 0, 0, 0, DateTimeKind.Utc),
+            storeId: 1,
+            topN: 5,
+            dataScope: "all",
+            ct: CancellationToken.None);
+
+        var row = Assert.Single(result.DateRows);
+        Assert.Equal(2, row.TotalItemsSold);
+        Assert.Equal(2, row.FirstShiftTotalItems);
+        Assert.Equal(200m, row.TotalRevenue);
+        Assert.Equal(1, result.Metadata.DebtReceiptCount);
+        Assert.Equal(150m, result.Metadata.DebtReceiptRevenue);
+        Assert.Contains(result.Metadata.Warnings, x => x.Contains("iskljucena", StringComparison.OrdinalIgnoreCase));
     }
 
     private static TrendplusDbContext CreateDbContext()
