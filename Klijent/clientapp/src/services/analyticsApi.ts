@@ -43,9 +43,10 @@ import type { DocumentOperationResponse } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
 import { appendDataScopeToParams } from "../utils/dataScope";
 import { fetchWithTimeout, FetchTimeoutError } from "../utils/fetchWithTimeout";
+import { API_COLD_START_TIMEOUT_MS, getRetryTimeouts } from "../utils/apiTimeouts";
 
 const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
-const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = 20_000; // Reduced from 60s for faster timeout detection
+const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
 const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
@@ -79,7 +80,7 @@ function appendFilterParams(
  * Tries with shorter timeout first, then retries with longer timeout if first attempt times out.
  */
 async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessage?: string): Promise<T> {
-  const firstAttemptTimeoutMs = Math.min(10_000, timeoutMs);
+  const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
   
   try {
     const res = await fetchWithTimeout(url, undefined, firstAttemptTimeoutMs);
@@ -94,7 +95,7 @@ async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessag
     }
 
     // First attempt timed out - retry with longer timeout
-    const res = await fetchWithTimeout(url, undefined, timeoutMs);
+  const res = await fetchWithTimeout(url, undefined, totalTimeoutMs);
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
@@ -149,7 +150,7 @@ async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage
 
 async function postJson<T>(path: string, body: unknown, errorMessage?: string): Promise<T> {
   const timeoutMs = DEFAULT_ANALYTICS_GET_TIMEOUT_MS;
-  const firstAttemptTimeoutMs = Math.min(10_000, timeoutMs);
+  const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
   
   try {
     const response = await fetchWithTimeout(makeUrl(path), {
@@ -178,7 +179,7 @@ async function postJson<T>(path: string, body: unknown, errorMessage?: string): 
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-    }, timeoutMs);
+    }, totalTimeoutMs);
 
     if (!response.ok) {
       throw new Error(await parseApiError(response, errorMessage));

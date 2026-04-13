@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
+  Cell,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -23,8 +24,11 @@ import "./ProdajaPrePostNivelacijePage.css";
 
 type PeriodPreset = "30d" | "90d" | "custom";
 type SortDir = "asc" | "desc";
-type SortField = "vendorName" | "postRevenue" | "sharePct" | "changeRevenue" | "trendPct" | "status";
+type SortField = "vendorName" | "postRevenue" | "sharePct" | "changeRevenue" | "trendPct" | "volatilityPct" | "status";
 type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
+type FocusFilter = "all" | "boost" | "keep" | "reduce" | "lowConfidence" | "volatile";
+type ConfidenceTone = "strong" | "watch" | "weak";
+type VolatilityTone = "positive" | "negative" | "warning" | "neutral";
 
 type ActiveFilters = {
   fromDate: string;
@@ -40,6 +44,33 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   decisionScore: number;
   status: DecisionStatus;
   statusReason: string;
+  confidenceLabel: string;
+  confidenceTone: ConfidenceTone;
+  previousPostRevenue: number | null;
+  volatilityPct: number | null;
+  volatilityLabel: string;
+  volatilityTone: VolatilityTone;
+};
+
+type ConcentrationDatum = {
+  name: string;
+  sharePct: number;
+  vendorKey: string | null;
+  selected: boolean;
+};
+
+type DetailDriverSummary = {
+  dominantCategory: string;
+  dominantCategoryRevenue: number;
+  topWinnerLabel: string;
+  topWinnerRevenue: number;
+  topRiskLabel: string;
+  topRiskRevenue: number;
+  avgMomentumRevenue: number | null;
+  avgElasticity: number | null;
+  avgDidRevenue: number | null;
+  avgLostSalesOOS: number | null;
+  topMetricReasons: string[];
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
@@ -55,12 +86,18 @@ const UNKNOWN_SUPPLIERS = new Set(["", "N/A", "NEPOZNATO", "UNKNOWN", "UNKNOWN S
 
 const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "vendorName", header: "Dobavljac", dataType: "text" },
+  { key: "preRevenue", header: "Promet pre", dataType: "currency" },
   { key: "postRevenue", header: "Promet posle", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
   { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "reliabilityPct", header: "Pouzdanost %", dataType: "percent" },
+  { key: "volatilityLabel", header: "Volatilnost", dataType: "text" },
   { key: "status", header: "Preporuka", dataType: "text" },
   { key: "decisionScore", header: "Decision score", dataType: "number" },
+  { key: "articleCount", header: "Artikala", dataType: "number" },
+  { key: "activeArticlesCount", header: "Aktivnih artikala", dataType: "number" },
+  { key: "statusReason", header: "Razlog preporuke", dataType: "text" },
 ];
 
 function clamp(value: number, min: number, max: number): number {
@@ -112,6 +149,16 @@ function fmtPct(value: number | null | undefined, digits = 1): string {
   return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
 }
 
+function fmtOptionalRsd(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return fmtRsd(value);
+}
+
+function fmtMetric(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
 function fmtSignedPct(value: number | null | undefined, digits = 1): string {
   if (value == null || Number.isNaN(value)) return "N/A";
   const sign = value > 0 ? "+" : "";
@@ -138,6 +185,93 @@ function trendClass(value: number | null | undefined): string {
   if (value > 0) return "trend-up";
   if (value < 0) return "trend-down";
   return "trend-neutral";
+}
+
+function confidenceClass(tone: ConfidenceTone): string {
+  if (tone === "strong") return "ppn-signal-pill signal-strong";
+  if (tone === "weak") return "ppn-signal-pill signal-weak";
+  return "ppn-signal-pill signal-watch";
+}
+
+function volatilityClass(tone: VolatilityTone): string {
+  if (tone === "positive") return "ppn-signal-pill signal-positive";
+  if (tone === "negative") return "ppn-signal-pill signal-negative";
+  if (tone === "warning") return "ppn-signal-pill signal-watch";
+  return "ppn-signal-pill signal-neutral";
+}
+
+function insightToneClass(tone: string): string {
+  const normalized = tone.trim().toLowerCase();
+  if (normalized === "positive") return "ppn-insight positive";
+  if (normalized === "negative") return "ppn-insight negative";
+  if (normalized === "warning") return "ppn-insight warning";
+  return "ppn-insight neutral";
+}
+
+function focusFilterLabel(filter: FocusFilter): string {
+  if (filter === "boost") return "Pojacaj";
+  if (filter === "keep") return "Zadrzi";
+  if (filter === "reduce") return "Smanji";
+  if (filter === "lowConfidence") return "Nisko poverenje";
+  if (filter === "volatile") return "Visoka volatilnost";
+  return "Sve";
+}
+
+function parseMetricsStatus(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return value
+    .split(";")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function averageNullable(values: Array<number | null | undefined>): number | null {
+  const numbers = values.filter((value): value is number => value != null && !Number.isNaN(value));
+  if (numbers.length === 0) return null;
+  return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+}
+
+function buildConfidenceMeta(reliabilityPct: number): { label: string; tone: ConfidenceTone } {
+  if (reliabilityPct >= 70) return { label: "Visoko", tone: "strong" };
+  if (reliabilityPct >= BOOST_MIN_RELIABILITY_PCT) return { label: "Srednje", tone: "watch" };
+  return { label: "Nisko", tone: "weak" };
+}
+
+function buildVolatilityMeta(currentRevenue: number, previousRevenue: number | null): {
+  pct: number | null;
+  label: string;
+  tone: VolatilityTone;
+} {
+  if (previousRevenue == null) {
+    return { pct: null, label: "Bez baze", tone: "neutral" };
+  }
+
+  if (previousRevenue <= 0) {
+    if (currentRevenue > 0) {
+      return { pct: 100, label: "Novo", tone: "positive" };
+    }
+    return { pct: 0, label: "Bez baze", tone: "neutral" };
+  }
+
+  const pct = ((currentRevenue - previousRevenue) / previousRevenue) * 100;
+  const magnitude = Math.abs(pct);
+
+  if (magnitude >= 45) {
+    return { pct, label: "Visoka", tone: pct >= 0 ? "positive" : "negative" };
+  }
+  if (magnitude >= 20) {
+    return { pct, label: "Promenljivo", tone: "warning" };
+  }
+  return { pct, label: "Stabilno", tone: "neutral" };
+}
+
+function focusFilterMatches(row: DecisionVendor, filter: FocusFilter): boolean {
+  if (filter === "boost") return row.status === "Pojacaj";
+  if (filter === "keep") return row.status === "Zadrzi";
+  if (filter === "reduce") return row.status === "Smanji";
+  if (filter === "lowConfidence") return row.confidenceTone === "weak";
+  if (filter === "volatile") return row.volatilityLabel === "Visoka" || row.volatilityLabel === "Promenljivo" || row.volatilityLabel === "Novo";
+  return true;
 }
 
 type StatusReasonSignals = {
@@ -212,12 +346,14 @@ export default function ProdajaPrePostNivelacijePage() {
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
   const [data, setData] = useState<VendorSalesNivelacijaResponse | null>(null);
+  const [previousData, setPreviousData] = useState<VendorSalesNivelacijaResponse | null>(null);
   const [previousRevenue, setPreviousRevenue] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
+  const [focusFilter, setFocusFilter] = useState<FocusFilter>("all");
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
@@ -267,15 +403,19 @@ export default function ProdajaPrePostNivelacijePage() {
 
       setData(currentResult.value);
       setExpandedVendorKey(null);
+      setFocusFilter("all");
 
       if (previousResult.status === "fulfilled") {
+        setPreviousData(previousResult.value);
         setPreviousRevenue(previousResult.value.totals.postRevenue);
       } else {
+        setPreviousData(null);
         setPreviousRevenue(null);
       }
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
+      setPreviousData(null);
       setPreviousRevenue(null);
       setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju pre/post analitike.");
     } finally {
@@ -288,6 +428,14 @@ export default function ProdajaPrePostNivelacijePage() {
   useEffect(() => {
     void load(activeFilters);
   }, [activeFilters, load]);
+
+  const previousRevenueByVendorKey = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of previousData?.vendorStats ?? []) {
+      map.set(vendorKey(row), row.postRevenue);
+    }
+    return map;
+  }, [previousData?.vendorStats]);
 
   const decisionRows = useMemo<DecisionVendor[]>(() => {
     const rows = data?.vendorStats ?? [];
@@ -311,6 +459,9 @@ export default function ProdajaPrePostNivelacijePage() {
       const coveragePct = item.articleCount > 0 ? (item.activeArticlesCount / item.articleCount) * 100 : 0;
       const knownSupplier = !UNKNOWN_SUPPLIERS.has(normalizeName(item.vendorName));
       const reliabilityPct = clamp(coveragePct * 0.7 + (knownSupplier ? 30 : 0), 0, 100);
+      const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
+      const confidence = buildConfidenceMeta(reliabilityPct);
+      const volatility = buildVolatilityMeta(item.postRevenue, previousPostRevenue);
 
       const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
       const deltaNorm = deltaSpan > 0 ? clamp(((item.changeRevenue - minDelta) / deltaSpan) * 100, 0, 100) : 50;
@@ -347,9 +498,15 @@ export default function ProdajaPrePostNivelacijePage() {
         decisionScore,
         status,
         statusReason,
+        confidenceLabel: confidence.label,
+        confidenceTone: confidence.tone,
+        previousPostRevenue,
+        volatilityPct: volatility.pct,
+        volatilityLabel: volatility.label,
+        volatilityTone: volatility.tone,
       };
     });
-  }, [data?.vendorStats]);
+  }, [data?.vendorStats, previousRevenueByVendorKey]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -366,6 +523,8 @@ export default function ProdajaPrePostNivelacijePage() {
         compare = a.changeRevenue - b.changeRevenue;
       } else if (sortField === "trendPct") {
         compare = a.trendPct - b.trendPct;
+      } else if (sortField === "volatilityPct") {
+        compare = (a.volatilityPct ?? Number.NEGATIVE_INFINITY) - (b.volatilityPct ?? Number.NEGATIVE_INFINITY);
       } else if (sortField === "status") {
         compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
       }
@@ -377,6 +536,10 @@ export default function ProdajaPrePostNivelacijePage() {
       return sortDir === "asc" ? compare : -compare;
     });
   }, [decisionRows, sortDir, sortField]);
+
+  const focusedRows = useMemo(() => {
+    return sortedRows.filter((row) => focusFilterMatches(row, focusFilter));
+  }, [focusFilter, sortedRows]);
 
   const totalRevenue = data?.totals.postRevenue ?? 0;
   const top5SharePct = useMemo(() => {
@@ -401,37 +564,147 @@ export default function ProdajaPrePostNivelacijePage() {
     return { boost, keep, reduce };
   }, [sortedRows]);
 
-  const concentrationData = useMemo(() => {
-    if (sortedRows.length === 0) return [] as Array<{ name: string; sharePct: number }>;
+  const focusFilterCounts = useMemo(() => {
+    return {
+      all: sortedRows.length,
+      boost: sortedRows.filter((row) => row.status === "Pojacaj").length,
+      keep: sortedRows.filter((row) => row.status === "Zadrzi").length,
+      reduce: sortedRows.filter((row) => row.status === "Smanji").length,
+      lowConfidence: sortedRows.filter((row) => row.confidenceTone === "weak").length,
+      volatile: sortedRows.filter((row) => focusFilterMatches(row, "volatile")).length,
+    } satisfies Record<FocusFilter, number>;
+  }, [sortedRows]);
 
-    const top = [...sortedRows]
+  const dataQualityWarnings = useMemo(() => parseMetricsStatus(data?.metricsStatus), [data?.metricsStatus]);
+
+  const dataTrustSummary = useMemo(() => {
+    const analyzedShare = data?.dataQuality.analyzedSharePercent ?? 0;
+    const duplicateRows = data?.dataQuality.duplicateRowsRemoved ?? 0;
+    const inactiveRows = data?.dataQuality.inactiveRows ?? 0;
+
+    if (analyzedShare >= 70 && dataQualityWarnings.length === 0) {
+      return {
+        label: "Visoko poverenje",
+        tone: "strong" as const,
+        details: `Analizirano ${fmtPct(analyzedShare, 0)} redova | duplicati ${duplicateRows} | neaktivni ${inactiveRows}`,
+      };
+    }
+
+    if (analyzedShare >= 45) {
+      return {
+        label: "Srednje poverenje",
+        tone: "watch" as const,
+        details: `Analizirano ${fmtPct(analyzedShare, 0)} redova | duplicati ${duplicateRows} | neaktivni ${inactiveRows}`,
+      };
+    }
+
+    return {
+      label: "Nisko poverenje",
+      tone: "weak" as const,
+      details: `Analizirano ${fmtPct(analyzedShare, 0)} redova | duplicati ${duplicateRows} | neaktivni ${inactiveRows}`,
+    };
+  }, [data?.dataQuality.analyzedSharePercent, data?.dataQuality.duplicateRowsRemoved, data?.dataQuality.inactiveRows, dataQualityWarnings.length]);
+
+  const leadingCategory = useMemo(() => {
+    const rows = [...(data?.categoryStats ?? [])].sort((left, right) => right.changeRevenue - left.changeRevenue);
+    return rows[0] ?? null;
+  }, [data?.categoryStats]);
+
+  const leadingPriceDirection = useMemo(() => {
+    const rows = [...(data?.priceDirectionStats ?? [])].sort((left, right) => right.changeRevenue - left.changeRevenue);
+    return rows[0] ?? null;
+  }, [data?.priceDirectionStats]);
+
+  const advancedSignals = useMemo(
+    () => [
+      { label: "Momentum", value: fmtOptionalRsd(data?.avgMomentumRevenue), hint: "avg rev" },
+      { label: "Elasticnost", value: fmtMetric(data?.avgElasticity, 2), hint: "avg" },
+      { label: "DID", value: fmtOptionalRsd(data?.avgDidRevenue), hint: "avg rev" },
+      { label: "Lost sales OOS", value: fmtOptionalRsd(data?.avgLostSalesOOS), hint: "avg" },
+    ],
+    [data?.avgDidRevenue, data?.avgElasticity, data?.avgLostSalesOOS, data?.avgMomentumRevenue]
+  );
+
+  const concentrationData = useMemo(() => {
+    if (focusedRows.length === 0) return [] as ConcentrationDatum[];
+
+    const top = [...focusedRows]
       .sort((a, b) => b.sharePct - a.sharePct)
       .slice(0, 7)
       .map((row) => ({
         name: row.vendorName,
         sharePct: row.sharePct,
+        vendorKey: vendorKey(row),
+        selected: expandedVendorKey === vendorKey(row),
       }));
 
     const topShare = top.reduce((sum, row) => sum + row.sharePct, 0);
     const rest = clamp(100 - topShare, 0, 100);
 
-    return rest > 0.1 ? [...top, { name: "Ostali", sharePct: rest }] : top;
-  }, [sortedRows]);
+    return rest > 0.1
+      ? [...top, { name: "Ostali", sharePct: rest, vendorKey: null, selected: false }]
+      : top;
+  }, [expandedVendorKey, focusedRows]);
 
   const selectedRow = useMemo(() => {
     if (!expandedVendorKey) return null;
     return sortedRows.find((row) => vendorKey(row) === expandedVendorKey) ?? null;
   }, [expandedVendorKey, sortedRows]);
 
+  const selectedDriverSummary = useMemo<DetailDriverSummary | null>(() => {
+    if (!selectedRow || !data) return null;
+
+    const vendorArticles = data.articleStats.filter((item) => vendorKey(item) === vendorKey(selectedRow));
+    if (vendorArticles.length === 0) return null;
+
+    const dominantCategoryMap = new Map<string, number>();
+    const metricReasonCounts = new Map<string, number>();
+    for (const article of vendorArticles) {
+      dominantCategoryMap.set(article.category || "N/A", (dominantCategoryMap.get(article.category || "N/A") ?? 0) + article.changeRevenue);
+      if (article.metricReason) {
+        metricReasonCounts.set(article.metricReason, (metricReasonCounts.get(article.metricReason) ?? 0) + 1);
+      }
+    }
+
+    const dominantCategoryEntry = [...dominantCategoryMap.entries()].sort((left, right) => right[1] - left[1])[0] ?? ["N/A", 0];
+    const topWinner = [...vendorArticles].sort((left, right) => right.changeRevenue - left.changeRevenue)[0];
+    const topRisk = [...vendorArticles].sort((left, right) => left.changeRevenue - right.changeRevenue)[0];
+    const topMetricReasons = [...metricReasonCounts.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 3)
+      .map(([reason, count]) => `${reason} (${count})`);
+
+    return {
+      dominantCategory: dominantCategoryEntry[0],
+      dominantCategoryRevenue: dominantCategoryEntry[1],
+      topWinnerLabel: topWinner ? `${topWinner.sku || "-"} • ${topWinner.articleName}` : "N/A",
+      topWinnerRevenue: topWinner?.changeRevenue ?? 0,
+      topRiskLabel: topRisk ? `${topRisk.sku || "-"} • ${topRisk.articleName}` : "N/A",
+      topRiskRevenue: topRisk?.changeRevenue ?? 0,
+      avgMomentumRevenue: averageNullable(vendorArticles.map((item) => item.momentumRevenue)),
+      avgElasticity: averageNullable(vendorArticles.map((item) => item.priceElasticity)),
+      avgDidRevenue: averageNullable(vendorArticles.map((item) => item.didRevenue)),
+      avgLostSalesOOS: averageNullable(vendorArticles.map((item) => item.lostSalesOOS)),
+      topMetricReasons,
+    };
+  }, [data, selectedRow]);
+
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "periodPreset", label: "Period", value: periodPreset },
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
       { key: "toDate", label: "Do", value: activeFilters.toDate },
-      { key: "vendorId", label: "Dobavljac", value: activeFilters.vendorId ?? "" },
+      {
+        key: "vendorId",
+        label: "Dobavljac",
+        value: activeFilters.vendorId != null
+          ? vendors.find((vendor) => vendor.id === activeFilters.vendorId)?.naziv ?? activeFilters.vendorId
+          : "Svi",
+      },
       { key: "category", label: "Kategorija", value: activeFilters.category },
+      { key: "focusFilter", label: "Brzi fokus", value: focusFilterLabel(focusFilter) },
     ],
-    [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, periodPreset]
+    [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, focusFilter, periodPreset, vendors]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
@@ -440,8 +713,25 @@ export default function ProdajaPrePostNivelacijePage() {
       { key: "vendorsCount", label: "Dobavljaca", value: data?.totals.vendorsCount ?? 0 },
       { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
       { key: "windowDays", label: "Window", value: data?.windowDays ?? 0 },
+      { key: "rowsExported", label: "Vidljivih redova", value: focusedRows.length },
+      { key: "dataTrust", label: "Poverenje", value: dataTrustSummary.label },
+      { key: "analyzedShare", label: "Analizirani redovi", value: fmtPct(data?.dataQuality.analyzedSharePercent, 0) },
+      { key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: data?.dataQuality.duplicateRowsRemoved ?? 0 },
+      { key: "inactiveRows", label: "Neaktivni redovi", value: data?.dataQuality.inactiveRows ?? 0 },
+      { key: "metricsStatus", label: "Metrics status", value: data?.metricsStatus ?? "OK" },
     ],
-    [data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.windowDays]
+    [
+      data?.dataQuality.analyzedSharePercent,
+      data?.dataQuality.duplicateRowsRemoved,
+      data?.dataQuality.inactiveRows,
+      data?.generatedAt,
+      data?.metricsStatus,
+      data?.totals.articlesCount,
+      data?.totals.vendorsCount,
+      data?.windowDays,
+      dataTrustSummary.label,
+      focusedRows.length,
+    ]
   );
 
   const handleSort = (field: SortField) => {
@@ -463,6 +753,7 @@ export default function ProdajaPrePostNivelacijePage() {
 
   const handleApplyFilters = () => {
     if (invalidRange) return;
+    setFocusFilter("all");
     setActiveFilters({
       fromDate,
       toDate,
@@ -478,6 +769,7 @@ export default function ProdajaPrePostNivelacijePage() {
     setToDate(range.toDate);
     setVendorId(null);
     setCategory("");
+    setFocusFilter("all");
     setActiveFilters({
       fromDate: range.fromDate,
       toDate: range.toDate,
@@ -502,6 +794,12 @@ export default function ProdajaPrePostNivelacijePage() {
     navigate(`/analitika/nivelacije-pre-post/${encodeURIComponent(String(row.vendorId ?? row.vendorName))}`, {
       state: { backgroundLocation: location },
     });
+  };
+
+  const handleChartClick = (state: unknown) => {
+    const payload = (state as { activePayload?: Array<{ payload?: ConcentrationDatum }> } | undefined)?.activePayload?.[0]?.payload;
+    if (!payload?.vendorKey) return;
+    setExpandedVendorKey(payload.vendorKey);
   };
 
   return (
@@ -574,6 +872,88 @@ export default function ProdajaPrePostNivelacijePage() {
 
       {!loading && data ? (
         <>
+          <section className="ppn-decision-signals">
+            <article className="ppn-decision-card ppn-signal-card">
+              <div className="ppn-card-topline">
+                <h2>Poverenje u signal</h2>
+                <span className={confidenceClass(dataTrustSummary.tone)}>{dataTrustSummary.label}</span>
+              </div>
+              <p>{dataTrustSummary.details}</p>
+              {dataQualityWarnings.length > 0 ? (
+                <div className="ppn-chip-wrap">
+                  {dataQualityWarnings.slice(0, 4).map((warning) => (
+                    <span key={warning} className="ppn-signal-pill signal-watch">{warning}</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="ppn-chip-wrap">
+                  <span className="ppn-signal-pill signal-strong">Bez aktivnih upozorenja</span>
+                  <span className="ppn-signal-pill signal-neutral">Rows {data.dataQuality.analyzedRows}/{data.dataQuality.rawRows}</span>
+                </div>
+              )}
+            </article>
+
+            <article className="ppn-decision-card ppn-signal-card">
+              <div className="ppn-card-topline">
+                <h2>Najjaca kategorija</h2>
+                <span className="ppn-signal-pill signal-neutral">Kategorija</span>
+              </div>
+              <p>
+                {leadingCategory
+                  ? `${leadingCategory.category} vodi po efektu nakon nivelacije.`
+                  : "Kategorijski signal nije dostupan za izabrani opseg."}
+              </p>
+              <div className="ppn-stat-pair">
+                <strong>{leadingCategory ? fmtRsd(leadingCategory.changeRevenue) : "N/A"}</strong>
+                <span>{leadingCategory ? fmtSignedPct(leadingCategory.changePercent, 1) : "N/A"}</span>
+              </div>
+            </article>
+
+            <article className="ppn-decision-card ppn-signal-card">
+              <div className="ppn-card-topline">
+                <h2>Dominantna promena cene</h2>
+                <span className="ppn-signal-pill signal-neutral">Mix</span>
+              </div>
+              <p>
+                {leadingPriceDirection
+                  ? `${leadingPriceDirection.segment} trenutno nosi najveci doprinos promeni prometa.`
+                  : "Nema dovoljno price-direction signala za izabrani opseg."}
+              </p>
+              <div className="ppn-stat-pair">
+                <strong>{leadingPriceDirection ? fmtRsd(leadingPriceDirection.changeRevenue) : "N/A"}</strong>
+                <span>{leadingPriceDirection ? fmtSignedPct(leadingPriceDirection.avgPriceChangePercent, 1) : "N/A"}</span>
+              </div>
+            </article>
+
+            <article className="ppn-decision-card ppn-signal-card">
+              <div className="ppn-card-topline">
+                <h2>Napredni signali</h2>
+                <span className="ppn-signal-pill signal-neutral">Avg</span>
+              </div>
+              <div className="ppn-mini-metrics">
+                {advancedSignals.map((item) => (
+                  <article key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <small>{item.hint}</small>
+                  </article>
+                ))}
+              </div>
+            </article>
+          </section>
+
+          {data.insights.length > 0 ? (
+            <section className="ppn-insight-grid">
+              {data.insights.slice(0, 4).map((insight) => (
+                <article key={`${insight.title}-${insight.value}`} className={insightToneClass(insight.tone)}>
+                  <span>{insight.title}</span>
+                  <strong>{insight.value}</strong>
+                  <p>{insight.details}</p>
+                </article>
+              ))}
+            </section>
+          ) : null}
+
           <section className="ppn-decision-kpis">
             <article className="ppn-decision-kpi">
               <span>Ukupan promet posle nivelacije</span>
@@ -600,7 +980,7 @@ export default function ProdajaPrePostNivelacijePage() {
               {concentrationData.length > 0 ? (
                 <div className="ppn-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
-                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} onClick={handleChartClick}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
@@ -608,13 +988,21 @@ export default function ProdajaPrePostNivelacijePage() {
                         formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`}
                         labelStyle={{ color: "var(--text-primary)" }}
                       />
-                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
+                      <Bar dataKey="sharePct" radius={[0, 8, 8, 0]}>
+                        {concentrationData.map((entry) => (
+                          <Cell
+                            key={`${entry.name}-${entry.vendorKey ?? "rest"}`}
+                            fill={entry.selected ? "var(--accent-secondary)" : entry.vendorKey ? "var(--accent-primary)" : "var(--border-strong)"}
+                          />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
                 <div className="ppn-decision-empty">Nema podataka za grafikon koncentracije.</div>
               )}
+              <div className="ppn-chart-hint">Klik na traku otvara detalj dobavljaca u tabeli.</div>
             </article>
 
             <article className="ppn-decision-card">
@@ -629,11 +1017,24 @@ export default function ProdajaPrePostNivelacijePage() {
                   tableKey="nivelacije-pre-post"
                   tableTitle="Decision support pre/post nivelacije"
                   columns={decisionColumns}
-                  rows={sortedRows}
+                  rows={focusedRows}
                   filters={toolbarFilters}
                   metadata={toolbarMetadata}
                   defaultOrientation="landscape"
                 />
+              </div>
+
+              <div className="ppn-chip-wrap ppn-focus-filters">
+                {(["all", "boost", "keep", "reduce", "lowConfidence", "volatile"] as FocusFilter[]).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={focusFilter === item ? "ppn-focus-chip active" : "ppn-focus-chip"}
+                    onClick={() => setFocusFilter(item)}
+                  >
+                    {focusFilterLabel(item)} <span>{focusFilterCounts[item]}</span>
+                  </button>
+                ))}
               </div>
 
               <div className="ppn-decision-table-wrap">
@@ -665,6 +1066,11 @@ export default function ProdajaPrePostNivelacijePage() {
                           Trend{sortMarker("trendPct", sortField, sortDir)}
                         </button>
                       </th>
+                      <th className="align-center">
+                        <button type="button" onClick={() => handleSort("volatilityPct")}>
+                          Volatilnost{sortMarker("volatilityPct", sortField, sortDir)}
+                        </button>
+                      </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
                           Preporuka{sortMarker("status", sortField, sortDir)}
@@ -674,23 +1080,36 @@ export default function ProdajaPrePostNivelacijePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedRows.length === 0 ? (
+                    {focusedRows.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="ppn-decision-empty-row">
+                        <td colSpan={8} className="ppn-decision-empty-row">
                           Nema podataka za izabrane filtere.
                         </td>
                       </tr>
                     ) : (
-                      sortedRows.map((row) => {
+                      focusedRows.map((row) => {
                         const rowId = vendorKey(row);
                         const expanded = expandedVendorKey === rowId;
                         return (
                           <tr key={rowId} className={expanded ? "expanded-row" : ""}>
-                            <td>{row.vendorName || "Nepoznat dobavljac"}</td>
+                            <td>
+                              <div className="ppn-vendor-cell">
+                                <strong>{row.vendorName || "Nepoznat dobavljac"}</strong>
+                                <div className="ppn-chip-wrap">
+                                  <span className={confidenceClass(row.confidenceTone)}>{row.confidenceLabel} signal</span>
+                                  <span className="ppn-signal-pill signal-neutral">{row.activeArticlesCount}/{row.articleCount} aktivno</span>
+                                </div>
+                              </div>
+                            </td>
                             <td className="align-right">{fmtRsd(row.postRevenue)}</td>
                             <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
                             <td className={`align-right ${trendClass(row.changeRevenue)}`}>{fmtRsd(row.changeRevenue)}</td>
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
+                            <td className="align-center">
+                              <span className={volatilityClass(row.volatilityTone)} title={fmtSignedPct(row.volatilityPct, 1)}>
+                                {row.volatilityLabel}
+                              </span>
+                            </td>
                             <td>
                               <span
                                 className={statusClass(row.status)}
@@ -754,6 +1173,10 @@ export default function ProdajaPrePostNivelacijePage() {
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
+                  <span>Volatilnost vs prethodni period</span>
+                  <strong>{selectedRow.volatilityPct == null ? selectedRow.volatilityLabel : fmtSignedPct(selectedRow.volatilityPct, 1)}</strong>
+                </article>
+                <article>
                   <span>SKU sa dizanjem cene</span>
                   <strong>{selectedRow.increasedPriceArticlesCount}</strong>
                 </article>
@@ -766,6 +1189,41 @@ export default function ProdajaPrePostNivelacijePage() {
                   <strong>{selectedRow.decisionScore}</strong>
                 </article>
               </div>
+
+              {selectedDriverSummary ? (
+                <div className="ppn-driver-grid">
+                  <article>
+                    <span>Dominantna kategorija</span>
+                    <strong>{selectedDriverSummary.dominantCategory}</strong>
+                    <small>{fmtRsd(selectedDriverSummary.dominantCategoryRevenue)}</small>
+                  </article>
+                  <article>
+                    <span>Top dobitnik SKU</span>
+                    <strong>{selectedDriverSummary.topWinnerLabel}</strong>
+                    <small>{fmtRsd(selectedDriverSummary.topWinnerRevenue)}</small>
+                  </article>
+                  <article>
+                    <span>Top rizik SKU</span>
+                    <strong>{selectedDriverSummary.topRiskLabel}</strong>
+                    <small>{fmtRsd(selectedDriverSummary.topRiskRevenue)}</small>
+                  </article>
+                  <article>
+                    <span>Momentum / Elasticnost</span>
+                    <strong>{fmtOptionalRsd(selectedDriverSummary.avgMomentumRevenue)}</strong>
+                    <small>Elasticnost {fmtMetric(selectedDriverSummary.avgElasticity, 2)}</small>
+                  </article>
+                  <article>
+                    <span>DID / Lost sales OOS</span>
+                    <strong>{fmtOptionalRsd(selectedDriverSummary.avgDidRevenue)}</strong>
+                    <small>Lost sales {fmtOptionalRsd(selectedDriverSummary.avgLostSalesOOS)}</small>
+                  </article>
+                  <article>
+                    <span>Najcesci metric reason</span>
+                    <strong>{selectedDriverSummary.topMetricReasons[0] ?? "N/A"}</strong>
+                    <small>{selectedDriverSummary.topMetricReasons.slice(1).join(" | ") || "Bez dodatnih upozorenja"}</small>
+                  </article>
+                </div>
+              ) : null}
 
               <p className="ppn-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedRow.statusReason}

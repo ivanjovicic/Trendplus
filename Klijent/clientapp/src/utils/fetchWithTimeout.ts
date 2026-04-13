@@ -1,3 +1,5 @@
+import { API_COLD_START_TIMEOUT_MS } from "./apiTimeouts";
+
 export class FetchTimeoutError extends Error {
   readonly timeoutMs: number;
 
@@ -11,7 +13,7 @@ export class FetchTimeoutError extends Error {
 export async function fetchWithTimeout(
   input: RequestInfo | URL,
   init?: RequestInit,
-  timeoutMs = 15_000
+  timeoutMs = API_COLD_START_TIMEOUT_MS
 ): Promise<Response> {
   const controller = new AbortController();
   const externalSignal = init?.signal;

@@ -1,5 +1,6 @@
 import { makeUrl } from "./analyticsApi";
 import { FetchTimeoutError, fetchWithTimeout } from "../utils/fetchWithTimeout";
+import { API_COLD_START_TIMEOUT_MS, getRetryTimeouts } from "../utils/apiTimeouts";
 
 type FetchAnalyticsJsonOptions = {
   signal?: AbortSignal;
@@ -17,7 +18,7 @@ export class ApiHttpError extends Error {
   }
 }
 
-const DEFAULT_TIMEOUT_MS = 20_000; // Reduced from 60s for faster timeout detection
+const DEFAULT_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
 
 async function parseApiError(res: Response, fallbackMessage?: string): Promise<string> {
@@ -55,8 +56,7 @@ async function fetchWithRetry<T>(
   timeoutMs: number,
   fallbackMessage?: string
 ): Promise<T> {
-  // First attempt with shorter timeout
-  const firstAttemptTimeoutMs = Math.min(10_000, timeoutMs);
+  const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
   
   try {
     const response = await fetchWithTimeout(url, { signal }, firstAttemptTimeoutMs);
@@ -75,7 +75,7 @@ async function fetchWithRetry<T>(
     }
 
     // First attempt timed out - retry with longer timeout (for cold-start backends)
-    const response = await fetchWithTimeout(url, { signal }, timeoutMs);
+  const response = await fetchWithTimeout(url, { signal }, totalTimeoutMs);
     if (!response.ok) {
       throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
     }

@@ -1,6 +1,7 @@
 import { Activity, Boxes, TrendingUp } from "lucide-react";
 import DashboardCards from "../components/dashboard/DashboardCards";
 import TrendModelList from "../components/dashboard/TrendModelList";
+import { useBackendStatus } from "../context/useBackendStatus";
 
 function MetricTile({
   label,
@@ -9,13 +10,15 @@ function MetricTile({
 }: {
   label: string;
   value: string;
-  tone?: "neutral" | "positive" | "warning";
+  tone?: "neutral" | "positive" | "warning" | "critical";
 }) {
   const toneClass =
     tone === "positive"
       ? "text-success"
-      : tone === "warning"
+      : tone === "critical"
       ? "text-error"
+      : tone === "warning"
+      ? "text-warning"
       : "text-contrast";
 
   return (
@@ -27,6 +30,12 @@ function MetricTile({
 }
 
 export default function HomePage() {
+  const { online, checking, lastCheckedAt } = useBackendStatus();
+  const isInitialProbe = checking && lastCheckedAt === null;
+  const isRecovering = checking && !online;
+  const backendValue = isInitialProbe ? "PROVERA" : isRecovering ? "BUDI SE" : online ? "ONLINE" : "OFFLINE";
+  const backendTone = isInitialProbe || isRecovering ? "warning" : online ? "positive" : "critical";
+
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-muted surface p-5 shadow-lg shadow-black/20">
@@ -44,7 +53,7 @@ export default function HomePage() {
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricTile label="Backend status" value="ONLINE" tone="positive" />
+          <MetricTile label="Backend status" value={backendValue} tone={backendTone} />
           <MetricTile label="Aktivne sekcije" value="32" />
           <MetricTile label="Import jobs" value="5" tone="warning" />
           <MetricTile label="Trend signal" value="+12.8%" tone="positive" />

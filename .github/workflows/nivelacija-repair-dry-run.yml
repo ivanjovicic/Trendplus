@@ -1,0 +1,227 @@
+name: Nivelacija Repair Dry Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: Override API base URL. Falls back to repo variable NIVELACIJA_REPAIR_API_URL.
+        required: false
+        type: string
+      source_file_path:
+        description: Optional MDB path visible to the backend.
+        required: false
+        type: string
+      max_rows_to_modify:
+        description: Safety threshold for the generated plan.
+        required: false
+        default: "10000"
+        type: string
+      fail_on_detected_issues:
+        description: Mark the job failed when dry-run finds repair issues.
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nivelacija-repair-dry-run
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    env:
+      OUTPUT_DIRECTORY: ./tmp/nivelacija-repair
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve workflow configuration
+        id: config
+        shell: pwsh
+        env:
+          INPUT_API_BASE_URL: ${{ github.event.inputs.api_base_url }}
+          DEFAULT_API_BASE_URL: ${{ vars.NIVELACIJA_REPAIR_API_URL }}
+          INPUT_SOURCE_FILE_PATH: ${{ github.event.inputs.source_file_path }}
+          DEFAULT_SOURCE_FILE_PATH: ${{ vars.NIVELACIJA_REPAIR_SOURCE_FILE_PATH }}
+          INPUT_MAX_ROWS_TO_MODIFY: ${{ github.event.inputs.max_rows_to_modify }}
+          DEFAULT_MAX_ROWS_TO_MODIFY: ${{ vars.NIVELACIJA_REPAIR_MAX_ROWS_TO_MODIFY }}
+          INPUT_FAIL_ON_DETECTED_ISSUES: ${{ github.event.inputs.fail_on_detected_issues }}
+        run: |
+          $apiBaseUrl = if ([string]::IsNullOrWhiteSpace($env:INPUT_API_BASE_URL)) {
+            $env:DEFAULT_API_BASE_URL
+          }
+          else {
+            $env:INPUT_API_BASE_URL
+          }
+
+          if ([string]::IsNullOrWhiteSpace($apiBaseUrl)) {
+            throw "Set repo variable NIVELACIJA_REPAIR_API_URL or provide workflow_dispatch input api_base_url."
+          }
+
+          $sourceFilePath = if ([string]::IsNullOrWhiteSpace($env:INPUT_SOURCE_FILE_PATH)) {
+            $env:DEFAULT_SOURCE_FILE_PATH
+          }
+          else {
+            $env:INPUT_SOURCE_FILE_PATH
+          }
+
+          $maxRowsRaw = if ([string]::IsNullOrWhiteSpace($env:INPUT_MAX_ROWS_TO_MODIFY)) {
+            if ([string]::IsNullOrWhiteSpace($env:DEFAULT_MAX_ROWS_TO_MODIFY)) { "10000" } else { $env:DEFAULT_MAX_ROWS_TO_MODIFY }
+          }
+          else {
+            $env:INPUT_MAX_ROWS_TO_MODIFY
+          }
+
+          $parsedMaxRows = 0
+          if (-not [int]::TryParse($maxRowsRaw, [ref]$parsedMaxRows)) {
+            throw "max_rows_to_modify must be an integer. Current value: $maxRowsRaw"
+          }
+
+          $failOnDetectedIssues = if ([string]::IsNullOrWhiteSpace($env:INPUT_FAIL_ON_DETECTED_ISSUES)) {
+            "true"
+          }
+          else {
+            $env:INPUT_FAIL_ON_DETECTED_ISSUES.ToLowerInvariant()
+          }
+
+          "api_base_url=$apiBaseUrl" >> $env:GITHUB_OUTPUT
+          "source_file_path=$sourceFilePath" >> $env:GITHUB_OUTPUT
+          "max_rows_to_modify=$maxRowsRaw" >> $env:GITHUB_OUTPUT
+          "fail_on_detected_issues=$failOnDetectedIssues" >> $env:GITHUB_OUTPUT
+
+      - name: Run dry-run repair plan
+        id: dry_run
+        shell: pwsh
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        continue-on-error: true
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:ADMIN_API_KEY)) {
+            throw "Repo secret ADMIN_API_KEY is required."
+          }
+
+          $scriptArgs = @(
+            "-ApiBaseUrl", "${{ steps.config.outputs.api_base_url }}",
+            "-AdminKey", $env:ADMIN_API_KEY,
+            "-MaxRowsToModify", "${{ steps.config.outputs.max_rows_to_modify }}",
+            "-OutputDirectory", $env:OUTPUT_DIRECTORY,
+            "-SkipBackup",
+            "-DryRunOnly"
+          )
+
+          if (-not [string]::IsNullOrWhiteSpace("${{ steps.config.outputs.source_file_path }}")) {
+            $scriptArgs += @("-SourceFilePath", "${{ steps.config.outputs.source_file_path }}")
+          }
+
+          & ./repair_nivelacije.ps1 @scriptArgs
+
+      - name: Locate dry-run artifact
+        id: artifact
+        if: always()
+        shell: pwsh
+        run: |
+          $outputDirectory = Join-Path $env:GITHUB_WORKSPACE "tmp/nivelacija-repair"
+          $dryRunFile = Get-ChildItem -Path $outputDirectory -Filter "nivelacija_dry_run_*.json" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTimeUtc -Descending |
+            Select-Object -First 1
+
+          if ($null -eq $dryRunFile) {
+            "has_output=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          "has_output=true" >> $env:GITHUB_OUTPUT
+          "dry_run_file=$($dryRunFile.FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Write job summary
+        if: always()
+        shell: pwsh
+        env:
+          HAS_OUTPUT: ${{ steps.artifact.outputs.has_output }}
+          DRY_RUN_FILE: ${{ steps.artifact.outputs.dry_run_file }}
+          API_BASE_URL: ${{ steps.config.outputs.api_base_url }}
+          FAIL_ON_DETECTED_ISSUES: ${{ steps.config.outputs.fail_on_detected_issues }}
+        run: |
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "## Nivelacija repair dry-run"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ""
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- API base URL: $env:API_BASE_URL"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Fail on detected issues: $env:FAIL_ON_DETECTED_ISSUES"
+
+          if ($env:HAS_OUTPUT -ne "true") {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- JSON output: not produced"
+            return
+          }
+
+          $report = Get-Content -Raw $env:DRY_RUN_FILE | ConvertFrom-Json
+          $impact = $report.estimatedImpact
+          $aggregate = $report.verification.aggregate
+          $edgeCases = $report.verification.edgeCases
+
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- JSON output: $env:DRY_RUN_FILE"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Resolved source file: $($report.sourceFilePath)"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ""
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Metric | Value |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| --- | --- |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Candidate rows scanned | $($impact.candidateRowsScanned) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Detected issues | $($impact.detectedIssuesCount) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Proposed fixes | $($impact.proposedFixesCount) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Missing source mappings | $($impact.missingSourceMappings) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Updated date rows | $($impact.updatedDateRows) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Updated store rows | $($impact.updatedStoreRows) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Updated vendor rows | $($impact.updatedVendorRows) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Max rows threshold | $($impact.maxRowsThreshold) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Can execute | $($impact.canExecute) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Access lines == vendor rows | $($aggregate.accessLinesMatchVendorRows) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Access events == source headers | $($aggregate.accessEventsMatchImportedSourceHeaders) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Imported duplicate groups | $($edgeCases.importedDuplicateGroups) |"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Multiple changes same day | $($edgeCases.multipleChangesSameDayRows) |"
+
+          if ([int]$impact.detectedIssuesCount -gt 0) {
+            Write-Host "::warning::Dry-run detected $($impact.detectedIssuesCount) nivelacija repair issue(s)."
+          }
+
+          if (-not [bool]$impact.canExecute) {
+            Write-Host "::error::Dry-run exceeded the safety threshold ($($impact.proposedFixesCount)/$($impact.maxRowsThreshold))."
+          }
+
+      - name: Upload dry-run artifact
+        if: always() && steps.artifact.outputs.has_output == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nivelacija-dry-run-${{ github.run_id }}
+          path: ${{ steps.artifact.outputs.dry_run_file }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce dry-run gates
+        if: always()
+        shell: pwsh
+        env:
+          HAS_OUTPUT: ${{ steps.artifact.outputs.has_output }}
+          DRY_RUN_FILE: ${{ steps.artifact.outputs.dry_run_file }}
+          FAIL_ON_DETECTED_ISSUES: ${{ steps.config.outputs.fail_on_detected_issues }}
+          DRY_RUN_STEP_OUTCOME: ${{ steps.dry_run.outcome }}
+        run: |
+          if ($env:HAS_OUTPUT -ne "true") {
+            throw "Dry-run did not produce a JSON artifact. Dry run step outcome: $env:DRY_RUN_STEP_OUTCOME"
+          }
+
+          $report = Get-Content -Raw $env:DRY_RUN_FILE | ConvertFrom-Json
+          $impact = $report.estimatedImpact
+          $shouldFailOnDetectedIssues = [System.Convert]::ToBoolean($env:FAIL_ON_DETECTED_ISSUES)
+
+          if (-not [bool]$impact.canExecute) {
+            throw "Dry-run exceeded the safety threshold ($($impact.proposedFixesCount)/$($impact.maxRowsThreshold))."
+          }
+
+          if ($shouldFailOnDetectedIssues -and [int]$impact.detectedIssuesCount -gt 0) {
+            throw "Dry-run detected $($impact.detectedIssuesCount) nivelacija repair issue(s). Review the uploaded artifact."
+          }
+
+          if ($env:DRY_RUN_STEP_OUTCOME -ne "success") {
+            throw "Dry-run step did not complete successfully. Outcome: $env:DRY_RUN_STEP_OUTCOME"
+          }

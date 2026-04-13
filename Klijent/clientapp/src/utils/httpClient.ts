@@ -1,5 +1,6 @@
 import { apiCircuitBreaker, CircuitBreakerError } from "./circuitBreaker";
 import { ApiException, parseApiError, getErrorMessage } from "./apiErrors";
+import { API_COLD_START_TIMEOUT_MS } from "./apiTimeouts";
 
 const API = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -20,7 +21,7 @@ class HttpClient {
         url: string,
         config: RequestConfig
     ): Promise<Response> {
-        const { timeout = 45000, skipCircuitBreaker = false, ...fetchConfig } = config;
+        const { timeout = API_COLD_START_TIMEOUT_MS, skipCircuitBreaker = false, ...fetchConfig } = config;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);

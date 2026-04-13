@@ -1,0 +1,1002 @@
+{
+  "lineage": {
+    "source_layer": {
+      "tables": {
+        "tblNivelacije": {
+          "key_fields": [
+            "IDArtikal",
+            "Kolicina",
+            "StaraCena",
+            "NovaCena",
+            "IDDnevnik"
+          ],
+          "notes": "Line-level price change rows. No native date column; linked to tblDnevnikPromena via IDDnevnik."
+        },
+        "tblDnevnikPromena": {
+          "key_fields": [
+            "IDDnevnik",
+            "Datum",
+            "TipPromene",
+            "IznosPromene",
+            "IDObjekat",
+            "Napomena"
+          ],
+          "notes": "Header/event layer used to inherit nivelacija event date and object/store context."
+        },
+        "tblArtikli": {
+          "key_fields": [
+            "IDArtikal",
+            "IDDobavljac",
+            "PLU",
+            "Artikal"
+          ],
+          "notes": "Provides supplier lineage for article rows when vendor is not directly carried by tblNivelacije."
+        }
+      }
+    },
+    "import_layer": {
+      "target_table": "DnevnikPromena",
+      "normalization_rules": [
+        "ImportNivelacije in AccessImportService treats tblNivelacije as line-level and copies event date from source tblDnevnikPromena via IDDnevnik.",
+        "Per-line Iznos is recomputed as abs((NovaCena - StaraCena) * Kolicina), not copied from Access header IznosPromene.",
+        "Composite dedup key during import is (ArtikalId, Datum, Iznos).",
+        "BrojRacuna stores the source IDDnevnik so line rows can be back-linked to the Access header."
+      ],
+      "key_fields": [
+        "Id",
+        "TipPromene",
+        "Datum",
+        "ArtikalId",
+        "StaraProdajnaCena",
+        "NovaProdajnaCena",
+        "BrojRacuna",
+        "DobavljacId",
+        "DataOrigin"
+      ]
+    },
+    "sql_view_layer": {
+      "vw_sales_pre_nivelacija": {
+        "key_fields": [
+          "price_event_id",
+          "event_date",
+          "article_id",
+          "vendor_id",
+          "old_price",
+          "new_price",
+          "pre_qty",
+          "pre_revenue",
+          "coverage_pre30"
+        ],
+        "transformation_logic": "Builds one deduplicated event row per article/event/price combination from imported DnevnikPromena, then aggregates sales in the 30-day window before event_date."
+      },
+      "vw_sales_post_nivelacija": {
+        "key_fields": [
+          "price_event_id",
+          "event_date",
+          "article_id",
+          "vendor_id",
+          "post_qty",
+          "post_revenue",
+          "coverage_post30"
+        ],
+        "transformation_logic": "Aggregates sales in the 30-day window on or after event_date for the same deduplicated event rows."
+      },
+      "vw_vendor_sales_nivelacija": {
+        "key_fields": [
+          "price_event_id",
+          "event_date",
+          "vendor_id",
+          "vendor_name",
+          "article_id",
+          "old_price",
+          "new_price",
+          "pre_qty",
+          "post_qty",
+          "change_revenue",
+          "change_percent_revenue"
+        ],
+        "transformation_logic": "Joins pre and post views and computes change_qty/change_revenue plus percent deltas. Keeps one row per imported price event line."
+      }
+    },
+    "api_layer": {
+      "endpoint": "/api/analytics/vendor-sales-nivelacija",
+      "filtering_rules": [
+        "Filters by vendorId, eventDate, from/to on event_date, category ILIKE, includeInactive, and row cap maxRows.",
+        "Runtime dedup from SQL query uses ROW_NUMBER partitioned by event_date, vendor_id, article_id, old_price, new_price (or a reduced partition if price columns are missing).",
+        "Rows with unchanged old/new price are removed from analyzed output; inactive rows are removed unless includeInactive=true."
+      ],
+      "computed_in_code": [
+        "HasSalesWindow",
+        "PriceChanged",
+        "PriceChangePercent",
+        "CategoryStats",
+        "PriceDirectionStats",
+        "Insights",
+        "avgMomentumRevenue / avgElasticity / avgDidRevenue / avgLostSalesOOS aggregation",
+        "MetricsStatus accumulation"
+      ]
+    },
+    "frontend_layer": {
+      "file": "Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx",
+      "current_rendered_metrics": [
+        "totals.postRevenue",
+        "top5SharePct",
+        "totals.changeRevenue",
+        "periodGrowthPct",
+        "vendorStats-derived share/trend/reliability/decisionScore/status"
+      ],
+      "underused_backend_fields": [
+        "dataQuality",
+        "metricsStatus",
+        "insights",
+        "categoryStats",
+        "priceDirectionStats",
+        "articleStats",
+        "avgMomentumRevenue",
+        "avgElasticity",
+        "avgDidRevenue",
+        "avgLostSalesOOS"
+      ]
+    }
+  },
+  "advanced_metric_origins": {
+    "avgMomentumRevenue": {
+      "article_field": "MomentumRevenue",
+      "origin": "SQL view + code aggregation",
+      "details": "Filled per article from vw_sales_momentum in MapRollingAndMomentumToNivelacijaArticlesAsync, then averaged in AllEndpoints.cs."
+    },
+    "avgElasticity": {
+      "article_field": "PriceElasticity",
+      "origin": "code computed",
+      "details": "Computed in MapElasticityAndLostSalesToNivelacijaArticles from article-level pre/post qty and PriceChangePercent, then averaged in AllEndpoints.cs."
+    },
+    "avgDidRevenue": {
+      "article_field": "DidRevenue",
+      "origin": "SQL view + code aggregation",
+      "details": "Filled per article from vw_nivelacija_did in MapOosAndDidToNivelacijaArticlesAsync, then averaged in AllEndpoints.cs."
+    },
+    "avgLostSalesOOS": {
+      "article_field": "LostSalesOOS",
+      "origin": "SQL signal + code computed",
+      "details": "Uses OOSRate from vw_stock_red_zone via MapOosAndDidToNivelacijaArticlesAsync; LostSalesOOS is then computed in MapElasticityAndLostSalesToNivelacijaArticles and averaged in AllEndpoints.cs."
+    }
+  },
+  "aggregate_checks": {
+    "access": {
+      "access_line_rows": 10765,
+      "access_distinct_events": 304
+    },
+    "postgres": {
+      "imported_line_rows": 10765,
+      "imported_header_rows": 303,
+      "pre_rows": 10765,
+      "post_rows": 10765,
+      "vendor_rows": 10765,
+      "vendor_distinct_events": 10765,
+      "imported_distinct_source_headers": 304,
+      "pre_qty_sum": 7673.0,
+      "pre_revenue_sum": 30201120.0,
+      "post_qty_sum": 15858.0,
+      "post_revenue_sum": 46255475.64,
+      "vendor_pre_qty_sum": 7673.0,
+      "vendor_pre_revenue_sum": 30201120.0,
+      "vendor_post_qty_sum": 15858.0,
+      "vendor_post_revenue_sum": 46255475.64
+    },
+    "comparisons": {
+      "access_lines_match_vendor_rows": true,
+      "pre_qty_matches_vendor_qty": true,
+      "pre_revenue_matches_vendor_revenue": true,
+      "post_qty_matches_vendor_qty": true,
+      "post_revenue_matches_vendor_revenue": true,
+      "access_events_match_imported_source_headers": true
+    }
+  },
+  "edge_case_checks": {
+    "imported_duplicate_groups": 2,
+    "view_duplicate_groups": 0,
+    "zero_sales_period_rows": 8219,
+    "inactive_rows": 3793,
+    "multiple_changes_same_day_rows": 4,
+    "out_of_stock_event_rows": null,
+    "out_of_stock_check_status": "skipped_missing_vw_stock_red_zone",
+    "access_multiple_changes_same_day_rows": 4
+  },
+  "sample_checks": [
+    {
+      "view": {
+        "price_event_id": 7619,
+        "event_date": "2015-12-31",
+        "vendor_id": -2121217927,
+        "vendor_name": "Beoshoes",
+        "article_id": 16912,
+        "sku": "347",
+        "old_price": 3490.0,
+        "new_price": 2490.0,
+        "pre_qty": 1.0,
+        "pre_revenue": 3490.0,
+        "post_qty": 0.0,
+        "post_revenue": 0.0
+      },
+      "imported_dnevnik": {
+        "Id": 7619,
+        "TipPromene": "Nivelacija",
+        "datum": "2015-12-31",
+        "ArtikalId": 16912,
+        "StaraProdajnaCena": 3490.0,
+        "NovaProdajnaCena": 2490.0,
+        "BrojRacuna": "1451943315",
+        "DobavljacId": -2121217927,
+        "IDObjekat": 2082886995,
+        "Iznos": 1000.0
+      },
+      "access_source": {
+        "IDArtikal": 16912,
+        "Kolicina": 1,
+        "StaraCena": 3490.0,
+        "NovaCena": 2490.0,
+        "IDDnevnik": 1451943315,
+        "Datum": "2015-12-31T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": 2082886995,
+        "IznosPromene": -343076.0,
+        "IDDobavljac": -2121217927
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 1,
+        "pre_revenue": 3490.0,
+        "post_qty": 0,
+        "post_revenue": 0.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    },
+    {
+      "view": {
+        "price_event_id": 8041,
+        "event_date": "2016-07-31",
+        "vendor_id": -1494110814,
+        "vendor_name": "Fratelli Babb",
+        "article_id": 17305,
+        "sku": "153",
+        "old_price": 2990.0,
+        "new_price": 2490.0,
+        "pre_qty": 1.0,
+        "pre_revenue": 2990.0,
+        "post_qty": 3.0,
+        "post_revenue": 6470.0
+      },
+      "imported_dnevnik": {
+        "Id": 8041,
+        "TipPromene": "Nivelacija",
+        "datum": "2016-07-31",
+        "ArtikalId": 17305,
+        "StaraProdajnaCena": 2990.0,
+        "NovaProdajnaCena": 2490.0,
+        "BrojRacuna": "-790547458",
+        "DobavljacId": -1494110814,
+        "IDObjekat": 2082886995,
+        "Iznos": 6500.0
+      },
+      "access_source": {
+        "IDArtikal": 17305,
+        "Kolicina": 13,
+        "StaraCena": 2990.0,
+        "NovaCena": 2490.0,
+        "IDDnevnik": -790547458,
+        "Datum": "2016-07-31T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": 2082886995,
+        "IznosPromene": -832600.0,
+        "IDDobavljac": -1494110814
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 1,
+        "pre_revenue": 2990.0,
+        "post_qty": 3,
+        "post_revenue": 6470.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    },
+    {
+      "view": {
+        "price_event_id": 10485,
+        "event_date": "2020-12-18",
+        "vendor_id": -2122024036,
+        "vendor_name": "Euronapa",
+        "article_id": 19913,
+        "sku": "1710",
+        "old_price": 5800.0,
+        "new_price": 4900.0,
+        "pre_qty": 1.0,
+        "pre_revenue": 5800.0,
+        "post_qty": 0.0,
+        "post_revenue": 0.0
+      },
+      "imported_dnevnik": {
+        "Id": 10485,
+        "TipPromene": "Nivelacija",
+        "datum": "2020-12-18",
+        "ArtikalId": 19913,
+        "StaraProdajnaCena": 5800.0,
+        "NovaProdajnaCena": 4900.0,
+        "BrojRacuna": "1608547365",
+        "DobavljacId": -2122024036,
+        "IDObjekat": 2082886995,
+        "Iznos": 4500.0
+      },
+      "access_source": {
+        "IDArtikal": 19913,
+        "Kolicina": 5,
+        "StaraCena": 5800.0,
+        "NovaCena": 4900.0,
+        "IDDnevnik": 1608547365,
+        "Datum": "2020-12-18T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": 2082886995,
+        "IznosPromene": -830420.0,
+        "IDDobavljac": -2122024036
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 1,
+        "pre_revenue": 5800.0,
+        "post_qty": 0,
+        "post_revenue": 0.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    },
+    {
+      "view": {
+        "price_event_id": 8003,
+        "event_date": "2016-07-31",
+        "vendor_id": -387317983,
+        "vendor_name": "Trend Energy St",
+        "article_id": 17118,
+        "sku": "68",
+        "old_price": 3600.0,
+        "new_price": 2990.0,
+        "pre_qty": 1.0,
+        "pre_revenue": 3600.0,
+        "post_qty": 0.0,
+        "post_revenue": 0.0
+      },
+      "imported_dnevnik": {
+        "Id": 8003,
+        "TipPromene": "Nivelacija",
+        "datum": "2016-07-31",
+        "ArtikalId": 17118,
+        "StaraProdajnaCena": 3600.0,
+        "NovaProdajnaCena": 2990.0,
+        "BrojRacuna": "-790547458",
+        "DobavljacId": -387317983,
+        "IDObjekat": 2082886995,
+        "Iznos": 1220.0
+      },
+      "access_source": {
+        "IDArtikal": 17118,
+        "Kolicina": 2,
+        "StaraCena": 3600.0,
+        "NovaCena": 2990.0,
+        "IDDnevnik": -790547458,
+        "Datum": "2016-07-31T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": 2082886995,
+        "IznosPromene": -832600.0,
+        "IDDobavljac": -387317983
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 1,
+        "pre_revenue": 3600.0,
+        "post_qty": 0,
+        "post_revenue": 0.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    },
+    {
+      "view": {
+        "price_event_id": 11838,
+        "event_date": "2025-07-30",
+        "vendor_id": 1496651500,
+        "vendor_name": "Rieker",
+        "article_id": 20929,
+        "sku": "3301",
+        "old_price": 6990.0,
+        "new_price": 4990.0,
+        "pre_qty": 0.0,
+        "pre_revenue": 0.0,
+        "post_qty": 0.0,
+        "post_revenue": 0.0
+      },
+      "imported_dnevnik": {
+        "Id": 11838,
+        "TipPromene": "Nivelacija",
+        "datum": "2025-07-30",
+        "ArtikalId": 20929,
+        "StaraProdajnaCena": 6990.0,
+        "NovaProdajnaCena": 4990.0,
+        "BrojRacuna": "1753882029",
+        "DobavljacId": 1496651500,
+        "IDObjekat": 2082886995,
+        "Iznos": 2000.0
+      },
+      "access_source": {
+        "IDArtikal": 20929,
+        "Kolicina": 1,
+        "StaraCena": 6990.0,
+        "NovaCena": 4990.0,
+        "IDDnevnik": 1753882029,
+        "Datum": "2025-07-30T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": 2082886995,
+        "IznosPromene": -1331360.0,
+        "IDDobavljac": 1496651500
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 0,
+        "pre_revenue": 0.0,
+        "post_qty": 0,
+        "post_revenue": 0.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    },
+    {
+      "view": {
+        "price_event_id": 11933,
+        "event_date": "2025-07-30",
+        "vendor_id": 1403981726,
+        "vendor_name": "Neta",
+        "article_id": 21260,
+        "sku": "3559",
+        "old_price": 2490.0,
+        "new_price": 1790.0,
+        "pre_qty": 4.0,
+        "pre_revenue": 9960.0,
+        "post_qty": 3.0,
+        "post_revenue": 5370.0
+      },
+      "imported_dnevnik": {
+        "Id": 11933,
+        "TipPromene": "Nivelacija",
+        "datum": "2025-07-30",
+        "ArtikalId": 21260,
+        "StaraProdajnaCena": 2490.0,
+        "NovaProdajnaCena": 1790.0,
+        "BrojRacuna": "1753882029",
+        "DobavljacId": 1403981726,
+        "IDObjekat": 2082886995,
+        "Iznos": 11900.0
+      },
+      "access_source": {
+        "IDArtikal": 21260,
+        "Kolicina": 17,
+        "StaraCena": 2490.0,
+        "NovaCena": 1790.0,
+        "IDDnevnik": 1753882029,
+        "Datum": "2025-07-30T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": 2082886995,
+        "IznosPromene": -1331360.0,
+        "IDDobavljac": 1403981726
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 4,
+        "pre_revenue": 9960.0,
+        "post_qty": 3,
+        "post_revenue": 5370.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    },
+    {
+      "view": {
+        "price_event_id": 7372,
+        "event_date": "2015-09-05",
+        "vendor_id": -2121217927,
+        "vendor_name": "Beoshoes",
+        "article_id": 15814,
+        "sku": "253",
+        "old_price": 3600.0,
+        "new_price": 3400.0,
+        "pre_qty": 0.0,
+        "pre_revenue": 0.0,
+        "post_qty": 0.0,
+        "post_revenue": 0.0
+      },
+      "imported_dnevnik": {
+        "Id": 7372,
+        "TipPromene": "Nivelacija",
+        "datum": "2015-09-05",
+        "ArtikalId": 15814,
+        "StaraProdajnaCena": 3600.0,
+        "NovaProdajnaCena": 3400.0,
+        "BrojRacuna": "1441565861",
+        "DobavljacId": -2121217927,
+        "IDObjekat": 2082886995,
+        "Iznos": 200.0
+      },
+      "access_source": {
+        "IDArtikal": 15814,
+        "Kolicina": 1,
+        "StaraCena": 3600.0,
+        "NovaCena": 3400.0,
+        "IDDnevnik": 1441565861,
+        "Datum": "2015-09-05T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": 2082886995,
+        "IznosPromene": 31450.0,
+        "IDDobavljac": -2121217927
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 0,
+        "pre_revenue": 0.0,
+        "post_qty": 0,
+        "post_revenue": 0.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    },
+    {
+      "view": {
+        "price_event_id": 8585,
+        "event_date": "2017-02-13",
+        "vendor_id": 894901603,
+        "vendor_name": "UnA plus",
+        "article_id": 17612,
+        "sku": "1",
+        "old_price": 1600.0,
+        "new_price": 900.0,
+        "pre_qty": 0.0,
+        "pre_revenue": 0.0,
+        "post_qty": 1.0,
+        "post_revenue": 900.0
+      },
+      "imported_dnevnik": {
+        "Id": 8585,
+        "TipPromene": "Nivelacija",
+        "datum": "2017-02-13",
+        "ArtikalId": 17612,
+        "StaraProdajnaCena": 1600.0,
+        "NovaProdajnaCena": 900.0,
+        "BrojRacuna": "1490658835",
+        "DobavljacId": 894901603,
+        "IDObjekat": 2082886995,
+        "Iznos": 700.0
+      },
+      "access_source": {
+        "IDArtikal": 17612,
+        "Kolicina": 1,
+        "StaraCena": 1600.0,
+        "NovaCena": 900.0,
+        "IDDnevnik": 1490658835,
+        "Datum": "2017-02-13T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": 2082886995,
+        "IznosPromene": -3630.0,
+        "IDDobavljac": 894901603
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 0,
+        "pre_revenue": 0.0,
+        "post_qty": 1,
+        "post_revenue": 900.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    },
+    {
+      "view": {
+        "price_event_id": 2147482025,
+        "event_date": "2013-01-30",
+        "vendor_id": 944887862,
+        "vendor_name": "Lotos",
+        "article_id": 12029,
+        "sku": "708",
+        "old_price": 3400.0,
+        "new_price": 2600.0,
+        "pre_qty": 0.0,
+        "pre_revenue": 0.0,
+        "post_qty": 0.0,
+        "post_revenue": 0.0
+      },
+      "imported_dnevnik": {
+        "Id": 2147482025,
+        "TipPromene": "Nivelacija",
+        "datum": "2013-01-30",
+        "ArtikalId": 12029,
+        "StaraProdajnaCena": 3400.0,
+        "NovaProdajnaCena": 2600.0,
+        "BrojRacuna": "1359675996",
+        "DobavljacId": 944887862,
+        "IDObjekat": -598733481,
+        "Iznos": 800.0
+      },
+      "access_source": {
+        "IDArtikal": 12029,
+        "Kolicina": 1,
+        "StaraCena": 3400.0,
+        "NovaCena": 2600.0,
+        "IDDnevnik": 1359675996,
+        "Datum": "2013-01-30T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": -598733481,
+        "IznosPromene": -352030.0,
+        "IDDobavljac": 944887862
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 0,
+        "pre_revenue": 0.0,
+        "post_qty": 0,
+        "post_revenue": 0.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    },
+    {
+      "view": {
+        "price_event_id": 11405,
+        "event_date": "2024-01-20",
+        "vendor_id": -1921732250,
+        "vendor_name": "Extra",
+        "article_id": 19539,
+        "sku": "1521",
+        "old_price": 5500.0,
+        "new_price": 4500.0,
+        "pre_qty": 1.0,
+        "pre_revenue": 5500.0,
+        "post_qty": 1.0,
+        "post_revenue": 4500.0
+      },
+      "imported_dnevnik": {
+        "Id": 11405,
+        "TipPromene": "Nivelacija",
+        "datum": "2024-01-20",
+        "ArtikalId": 19539,
+        "StaraProdajnaCena": 5500.0,
+        "NovaProdajnaCena": 4500.0,
+        "BrojRacuna": "-1861254115",
+        "DobavljacId": -1921732250,
+        "IDObjekat": 2082886995,
+        "Iznos": 2000.0
+      },
+      "access_source": {
+        "IDArtikal": 19539,
+        "Kolicina": 2,
+        "StaraCena": 5500.0,
+        "NovaCena": 4500.0,
+        "IDDnevnik": -1861254115,
+        "Datum": "2024-01-20T00:00:00",
+        "TipPromene": "NIVELACIJA",
+        "IDObjekat": 2082886995,
+        "IznosPromene": -850170.0,
+        "IDDobavljac": -1921732250
+      },
+      "recomputed_sales_window": {
+        "pre_qty": 1,
+        "pre_revenue": 5500.0,
+        "post_qty": 1,
+        "post_revenue": 4500.0
+      },
+      "checks": {
+        "access_article_match": true,
+        "access_old_price_match": true,
+        "access_new_price_match": true,
+        "access_date_match": true,
+        "access_vendor_match": true,
+        "import_article_match": true,
+        "import_old_price_match": true,
+        "import_new_price_match": true,
+        "import_date_match": true,
+        "import_vendor_match": true,
+        "recomputed_pre_qty_match": true,
+        "recomputed_post_qty_match": true,
+        "recomputed_pre_revenue_match": true,
+        "recomputed_post_revenue_match": true
+      }
+    }
+  ],
+  "repair_summary": {
+    "candidate_rows": 10765,
+    "updated_rows": 10765,
+    "updated_date_rows": 4100,
+    "updated_store_rows": 4100,
+    "updated_vendor_rows": 10765,
+    "samples": [
+      {
+        "id": 2147479474,
+        "article_id": 9441,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": 2071865485
+        }
+      },
+      {
+        "id": 2147479475,
+        "article_id": 9724,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": -920376136
+        }
+      },
+      {
+        "id": 2147479476,
+        "article_id": 10615,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": 944887862
+        }
+      },
+      {
+        "id": 2147479477,
+        "article_id": 11362,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": 924854256
+        }
+      },
+      {
+        "id": 2147479478,
+        "article_id": 11603,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": 944887862
+        }
+      },
+      {
+        "id": 2147479479,
+        "article_id": 11667,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": -920376136
+        }
+      },
+      {
+        "id": 2147479480,
+        "article_id": 11745,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": 924854256
+        }
+      },
+      {
+        "id": 2147479481,
+        "article_id": 11766,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": 1242854993
+        }
+      },
+      {
+        "id": 2147479482,
+        "article_id": 11815,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": 1242854993
+        }
+      },
+      {
+        "id": 2147479483,
+        "article_id": 12133,
+        "source_header_id": 995541548,
+        "before": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": null
+        },
+        "after": {
+          "date": "2012-07-19",
+          "store_id": 2082886995,
+          "vendor_id": 2071865485
+        }
+      }
+    ]
+  },
+  "sample_check_summary": {
+    "access_article_match": 10,
+    "access_old_price_match": 10,
+    "access_new_price_match": 10,
+    "access_date_match": 10,
+    "access_vendor_match": 10,
+    "import_article_match": 10,
+    "import_old_price_match": 10,
+    "import_new_price_match": 10,
+    "import_date_match": 10,
+    "import_vendor_match": 10,
+    "recomputed_pre_qty_match": 10,
+    "recomputed_post_qty_match": 10,
+    "recomputed_pre_revenue_match": 10,
+    "recomputed_post_revenue_match": 10
+  }
+}

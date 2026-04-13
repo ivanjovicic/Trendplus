@@ -12,9 +12,23 @@ type HeaderStatusProps = {
 };
 
 export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
-  const { online } = useContext(BackendStatusContext);
+  const { online, checking, lastCheckedAt } = useContext(BackendStatusContext);
   const [refreshing, setRefreshing] = useState(false);
   const [dataScopeValue, setDataScopeValue] = useState<DataScope>(getDataScope());
+
+  const isInitialProbe = checking && lastCheckedAt === null;
+  const isRecovering = checking && !online;
+  const backendIconClass = isInitialProbe || isRecovering
+    ? "text-amber-400"
+    : online
+    ? "text-emerald-400"
+    : "text-red-400";
+  const backendLabelClass = isInitialProbe || isRecovering
+    ? "text-amber-300"
+    : online
+    ? "text-emerald-300"
+    : "text-red-300";
+  const backendLabel = isInitialProbe ? "PROVERA" : isRecovering ? "BUDI SE" : online ? "ONLINE" : "OFFLINE";
 
   const refreshAll = () => {
     setRefreshing(true);
@@ -44,10 +58,10 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
         </button>
 
         <div className="flex min-w-[180px] items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2">
-          <Server size={16} className={online ? "text-emerald-400" : "text-red-400"} />
+          <Server size={16} className={backendIconClass} />
           <span className="text-xs uppercase tracking-wide text-muted">Backend</span>
-          <span className={`text-sm font-semibold ${online ? "text-emerald-300" : "text-red-300"}`}>
-            {online ? "ONLINE" : "OFFLINE"}
+          <span className={`text-sm font-semibold ${backendLabelClass}`}>
+            {backendLabel}
           </span>
         </div>
 

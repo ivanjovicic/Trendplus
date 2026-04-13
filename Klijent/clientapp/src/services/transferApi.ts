@@ -1,5 +1,6 @@
 import { apiUrl } from "../utils/apiUrl";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import { API_COLD_START_TIMEOUT_MS } from "../utils/apiTimeouts";
 
 export interface TransferLineInputDto {
   skuId: number;
@@ -87,7 +88,7 @@ async function parseApiError(response: Response, fallback: string): Promise<stri
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit, fallback = "Transfer request failed"): Promise<T> {
-  const response = await fetchWithTimeout(apiUrl(path), init, 20_000);
+  const response = await fetchWithTimeout(apiUrl(path), init, API_COLD_START_TIMEOUT_MS);
   if (!response.ok) {
     throw new Error(await parseApiError(response, fallback));
   }

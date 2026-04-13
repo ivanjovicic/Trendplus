@@ -1,5 +1,6 @@
 import { apiUrl } from "../utils/apiUrl";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import { API_COLD_START_TIMEOUT_MS } from "../utils/apiTimeouts";
 
 export interface WorkerStatusItem {
   workerName: string;
@@ -52,23 +53,23 @@ async function ensureOk(res: Response, message: string): Promise<void> {
 }
 
 export async function getWorkersHealth(): Promise<WorkerHealthWithControl> {
-  const res = await fetchWithTimeout(apiUrl("/api/workers/health"), undefined, 10_000);
+  const res = await fetchWithTimeout(apiUrl("/api/workers/health"), undefined, API_COLD_START_TIMEOUT_MS);
   await ensureOk(res, "Neuspesno citanje worker health statusa");
   return res.json();
 }
 
 export async function getWorkersControl(): Promise<WorkerControlState> {
-  const res = await fetchWithTimeout(apiUrl("/api/workers/control"), undefined, 10_000);
+  const res = await fetchWithTimeout(apiUrl("/api/workers/control"), undefined, API_COLD_START_TIMEOUT_MS);
   await ensureOk(res, "Neuspesno citanje worker control statusa");
   return res.json();
 }
 
 export async function enableWorkers(): Promise<void> {
-  const res = await fetchWithTimeout(apiUrl("/api/workers/control/enable"), { method: "POST" }, 10_000);
+  const res = await fetchWithTimeout(apiUrl("/api/workers/control/enable"), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
   await ensureOk(res, "Neuspesno ukljucivanje workera");
 }
 
 export async function disableWorkers(): Promise<void> {
-  const res = await fetchWithTimeout(apiUrl("/api/workers/control/disable"), { method: "POST" }, 10_000);
+  const res = await fetchWithTimeout(apiUrl("/api/workers/control/disable"), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
   await ensureOk(res, "Neuspesno iskljucivanje workera");
 }

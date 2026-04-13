@@ -12,6 +12,7 @@ import OutboxDashboard from "./pages/OutboxDashboard";
 import OutboxMessagesPage from "./pages/OutboxMessagesPage";
 import NivelacijaCenaPage from "./pages/NivelacijaCenaPage";
 import NivelacijePage from "./pages/NivelacijePage";
+import NivelacijaRepairPage from "./pages/NivelacijaRepairPage";
 import DnevnikPromenaPage from "./pages/DnevnikPromenaPage";
 import SezonaPage from "./pages/SezonaPage";
 import TipObucePage from "./pages/TipObucePage";
@@ -116,6 +117,7 @@ function AppShell() {
                 <Route path="/access-import" element={<AccessImportPage />} />
                 <Route path="/transfers" element={<TransferPage />} />
                 <Route path="/admin/common-products" element={<CommonProductsPage />} />
+                <Route path="/admin/nivelacija-repair" element={<NivelacijaRepairPage />} />
                 <Route path="/settings/themes" element={<ThemeSettingsPage />} />
                 <Route path="/settings/themes" element={<ThemeSettingsPage />} />
             </Routes>

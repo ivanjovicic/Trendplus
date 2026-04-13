@@ -1,4 +1,5 @@
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import { API_COLD_START_TIMEOUT_MS } from "../utils/apiTimeouts";
 
 const ACCESS_IMPORT_RENDER_BASE = "https://trendplus-api.onrender.com";
 const RAW_API = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
@@ -223,7 +224,7 @@ export async function getAccessImportBatches(
 
     const requestPromise = (async () => {
         try {
-            const res = await fetchWithTimeout(url, undefined, 20_000);
+            const res = await fetchWithTimeout(url, undefined, API_COLD_START_TIMEOUT_MS);
             if (!res.ok) throw new Error(await parseError(res));
             const rows = (await res.json()) as AccessImportBatchDto[];
             const durationMs = Math.round(performance.now() - startedAt);
@@ -268,7 +269,7 @@ export async function getAccessImportBatchDetail(batchId: number, logTake = 200,
     const params = new URLSearchParams({ logTake: String(logTake) });
     if (severity) params.set("severity", severity);
     try {
-        const res = await fetchWithTimeout(`${API}/api/access-import/batches/${batchId}?${params}`, undefined, 20_000);
+        const res = await fetchWithTimeout(`${API}/api/access-import/batches/${batchId}?${params}`, undefined, API_COLD_START_TIMEOUT_MS);
         if (!res.ok) throw new Error(await parseError(res));
         return res.json();
     } catch (error) {

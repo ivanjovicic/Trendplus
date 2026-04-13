@@ -26,6 +26,7 @@ import {
   Microscope,
   Sparkles,
   BookOpen,
+  Zap,
 } from "lucide-react";
 
 export type NavItem = {
@@ -113,11 +114,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/analytics/supplier-sales-stats", label: "Prodaja po dobavljačima", icon: TrendingUp },
       { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuće", icon: ShoppingBag },
       { to: "/analytics/daily-sales", label: "Prodaja po smeni i dobavljačima", icon: ShoppingBag },
+      { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: TrendingUp },
       { to: "/analytics/color-sales-stats", label: "Prodaja po boji artikla", icon: Palette },
       { to: "/analytics/data-quality", label: "Data quality", icon: AlertTriangle },
       { to: "/analytics/inventory", label: "Bilans stanja", icon: Boxes },
       { to: "/analytics", label: "Pregled analitike", icon: BarChart3 },
-      { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: TrendingUp },
       { to: "/analytics/pre-nivelacija-prioriteti", label: "Prioriteti nivelacije", icon: Sparkles },
       { to: "/analytics/dobavljaci-tipovi-obuce", label: "Dobavljači i tipovi obuće", icon: ShoppingBag },
       { to: "/analytics/supplier-decision-hub", label: "Odluke o dobavljačima", icon: Microscope },
@@ -152,6 +153,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/performance", label: "Performanse", icon: Gauge },
       { to: "/logs", label: "Logovi", icon: Logs },
       { to: "/image-upload-test", label: "Upload slika (Test)", icon: PackagePlus },
+      { to: "/admin/nivelacija-repair", label: "Nivelacija Repair", icon: Zap },
     ],
   },
 ];

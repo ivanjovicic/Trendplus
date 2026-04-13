@@ -7,6 +7,10 @@ import {
     notifyBackendReachable,
 } from "./backendReachabilityEvents";
 import { apiUrl } from "../utils/apiUrl";
+import {
+    API_HEALTH_FAILURE_GRACE_MS,
+    API_HEALTH_TIMEOUT_MS,
+} from "../utils/apiTimeouts";
 
 export type BackendStatus = {
     online: boolean;
@@ -30,8 +34,6 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const ONLINE_POLL_INTERVAL_MS = import.meta.env.DEV ? 30_000 : 60_000;
     const OFFLINE_POLL_INTERVAL_MS = import.meta.env.DEV ? 4_000 : 6_000;
-    const HEALTH_TIMEOUT_MS = import.meta.env.DEV ? 5_000 : 8_000;
-    const HEALTH_FAILURE_GRACE_MS = import.meta.env.DEV ? 15_000 : 45_000;
 
     useEffect(() => {
         onlineRef.current = online;
@@ -65,7 +67,7 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
 
             setChecking(true);
             try {
-                const res = await fetchWithTimeout(healthUrl, undefined, HEALTH_TIMEOUT_MS);
+                const res = await fetchWithTimeout(healthUrl, undefined, API_HEALTH_TIMEOUT_MS);
                 if (cancelled) return;
                 const checkedAt = Date.now();
                 notifyBackendReachable({
@@ -79,7 +81,7 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
                 const checkedAt = Date.now();
                 const lastReachableAt = lastReachableAtRef.current;
                 const hasRecentSuccessfulRequest =
-                    lastReachableAt !== null && checkedAt - lastReachableAt < HEALTH_FAILURE_GRACE_MS;
+                    lastReachableAt !== null && checkedAt - lastReachableAt < API_HEALTH_FAILURE_GRACE_MS;
 
                 if (!hasRecentSuccessfulRequest) {
                     setOnline(false);
@@ -116,7 +118,7 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
                 window.clearTimeout(timeoutId);
             }
         };
-    }, [OFFLINE_POLL_INTERVAL_MS, ONLINE_POLL_INTERVAL_MS, HEALTH_TIMEOUT_MS, apiPingEnabled]);
+    }, [OFFLINE_POLL_INTERVAL_MS, ONLINE_POLL_INTERVAL_MS, apiPingEnabled]);
 
     const value = useMemo<BackendStatus>(
         () => ({

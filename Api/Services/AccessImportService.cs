@@ -5033,6 +5033,79 @@ using NpgsqlTypes;
         }
     }
 
+    private sealed record NivelacijaSourceSnapshot(DateTime Datum, int? IDObjekat, int? DobavljacId);
+
+    private async Task<Dictionary<int, NivelacijaSourceSnapshot>> LoadNivelacijaSourceSnapshotsAsync(
+        IAccessDataReaderSession session,
+        CancellationToken ct)
+    {
+        var tables = await session.GetTablesAsync(includeTemporaryTables: true, ct);
+        var dnevnikTable = await FindTableAsync(
+            session,
+            tables,
+            DnevnikPromenaCandidates,
+            sigRequired: ["iddnevnik", "datum"],
+            ct: ct);
+
+        if (dnevnikTable is null)
+            return new Dictionary<int, NivelacijaSourceSnapshot>();
+
+        var snapshots = new Dictionary<int, NivelacijaSourceSnapshot>();
+        await foreach (var row in ReadRowsForTableAsync(session, dnevnikTable, "nivelacija_source_dnevnik", ct))
+        {
+            var sourceId = I(row, "id", "iddnevnik", "iddnevnikpromene", "iddnevnikpromena", "iddnevprom", "idlog", "logid", "seqno");
+            var datum = DT(row, "datum", "datumizmene", "datumdokumenta", "datumprocene", "date", "eventdate", "datumpromena");
+            if (!sourceId.HasValue || !datum.HasValue)
+                continue;
+
+            snapshots[sourceId.Value] = new NivelacijaSourceSnapshot(
+                datum.Value,
+                I(row, "idobjekat", "storeid", "idobjekta", "objekatid", "idposlovnice", "prodavnicaid"),
+                I(row, "iddobavljac", "dobavljacid", "supplierid", "idd", "iddob"));
+        }
+
+        return snapshots;
+    }
+
+    private Dictionary<int, NivelacijaSourceSnapshot> LoadNivelacijaSourceSnapshots(OdbcConnection conn)
+    {
+        var tables = GetUserTables(conn, includeTemporaryTables: true);
+        var dnevnikTable = FindTable(conn, tables, DnevnikPromenaCandidates, sigRequired: ["iddnevnik", "datum"]);
+        if (dnevnikTable is null)
+            return new Dictionary<int, NivelacijaSourceSnapshot>();
+
+        var snapshots = new Dictionary<int, NivelacijaSourceSnapshot>();
+        foreach (var row in ReadRows(conn, dnevnikTable))
+        {
+            var sourceId = I(row, "id", "iddnevnik", "iddnevnikpromene", "iddnevnikpromena", "iddnevprom", "idlog", "logid", "seqno");
+            var datum = DT(row, "datum", "datumizmene", "datumdokumenta", "datumprocene", "date", "eventdate", "datumpromena");
+            if (!sourceId.HasValue || !datum.HasValue)
+                continue;
+
+            snapshots[sourceId.Value] = new NivelacijaSourceSnapshot(
+                datum.Value,
+                I(row, "idobjekat", "storeid", "idobjekta", "objekatid", "idposlovnice", "prodavnicaid"),
+                I(row, "iddobavljac", "dobavljacid", "supplierid", "idd", "iddob"));
+        }
+
+        return snapshots;
+    }
+
+    private Dictionary<int, int?> LoadArtikalSupplierLookup()
+    {
+        var supplierByArticleId = _trendDb.Artikli.Local
+            .GroupBy(x => x.Id)
+            .ToDictionary(g => g.Key, g => g.First().IDDobavljac);
+
+        foreach (var article in _trendDb.Artikli.AsNoTracking())
+        {
+            if (!supplierByArticleId.ContainsKey(article.Id))
+                supplierByArticleId[article.Id] = article.IDDobavljac;
+        }
+
+        return supplierByArticleId;
+    }
+
     private async Task ImportNivelacijeAsync(IAccessDataReaderSession session, string? table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         if (table is null)
@@ -5041,6 +5114,8 @@ using NpgsqlTypes;
         var dnevnikById = _trendDb.DnevnikPromena.AsNoTracking()
             .OrderBy(x => x.Id)
             .ToDictionary(x => x.Id, x => x);
+        var sourceSnapshotsById = await LoadNivelacijaSourceSnapshotsAsync(session, ct);
+        var supplierByArticleId = LoadArtikalSupplierLookup();
 
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
@@ -5072,11 +5147,21 @@ using NpgsqlTypes;
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
             var iznos = Math.Abs((novaCena.Value - (staraCena ?? 0m)) * kolicina);
             var srcId = I(row, "iddnevnik", "id", "idlog") ?? 0;
+            supplierByArticleId.TryGetValue(idArtikal.Value, out var articleSupplierId);
 
             dnevnikById.TryGetValue(srcId, out var sourceDnevnik);
+            sourceSnapshotsById.TryGetValue(srcId, out var sourceSnapshot);
             var eventDate = DT(row, "datum", "datumnivelacije", "date")
+                ?? sourceSnapshot?.Datum
                 ?? sourceDnevnik?.Datum
                 ?? DateTime.UtcNow;
+            var storeId = I(row, "idobjekat", "storeid", "idobjekta")
+                ?? sourceSnapshot?.IDObjekat
+                ?? sourceDnevnik?.IDObjekat;
+            var supplierId = I(row, "iddobavljac", "dobavljacid", "supplierid")
+                ?? sourceSnapshot?.DobavljacId
+                ?? sourceDnevnik?.DobavljacId
+                ?? articleSupplierId;
 
             // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
             var compositeKey = (idArtikal.Value, eventDate, iznos);
@@ -5102,18 +5187,18 @@ using NpgsqlTypes;
                 StaraProdajnaCena = staraCena,
                 NovaProdajnaCena = novaCena,
                 Iznos = iznos,
-                IDObjekat = I(row, "idobjekat", "storeid", "idobjekta") ?? sourceDnevnik?.IDObjekat,
+                IDObjekat = storeId,
                 RedniBroj = I(row, "rednibr", "rbr", "seqno"),
                 BrojRacuna = S(row, "brdokumenta", "iddnevnik"),
-                DobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid") ?? sourceDnevnik?.DobavljacId,
+                DobavljacId = supplierId,
                 DataOrigin = "access"
             });
             result.NivelacijeInserted++;
             TrackTrendWrite();
             TrackAnalyticsMovementId(assignedId);
             TrackAnalyticsProductId(idArtikal.Value);
-            TrackAnalyticsSupplierId(I(row, "iddobavljac", "dobavljacid", "supplierid") ?? sourceDnevnik?.DobavljacId);
-            TrackAnalyticsStoreId(I(row, "idobjekat", "storeid", "idobjekta") ?? sourceDnevnik?.IDObjekat);
+            TrackAnalyticsSupplierId(supplierId);
+            TrackAnalyticsStoreId(storeId);
 
             await FlushTrendWritesAsync(force: false, ct);
         }
@@ -6171,6 +6256,8 @@ using NpgsqlTypes;
             if (!dnevnikById.TryGetValue(d.Id, out _))
                 dnevnikById[d.Id] = d;
         }
+        var sourceSnapshotsById = LoadNivelacijaSourceSnapshots(conn);
+        var supplierByArticleId = LoadArtikalSupplierLookup();
 
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
@@ -6194,11 +6281,21 @@ using NpgsqlTypes;
             var kolicina  = I(row, "kolicina", "qty", "quantity") ?? 1;
             var iznos     = Math.Abs((novaCena.Value - (staraCena ?? 0m)) * kolicina);
             var srcId     = I(row, "iddnevnik", "id", "idlog") ?? 0;
+            supplierByArticleId.TryGetValue(idArtikal.Value, out var articleSupplierId);
 
             dnevnikById.TryGetValue(srcId, out var sourceDnevnik);
+            sourceSnapshotsById.TryGetValue(srcId, out var sourceSnapshot);
             var eventDate = DT(row, "datum", "datumnivelacije", "date")
+                ?? sourceSnapshot?.Datum
                 ?? sourceDnevnik?.Datum
                 ?? DateTime.UtcNow;
+            var storeId = I(row, "idobjekat", "storeid", "idobjekta")
+                ?? sourceSnapshot?.IDObjekat
+                ?? sourceDnevnik?.IDObjekat;
+            var supplierId = I(row, "iddobavljac", "dobavljacid", "supplierid")
+                ?? sourceSnapshot?.DobavljacId
+                ?? sourceDnevnik?.DobavljacId
+                ?? articleSupplierId;
 
             // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
             var compositeKey = (idArtikal.Value, eventDate, iznos);
@@ -6222,10 +6319,10 @@ using NpgsqlTypes;
                 StaraProdajnaCena = staraCena,
                 NovaProdajnaCena = novaCena,
                 Iznos = iznos,
-                IDObjekat = I(row, "idobjekat", "storeid", "idobjekta") ?? sourceDnevnik?.IDObjekat,
+                IDObjekat = storeId,
                 RedniBroj = I(row, "rednibr", "rbr", "seqno"),
                 BrojRacuna = S(row, "brdokumenta", "iddnevnik"),
-                DobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid") ?? sourceDnevnik?.DobavljacId,
+                DobavljacId = supplierId,
                 DataOrigin = "access"
             });
             result.NivelacijeInserted++;
