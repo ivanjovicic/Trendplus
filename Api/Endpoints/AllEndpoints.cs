@@ -5625,7 +5625,13 @@ public static class AllEndpoints
                 if (pricePct != 0m)
                 {
                     var qtyPct = ((decimal)row.PostQty - row.PreQty) / row.PreQty;
-                    row.PriceElasticity = Math.Round(qtyPct / pricePct, 4);
+                    var elasticity = qtyPct / pricePct;
+                    
+                    // Ensure elasticity is not Infinity, NaN, or extreme
+                    if (!decimal.IsInfinity(elasticity) && !decimal.IsNaN(elasticity))
+                    {
+                        row.PriceElasticity = Math.Round(elasticity, 4);
+                    }
                 }
             }
 
@@ -5634,10 +5640,18 @@ public static class AllEndpoints
             var oos = row.OOSRate.Value;
             if (oos < 0m) oos = 0m;
             if (oos > 1m) oos = 1m;
-            if (oos >= 1m) continue;
+            if (oos >= 0.999m) continue;  // Prevent division by near-zero
 
             // Lost sales proxy from realized post revenue under OOS pressure.
-            row.LostSalesOOS = Math.Round((row.PostRevenue * oos) / (1m - oos), 2);
+            var denominator = 1m - oos;
+            if (denominator > 0m)
+            {
+                var lostSales = (row.PostRevenue * oos) / denominator;
+                if (!decimal.IsInfinity(lostSales) && !decimal.IsNaN(lostSales))
+                {
+                    row.LostSalesOOS = Math.Round(lostSales, 2);
+                }
+            }
         }
     }
 
