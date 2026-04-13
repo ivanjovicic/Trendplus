@@ -149,7 +149,7 @@
 .pnp-decision-panels {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(560px, 1.1fr);
+  grid-template-columns: 1fr;
 }
 
 .pnp-decision-card {
