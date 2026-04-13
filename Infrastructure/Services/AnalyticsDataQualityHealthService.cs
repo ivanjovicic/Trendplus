@@ -1,5 +1,7 @@
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using System.Data;
 
 namespace Infrastructure.Services;
 
@@ -72,10 +74,142 @@ public sealed class AnalyticsDataQualityHealthService
         };
     }
 
+    public async Task<IReadOnlyList<DataQualityTopOffenderDto>> GetTopOffendersAsync(
+        string issueType,
+        int limit,
+        decimal minSalesRsd,
+        string? dataScope,
+        CancellationToken ct)
+    {
+        var normalizedIssueType = NormalizeIssueType(issueType);
+        var normalizedDataScope = NormalizeDataScope(dataScope);
+
+        const string sql = """
+            WITH sales_30d AS (
+                SELECT
+                    ps.id_artikal AS artikal_id,
+                    COALESCE(SUM(ps.kolicina * ps.cena), 0) AS sales_30d
+                FROM prodaja_stavke ps
+                JOIN prodaja_zaglavlje p ON p.id = ps.id_prodaja
+                WHERE p.datum_prodaje >= @salesFromUtc
+                GROUP BY ps.id_artikal
+            ),
+            quality_source AS (
+                SELECT
+                    a."PLU" AS sku,
+                    a."Id" AS product_id,
+                    NULLIF(BTRIM(a."Naziv"), '') AS product_name,
+                    NULLIF(BTRIM(d."Naziv"), '') AS supplier_name,
+                    NULLIF(BTRIM(t."Naziv"), '') AS shoe_type_name,
+                    CASE
+                        WHEN a."IDDobavljac" IS NULL OR d."Id" IS NULL THEN 'missingSupplier'
+                        WHEN a."IDTipObuce" IS NULL OR t."Id" IS NULL THEN 'missingShoeType'
+                        WHEN NULLIF(BTRIM(a."Naziv"), '') IS NULL THEN 'invalidName'
+                        ELSE 'ok'
+                    END AS issue_type,
+                    COALESCE(s.sales_30d, 0) AS sales_30d
+                FROM "Artikli" a
+                LEFT JOIN "Dobavljaci" d ON a."IDDobavljac" = d."Id"
+                LEFT JOIN "TipoviObuce" t ON a."IDTipObuce" = t."Id"
+                LEFT JOIN sales_30d s ON s.artikal_id = a."Id"
+                WHERE @dataScope = 'all'
+                   OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
+                   OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
+            ),
+            affected AS (
+                SELECT
+                    sku,
+                    product_id,
+                    product_name,
+                    supplier_name,
+                    shoe_type_name,
+                    sales_30d AS revenue_impact_rsd
+                FROM quality_source
+                WHERE issue_type = @issueType
+                  AND sales_30d > @minSalesRsd
+            ),
+            totals AS (
+                SELECT COALESCE(SUM(revenue_impact_rsd), 0) AS total_impact_rsd FROM affected
+            )
+            SELECT
+                a.sku,
+                a.product_id,
+                a.product_name,
+                a.supplier_name,
+                a.shoe_type_name,
+                a.revenue_impact_rsd AS sales_30d,
+                a.revenue_impact_rsd,
+                CASE
+                    WHEN t.total_impact_rsd > 0 THEN ROUND((a.revenue_impact_rsd / t.total_impact_rsd * 100), 2)
+                    ELSE 0
+                END AS revenue_impact_pct,
+                '/artikli/' || a.product_id || '/edit' AS action_url
+            FROM affected a
+            CROSS JOIN totals t
+            ORDER BY a.revenue_impact_rsd DESC, a.product_id ASC
+            LIMIT @limit;
+            """;
+
+        var connection = _db.Database.GetDbConnection() as NpgsqlConnection
+            ?? throw new InvalidOperationException("Top offenders query requires an Npgsql connection.");
+
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync(ct);
+        }
+
+        try
+        {
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.CommandTimeout = 60;
+            command.Parameters.AddWithValue("salesFromUtc", DateTime.UtcNow.AddDays(-30));
+            command.Parameters.AddWithValue("issueType", normalizedIssueType);
+            command.Parameters.AddWithValue("minSalesRsd", minSalesRsd);
+            command.Parameters.AddWithValue("limit", limit);
+            command.Parameters.AddWithValue("dataScope", normalizedDataScope);
+
+            var items = new List<DataQualityTopOffenderDto>();
+            await using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                items.Add(new DataQualityTopOffenderDto(
+                    reader.IsDBNull(0) ? null : reader.GetString(0),
+                    reader.GetInt32(1).ToString(),
+                    reader.IsDBNull(2) ? null : reader.GetString(2),
+                    reader.IsDBNull(3) ? null : reader.GetString(3),
+                    reader.IsDBNull(4) ? null : reader.GetString(4),
+                    reader.GetDecimal(5),
+                    reader.GetDecimal(6),
+                    reader.IsDBNull(7) ? 0d : reader.GetDouble(7),
+                    reader.IsDBNull(8) ? null : reader.GetString(8)));
+            }
+
+            return items;
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
     private static string NormalizeDataScope(string? dataScope)
     {
         var normalized = (dataScope ?? "all").Trim().ToLowerInvariant();
         return normalized is "existing" or "imported" ? normalized : "all";
+    }
+
+    private static string NormalizeIssueType(string? issueType)
+    {
+        return issueType switch
+        {
+            "missingShoeType" => "missingShoeType",
+            "invalidName" => "invalidName",
+            _ => "missingSupplier"
+        };
     }
 }
 
@@ -92,3 +226,14 @@ public sealed class AnalyticsDataQualityHealthSnapshot
     public decimal UnknownSupplierRevenue { get; set; }
     public double UnknownSupplierRevenueSharePct { get; set; }
 }
+
+public sealed record DataQualityTopOffenderDto(
+    string? Sku,
+    string ProductId,
+    string? Name,
+    string? SupplierName,
+    string? ShoeTypeName,
+    decimal Sales30d,
+    decimal RevenueImpactRsd,
+    double RevenueImpactPct,
+    string? ActionUrl);

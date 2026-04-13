@@ -182,6 +182,7 @@ builder.Services.AddScoped<IDnevnikPromenaReadService, DnevnikPromenaReadService
 builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadService>();
 builder.Services.AddScoped<IDailySalesStatsService, DailySalesStatsService>();
 builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
+builder.Services.AddScoped<AnalyticsDataQualityHistoryService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IDocumentQueueStore, DocumentQueueStore>();
     builder.Services.AddScoped<IDocumentAuditService, DocumentAuditService>();

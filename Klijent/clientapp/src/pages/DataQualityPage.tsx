@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { Link, useSearchParams } from "react-router-dom";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import InfoTip from "../components/ui/InfoTip";
-import { getAnalyticsDataQualityHealth, getDataQualityIssues } from "../services/analyticsApi";
+import {
+  getAnalyticsDataQualityHealth,
+  getAnalyticsDataQualityTrend,
+  getDataQualityIssues,
+  getDataQualityTopOffenders,
+} from "../services/analyticsApi";
 import type {
   AnalyticsDataQualityHealth,
   DataQualityIssueItem,
@@ -10,13 +15,19 @@ import type {
   DataQualityIssueType,
   DataQualitySortBy,
   DataQualitySortDir,
+  DataQualityTopOffendersResult,
+  DataQualityTrendPoint,
+  DataQualityTrendResult,
 } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./DataQualityPage.css";
 
 const ISSUE_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
-  { key: "missingSupplier", label: "Nedostajući dobavljač", tone: "danger" },
-  { key: "missingShoeType", label: "Nedostajući tip obuće", tone: "warning" },
+  { key: "missingSupplier", label: "Nedostajuci dobavljac", tone: "danger" },
+  { key: "missingShoeType", label: "Nedostajuci tip obuce", tone: "warning" },
+];
+
+const LOW_PRIORITY_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
   { key: "invalidName", label: "Neispravni nazivi", tone: "neutral" },
 ];
 
@@ -24,11 +35,11 @@ const analyticsColumns: AnalyticsTableColumn<DataQualityIssueItem>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
   { key: "productId", header: "Artikal ID", dataType: "text" },
   { key: "name", header: "Naziv artikla", dataType: "text" },
-  { key: "supplierName", header: "Dobavljač", dataType: "text" },
-  { key: "shoeTypeName", header: "Tip obuće", dataType: "text" },
-  { key: "sales30d", header: "Prodaja 30d", dataType: "currency" },
+  { key: "supplierName", header: "Dobavljac", dataType: "text" },
+  { key: "shoeTypeName", header: "Tip obuce", dataType: "text" },
+  { key: "sales30d", header: "Pogodjeni promet 30d", dataType: "currency" },
   { key: "stock", header: "Stanje", dataType: "number" },
-  { key: "lastUpdated", header: "Ažurirano", dataType: "datetime" },
+  { key: "lastUpdated", header: "Azurirano", dataType: "datetime" },
   { key: "issueType", header: "Problem", dataType: "text" },
 ];
 
@@ -71,14 +82,225 @@ function formatDateOnly(value: string | null): string {
   return parsed.toLocaleDateString("sr-RS");
 }
 
+function formatShortDate(value: string): string {
+  return new Date(value).toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit" });
+}
+
 function issueLabel(issueType: DataQualityIssueType): string {
-  return ISSUE_TABS.find((item) => item.key === issueType)?.label ?? issueType;
+  return [...ISSUE_TABS, ...LOW_PRIORITY_TABS].find((item) => item.key === issueType)?.label ?? issueType;
 }
 
 function rowTone(issueType: DataQualityIssueType): string {
   if (issueType === "missingSupplier") return "badge-danger";
   if (issueType === "missingShoeType") return "badge-warning";
   return "badge-neutral";
+}
+
+function scoreTone(status: AnalyticsDataQualityHealth["scoreStatus"] | undefined): string {
+  switch (status) {
+    case "excellent":
+      return "excellent";
+    case "good":
+      return "good";
+    case "warning":
+      return "warning";
+    case "critical":
+      return "critical";
+    default:
+      return "warning";
+  }
+}
+
+function buildLinePath(points: DataQualityTrendPoint[], selector: (point: DataQualityTrendPoint) => number, width: number, height: number) {
+  const padding = 14;
+  const values = points.map(selector);
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = Math.max(max - min, 1);
+
+  return points
+    .map((point, index) => {
+      const x = points.length === 1
+        ? width / 2
+        : padding + ((width - padding * 2) * index) / (points.length - 1);
+      const value = selector(point);
+      const y = height - padding - ((value - min) / range) * (height - padding * 2);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function trendTone(points: DataQualityTrendPoint[], selector: (point: DataQualityTrendPoint) => number): "improving" | "worsening" {
+  if (points.length < 2) return "improving";
+  return selector(points[points.length - 1]) <= selector(points[0]) ? "improving" : "worsening";
+}
+
+function TopOffendersPanel({ issueType, dataScope }: { issueType: DataQualityIssueType; dataScope?: string | null }) {
+  const [result, setResult] = useState<DataQualityTopOffendersResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const load = async () => {
+      try {
+        const response = await getDataQualityTopOffenders(issueType, 10, dataScope);
+        if (!isCancelled) {
+          setResult(response);
+          setError(null);
+        }
+      } catch (reason) {
+        if (!isCancelled) {
+          setResult(null);
+          setError(reason instanceof Error ? reason.message : "Top problemi nisu dostupni.");
+        }
+      }
+    };
+
+    void load();
+    return () => {
+      isCancelled = true;
+    };
+  }, [dataScope, issueType]);
+
+  if (error) {
+    return <div className="data-quality-inline-error">{error}</div>;
+  }
+
+  if (!result || result.items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="data-quality-top-offenders">
+      <div className="data-quality-section-head">
+        <div>
+          <h2>Top offenders</h2>
+          <p>Rangirano po pogodjenom prometu unutar aktivnog tipa problema.</p>
+        </div>
+        <span className="data-quality-top-offenders-meta">Top {result.count}</span>
+      </div>
+
+      <div className="data-quality-table-wrap">
+        <table className="data-quality-table data-quality-table-compact">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Artikal</th>
+              <th>Dobavljac</th>
+              <th className="align-right">Promet 30d</th>
+              <th className="align-right">Impact (RSD)</th>
+              <th className="align-right">Impact (%)</th>
+              <th>Akcija</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.items.map((item) => (
+              <tr key={`${item.productId}-${item.sku ?? "nosku"}`}>
+                <td>{item.sku || "-"}</td>
+                <td>
+                  <div className="data-quality-name">
+                    <strong>{item.name || "Naziv nedostaje"}</strong>
+                    <span>ID: {item.productId}</span>
+                  </div>
+                </td>
+                <td>{item.supplierName || item.shoeTypeName || "-"}</td>
+                <td className="align-right">{formatCurrency(item.sales30d)}</td>
+                <td className="align-right">{formatCurrency(item.revenueImpactRsd)}</td>
+                <td className="align-right">{formatPercent(item.revenueImpactPct)}</td>
+                <td>
+                  <Link className="data-quality-action" to={item.actionUrl || `/artikli/${item.productId}/edit`}>
+                    Otvori artikal
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function DataQualityTrendChart({ dataScope }: { dataScope?: string | null }) {
+  const [trend, setTrend] = useState<DataQualityTrendResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const load = async () => {
+      try {
+        const response = await getAnalyticsDataQualityTrend(7, dataScope);
+        if (!isCancelled) {
+          setTrend(response);
+          setError(null);
+        }
+      } catch (reason) {
+        if (!isCancelled) {
+          setTrend(null);
+          setError(reason instanceof Error ? reason.message : "Trend nije dostupan.");
+        }
+      }
+    };
+
+    void load();
+    return () => {
+      isCancelled = true;
+    };
+  }, [dataScope]);
+
+  const chart = useMemo(() => {
+    if (!trend || trend.points.length === 0) return null;
+
+    const width = 360;
+    const height = 120;
+    return {
+      width,
+      height,
+      missingCostPath: buildLinePath(trend.points, (point) => point.missingCostRevenueSharePct, width, height),
+      unknownSupplierPath: buildLinePath(trend.points, (point) => point.unknownSupplierRevenueSharePct, width, height),
+      missingCostTone: trendTone(trend.points, (point) => point.missingCostRevenueSharePct),
+      unknownSupplierTone: trendTone(trend.points, (point) => point.unknownSupplierRevenueSharePct),
+    };
+  }, [trend]);
+
+  if (error) {
+    return <div className="data-quality-inline-error">{error}</div>;
+  }
+
+  if (!trend || trend.points.length === 0 || !chart) {
+    return null;
+  }
+
+  return (
+    <section className="data-quality-trend-card">
+      <div className="data-quality-section-head">
+        <div>
+          <h2>Data Quality Trend</h2>
+          <p>Posljednjih {trend.days} dana za missing cost i unknown supplier pokazatelje.</p>
+        </div>
+      </div>
+
+      <div className="data-quality-trend-stage">
+        <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label="Data quality trend chart">
+          <path className={`trend-line ${chart.missingCostTone}`} d={chart.missingCostPath} />
+          <path className={`trend-line ${chart.unknownSupplierTone}`} d={chart.unknownSupplierPath} />
+        </svg>
+      </div>
+
+      <div className="data-quality-trend-legend">
+        <span className={`legend-chip ${chart.missingCostTone}`}>Missing cost %</span>
+        <span className={`legend-chip ${chart.unknownSupplierTone}`}>Unknown supplier %</span>
+      </div>
+
+      <div className="data-quality-trend-labels">
+        {trend.points.map((point) => (
+          <span key={point.date}>{formatShortDate(point.date)}</span>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export default function DataQualityPage() {
@@ -203,14 +425,7 @@ export default function DataQualityPage() {
       { key: "sortBy", label: "Sort", value: `${sortBy} ${sortDir}` },
     ];
 
-    if (q) {
-      values.push({ key: "q", label: "Pretraga", value: q });
-    }
-
-    if (originTable) {
-      values.push({ key: "originTable", label: "Otvoreno iz", value: originTable });
-    }
-
+    if (q) values.push({ key: "q", label: "Pretraga", value: q });
     if (contextFromDate || contextToDate) {
       values.push({
         key: "contextPeriod",
@@ -218,34 +433,12 @@ export default function DataQualityPage() {
         value: `${formatDateOnly(contextFromDate)} - ${formatDateOnly(contextToDate)}`,
       });
     }
-
-    if (contextSezonaId) {
-      values.push({ key: "contextSezonaId", label: "Kontekst sezona", value: contextSezonaId });
-    }
-
-    if (contextStoreId) {
-      values.push({ key: "contextStoreId", label: "Kontekst objekat", value: contextStoreId });
-    }
-
-    if (contextDataScope) {
-      values.push({ key: "contextDataScope", label: "Data scope", value: contextDataScope });
-    }
+    if (contextStoreId) values.push({ key: "contextStoreId", label: "Objekat", value: contextStoreId });
+    if (contextDataScope) values.push({ key: "contextDataScope", label: "Scope", value: contextDataScope });
+    if (originTable) values.push({ key: "originTable", label: "Otvoreno iz", value: originTable });
 
     return values;
-  }, [
-    contextDataScope,
-    contextFromDate,
-    contextSezonaId,
-    contextStoreId,
-    contextToDate,
-    issueType,
-    originTable,
-    page,
-    pageSize,
-    q,
-    sortBy,
-    sortDir,
-  ]);
+  }, [contextDataScope, contextFromDate, contextStoreId, contextToDate, issueType, originTable, page, pageSize, q, sortBy, sortDir]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "total", label: "Ukupno problema", value: data?.total ?? 0 },
@@ -274,17 +467,29 @@ export default function DataQualityPage() {
     updateParams({ q: searchDraft.trim(), page: 1 });
   };
 
+  const showAdvancedContext = Boolean(contextIncludeUnknown || contextFocus || contextSupplierId || contextSezonaId);
+
   return (
     <div className="data-quality-page">
       <header className="data-quality-header">
         <div>
           <h1 className="data-quality-title">Centar za kvalitet podataka <InfoTip text="Pregled problema u podacima i prioriteti za ispravku." /></h1>
           <p className="data-quality-subtitle">
-            'Nepoznato' više nije slepa vrednost — ovde vidite artikle koje treba dopuniti i koje probleme prvo treba rešiti.
+            Ekran je fokusiran na probleme koji stvarno kvare analytics signale: supplier, kategorija i naziv artikla.
           </p>
         </div>
-        <div className="data-quality-meta">
-          <span>Podrazumevani sort: prodaja 30d (opadajuće)</span>
+        <div className="data-quality-header-side">
+          {health ? (
+            <section className={`data-quality-score-card ${scoreTone(health.scoreStatus)}`} aria-label="Data quality score">
+              <span className="data-quality-score-label">Data quality score</span>
+              <strong>{health.score}</strong>
+              <span className="data-quality-score-status">{health.scoreStatus}</span>
+              <p>{health.scoreSummary}</p>
+            </section>
+          ) : null}
+          <div className="data-quality-meta">
+            <span>Signal filter: samo artikli sa vise od 1.000 RSD prometa u 30 dana</span>
+          </div>
         </div>
       </header>
 
@@ -299,24 +504,26 @@ export default function DataQualityPage() {
           </article>
 
           <article className="data-quality-health-card">
-            <span className="data-quality-health-label">Artikli bez dobavljača</span>
+            <span className="data-quality-health-label">Artikli bez dobavljaca</span>
             <strong>{health.orphanArticleCount.toLocaleString("sr-RS")}</strong>
-            <p>Threshold: {health.thresholds.orphanArticleCount}</p>
+            <p>Warning threshold: {health.thresholds.orphanArticleCount}</p>
           </article>
 
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Promet bez nabavne cene</span>
             <strong>{formatPercent(health.missingCostRevenueSharePct)}</strong>
-            <p>{formatCurrency(health.missingCostRevenue)} bez pouzdane marže</p>
+            <p>{formatCurrency(health.missingCostRevenue)} bez pouzdane marze</p>
           </article>
 
           <article className="data-quality-health-card">
-            <span className="data-quality-health-label">Promet nepoznatog dobavljača</span>
+            <span className="data-quality-health-label">Promet nepoznatog dobavljaca</span>
             <strong>{formatPercent(health.unknownSupplierRevenueSharePct)}</strong>
-            <p>{formatCurrency(health.unknownSupplierRevenue)} u 'unknown' bucket-u</p>
+            <p>{formatCurrency(health.unknownSupplierRevenue)} u unknown bucket-u</p>
           </article>
         </section>
       ) : null}
+
+      <DataQualityTrendChart dataScope={contextDataScope} />
 
       {health ? (
         <section className="data-quality-quick-actions">
@@ -345,6 +552,24 @@ export default function DataQualityPage() {
         ))}
       </div>
 
+      <details className="data-quality-low-priority" open={issueType === "invalidName"}>
+        <summary>Low priority issues</summary>
+        <div className="data-quality-tabs" role="tablist" aria-label="Low priority issue tabs">
+          {LOW_PRIORITY_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={issueType === tab.key}
+              className={`data-quality-tab ${issueType === tab.key ? "active" : ""} ${tab.tone}`}
+              onClick={() => changeTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </details>
+
       <section className="data-quality-controls">
         <form className="data-quality-search" onSubmit={submitSearch}>
           <input
@@ -360,7 +585,7 @@ export default function DataQualityPage() {
           <label>
             <span>Sort by</span>
             <select value={sortBy} onChange={(event) => updateParams({ sortBy: event.target.value, page: 1 })}>
-              <option value="sales30d">Sales 30d</option>
+              <option value="sales30d">Affected revenue 30d</option>
               <option value="lastUpdated">Last updated</option>
               <option value="stock">Stock</option>
               <option value="name">Name</option>
@@ -389,21 +614,34 @@ export default function DataQualityPage() {
 
       {originTable ? (
         <div className="data-quality-origin">
-          Otvoreno iz analytics tabele: <strong>{originTable}</strong>
-          {(contextFromDate || contextToDate) ? (
-            <> | Kontekst perioda: <strong>{formatDateOnly(contextFromDate)} - {formatDateOnly(contextToDate)}</strong></>
+          <div className="data-quality-origin-main">
+            <span>Otvoreno iz analytics tabele: <strong>{originTable}</strong></span>
+            {(contextFromDate || contextToDate) ? (
+              <span>Kontekst perioda: <strong>{formatDateOnly(contextFromDate)} - {formatDateOnly(contextToDate)}</strong></span>
+            ) : null}
+            {contextStoreId ? <span>Objekat: <strong>{contextStoreId}</strong></span> : null}
+            {contextDataScope ? <span>Scope: <strong>{contextDataScope}</strong></span> : null}
+          </div>
+
+          {showAdvancedContext ? (
+            <details className="data-quality-origin-advanced">
+              <summary>Napredni kontekst</summary>
+              <div className="data-quality-origin-main">
+                {contextSezonaId ? <span>Sezona: <strong>{contextSezonaId}</strong></span> : null}
+                {contextIncludeUnknown ? <span>Include unknown: <strong>{contextIncludeUnknown}</strong></span> : null}
+                {contextFocus ? <span>Focus: <strong>{contextFocus}</strong></span> : null}
+                {contextSupplierId ? <span>Supplier: <strong>{contextSupplierId}</strong></span> : null}
+              </div>
+            </details>
           ) : null}
-          {contextStoreId ? <> | Objekat: <strong>{contextStoreId}</strong></> : null}
-          {contextDataScope ? <> | Scope: <strong>{contextDataScope}</strong></> : null}
-          {contextIncludeUnknown ? <> | Include unknown: <strong>{contextIncludeUnknown}</strong></> : null}
-          {contextFocus ? <> | Focus: <strong>{contextFocus}</strong></> : null}
-          {contextSupplierId ? <> | Supplier: <strong>{contextSupplierId}</strong></> : null}
         </div>
       ) : null}
 
       {error ? <div className="data-quality-error">{error}</div> : null}
       {healthError ? <div className="data-quality-loading">{healthError}</div> : null}
       {loading ? <div className="data-quality-loading">Ucitavam data quality probleme...</div> : null}
+
+      {!loading && data ? <TopOffendersPanel issueType={issueType} dataScope={contextDataScope} /> : null}
 
       {!loading && data ? (
         <section className="data-quality-card">
@@ -434,7 +672,7 @@ export default function DataQualityPage() {
                   <th>Artikal</th>
                   <th>Dobavljac</th>
                   <th>Tip obuce</th>
-                  <th className="align-right">Prodaja 30d</th>
+                  <th className="align-right">Pogodjeni promet 30d</th>
                   <th className="align-right">Stanje</th>
                   <th>Azurirano</th>
                   <th>Problem</th>

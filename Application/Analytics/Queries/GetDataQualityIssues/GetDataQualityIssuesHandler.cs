@@ -25,6 +25,7 @@ public sealed class GetDataQualityIssuesHandler
         var sortBy = NormalizeSortBy(request.SortBy);
         var sortDir = NormalizeSortDir(request.SortDir);
         var dataScope = NormalizeDataScope(request.DataScope);
+        var minSalesRsd = Math.Max(0m, request.MinSalesRsd);
 
         var orderClause = BuildOrderClause(sortBy, sortDir);
         var sql = $"""
@@ -49,10 +50,7 @@ public sealed class GetDataQualityIssuesHandler
                     CASE
                         WHEN a."IDDobavljac" IS NULL OR d."Id" IS NULL THEN 'missingSupplier'
                         WHEN a."IDTipObuce" IS NULL OR t."Id" IS NULL THEN 'missingShoeType'
-                        WHEN NULLIF(BTRIM(a."Naziv"), '') IS NULL
-                             OR (a."IDDobavljac" IS NOT NULL AND NULLIF(BTRIM(d."Naziv"), '') IS NULL)
-                             OR (a."IDTipObuce" IS NOT NULL AND NULLIF(BTRIM(t."Naziv"), '') IS NULL)
-                            THEN 'invalidName'
+                        WHEN NULLIF(BTRIM(a."Naziv"), '') IS NULL THEN 'invalidName'
                         ELSE 'ok'
                     END AS issue_type,
                     COALESCE(s.sales_30d, 0) AS sales_30d,
@@ -81,6 +79,7 @@ public sealed class GetDataQualityIssuesHandler
                 COUNT(*) OVER() AS total_count
             FROM quality_source
             WHERE issue_type = @issueType
+                            AND sales_30d > @minSalesRsd
               AND (
                     @query = ''
                     OR COALESCE(sku, '') ILIKE @queryPattern
@@ -113,6 +112,7 @@ public sealed class GetDataQualityIssuesHandler
             command.Parameters.AddWithValue("pageSize", pageSize);
             command.Parameters.AddWithValue("offset", offset);
             command.Parameters.AddWithValue("dataScope", dataScope);
+            command.Parameters.AddWithValue("minSalesRsd", minSalesRsd);
 
             var items = new List<DataQualityIssueItemDto>();
             var total = 0;

@@ -240,11 +240,46 @@ export interface AnalyticsDataQualityHealth {
   missingCostRevenueSharePct: number | null;
   unknownSupplierRevenue: number;
   unknownSupplierRevenueSharePct: number | null;
+  score: number;
+  scoreStatus: "excellent" | "good" | "warning" | "critical";
+  scoreSummary: string;
   thresholds: {
     orphanArticleCount: number;
     missingCostRevenueSharePct: number;
     unknownSupplierRevenueSharePct: number;
   };
+}
+
+export interface DataQualityTopOffenderItem {
+  sku?: string | null;
+  productId: string;
+  name?: string | null;
+  supplierName?: string | null;
+  shoeTypeName?: string | null;
+  sales30d: number;
+  revenueImpactRsd: number;
+  revenueImpactPct: number;
+  actionUrl?: string | null;
+}
+
+export interface DataQualityTopOffendersResult {
+  issueType: DataQualityIssueType;
+  limit: number;
+  count: number;
+  items: DataQualityTopOffenderItem[];
+}
+
+export interface DataQualityTrendPoint {
+  date: string;
+  missingCostRevenueSharePct: number;
+  unknownSupplierRevenueSharePct: number;
+  orphanArticleCount: number;
+}
+
+export interface DataQualityTrendResult {
+  days: number;
+  dataScope: string;
+  points: DataQualityTrendPoint[];
 }
 
 export interface InventoryBalance {

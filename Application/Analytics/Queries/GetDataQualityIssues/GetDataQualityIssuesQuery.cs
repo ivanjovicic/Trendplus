@@ -27,7 +27,8 @@ public sealed record GetDataQualityIssuesQuery(
     string? Query = null,
     string? SortBy = null,
     string? SortDir = null,
-    string? DataScope = null
+    string? DataScope = null,
+    decimal MinSalesRsd = 0m
 ) : IRequest<DataQualityIssueListDto>;
 
 public sealed record DataQualityIssueListDto(

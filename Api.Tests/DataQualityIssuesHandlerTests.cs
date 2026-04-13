@@ -134,18 +134,33 @@ public sealed class DataQualityIssuesHandlerTests
 
         try
         {
-            trendDb.Dobavljaci.Add(new Dobavljac { Id = supplierId, Naziv = "   ", DataOrigin = "existing" });
+            trendDb.Dobavljaci.Add(new Dobavljac { Id = supplierId, Naziv = "Dobavljac validan", DataOrigin = "existing" });
             trendDb.TipoviObuce.Add(new TipObuce { Id = tipId, Naziv = "Cipele", DataOrigin = "existing" });
             trendDb.Artikli.Add(new Artikli
             {
                 Id = productId,
                 PLU = sku,
-                Naziv = "Artikal sa praznim dobavljacem",
+                Naziv = "   ",
                 IDTipObuce = tipId,
                 IDDobavljac = supplierId,
                 Kolicina = 1,
                 UpdatedAt = DateTime.UtcNow,
                 DataOrigin = "existing"
+            });
+            trendDb.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+            {
+                Id = uniqueId + 201,
+                BrojRacuna = $"DQ-IN-{uniqueId + 201}",
+                DatumProdaje = DateTime.UtcNow,
+                DataOrigin = "existing"
+            });
+            trendDb.ProdajaStavke.Add(new ProdajaStavka
+            {
+                Id = uniqueId + 202,
+                IdProdaja = uniqueId + 201,
+                IdArtikal = productId,
+                Kolicina = 1,
+                Cena = 1500m
             });
 
             await trendDb.SaveChangesAsync();
@@ -157,11 +172,72 @@ public sealed class DataQualityIssuesHandlerTests
 
             var item = Assert.Single(result.Items, x => x.ProductId == productId.ToString());
             Assert.Equal(DataQualityIssueTypes.InvalidName, item.IssueType);
-            Assert.Null(item.SupplierName);
+            Assert.Equal("Dobavljac validan", item.SupplierName);
         }
         finally
         {
-            await CleanupAsync(trendDb, analyticsDb, productId, saleId: null, saleItemId: null, supplierId, shoeTypeId: tipId);
+            await CleanupAsync(trendDb, analyticsDb, productId, saleId: uniqueId + 201, saleItemId: uniqueId + 202, supplierId, shoeTypeId: tipId);
+        }
+    }
+
+    [Fact]
+    public async Task Handle_FiltersLowRevenueNoise_WhenMinSalesSpecified()
+    {
+        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        {
+            return;
+        }
+
+        var uniqueId = CreateUniqueId() + 40_000;
+        var tipId = uniqueId + 100;
+        var productId = uniqueId + 1;
+        var saleId = uniqueId + 2;
+        var saleItemId = uniqueId + 3;
+        var sku = $"DQ-MIN-{productId}";
+
+        try
+        {
+            trendDb.TipoviObuce.Add(new TipObuce { Id = tipId, Naziv = "Patike", DataOrigin = "existing" });
+            trendDb.Artikli.Add(new Artikli
+            {
+                Id = productId,
+                PLU = sku,
+                Naziv = "Niskorelevantan artikal",
+                IDTipObuce = tipId,
+                IDDobavljac = null,
+                Kolicina = 2,
+                UpdatedAt = DateTime.UtcNow,
+                DataOrigin = "existing"
+            });
+            trendDb.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+            {
+                Id = saleId,
+                BrojRacuna = $"DQ-MIN-{saleId}",
+                DatumProdaje = DateTime.UtcNow,
+                DataOrigin = "existing"
+            });
+            trendDb.ProdajaStavke.Add(new ProdajaStavka
+            {
+                Id = saleItemId,
+                IdProdaja = saleId,
+                IdArtikal = productId,
+                Kolicina = 1,
+                Cena = 500m
+            });
+
+            await trendDb.SaveChangesAsync();
+
+            var handler = new GetDataQualityIssuesHandler(trendDb);
+            var result = await handler.Handle(new GetDataQualityIssuesQuery(
+                DataQualityIssueTypes.MissingSupplier,
+                Query: sku,
+                MinSalesRsd: 1000m), CancellationToken.None);
+
+            Assert.Empty(result.Items);
+        }
+        finally
+        {
+            await CleanupAsync(trendDb, analyticsDb, productId, saleId, saleItemId, supplierId: null, shoeTypeId: tipId);
         }
     }
 

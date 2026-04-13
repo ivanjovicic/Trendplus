@@ -7,6 +7,8 @@ import type {
   DataQualityIssueType,
   DataQualitySortBy,
   DataQualitySortDir,
+  DataQualityTopOffendersResult,
+  DataQualityTrendResult,
   DailySale,
   DashboardAdvancedSnapshot,
   DashboardValidationEndpoint,
@@ -622,6 +624,38 @@ export async function getAnalyticsDataQualityHealth(
     "/api/analytics/data-quality/health",
     params,
     "Greska pri ucitavanju data quality health pregleda"
+  );
+}
+
+export async function getDataQualityTopOffenders(
+  issueType: DataQualityIssueType,
+  limit = 10,
+  dataScope?: string | null
+): Promise<DataQualityTopOffendersResult> {
+  const params = new URLSearchParams();
+  params.set("issueType", issueType);
+  params.set("limit", String(limit));
+  if (dataScope) params.set("dataScope", dataScope);
+
+  return fetchJson(
+    "/api/analytics/data-quality/top-offenders",
+    params,
+    "Greska pri ucitavanju top data quality problema"
+  );
+}
+
+export async function getAnalyticsDataQualityTrend(
+  days = 7,
+  dataScope?: string | null
+): Promise<DataQualityTrendResult> {
+  const params = new URLSearchParams();
+  params.set("days", String(days));
+  if (dataScope) params.set("dataScope", dataScope);
+
+  return fetchJson(
+    "/api/analytics/data-quality/trend",
+    params,
+    "Greska pri ucitavanju data quality trenda"
   );
 }
 
