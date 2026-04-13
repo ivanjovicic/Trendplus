@@ -826,6 +826,11 @@ export default function ProdajaPrePostNivelacijePage() {
     setExpandedVendorKey(payload.vendorKey);
   };
 
+  const handleCellClick = (data: ConcentrationDatum) => {
+    if (!data.vendorKey) return;
+    setExpandedVendorKey(data.vendorKey);
+  };
+
   return (
     <div className="ppn-decision-page">
       <header className="ppn-decision-header">
@@ -1014,6 +1019,8 @@ export default function ProdajaPrePostNivelacijePage() {
                           <Cell
                             key={`${entry.name}-${entry.vendorKey ?? "rest"}`}
                             fill={entry.selected ? "var(--accent-secondary)" : entry.vendorKey ? "var(--accent-primary)" : "var(--border-strong)"}
+                            onClick={() => handleCellClick(entry)}
+                            style={{ cursor: entry.vendorKey ? "pointer" : "default" }}
                           />
                         ))}
                       </Bar>
