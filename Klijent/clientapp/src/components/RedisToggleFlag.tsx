@@ -22,7 +22,7 @@ export default function RedisToggleFlag() {
     if (!apiPingEnabled && !force) return;
     try {
       setLoading(true);
-      const res = await fetchWithTimeout(apiUrl("/api/redis/status"), undefined, 10_000);
+      const res = await fetchWithTimeout(apiUrl("/api/redis/status"), undefined, 60_000);
       if (res.status === 404) {
         setEndpointMissing(true);
         setStatus(null);
@@ -56,7 +56,7 @@ export default function RedisToggleFlag() {
     try {
       setBusy(true);
       setError(null);
-      const res = await fetchWithTimeout(apiUrl("/api/redis/toggle"), { method: "POST" }, 10_000);
+      const res = await fetchWithTimeout(apiUrl("/api/redis/toggle"), { method: "POST" }, 60_000);
       if (res.status === 404) {
         setEndpointMissing(true);
         return;

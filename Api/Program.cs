@@ -234,7 +234,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     // HttpClient for external APIs with reasonable timeout
     builder.Services.AddHttpClient("default", client =>
     {
-        client.Timeout = TimeSpan.FromSeconds(30); // Enough time for Python service
+        client.Timeout = TimeSpan.FromSeconds(60); // Increased from 30s to 60s for cold start scenarios
     });
     
     // Named HttpClient for scraper service (Python), configured from appsettings or env
@@ -242,19 +242,17 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddHttpClient("scraper", client =>
     {
         client.BaseAddress = new Uri(scraperBase);
-        client.Timeout = TimeSpan.FromSeconds(30);
+        client.Timeout = TimeSpan.FromSeconds(60); // Increased from 30s to 60s for cold start
     })
     .AddPolicyHandler((sp, request) =>
     {
         var logger = sp.GetRequiredService<ILogger<Program>>();
         IAsyncPolicy<HttpResponseMessage> retry = HttpPolicyExtensions
             .HandleTransientHttpError()
-            .OrResult(r => (int)r.StatusCode == 429)
+            .OrResult(r => (int)r.StatusCode == 429 || (int)r.StatusCode == 503) // Also handle service unavailable (cold start)
             .WaitAndRetryAsync(
-                retryCount: 2,
-                sleepDurationProvider: retryAttempt => retryAttempt == 1
-                    ? TimeSpan.FromSeconds(1)
-                    : TimeSpan.FromSeconds(3),
+                retryCount: 4,
+                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential: 2s, 4s, 8s, 16s
                 onRetry: (outcome, delay, attempt, _) =>
                 {
                     logger.LogWarning(
@@ -302,7 +300,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddHttpClient("PythonModel", client =>
     {
         client.BaseAddress = new Uri(pythonModelBase);
-        client.Timeout = TimeSpan.FromSeconds(Math.Max(5, pythonModelTimeout));
+        client.Timeout = TimeSpan.FromSeconds(Math.Max(30, pythonModelTimeout)); // Increased from 5s minimum to 30s for cold start
     });
 
     // Named HttpClient for the consolidated Python API (/generate-trends on port 8000 by default)

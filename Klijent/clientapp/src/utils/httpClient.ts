@@ -20,7 +20,7 @@ class HttpClient {
         url: string,
         config: RequestConfig
     ): Promise<Response> {
-        const { timeout = 15000, skipCircuitBreaker = false, ...fetchConfig } = config;
+        const { timeout = 45000, skipCircuitBreaker = false, ...fetchConfig } = config;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);

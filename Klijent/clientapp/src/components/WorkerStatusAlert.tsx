@@ -60,7 +60,7 @@ export default function WorkerStatusAlert() {
 
   const fetchHealth = useCallback(async () => {
     try {
-      const res = await fetchWithTimeout(apiUrl("/api/workers/health"), undefined, 10_000);
+      const res = await fetchWithTimeout(apiUrl("/api/workers/health"), undefined, 60_000);
       if (!res.ok) {
         if (res.status === 404) {
           setError("Worker health endpoint nije dostupan.");
