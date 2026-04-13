@@ -64,6 +64,30 @@ const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "decisionScore", header: "Decision score", dataType: "number" },
 ];
 
+interface CustomSupplierTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: { name: string; sharePct: number } }>;
+}
+
+function CustomSupplierTooltip({ active, payload }: CustomSupplierTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0].payload;
+  return (
+    <div
+      style={{
+        backgroundColor: "var(--surface-card)",
+        border: "1px solid var(--border-default)",
+        borderRadius: "6px",
+        padding: "8px 12px",
+        color: "var(--text-primary)",
+      }}
+    >
+      <p style={{ margin: 0, fontSize: "12px", fontWeight: 500 }}>{data.name}</p>
+      <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>{fmtPct(data.sharePct, 2)}</p>
+    </div>
+  );
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -502,7 +526,7 @@ export default function PreNivelacijaPriorityPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
-                      <Tooltip formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
+                      <Tooltip content={<CustomSupplierTooltip />} />
                       <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -575,7 +599,7 @@ export default function PreNivelacijaPriorityPage() {
                         return (
                           <tr key={row.artikalId} className={expanded ? "expanded-row" : ""}>
                             <td>{row.sku}</td>
-                            <td>{row.supplierName}</td>
+                            <td title={row.supplierName}>{row.supplierName}</td>
                             <td className="align-right">{row.preNivelacijaScore.toFixed(1)}</td>
                             <td className="align-right">{row.stockUnits}</td>
                             <td className="align-right">{row.daysSinceLastSale}</td>
@@ -618,7 +642,7 @@ export default function PreNivelacijaPriorityPage() {
               <div className="pnp-decision-detail-grid">
                 <article>
                   <span>Dobavljac</span>
-                  <strong>{selectedRow.supplierName}</strong>
+                  <strong title={selectedRow.supplierName}>{selectedRow.supplierName}</strong>
                 </article>
                 <article>
                   <span>Priority band</span>

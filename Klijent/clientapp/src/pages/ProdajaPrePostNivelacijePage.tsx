@@ -100,6 +100,30 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "statusReason", header: "Razlog preporuke", dataType: "text" },
 ];
 
+interface CustomConcentrationTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: ConcentrationDatum }>;
+}
+
+function CustomConcentrationTooltip({ active, payload }: CustomConcentrationTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0].payload as ConcentrationDatum;
+  return (
+    <div
+      style={{
+        backgroundColor: "var(--surface-card)",
+        border: "1px solid var(--border-default)",
+        borderRadius: "6px",
+        padding: "8px 12px",
+        color: "var(--text-primary)",
+      }}
+    >
+      <p style={{ margin: 0, fontSize: "12px", fontWeight: 500 }}>{data.name}</p>
+      <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>{fmtPct(data.sharePct, 2)}</p>
+    </div>
+  );
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -983,11 +1007,8 @@ export default function ProdajaPrePostNivelacijePage() {
                     <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} onClick={handleChartClick}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
-                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
-                      <Tooltip
-                        formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`}
-                        labelStyle={{ color: "var(--text-primary)" }}
-                      />
+                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} label={{ value: null }} />
+                      <Tooltip content={<CustomConcentrationTooltip />} />
                       <Bar dataKey="sharePct" radius={[0, 8, 8, 0]}>
                         {concentrationData.map((entry) => (
                           <Cell
@@ -1094,7 +1115,7 @@ export default function ProdajaPrePostNivelacijePage() {
                           <tr key={rowId} className={expanded ? "expanded-row" : ""}>
                             <td>
                               <div className="ppn-vendor-cell">
-                                <strong>{row.vendorName || "Nepoznat dobavljac"}</strong>
+                                <strong title={row.vendorName || "Nepoznat dobavljac"}>{row.vendorName || "Nepoznat dobavljac"}</strong>
                                 <div className="ppn-chip-wrap">
                                   <span className={confidenceClass(row.confidenceTone)}>{row.confidenceLabel} signal</span>
                                   <span className="ppn-signal-pill signal-neutral">{row.activeArticlesCount}/{row.articleCount} aktivno</span>
@@ -1141,7 +1162,7 @@ export default function ProdajaPrePostNivelacijePage() {
           {selectedRow ? (
             <section className="ppn-decision-detail">
               <div className="ppn-decision-detail-head">
-                <h3>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljac"}</h3>
+                <h3 title={selectedRow.vendorName || "Nepoznat dobavljac"}>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljac"}</h3>
                 <button type="button" onClick={() => openVendorDetail(selectedRow)}>
                   Otvori puni detalj
                 </button>
