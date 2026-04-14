@@ -1,0 +1,80 @@
+{
+  "requestedFrom": "2026-01-01",
+  "requestedTo": "2026-01-03",
+  "storeId": 1,
+  "topN": 3,
+  "dataScope": "all",
+  "topSuppliers": [
+    {
+      "supplierId": 1,
+      "supplierName": "Dobavljac A",
+      "isUnknown": false,
+      "totalQty": 7,
+      "totalRevenue": 700
+    },
+    {
+      "supplierId": 3,
+      "supplierName": "Dobavljac C",
+      "isUnknown": false,
+      "totalQty": 7,
+      "totalRevenue": 350
+    },
+    {
+      "supplierId": null,
+      "supplierName": "Nepoznato",
+      "isUnknown": true,
+      "totalQty": 5,
+      "totalRevenue": 750
+    }
+  ],
+  "topSuppliersOrder": ["Dobavljac A", "Dobavljac C", "Nepoznato"],
+  "dateRows": [
+    {
+      "date": "2026-01-03",
+      "firstShiftTotalItems": 0,
+      "secondShiftTotalItems": 0,
+      "totalRevenue": 0,
+      "othersCount": 0,
+      "totalItemsSold": 0,
+      "topSupplierCounts": [0, 0, 0]
+    },
+    {
+      "date": "2026-01-02",
+      "firstShiftTotalItems": 12,
+      "secondShiftTotalItems": 0,
+      "totalRevenue": 1100,
+      "othersCount": 0,
+      "totalItemsSold": 12,
+      "topSupplierCounts": [0, 7, 5]
+    },
+    {
+      "date": "2026-01-01",
+      "firstShiftTotalItems": 7,
+      "secondShiftTotalItems": 3,
+      "totalRevenue": 1300,
+      "othersCount": 3,
+      "totalItemsSold": 10,
+      "topSupplierCounts": [7, 0, 0]
+    }
+  ],
+  "metadata": {
+    "totalDays": 3,
+    "uniqueSuppliersInRange": 4,
+    "unknownSupplierPct": 22.73,
+    "unknownSupplierItems": 5,
+    "offShiftItems": 2,
+    "offShiftRevenue": 200,
+    "totalItemsInRange": 22,
+    "duplicateReceiptGroupCount": 0,
+    "duplicateReceiptHeaderCount": 0,
+    "receiptAmountMismatchCount": 0,
+    "receiptAmountMismatchRevenue": 0,
+    "nonStandardReceiptCount": 5,
+    "nonStandardReceiptRevenue": 2400,
+    "debtReceiptCount": 0,
+    "debtReceiptRevenue": 0,
+    "minAvailableDate": null,
+    "maxAvailableDate": null,
+    "warningsCount": 3
+  }
+}

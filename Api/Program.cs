@@ -652,3 +652,5 @@ finally
     Log.CloseAndFlush();
 }
 
+// Make Program class public for WebApplicationFactory in tests
+public partial class Program { }

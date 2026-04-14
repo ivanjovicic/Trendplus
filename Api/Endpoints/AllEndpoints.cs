@@ -5627,8 +5627,8 @@ public static class AllEndpoints
                     var qtyPct = ((decimal)row.PostQty - row.PreQty) / row.PreQty;
                     var elasticity = qtyPct / pricePct;
                     
-                    // Ensure elasticity is not Infinity, NaN, or extreme
-                    if (!decimal.IsInfinity(elasticity) && !decimal.IsNaN(elasticity))
+                    // Decimal can't be Infinity/NaN, but check for reasonable bounds
+                    if (elasticity > -1000000m && elasticity < 1000000m)
                     {
                         row.PriceElasticity = Math.Round(elasticity, 4);
                     }
@@ -5647,7 +5647,7 @@ public static class AllEndpoints
             if (denominator > 0m)
             {
                 var lostSales = (row.PostRevenue * oos) / denominator;
-                if (!decimal.IsInfinity(lostSales) && !decimal.IsNaN(lostSales))
+                if (lostSales > -1000000m && lostSales < 1000000m)
                 {
                     row.LostSalesOOS = Math.Round(lostSales, 2);
                 }

@@ -1,0 +1,63 @@
+name: Analytics Tests & Data Integrity
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'Api/**'
+      - 'Api.Tests/**'
+      - 'Domain/**'
+      - 'Infrastructure/**'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Unit & Integration Tests
+    runs-on: ubuntu-latest
+
+    services:
+      # We spin up a real Postgres instance for integration tests
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: trendplus_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore Trendplus2.sln
+
+    - name: Build
+      run: dotnet build Trendplus2.sln --no-restore --configuration Release
+
+    - name: Run Unit Tests
+      run: dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Unit" --verbosity minimal
+
+    - name: Run Integration Tests
+      env:
+        # Override connection string for GitHub Actions runner
+        ConnectionStrings__DefaultConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
+      run: dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Integration" --verbosity normal
+
+    - name: Test Summary
+      if: always()
+      run: |
+        echo "### Test Execution Summary" >> $GITHUB_STEP_SUMMARY
+        echo "Tests completed on $(date)" >> $GITHUB_STEP_SUMMARY

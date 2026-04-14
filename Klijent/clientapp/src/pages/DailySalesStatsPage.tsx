@@ -259,6 +259,12 @@ function fmtDateShort(value: string | null | undefined): string {
   return `${dd}.${mm}.${yy}`;
 }
 
+function fmtDateISO(value: string | null | undefined): string {
+  if (!value) return "";
+  // Extract just the date part (YYYY-MM-DD) from ISO string
+  return value.slice(0, 10);
+}
+
 function sortMarker(field: SortKey, active: SortKey, dir: SortDir): ReactNode | null {
   if (field !== active) return null;
   // Use simple Unicode badges; kept small to avoid encoding issues in common setups
@@ -581,8 +587,8 @@ export default function DailySalesStatsPage() {
   ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, memoizedQueryDataScope]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
-    { key: "requestedFrom", label: "Zahtevan od", value: data?.requestedFrom ?? "" },
-    { key: "requestedTo", label: "Zahtevan do", value: data?.requestedTo ?? "" },
+    { key: "requestedFrom", label: "Zahtevan od", value: fmtDateISO(data?.requestedFrom) ?? "" },
+    { key: "requestedTo", label: "Zahtevan do", value: fmtDateISO(data?.requestedTo) ?? "" },
     { key: "totalDays", label: "Broj dana", value: data?.metadata.totalDays ?? 0 },
     { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljaca %", value: data?.metadata.unknownSupplierPct ?? 0 },
     { key: "firstShiftHeader", label: "Prva smena", value: FIRST_SHIFT_LABEL },

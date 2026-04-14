@@ -1,0 +1,224 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Xunit;
+
+namespace Trendplus2.Tests;
+
+/// <summary>
+/// Integration tests for the shoe-type-sales-stats endpoint.
+/// These tests verify the endpoint against a real database with shoe-type seed data.
+/// </summary>
+[Trait("Category", "Integration")]
+public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicationFactory<global::Program>>
+{
+    private readonly WebApplicationFactory<global::Program> _factory;
+
+    public AnalyticsShoeTypeSalesIntegrationTests(WebApplicationFactory<global::Program> factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact(DisplayName = "ShoeType endpoint returns valid JSON structure")]
+    public async Task ShoeTypeSalesStats_ReturnsValidJsonStructure()
+    {
+        var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
+
+        Assert.True(root.ValueKind == JsonValueKind.Object, "Response should be an object with shoeTypes/totals/dataQuality");
+        Assert.True(root.TryGetProperty("shoeTypes", out _), "Missing 'shoeTypes' field");
+        Assert.True(root.TryGetProperty("totals", out _), "Missing 'totals' field");
+        Assert.True(root.TryGetProperty("dataQuality", out _), "Missing 'dataQuality' field");
+
+        var shoeTypes = root.GetProperty("shoeTypes");
+        Assert.Equal(JsonValueKind.Array, shoeTypes.ValueKind);
+
+        if (shoeTypes.GetArrayLength() > 0)
+        {
+            var firstItem = shoeTypes[0];
+            Assert.True(firstItem.TryGetProperty("tipObuceNaziv", out _), "Missing 'tipObuceNaziv' field");
+            Assert.True(firstItem.TryGetProperty("ukupanPromet", out _), "Missing 'ukupanPromet' field");
+            Assert.True(firstItem.TryGetProperty("ukupnaKolicina", out _), "Missing 'ukupnaKolicina' field");
+            Assert.True(firstItem.TryGetProperty("recommendation", out _), "Missing 'recommendation' field");
+        }
+    }
+
+    [Fact(DisplayName = "ShoeType endpoint matches golden snapshot")]
+    public async Task ShoeTypeSalesStats_MatchesGoldenSnapshot()
+    {
+        var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-06-01&toDate=2026-08-31");
+        GoldenSnapshotAssert.Matches("shoe-type-sales-stats.contract.json", ProjectSnapshot(root));
+    }
+
+    [Fact(DisplayName = "Invalid season returns not found")]
+    public async Task ShoeTypeSalesStats_InvalidSeason_ReturnsNotFound()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync("/api/analytics/shoe-type-sales-stats?sezonaId=999999");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact(DisplayName = "Invalid date range returns bad request")]
+    public async Task ShoeTypeSalesStats_InvalidPeriod_ReturnsBadRequest()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-07-01&toDate=2026-06-01");
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact(DisplayName = "ShoeType endpoint correctly aggregates 'Nepoznato' for null/empty types")]
+    public async Task ShoeTypeSalesStats_AggregatesUnknownTypes()
+    {
+        var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
+        var items = root.GetProperty("shoeTypes").EnumerateArray().ToList();
+        var unknownItems = items.Where(i => i.GetProperty("tipObuceNaziv").GetString() == "Nepoznato").ToList();
+
+        // There should be exactly one 'Nepoznato' entry even if multiple articles have null/empty IDTipObuce
+        Assert.Single(unknownItems);
+        Assert.True(unknownItems[0].GetProperty("ukupanPromet").GetDecimal() > 0m);
+    }
+
+    [Fact(DisplayName = "ShoeType endpoint filters by storeId correctly")]
+    public async Task ShoeTypeSalesStats_FiltersByStoreId()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync("/api/analytics/shoe-type-sales-stats?storeId=2&fromDate=2026-01-01&toDate=2026-12-31");
+
+        Assert.True(response.IsSuccessStatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        var root = JsonDocument.Parse(content).RootElement;
+
+        Assert.Equal(JsonValueKind.Object, root.ValueKind);
+        Assert.Equal(0, root.GetProperty("shoeTypes").GetArrayLength());
+    }
+
+    [Fact(DisplayName = "ShoeType endpoint includes Margin metrics")]
+    public async Task ShoeTypeSalesStats_IncludesMarginMetrics()
+    {
+        var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
+        var shoeTypes = root.GetProperty("shoeTypes");
+
+        if (shoeTypes.GetArrayLength() > 0)
+        {
+            var firstItem = shoeTypes[0];
+            Assert.True(firstItem.TryGetProperty("marginPct", out _), "Missing 'marginPct' field");
+            Assert.True(firstItem.TryGetProperty("marginContribution", out _), "Missing 'marginContribution' field");
+            Assert.True(firstItem.TryGetProperty("sharePct", out _), "Missing 'sharePct' field");
+        }
+    }
+
+    [Fact(DisplayName = "ShoeType endpoint includes Nivelacija split metrics")]
+    public async Task ShoeTypeSalesStats_IncludesNivelacijaSplitMetrics()
+    {
+        var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
+        var shoeTypes = root.GetProperty("shoeTypes");
+
+        if (shoeTypes.GetArrayLength() > 0)
+        {
+            var firstItem = shoeTypes[0];
+            Assert.True(firstItem.TryGetProperty("preNivelacijePromet", out _), "Missing 'preNivelacijePromet' field");
+            Assert.True(firstItem.TryGetProperty("posleNivelacijePromet", out _), "Missing 'posleNivelacijePromet' field");
+            Assert.True(firstItem.TryGetProperty("brojArtikalaSaNivelacijom", out _), "Missing 'brojArtikalaSaNivelacijom' field");
+            Assert.True(firstItem.TryGetProperty("recommendation", out _), "Missing 'recommendation' field");
+        }
+    }
+
+    [Fact(DisplayName = "Data scope filters imported and existing rows")]
+    public async Task ShoeTypeSalesStats_DataScopeFiltersRows()
+    {
+        var allRoot = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31&dataScope=all");
+        var existingRoot = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31&dataScope=existing");
+        var importedRoot = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31&dataScope=imported");
+
+        Assert.NotEmpty(allRoot.GetProperty("shoeTypes").EnumerateArray());
+        Assert.NotEmpty(existingRoot.GetProperty("shoeTypes").EnumerateArray());
+        Assert.NotEmpty(importedRoot.GetProperty("shoeTypes").EnumerateArray());
+
+        Assert.Contains(importedRoot.GetProperty("shoeTypes").EnumerateArray(), item => item.GetProperty("tipObuceNaziv").GetString() == "Sandale");
+        Assert.DoesNotContain(importedRoot.GetProperty("shoeTypes").EnumerateArray(), item => item.GetProperty("tipObuceNaziv").GetString() == "Patike");
+        Assert.DoesNotContain(existingRoot.GetProperty("shoeTypes").EnumerateArray(), item => item.GetProperty("tipObuceNaziv").GetString() == "Sandale");
+    }
+
+    [Fact(DisplayName = "Endpoint is deterministic for same inputs")]
+    public async Task ShoeTypeSalesStats_ProducesDeterministicJson()
+    {
+        var client = _factory.CreateClient();
+        var url = "/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31";
+
+        var first = await client.GetAsync(url);
+        var second = await client.GetAsync(url);
+
+        Assert.Equal(CanonicalizeJson(await first.Content.ReadAsStringAsync()), CanonicalizeJson(await second.Content.ReadAsStringAsync()));
+    }
+
+    private async Task<JsonElement> GetJsonRootAsync(string url)
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync(url);
+
+        Assert.True(response.IsSuccessStatusCode, $"Expected success for {url}, got {response.StatusCode}");
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.False(string.IsNullOrWhiteSpace(content));
+
+        return JsonDocument.Parse(content).RootElement;
+    }
+
+    private static string CanonicalizeJson(string json)
+    {
+        try
+        {
+            var doc = JsonDocument.Parse(json);
+            return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = false });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private static object ProjectSnapshot(JsonElement root)
+    {
+        var shoeTypesRoot = root.GetProperty("shoeTypes");
+        var shoeTypes = shoeTypesRoot.EnumerateArray()
+            .Select(item => new
+            {
+                tipObuceNaziv = item.GetProperty("tipObuceNaziv").GetString(),
+                ukupanPromet = item.GetProperty("ukupanPromet").GetDecimal(),
+                ukupnaKolicina = item.GetProperty("ukupnaKolicina").GetInt32(),
+                sharePct = Math.Round(item.GetProperty("sharePct").GetDouble(), 2),
+                isUnknown = item.GetProperty("tipObuceNaziv").GetString() == "Nepoznato"
+            })
+            .ToList();
+
+        var totals = root.GetProperty("totals");
+        var dataQuality = root.GetProperty("dataQuality");
+
+        return new
+        {
+            shoeTypes,
+            totals = new
+            {
+                ukupanPromet = totals.GetProperty("ukupanPromet").GetDecimal(),
+                ukupnaKolicina = totals.GetProperty("ukupnaKolicina").GetInt32(),
+                brojTipovaObuce = totals.GetProperty("brojTipovaObuce").GetInt32(),
+                recommendationSummary = new
+                {
+                    increaseFocus = totals.GetProperty("recommendationSummary").GetProperty("increaseFocus").GetInt32(),
+                    maintain = totals.GetProperty("recommendationSummary").GetProperty("maintain").GetInt32(),
+                    review = totals.GetProperty("recommendationSummary").GetProperty("review").GetInt32(),
+                    doNotTrust = totals.GetProperty("recommendationSummary").GetProperty("doNotTrust").GetInt32(),
+                    insufficientData = totals.GetProperty("recommendationSummary").GetProperty("insufficientData").GetInt32()
+                }
+            },
+            dataQuality = new
+            {
+                unknownTypeRevenueSharePct = Math.Round(dataQuality.GetProperty("unknownTypeRevenueSharePct").GetDouble(), 2)
+            }
+        };
+    }
+}
