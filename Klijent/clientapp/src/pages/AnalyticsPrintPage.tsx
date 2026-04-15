@@ -9,6 +9,11 @@ export default function AnalyticsPrintPage() {
     () => getPrintPayload(searchParams.get("stateKey")),
     [searchParams]
   );
+  const isDenseDailySalesBlank = payload?.documentType === "daily-sales-blank";
+  const pageMarginMm = isDenseDailySalesBlank ? 8 : 14;
+  const tableFontSizePx = isDenseDailySalesBlank ? 9 : 12;
+  const cellPadding = isDenseDailySalesBlank ? "4px 3px" : "8px";
+  const titleFontSizePx = isDenseDailySalesBlank ? 22 : 28;
 
   React.useEffect(() => {
     if (!payload) return;
@@ -26,16 +31,38 @@ export default function AnalyticsPrintPage() {
   }
 
   return (
-    <div style={{ background: "var(--surface)", color: "var(--foreground)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}>
+    <div
+      className={`analytics-print-page${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}`}
+      style={{ background: "var(--surface)", color: "var(--foreground)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}
+    >
       <style>{`
-        @page { size: A4 landscape; margin: 14mm; }
+        @page { size: A4 landscape; margin: ${pageMarginMm}mm; }
         @media print {
           .analytics-print-actions { display: none !important; }
+          html, body { margin: 0 !important; padding: 0 !important; }
           body { background: var(--c-fff, var(--theme-color-ffffff, #ffffff)) !important; }
+          .analytics-print-page { padding: 0 !important; }
         }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid var(--border); padding: 8px; font-size: 12px; vertical-align: top; }
-        th { background: var(--surface-elevated); text-align: left; }
+        .analytics-print-table { width: 100%; border-collapse: collapse; }
+        .analytics-print-table th,
+        .analytics-print-table td {
+          border: 1px solid var(--border);
+          padding: ${cellPadding};
+          font-size: ${tableFontSizePx}px;
+          vertical-align: top;
+        }
+        .analytics-print-table th {
+          background: var(--surface-elevated);
+          text-align: left;
+        }
+        .analytics-print-page-dense .analytics-print-table {
+          table-layout: fixed;
+        }
+        .analytics-print-page-dense .analytics-print-table th,
+        .analytics-print-page-dense .analytics-print-table td {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
       `}</style>
 
       <div className="analytics-print-actions" style={{ marginBottom: 20, display: "flex", gap: 12 }}>
@@ -51,10 +78,12 @@ export default function AnalyticsPrintPage() {
         <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           Trendplus analitika
         </div>
-        <h1 style={{ margin: "6px 0 4px", fontSize: 28 }}>{payload.tableTitle}</h1>
-        <div style={{ fontSize: 12, color: "var(--muted)" }}>
-          Table key: {params.table ?? payload.tableKey} | Generated in browser print view
-        </div>
+        <h1 style={{ margin: "6px 0 4px", fontSize: titleFontSizePx }}>{payload.tableTitle}</h1>
+        {!isDenseDailySalesBlank && (
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+            Table key: {params.table ?? payload.tableKey} | Generated in browser print view
+          </div>
+        )}
       </header>
 
       {(payload.filters.length > 0 || payload.metadata.length > 0) ? (
@@ -83,7 +112,7 @@ export default function AnalyticsPrintPage() {
         </section>
       ) : null}
 
-      <table>
+      <table className="analytics-print-table">
         <thead>
           <tr>
             {payload.columns.map((column) => (

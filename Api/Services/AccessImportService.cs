@@ -5114,8 +5114,8 @@ using NpgsqlTypes;
         var dnevnikById = _trendDb.DnevnikPromena.AsNoTracking()
             .OrderBy(x => x.Id)
             .ToDictionary(x => x.Id, x => x);
-        var sourceSnapshotsById = await LoadNivelacijaSourceSnapshotsAsync(session, ct);
-        var supplierByArticleId = LoadArtikalSupplierLookup();
+        Dictionary<int, NivelacijaSourceSnapshot>? sourceSnapshotsById = null;
+        Dictionary<int, int?>? supplierByArticleId = null;
 
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
@@ -5147,24 +5147,38 @@ using NpgsqlTypes;
             var kolicina = I(row, "kolicina", "qty", "quantity") ?? 1;
             var iznos = Math.Abs((novaCena.Value - (staraCena ?? 0m)) * kolicina);
             var srcId = I(row, "iddnevnik", "id", "idlog") ?? 0;
-            supplierByArticleId.TryGetValue(idArtikal.Value, out var articleSupplierId);
 
             dnevnikById.TryGetValue(srcId, out var sourceDnevnik);
-            sourceSnapshotsById.TryGetValue(srcId, out var sourceSnapshot);
             var eventDate = DT(row, "datum", "datumnivelacije", "date")
-                ?? sourceSnapshot?.Datum
-                ?? sourceDnevnik?.Datum
-                ?? DateTime.UtcNow;
+                ?? sourceDnevnik?.Datum;
             var storeId = I(row, "idobjekat", "storeid", "idobjekta")
-                ?? sourceSnapshot?.IDObjekat
                 ?? sourceDnevnik?.IDObjekat;
             var supplierId = I(row, "iddobavljac", "dobavljacid", "supplierid")
-                ?? sourceSnapshot?.DobavljacId
-                ?? sourceDnevnik?.DobavljacId
-                ?? articleSupplierId;
+                ?? sourceDnevnik?.DobavljacId;
+
+            // The source dnevnik scan is expensive on large MDB files, so only pay for it
+            // when the current nivelacija row is missing context we cannot infer otherwise.
+            if ((!eventDate.HasValue || !storeId.HasValue || !supplierId.HasValue) && srcId > 0)
+            {
+                sourceSnapshotsById ??= await LoadNivelacijaSourceSnapshotsAsync(session, ct);
+                if (sourceSnapshotsById.TryGetValue(srcId, out var sourceSnapshot))
+                {
+                    eventDate ??= sourceSnapshot.Datum;
+                    storeId ??= sourceSnapshot.IDObjekat;
+                    supplierId ??= sourceSnapshot.DobavljacId;
+                }
+            }
+
+            if (!supplierId.HasValue)
+            {
+                supplierByArticleId ??= LoadArtikalSupplierLookup();
+                supplierByArticleId.TryGetValue(idArtikal.Value, out supplierId);
+            }
+
+            eventDate ??= DateTime.UtcNow;
 
             // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
-            var compositeKey = (idArtikal.Value, eventDate, iznos);
+            var compositeKey = (idArtikal.Value, eventDate.Value, iznos);
             if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
             {
                 existingCompositeKeys[compositeKey] = ckCount - 1;
@@ -5181,7 +5195,7 @@ using NpgsqlTypes;
             {
                 Id = assignedId,
                 TipPromene = TipPromeneConstants.Nivelacija,
-                Datum = eventDate,
+                Datum = eventDate.Value,
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
                 StaraProdajnaCena = staraCena,
@@ -6256,8 +6270,8 @@ using NpgsqlTypes;
             if (!dnevnikById.TryGetValue(d.Id, out _))
                 dnevnikById[d.Id] = d;
         }
-        var sourceSnapshotsById = LoadNivelacijaSourceSnapshots(conn);
-        var supplierByArticleId = LoadArtikalSupplierLookup();
+        Dictionary<int, NivelacijaSourceSnapshot>? sourceSnapshotsById = null;
+        Dictionary<int, int?>? supplierByArticleId = null;
 
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
@@ -6281,24 +6295,36 @@ using NpgsqlTypes;
             var kolicina  = I(row, "kolicina", "qty", "quantity") ?? 1;
             var iznos     = Math.Abs((novaCena.Value - (staraCena ?? 0m)) * kolicina);
             var srcId     = I(row, "iddnevnik", "id", "idlog") ?? 0;
-            supplierByArticleId.TryGetValue(idArtikal.Value, out var articleSupplierId);
 
             dnevnikById.TryGetValue(srcId, out var sourceDnevnik);
-            sourceSnapshotsById.TryGetValue(srcId, out var sourceSnapshot);
             var eventDate = DT(row, "datum", "datumnivelacije", "date")
-                ?? sourceSnapshot?.Datum
-                ?? sourceDnevnik?.Datum
-                ?? DateTime.UtcNow;
+                ?? sourceDnevnik?.Datum;
             var storeId = I(row, "idobjekat", "storeid", "idobjekta")
-                ?? sourceSnapshot?.IDObjekat
                 ?? sourceDnevnik?.IDObjekat;
             var supplierId = I(row, "iddobavljac", "dobavljacid", "supplierid")
-                ?? sourceSnapshot?.DobavljacId
-                ?? sourceDnevnik?.DobavljacId
-                ?? articleSupplierId;
+                ?? sourceDnevnik?.DobavljacId;
+
+            if ((!eventDate.HasValue || !storeId.HasValue || !supplierId.HasValue) && srcId > 0)
+            {
+                sourceSnapshotsById ??= LoadNivelacijaSourceSnapshots(conn);
+                if (sourceSnapshotsById.TryGetValue(srcId, out var sourceSnapshot))
+                {
+                    eventDate ??= sourceSnapshot.Datum;
+                    storeId ??= sourceSnapshot.IDObjekat;
+                    supplierId ??= sourceSnapshot.DobavljacId;
+                }
+            }
+
+            if (!supplierId.HasValue)
+            {
+                supplierByArticleId ??= LoadArtikalSupplierLookup();
+                supplierByArticleId.TryGetValue(idArtikal.Value, out supplierId);
+            }
+
+            eventDate ??= DateTime.UtcNow;
 
             // Composite-key dedup: skip if an identical (ArtikalId, Datum, Iznos) row already exists.
-            var compositeKey = (idArtikal.Value, eventDate, iznos);
+            var compositeKey = (idArtikal.Value, eventDate.Value, iznos);
             if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
             {
                 existingCompositeKeys[compositeKey] = ckCount - 1;
@@ -6313,7 +6339,7 @@ using NpgsqlTypes;
             {
                 Id = assignedId,
                 TipPromene = TipPromeneConstants.Nivelacija,
-                Datum = eventDate,
+                Datum = eventDate.Value,
                 ArtikalId = idArtikal.Value,
                 Kolicina = kolicina,
                 StaraProdajnaCena = staraCena,
