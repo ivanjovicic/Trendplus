@@ -1,10 +1,12 @@
 using Api.Models;
 using Application.Analytics;
 using Domain.Model;
+using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Api.Services;
 
@@ -49,6 +51,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         public AnalyticsFilters Filters { get; init; } = new();
         public Dictionary<int, DateTime> PrvaNivelacijaPoArtiklu { get; init; } = [];
         public List<SalesRow> SalesRows { get; init; } = [];
+        public IReadOnlyDictionary<int, decimal> ArticleSnapshotCosts { get; init; } = new Dictionary<int, decimal>();
+        public bool IsSnapshotActive { get; init; }
+        public DateTime? SnapshotGeneratedAtUtc { get; init; }
     }
 
     private sealed class ComparisonMetrics
@@ -61,13 +66,16 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
     private readonly TrendplusDbContext _db;
     private readonly IDnevnikPromenaReadService _dnevnikPromenaReadService;
+    private readonly AnalyticsSnapshotOptions _snapshotOptions;
 
     public AnalyticsDetailReadService(
         TrendplusDbContext db,
-        IDnevnikPromenaReadService dnevnikPromenaReadService)
+        IDnevnikPromenaReadService dnevnikPromenaReadService,
+        IOptions<AnalyticsSnapshotOptions> snapshotOptions)
     {
         _db = db;
         _dnevnikPromenaReadService = dnevnikPromenaReadService;
+        _snapshotOptions = snapshotOptions.Value;
     }
 
     public async Task<AnalyticsDetailResponseDto?> GetDetailAsync(string table, string id, IQueryCollection query, CancellationToken ct = default)
@@ -298,11 +306,35 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             .Where(x => !filters.SupplierId.HasValue || x.DobavljacId == filters.SupplierId.Value)
             .ToListAsync(ct);
 
+        long? activeBatchId = null;
+        DateTime? snapshotGeneratedAt = null;
+        Dictionary<int, decimal> snapshotCostByArtikalId = [];
+        if (_snapshotOptions.UseSnapshotCost)
+        {
+            var activeBatch = await _db.AnalyticsCostSnapshotBatches
+                .Where(b => b.Status == "active" && b.Scope == "access_origin")
+                .Select(b => new { b.Id, b.GeneratedAtUtc })
+                .FirstOrDefaultAsync(ct);
+            activeBatchId = activeBatch?.Id;
+            snapshotGeneratedAt = activeBatch?.GeneratedAtUtc;
+            if (activeBatchId.HasValue)
+            {
+                snapshotCostByArtikalId = await _db.AnalyticsSaleLineCostSnapshots
+                    .Where(s => s.BatchId == activeBatchId.Value)
+                    .GroupBy(s => s.ArtikalId)
+                    .Select(g => new { ArtikalId = g.Key, Cost = g.Min(s => s.ResolvedUnitCost) })
+                    .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
+            }
+        }
+
         return new AnalyticsContext
         {
             Filters = filters,
             PrvaNivelacijaPoArtiklu = prvaNivelacijaPoArtiklu,
-            SalesRows = salesRows
+            SalesRows = salesRows,
+            ArticleSnapshotCosts = snapshotCostByArtikalId,
+            IsSnapshotActive = activeBatchId.HasValue,
+            SnapshotGeneratedAtUtc = snapshotGeneratedAt
         };
     }
 
@@ -480,10 +512,14 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             totalRevenue += row.Prihod;
             totalQty += row.Kolicina;
             articleIds.Add(row.ArtikalId);
+            decimal? snapshotCost = null;
+            if (row.SaleLineCost is null && context.ArticleSnapshotCosts.TryGetValue(row.ArtikalId, out var sc))
+                snapshotCost = sc;
             margin.Add(
                 row.Prihod,
                 row.Kolicina,
                 row.SaleLineCost,
+                snapshotCost,
                 row.ProductCostRsd,
                 row.ProductCostLegacy);
         }
@@ -496,7 +532,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             row => row.DatumProdaje,
             row => row.Prihod,
             row => row.Kolicina);
-        var estimatedMargin = marginSnapshot.EstimatedCostRevenue > 0m;
+        var estimatedMargin = marginSnapshot.EstimatedCostRevenue > 0m || marginSnapshot.SnapshotCostRevenue > 0m;
 
         var popRevenueLabel = comparison?.PopRevenueChangePct?.ToString("0.00", CultureInfo.InvariantCulture)
             ?? (comparison?.PreviousPeriodRevenue.HasValue == true && comparison.PreviousPeriodRevenue.Value <= 0m && totalRevenue > 0m
@@ -532,10 +568,12 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Field("prePostComparableArticleCount", "Artikli sa uporedivim pre/post signalom", splitSnapshot.ComparableArticleCount.ToString(CultureInfo.InvariantCulture), "number"),
             Field("marginContribution", estimatedMargin ? "Procenjeni marzni doprinos" : "Marzni doprinos", marginSnapshot.MarginContribution.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
             Field("marginPct", estimatedMargin ? "Procenjena marza %" : "Marza %", marginSnapshot.MarginPct.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("marginDataCoveragePct", "Pokrice istorijske marze %", marginSnapshot.HistoricalMarginCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("fallbackCostCoveragePct", "Promet procenjen iz master troska %", marginSnapshot.FallbackCostCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("revenueWithCost", "Promet sa istorijskom nabavnom cenom", marginSnapshot.HistoricalCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("estimatedCostRevenue", "Promet procenjen iz master troska", marginSnapshot.EstimatedCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("marginDataCoveragePct", "Pokrice istorijskog troska %", marginSnapshot.HistoricalMarginCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("fallbackCostCoveragePct", "Promet procenjen iz fallback troska %", marginSnapshot.FallbackCostCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("snapshotCostRevenue", "Promet pokriven snapshot troskom", marginSnapshot.SnapshotCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("snapshotCostCoveragePct", "Pokrivenost snapshot troskom %", marginSnapshot.SnapshotCostCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("revenueWithCost", "Promet sa istorijskim troskom", marginSnapshot.HistoricalCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("estimatedCostRevenue", "Promet procenjen iz fallback troska", marginSnapshot.EstimatedCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
             Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", splitSnapshot.ArticleCountWithNivelacija.ToString(CultureInfo.InvariantCulture), "number"),
             Field("brojArtikalaUkupno", "Ukupan broj artikala", articleIds.Count.ToString(CultureInfo.InvariantCulture), "number")
         ]);
@@ -547,11 +585,15 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         if (estimatedMargin)
         {
-            var estimatedShareText = marginSnapshot.FallbackCostCoveragePct?.ToString("0.##", CultureInfo.InvariantCulture) ?? "0";
+            var fallbackShare = marginSnapshot.FallbackCostCoveragePct?.ToString("0.##", CultureInfo.InvariantCulture) ?? "0";
+            var snapshotShare = marginSnapshot.SnapshotCostCoveragePct?.ToString("0.##", CultureInfo.InvariantCulture) ?? "0";
+            var noteText = context.IsSnapshotActive && marginSnapshot.SnapshotCostRevenue > 0m
+                ? $"Istorijska nabavna cena nije sacuvana na prodajnim stavkama za deo prometa; koriscen je snapshot trosak ({snapshotShare}%) i fallback trosak artikla ({fallbackShare}%)."
+                : $"Istorijska nabavna cena nije sacuvana na prodajnim stavkama za {fallbackShare}% prometa, pa je marza za taj deo procenjena iz fallback troska artikla.";
             fields.Add(Field(
                 "marginEstimationNote",
                 "Napomena za marzu",
-                $"Istorijska nabavna cena nije sacuvana na prodajnim stavkama za {estimatedShareText}% prometa, pa je marza za taj deo procenjena iz trenutnog master troska artikla.",
+                noteText,
                 "text"));
         }
 

@@ -25,6 +25,7 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
+import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote } from "../utils/marginQuality";
 import "./SupplierSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "custom";
@@ -33,10 +34,11 @@ type SortField =
   | "dobavljacNaziv"
   | "ukupanPromet"
   | "ukupnaKolicina"
+  | "totalCost"
   | "sharePct"
   | "marginContribution"
   | "marginPct"
-  | "shareOfProfit"
+  | "shareOfMarginContribution"
   | "popRevenueChangePct"
   | "prePostNivelacijaRevenueImpactPct"
   | "status";
@@ -51,7 +53,8 @@ type ActiveFilters = {
 
 type DecisionSupplier = SupplierSalesStat & {
   sharePct: number;
-  shareOfProfit: number;
+  totalCost: number;
+  shareOfMarginContribution: number;
   shareOfUnits: number;
   reliabilityPct: number;
   splitCoveragePct: number;
@@ -75,10 +78,12 @@ const decisionColumns: AnalyticsTableColumn<DecisionSupplier>[] = [
   { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "ukupnaKolicina", header: "Količina", dataType: "number" },
+  { key: "totalCost", header: "Nabavna vrednost", dataType: "currency" },
   { key: "sharePct", header: "Udeo prometa %", dataType: "percent" },
   { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "marginPct", header: "Marža %", dataType: "percent" },
-  { key: "shareOfProfit", header: "Udeo maržnog doprinosa %", dataType: "percent" },
+  { key: "marginQualityLabel", header: "Kvalitet marže", dataType: "text" },
+  { key: "shareOfMarginContribution", header: "Udeo maržnog doprinosa %", dataType: "percent" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
 ];
@@ -552,7 +557,10 @@ export default function SupplierSalesStatsPage() {
 
     return suppliers.map((supplier) => {
       const sharePct = supplier.sharePct ?? (totalRevenue > 0 ? (supplier.ukupanPromet / totalRevenue) * 100 : 0);
-      const shareOfProfit = supplier.shareOfProfit ?? (totalMarginContribution > 0 ? (supplier.marginContribution / totalMarginContribution) * 100 : 0);
+      const totalCost = supplier.totalCost ?? Math.max(0, supplier.revenueWithCost - supplier.marginContribution);
+      const shareOfMarginContribution = supplier.shareOfMarginContribution
+        ?? supplier.shareOfProfit
+        ?? (totalMarginContribution > 0 ? (supplier.marginContribution / totalMarginContribution) * 100 : 0);
       const shareOfUnits = supplier.shareOfUnits ?? (totalUnits > 0 ? (supplier.ukupnaKolicina / totalUnits) * 100 : 0);
       const splitCoveragePct = supplier.prePostNivelacijaRevenueCoveragePct ?? 0;
       const recommended = supplier.recommendation;
@@ -573,7 +581,8 @@ export default function SupplierSalesStatsPage() {
       return {
         ...supplier,
         sharePct,
-        shareOfProfit,
+        totalCost,
+        shareOfMarginContribution,
         shareOfUnits,
         reliabilityPct,
         splitCoveragePct,
@@ -602,14 +611,16 @@ export default function SupplierSalesStatsPage() {
         compare = a.ukupanPromet - b.ukupanPromet;
       } else if (sortField === "ukupnaKolicina") {
         compare = a.ukupnaKolicina - b.ukupnaKolicina;
+      } else if (sortField === "totalCost") {
+        compare = a.totalCost - b.totalCost;
       } else if (sortField === "sharePct") {
         compare = a.sharePct - b.sharePct;
       } else if (sortField === "marginContribution") {
         compare = a.marginContribution - b.marginContribution;
       } else if (sortField === "marginPct") {
         compare = a.marginPct - b.marginPct;
-      } else if (sortField === "shareOfProfit") {
-        compare = a.shareOfProfit - b.shareOfProfit;
+      } else if (sortField === "shareOfMarginContribution") {
+        compare = a.shareOfMarginContribution - b.shareOfMarginContribution;
       } else if (sortField === "popRevenueChangePct") {
         compare = (a.popRevenueChangePct ?? -9999) - (b.popRevenueChangePct ?? -9999);
       } else if (sortField === "prePostNivelacijaRevenueImpactPct") {
@@ -716,15 +727,15 @@ export default function SupplierSalesStatsPage() {
   }, [knownSuppliers]);
 
   const comparisonData = useMemo(() => {
-    if (knownSuppliers.length === 0) return [] as Array<{ name: string; udelPrometa: number; udelZarade: number; marza: number }>;
+    if (knownSuppliers.length === 0) return [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number; marza: number }>;
 
     const ranked = [...knownSuppliers]
       .sort((a, b) => b.ukupanPromet - a.ukupanPromet);
 
     return ranked.slice(0, 8).map((row) => ({
       name: row.dobavljacNaziv,
-      udelPrometa: Number(row.sharePct.toFixed(1)),
-      udelZarade: Number(row.shareOfProfit.toFixed(1)),
+      udeoPrometa: Number(row.sharePct.toFixed(1)),
+      udeoMarznogDoprinosa: Number(row.shareOfMarginContribution.toFixed(1)),
       marza: Number(row.marginPct.toFixed(1)),
     }));
   }, [knownSuppliers]);
@@ -794,7 +805,7 @@ export default function SupplierSalesStatsPage() {
     }
 
     if (estimatedCostShare != null && estimatedCostShare > 0) {
-      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marza je procenjena iz trenutnog master troska artikla, pa je treba citati oprezno.`);
+      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marza je procenjena iz fallback troska artikla, pa je treba citati oprezno.`);
     }
 
     if (unknownShare != null && unknownShare > 0) {
@@ -821,7 +832,9 @@ export default function SupplierSalesStatsPage() {
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "suppliers", label: "Dobavljaca", value: data?.totals.brojDobavljaca ?? 0 },
       { key: "unknownSuppliers", label: "Nepoznato/N-A", value: unknownSuppliers.length },
-      { key: "marginCoverage", label: "Promet sa istorijskom nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "marginCoverage", label: "Pokrice istorijskog troska %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "fallbackCoverage", label: "Promet procenjen iz fallback troska %", value: fmtPct(data?.dataQuality.estimatedCostRevenueSharePct, 1) },
+      { key: "noCostCoverage", label: "Promet bez troska %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "totalsPopTrend", label: "Ukupan PoP trend", value: fmtPct(data?.totals.popRevenueChangePct, 1) },
       { key: "totalsPrePostImpact", label: "Ukupan nivelacija uticaj", value: fmtPct(data?.totals.prePostNivelacijaRevenueImpactPct, 1) },
       { key: "splitCoverage", label: "Uporedivo pre/post pokrivanje", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
@@ -844,6 +857,7 @@ export default function SupplierSalesStatsPage() {
       supplierCounts.doNotTrust,
       supplierCounts.insufficientData,
       unknownSuppliers.length,
+      data?.dataQuality.estimatedCostRevenueSharePct,
     ]
   );
 
@@ -1165,34 +1179,44 @@ export default function SupplierSalesStatsPage() {
           ) : null}
           <section className="supplier-decision-kpis">
             <article className="supplier-decision-kpi">
-              <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljača u izabranom periodu (RSD)." /></span>
+              <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljaca u izabranom periodu. Formula: zbir prodajnih vrednosti svih prodajnih stavki u periodu. U promet ne ulaze operativni troskovi." /></span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljača." /></span>
+              <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljaca u izabranom periodu." /></span>
               <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Ukupan maržni doprinos <InfoTip text="Zbir (prodajna vrednost − nabavna vrednost) za sve dostupne stavke sa poznatom nabavnom cenom. Formula: Σ(prodajnaVrednost − nabavnaVrednost). Nisu uključeni operativni troškovi, plate, zakup ni ostali indirektni troškovi." /></span>
-              <strong>{fmtRsd(totalMarginContribution)}</strong>
+              <span>Ukupna nabavna vrednost <InfoTip text="Zbir troska robe za deo prometa sa dostupnim troskom. Formula: zbir kolicina x nabavna cena za stavke sa istorijskim ili fallback troskom. Operativni troskovi nisu ukljuceni." /></span>
+              <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Prosečna marža <InfoTip text="Prosečan procenat maržnog doprinosa u prometu sa poznatom nabavnom cenom. Formula: maržni doprinos / promet sa poznatom nabavnom cenom × 100, po dobavljaču." /></span>
+              <span>Ukupan marzni doprinos <InfoTip text="Zbir razlike izmedju prodajne i nabavne vrednosti za stavke sa dostupnim troskom. Formula: zbir prodajna vrednost - nabavna vrednost. Operativni troskovi, plate, zakup i ostali indirektni troskovi nisu ukljuceni." /></span>
+              <strong>{fmtRsd(totalMarginContribution)}</strong>
+              <small
+                className={`supplier-decision-kpi-badge ${qualityTierClass(data.totals.marginQualityTier)}`}
+                title={data.totals.marginQualityTooltip ?? buildCoverageTooltip(data.totals.historicalCostCoveragePct, data.totals.estimatedCostCoveragePct, data.totals.noCostCoveragePct, fmtPct)}
+              >
+                {qualityTierIcon(data.totals.marginQualityTier)} {data.totals.marginQualityShortLabel ?? data.totals.marginQualityLabel}
+              </small>
+            </article>
+            <article className="supplier-decision-kpi">
+              <span>Prosecna marza <InfoTip text="Prosecan procenat marznog doprinosa po dobavljacu. Formula po dobavljacu: marzni doprinos / promet sa dostupnim troskom x 100. Prikaz je aritmeticki prosek po dobavljacima, nije ponderisan prometom." /></span>
               <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Udeo top 5 dobavljača <InfoTip text="Procenat ukupnog prometa koji dolazi od 5 najvećih dobavljača." /></span>
+              <span>Udeo top 5 dobavljaca <InfoTip text="Procenat ukupnog prometa koji dolazi od pet dobavljaca sa najvecim prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa prema istom periodu prošle godine." /></span>
+              <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste duzine. Formula: (trenutni promet - prethodni promet) / prethodni promet x 100." /></span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
 
           <section className="supplier-decision-panels">
             <article className="supplier-decision-card">
-              <h2>Koncentracija prometa</h2>
+              <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose najveci dobavljaci. Koristi samo promet, bez tumacenja profita ili neto marze." /></h2>
               <p>Top udeo prometa za brzu procenu gde je biznis koncentrisan.</p>
               {concentrationData.length > 0 ? (
                 <div className="supplier-decision-chart-wrap">
@@ -1206,7 +1230,7 @@ export default function SupplierSalesStatsPage() {
                         labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                         formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`}
                       />
-                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} name="Udeo prometa %" />
+                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} name="Udeo u prometu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1216,8 +1240,8 @@ export default function SupplierSalesStatsPage() {
             </article>
 
             <article className="supplier-decision-card">
-              <h2>Promet vs Maržni doprinos</h2>
-              <p>Poredjenje udela u prometu i udela u maržnom doprinosu — dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
+              <h2>Promet vs Marzni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u marznom doprinosu. Marzni doprinos nije neto profit i ne ukljucuje operativne troskove. Ako je deo troska procenjen iz fallback izvora, i ovaj signal treba citati oprezno." /></h2>
+              <p>Poredjenje udela u prometu i udela u marznom doprinosu - dobavljaci s visokim prometom ne moraju imati i visok marzni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="supplier-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -1231,8 +1255,8 @@ export default function SupplierSalesStatsPage() {
                         formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
                       />
                       <Legend />
-                      <Bar dataKey="udelPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo prometa %" />
-                      <Bar dataKey="udelZarade" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo maržnog doprinosa %" />
+                      <Bar dataKey="udeoPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo u marznom doprinosu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1290,23 +1314,28 @@ export default function SupplierSalesStatsPage() {
                         </button>
                       </th>
                       <th className="align-right">
+                        <button type="button" onClick={() => handleSort("totalCost")}>
+                          Nabavna vrednost{sortMarker("totalCost", sortField, sortDir)} <InfoTip text="Zbir troska robe za ovaj red. Formula: zbir kolicina x nabavna cena za stavke sa istorijskim ili fallback troskom. Operativni troskovi nisu ukljuceni." />
+                        </button>
+                      </th>
+                      <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo prometa{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Koliki procenat ukupnog prometa čini ovaj dobavljač." />
+                          Udeo u prometu{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Koliki procenat ukupnog prometa cini ovaj dobavljac. Formula: promet dobavljaca / ukupan promet svih prikazanih dobavljaca x 100." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Zbir (prodajna vrednost − nabavna vrednost) za stavke sa poznatom nabavnom cenom. Formula: Σ(prodajnaVrednost − nabavnaVrednost). Nisu uključeni operativni troškovi, plate ni ostali indirektni troškovi." />
+                          Marzni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Zbir razlike izmedju prodajne i nabavne vrednosti za stavke sa dostupnim troskom. Formula: zbir prodajna vrednost - nabavna vrednost. Operativni troskovi, plate i ostali indirektni troskovi nisu ukljuceni." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginPct")}>
-                          Marža %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat maržnog doprinosa u prometu sa poznatom nabavnom cenom. Formula: maržni doprinos / promet sa poznatom nabavnom cenom × 100. Napomena: osnova nije ukupan promet, već samo deo prometa gde je nabavna cena dostupna." />
+                          Marza %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat marznog doprinosa u prometu sa dostupnim troskom. Formula: marzni doprinos / promet sa dostupnim troskom x 100. Osnova nije ukupan promet, vec samo deo prometa gde je trosak dostupan." />
                         </button>
                       </th>
                       <th className="align-right">
-                        <button type="button" onClick={() => handleSort("shareOfProfit")}>
-                          Udeo doprinosa{sortMarker("shareOfProfit", sortField, sortDir)} <InfoTip text="Koliki procenat ukupnog maržnog doprinosa čini ovaj dobavljač. Formula: maržni doprinos dobavljača / ukupan maržni doprinos svih prikazanih dobavljača × 100." />
+                        <button type="button" onClick={() => handleSort("shareOfMarginContribution")}>
+                          Udeo u marznom doprinosu{sortMarker("shareOfMarginContribution", sortField, sortDir)} <InfoTip text="Koliki procenat ukupnog marznog doprinosa cini ovaj dobavljac. Formula: marzni doprinos dobavljaca / ukupan marzni doprinos svih prikazanih dobavljaca x 100. Ovo nije udeo u profitu niti u neto zaradi." />
                         </button>
                       </th>
                       <th className="align-right">
@@ -1316,7 +1345,7 @@ export default function SupplierSalesStatsPage() {
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Pojačaj fokus, Zadrži, U pregledu ili Smanji - preporuka bazirana na prometu, zaradi, marži i trendu." />
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Pojacaj fokus, Zadrzi, U pregledu ili Smanji - preporuka bazirana na prometu, marznom doprinosu, marzi i trendu, uz proveru kvaliteta podataka." />
                         </button>
                       </th>
                       <th className="align-center">
@@ -1327,7 +1356,7 @@ export default function SupplierSalesStatsPage() {
                   <tbody>
                     {visibleSuppliers.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="supplier-decision-empty-row">
+                        <td colSpan={11} className="supplier-decision-empty-row">
                           Nema podataka za izabrane filtere.
                         </td>
                       </tr>
@@ -1336,11 +1365,11 @@ export default function SupplierSalesStatsPage() {
                         const rowKey = supplierKey(supplier);
                         const isExpanded = expandedSupplierKey === rowKey;
                         const popMetric = describePopMetric(supplier);
-                        const profitVsRevenueMismatch = !supplier.isUnknown
+                        const contributionVsRevenueMismatch = !supplier.isUnknown
                           && supplier.sharePct > 5
-                          && supplier.shareOfProfit < supplier.sharePct * 0.5;
-                        const highProfitLowRevenue = !supplier.isUnknown
-                          && supplier.shareOfProfit > supplier.sharePct * 1.5
+                          && supplier.shareOfMarginContribution < supplier.sharePct * 0.5;
+                        const highContributionLowRevenue = !supplier.isUnknown
+                          && supplier.shareOfMarginContribution > supplier.sharePct * 1.5
                           && supplier.sharePct < 10;
                         return (
                           <tr
@@ -1348,8 +1377,8 @@ export default function SupplierSalesStatsPage() {
                             className={[
                               isExpanded ? "expanded-row" : "",
                               supplier.isUnknown ? "supplier-unknown-row" : "",
-                              profitVsRevenueMismatch ? "supplier-mismatch-row" : "",
-                              highProfitLowRevenue ? "supplier-high-profit-row" : "",
+                              contributionVsRevenueMismatch ? "supplier-mismatch-row" : "",
+                              highContributionLowRevenue ? "supplier-high-profit-row" : "",
                             ].filter(Boolean).join(" ")}
                           >
                             <td>
@@ -1377,10 +1406,11 @@ export default function SupplierSalesStatsPage() {
                             </td>
                             <td className="align-right">{fmtRsd(supplier.ukupanPromet)}</td>
                             <td className="align-right">{fmtQty(supplier.ukupnaKolicina)}</td>
+                            <td className="align-right">{fmtRsd(supplier.totalCost)}</td>
                             <td className="align-right">{fmtPct(supplier.sharePct, 1)}</td>
                             <td className="align-right">{fmtRsd(supplier.marginContribution)}</td>
-                            <td className="align-right">{fmtPct(supplier.marginPct, 1)}</td>
-                            <td className="align-right">{fmtPct(supplier.shareOfProfit, 1)}</td>
+                            <td className="align-right">{fmtPct(supplier.marginPct, 1)}{tierNeedsWarning(supplier.marginQualityTier) ? <span className={`supplier-decision-kpi-badge ${qualityTierClass(supplier.marginQualityTier)}`} title={supplier.marginQualityTooltip ?? supplier.marginQualityLabel ?? ""}> {qualityTierIcon(supplier.marginQualityTier)}</span> : null}</td>
+                            <td className="align-right">{fmtPct(supplier.shareOfMarginContribution, 1)}</td>
                             <td className={["align-right", popMetric.className].join(" ")} title={popMetric.title}>
                               {popMetric.label}
                             </td>
@@ -1436,32 +1466,36 @@ export default function SupplierSalesStatsPage() {
               <h4 className="supplier-detail-section-title">Poslovni pokazatelji</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>Promet <InfoTip text="Ukupna vrednost prodaje ovog dobavljača." /></span>
+                  <span>Promet <InfoTip text="Ukupna vrednost prodaje ovog dobavljaca u izabranom periodu. Formula: zbir prodajnih vrednosti stavki ovog dobavljaca." /></span>
                   <strong>{fmtRsd(selectedSupplier.ukupanPromet)}</strong>
                 </article>
                 <article>
-                  <span>Prodata količina <InfoTip text="Ukupan broj prodatih komada." /></span>
+                  <span>Prodata kolicina <InfoTip text="Ukupan broj prodatih komada ovog dobavljaca u izabranom periodu." /></span>
                   <strong>{fmtQty(selectedSupplier.ukupnaKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Maržni doprinos <InfoTip text="Zbir (prodajna vrednost − nabavna vrednost) za stavke sa poznatom nabavnom cenom. Nisu uključeni operativni troškovi, plate, zakup ni ostali indirektni troškovi." /></span>
+                  <span>Nabavna vrednost <InfoTip text="Zbir troska robe za ovaj red. Formula: zbir kolicina x nabavna cena za stavke sa istorijskim ili fallback troskom. Operativni troskovi nisu ukljuceni." /></span>
+                  <strong>{fmtRsd(selectedSupplier.totalCost)}</strong>
+                </article>
+                <article>
+                  <span>Marzni doprinos <InfoTip text="Zbir razlike izmedju prodajne i nabavne vrednosti za stavke sa dostupnim troskom. Operativni troskovi, plate, zakup i ostali indirektni troskovi nisu ukljuceni." /></span>
                   <strong className={selectedSupplier.marginContribution > 0 ? "trend-up" : selectedSupplier.marginContribution < 0 ? "trend-down" : ""}>
                     {fmtRsd(selectedSupplier.marginContribution)}
                   </strong>
                 </article>
                 <article>
-                  <span>Marža % <InfoTip text="Formula: maržni doprinos / promet sa poznatom nabavnom cenom × 100. Osnova je samo promet gde je nabavna cena dostupna, ne ukupan promet." /></span>
+                  <span>Marza % <InfoTip text="Formula: marzni doprinos / promet sa dostupnim troskom x 100. Osnova je samo promet gde je trosak dostupan, ne ukupan promet." /></span>
                   <strong className={selectedSupplier.marginPct != null && selectedSupplier.marginPct > 0 ? "trend-up" : selectedSupplier.marginPct != null && selectedSupplier.marginPct < 0 ? "trend-down" : ""}>
                     {fmtSignedPct(selectedSupplier.marginPct, 2)}
                   </strong>
                 </article>
                 <article>
-                  <span>Udeo u prometu <InfoTip text="Koliki deo ukupnog prometa čini ovaj dobavljač (%)." /></span>
+                  <span>Udeo u prometu <InfoTip text="Koliki deo ukupnog prometa cini ovaj dobavljac. Formula: promet dobavljaca / ukupan promet svih prikazanih dobavljaca x 100." /></span>
                   <strong>{fmtPct(selectedSupplier.sharePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Udeo u maržnom doprinosu <InfoTip text="Koliki procenat ukupnog maržnog doprinosa čini ovaj dobavljač. Formula: maržni doprinos dobavljača / ukupan maržni doprinos svih prikazanih dobavljača × 100." /></span>
-                  <strong>{fmtPct(selectedSupplier.shareOfProfit, 1)}</strong>
+                  <span>Udeo u marznom doprinosu <InfoTip text="Koliki procenat ukupnog marznog doprinosa cini ovaj dobavljac. Formula: marzni doprinos dobavljaca / ukupan marzni doprinos svih prikazanih dobavljaca x 100. Ovo nije udeo u profitu niti u neto zaradi." /></span>
+                  <strong>{fmtPct(selectedSupplier.shareOfMarginContribution, 1)}</strong>
                 </article>
                 <article>
                   <span>Udeo u količini <InfoTip text="Koliki deo ukupne prodane količine čini ovaj dobavljač (%)." /></span>
@@ -1531,16 +1565,28 @@ export default function SupplierSalesStatsPage() {
               <h4 className="supplier-detail-section-title">Kvalitet podataka</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
+                  <span>Kvalitet marže <InfoTip text="Klasifikacija pouzdanosti obracuna marze na osnovu pokrica nabavne cene: Potvrđena (≥80% istorijski), Delimično (≥50% istorijski), Procenjena (<50% istorijski), Bez troška (0% pokrice)." /></span>
+                  <strong>
+                    <span className={`supplier-decision-kpi-badge ${qualityTierClass(selectedSupplier.marginQualityTier)}`}>
+                      {qualityTierIcon(selectedSupplier.marginQualityTier)} {selectedSupplier.marginQualityLabel}
+                    </span>
+                  </strong>
+                </article>
+                <article>
                   <span>Pouzdanost <InfoTip text="Procenat procenjen na osnovu dostupnosti podataka, signala i konzistentnosti." /></span>
                   <strong>{fmtPct(selectedSupplier.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Istorijsko pokrivanje marže <InfoTip text="Procenat prometa sa poznatom istorijskom nabavnom cenom (sa prodajne stavke)." /></span>
-                  <strong>{fmtPct(selectedSupplier.marginDataCoveragePct, 1)}</strong>
+                  <span>Pokrice istorijskog troska % <InfoTip text="Procenat prometa za koji je trosak preuzet sa prodajne stavke, bez fallback procene iz artikla. Formula: promet sa istorijskim troskom / ukupan promet x 100." /></span>
+                  <strong>{fmtPct(selectedSupplier.historicalCostCoveragePct ?? selectedSupplier.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Master fallback trošak <InfoTip text="Procenat prometa gde je nabavna cena procenjena iz trenutnog master troška artikla." /></span>
-                  <strong>{fmtPct(selectedSupplier.fallbackCostCoveragePct, 1)}</strong>
+                  <span>Promet procenjen iz fallback troska % <InfoTip text="Procenat prometa gde je trosak procenjen iz fallback izvora artikla. Formula: promet sa fallback troskom / ukupan promet x 100. Operativni troskovi nisu ukljuceni." /></span>
+                  <strong>{fmtPct(selectedSupplier.estimatedCostCoveragePct ?? selectedSupplier.fallbackCostCoveragePct, 1)}</strong>
+                </article>
+                <article>
+                  <span>Promet bez troska % <InfoTip text="Procenat prometa koji nema ni istorijski ni fallback trosak, pa ne ulazi u obracun marznog doprinosa ni marze %. Formula: promet bez troska / ukupan promet x 100." /></span>
+                  <strong>{fmtPct(selectedSupplier.noCostCoveragePct, 1)}</strong>
                 </article>
                 <article>
                   <span>Sigurnost preporuke <InfoTip text="Ukupna sigurnost preporuke bazirana na svim dostupnim signalima (0-100%)." /></span>
@@ -1554,11 +1600,32 @@ export default function SupplierSalesStatsPage() {
                 </p>
               ) : null}
 
-              {selectedSupplier.estimatedCostRevenue > 0 ? (
-                <p className="supplier-decision-reason">
-                  <strong>Napomena za maržu:</strong> Marža je delom procenjena iz trenutnog master troška artikla za {fmtPct(selectedSupplier.fallbackCostCoveragePct, 1)} prometa.
-                </p>
-              ) : null}
+              {(() => {
+                const marginNote = buildMarginDetailNote(
+                  selectedSupplier.marginQualityTier,
+                  selectedSupplier.estimatedCostCoveragePct ?? selectedSupplier.fallbackCostCoveragePct,
+                  selectedSupplier.historicalCostCoveragePct ?? selectedSupplier.marginDataCoveragePct,
+                  fmtPct
+                );
+                return marginNote ? (
+                  <p className="supplier-decision-reason">
+                    <strong>Napomena za maržu:</strong> {marginNote}
+                  </p>
+                ) : null;
+              })()}
+
+              {(() => {
+                const recCaveat = buildRecommendationCaveat(
+                  selectedSupplier.marginQualityTier,
+                  selectedSupplier.estimatedCostCoveragePct ?? selectedSupplier.fallbackCostCoveragePct,
+                  fmtPct
+                );
+                return recCaveat ? (
+                  <p className="supplier-decision-reason">
+                    <strong>Napomena za preporuku:</strong> {recCaveat}
+                  </p>
+                ) : null;
+              })()}
 
               <p className="supplier-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedSupplier.statusReason}

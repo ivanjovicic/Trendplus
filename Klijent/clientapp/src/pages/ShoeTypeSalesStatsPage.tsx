@@ -25,6 +25,7 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
+import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote } from "../utils/marginQuality";
 import "./ShoeTypeSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "custom";
@@ -33,6 +34,7 @@ type SortField =
   | "tipObuceNaziv"
   | "ukupanPromet"
   | "ukupnaKolicina"
+  | "totalCost"
   | "sharePct"
   | "marginContribution"
   | "marginPct"
@@ -50,6 +52,7 @@ type ActiveFilters = {
 
 type DecisionShoeType = ShoeTypeSalesStat & {
   sharePct: number;
+  totalCost: number;
   marginContribution: number;
   reliabilityPct: number;
   coveragePct: number;
@@ -75,9 +78,11 @@ const decisionColumns: AnalyticsTableColumn<DecisionShoeType>[] = [
   { key: "tipObuceNaziv", header: "Tip obuće", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "ukupnaKolicina", header: "Količina", dataType: "number" },
+  { key: "totalCost", header: "Nabavna vrednost", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
   { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "marginPct", header: "Marža %", dataType: "percent" },
+  { key: "marginQualityLabel", header: "Kvalitet marže", dataType: "text" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
@@ -441,6 +446,7 @@ export default function ShoeTypeSalesStatsPage() {
 
     return rows.map((item) => {
       const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : 0;
+      const totalCost = item.totalCost ?? Math.max(0, item.revenueWithCost - item.marginContribution);
       const marginContribution = item.marginContribution;
       const popRevenueChangePct = item.popRevenueChangePct;
       const splitCoveragePct = item.prePostNivelacijaRevenueCoveragePct ?? 0;
@@ -456,6 +462,7 @@ export default function ShoeTypeSalesStatsPage() {
         return {
           ...item,
           sharePct: item.sharePct ?? sharePct,
+          totalCost,
           marginContribution,
           reliabilityPct: item.recommendation?.reliabilityPct ?? item.reliabilityPct ?? (item.marginDataCoveragePct ?? 0),
           coveragePct,
@@ -510,6 +517,7 @@ export default function ShoeTypeSalesStatsPage() {
       return {
         ...item,
         sharePct,
+        totalCost,
         marginContribution,
         reliabilityPct,
         coveragePct,
@@ -532,6 +540,8 @@ export default function ShoeTypeSalesStatsPage() {
         compare = a.ukupanPromet - b.ukupanPromet;
       } else if (sortField === "ukupnaKolicina") {
         compare = a.ukupnaKolicina - b.ukupnaKolicina;
+      } else if (sortField === "totalCost") {
+        compare = a.totalCost - b.totalCost;
       } else if (sortField === "sharePct") {
         compare = a.sharePct - b.sharePct;
       } else if (sortField === "marginContribution") {
@@ -610,14 +620,14 @@ export default function ShoeTypeSalesStatsPage() {
 
   const comparisonData = useMemo(() => {
     if (sortedRows.length === 0 || totalMarginContribution <= 0)
-      return [] as Array<{ name: string; udelPrometa: number; udelZarade: number }>;
+      return [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number }>;
 
     const ranked = [...sortedRows].sort((a, b) => b.ukupanPromet - a.ukupanPromet);
 
     return ranked.slice(0, 8).map((row) => ({
       name: row.tipObuceNaziv,
-      udelPrometa: Number(row.sharePct.toFixed(1)),
-      udelZarade: Number(
+      udeoPrometa: Number(row.sharePct.toFixed(1)),
+      udeoMarznogDoprinosa: Number(
         (totalMarginContribution > 0
           ? (row.marginContribution / totalMarginContribution) * 100
           : 0
@@ -690,7 +700,7 @@ export default function ShoeTypeSalesStatsPage() {
     }
 
     if (estimatedCostShare != null && estimatedCostShare > 0) {
-      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marža je procenjena iz trenutnog master troška artikla, pa je treba čitati oprezno.`);
+      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marza je procenjena iz fallback troska artikla, pa je treba citati oprezno.`);
     }
 
     if (unknownShare != null && unknownShare > 0) {
@@ -714,7 +724,9 @@ export default function ShoeTypeSalesStatsPage() {
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "tipova", label: "Tipova", value: data?.totals.brojTipovaObuce ?? 0 },
-      { key: "marginCoverage", label: "Promet sa istorijskom nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "marginCoverage", label: "Pokrice istorijskog troska %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "fallbackCoverage", label: "Promet procenjen iz fallback troska %", value: fmtPct(data?.dataQuality.estimatedCostRevenueSharePct, 1) },
+      { key: "noCostCoverage", label: "Promet bez troska %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "splitCoverage", label: "Uporediv pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
       { key: "boost", label: "Pojacaj", value: counts.boost },
       { key: "keep", label: "Zadrzi", value: counts.keep },
@@ -724,6 +736,7 @@ export default function ShoeTypeSalesStatsPage() {
       counts.boost,
       counts.keep,
       counts.reduce,
+      data?.dataQuality.estimatedCostRevenueSharePct,
       data?.dataQuality.missingCostRevenueSharePct,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.generatedAt,
@@ -947,26 +960,36 @@ export default function ShoeTypeSalesStatsPage() {
               <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Ukupan maržni doprinos <InfoTip text="Zbir (prodajna vrednost − nabavna vrednost) za sve stavke sa poznatom nabavnom cenom, grupisano po tipu obuće. Nisu uključeni operativni troškovi, plate, zakup ni ostali indirektni troškovi." /></span>
-              <strong>{fmtRsd(totalMarginContribution)}</strong>
+              <span>Ukupna nabavna vrednost <InfoTip text="Zbir troska robe za deo prometa sa dostupnim troskom. Formula: zbir kolicina x nabavna cena za stavke sa istorijskim ili fallback troskom. Operativni troskovi nisu ukljuceni." /></span>
+              <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Prosečna marža <InfoTip text="Prosečan procenat maržnog doprinosa po tipu obuće. Formula po tipu: maržni doprinos / promet sa poznatom nabavnom cenom × 100. Prikazani prosečk je aritmetički prosečk među tipovima, nije ponderisan prometom." /></span>
+              <span>Ukupan marzni doprinos <InfoTip text="Zbir razlike izmedju prodajne i nabavne vrednosti za sve stavke sa dostupnim troskom, grupisano po tipu obuce. Operativni troskovi, plate, zakup i ostali indirektni troskovi nisu ukljuceni." /></span>
+              <strong>{fmtRsd(totalMarginContribution)}</strong>
+              <small
+                className={`shoetype-decision-kpi-badge ${qualityTierClass(data.totals.marginQualityTier)}`}
+                title={data.totals.marginQualityTooltip ?? buildCoverageTooltip(data.totals.historicalCostCoveragePct, data.totals.estimatedCostCoveragePct, data.totals.noCostCoveragePct, fmtPct)}
+              >
+                {qualityTierIcon(data.totals.marginQualityTier)} {data.totals.marginQualityShortLabel ?? data.totals.marginQualityLabel}
+              </small>
+            </article>
+            <article className="shoetype-decision-kpi">
+              <span>Prosecna marza <InfoTip text="Prosecan procenat marznog doprinosa po tipu obuce. Formula po tipu: marzni doprinos / promet sa dostupnim troskom x 100. Prikazani prosek je aritmeticki prosek medju tipovima, nije ponderisan prometom." /></span>
               <strong>{fmtPct(avgMarginPct, 1)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Udeo top 5 tipova <InfoTip text="Procenat ukupnog prometa koji dolazi od 5 tipova obuće s najvišim prometom. Formula: promet top 5 / ukupan promet × 100." /></span>
+              <span>Udeo top 5 tipova <InfoTip text="Procenat ukupnog prometa koji dolazi od pet tipova obuce sa najvecim prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>PoP trend prometa <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet − prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
+              <span>PoP trend prometa <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste duzine. Formula: (trenutni promet - prethodni promet) / prethodni promet x 100. N/A ako prethodni period nije dostupan." /></span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
 
           <section className="shoetype-decision-panels">
             <article className="shoetype-decision-card">
-              <h2>Koncentracija prometa po tipu obuce</h2>
+              <h2>Koncentracija prometa po tipu obuce <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose tipovi obuce. Koristi samo promet, bez tumacenja profita ili neto marze." /></h2>
               <p>Brz pregled koji tipovi nose najveci deo prihoda.</p>
               {concentrationData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap">
@@ -986,8 +1009,8 @@ export default function ShoeTypeSalesStatsPage() {
             </article>
 
             <article className="shoetype-decision-card">
-              <h2>Promet vs Maržni doprinos</h2>
-              <p>Poređenje udela u prometu i udela u maržnom doprinosu — dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
+              <h2>Promet vs Marzni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u marznom doprinosu po tipu obuce. Marzni doprinos nije neto profit i ne ukljucuje operativne troskove. Ako je deo troska procenjen iz fallback izvora, i ovaj signal treba citati oprezno." /></h2>
+              <p>Poredjenje udela u prometu i udela u marznom doprinosu - tipovi obuce s visokim prometom ne moraju imati i visok marzni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -1001,8 +1024,8 @@ export default function ShoeTypeSalesStatsPage() {
                         formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
                       />
                       <Legend />
-                      <Bar dataKey="udelPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo prometa %" />
-                      <Bar dataKey="udelZarade" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo maržnog doprinosa %" />
+                      <Bar dataKey="udeoPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo u marznom doprinosu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1055,18 +1078,23 @@ export default function ShoeTypeSalesStatsPage() {
                         </button>
                       </th>
                       <th className="align-right">
+                        <button type="button" onClick={() => handleSort("totalCost")}>
+                          Nabavna vrednost{sortMarker("totalCost", sortField, sortDir)} <InfoTip text="Zbir troska robe za ovaj red. Formula: zbir kolicina x nabavna cena za stavke sa istorijskim ili fallback troskom. Operativni troskovi nisu ukljuceni." />
+                        </button>
+                      </th>
+                      <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo%{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo ovog tipa obuće u ukupnom prometu svih prikazanih tipova. Formula: promet tipa / ukupan promet × 100." />
+                          Udeo u prometu{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo ovog tipa obuce u ukupnom prometu svih prikazanih tipova. Formula: promet tipa / ukupan promet x 100." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Zbir (prodajna vrednost − nabavna vrednost) za stavke ovog tipa sa poznatom nabavnom cenom. Nisu uključeni operativni troškovi, plate, zakup ni ostali indirektni troškovi." />
+                          Marzni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Zbir razlike izmedju prodajne i nabavne vrednosti za stavke ovog tipa sa dostupnim troskom. Operativni troskovi, plate, zakup i ostali indirektni troskovi nisu ukljuceni." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginPct")}>
-                          Marža %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat maržnog doprinosa u prometu sa poznatom nabavnom cenom. Formula: maržni doprinos / promet sa poznatom nabavnom cenom × 100. Osnova nije ukupan promet, već samo deo sa dostupnom nabavnom cenom." />
+                          Marza %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat marznog doprinosa u prometu sa dostupnim troskom. Formula: marzni doprinos / promet sa dostupnim troskom x 100. Osnova nije ukupan promet, vec samo deo sa dostupnim troskom." />
                         </button>
                       </th>
                       <th className="align-right">
@@ -1090,7 +1118,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <tbody>
                     {sortedRows.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="shoetype-decision-empty-row">
+                        <td colSpan={11} className="shoetype-decision-empty-row">
                           Nema podataka za izabrane filtere.
                         </td>
                       </tr>
@@ -1118,9 +1146,10 @@ export default function ShoeTypeSalesStatsPage() {
                             </td>
                             <td className="align-right">{fmtRsd(row.ukupanPromet)}</td>
                             <td className="align-right">{fmtQty(row.ukupnaKolicina)}</td>
+                            <td className="align-right">{fmtRsd(row.totalCost)}</td>
                             <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
                             <td className="align-right">{fmtRsd(row.marginContribution)}</td>
-                            <td className="align-right">{fmtPct(row.marginPct, 1)}</td>
+                            <td className="align-right">{fmtPct(row.marginPct, 1)}{tierNeedsWarning(row.marginQualityTier) ? <span className={`shoetype-decision-kpi-badge ${qualityTierClass(row.marginQualityTier)}`} title={row.marginQualityTooltip ?? row.marginQualityLabel ?? ""}> {qualityTierIcon(row.marginQualityTier)}</span> : null}</td>
                             <td className={["align-right", popMetric.className].join(" ")} title={popMetric.title}>{popMetric.label}</td>
                             <td className={["align-right", nivelacijaImpactMetric.className].join(" ")} title={nivelacijaImpactMetric.title}>{nivelacijaImpactMetric.label}</td>
                             <td>
@@ -1161,27 +1190,31 @@ export default function ShoeTypeSalesStatsPage() {
               <h4 className="shoetype-decision-detail-section-title">Poslovni pokazatelji</h4>
               <div className="shoetype-decision-detail-grid">
                 <article>
-                  <span>Promet <InfoTip text="Ukupna vrednost prodaje ovog tipa obuće u izabranom periodu." /></span>
+                  <span>Promet <InfoTip text="Ukupna vrednost prodaje ovog tipa obuce u izabranom periodu. Formula: zbir prodajnih vrednosti stavki ovog tipa." /></span>
                   <strong>{fmtRsd(selectedRow.ukupanPromet)}</strong>
                 </article>
                 <article>
-                  <span>Količina <InfoTip text="Ukupan broj prodatih komada ovog tipa obuće." /></span>
+                  <span>Kolicina <InfoTip text="Ukupan broj prodatih komada ovog tipa obuce." /></span>
                   <strong>{fmtQty(selectedRow.ukupnaKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Maržni doprinos <InfoTip text="Zbir (prodajna vrednost − nabavna vrednost) za stavke sa poznatom nabavnom cenom. Nisu uključeni operativni troškovi, plate, zakup ni ostali indirektni troškovi." /></span>
+                  <span>Nabavna vrednost <InfoTip text="Zbir troska robe za ovaj red. Formula: zbir kolicina x nabavna cena za stavke sa istorijskim ili fallback troskom. Operativni troskovi nisu ukljuceni." /></span>
+                  <strong>{fmtRsd(selectedRow.totalCost)}</strong>
+                </article>
+                <article>
+                  <span>Marzni doprinos <InfoTip text="Zbir razlike izmedju prodajne i nabavne vrednosti za stavke sa dostupnim troskom. Operativni troskovi, plate, zakup i ostali indirektni troskovi nisu ukljuceni." /></span>
                   <strong>{fmtRsd(selectedRow.marginContribution)}</strong>
                 </article>
                 <article>
-                  <span>Marža % <InfoTip text="Procenat maržnog doprinosa u prometu sa poznatom nabavnom cenom. Formula: maržni doprinos / promet sa poznatom nabavnom cenom × 100. Osnova nije ukupan promet, već samo deo gde je nabavna cena dostupna." /></span>
+                  <span>Marza % <InfoTip text="Procenat marznog doprinosa u prometu sa dostupnim troskom. Formula: marzni doprinos / promet sa dostupnim troskom x 100. Osnova nije ukupan promet, vec samo deo gde je trosak dostupan." /></span>
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Udeo u prometu <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnom prometu." /></span>
+                  <span>Udeo u prometu <InfoTip text="Procenat koji ovaj tip obuce cini u ukupnom prometu. Formula: promet tipa / ukupan promet svih prikazanih tipova x 100." /></span>
                   <strong>{fmtPct(selectedRow.sharePct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Udeo u maržnom doprinosu <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnom maržnom doprinosu. Formula: maržni doprinos tipa / ukupan maržni doprinos svih tipova × 100." /></span>
+                  <span>Udeo u marznom doprinosu <InfoTip text="Procenat koji ovaj tip obuce cini u ukupnom marznom doprinosu. Formula: marzni doprinos tipa / ukupan marzni doprinos svih tipova x 100. Ovo nije udeo u profitu niti u neto zaradi." /></span>
                   <strong>{fmtPct(totalMarginContribution > 0 ? (selectedRow.marginContribution / totalMarginContribution) * 100 : 0, 2)}</strong>
                 </article>
                 <article>
@@ -1259,16 +1292,28 @@ export default function ShoeTypeSalesStatsPage() {
               <h4 className="shoetype-decision-detail-section-title">Kvalitet podataka</h4>
               <div className="shoetype-decision-detail-grid">
                 <article>
+                  <span>Kvalitet marže <InfoTip text="Klasifikacija pouzdanosti obracuna marze na osnovu pokrica nabavne cene: Potvrđena (≥80% istorijski), Delimično (≥50% istorijski), Procenjena (<50% istorijski), Bez troška (0% pokrice)." /></span>
+                  <strong>
+                    <span className={`shoetype-decision-kpi-badge ${qualityTierClass(selectedRow.marginQualityTier)}`}>
+                      {qualityTierIcon(selectedRow.marginQualityTier)} {selectedRow.marginQualityLabel}
+                    </span>
+                  </strong>
+                </article>
+                <article>
                   <span>Pouzdanost podataka <InfoTip text="Procenat kvalitete i trenutnosti podataka koji su korišćeni za analizu." /></span>
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Istorijsko pokrice marže <InfoTip text="Procenat prometa sa poznatom nabavnom cenom iz prodajnog transakcija." /></span>
-                  <strong>{fmtPct(selectedRow.marginDataCoveragePct, 1)}</strong>
+                  <span>Pokrice istorijskog troska % <InfoTip text="Procenat prometa za koji je trosak preuzet sa prodajne stavke, bez fallback procene iz artikla. Formula: promet sa istorijskim troskom / ukupan promet x 100." /></span>
+                  <strong>{fmtPct(selectedRow.historicalCostCoveragePct ?? selectedRow.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Master fallback trošak <InfoTip text="Procenat prometa gde je nabavna cena procenjena iz trenutnog master troška artikla." /></span>
-                  <strong>{fmtPct(selectedRow.fallbackCostCoveragePct, 1)}</strong>
+                  <span>Promet procenjen iz fallback troska % <InfoTip text="Procenat prometa gde je trosak procenjen iz fallback izvora artikla. Formula: promet sa fallback troskom / ukupan promet x 100. Operativni troskovi nisu ukljuceni." /></span>
+                  <strong>{fmtPct(selectedRow.estimatedCostCoveragePct ?? selectedRow.fallbackCostCoveragePct, 1)}</strong>
+                </article>
+                <article>
+                  <span>Promet bez troska % <InfoTip text="Procenat prometa koji nema ni istorijski ni fallback trosak, pa ne ulazi u obracun marznog doprinosa ni marze %. Formula: promet bez troska / ukupan promet x 100." /></span>
+                  <strong>{fmtPct(selectedRow.noCostCoveragePct, 1)}</strong>
                 </article>
                 <article>
                   <span>Sigurnost preporuke <InfoTip text="Numerička vrednost koja odražava kvalitet preporuke (viši skor = pouzdanija preporuka)." /></span>
@@ -1282,11 +1327,32 @@ export default function ShoeTypeSalesStatsPage() {
                 </p>
               ) : null}
 
-              {selectedRow.estimatedCostRevenue > 0 ? (
-                <p className="shoetype-decision-reason">
-                  <strong>Napomena za marža:</strong> Marža je delom procenjena iz trenutnog master troška artikla za {fmtPct(selectedRow.fallbackCostCoveragePct, 1)} prometa.
-                </p>
-              ) : null}
+              {(() => {
+                const marginNote = buildMarginDetailNote(
+                  selectedRow.marginQualityTier,
+                  selectedRow.estimatedCostCoveragePct ?? selectedRow.fallbackCostCoveragePct,
+                  selectedRow.historicalCostCoveragePct ?? selectedRow.marginDataCoveragePct,
+                  fmtPct
+                );
+                return marginNote ? (
+                  <p className="shoetype-decision-reason">
+                    <strong>Napomena za maržu:</strong> {marginNote}
+                  </p>
+                ) : null;
+              })()}
+
+              {(() => {
+                const recCaveat = buildRecommendationCaveat(
+                  selectedRow.marginQualityTier,
+                  selectedRow.estimatedCostCoveragePct ?? selectedRow.fallbackCostCoveragePct,
+                  fmtPct
+                );
+                return recCaveat ? (
+                  <p className="shoetype-decision-reason">
+                    <strong>Napomena za preporuku:</strong> {recCaveat}
+                  </p>
+                ) : null;
+              })()}
 
               <p className="shoetype-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedRow.statusReason}

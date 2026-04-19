@@ -27,6 +27,8 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
+using Infrastructure.Configuration;
+using Microsoft.Extensions.Options;
 using Domain.Model.TrendShoes;
 using Application.TrendShoes;
 using System.Globalization;
@@ -974,6 +976,7 @@ public static class AllEndpoints
             TrendplusDbContext db,
             IMemoryCache cache,
             ILogger<Program> logger,
+            IOptions<AnalyticsSnapshotOptions> snapshotOptionsRaw,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -1063,10 +1066,35 @@ public static class AllEndpoints
                     });
                 }
 
-                var cacheKey = $"supplier-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}";
+                // Resolve active snapshot batch once per request (used in cache key + cost resolution)
+                var snapshotOptions = snapshotOptionsRaw.Value;
+                long? activeBatchId = null;
+                DateTime? activeBatchGeneratedAt = null;
+                if (snapshotOptions.UseSnapshotCost)
+                {
+                    var activeBatch = await db.AnalyticsCostSnapshotBatches
+                        .Where(b => b.Status == "active" && b.Scope == "access_origin")
+                        .Select(b => new { b.Id, b.GeneratedAtUtc })
+                        .FirstOrDefaultAsync(ct);
+                    activeBatchId = activeBatch?.Id;
+                    activeBatchGeneratedAt = activeBatch?.GeneratedAtUtc;
+                }
+
+                var cacheKey = $"supplier-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}:snap:{activeBatchId}";
                 if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
                 {
                     return Results.Ok(cachedResponse);
+                }
+
+                // Load per-article snapshot costs when active batch exists
+                Dictionary<int, decimal> snapshotCostByArtikalId = [];
+                if (activeBatchId.HasValue)
+                {
+                    snapshotCostByArtikalId = await db.AnalyticsSaleLineCostSnapshots
+                        .Where(s => s.BatchId == activeBatchId.Value)
+                        .GroupBy(s => s.ArtikalId)
+                        .Select(g => new { ArtikalId = g.Key, Cost = g.Min(s => s.ResolvedUnitCost) })
+                        .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
                 }
 
                 var dataWindow = await (
@@ -1226,10 +1254,14 @@ public static class AllEndpoints
                             totalRevenue += s.Prihod;
                             totalQty += s.Kolicina;
                             articleIds.Add(s.ArtikalId);
+                            decimal? snapshotCost = null;
+                            if (s.SaleLineCost is null && snapshotCostByArtikalId.TryGetValue(s.ArtikalId, out var sc))
+                                snapshotCost = sc;
                             margin.Add(
                                 s.Prihod,
                                 s.Kolicina,
                                 s.SaleLineCost,
+                                snapshotCost,
                                 s.ProductCostRsd,
                                 s.ProductCostLegacy);
                         }
@@ -1248,6 +1280,7 @@ public static class AllEndpoints
                             : g.Key.DobavljacNaziv;
                         var isUnknown = !g.Key.DobavljacId.HasValue
                             || string.Equals(normalizedSupplierName, "Nepoznato", StringComparison.OrdinalIgnoreCase);
+                        var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
 
                         return new
                         {
@@ -1268,6 +1301,23 @@ public static class AllEndpoints
                             marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
                             fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
+                            // Cost quality breakdown
+                            totalCost = marginSnapshot.TotalCost,
+                            historicalCostRevenue = marginSnapshot.HistoricalCostRevenue,
+                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct ?? 0d,
+                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct ?? 0d,
+                            snapshotCostRevenue = marginSnapshot.SnapshotCostRevenue,
+                            snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct ?? 0d,
+                            noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
+                            noCostCoveragePct = totalRevenue > 0m
+                                ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
+                                : 0d,
+                            isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
+                            marginQualityLabel = (marginSnapshot.HistoricalMarginCoveragePct ?? 0) >= 50
+                                ? (string?)null
+                                : (marginSnapshot.MarginDataCoveragePct ?? 0) > 0
+                                    ? "Procenjena iz troška artikla"
+                                    : "Trošak nedostupan",
                             revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
                             comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
                             previousPeriodRevenue = hasPreviousComparablePeriod
@@ -1382,7 +1432,7 @@ public static class AllEndpoints
                         var sharePct = totalRevenue > 0m
                             ? Math.Round((double)(supplier.ukupanPromet / totalRevenue * 100m), 2)
                             : 0d;
-                        var shareOfProfit = totalMarginContribution > 0m
+                        var shareOfMarginContribution = totalMarginContribution > 0m
                             ? Math.Round((double)(supplier.marginContribution / totalMarginContribution * 100m), 2)
                             : 0d;
                         var shareOfUnits = totalUnits > 0
@@ -1430,6 +1480,16 @@ public static class AllEndpoints
                             supplier.marginDataCoveragePct,
                             supplier.fallbackCostCoveragePct,
                             supplier.marginPct,
+                            supplier.totalCost,
+                            supplier.historicalCostRevenue,
+                            supplier.historicalCostCoveragePct,
+                            supplier.estimatedCostCoveragePct,
+                            supplier.snapshotCostRevenue,
+                            supplier.snapshotCostCoveragePct,
+                            supplier.noCostRevenue,
+                            supplier.noCostCoveragePct,
+                            supplier.isEstimatedMargin,
+                            supplier.marginQualityLabel,
                             supplier.revenueWithNivelacijaSplit,
                             supplier.comparableRevenueWithNivelacijaSplit,
                             supplier.previousPeriodRevenue,
@@ -1442,7 +1502,8 @@ public static class AllEndpoints
                             supplier.prePostSignalNote,
                             supplier.prePostComparableArticleCount,
                             sharePct,
-                            shareOfProfit,
+                            shareOfMarginContribution,
+                            shareOfProfit = shareOfMarginContribution,
                             shareOfUnits,
                             reliabilityPct = recommendation.ReliabilityPct,
                             recommendation = new
@@ -1462,11 +1523,38 @@ public static class AllEndpoints
                     })
                     .ToList();
 
+                var totalHistPct = totalRevenue > 0m
+                    ? Math.Round((double)(suppliers.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalSnapshotPct = totalRevenue > 0m
+                    ? Math.Round((double)(suppliers.Sum(r => r.snapshotCostRevenue) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalEstPct = totalRevenue > 0m
+                    ? Math.Round((double)(suppliers.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalNoCostPct = totalRevenue > 0m
+                    ? Math.Round((double)((totalRevenue - suppliers.Sum(r => r.historicalCostRevenue) - suppliers.Sum(r => r.snapshotCostRevenue) - suppliers.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct + totalSnapshotPct, totalNoCostPct, totalHistPct + totalEstPct + totalSnapshotPct);
+
                 var totals = new
                 {
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = suppliers.Sum(r => r.marginContribution),
+                    ukupanTrosak = suppliers.Sum(r => r.totalCost),
                     prosecnaMarza = Math.Round(averageKnownMarginPct, 2),
+                    historicalCostCoveragePct = totalHistPct,
+                    estimatedCostCoveragePct = totalEstPct,
+                    noCostCoveragePct = totalNoCostPct,
+                    isEstimatedMargin = suppliers.Any() && suppliers.Sum(r => r.estimatedCostRevenue) > suppliers.Sum(r => r.historicalCostRevenue),
+                    snapshotCostRevenue = Math.Round(suppliers.Sum(r => r.snapshotCostRevenue), 2),
+                    snapshotCostCoveragePct = totalSnapshotPct,
+                    isSnapshotActive = activeBatchId.HasValue,
+                    snapshotGeneratedAtUtc = activeBatchGeneratedAt,
+                    marginQualityLabel = totalMarginQuality.Label,
+                    marginQualityTier = totalMarginQuality.Tier,
+                    marginQualityShortLabel = totalMarginQuality.ShortLabel,
+                    marginQualityTooltip = totalMarginQuality.Tooltip,
                     prePromet = sumPreRevenue,
                     poslePromet = sumPostRevenue,
                     ukupnaKolicina = suppliers.Sum(r => r.ukupnaKolicina),
@@ -1565,6 +1653,7 @@ public static class AllEndpoints
             TrendplusDbContext db,
             IMemoryCache cache,
             ILogger<Program> logger,
+            IOptions<AnalyticsSnapshotOptions> snapshotOptionsRaw2,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -1654,10 +1743,34 @@ public static class AllEndpoints
                     });
                 }
 
-                var cacheKey = $"shoe-type-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}";
+                // Resolve active snapshot batch
+                var snapshotOptions2 = snapshotOptionsRaw2.Value;
+                long? activeBatchId2 = null;
+                DateTime? activeBatchGeneratedAt2 = null;
+                if (snapshotOptions2.UseSnapshotCost)
+                {
+                    var activeBatch2 = await db.AnalyticsCostSnapshotBatches
+                        .Where(b => b.Status == "active" && b.Scope == "access_origin")
+                        .Select(b => new { b.Id, b.GeneratedAtUtc })
+                        .FirstOrDefaultAsync(ct);
+                    activeBatchId2 = activeBatch2?.Id;
+                    activeBatchGeneratedAt2 = activeBatch2?.GeneratedAtUtc;
+                }
+
+                var cacheKey = $"shoe-type-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}:snap:{activeBatchId2}";
                 if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
                 {
                     return Results.Ok(cachedResponse);
+                }
+
+                Dictionary<int, decimal> snapshotCostByArtikalId2 = [];
+                if (activeBatchId2.HasValue)
+                {
+                    snapshotCostByArtikalId2 = await db.AnalyticsSaleLineCostSnapshots
+                        .Where(s => s.BatchId == activeBatchId2.Value)
+                        .GroupBy(s => s.ArtikalId)
+                        .Select(g => new { ArtikalId = g.Key, Cost = g.Min(s => s.ResolvedUnitCost) })
+                        .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
                 }
 
                 var dataWindow = await (
@@ -1800,10 +1913,14 @@ public static class AllEndpoints
                             totalRevenue += s.Prihod;
                             totalQty += s.Kolicina;
                             articleIds.Add(s.ArtikalId);
+                            decimal? snapshotCost2 = null;
+                            if (s.SaleLineCost is null && snapshotCostByArtikalId2.TryGetValue(s.ArtikalId, out var sc2))
+                                snapshotCost2 = sc2;
                             margin.Add(
                                 s.Prihod,
                                 s.Kolicina,
                                 s.SaleLineCost,
+                                snapshotCost2,
                                 s.ProductCostRsd,
                                 s.ProductCostLegacy);
                         }
@@ -1819,6 +1936,7 @@ public static class AllEndpoints
                         var tipObuceNaziv = g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var naziv)
                             ? naziv
                             : "Nepoznato";
+                        var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
 
                         return new
                         {
@@ -1838,6 +1956,22 @@ public static class AllEndpoints
                             marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
                             fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
+                            // Cost quality breakdown
+                            totalCost = marginSnapshot.TotalCost,
+                            historicalCostRevenue = marginSnapshot.HistoricalCostRevenue,
+                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct ?? 0d,
+                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct ?? 0d,
+                            snapshotCostRevenue = marginSnapshot.SnapshotCostRevenue,
+                            snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct ?? 0d,
+                            noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
+                            noCostCoveragePct = totalRevenue > 0m
+                                ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
+                                : 0d,
+                            isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
+                            marginQualityLabel = marginQuality.Label,
+                            marginQualityTier = marginQuality.Tier,
+                            marginQualityShortLabel = marginQuality.ShortLabel,
+                            marginQualityTooltip = marginQuality.Tooltip,
                             revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
                             comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
                             previousPeriodRevenue = hasPreviousComparablePeriod
@@ -1952,6 +2086,16 @@ public static class AllEndpoints
                             row.marginDataCoveragePct,
                             row.fallbackCostCoveragePct,
                             row.marginPct,
+                            row.totalCost,
+                            row.historicalCostRevenue,
+                            row.historicalCostCoveragePct,
+                            row.estimatedCostCoveragePct,
+                            row.snapshotCostRevenue,
+                            row.snapshotCostCoveragePct,
+                            row.noCostRevenue,
+                            row.noCostCoveragePct,
+                            row.isEstimatedMargin,
+                            row.marginQualityLabel,
                             row.revenueWithNivelacijaSplit,
                             row.comparableRevenueWithNivelacijaSplit,
                             row.previousPeriodRevenue,
@@ -1982,10 +2126,38 @@ public static class AllEndpoints
                     })
                     .ToList();
 
+                var totalHistPct = totalRevenue > 0m
+                    ? Math.Round((double)(shoeTypes.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalSnapshotPct2 = totalRevenue > 0m
+                    ? Math.Round((double)(shoeTypes.Sum(r => r.snapshotCostRevenue) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalEstPct = totalRevenue > 0m
+                    ? Math.Round((double)(shoeTypes.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalNoCostPct = totalRevenue > 0m
+                    ? Math.Round((double)((totalRevenue - shoeTypes.Sum(r => r.historicalCostRevenue) - shoeTypes.Sum(r => r.snapshotCostRevenue) - shoeTypes.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct + totalSnapshotPct2, totalNoCostPct, totalHistPct + totalEstPct + totalSnapshotPct2);
+
                 var totals = new
                 {
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = shoeTypes.Sum(r => r.marginContribution),
+                    ukupanTrosak = shoeTypes.Sum(r => r.totalCost),
+                    prosecnaMarza = Math.Round(averageMarginPct, 2),
+                    historicalCostCoveragePct = totalHistPct,
+                    estimatedCostCoveragePct = totalEstPct,
+                    noCostCoveragePct = totalNoCostPct,
+                    isEstimatedMargin = shoeTypes.Any() && shoeTypes.Sum(r => r.estimatedCostRevenue) > shoeTypes.Sum(r => r.historicalCostRevenue),
+                    snapshotCostRevenue = Math.Round(shoeTypes.Sum(r => r.snapshotCostRevenue), 2),
+                    snapshotCostCoveragePct = totalSnapshotPct2,
+                    isSnapshotActive = activeBatchId2.HasValue,
+                    snapshotGeneratedAtUtc = activeBatchGeneratedAt2,
+                    marginQualityLabel = totalMarginQuality.Label,
+                    marginQualityTier = totalMarginQuality.Tier,
+                    marginQualityShortLabel = totalMarginQuality.ShortLabel,
+                    marginQualityTooltip = totalMarginQuality.Tooltip,
                     prePromet = sumPreRevenue,
                     poslePromet = sumPostRevenue,
                     ukupnaKolicina = shoeTypes.Sum(r => r.ukupnaKolicina),
@@ -2325,6 +2497,7 @@ public static class AllEndpoints
                             sale => sale.DatumProdaje,
                             sale => sale.Prihod,
                             sale => sale.Kolicina);
+                        var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
 
                         return new
                         {
@@ -2343,6 +2516,20 @@ public static class AllEndpoints
                             marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
                             fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
+                            // Cost quality breakdown
+                            totalCost = marginSnapshot.TotalCost,
+                            historicalCostRevenue = marginSnapshot.HistoricalCostRevenue,
+                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct ?? 0d,
+                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct ?? 0d,
+                            noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
+                            noCostCoveragePct = totalRevenue > 0m
+                                ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
+                                : 0d,
+                            isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
+                            marginQualityLabel = marginQuality.Label,
+                            marginQualityTier = marginQuality.Tier,
+                            marginQualityShortLabel = marginQuality.ShortLabel,
+                            marginQualityTooltip = marginQuality.Tooltip,
                             revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
                             comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
                             previousPeriodRevenue = hasPreviousComparablePeriod
@@ -2456,6 +2643,14 @@ public static class AllEndpoints
                             row.marginDataCoveragePct,
                             row.fallbackCostCoveragePct,
                             row.marginPct,
+                            row.totalCost,
+                            row.historicalCostRevenue,
+                            row.historicalCostCoveragePct,
+                            row.estimatedCostCoveragePct,
+                            row.noCostRevenue,
+                            row.noCostCoveragePct,
+                            row.isEstimatedMargin,
+                            row.marginQualityLabel,
                             row.revenueWithNivelacijaSplit,
                             row.comparableRevenueWithNivelacijaSplit,
                             row.previousPeriodRevenue,
@@ -2486,10 +2681,30 @@ public static class AllEndpoints
                     })
                     .ToList();
 
+                var totalHistPct = totalRevenue > 0m
+                    ? Math.Round((double)(colors.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalEstPct = totalRevenue > 0m
+                    ? Math.Round((double)(colors.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalNoCostPct = totalRevenue > 0m
+                    ? Math.Round((double)((totalRevenue - colors.Sum(r => r.historicalCostRevenue) - colors.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
+                    : 0d;
+                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct, totalNoCostPct, totalHistPct + totalEstPct);
+
                 var totals = new
                 {
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = colors.Sum(r => r.marginContribution),
+                    ukupanTrosak = colors.Sum(r => r.totalCost),
+                    historicalCostCoveragePct = totalHistPct,
+                    estimatedCostCoveragePct = totalEstPct,
+                    noCostCoveragePct = totalNoCostPct,
+                    isEstimatedMargin = colors.Any() && colors.Sum(r => r.estimatedCostRevenue) > colors.Sum(r => r.historicalCostRevenue),
+                    marginQualityLabel = totalMarginQuality.Label,
+                    marginQualityTier = totalMarginQuality.Tier,
+                    marginQualityShortLabel = totalMarginQuality.ShortLabel,
+                    marginQualityTooltip = totalMarginQuality.Tooltip,
                     prePromet = sumPreRevenue,
                     poslePromet = sumPostRevenue,
                     ukupnaKolicina = colors.Sum(r => r.ukupnaKolicina),

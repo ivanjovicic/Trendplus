@@ -169,10 +169,14 @@ public static class AnalyticsDecisionRecommendationEngine
         RecommendationInput input,
         double reliabilityPct)
     {
+        var costCaveat = reasons.Contains("missing_cost_coverage")
+            ? $" Margin signal relies on estimated cost ({input.MarginCoveragePct ?? 0:0.#}% coverage)."
+            : "";
+
         return status switch
         {
-            "increase_focus" => $"Strong PoP trend and healthy margin with acceptable reliability ({reliabilityPct:0.#}%).",
-            "maintain" => $"Stable supplier profile without strong upside/downside signal. Reliability {reliabilityPct:0.#}%.",
+            "increase_focus" => $"Strong PoP trend and healthy margin with acceptable reliability ({reliabilityPct:0.#}%).{costCaveat}",
+            "maintain" => $"Stable supplier profile without strong upside/downside signal. Reliability {reliabilityPct:0.#}%.{costCaveat}",
             "review" when reasons.Contains("new_entity") =>
                 "Supplier is new versus previous comparable period; review manually before increasing focus.",
             "review" => "Performance or quality signals are mixed; review before changing procurement focus.",

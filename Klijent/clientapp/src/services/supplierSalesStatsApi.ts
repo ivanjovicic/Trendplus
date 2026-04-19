@@ -30,6 +30,18 @@ export interface SupplierSalesStat {
   marginDataCoveragePct: number | null;
   fallbackCostCoveragePct: number | null;
   marginPct: number;
+  // Cost quality breakdown
+  totalCost?: number;
+  historicalCostRevenue?: number;
+  historicalCostCoveragePct?: number;
+  estimatedCostCoveragePct?: number;
+  noCostRevenue?: number;
+  noCostCoveragePct?: number;
+  isEstimatedMargin?: boolean;
+  marginQualityLabel?: string | null;
+  marginQualityTier?: string | null;
+  marginQualityShortLabel?: string | null;
+  marginQualityTooltip?: string | null;
   popRevenueChangePct: number | null;
   popUnitsChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
@@ -38,6 +50,8 @@ export interface SupplierSalesStat {
   prePostSignalNote?: string | null;
   prePostComparableArticleCount?: number;
   sharePct?: number;
+  shareOfMarginContribution?: number;
+  /** @deprecated Use shareOfMarginContribution. */
   shareOfProfit?: number;
   shareOfUnits?: number;
   reliabilityPct?: number;
@@ -50,7 +64,16 @@ export interface SupplierSalesStat {
 export interface SupplierSalesTotals {
   ukupanPromet: number;
   ukupanMarzniDoprinos: number;
+  ukupanTrosak?: number;
   prosecnaMarza: number;
+  historicalCostCoveragePct?: number;
+  estimatedCostCoveragePct?: number;
+  noCostCoveragePct?: number;
+  isEstimatedMargin?: boolean;
+  marginQualityLabel?: string | null;
+  marginQualityTier?: string | null;
+  marginQualityShortLabel?: string | null;
+  marginQualityTooltip?: string | null;
   prePromet: number;
   poslePromet: number;
   ukupnaKolicina: number;

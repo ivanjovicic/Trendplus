@@ -249,6 +249,30 @@
   color: var(--error, var(--theme-color-f87171, #f87171));
 }
 
+.supplier-decision-kpi-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--warning, var(--theme-color-fbbf24, #fbbf24));
+  margin-top: 2px;
+  cursor: help;
+}
+
+.supplier-decision-kpi-badge.quality-confirmed {
+  color: var(--success, var(--theme-color-22c55e, #22c55e));
+}
+
+.supplier-decision-kpi-badge.quality-partial {
+  color: var(--info, var(--theme-color-3b82f6, #3b82f6));
+}
+
+.supplier-decision-kpi-badge.quality-estimated {
+  color: var(--warning, var(--theme-color-fbbf24, #fbbf24));
+}
+
+.supplier-decision-kpi-badge.quality-nodata {
+  color: var(--danger, var(--theme-color-ef4444, #ef4444));
+}
+
 .supplier-decision-panels {
   display: grid;
   gap: 12px;

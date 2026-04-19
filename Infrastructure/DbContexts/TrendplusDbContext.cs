@@ -1,6 +1,7 @@
 ﻿using System.Data.Common;
 using Application.Artikli.Common.Interfaces;
 using Domain.Model;
+using Domain.Model.Analytics;
 using Domain.Model.Documents;
 using Domain.Model.Prodaja;
 using Domain.Model.Povracaj;
@@ -427,6 +428,69 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => new { e.BatchId, e.TableName });
             });
 
+            // ── Analytics cost snapshot ──
+            modelBuilder.Entity<AnalyticsCostSnapshotBatch>(eb =>
+            {
+                eb.ToTable("analytics_cost_snapshot_batches");
+                eb.HasKey(e => e.Id);
+
+                eb.Property(e => e.Id).HasColumnName("id");
+                eb.Property(e => e.Scope).HasColumnName("scope").IsRequired().HasMaxLength(50).HasDefaultValue("access_origin");
+                eb.Property(e => e.Status).HasColumnName("status").IsRequired().HasMaxLength(20).HasDefaultValue("draft");
+                eb.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
+                eb.Property(e => e.GeneratedAtUtc).HasColumnName("generated_at_utc");
+                eb.Property(e => e.ActivatedAtUtc).HasColumnName("activated_at_utc");
+                eb.Property(e => e.DeactivatedAtUtc).HasColumnName("deactivated_at_utc");
+                eb.Property(e => e.CreatedBy).HasColumnName("created_by").IsRequired().HasMaxLength(100).HasDefaultValue("system");
+                eb.Property(e => e.Description).HasColumnName("description");
+                eb.Property(e => e.RowCount).HasColumnName("row_count").HasDefaultValue(0);
+                eb.Property(e => e.TotalRevenueCovered).HasColumnName("total_revenue_covered").HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+                eb.Property(e => e.CoveragePct).HasColumnName("coverage_pct").HasDefaultValue(0d);
+                eb.Property(e => e.NoCostPct).HasColumnName("no_cost_pct").HasDefaultValue(0d);
+                eb.Property(e => e.GenerationDurationMs).HasColumnName("generation_duration_ms");
+                eb.Property(e => e.DryRun).HasColumnName("dry_run").HasDefaultValue(false);
+                eb.Property(e => e.ErrorMessage).HasColumnName("error_message");
+                eb.Property(e => e.MetadataJson).HasColumnName("metadata_json").HasColumnType("jsonb");
+
+                eb.HasIndex(e => e.Scope)
+                  .IsUnique()
+                  .HasFilter("\"status\" = 'active'")
+                  .HasDatabaseName("ux_snapshot_batches_active_scope");
+
+                eb.HasIndex(e => new { e.Status, e.Scope })
+                  .HasDatabaseName("ix_snapshot_batches_status");
+
+                eb.HasMany(e => e.Snapshots)
+                  .WithOne(s => s.Batch)
+                  .HasForeignKey(s => s.BatchId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AnalyticsSaleLineCostSnapshot>(eb =>
+            {
+                eb.ToTable("analytics_sale_line_cost_snapshots");
+                eb.HasKey(e => e.Id);
+
+                eb.Property(e => e.Id).HasColumnName("id");
+                eb.Property(e => e.BatchId).HasColumnName("batch_id").IsRequired();
+                eb.Property(e => e.ProdajaStavkaId).HasColumnName("prodaja_stavka_id").IsRequired();
+                eb.Property(e => e.ResolvedUnitCost).HasColumnName("resolved_unit_cost").HasColumnType("decimal(18,4)").IsRequired();
+                eb.Property(e => e.CostSource).HasColumnName("cost_source").IsRequired();
+                eb.Property(e => e.ProductCostRsdAtSnapshot).HasColumnName("product_cost_rsd_at_snapshot").HasColumnType("decimal(18,4)");
+                eb.Property(e => e.ProductCostLegacyAtSnapshot).HasColumnName("product_cost_legacy_at_snapshot").HasColumnType("decimal(18,4)");
+                eb.Property(e => e.ArtikalId).HasColumnName("artikal_id").IsRequired();
+
+                eb.HasIndex(e => new { e.BatchId, e.ProdajaStavkaId })
+                  .IsUnique()
+                  .HasDatabaseName("ux_snapshot_lines_batch_stavka");
+
+                eb.HasIndex(e => e.ProdajaStavkaId)
+                  .HasDatabaseName("ix_snapshot_lines_stavka");
+
+                eb.HasIndex(e => new { e.BatchId, e.CostSource })
+                  .HasDatabaseName("ix_snapshot_lines_batch_source");
+            });
+
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
         }
 
@@ -453,6 +517,8 @@ namespace Infrastructure.DbContexts
         public DbSet<Domain.Transfers.Transfer> Transfers { get; set; } = null!;
         public DbSet<Domain.Transfers.TransferItem> TransferItems { get; set; } = null!;
         public DbSet<Infrastructure.Model.StockReservation> StockReservations { get; set; } = null!;
+        public DbSet<AnalyticsCostSnapshotBatch> AnalyticsCostSnapshotBatches { get; set; } = null!;
+        public DbSet<AnalyticsSaleLineCostSnapshot> AnalyticsSaleLineCostSnapshots { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {

@@ -109,6 +109,8 @@ try
     builder.Services.Configure<DocumentExportOptions>(builder.Configuration.GetSection(DocumentExportOptions.Section));
     builder.Services.Configure<PerformanceLoggingOptions>(builder.Configuration.GetSection(PerformanceLoggingOptions.Section));
     builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
+    builder.Services.Configure<Infrastructure.Configuration.AnalyticsSnapshotOptions>(
+        builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsSnapshotOptions.Section));
     var documentOptions = builder.Configuration.GetSection(DocumentExportOptions.Section).Get<DocumentExportOptions>() ?? new DocumentExportOptions();
     var resolvedDocumentSigningKey = documentOptions.ResolveSigningKey();
     if (builder.Environment.IsProduction() && string.IsNullOrWhiteSpace(resolvedDocumentSigningKey))
@@ -183,6 +185,7 @@ builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadServi
 builder.Services.AddScoped<IDailySalesStatsService, DailySalesStatsService>();
 builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
 builder.Services.AddScoped<AnalyticsDataQualityHistoryService>();
+builder.Services.AddScoped<Api.Services.AnalyticsCostSnapshotService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IDocumentQueueStore, DocumentQueueStore>();
     builder.Services.AddScoped<IDocumentAuditService, DocumentAuditService>();
@@ -611,6 +614,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapAnalyticsTableEndpoints();
     app.MapDataQualityEndpoints();
     app.MapDailySalesStatsEndpoints();
+    app.MapAnalyticsSnapshotEndpoints();
     app.MapDocumentEndpoints();
     // Transfer endpoints
     app.MapTransferEndpoints();
