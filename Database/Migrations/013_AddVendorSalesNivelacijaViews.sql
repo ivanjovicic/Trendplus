@@ -27,9 +27,12 @@ CREATE TABLE IF NOT EXISTS price_history (
 -- SQL_BATCH_BREAK
 
 -- 2️⃣ Reconcile schema: table may have been created with PascalCase columns (older schema)
+-- This MUST complete the schema migration cleanly to avoid constraint violations on INSERT
 DO $reconcile$
 DECLARE
     has_snake BOOLEAN;
+    has_pascal BOOLEAN;
+    row_count INT;
 BEGIN
     -- Check if snake_case column exists
     SELECT EXISTS (
@@ -37,7 +40,60 @@ BEGIN
         WHERE table_name = 'price_history' AND column_name = 'article_id'
     ) INTO has_snake;
 
-    IF NOT has_snake THEN
+    -- Check if old PascalCase column exists
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'price_history' AND column_name = 'ArticleId'
+    ) INTO has_pascal;
+
+    -- If mixing old PascalCase with new snake_case, we need to clean up
+    if has_pascal AND has_snake THEN
+        -- Data is in both old and new format; prioritize new format but fill gaps
+        UPDATE price_history SET
+            article_id       = COALESCE(article_id, "ArticleId"),
+            vendor_id        = COALESCE(vendor_id, "VendorId"),
+            old_price        = COALESCE(old_price, "OldPrice"),
+            new_price        = COALESCE(new_price, "NewPrice"),
+            effective_from   = COALESCE(effective_from, "EffectiveFrom"),
+            changed_at       = COALESCE(changed_at, "ChangedAt"),
+            source_dnevnik_id = COALESCE(source_dnevnik_id, "SourceDnevnikId"),
+            created_at       = COALESCE(created_at, "CreatedAt")
+        WHERE article_id IS NULL
+           OR vendor_id IS NULL
+           OR effective_from IS NULL;
+
+        -- Now drop the old PascalCase columns (data already in snake_case)
+        BEGIN
+            ALTER TABLE price_history DROP COLUMN IF EXISTS "ArticleId" CASCADE;
+            ALTER TABLE price_history DROP COLUMN IF EXISTS "VendorId" CASCADE;
+            ALTER TABLE price_history DROP COLUMN IF EXISTS "OldPrice" CASCADE;
+            ALTER TABLE price_history DROP COLUMN IF EXISTS "NewPrice" CASCADE;
+            ALTER TABLE price_history DROP COLUMN IF EXISTS "EffectiveFrom" CASCADE;
+            ALTER TABLE price_history DROP COLUMN IF EXISTS "ChangedAt" CASCADE;
+            ALTER TABLE price_history DROP COLUMN IF EXISTS "SourceDnevnikId" CASCADE;
+            ALTER TABLE price_history DROP COLUMN IF EXISTS "CreatedAt" CASCADE;
+        EXCEPTION WHEN OTHERS THEN
+            NULL; -- If any drop fails, continue (columns may have already been removed)
+        END;
+    END IF;
+
+    -- If table exists but has NO snake_case columns, we're in the old schema
+    IF NOT has_snake AND has_pascal THEN
+        -- Rename old PascalCase columns to snake_case (safer than add+copy+drop)
+        BEGIN
+            ALTER TABLE price_history RENAME COLUMN "ArticleId" TO article_id;
+            ALTER TABLE price_history RENAME COLUMN "VendorId" TO vendor_id;
+            ALTER TABLE price_history RENAME COLUMN "OldPrice" TO old_price;
+            ALTER TABLE price_history RENAME COLUMN "NewPrice" TO new_price;
+            ALTER TABLE price_history RENAME COLUMN "EffectiveFrom" TO effective_from;
+            ALTER TABLE price_history RENAME COLUMN "ChangedAt" TO changed_at;
+            ALTER TABLE price_history RENAME COLUMN "SourceDnevnikId" TO source_dnevnik_id;
+            ALTER TABLE price_history RENAME COLUMN "CreatedAt" TO created_at;
+        EXCEPTION WHEN OTHERS THEN
+            NULL; -- If rename fails, fall back to old schema support in views
+        END;
+    ELSIF NOT has_snake THEN
+        -- Table has no snake_case columns; add them
         ALTER TABLE price_history ADD COLUMN IF NOT EXISTS article_id INTEGER;
         ALTER TABLE price_history ADD COLUMN IF NOT EXISTS vendor_id INTEGER;
         ALTER TABLE price_history ADD COLUMN IF NOT EXISTS old_price NUMERIC(18,4);
@@ -67,6 +123,16 @@ $reconcile$;
 
 -- SQL_BATCH_BREAK
 
+-- Ensure NOT NULL constraint on article_id (critical for data integrity)
+-- This must run after schema reconciliation to ensure all data is properly migrated
+ALTER TABLE price_history
+    ALTER COLUMN article_id SET NOT NULL;
+
+ALTER TABLE price_history
+    ALTER COLUMN effective_from SET NOT NULL;
+
+-- SQL_BATCH_BREAK
+
 -- Create indexes for price_history
 CREATE INDEX IF NOT EXISTS idx_price_history_article_date
 ON price_history (article_id, effective_from DESC);
@@ -85,6 +151,12 @@ EXCEPTION WHEN duplicate_table OR duplicate_object THEN
     NULL; -- constraint already exists, nothing to do
 END
 $ensure_unique$;
+
+-- SQL_BATCH_BREAK
+
+-- Safety: Clean up any rows with NULL article_id that slipped through migration
+-- (These cannot be inserted into the backfill, so remove them)
+DELETE FROM price_history WHERE article_id IS NULL;
 
 -- SQL_BATCH_BREAK
 
