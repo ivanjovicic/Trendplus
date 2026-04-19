@@ -411,73 +411,106 @@ public static class DatabaseInitializer
             logger.LogWarning(ex, "Trendplus DB migrations failed; core schema was already self-healed.");
         }
 
-        // Execute additional SQL files
-        var sqlFiles = new[]
+        // Execute additional SQL files with optimized parallelization.
+        // Strategy: Independent migrations run in parallel; dependent ones run sequentially.
+        
+        // 1️⃣ Run independent migrations in parallel (012, 017, 019)
+        var independentMigrations = new[]
         {
-            "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql",
-            "Database/Migrations/019_AddAnalyticsDashboardIndexes.sql",
-            "Database/Migrations/012_AddAccessImportSupport.sql",
-            "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql",
-            "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql",
-            // 014 analytics creates vw_vendor_sales_nivelacija (analytics-native version).
-            // It must run before 016 so any CASCADE self-heal leaves 016 free to
-            // recreate vw_nivelacija_did and related downstream objects on top of
-            // the final vw_vendor_sales_nivelacija contract.
-            "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql",
-            "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql",
-            // 018_AddSupplierDecisionHubViews.sql is intentionally excluded here.
-            // It creates expensive materialized views (can take 10-30 min on first run)
-            // and is fired asynchronously below so it does not block startup.
-            "Database/Migrations/005_CreateArtikliAndTestData.sql"
+            ("Database/Migrations/012_AddAccessImportSupport.sql", false),
+            ("Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql", false),
+            ("Database/Migrations/019_AddAnalyticsDashboardIndexes.sql", false)
         };
+        
+        logger.LogInformation("[Startup] Executing independent migrations in parallel: 012, 017, 019...");
+        var independentTasks = independentMigrations
+            .Select(async (fileSpec) => 
+            {
+                try
+                {
+                    await ExecuteSqlFileAsync(
+                        connectionString, 
+                        fileSpec.Item1, 
+                        logger, 
+                        commandTimeoutSeconds: 300,
+                        useTransaction: fileSpec.Item2);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Parallel migration {File} encountered an error; continuing.", fileSpec.Item1);
+                }
+            })
+            .ToList();
+        
+        await Task.WhenAll(independentTasks);
+        logger.LogInformation("[Startup] Independent migrations completed.");
 
+        // 2️⃣ Run dependent/sequential migrations in order
+        
+        // 013: Special batch-by-batch handling
+        logger.LogInformation("[Startup] Executing 013_AddVendorSalesNivelacijaViews.sql (batch-by-batch)...");
+        await ExecuteSqlFileAsync(
+            connectionString, 
+            "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql", 
+            logger, 
+            useTransaction: false);
+
+        // 014 and 016 must run sequentially (014 -> 016 dependency)
         if (!await AreVendorSalesNivelacijaViewReadyAsync(connectionString))
         {
             logger.LogInformation(
-                "vw_vendor_sales_nivelacija is missing required supplier-decision columns. Forcing re-execution of analytics nivelacija SQL before 018.");
+                "[Startup] vw_vendor_sales_nivelacija is missing required columns. Forcing re-execution of 014 and 016.");
             await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
             await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql");
         }
 
-        foreach (var sqlFile in sqlFiles)
+        logger.LogInformation("[Startup] Executing sequential migrations: 014, 016...");
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql", logger);
+
+        // 005: Test data (if needed)
+        logger.LogInformation("[Startup] Executing 005_CreateArtikliAndTestData.sql...");
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/005_CreateArtikliAndTestData.sql", logger);
+
+        // 3️⃣ Index creation migrations can run in parallel (020, 025, 027)
+        // These are I/O heavy but independent and benefit from concurrent db writes
+        var indexCreationMigrations = new[]
         {
-            if (string.Equals(sqlFile, "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql", StringComparison.Ordinal))
+            ("Database/Migrations/020_AddRuntimeScoringSearchIndexes.sql", 0, false),
+            ("Database/Migrations/025_AddTrendplusPerformanceIndexes.sql", 0, false),
+            ("Database/Migrations/027_AddLogsIndexes.sql", 0, false)
+        };
+        
+        logger.LogInformation("[Startup] Executing index creation migrations in parallel: 020, 025, 027...");
+        var indexTasks = indexCreationMigrations
+            .Select(async (fileSpec) =>
             {
-                // 013 contains DDL + backfill + view rebuilds. Running it in one transaction
-                // holds relation locks longer than necessary and can hit 55P03 during startup.
-                // Execute it batch-by-batch so each section commits independently.
-                await ExecuteSqlFileAsync(connectionString, sqlFile, logger, useTransaction: false);
-                continue;
-            }
+                try
+                {
+                    await ExecuteSqlFileAsync(
+                        connectionString,
+                        fileSpec.Item1,
+                        logger,
+                        commandTimeoutSeconds: fileSpec.Item2,
+                        useTransaction: fileSpec.Item3);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Index migration {File} encountered an error; continuing.", fileSpec.Item1);
+                }
+            })
+            .ToList();
+        
+        await Task.WhenAll(indexTasks);
+        logger.LogInformation("[Startup] Index creation migrations completed.");
 
-            await ExecuteSqlFileAsync(connectionString, sqlFile, logger);
-        }
-
-        await ExecuteSqlFileAsync(
-            connectionString,
-            "Database/Migrations/020_AddRuntimeScoringSearchIndexes.sql",
-            logger,
-            commandTimeoutSeconds: 0,
-            useTransaction: false);
-
-        await ExecuteSqlFileAsync(
-            connectionString,
-            "Database/Migrations/025_AddTrendplusPerformanceIndexes.sql",
-            logger,
-            commandTimeoutSeconds: 0,
-            useTransaction: false);
-
+        // 4️⃣ Other sequential migrations
+        logger.LogInformation("[Startup] Executing 026_CreatePerformanceExplainTemplates.sql...");
         await ExecuteSqlFileAsync(
             connectionString,
             "Database/Migrations/026_CreatePerformanceExplainTemplates.sql",
             logger);
-
-        await ExecuteSqlFileAsync(
-            connectionString,
-            "Database/Migrations/027_AddLogsIndexes.sql",
-            logger,
-            commandTimeoutSeconds: 0,
-            useTransaction: false);
 
         // Fire-and-forget: startup now builds only the core supplier decision views from 018.
         // The heavy supplier materialized caches are intentionally deferred so API startup can
@@ -1695,30 +1728,66 @@ public static class DatabaseInitializer
         // Views are idempotent (CREATE OR REPLACE) and can be safely re-applied on startup.
         await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/003_add_ml_export_views.sql", logger);
 
-        // Open Product Training 2.0 schema extensions + feature-store views (idempotent).
-        await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/004_open_training_2_0.sql", logger);
+        // Prepare variables for deferred operations
+        var runBackfillOnStartup = configuration.GetValue<bool?>("DatabaseInitialization:RunBackfillOnStartup") ?? false;
+        var runOpenTrainingOnStartup = configuration.GetValue<bool?>("DatabaseInitialization:RunOpenTrainingFullOnStartup") ?? false;
+        var backfillLogger = logger;
+        var backfillConnectionString = connectionString;
+        var trendDbForBackfill = trendDb;
+        var analyticsDbForBackfill = context;
 
-        await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/005_open_training_2_0_views.sql", logger);
+        // 6️⃣ Defer Open Product Training 2.0 extensions and other non-critical analytics to background
+        var openTrainingTasks = new[]
+        {
+            ("Database/OpenProductTraining/004_open_training_2_0.sql", 300),
+            ("Database/OpenProductTraining/005_open_training_2_0_views.sql", 300),
+            ("Database/Analytics/016_AddScraperScoringSearchIndexes.sql", 0),
+            ("Database/Analytics/017_AddAnalyticsPerformanceIndexes.sql", 0),
+            ("Database/OpenProductTraining/006_runtime_priors_materialized.sql", 600),
+            ("Database/OpenProductTraining/007_model_version_runtime_tuning.sql", 600)
+        };
 
-        await ExecuteSqlFileAsync(
-            connectionString,
-            "Database/Analytics/016_AddScraperScoringSearchIndexes.sql",
-            logger,
-            commandTimeoutSeconds: 0,
-            useTransaction: false);
-
-        await ExecuteSqlFileAsync(
-            connectionString,
-            "Database/Analytics/017_AddAnalyticsPerformanceIndexes.sql",
-            logger,
-            commandTimeoutSeconds: 0,
-            useTransaction: false);
-
-        await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/006_runtime_priors_materialized.sql", logger);
-
-        await ExecuteSqlFileAsync(connectionString, "Database/OpenProductTraining/007_model_version_runtime_tuning.sql", logger);
-
-        await EnsureOpenProductTrainingDatasetsAsync(connectionString, configuration, logger);
+        if (runOpenTrainingOnStartup)
+        {
+            logger.LogInformation("[Startup] Running Open Product Training scripts synchronously (full-on-startup enabled)...");
+            foreach (var (sqlFile, timeout) in openTrainingTasks)
+            {
+                await ExecuteSqlFileAsync(
+                    connectionString,
+                    sqlFile,
+                    logger,
+                    commandTimeoutSeconds: timeout,
+                    useTransaction: timeout == 0 ? false : true);
+            }
+            await EnsureOpenProductTrainingDatasetsAsync(connectionString, configuration, logger);
+            logger.LogInformation("[Startup] Open Product Training scripts completed.");
+        }
+        else
+        {
+            logger.LogInformation("[Startup] Deferring Open Product Training 2.0 to background task (full-on-startup disabled)...");
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    backfillLogger.LogInformation("[BG] Starting deferred Open Product Training scripts...");
+                    foreach (var (sqlFile, timeout) in openTrainingTasks)
+                    {
+                        await ExecuteSqlFileAsync(
+                            backfillConnectionString,
+                            sqlFile,
+                            backfillLogger,
+                            commandTimeoutSeconds: timeout,
+                            useTransaction: timeout == 0 ? false : true);
+                    }
+                    await EnsureOpenProductTrainingDatasetsAsync(backfillConnectionString, configuration, backfillLogger);
+                    backfillLogger.LogInformation("[BG] Deferred Open Product Training scripts completed successfully.");
+                }
+                catch (Exception ex)
+                {
+                    backfillLogger.LogWarning(ex, "[BG] Deferred Open Product Training scripts failed. Some analytics features may be unavailable.");
+                }
+            });
+        }
 
         // Backward-compatible schema patch for older eBay table script versions.
         await context.Database.ExecuteSqlRawAsync(@"
@@ -1729,11 +1798,39 @@ public static class DatabaseInitializer
                 ADD COLUMN IF NOT EXISTS ""TrendScore"" REAL NOT NULL DEFAULT 0;
         ");
 
-        logger.LogInformation("? Analytics DB initialized");
+        logger.LogInformation("✓ Analytics DB initialized");
 
-        // Backfill historical sales / returns before deriving supplier-decision analytics views.
-        await BackfillSalesFactsAsync(trendDb, context, logger);
-        await BackfillReturnFactsAsync(trendDb, context, logger);
+        // 5️⃣ Defer backfill operations to background task (these are I/O heavy and can start after startup)
+        if (runBackfillOnStartup)
+        {
+            // Do backfill synchronously during startup (slower startup but more data available immediately)
+            logger.LogInformation("[Startup] Running backfill synchronously (backfill-on-startup enabled)...");
+            await BackfillSalesFactsAsync(trendDbForBackfill, analyticsDbForBackfill, backfillLogger);
+            await BackfillReturnFactsAsync(trendDbForBackfill, analyticsDbForBackfill, backfillLogger);
+            logger.LogInformation("[Startup] Backfill operations completed.");
+        }
+        else
+        {
+            // Defer backfill to background (faster startup)
+            logger.LogInformation("[Startup] Deferring backfill operations to background task (backfill-on-startup disabled)...");
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await using var backfillScope = new TrendplusDbContext(
+                        new Microsoft.EntityFrameworkCore.DbContextOptions<TrendplusDbContext>());
+                    
+                    backfillLogger.LogInformation("[BG] Starting deferred backfill operations...");
+                    await BackfillSalesFactsAsync(trendDbForBackfill, analyticsDbForBackfill, backfillLogger);
+                    await BackfillReturnFactsAsync(trendDbForBackfill, analyticsDbForBackfill, backfillLogger);
+                    backfillLogger.LogInformation("[BG] Deferred backfill operations completed successfully.");
+                }
+                catch (Exception ex)
+                {
+                    backfillLogger.LogWarning(ex, "[BG] Deferred backfill operations failed. Analytics data may be incomplete until next startup.");
+                }
+            });
+        }
 
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/003_AddGlobalTrendsTables.sql", logger);
         await ExecuteSqlFileAsync(connectionString, "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql", logger);
