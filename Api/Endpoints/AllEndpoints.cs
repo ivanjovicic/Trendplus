@@ -32,6 +32,7 @@ using Microsoft.Extensions.Options;
 using Domain.Model.TrendShoes;
 using Application.TrendShoes;
 using System.Globalization;
+using System.Diagnostics;
 using Serilog.Context;
 
 namespace Trendplus2.Endpoints;
@@ -986,6 +987,7 @@ public static class AllEndpoints
         {
             DateTime? fromUtc = null;
             DateTime? toUtc = null;
+            var requestStopwatch = Stopwatch.StartNew();
 
             try
             {
@@ -1080,9 +1082,21 @@ public static class AllEndpoints
                     activeBatchGeneratedAt = activeBatch?.GeneratedAtUtc;
                 }
 
+                var snapshotPathUsed = snapshotOptions.UseSnapshotCost && activeBatchId.HasValue;
+
                 var cacheKey = $"supplier-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}:snap:{activeBatchId}";
                 if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
                 {
+                    requestStopwatch.Stop();
+                    logger.LogInformation(
+                        "Supplier-sales-stats served from cache in {ElapsedMs}ms (snapshotFeatureEnabled={SnapshotFeatureEnabled}, snapshotPathUsed={SnapshotPathUsed}, activeBatchId={ActiveBatchId}, dataScope={DataScope}, storeId={StoreId}, sezonaId={SezonaId})",
+                        requestStopwatch.ElapsedMilliseconds,
+                        snapshotOptions.UseSnapshotCost,
+                        snapshotPathUsed,
+                        activeBatchId,
+                        normalizedDataScope,
+                        storeId,
+                        sezonaId);
                     return Results.Ok(cachedResponse);
                 }
 
@@ -1627,13 +1641,29 @@ public static class AllEndpoints
                 };
 
                 cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+                requestStopwatch.Stop();
+                logger.LogInformation(
+                    "Supplier-sales-stats computed in {ElapsedMs}ms (snapshotFeatureEnabled={SnapshotFeatureEnabled}, snapshotPathUsed={SnapshotPathUsed}, activeBatchId={ActiveBatchId}, dataScope={DataScope}, storeId={StoreId}, sezonaId={SezonaId}, supplierCount={SupplierCount}, snapshotCoveragePct={SnapshotCoveragePct:F2}, liveFallbackPct={LiveFallbackPct:F2}, noCostPct={NoCostPct:F2})",
+                    requestStopwatch.ElapsedMilliseconds,
+                    snapshotOptions.UseSnapshotCost,
+                    snapshotPathUsed,
+                    activeBatchId,
+                    normalizedDataScope,
+                    storeId,
+                    sezonaId,
+                    suppliersWithRecommendation.Count,
+                    totalSnapshotPct,
+                    totalEstPct,
+                    totalNoCostPct);
                 return Results.Ok(response);
             }
             catch (Exception ex)
             {
+                requestStopwatch.Stop();
                 logger.LogError(
                     ex,
-                    "Supplier-sales-stats failed. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    "Supplier-sales-stats failed after {ElapsedMs}ms. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    requestStopwatch.ElapsedMilliseconds,
                     storeId,
                     sezonaId,
                     fromUtc,
@@ -1663,6 +1693,7 @@ public static class AllEndpoints
         {
             DateTime? fromUtc = null;
             DateTime? toUtc = null;
+            var requestStopwatch = Stopwatch.StartNew();
 
             try
             {
@@ -1757,9 +1788,21 @@ public static class AllEndpoints
                     activeBatchGeneratedAt2 = activeBatch2?.GeneratedAtUtc;
                 }
 
+                var snapshotPathUsed2 = snapshotOptions2.UseSnapshotCost && activeBatchId2.HasValue;
+
                 var cacheKey = $"shoe-type-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}:snap:{activeBatchId2}";
                 if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
                 {
+                    requestStopwatch.Stop();
+                    logger.LogInformation(
+                        "Shoe-type-sales-stats served from cache in {ElapsedMs}ms (snapshotFeatureEnabled={SnapshotFeatureEnabled}, snapshotPathUsed={SnapshotPathUsed}, activeBatchId={ActiveBatchId}, dataScope={DataScope}, storeId={StoreId}, sezonaId={SezonaId})",
+                        requestStopwatch.ElapsedMilliseconds,
+                        snapshotOptions2.UseSnapshotCost,
+                        snapshotPathUsed2,
+                        activeBatchId2,
+                        normalizedDataScope,
+                        storeId,
+                        sezonaId);
                     return Results.Ok(cachedResponse);
                 }
 
@@ -2230,13 +2273,29 @@ public static class AllEndpoints
                 };
 
                 cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+                requestStopwatch.Stop();
+                logger.LogInformation(
+                    "Shoe-type-sales-stats computed in {ElapsedMs}ms (snapshotFeatureEnabled={SnapshotFeatureEnabled}, snapshotPathUsed={SnapshotPathUsed}, activeBatchId={ActiveBatchId}, dataScope={DataScope}, storeId={StoreId}, sezonaId={SezonaId}, shoeTypeCount={ShoeTypeCount}, snapshotCoveragePct={SnapshotCoveragePct:F2}, liveFallbackPct={LiveFallbackPct:F2}, noCostPct={NoCostPct:F2})",
+                    requestStopwatch.ElapsedMilliseconds,
+                    snapshotOptions2.UseSnapshotCost,
+                    snapshotPathUsed2,
+                    activeBatchId2,
+                    normalizedDataScope,
+                    storeId,
+                    sezonaId,
+                    shoeTypesWithRecommendation.Count,
+                    totalSnapshotPct2,
+                    totalEstPct,
+                    totalNoCostPct);
                 return Results.Ok(response);
             }
             catch (Exception ex)
             {
+                requestStopwatch.Stop();
                 logger.LogError(
                     ex,
-                    "Shoe-type-sales-stats failed. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    "Shoe-type-sales-stats failed after {ElapsedMs}ms. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    requestStopwatch.ElapsedMilliseconds,
                     storeId,
                     sezonaId,
                     fromUtc,

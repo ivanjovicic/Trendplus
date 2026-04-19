@@ -273,6 +273,11 @@
   color: var(--danger, var(--theme-color-ef4444, #ef4444));
 }
 
+.supplier-decision-kpi-badge.quality-snapshot {
+  color: var(--accent-info, #0284c7);
+  margin-left: 4px;
+}
+
 .supplier-decision-panels {
   display: grid;
   gap: 12px;

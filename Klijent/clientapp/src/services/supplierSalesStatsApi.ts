@@ -37,6 +37,8 @@ export interface SupplierSalesStat {
   estimatedCostCoveragePct?: number;
   noCostRevenue?: number;
   noCostCoveragePct?: number;
+  snapshotCostRevenue?: number;
+  snapshotCostCoveragePct?: number;
   isEstimatedMargin?: boolean;
   marginQualityLabel?: string | null;
   marginQualityTier?: string | null;
@@ -69,6 +71,10 @@ export interface SupplierSalesTotals {
   historicalCostCoveragePct?: number;
   estimatedCostCoveragePct?: number;
   noCostCoveragePct?: number;
+  snapshotCostRevenue?: number;
+  snapshotCostCoveragePct?: number;
+  isSnapshotActive?: boolean;
+  snapshotGeneratedAtUtc?: string | null;
   isEstimatedMargin?: boolean;
   marginQualityLabel?: string | null;
   marginQualityTier?: string | null;

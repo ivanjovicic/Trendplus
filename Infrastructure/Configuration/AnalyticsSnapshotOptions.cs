@@ -6,4 +6,5 @@ public sealed class AnalyticsSnapshotOptions
 
     public bool UseSnapshotCost { get; set; }
     public bool SnapshotAdminEnabled { get; set; }
+    public int ActiveBatchStaleAfterHours { get; set; } = 72;
 }

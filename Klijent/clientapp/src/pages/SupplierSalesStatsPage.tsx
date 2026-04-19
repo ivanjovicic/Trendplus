@@ -25,7 +25,7 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
-import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote } from "../utils/marginQuality";
+import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import "./SupplierSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "custom";
@@ -812,6 +812,11 @@ export default function SupplierSalesStatsPage() {
       notes.push(`Nepoznati/N-A dobavljaci ucestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
     }
 
+    const snapshotPct = data.totals.snapshotCostCoveragePct;
+    if (data.totals.isSnapshotActive && snapshotPct != null && snapshotPct > 0) {
+      notes.push(`Za ${fmtPct(snapshotPct, 1)} prometa trosak je stabilizovan zamrznutom procenom (snapshot). Ovo je reproduktivna procena, ne istorijska nabavna cena.`);
+    }
+
     return notes;
   }, [data]);
 
@@ -838,6 +843,8 @@ export default function SupplierSalesStatsPage() {
       { key: "totalsPopTrend", label: "Ukupan PoP trend", value: fmtPct(data?.totals.popRevenueChangePct, 1) },
       { key: "totalsPrePostImpact", label: "Ukupan nivelacija uticaj", value: fmtPct(data?.totals.prePostNivelacijaRevenueImpactPct, 1) },
       { key: "splitCoverage", label: "Uporedivo pre/post pokrivanje", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
+      { key: "snapshotCoverage", label: "Snapshot trosak pokrice %", value: fmtPct(data?.totals.snapshotCostCoveragePct, 1) },
+      { key: "isSnapshotActive", label: "Snapshot aktivan", value: data?.totals.isSnapshotActive ? "da" : "ne" },
       { key: "increaseFocus", label: "Pojačaj fokus", value: supplierCounts.increaseFocus },
       { key: "maintain", label: "Zadrži", value: supplierCounts.maintain },
       { key: "review", label: "U pregledu", value: supplierCounts.review },
@@ -851,6 +858,8 @@ export default function SupplierSalesStatsPage() {
       data?.totals.brojDobavljaca,
       data?.totals.popRevenueChangePct,
       data?.totals.prePostNivelacijaRevenueImpactPct,
+      data?.totals.snapshotCostCoveragePct,
+      data?.totals.isSnapshotActive,
       supplierCounts.increaseFocus,
       supplierCounts.maintain,
       supplierCounts.review,
@@ -1195,10 +1204,18 @@ export default function SupplierSalesStatsPage() {
               <strong>{fmtRsd(totalMarginContribution)}</strong>
               <small
                 className={`supplier-decision-kpi-badge ${qualityTierClass(data.totals.marginQualityTier)}`}
-                title={data.totals.marginQualityTooltip ?? buildCoverageTooltip(data.totals.historicalCostCoveragePct, data.totals.estimatedCostCoveragePct, data.totals.noCostCoveragePct, fmtPct)}
+                title={data.totals.marginQualityTooltip ?? buildCoverageTooltip(data.totals.historicalCostCoveragePct, data.totals.estimatedCostCoveragePct, data.totals.noCostCoveragePct, fmtPct, data.totals.snapshotCostCoveragePct)}
               >
                 {qualityTierIcon(data.totals.marginQualityTier)} {data.totals.marginQualityShortLabel ?? data.totals.marginQualityLabel}
               </small>
+              {data.totals.isSnapshotActive && (data.totals.snapshotCostCoveragePct ?? 0) > 0 ? (
+                <small
+                  className="supplier-decision-kpi-badge quality-snapshot"
+                  title={buildSnapshotTooltip(data.totals.snapshotCostCoveragePct ?? 0, data.totals.snapshotGeneratedAtUtc, fmtPct)}
+                >
+                  ❄ {buildSnapshotBadgeLabel(data.totals.snapshotGeneratedAtUtc)}
+                </small>
+              ) : null}
             </article>
             <article className="supplier-decision-kpi">
               <span>Prosecna marza <InfoTip text="Prosecan procenat marznog doprinosa po dobavljacu. Formula po dobavljacu: marzni doprinos / promet sa dostupnim troskom x 100. Prikaz je aritmeticki prosek po dobavljacima, nije ponderisan prometom." /></span>
@@ -1588,6 +1605,12 @@ export default function SupplierSalesStatsPage() {
                   <span>Promet bez troska % <InfoTip text="Procenat prometa koji nema ni istorijski ni fallback trosak, pa ne ulazi u obracun marznog doprinosa ni marze %. Formula: promet bez troska / ukupan promet x 100." /></span>
                   <strong>{fmtPct(selectedSupplier.noCostCoveragePct, 1)}</strong>
                 </article>
+                {(selectedSupplier.snapshotCostCoveragePct ?? 0) > 0 ? (
+                  <article>
+                    <span>Zamrznuta procena (snapshot) % <InfoTip text="Procenat prometa gde je trosak stabilizovan snapshot-om radi reproduktivnosti izvestaja. Ovo nije istorijska nabavna cena sa trenutka prodaje." /></span>
+                    <strong>{fmtPct(selectedSupplier.snapshotCostCoveragePct, 1)}</strong>
+                  </article>
+                ) : null}
                 <article>
                   <span>Sigurnost preporuke <InfoTip text="Ukupna sigurnost preporuke bazirana na svim dostupnim signalima (0-100%)." /></span>
                   <strong>{fmtPct(selectedSupplier.confidencePct, 0)}</strong>
@@ -1605,7 +1628,9 @@ export default function SupplierSalesStatsPage() {
                   selectedSupplier.marginQualityTier,
                   selectedSupplier.estimatedCostCoveragePct ?? selectedSupplier.fallbackCostCoveragePct,
                   selectedSupplier.historicalCostCoveragePct ?? selectedSupplier.marginDataCoveragePct,
-                  fmtPct
+                  fmtPct,
+                  selectedSupplier.snapshotCostCoveragePct,
+                  data.totals.isSnapshotActive
                 );
                 return marginNote ? (
                   <p className="supplier-decision-reason">

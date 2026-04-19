@@ -156,6 +156,7 @@ public static class AnalyticsSnapshotEndpoints
                 dto.TotalRevenueCovered,
                 dto.CoveragePct,
                 dto.NoCostPct,
+                dto.RemainingLiveFallbackPct,
                 dto.GenerationDurationMs,
                 dto.ErrorMessage,
                 CostSourceBreakdown = detail.CostSourceBreakdown,
@@ -178,6 +179,86 @@ public static class AnalyticsSnapshotEndpoints
             return Results.Ok(health);
         })
         .WithName("GetSnapshotHealth");
+
+        // ── GET /api/analytics/snapshots/reconcile/supplier-sales-stats ──
+        group.MapGet("/reconcile/supplier-sales-stats", async (
+            long? batchId,
+            int? sezonaId,
+            DateTime? fromDate,
+            DateTime? toDate,
+            int? storeId,
+            string? dataScope,
+            int? top,
+            AnalyticsCostSnapshotService service,
+            IOptions<AnalyticsSnapshotOptions> options,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            CancellationToken ct) =>
+        {
+            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
+                return Results.NotFound();
+
+            try
+            {
+                var result = await service.CompareSupplierAnalyticsAsync(
+                    new AnalyticsCostSnapshotService.SnapshotAnalyticsComparisonRequest(
+                        batchId,
+                        sezonaId,
+                        fromDate,
+                        toDate,
+                        storeId,
+                        dataScope,
+                        top),
+                    ct);
+
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
+        })
+        .WithName("CompareSupplierSnapshotAnalytics");
+
+        // ── GET /api/analytics/snapshots/reconcile/shoe-type-sales-stats ──
+        group.MapGet("/reconcile/shoe-type-sales-stats", async (
+            long? batchId,
+            int? sezonaId,
+            DateTime? fromDate,
+            DateTime? toDate,
+            int? storeId,
+            string? dataScope,
+            int? top,
+            AnalyticsCostSnapshotService service,
+            IOptions<AnalyticsSnapshotOptions> options,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            CancellationToken ct) =>
+        {
+            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
+                return Results.NotFound();
+
+            try
+            {
+                var result = await service.CompareShoeTypeAnalyticsAsync(
+                    new AnalyticsCostSnapshotService.SnapshotAnalyticsComparisonRequest(
+                        batchId,
+                        sezonaId,
+                        fromDate,
+                        toDate,
+                        storeId,
+                        dataScope,
+                        top),
+                    ct);
+
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
+        })
+        .WithName("CompareShoeTypeSnapshotAnalytics");
     }
 
     // ── Auth ─────────────────────────────────────────────────────────────
@@ -230,7 +311,7 @@ public static class AnalyticsSnapshotEndpoints
         b.Id, b.Scope, b.Status, b.DryRun,
         b.CreatedAtUtc, b.GeneratedAtUtc, b.ActivatedAtUtc, b.DeactivatedAtUtc,
         b.CreatedBy, b.Description, b.RowCount, b.TotalRevenueCovered,
-        Math.Round(b.CoveragePct, 2), Math.Round(b.NoCostPct, 2),
+        Math.Round(b.CoveragePct, 2), Math.Round(b.NoCostPct, 2), Math.Max(0d, Math.Round(100d - b.CoveragePct - b.NoCostPct, 2)),
         b.GenerationDurationMs, b.ErrorMessage);
 
     private sealed record CreateBatchRequest(string? Description);
@@ -250,6 +331,7 @@ public static class AnalyticsSnapshotEndpoints
         decimal TotalRevenueCovered,
         double CoveragePct,
         double NoCostPct,
+        double RemainingLiveFallbackPct,
         int? GenerationDurationMs,
         string? ErrorMessage);
 }

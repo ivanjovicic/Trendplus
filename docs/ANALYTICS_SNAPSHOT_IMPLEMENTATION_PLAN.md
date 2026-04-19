@@ -758,6 +758,119 @@ Then remove the `Analytics` config section and the `SnapshotFallback` enum value
 | **Test** | Generate batch. Verify: 10 snapshot rows (not 12 — POS lines excluded because they have historical cost, but actually scope is all Access lines without sale-line cost). Verify each row's `resolved_unit_cost` matches expected fallback. Verify `cost_source` is correctly tagged. |
 | **Edge cases** | Artikal with both `NabavnaCenaDin` and `NabavnaCena` → prefer RSD. Artikal with only `NabavnaCena` → use legacy. Artikal with neither → no snapshot row (or row with source=None? Decision: skip row entirely — no snapshot if no cost exists). |
 
+---
+
+## 13. PR5 operational rollout checklist (finalized)
+
+### Admin/monitoring endpoints used in PR5
+
+- `GET /api/analytics/snapshots/health`
+  Returns flag state, active batch state, age, row count, coverage, no-cost, remaining live fallback, stale warning, and latest batch summary.
+- `GET /api/analytics/snapshots/batches`
+  Returns batch list with `dryRun`, `coveragePct`, `noCostPct`, and `remainingLiveFallbackPct`.
+- `GET /api/analytics/snapshots/batches/{id}`
+  Returns one batch plus cost source breakdown.
+- `GET /api/analytics/snapshots/reconcile/supplier-sales-stats?...`
+  Returns legacy vs snapshot-aware deltas for supplier analytics.
+- `GET /api/analytics/snapshots/reconcile/shoe-type-sales-stats?...`
+  Returns legacy vs snapshot-aware deltas for shoe-type analytics.
+
+### Staging pilot checklist
+
+1. Keep `Analytics:UseSnapshotCost = false`.
+2. Ensure `Analytics:SnapshotAdminEnabled = true`.
+3. Create a dry-run batch:
+  - `POST /api/analytics/snapshots/batches`
+  - `POST /api/analytics/snapshots/batches/{id}/generate?dryRun=true`
+4. Inspect health and batch detail:
+  - `GET /api/analytics/snapshots/health`
+  - `GET /api/analytics/snapshots/batches/{id}`
+5. Validate dry-run metrics:
+  - row count is plausible for Access-origin sales without historical cost
+  - `coveragePct` is high enough for pilot
+  - `noCostPct` is low enough for pilot
+  - `remainingLiveFallbackPct` is acceptable
+6. Generate a real batch:
+  - `POST /api/analytics/snapshots/batches`
+  - `POST /api/analytics/snapshots/batches/{id}/generate`
+7. Run reconciliation before activation:
+  - `GET /api/analytics/snapshots/reconcile/supplier-sales-stats?batchId={id}&sezonaId=...`
+  - `GET /api/analytics/snapshots/reconcile/shoe-type-sales-stats?batchId={id}&fromDate=...&toDate=...`
+8. Review reconciliation output:
+  - overall `marginContribution` delta
+  - overall `marginPct` delta
+  - coverage delta
+  - top changed suppliers / shoe types
+  - rank shifts by margin contribution
+9. Activate the real batch:
+  - `POST /api/analytics/snapshots/batches/{id}/activate`
+10. Enable snapshot read path:
+  - set `Analytics:UseSnapshotCost = true`
+11. Validate live supplier and shoe-type endpoints:
+  - supplier page reflects snapshot-aware totals and snapshot badge
+  - shoe-type page reflects the same semantics
+  - health endpoint shows `FeatureFlagEnabled = true`, `HasActiveBatch = true`, `IsStale = false`
+12. Observe logs for at least one full validation window:
+  - supplier/shoe-type latency log lines exist
+  - `snapshotPathUsed=true` appears on live read path
+  - no spike in no-cost or remaining live fallback
+
+### Production pilot checklist
+
+1. Keep `Analytics:UseSnapshotCost = false`.
+2. Ensure admin access path is available for the rollout operator.
+3. Create a dry-run batch in production.
+4. Inspect:
+  - `GET /api/analytics/snapshots/health`
+  - `GET /api/analytics/snapshots/batches/{id}`
+5. Reject rollout if any of these are true:
+  - row count is unexpectedly low
+  - `coveragePct` is materially below staging expectation
+  - `noCostPct` is materially above staging expectation
+  - `remainingLiveFallbackPct` is materially above pilot target
+6. Create and generate the real batch.
+7. Run reconciliation for supplier and shoe-type with the explicit real `batchId`.
+8. Activate the real batch.
+9. Turn `Analytics:UseSnapshotCost = true` on.
+10. For the limited pilot window, watch:
+  - `GET /api/analytics/snapshots/health`
+  - supplier/shoe-type endpoint latency logs
+  - admin reconciliation output vs legacy reference
+11. If pilot is healthy, keep the batch active and retain logs + batch audit data.
+
+### Rollback checklist
+
+1. Turn `Analytics:UseSnapshotCost = false` off immediately.
+2. Re-check live endpoints:
+  - supplier endpoint returns legacy behavior
+  - shoe-type endpoint returns legacy behavior
+  - health endpoint now shows `FeatureFlagEnabled = false`
+3. Optionally deactivate the active batch:
+  - `POST /api/analytics/snapshots/batches/{id}/deactivate`
+4. Verify rollback state:
+  - `GET /api/analytics/snapshots/health`
+  - `HasActiveBatch` is false if deactivated
+  - no further live read-path logs show `snapshotPathUsed=true`
+5. Preserve snapshot rows and batch metadata for audit and later re-check.
+
+### Acceptance criteria for a healthy pilot
+
+- `GET /api/analytics/snapshots/health` reports:
+  - `FeatureFlagEnabled = true`
+  - `HasActiveBatch = true`
+  - `IsStale = false`
+- Active batch has:
+  - plausible `rowCount`
+  - acceptable `coveragePct`
+  - acceptable `noCostPct`
+  - acceptable `remainingLiveFallbackPct`
+- Reconciliation endpoints return without error for both supplier and shoe-type.
+- Reconciliation deltas are explainable to product/analytics owners.
+- Supplier and shoe-type frontend continue to disclose snapshot as a frozen estimate, not historical truth.
+- Read-path logs confirm snapshot mode is actually being exercised.
+- Endpoint latency remains within pilot tolerance.
+- Rollback remains one config toggle away (`Analytics:UseSnapshotCost = false`).
+
 ### Test T4: Batch generation — no-cost articles
 
 | | |
