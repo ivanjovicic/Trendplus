@@ -10,9 +10,12 @@ export default function AnalyticsPrintPage() {
     [searchParams]
   );
   const isDenseDailySalesBlank = payload?.documentType === "daily-sales-blank";
+  const isDailySalesPrint = payload?.tableKey === "daily-sales-stats" || payload?.tableKey === "daily-sales-stats-blank" || isDenseDailySalesBlank;
+  const pageOrientation = isDailySalesPrint ? "portrait" : "landscape";
   const pageMarginMm = isDenseDailySalesBlank ? 8 : 14;
   const tableFontSizePx = isDenseDailySalesBlank ? 9 : 12;
-  const cellPadding = isDenseDailySalesBlank ? "4px 3px" : "8px";
+  const cellPadding = isDenseDailySalesBlank ? "8px 5px" : isDailySalesPrint ? "10px 8px" : "8px";
+  const rowMinHeightPx = isDenseDailySalesBlank ? 30 : isDailySalesPrint ? 26 : 0;
   const titleFontSizePx = isDenseDailySalesBlank ? 22 : 28;
 
   React.useEffect(() => {
@@ -36,7 +39,7 @@ export default function AnalyticsPrintPage() {
       style={{ background: "var(--surface)", color: "var(--foreground)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}
     >
       <style>{`
-        @page { size: A4 landscape; margin: ${pageMarginMm}mm; }
+        @page { size: A4 ${pageOrientation}; margin: ${pageMarginMm}mm; }
         @media print {
           .analytics-print-actions { display: none !important; }
           html, body { margin: 0 !important; padding: 0 !important; }
@@ -50,6 +53,7 @@ export default function AnalyticsPrintPage() {
           padding: ${cellPadding};
           font-size: ${tableFontSizePx}px;
           vertical-align: top;
+          min-height: ${rowMinHeightPx}px;
         }
         .analytics-print-table th {
           background: var(--surface-elevated);

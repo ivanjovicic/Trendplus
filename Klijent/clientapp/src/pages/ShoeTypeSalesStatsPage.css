@@ -6,6 +6,46 @@
   padding: 16px;
 }
 
+/* ── Analytics loading states ───────────────────────────────── */
+.shoetype-decision-loading {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+  min-height: 220px;
+  padding: 40px 16px;
+}
+
+.shoetype-decision-loading span {
+  color: var(--text-secondary, #94a3b8);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.shoetype-decision-content {
+  position: relative;
+}
+
+.shoetype-decision-content--refetching {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.shoetype-decision-refetch-overlay {
+  align-items: center;
+  background: transparent;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  opacity: 1;
+  pointer-events: none;
+  position: absolute;
+  z-index: 10;
+}
+/* ─────────────────────────────────────────────────────────────── */
+
 .shoetype-decision-header {
   align-items: flex-start;
   display: flex;

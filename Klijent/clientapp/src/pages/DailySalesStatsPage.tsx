@@ -131,7 +131,7 @@ type AnomalyPoint = {
 };
 
 const DEFAULT_TOP_N = 15;
-const BLANK_SUPPLIER_COLUMN_COUNT = 16;
+const BLANK_SUPPLIER_COLUMN_COUNT = 15;
 const BLANK_PRINT_ROW_COUNT = 32;
 const SHIFT_PLACEHOLDER = "__________";
 const FIRST_SHIFT_LABEL = "06:00-13:59";
@@ -1104,7 +1104,7 @@ export default function DailySalesStatsPage() {
   const handlePrintBlank = useCallback(() => {
     const blankSupplierColumns = Array.from({ length: BLANK_SUPPLIER_COLUMN_COUNT }, (_, index) => ({
       key: `supplierBlank${index + 1}`,
-      header: `Dobavljac ${index + 1}`,
+      header: "",
       dataType: "text",
     }));
 
@@ -1296,7 +1296,7 @@ export default function DailySalesStatsPage() {
                 rows={sortedRows}
                 filters={toolbarFilters}
                 metadata={toolbarMetadata}
-                defaultOrientation="landscape"
+                defaultOrientation="portrait"
                 extraActions={(
                   <button
                     type="button"

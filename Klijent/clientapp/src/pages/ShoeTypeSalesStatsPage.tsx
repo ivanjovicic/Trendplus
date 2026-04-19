@@ -20,6 +20,7 @@ import type { StoreOption } from "../types/analytics";
 import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import InfoTip from "../components/ui/InfoTip";
+import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
@@ -911,7 +912,12 @@ export default function ShoeTypeSalesStatsPage() {
         <div className="shoetype-decision-message error">Datum od ne moze biti posle datuma do.</div>
       ) : null}
       {error ? <div className="shoetype-decision-message error">{error}</div> : null}
-      {loading ? <div className="shoetype-decision-message loading">Ucitavam tipove obuce...</div> : null}
+      {loading && !data ? (
+        <div className="shoetype-decision-loading" role="status" aria-live="polite">
+          <UltraSpinner size="md" label="Učitavam tipove obuće" />
+          <span>Učitavam tipove obuće...</span>
+        </div>
+      ) : null}
       {!loading && !error && emptyStateHint ? (
         <div className="shoetype-decision-message info">{emptyStateHint}</div>
       ) : null}
@@ -921,31 +927,39 @@ export default function ShoeTypeSalesStatsPage() {
         </div>
       ) : null}
 
-      {!loading && data ? (
-        <>
+      {data ? (
+        <div
+          className={`shoetype-decision-content${loading ? " shoetype-decision-content--refetching" : ""}`}
+          aria-busy={loading || undefined}
+        >
+          {loading ? (
+            <div className="shoetype-decision-refetch-overlay" aria-hidden="true">
+              <UltraSpinner size="sm" label="Osvežavam podatke" />
+            </div>
+          ) : null}
           <section className="shoetype-decision-kpis">
             <article className="shoetype-decision-kpi">
-              <span>Ukupan promet <InfoTip text="Zbir vrednosti svih prodaja svih tipova obuće u periodu." /></span>
+              <span>Ukupan promet <InfoTip text="Zbir prodajnih vrednosti svih tipova obuće u izabranom periodu. Formula: Σ prodajna vrednost stavki po tipu u periodu (RSD)." /></span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih tipova obuće." /></span>
+              <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih tipova obuće u izabranom periodu." /></span>
               <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Ukupan marzni doprinos <InfoTip text="Zbir maržnog doprinosa (razlika nabavne i prodajne vrednosti) svih tipova." /></span>
+              <span>Ukupan maržni doprinos <InfoTip text="Zbir (prodajna vrednost − nabavna vrednost) za sve stavke sa poznatom nabavnom cenom, grupisano po tipu obuće. Nisu uključeni operativni troškovi, plate, zakup ni ostali indirektni troškovi." /></span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Prosečna marža <InfoTip text="Prosečan procenat marže za sve tipove obuće." /></span>
+              <span>Prosečna marža <InfoTip text="Prosečan procenat maržnog doprinosa po tipu obuće. Formula po tipu: maržni doprinos / promet sa poznatom nabavnom cenom × 100. Prikazani prosečk je aritmetički prosečk među tipovima, nije ponderisan prometom." /></span>
               <strong>{fmtPct(avgMarginPct, 1)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Udeo top 5 tipova <InfoTip text="Procenat koji čine top 5 tipova obuće u ukupnom prometu." /></span>
+              <span>Udeo top 5 tipova <InfoTip text="Procenat ukupnog prometa koji dolazi od 5 tipova obuće s najvišim prometom. Formula: promet top 5 / ukupan promet × 100." /></span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Rast/PAD vs prethodni period <InfoTip text="Procenat promene ukupnog prometa u odnosu na isti period prošle godine." /></span>
+              <span>PoP trend prometa <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet − prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
@@ -972,8 +986,8 @@ export default function ShoeTypeSalesStatsPage() {
             </article>
 
             <article className="shoetype-decision-card">
-              <h2>Promet vs Zarada</h2>
-              <p>Poredjenje udela u prometu i udela u zaradi — gde promet vara, a profit govori istinu.</p>
+              <h2>Promet vs Maržni doprinos</h2>
+              <p>Poređenje udela u prometu i udela u maržnom doprinosu — dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -988,7 +1002,7 @@ export default function ShoeTypeSalesStatsPage() {
                       />
                       <Legend />
                       <Bar dataKey="udelPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo prometa %" />
-                      <Bar dataKey="udelZarade" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo zarade %" />
+                      <Bar dataKey="udelZarade" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo maržnog doprinosa %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1042,35 +1056,35 @@ export default function ShoeTypeSalesStatsPage() {
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo%{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
+                          Udeo%{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo ovog tipa obuće u ukupnom prometu svih prikazanih tipova. Formula: promet tipa / ukupan promet × 100." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marže: razlika između prodajne vrednosti i nabavne vrednosti za prodatu robu." />
+                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Zbir (prodajna vrednost − nabavna vrednost) za stavke ovog tipa sa poznatom nabavnom cenom. Nisu uključeni operativni troškovi, plate, zakup ni ostali indirektni troškovi." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginPct")}>
-                          Marža %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat marže: (prodajna - nabavna) / prodajna vrednost." />
+                          Marža %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat maržnog doprinosa u prometu sa poznatom nabavnom cenom. Formula: maržni doprinos / promet sa poznatom nabavnom cenom × 100. Osnova nije ukupan promet, već samo deo sa dostupnom nabavnom cenom." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("popRevenueChangePct")}>
-                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
+                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Period-over-period promena prometa ovog tipa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni − prethodni) / prethodni × 100. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}>
-                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto sto i PoP trend." />
+                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Promena prometa pre/posle prvog datuma nivelacije (ažuriranja cena) isključivo na artiklima sa prodajom u oba perioda. Nije isto kao PoP trend — meri efekat cenovnog ažuriranja, ne sezonsku promenu." />
                         </button>
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Systemska preporuka: Pojačaj / Zadrži / Smanji. Kliknite na red za detaljnije objašnjenje." />
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Sistemska preporuka za asortiman: Pojačaj / Zadrži / Smanji. Bazira se na udelu u prometu, maržnom doprinosu, PoP trendu i pouzdanosti podataka. Kliknite na red za detaljno objašnjenje." />
                         </button>
                       </th>
-                      <th className="align-center">Detalj</th>
+                      <th className="align-center">Detalj <InfoTip text="Proširi inline detalj ili otvori puni detalj za ovaj tip obuće." /></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1155,11 +1169,11 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{fmtQty(selectedRow.ukupnaKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Realna zarada <InfoTip text="Maržni doprinos: razlika između prodajne i nabavne vrednosti." /></span>
+                  <span>Maržni doprinos <InfoTip text="Zbir (prodajna vrednost − nabavna vrednost) za stavke sa poznatom nabavnom cenom. Nisu uključeni operativni troškovi, plate, zakup ni ostali indirektni troškovi." /></span>
                   <strong>{fmtRsd(selectedRow.marginContribution)}</strong>
                 </article>
                 <article>
-                  <span>Marža % <InfoTip text="Procenat marže kao razlika između prodajne i nabavne vrednosti." /></span>
+                  <span>Marža % <InfoTip text="Procenat maržnog doprinosa u prometu sa poznatom nabavnom cenom. Formula: maržni doprinos / promet sa poznatom nabavnom cenom × 100. Osnova nije ukupan promet, već samo deo gde je nabavna cena dostupna." /></span>
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
@@ -1167,7 +1181,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{fmtPct(selectedRow.sharePct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Udeo u zaradi <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnoj zaradi (maržnom doprinosu)." /></span>
+                  <span>Udeo u maržnom doprinosu <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnom maržnom doprinosu. Formula: maržni doprinos tipa / ukupan maržni doprinos svih tipova × 100." /></span>
                   <strong>{fmtPct(totalMarginContribution > 0 ? (selectedRow.marginContribution / totalMarginContribution) * 100 : 0, 2)}</strong>
                 </article>
                 <article>
@@ -1279,7 +1293,7 @@ export default function ShoeTypeSalesStatsPage() {
               </p>
             </section>
           ) : null}
-        </>
+        </div>
       ) : null}
     </div>
   );
