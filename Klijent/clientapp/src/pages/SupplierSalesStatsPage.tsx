@@ -416,14 +416,14 @@ export default function SupplierSalesStatsPage() {
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
-  const initialRange = useMemo(() => getPresetRange("90d"), []);
+  const initialRange = useMemo(() => getPresetRange("30d"), []);
   const initialQueryFilters = useMemo(() => {
     const queryFromDate = parseDateInputOrDefault(searchParams.get("fromDate"), initialRange.fromDate);
     const queryToDate = parseDateInputOrDefault(searchParams.get("toDate"), initialRange.toDate);
     const querySezonaId = parseNullableInt(searchParams.get("sezonaId"));
     const queryStoreId = parseNullableInt(searchParams.get("storeId"));
     const hasExplicitDateQuery = searchParams.has("fromDate") || searchParams.has("toDate");
-    const periodPreset: PeriodPreset = hasExplicitDateQuery ? "custom" : "90d";
+    const periodPreset: PeriodPreset = hasExplicitDateQuery ? "custom" : "30d";
 
     return {
       periodPreset,
@@ -474,7 +474,7 @@ export default function SupplierSalesStatsPage() {
     const querySezonaId = parseNullableInt(searchParams.get("sezonaId"));
     const queryStoreId = parseNullableInt(searchParams.get("storeId"));
     const hasExplicitDateQuery = searchParams.has("fromDate") || searchParams.has("toDate");
-    const queryPreset: PeriodPreset = hasExplicitDateQuery ? "custom" : "90d";
+    const queryPreset: PeriodPreset = hasExplicitDateQuery ? "custom" : "30d";
 
     const isSame =
       activeFilters.fromDate === queryFromDate &&
@@ -999,8 +999,8 @@ export default function SupplierSalesStatsPage() {
   };
 
   const handleResetFilters = () => {
-    const range = getPresetRange("90d");
-    setPeriodPreset("90d");
+    const range = getPresetRange("30d");
+    setPeriodPreset("30d");
     setFromDate(range.fromDate);
     setToDate(range.toDate);
     setSezonaId(null);

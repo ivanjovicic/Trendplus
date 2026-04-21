@@ -360,8 +360,8 @@ export default function ShoeTypeSalesStatsPage() {
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
-  const initialRange = useMemo(() => getPresetRange("90d"), []);
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
+  const initialRange = useMemo(() => getPresetRange("30d"), []);
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
   const [fromDate, setFromDate] = useState(initialRange.fromDate);
   const [toDate, setToDate] = useState(initialRange.toDate);
   const [sezonaId, setSezonaId] = useState<number | null>(null);
@@ -819,8 +819,8 @@ export default function ShoeTypeSalesStatsPage() {
   };
 
   const resetFilters = () => {
-    const range = getPresetRange("90d");
-    setPeriodPreset("90d");
+    const range = getPresetRange("30d");
+    setPeriodPreset("30d");
     setFromDate(range.fromDate);
     setToDate(range.toDate);
     setSezonaId(null);
