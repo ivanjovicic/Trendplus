@@ -89,6 +89,22 @@ const decisionColumns: AnalyticsTableColumn<DecisionShoeType>[] = [
   { key: "decisionScore", header: "Skor odluke", dataType: "number" },
 ];
 
+const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, #8ad5a8)", fontSize: 12, fontWeight: 600 };
+const CHART_LEGEND_STYLE = { color: "var(--dashboard-chart-axis, #8ad5a8)", fontSize: 12, fontWeight: 600, paddingTop: 10 };
+const CHART_CURSOR_STYLE = { fill: "var(--dashboard-chart-hover, rgba(102, 255, 126, 0.14))" };
+const COMMAND_TOOLTIP_STYLE = {
+  ...CHART_TOOLTIP_STYLE,
+  background: "linear-gradient(140deg, rgba(5, 15, 24, 0.96), rgba(11, 33, 46, 0.95))",
+  border: "1px solid rgba(102, 255, 126, 0.4)",
+  boxShadow: "0 14px 30px rgba(2, 8, 16, 0.45), 0 0 0 1px rgba(30, 200, 255, 0.22)",
+  borderRadius: "12px",
+};
+const COMMAND_TOOLTIP_LABEL_STYLE = {
+  ...CHART_TOOLTIP_LABEL_STYLE,
+  color: "#dbffe8",
+  fontWeight: 700,
+};
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -178,8 +194,12 @@ function normalizeName(value: string | null | undefined): string {
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
-  if (field !== activeField) return "";
-  return dir === "asc" ? " ^" : " v";
+  if (field !== activeField) return " ⇅";
+  return dir === "asc" ? " ↑" : " ↓";
+}
+
+function isSortActive(field: SortField, activeField: SortField): boolean {
+  return field === activeField;
 }
 
 function statusClass(status: DecisionStatus): string {
@@ -1007,18 +1027,25 @@ export default function ShoeTypeSalesStatsPage() {
           </section>
 
           <section className="shoetype-decision-panels">
-            <article className="shoetype-decision-card">
+            <article className="shoetype-decision-card shoetype-decision-card--chart">
               <h2>Koncentracija prometa po tipu obuće <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose tipovi obuće. Koristi samo promet, bez tumačenja profita ili neto marže." /></h2>
               <p>Brz pregled koji tipovi nose najveći deo prihoda.</p>
               {concentrationData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                     <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
-                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
-                      <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
-                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
+                      <defs>
+                        <linearGradient id="shoeShareGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#33f28b" />
+                          <stop offset="100%" stopColor="#1ec8ff" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                      <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={COMMAND_TOOLTIP_STYLE} labelStyle={COMMAND_TOOLTIP_LABEL_STYLE} cursor={CHART_CURSOR_STYLE} formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
+                      <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
+                      <Bar dataKey="sharePct" fill="url(#shoeShareGradient)" radius={[0, 10, 10, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1027,24 +1054,35 @@ export default function ShoeTypeSalesStatsPage() {
               )}
             </article>
 
-            <article className="shoetype-decision-card">
+            <article className="shoetype-decision-card shoetype-decision-card--chart">
               <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu po tipu obuće. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz fallback izvora, i ovaj signal treba čitati oprezno." /></h2>
               <p>Poređenje udela u prometu i udela u marznom doprinosu - tipovi obuće s visokim prometom ne moraju imati i visok marzni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                     <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
-                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
+                      <defs>
+                        <linearGradient id="shoeRevenueGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#8bff00" />
+                          <stop offset="100%" stopColor="#33f28b" />
+                        </linearGradient>
+                        <linearGradient id="shoeMarginGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#1ec8ff" />
+                          <stop offset="100%" stopColor="#11f59e" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                      <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                       <Tooltip
-                        contentStyle={CHART_TOOLTIP_STYLE}
-                        labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                        contentStyle={COMMAND_TOOLTIP_STYLE}
+                        labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
+                        cursor={CHART_CURSOR_STYLE}
                         formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
                       />
-                      <Legend />
-                      <Bar dataKey="udeoPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo u prometu %" />
-                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo u marznom doprinosu %" />
+                      <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
+                      <Bar dataKey="udeoPrometa" fill="url(#shoeRevenueGradient)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="udeoMarznogDoprinosa" fill="url(#shoeMarginGradient)" radius={[0, 6, 6, 0]} name="Udeo u maržnom doprinosu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1059,9 +1097,11 @@ export default function ShoeTypeSalesStatsPage() {
               <div className="shoetype-decision-table-head">
                 <div>
                   <h2>Prioritetna lista tipova obuće</h2>
-                  <p>
-                    Pojačaj: {counts.boost} | Zadrži: {counts.keep} | Smanji: {counts.reduce}
-                  </p>
+                  <div className="shoetype-priority-chip-row" aria-label="Raspodela preporuka">
+                    <span className="priority-chip priority-chip-boost">Pojačaj <strong>{counts.boost}</strong></span>
+                    <span className="priority-chip priority-chip-keep">Zadrži <strong>{counts.keep}</strong></span>
+                    <span className="priority-chip priority-chip-reduce">Smanji <strong>{counts.reduce}</strong></span>
+                  </div>
                   <p className="shoetype-decision-metric-note">
                     PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
                   </p>
@@ -1081,54 +1121,114 @@ export default function ShoeTypeSalesStatsPage() {
                 <table className="shoetype-decision-table">
                   <thead>
                     <tr>
-                      <th>
-                        <button type="button" onClick={() => handleSort("tipObuceNaziv")}>
-                          Tip obuće{sortMarker("tipObuceNaziv", sortField, sortDir)} <InfoTip text="Naziv tipa obuće (npr. patike, sandale)." />
+                      <th className={isSortActive("tipObuceNaziv", sortField) ? "is-sorted" : undefined}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("tipObuceNaziv", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("tipObuceNaziv", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("tipObuceNaziv", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("tipObuceNaziv")}
+                        >
+                          Tip obuće <span className="sort-indicator" aria-hidden="true">{sortMarker("tipObuceNaziv", sortField, sortDir)}</span> <InfoTip text="Naziv tipa obuće (npr. patike, sandale)." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("ukupanPromet")}>
-                          Promet{sortMarker("ukupanPromet", sortField, sortDir)} <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
+                      <th className={isSortActive("ukupanPromet", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("ukupanPromet", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("ukupanPromet", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("ukupanPromet", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("ukupanPromet")}
+                        >
+                          Promet <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupanPromet", sortField, sortDir)}</span> <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("ukupnaKolicina")}>
-                          Količina{sortMarker("ukupnaKolicina", sortField, sortDir)} <InfoTip text="Ukupan broj prodatih komada u izabranom periodu." />
+                      <th className={isSortActive("ukupnaKolicina", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("ukupnaKolicina", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("ukupnaKolicina", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("ukupnaKolicina", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("ukupnaKolicina")}
+                        >
+                          Količina <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupnaKolicina", sortField, sortDir)}</span> <InfoTip text="Ukupan broj prodatih komada u izabranom periodu." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("totalCost")}>
-                          Nabavna vrednost{sortMarker("totalCost", sortField, sortDir)} <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." />
+                      <th className={isSortActive("totalCost", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("totalCost", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("totalCost", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("totalCost", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("totalCost")}
+                        >
+                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo u prometu{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo ovog tipa obuće u ukupnom prometu svih prikazanih tipova. Formula: promet tipa / ukupan promet x 100." />
+                      <th className={isSortActive("sharePct", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("sharePct", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("sharePct", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("sharePct", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("sharePct")}
+                        >
+                          Udeo u prometu <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Udeo ovog tipa obuće u ukupnom prometu svih prikazanih tipova. Formula: promet tipa / ukupan promet x 100." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za stavke ovog tipa sa dostupnim troškom. Operativni troškovi, plate, zakup i ostali indirektni troškovi nisu uključeni." />
+                      <th className={isSortActive("marginContribution", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("marginContribution", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("marginContribution", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("marginContribution", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("marginContribution")}
+                        >
+                          Maržni doprinos <span className="sort-indicator" aria-hidden="true">{sortMarker("marginContribution", sortField, sortDir)}</span> <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za stavke ovog tipa sa dostupnim troškom. Operativni troškovi, plate, zakup i ostali indirektni troškovi nisu uključeni." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("marginPct")}>
-                          Marža %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat maržnog doprinosa u prometu sa dostupnim troškom. Formula: maržni doprinos / promet sa dostupnim troškom x 100. Osnova nije ukupan promet, već samo deo sa dostupnim troškom." />
+                      <th className={isSortActive("marginPct", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("marginPct", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("marginPct", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("marginPct", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("marginPct")}
+                        >
+                          Marža % <span className="sort-indicator" aria-hidden="true">{sortMarker("marginPct", sortField, sortDir)}</span> <InfoTip text="Procenat maržnog doprinosa u prometu sa dostupnim troškom. Formula: maržni doprinos / promet sa dostupnim troškom x 100. Osnova nije ukupan promet, već samo deo sa dostupnim troškom." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("popRevenueChangePct")}>
-                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Period-over-period promena prometa ovog tipa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni − prethodni) / prethodni × 100. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
+                      <th className={isSortActive("popRevenueChangePct", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("popRevenueChangePct", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("popRevenueChangePct", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("popRevenueChangePct", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("popRevenueChangePct")}
+                        >
+                          PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text="Period-over-period promena prometa ovog tipa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni − prethodni) / prethodni × 100. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}>
-                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Promena prometa pre/posle prvog datuma nivelacije (ažuriranja cena) isključivo na artiklima sa prodajom u oba perioda. Nije isto kao PoP trend — meri efekat cenovnog ažuriranja, ne sezonsku promenu." />
+                      <th className={isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}
+                        >
+                          Nivelacija impact <span className="sort-indicator" aria-hidden="true">{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)}</span> <InfoTip text="Promena prometa pre/posle prvog datuma nivelacije (ažuriranja cena) isključivo na artiklima sa prodajom u oba perioda. Nije isto kao PoP trend — meri efekat cenovnog ažuriranja, ne sezonsku promenu." />
                         </button>
                       </th>
-                      <th>
-                        <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Sistemska preporuka za asortiman: Pojačaj / Zadrži / Smanji. Bazira se na udelu u prometu, maržnom doprinosu, PoP trendu i pouzdanosti podataka. Kliknite na red za detaljno objašnjenje." />
+                      <th className={isSortActive("status", sortField) ? "is-sorted" : undefined}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("status", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("status", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("status", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("status")}
+                        >
+                          Preporuka <span className="sort-indicator" aria-hidden="true">{sortMarker("status", sortField, sortDir)}</span> <InfoTip text="Sistemska preporuka za asortiman: Pojačaj / Zadrži / Smanji. Bazira se na udelu u prometu, maržnom doprinosu, PoP trendu i pouzdanosti podataka. Kliknite na red za detaljno objašnjenje." />
                         </button>
                       </th>
                       <th className="align-center">Detalj <InfoTip text="Proširi inline detalj ili otvori puni detalj za ovaj tip obuće." /></th>
@@ -1142,43 +1242,59 @@ export default function ShoeTypeSalesStatsPage() {
                         </td>
                       </tr>
                     ) : (
-                      sortedRows.map((row) => {
+                      sortedRows.map((row, index) => {
                         const rowKey = shoeTypeKey(row);
+                        const rank = index + 1;
                         const expanded = expandedTypeKey === rowKey;
                         const popMetric = describePopMetric(row);
                         const nivelacijaImpactMetric = describeNivelacijaImpactMetric(row);
                         return (
-                          <tr key={rowKey} className={expanded ? "expanded-row" : ""}>
+                          <tr key={rowKey} className={[expanded ? "expanded-row" : "", rank <= 3 ? `shoetype-rank-row shoetype-rank-row-${rank}` : ""].filter(Boolean).join(" ")}>
                             <td>
-                              <AnalyticsUnknownLink
-                                value={row.tipObuceNaziv}
-                                issueType="missingShoeType"
-                                context={{
-                                  originTable: "shoe-type-sales-stats",
-                                  fromDate: activeFilters.fromDate,
-                                  toDate: activeFilters.toDate,
-                                  sezonaId: activeFilters.sezonaId,
-                                  storeId: activeFilters.storeId,
-                                  dataScope: getDataScope(),
-                                }}
-                              />
+                              <div className="shoetype-name-cell">
+                                <span className={`shoetype-rank-badge ${rank <= 3 ? `rank-${rank}` : "rank-other"}`}>#{rank}</span>
+                                <AnalyticsUnknownLink
+                                  value={row.tipObuceNaziv}
+                                  issueType="missingShoeType"
+                                  context={{
+                                    originTable: "shoe-type-sales-stats",
+                                    fromDate: activeFilters.fromDate,
+                                    toDate: activeFilters.toDate,
+                                    sezonaId: activeFilters.sezonaId,
+                                    storeId: activeFilters.storeId,
+                                    dataScope: getDataScope(),
+                                  }}
+                                />
+                              </div>
                             </td>
-                            <td className="align-right">{fmtRsd(row.ukupanPromet)}</td>
+                            <td className="align-right metric-strong">{fmtRsd(row.ukupanPromet)}</td>
                             <td className="align-right">{fmtQty(row.ukupnaKolicina)}</td>
                             <td className="align-right">{fmtRsd(row.totalCost)}</td>
-                            <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
-                            <td className="align-right">{fmtRsd(row.marginContribution)}</td>
-                            <td className="align-right">{fmtPct(row.marginPct, 1)}{tierNeedsWarning(row.marginQualityTier) ? <span className={`shoetype-decision-kpi-badge ${qualityTierClass(row.marginQualityTier)}`} title={row.marginQualityTooltip ?? row.marginQualityLabel ?? ""}> {qualityTierIcon(row.marginQualityTier)}</span> : null}</td>
-                            <td className={["align-right", popMetric.className].join(" ")} title={popMetric.title}>{popMetric.label}</td>
-                            <td className={["align-right", nivelacijaImpactMetric.className].join(" ")} title={nivelacijaImpactMetric.title}>{nivelacijaImpactMetric.label}</td>
+                            <td className="align-right"><span className="metric-chip metric-chip-neutral">{fmtPct(row.sharePct, 2)}</span></td>
+                            <td className="align-right metric-strong">{fmtRsd(row.marginContribution)}</td>
+                            <td className="align-right">
+                              <span>{fmtPct(row.marginPct, 1)}</span>
+                              {tierNeedsWarning(row.marginQualityTier) ? (
+                                <span className={`quality-pill ${qualityTierClass(row.marginQualityTier)}`} title={row.marginQualityTooltip ?? row.marginQualityLabel ?? ""}>
+                                  {qualityTierIcon(row.marginQualityTier)} marža
+                                </span>
+                              ) : null}
+                            </td>
+                            <td className="align-right" title={popMetric.title}><span className={`metric-chip trend-pill ${popMetric.className}`}>{popMetric.label}</span></td>
+                            <td className="align-right" title={nivelacijaImpactMetric.title}><span className={`metric-chip trend-pill ${nivelacijaImpactMetric.className}`}>{nivelacijaImpactMetric.label}</span></td>
                             <td>
-                              <span
-                                className={statusClass(row.status)}
-                                title={buildStatusTooltip(row)}
-                                aria-label={buildStatusTooltip(row)}
-                              >
-                                {displayStatusLabel(row.status)}
-                              </span>
+                              <div className="shoetype-status-stack">
+                                <span
+                                  className={statusClass(row.status)}
+                                  title={buildStatusTooltip(row)}
+                                  aria-label={buildStatusTooltip(row)}
+                                >
+                                  {displayStatusLabel(row.status)}
+                                </span>
+                                <span className="shoetype-status-reason-chip" title={row.statusReason}>
+                                  Razlog <InfoTip text={row.statusReason} />
+                                </span>
+                              </div>
                             </td>
                             <td className="align-center">
                               <button

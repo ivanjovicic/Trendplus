@@ -101,6 +101,22 @@ const REASON_CODE_LABELS: Record<string, string> = {
   pop_unavailable: "PoP nije dostupan",
 };
 
+const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, #8ad5a8)", fontSize: 12, fontWeight: 600 };
+const CHART_LEGEND_STYLE = { color: "var(--dashboard-chart-axis, #8ad5a8)", fontSize: 12, fontWeight: 600, paddingTop: 10 };
+const CHART_CURSOR_STYLE = { fill: "var(--dashboard-chart-hover, rgba(102, 255, 126, 0.14))" };
+const COMMAND_TOOLTIP_STYLE = {
+  ...CHART_TOOLTIP_STYLE,
+  background: "linear-gradient(140deg, rgba(5, 15, 24, 0.96), rgba(11, 33, 46, 0.95))",
+  border: "1px solid rgba(102, 255, 126, 0.4)",
+  boxShadow: "0 14px 30px rgba(2, 8, 16, 0.45), 0 0 0 1px rgba(30, 200, 255, 0.22)",
+  borderRadius: "12px",
+};
+const COMMAND_TOOLTIP_LABEL_STYLE = {
+  ...CHART_TOOLTIP_LABEL_STYLE,
+  color: "#dbffe8",
+  fontWeight: 700,
+};
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -198,8 +214,12 @@ function smoothScrollToElement(element: HTMLElement, durationMs = 850): void {
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
-  if (field !== activeField) return "";
-  return dir === "asc" ? " ^" : " v";
+  if (field !== activeField) return " ⇅";
+  return dir === "asc" ? " ↑" : " ↓";
+}
+
+function isSortActive(field: SortField, activeField: SortField): boolean {
+  return field === activeField;
 }
 
 function statusClass(status: DecisionStatus): string {
@@ -1234,22 +1254,30 @@ export default function SupplierSalesStatsPage() {
           </section>
 
           <section className="supplier-decision-panels">
-            <article className="supplier-decision-card">
+            <article className="supplier-decision-card supplier-decision-card--chart">
               <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose najveći dobavljači. Koristi samo promet, bez tumačenja profita ili neto marže." /></h2>
               <p>Top udeo prometa za brzu procenu gde je biznis koncentrisan.</p>
               {concentrationData.length > 0 ? (
                 <div className="supplier-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                     <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
-                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
+                      <defs>
+                        <linearGradient id="supplierShareGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#33f28b" />
+                          <stop offset="100%" stopColor="#1ec8ff" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                      <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                       <Tooltip
-                        contentStyle={CHART_TOOLTIP_STYLE}
-                        labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                        contentStyle={COMMAND_TOOLTIP_STYLE}
+                        labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
+                        cursor={CHART_CURSOR_STYLE}
                         formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`}
                       />
-                      <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} name="Udeo u prometu %" />
+                      <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
+                      <Bar dataKey="sharePct" fill="url(#supplierShareGradient)" radius={[0, 10, 10, 0]} name="Udeo u prometu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1258,24 +1286,35 @@ export default function SupplierSalesStatsPage() {
               )}
             </article>
 
-            <article className="supplier-decision-card">
+            <article className="supplier-decision-card supplier-decision-card--chart">
               <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz fallback izvora, i ovaj signal treba čitati oprezno." /></h2>
               <p>Poređenje udela u prometu i udela u maržnom doprinosu - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="supplier-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                     <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
-                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
+                      <defs>
+                        <linearGradient id="supplierRevenueGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#8bff00" />
+                          <stop offset="100%" stopColor="#33f28b" />
+                        </linearGradient>
+                        <linearGradient id="supplierMarginGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#1ec8ff" />
+                          <stop offset="100%" stopColor="#11f59e" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                      <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                       <Tooltip
-                        contentStyle={CHART_TOOLTIP_STYLE}
-                        labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                        contentStyle={COMMAND_TOOLTIP_STYLE}
+                        labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
+                        cursor={CHART_CURSOR_STYLE}
                         formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
                       />
-                      <Legend />
-                      <Bar dataKey="udeoPrometa" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} name="Udeo u prometu %" />
-                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--accent-success, #22c55e)" radius={[0, 4, 4, 0]} name="Udeo u marznom doprinosu %" />
+                      <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
+                      <Bar dataKey="udeoPrometa" fill="url(#supplierRevenueGradient)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="udeoMarznogDoprinosa" fill="url(#supplierMarginGradient)" radius={[0, 6, 6, 0]} name="Udeo u maržnom doprinosu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1290,9 +1329,13 @@ export default function SupplierSalesStatsPage() {
               <div className="supplier-decision-table-head">
                 <div>
                   <h2>Prioritetna lista dobavljača</h2>
-                  <p>
-                    Pojačaj: {supplierCounts.increaseFocus} | Zadrži: {supplierCounts.maintain} | Oprez: {supplierCounts.review} | Smanji: {supplierCounts.doNotTrust} | N/A: {supplierCounts.insufficientData}
-                  </p>
+                  <div className="supplier-priority-chip-row" aria-label="Raspodela preporuka">
+                    <span className="priority-chip priority-chip-boost">Pojačaj <strong>{supplierCounts.increaseFocus}</strong></span>
+                    <span className="priority-chip priority-chip-keep">Zadrži <strong>{supplierCounts.maintain}</strong></span>
+                    <span className="priority-chip priority-chip-watch">Oprez <strong>{supplierCounts.review}</strong></span>
+                    <span className="priority-chip priority-chip-reduce">Smanji <strong>{supplierCounts.doNotTrust}</strong></span>
+                    <span className="priority-chip priority-chip-na">N/A <strong>{supplierCounts.insufficientData}</strong></span>
+                  </div>
                   <p className="supplier-decision-metric-note">
                     Preporuka uzima u obzir promet, količinu, maržni doprinos, maržni procenat i PoP trend.
                   </p>
@@ -1317,54 +1360,114 @@ export default function SupplierSalesStatsPage() {
                 <table className="supplier-decision-table">
                   <thead>
                     <tr>
-                      <th>
-                        <button type="button" onClick={() => handleSort("dobavljacNaziv")}>
-                          Dobavljač{sortMarker("dobavljacNaziv", sortField, sortDir)} <InfoTip text="Naziv dobavljača. Klikom sortirate abecedno." />
+                      <th className={isSortActive("dobavljacNaziv", sortField) ? "is-sorted" : undefined}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("dobavljacNaziv", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("dobavljacNaziv", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("dobavljacNaziv", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("dobavljacNaziv")}
+                        >
+                          Dobavljač <span className="sort-indicator" aria-hidden="true">{sortMarker("dobavljacNaziv", sortField, sortDir)}</span> <InfoTip text="Naziv dobavljača. Klikom sortirate abecedno." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("ukupanPromet")}>
-                          Promet{sortMarker("ukupanPromet", sortField, sortDir)} <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
+                      <th className={isSortActive("ukupanPromet", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("ukupanPromet", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("ukupanPromet", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("ukupanPromet", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("ukupanPromet")}
+                        >
+                          Promet <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupanPromet", sortField, sortDir)}</span> <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("ukupnaKolicina")}>
-                          Količina{sortMarker("ukupnaKolicina", sortField, sortDir)} <InfoTip text="Ukupan broj prodatih komada." />
+                      <th className={isSortActive("ukupnaKolicina", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("ukupnaKolicina", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("ukupnaKolicina", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("ukupnaKolicina", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("ukupnaKolicina")}
+                        >
+                          Količina <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupnaKolicina", sortField, sortDir)}</span> <InfoTip text="Ukupan broj prodatih komada." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("totalCost")}>
-                          Nabavna vrednost{sortMarker("totalCost", sortField, sortDir)} <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." />
+                      <th className={isSortActive("totalCost", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("totalCost", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("totalCost", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("totalCost", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("totalCost")}
+                        >
+                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo u prometu{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Koliki procenat ukupnog prometa čini ovaj dobavljač. Formula: promet dobavljača / ukupan promet svih prikazanih dobavljača x 100." />
+                      <th className={isSortActive("sharePct", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("sharePct", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("sharePct", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("sharePct", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("sharePct")}
+                        >
+                          Udeo u prometu <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog prometa čini ovaj dobavljač. Formula: promet dobavljača / ukupan promet svih prikazanih dobavljača x 100." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za stavke sa dostupnim troškom. Formula: zbir prodajna vrednost - nabavna vrednost. Operativni troškovi, plate i ostali indirektni troškovi nisu uključeni." />
+                      <th className={isSortActive("marginContribution", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("marginContribution", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("marginContribution", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("marginContribution", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("marginContribution")}
+                        >
+                          Maržni doprinos <span className="sort-indicator" aria-hidden="true">{sortMarker("marginContribution", sortField, sortDir)}</span> <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za stavke sa dostupnim troškom. Formula: zbir prodajna vrednost - nabavna vrednost. Operativni troškovi, plate i ostali indirektni troškovi nisu uključeni." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("marginPct")}>
-                          Marža %{sortMarker("marginPct", sortField, sortDir)} <InfoTip text="Procenat maržnog doprinosa u prometu sa dostupnim troškom. Formula: maržni doprinos / promet sa dostupnim troškom x 100. Osnova nije ukupan promet, već samo deo prometa gde je trošak dostupan." />
+                      <th className={isSortActive("marginPct", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("marginPct", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("marginPct", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("marginPct", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("marginPct")}
+                        >
+                          Marža % <span className="sort-indicator" aria-hidden="true">{sortMarker("marginPct", sortField, sortDir)}</span> <InfoTip text="Procenat maržnog doprinosa u prometu sa dostupnim troškom. Formula: maržni doprinos / promet sa dostupnim troškom x 100. Osnova nije ukupan promet, već samo deo prometa gde je trošak dostupan." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("shareOfMarginContribution")}>
-                          Udeo u maržnom doprinosu{sortMarker("shareOfMarginContribution", sortField, sortDir)} <InfoTip text="Koliki procenat ukupnog maržnog doprinosa čini ovaj dobavljač. Formula: maržni doprinos dobavljača / ukupan maržni doprinos svih prikazanih dobavljača x 100. Ovo nije udeo u profitu niti u neto zaradi." />
+                      <th className={isSortActive("shareOfMarginContribution", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("shareOfMarginContribution", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("shareOfMarginContribution", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("shareOfMarginContribution", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("shareOfMarginContribution")}
+                        >
+                          Udeo u maržnom doprinosu <span className="sort-indicator" aria-hidden="true">{sortMarker("shareOfMarginContribution", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog maržnog doprinosa čini ovaj dobavljač. Formula: maržni doprinos dobavljača / ukupan maržni doprinos svih prikazanih dobavljača x 100. Ovo nije udeo u profitu niti u neto zaradi." />
                         </button>
                       </th>
-                      <th className="align-right">
-                        <button type="button" onClick={() => handleSort("popRevenueChangePct")}>
-                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Promena prometa vs prethodni period." />
+                      <th className={isSortActive("popRevenueChangePct", sortField) ? "align-right is-sorted" : "align-right"}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("popRevenueChangePct", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("popRevenueChangePct", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("popRevenueChangePct", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("popRevenueChangePct")}
+                        >
+                          PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text="Promena prometa vs prethodni period." />
                         </button>
                       </th>
-                      <th>
-                        <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Pojačaj fokus, Zadrži, U pregledu ili Smanji - preporuka bazirana na prometu, maržnom doprinosu, marži i trendu, uz proveru kvaliteta podataka." />
+                      <th className={isSortActive("status", sortField) ? "is-sorted" : undefined}>
+                        <button
+                          type="button"
+                          className={`sortable-header ${isSortActive("status", sortField) ? "is-active" : ""}`}
+                          data-sort-active={isSortActive("status", sortField) ? "true" : "false"}
+                          data-sort-dir={isSortActive("status", sortField) ? sortDir : "none"}
+                          onClick={() => handleSort("status")}
+                        >
+                          Preporuka <span className="sort-indicator" aria-hidden="true">{sortMarker("status", sortField, sortDir)}</span> <InfoTip text="Pojačaj fokus, Zadrži, U pregledu ili Smanji - preporuka bazirana na prometu, maržnom doprinosu, marži i trendu, uz proveru kvaliteta podataka." />
                         </button>
                       </th>
                       <th className="align-center">
@@ -1380,8 +1483,9 @@ export default function SupplierSalesStatsPage() {
                         </td>
                       </tr>
                     ) : (
-                      visibleSuppliers.map((supplier) => {
+                      visibleSuppliers.map((supplier, index) => {
                         const rowKey = supplierKey(supplier);
+                        const rank = index + 1;
                         const isExpanded = expandedSupplierKey === rowKey;
                         const popMetric = describePopMetric(supplier);
                         const contributionVsRevenueMismatch = !supplier.isUnknown
@@ -1398,55 +1502,67 @@ export default function SupplierSalesStatsPage() {
                               supplier.isUnknown ? "supplier-unknown-row" : "",
                               contributionVsRevenueMismatch ? "supplier-mismatch-row" : "",
                               highContributionLowRevenue ? "supplier-high-profit-row" : "",
+                              rank <= 3 ? `supplier-rank-row supplier-rank-row-${rank}` : "",
                             ].filter(Boolean).join(" ")}
                           >
                             <td>
-                              {supplier.isUnknown ? (
-                                <span
-                                  className="supplier-unknown-label"
-                                  title="Artikli bez dodeljenog dobavljača u bazi"
-                                >
-                                  {supplier.dobavljacNaziv}
-                                </span>
-                              ) : (
-                                <AnalyticsUnknownLink
-                                  value={supplier.dobavljacNaziv}
-                                  issueType="missingSupplier"
-                                  context={{
-                                    originTable: "supplier-sales-stats",
-                                    fromDate: activeFilters.fromDate,
-                                    toDate: activeFilters.toDate,
-                                    sezonaId: activeFilters.sezonaId,
-                                    storeId: activeFilters.storeId,
-                                    dataScope: activeDataScope,
-                                  }}
-                                />
-                              )}
+                              <div className="supplier-name-cell">
+                                <span className={`supplier-rank-badge ${rank <= 3 ? `rank-${rank}` : "rank-other"}`}>#{rank}</span>
+                                {supplier.isUnknown ? (
+                                  <span
+                                    className="supplier-unknown-label"
+                                    title="Artikli bez dodeljenog dobavljača u bazi"
+                                  >
+                                    {supplier.dobavljacNaziv}
+                                  </span>
+                                ) : (
+                                  <AnalyticsUnknownLink
+                                    value={supplier.dobavljacNaziv}
+                                    issueType="missingSupplier"
+                                    context={{
+                                      originTable: "supplier-sales-stats",
+                                      fromDate: activeFilters.fromDate,
+                                      toDate: activeFilters.toDate,
+                                      sezonaId: activeFilters.sezonaId,
+                                      storeId: activeFilters.storeId,
+                                      dataScope: activeDataScope,
+                                    }}
+                                  />
+                                )}
+                              </div>
                             </td>
-                            <td className="align-right">{fmtRsd(supplier.ukupanPromet)}</td>
+                            <td className="align-right metric-strong">{fmtRsd(supplier.ukupanPromet)}</td>
                             <td className="align-right">{fmtQty(supplier.ukupnaKolicina)}</td>
                             <td className="align-right">{fmtRsd(supplier.totalCost)}</td>
-                            <td className="align-right">{fmtPct(supplier.sharePct, 1)}</td>
-                            <td className="align-right">{fmtRsd(supplier.marginContribution)}</td>
-                            <td className="align-right">{fmtPct(supplier.marginPct, 1)}{tierNeedsWarning(supplier.marginQualityTier) ? <span className={`supplier-decision-kpi-badge ${qualityTierClass(supplier.marginQualityTier)}`} title={supplier.marginQualityTooltip ?? supplier.marginQualityLabel ?? ""}> {qualityTierIcon(supplier.marginQualityTier)}</span> : null}</td>
-                            <td className="align-right">{fmtPct(supplier.shareOfMarginContribution, 1)}</td>
-                            <td className={["align-right", popMetric.className].join(" ")} title={popMetric.title}>
-                              {popMetric.label}
-                            </td>
-                            <td>
-                              <span
-                                className={statusClass(supplier.status)}
-                                title={buildStatusTooltip(supplier)}
-                                aria-label={buildStatusTooltip(supplier)}
-                              >
-                                {statusLabelSr(supplier.status)}
-                              </span>
-                              {supplier.statusReason ? (
-                                <span className="supplier-status-reason" title={supplier.statusReason}>
-                                  {" "}
-                                  <InfoTip text={supplier.statusReason} />
+                            <td className="align-right"><span className="metric-chip metric-chip-neutral">{fmtPct(supplier.sharePct, 1)}</span></td>
+                            <td className="align-right metric-strong">{fmtRsd(supplier.marginContribution)}</td>
+                            <td className="align-right">
+                              <span>{fmtPct(supplier.marginPct, 1)}</span>
+                              {tierNeedsWarning(supplier.marginQualityTier) ? (
+                                <span className={`quality-pill ${qualityTierClass(supplier.marginQualityTier)}`} title={supplier.marginQualityTooltip ?? supplier.marginQualityLabel ?? ""}>
+                                  {qualityTierIcon(supplier.marginQualityTier)} marža
                                 </span>
                               ) : null}
+                            </td>
+                            <td className="align-right">{fmtPct(supplier.shareOfMarginContribution, 1)}</td>
+                            <td className="align-right" title={popMetric.title}>
+                              <span className={`metric-chip trend-pill ${popMetric.className}`}>{popMetric.label}</span>
+                            </td>
+                            <td>
+                              <div className="supplier-status-stack">
+                                <span
+                                  className={statusClass(supplier.status)}
+                                  title={buildStatusTooltip(supplier)}
+                                  aria-label={buildStatusTooltip(supplier)}
+                                >
+                                  {statusLabelSr(supplier.status)}
+                                </span>
+                                {supplier.statusReason ? (
+                                  <span className="supplier-status-reason-chip" title={supplier.statusReason}>
+                                    Razlog <InfoTip text={supplier.statusReason} />
+                                  </span>
+                                ) : null}
+                              </div>
                             </td>
                             <td className="align-center">
                               <button
@@ -1472,7 +1588,7 @@ export default function SupplierSalesStatsPage() {
               <div className="supplier-decision-detail-head">
                 <h3>Detalj: {selectedSupplier.dobavljacNaziv}</h3>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span className={`supplier-decision-status ${statusClass(selectedSupplier.status)}`}>
+                  <span className={statusClass(selectedSupplier.status)}>
                     {statusLabelSr(selectedSupplier.status)}
                   </span>
                   <button type="button" onClick={() => openSupplierDetail(selectedSupplier)}>
