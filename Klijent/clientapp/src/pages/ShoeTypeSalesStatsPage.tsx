@@ -499,9 +499,9 @@ export default function ShoeTypeSalesStatsPage() {
       );
 
       let status: DecisionStatus = "Smanji";
-      if (decisionScore >= 70) status = "Pojacaj";
-      else if (decisionScore >= 45) status = "Zadrzi";
-      if ((!hasPreviousPeriodWindow || isNewType || reliabilityPct < 35) && status === "Pojacaj") status = "Zadrzi";
+      if (decisionScore >= 70) status = "Pojačaj";
+      else if (decisionScore >= 45) status = "Zadrži";
+      if ((!hasPreviousPeriodWindow || isNewType || reliabilityPct < 35) && status === "Pojačaj") status = "Zadrži";
 
       const statusReason = buildStatusReason(status, {
         popRevenueChangePct,
@@ -643,8 +643,8 @@ export default function ShoeTypeSalesStatsPage() {
   }, [decisionRows]);
 
   const counts = useMemo(() => {
-    const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
-    const keep = sortedRows.filter((row) => row.status === "Zadrzi").length;
+    const boost = sortedRows.filter((row) => row.status === "Pojačaj").length;
+    const keep = sortedRows.filter((row) => row.status === "Zadrži").length;
     const reduce = sortedRows.filter((row) => row.status === "Smanji").length;
     return { boost, keep, reduce };
   }, [sortedRows]);
@@ -735,8 +735,8 @@ export default function ShoeTypeSalesStatsPage() {
       { key: "splitCoverage", label: "Uporediv pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
       { key: "snapshotCoverage", label: "Snapshot trosak pokrice %", value: fmtPct(data?.totals.snapshotCostCoveragePct, 1) },
       { key: "isSnapshotActive", label: "Snapshot aktivan", value: data?.totals.isSnapshotActive ? "da" : "ne" },
-      { key: "boost", label: "Pojacaj", value: counts.boost },
-      { key: "keep", label: "Zadrzi", value: counts.keep },
+      { key: "boost", label: "Pojačaj", value: counts.boost },
+      { key: "keep", label: "Zadrži", value: counts.keep },
       { key: "reduce", label: "Smanji", value: counts.reduce },
     ],
     [
