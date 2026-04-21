@@ -797,15 +797,15 @@ export default function SupplierSalesStatsPage() {
     const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct;
 
     if (splitCoverage != null && splitCoverage < 60) {
-      notes.push(`Uporediv pre/posle signal trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa ga treba čitati kao delimičan.`);
+      notes.push(`Signal pre/posle nivelacije pokriva samo ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa ga treba tumačiti kao delimičan.`);
     }
 
     if (historicalCostShare != null && historicalCostShare < 100) {
-      notes.push(`Istorijska nabavna cena postoji za ${fmtPct(historicalCostShare, 1)} prometa; marža za ostatak nije istorijski potvrđena na prodajnoj stavci.`);
+      notes.push(`Istorijska nabavna cena dostupna je za ${fmtPct(historicalCostShare, 1)} prometa; za preostali promet maržu ne možemo potvrditi iz istorijskih transakcija.`);
     }
 
     if (estimatedCostShare != null && estimatedCostShare > 0) {
-      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marža je procenjena iz fallback troška artikla, pa je treba čitati oprezno.`);
+      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marža je procenjena iz fallback troška artikla — koristite je oprezno.`);
     }
 
     if (unknownShare != null && unknownShare > 0) {
