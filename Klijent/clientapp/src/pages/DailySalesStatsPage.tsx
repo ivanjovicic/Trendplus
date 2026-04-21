@@ -583,7 +583,7 @@ export default function DailySalesStatsPage() {
     { key: "fromDate", label: "Od", value: activeFilters.fromDate },
     { key: "toDate", label: "Do", value: activeFilters.toDate },
     { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
-    { key: "topN", label: "Top dobavljaca", value: activeFilters.topN },
+    { key: "topN", label: "Top dobavljača", value: activeFilters.topN },
     { key: "dataScope", label: "Opseg podataka", value: memoizedQueryDataScope },
   ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, memoizedQueryDataScope]);
 
@@ -591,7 +591,7 @@ export default function DailySalesStatsPage() {
     { key: "requestedFrom", label: "Zahtevan od", value: fmtDateISO(data?.requestedFrom) ?? "" },
     { key: "requestedTo", label: "Zahtevan do", value: fmtDateISO(data?.requestedTo) ?? "" },
     { key: "totalDays", label: "Broj dana", value: data?.metadata.totalDays ?? 0 },
-    { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljaca %", value: data?.metadata.unknownSupplierPct ?? 0 },
+    { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljača %", value: data?.metadata.unknownSupplierPct ?? 0 },
     { key: "firstShiftHeader", label: "Prva smena", value: FIRST_SHIFT_LABEL },
     { key: "secondShiftHeader", label: "Druga smena", value: SECOND_SHIFT_LABEL },
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings.join(" | ") ?? "" },
@@ -832,7 +832,7 @@ export default function DailySalesStatsPage() {
       label: "Unknown supplier",
       value: fmtPct(data?.metadata.unknownSupplierPct ?? 0, 1),
       tone: (data?.metadata.unknownSupplierPct ?? 0) >= 5 ? "danger" : (data?.metadata.unknownSupplierPct ?? 0) > 0 ? "warning" : "good",
-      description: "Udeo prodaje bez mapiranog dobavljaca.",
+      description: "Udeo prodaje bez mapiranog dobavljača.",
     },
     {
       key: "offShiftItems",
@@ -892,10 +892,10 @@ export default function DailySalesStatsPage() {
     },
     {
       key: "suppliers",
-      label: "Aktivni dobavljaci",
+      label: "Aktivni dobavljači",
       value: fmtNumber(data?.metadata.uniqueSuppliersInRange ?? 0),
       tone: "info",
-      description: "Broj dobavljaca sa prometom u opsegu.",
+      description: "Broj dobavljača sa prometom u opsegu.",
     },
   ]), [
     data?.metadata.duplicateReceiptGroupCount,
@@ -932,21 +932,21 @@ export default function DailySalesStatsPage() {
     if (shiftGap >= 10) {
       insights.push({
         title: "Druga smena nosi prodaju",
-        detail: `Druga smena drzi ${fmtPct(currentSummary.secondShiftSharePct, 1)} vidljivih komada, sto je ${fmtPct(shiftGap, 1)} vise od prve smene.`,
+        detail: `Druga smena drži ${fmtPct(currentSummary.secondShiftSharePct, 1)} vidljivih komada, što je ${fmtPct(shiftGap, 1)} više od prve smene.`,
         tone: "info",
       });
     } else if (shiftGap <= -10) {
       insights.push({
         title: "Prva smena dominira",
-        detail: `Prva smena drzi ${fmtPct(currentSummary.firstShiftSharePct, 1)} vidljivih komada. Vredi proveriti raspored osoblja i dopunu ujutru.`,
+        detail: `Prva smena drži ${fmtPct(currentSummary.firstShiftSharePct, 1)} vidljivih komada. Vredi provjeriti raspored osoblja i dopunu ujutru.`,
         tone: "info",
       });
     }
 
     if (supplierConcentration.top3QtySharePct >= 55) {
       insights.push({
-        title: "Visoka koncentracija dobavljaca",
-        detail: `Top 3 dobavljaca nose ${fmtPct(supplierConcentration.top3QtySharePct, 1)} komada. Rizik zavisnosti je povisen.`,
+        title: "Visoka koncentracija dobavljača",
+        detail: `Top 3 dobavljača nose ${fmtPct(supplierConcentration.top3QtySharePct, 1)} komada. Rizik zavisnosti je povišen.`,
         tone: "warning",
       });
     }
@@ -962,7 +962,7 @@ export default function DailySalesStatsPage() {
     if ((data?.metadata.duplicateReceiptGroupCount ?? 0) > 0 || (data?.metadata.receiptAmountMismatchCount ?? 0) > 0) {
       insights.push({
         title: "Prodaja trazi rekonsilijaciju",
-        detail: `Duplih racuna je ${fmtNumber(data?.metadata.duplicateReceiptGroupCount ?? 0)}, a racuna sa mismatch-om izmedju dnevnika i stavki ${fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0)}.`,
+        detail: `Duplih racuna je ${fmtNumber(data?.metadata.duplicateReceiptGroupCount ?? 0)}, a racuna sa mismatch-om između dnevnika i stavki ${fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0)}.`,
         tone: "danger",
       });
     }
@@ -986,7 +986,7 @@ export default function DailySalesStatsPage() {
     if (insights.length === 0) {
       insights.push({
         title: "Stabilan pregled",
-        detail: "Nema jakog negativnog signala u periodu. Fokus prebaci na trend, weekday obrazac i top dobavljace.",
+        detail: "Nema jakog negativnog signala u periodu. Fokus prebaci na trend, weekday obrazac i top dobavljače.",
         tone: "good",
       });
     }
@@ -1126,7 +1126,7 @@ export default function DailySalesStatsPage() {
 
     const stateKey = savePrintPayload({
       tableKey: "daily-sales-stats-blank",
-      tableTitle: "Dnevna prodaja po smeni i dobavljacima (prazan obrazac)",
+      tableTitle: "Dnevna prodaja po smeni i dobavljačima (prazan obrazac)",
       columns: blankColumns,
       rows: blankRows,
       filters: [],
@@ -1146,9 +1146,9 @@ export default function DailySalesStatsPage() {
     <div className="daily-sales-page">
       <header className="daily-sales-header">
         <div>
-          <h1>Dnevna prodaja po smeni i dobavljacima</h1>
+          <h1>Dnevna prodaja po smeni i dobavljačima</h1>
           <p>
-            Dnevni pregled smenskih kolicina, prihoda i top dobavljaca po prodatim komadima.
+            Dnevni pregled smenskih količina, prihoda i top dobavljača po prodatim komadima.
           </p>
         </div>
         <div className="daily-sales-generated">
@@ -1163,7 +1163,7 @@ export default function DailySalesStatsPage() {
             <option value="30d">Poslednjih 30 dana</option>
             <option value="180d">Poslednjih pola godine</option>
             <option value="365d">Poslednjih godinu dana</option>
-            <option value="custom">Prilagodjeno</option>
+            <option value="custom">Prilagođeno</option>
           </select>
         </label>
 
@@ -1207,7 +1207,7 @@ export default function DailySalesStatsPage() {
         </label>
 
         <label>
-          <span>Top dobavljaca</span>
+          <span>Top dobavljača</span>
           <input
             type="number"
             min={1}
@@ -1274,7 +1274,7 @@ export default function DailySalesStatsPage() {
             <article>
               <span>Top 3 share</span>
               <strong>{fmtPct(supplierConcentration.top3QtySharePct, 1)}</strong>
-              <small>Udeo top 3 dobavljaca po komadima</small>
+              <small>Udeo top 3 dobavljača po komadima</small>
             </article>
             <article>
               <span>Van smene</span>
@@ -1288,12 +1288,12 @@ export default function DailySalesStatsPage() {
               <div>
                 <h2>Tabela po danima</h2>
                 <p>
-                  Top dobavljaci su odredjeni globalno za izabrani opseg, a kolone prikazuju dnevne komade.
+                  Top dobavljači su određeni globalno za izabrani opseg, a kolone prikazuju dnevne komade.
                 </p>
               </div>
               <AnalyticsTableToolbar
                 tableKey="daily-sales-stats"
-                tableTitle="Dnevna prodaja po smeni i dobavljacima"
+                tableTitle="Dnevna prodaja po smeni i dobavljačima"
                 columns={toolbarColumns}
                 rows={sortedRows}
                 filters={toolbarFilters}
@@ -1351,7 +1351,7 @@ export default function DailySalesStatsPage() {
                     <th className="align-right">
                       <button type="button" onClick={() => handleSort("othersCount")}>
                         Ostali{sortMarker("othersCount", sortKey, sortDir)}{" "}
-                        <InfoTip text="Komadi dobavljaca koji nisu u top N listi za izabrani opseg." />
+                        <InfoTip text="Komadi dobavljača koji nisu u top N listi za izabrani opseg." />
                       </button>
                     </th>
                     <th className="align-right">
@@ -1397,7 +1397,7 @@ export default function DailySalesStatsPage() {
             </div>
             {mismatchCount > 0 ? (
               <p className="daily-sales-footnote">
-                Upozorenje: {mismatchCount} redova ima mismatch izmedju total kolone i top+others sabiranja.
+                Upozorenje: {mismatchCount} redova ima mismatch između total kolone i top+others sabiranja.
               </p>
             ) : null}
           </section>
@@ -1426,7 +1426,7 @@ export default function DailySalesStatsPage() {
               <div className="daily-sales-panel-head">
                 <div>
                   <h2 className="with-tip">
-                    <span>Poredjenje sa prethodnim periodom</span>
+                    <span>Poređenje sa prethodnim periodom</span>
                     <InfoTip text="Trenutni opseg se poredi sa prethodnim periodom istog trajanja." />
                   </h2>
                   <p>
@@ -1563,10 +1563,10 @@ export default function DailySalesStatsPage() {
               <div className="daily-sales-panel-head">
                 <div>
                   <h2 className="with-tip">
-                    <span>Koncentracija dobavljaca</span>
-                    <InfoTip text="Koliki deo prodaje nose vodeci dobavljaci i koliko dobavljaca treba za 80% komada." />
+                    <span>Koncentracija dobavljača</span>
+                    <InfoTip text="Koliki deo prodaje nose vodeći dobavljači i koliko dobavljača treba za 80% komada." />
                   </h2>
-                  <p>Pareto pogled za procenu zavisnosti od nekoliko dobavljaca.</p>
+                  <p>Pareto pogled za procenu zavisnosti od nekoliko dobavljača.</p>
                 </div>
               </div>
 
