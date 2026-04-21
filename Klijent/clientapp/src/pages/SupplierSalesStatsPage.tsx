@@ -1065,7 +1065,7 @@ export default function SupplierSalesStatsPage() {
           <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
             <option value="30d">Poslednjih 30 dana</option>
             <option value="90d">Poslednjih 90 dana</option>
-            <option value="custom">Prilagodjeno</option>
+            <option value="custom">Prilagođeno</option>
           </select>
         </label>
 
@@ -1362,7 +1362,7 @@ export default function SupplierSalesStatsPage() {
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Pojacaj fokus, Zadrzi, U pregledu ili Smanji - preporuka bazirana na prometu, marznom doprinosu, marzi i trendu, uz proveru kvaliteta podataka." />
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Pojačaj fokus, Zadrži, U pregledu ili Smanji - preporuka bazirana na prometu, maržnom doprinosu, marži i trendu, uz proveru kvaliteta podataka." />
                         </button>
                       </th>
                       <th className="align-center">

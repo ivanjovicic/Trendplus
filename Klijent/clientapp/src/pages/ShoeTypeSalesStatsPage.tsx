@@ -867,7 +867,7 @@ export default function ShoeTypeSalesStatsPage() {
           <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
             <option value="30d">Poslednjih 30 dana</option>
             <option value="90d">Poslednjih 90 dana</option>
-            <option value="custom">Prilagodjeno</option>
+            <option value="custom">Prilagođeno</option>
           </select>
         </label>
 

@@ -644,8 +644,8 @@ export default function ColorSalesStatsPage() {
       { key: "bojaCount", label: "Broj boja", value: data?.totals.brojBoja ?? 0 },
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "splitCoverage", label: "Pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
-      { key: "boost", label: "Pojacaj", value: counts.boost },
-      { key: "keep", label: "Zadrzi", value: counts.keep },
+      { key: "boost", label: "Pojačaj", value: counts.boost },
+      { key: "keep", label: "Zadrži", value: counts.keep },
       { key: "reduce", label: "Smanji", value: counts.reduce },
     ],
     [
@@ -755,7 +755,7 @@ export default function ColorSalesStatsPage() {
         <div>
           <h1 className="color-decision-title">Prodaja po boji artikla</h1>
           <p className="color-decision-subtitle">
-            Decision-support pogled za izbor boja koje treba pojacati u nabavci.
+            Decision-support pogled za izbor boja koje treba pojačati u nabavci.
           </p>
         </div>
         {data?.generatedAt ? (
@@ -771,7 +771,7 @@ export default function ColorSalesStatsPage() {
           <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
             <option value="30d">Poslednjih 30 dana</option>
             <option value="90d">Poslednjih 90 dana</option>
-            <option value="custom">Prilagodjeno</option>
+            <option value="custom">Prilagođeno</option>
           </select>
         </label>
 
@@ -872,7 +872,7 @@ export default function ColorSalesStatsPage() {
           <section className="color-decision-panels">
             <article className="color-decision-card">
               <h2>Koncentracija prometa po bojama</h2>
-              <p>Top boje koje nose najveci deo prodaje.</p>
+              <p>Top boje koje nose najveći deo prodaje.</p>
               {concentrationData.length > 0 ? (
                 <div className="color-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -895,7 +895,7 @@ export default function ColorSalesStatsPage() {
                 <div>
                   <h2>Prioritetna lista boja</h2>
                   <p>
-                    Pojacaj: {counts.boost} | Zadrzi: {counts.keep} | Smanji: {counts.reduce}
+                    Pojačaj: {counts.boost} | Zadrži: {counts.keep} | Smanji: {counts.reduce}
                   </p>
                   <p className="color-decision-metric-note">
                     PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
