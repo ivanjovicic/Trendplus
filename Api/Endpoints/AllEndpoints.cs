@@ -1054,7 +1054,7 @@ public static class AllEndpoints
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
                     var todayUtc = DateTime.UtcNow.Date;
-                    fromUtc = todayUtc.AddDays(-89);
+                    fromUtc = todayUtc.AddDays(-29);
                     toUtc = todayUtc.AddDays(1).AddTicks(-1);
                 }
 
@@ -1657,6 +1657,42 @@ public static class AllEndpoints
                     totalNoCostPct);
                 return Results.Ok(response);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                requestStopwatch.Stop();
+                logger.LogInformation(
+                    "Supplier-sales-stats cancelled after {ElapsedMs}ms. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    requestStopwatch.ElapsedMilliseconds,
+                    storeId,
+                    sezonaId,
+                    fromUtc,
+                    toUtc);
+
+                return Results.Problem(
+                    title: "Zahtjev otkazan",
+                    detail: "Zahtjev je otkazan zbog prekida ili isteka vremena. Pokušajte ponovo.",
+                    statusCode: 503);
+            }
+            catch (TaskCanceledException ex)
+            {
+                requestStopwatch.Stop();
+                logger.LogWarning(ex, "Supplier-sales-stats cancelled (TaskCanceled) after {ElapsedMs}ms. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}", requestStopwatch.ElapsedMilliseconds, storeId, sezonaId, fromUtc, toUtc);
+
+                return Results.Problem(
+                    title: "Zahtjev otkazan",
+                    detail: "Zahtjev je otkazan zbog prekoračenja vremena ili prekida veze prema bazi. Pokušajte ponovo.",
+                    statusCode: 503);
+            }
+            catch (NpgsqlException ex)
+            {
+                requestStopwatch.Stop();
+                logger.LogError(ex, "Supplier-sales-stats DB error after {ElapsedMs}ms. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}", requestStopwatch.ElapsedMilliseconds, storeId, sezonaId, fromUtc, toUtc);
+
+                return Results.Problem(
+                    title: "Greška pri učitavanju statistike prodaje po dobavljačima",
+                    detail: "Problem pri povezivanju sa bazom podataka. Molimo pokušajte ponovo kasnije.",
+                    statusCode: 503);
+            }
             catch (Exception ex)
             {
                 requestStopwatch.Stop();
@@ -1760,7 +1796,7 @@ public static class AllEndpoints
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
                     var todayUtc = DateTime.UtcNow.Date;
-                    fromUtc = todayUtc.AddDays(-89);
+                    fromUtc = todayUtc.AddDays(-29);
                     toUtc = todayUtc.AddDays(1).AddTicks(-1);
                 }
 
