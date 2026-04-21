@@ -11,6 +11,10 @@ namespace Domain.Model
         public string SourceFileName { get; set; } = string.Empty;
         [MaxLength(800)]
         public string? SourceFilePath { get; set; }
+        [MaxLength(1024)]
+        public string? SourceStorageKey { get; set; }
+        [MaxLength(32)]
+        public string? SourceStorageProvider { get; set; }
         public DateTime QueuedAtUtc { get; set; } = DateTime.UtcNow;
         public DateTime StartedAtUtc { get; set; } = DateTime.UtcNow;
         public DateTime? CompletedAtUtc { get; set; }

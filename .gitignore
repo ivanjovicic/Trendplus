@@ -10,6 +10,11 @@
 *.userosscache
 *.sln.docstates
 *.laccdb
+trendplus-backup-*.dump
+appsettings.local.json
+appsettings.*.local.json
+Api/appsettings.local.json
+Api/appsettings.*.local.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

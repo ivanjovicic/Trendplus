@@ -2,7 +2,9 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Application.Common.Interfaces;
 using Infrastructure.DbContexts;
+using Infrastructure.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -16,6 +18,41 @@ namespace Api.Tests
 {
     public sealed class AccessImportEnqueueTests
     {
+        private sealed class InMemoryFileStorage : IFileStorage
+        {
+            private readonly Dictionary<string, byte[]> _objects = new(StringComparer.Ordinal);
+            public int UploadCallCount { get; private set; }
+
+            public Task UploadAsync(string key, Stream content, CancellationToken ct = default)
+            {
+                UploadCallCount++;
+                using var ms = new MemoryStream();
+                content.CopyTo(ms);
+                _objects[key] = ms.ToArray();
+                return Task.CompletedTask;
+            }
+
+            public Task<Stream> OpenReadAsync(string key, CancellationToken ct = default)
+            {
+                if (!_objects.TryGetValue(key, out var payload))
+                    throw new FileNotFoundException("Object not found.", key);
+
+                return Task.FromResult<Stream>(new MemoryStream(payload, writable: false));
+            }
+
+            public Task DeleteAsync(string key, CancellationToken ct = default)
+            {
+                _objects.Remove(key);
+                return Task.CompletedTask;
+            }
+
+            public Task<bool> ExistsAsync(string key, CancellationToken ct = default)
+                => Task.FromResult(_objects.ContainsKey(key));
+
+            public Task<string> GetPresignedUrlAsync(string key, TimeSpan expiry, CancellationToken ct = default)
+                => Task.FromResult($"memory://{key}");
+        }
+
         private sealed class RecordingJobQueue : IAccessImportJobQueue
         {
             public int EnqueueCallCount { get; private set; }
@@ -171,6 +208,100 @@ namespace Api.Tests
                 Assert.Equal("pending", result.Status);
                 Assert.Equal(2, await db.DataImportBatches.CountAsync());
                 Assert.NotEqual(staleBatch.Id, result.BatchId);
+            }
+            finally
+            {
+                try { File.Delete(tmp); } catch { }
+            }
+        }
+
+        [Fact]
+        public async Task StartImport_WithFileStorage_PersistsStorageBackedBatchMetadata()
+        {
+            var options = new DbContextOptionsBuilder<TrendplusDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+
+            await using var db = new TrendplusDbContext(options);
+            var tmp = Path.Combine(Path.GetTempPath(), $"test-import-{Guid.NewGuid():N}.accdb");
+            File.WriteAllText(tmp, "dummy");
+            var queue = new RecordingJobQueue();
+            var storage = new InMemoryFileStorage();
+            var storageOptions = Options.Create(new StorageOptions
+            {
+                Provider = "s3"
+            });
+
+            var service = new AccessImportService(
+                trendDb: db,
+                analyticsDb: null!,
+                logger: NullLogger<AccessImportService>.Instance,
+                options: null,
+                analyticsCache: null,
+                serviceScopeFactory: null,
+                jobQueue: queue,
+                cursorRepository: null,
+                fileStorage: storage,
+                storageOptions: storageOptions);
+
+            try
+            {
+                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false);
+
+                Assert.NotNull(result);
+                var batch = await db.DataImportBatches.SingleAsync();
+                Assert.Equal("pending", batch.Status);
+                Assert.True(string.IsNullOrWhiteSpace(batch.SourceFilePath));
+                Assert.False(string.IsNullOrWhiteSpace(batch.SourceStorageKey));
+                Assert.Equal("s3", batch.SourceStorageProvider);
+                Assert.True(await storage.ExistsAsync(batch.SourceStorageKey!));
+            }
+            finally
+            {
+                try { File.Delete(tmp); } catch { }
+            }
+        }
+
+        [Fact]
+        public async Task StartImport_WithLocalFileStorage_KeepsLegacySourceFilePathFlow()
+        {
+            var options = new DbContextOptionsBuilder<TrendplusDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+
+            await using var db = new TrendplusDbContext(options);
+            var tmp = Path.Combine(Path.GetTempPath(), $"test-import-{Guid.NewGuid():N}.accdb");
+            File.WriteAllText(tmp, "dummy");
+            var queue = new RecordingJobQueue();
+            var storage = new InMemoryFileStorage();
+            var storageOptions = Options.Create(new StorageOptions
+            {
+                Provider = "local"
+            });
+
+            var service = new AccessImportService(
+                trendDb: db,
+                analyticsDb: null!,
+                logger: NullLogger<AccessImportService>.Instance,
+                options: null,
+                analyticsCache: null,
+                serviceScopeFactory: null,
+                jobQueue: queue,
+                cursorRepository: null,
+                fileStorage: storage,
+                storageOptions: storageOptions);
+
+            try
+            {
+                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false);
+
+                Assert.NotNull(result);
+                var batch = await db.DataImportBatches.SingleAsync();
+                Assert.Equal("pending", batch.Status);
+                Assert.False(string.IsNullOrWhiteSpace(batch.SourceFilePath));
+                Assert.True(string.IsNullOrWhiteSpace(batch.SourceStorageKey));
+                Assert.True(string.IsNullOrWhiteSpace(batch.SourceStorageProvider));
+                Assert.Equal(0, storage.UploadCallCount);
             }
             finally
             {

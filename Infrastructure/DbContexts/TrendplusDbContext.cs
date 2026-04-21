@@ -286,6 +286,8 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.SourceSystem).IsRequired().HasMaxLength(64);
                 eb.Property(e => e.SourceFileName).IsRequired().HasMaxLength(300);
                 eb.Property(e => e.SourceFilePath).HasMaxLength(800);
+                eb.Property(e => e.SourceStorageKey).HasMaxLength(1024);
+                eb.Property(e => e.SourceStorageProvider).HasMaxLength(32);
                 eb.Property(e => e.QueuedAtUtc).IsRequired();
                 eb.Property(e => e.StartedAtUtc).IsRequired();
                 eb.Property(e => e.CompletedAtUtc);

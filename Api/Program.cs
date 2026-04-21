@@ -41,10 +41,12 @@ using Api.Services.Access;
 using Api.Middleware;
 using Api.Services.Startup;
 using Api.Config;
+using Npgsql;
 using System.Threading.RateLimiting;
 using Application.Documents.Interfaces;
 using Infrastructure.Configuration;
 using Infrastructure.Services.Email;
+using Infrastructure.Services.Storage;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -74,18 +76,51 @@ try
     builder.Configuration
         .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
         .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+        .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
+        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.local.json", optional: true, reloadOnChange: true)
         .AddEnvironmentVariables();
 
     Console.WriteLine("Configuration loaded");
 
-    // Workers default policy:
-    // - Development: enabled
-    // - Production/other: disabled
-    // Explicit Workers:Enabled overrides this default.
+    // Runtime process selector:
+    // - PROCESS_TYPE=web|worker (canonical)
+    // - WORKER_PROCESS=true (compatibility alias when PROCESS_TYPE is missing)
+    // - default: web
+    var processType = WorkerRuntimeConfig.ResolveProcessType(builder.Configuration, out var processTypeSource);
+    var isWorkerProcess = processType == ProcessType.Worker;
+    if (processTypeSource == "PROCESS_TYPE_INVALID")
+    {
+        Console.WriteLine("Invalid PROCESS_TYPE value. Falling back to web process mode.");
+    }
+
+    // Worker runtime switch policy:
+    // - Explicit Workers:Enabled always wins (safety toggle).
+    // - Otherwise: enabled for worker process and development; disabled for production web process.
     var workersEnabledFromConfig = builder.Configuration.GetValue<bool?>("Workers:Enabled");
-    var workersEnabled = workersEnabledFromConfig ?? builder.Environment.IsDevelopment();
+    var workersEnabled = WorkerRuntimeConfig.ResolveWorkersEnabled(
+        workersEnabledFromConfig,
+        processType,
+        builder.Environment.IsDevelopment());
     var workersRuntimeToggleAllowedFromConfig = builder.Configuration.GetValue<bool?>("Workers:AllowRuntimeToggle");
     var workersRuntimeToggleAllowed = workersRuntimeToggleAllowedFromConfig ?? builder.Environment.IsDevelopment();
+    var workersEnabledSource = WorkerRuntimeConfig.ResolveWorkersEnabledSource(
+        workersEnabledFromConfig,
+        processType,
+        builder.Environment.IsDevelopment());
+
+    Console.WriteLine($"Process type: {processType.ToString().ToLowerInvariant()} (source: {processTypeSource})");
+    if (processTypeSource == "WORKER_PROCESS")
+    {
+        Console.WriteLine("WORKER_PROCESS alias was used because PROCESS_TYPE was not set.");
+    }
+    if (isWorkerProcess && workersEnabledFromConfig == false)
+    {
+        Console.WriteLine("WARNING: Worker process is configured with Workers:Enabled=false. Workers will stay paused until enabled.");
+    }
+    else if (!isWorkerProcess && workersEnabledFromConfig == true)
+    {
+        Console.WriteLine("Workers:Enabled=true is set, but this process resolved to web mode so worker hosted services will not be registered.");
+    }
 
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
@@ -111,6 +146,12 @@ try
     builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsSnapshotOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsSnapshotOptions.Section));
+
+    builder.Services.AddFileStorage(builder.Configuration);
+    var fileStorageProvider = FileStorageServiceCollectionExtensions.ResolveProviderName(
+        builder.Configuration[$"{StorageOptions.Section}:Provider"]);
+    Console.WriteLine($"File storage provider: {fileStorageProvider}");
+
     var documentOptions = builder.Configuration.GetSection(DocumentExportOptions.Section).Get<DocumentExportOptions>() ?? new DocumentExportOptions();
     var resolvedDocumentSigningKey = documentOptions.ResolveSigningKey();
     if (builder.Environment.IsProduction() && string.IsNullOrWhiteSpace(resolvedDocumentSigningKey))
@@ -121,18 +162,140 @@ try
     var dbCommandTimeoutSeconds =
         builder.Configuration.GetValue<int?>("Database:CommandTimeoutSeconds")
         ?? 300;
+    var dbOpenTimeoutSeconds =
+        builder.Configuration.GetValue<int?>("Database:Npgsql:OpenTimeoutSeconds")
+        ?? 15;
+    var dbKeepAliveSeconds =
+        builder.Configuration.GetValue<int?>("Database:Npgsql:KeepAliveSeconds")
+        ?? 30;
+    var dbMaxPoolSize =
+        builder.Configuration.GetValue<int?>("Database:Npgsql:MaxPoolSize");
+    var dbMinPoolSize =
+        builder.Configuration.GetValue<int?>("Database:Npgsql:MinPoolSize");
+    var dbConnectionIdleLifetimeSeconds =
+        builder.Configuration.GetValue<int?>("Database:Npgsql:ConnectionIdleLifetimeSeconds");
+    var dbConnectionPruningIntervalSeconds =
+        builder.Configuration.GetValue<int?>("Database:Npgsql:ConnectionPruningIntervalSeconds");
+    var enableEfRetryOnFailure =
+        builder.Configuration.GetValue<bool?>("Database:Npgsql:EnableEfRetryOnFailure")
+        ?? true;
+    var efRetryMaxCount =
+        builder.Configuration.GetValue<int?>("Database:Npgsql:EfRetry:MaxRetryCount")
+        ?? 3;
+    var efRetryMaxDelaySeconds =
+        builder.Configuration.GetValue<int?>("Database:Npgsql:EfRetry:MaxRetryDelaySeconds")
+        ?? 5;
+
+    static string SummarizeConnection(string? connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return "<missing>";
+
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
+            var host = string.IsNullOrWhiteSpace(builder.Host) ? "<unknown-host>" : builder.Host;
+            var port = builder.Port;
+            var database = string.IsNullOrWhiteSpace(builder.Database) ? "<unknown-db>" : builder.Database;
+            var username = string.IsNullOrWhiteSpace(builder.Username) ? "<unknown-user>" : builder.Username;
+            return $"{host}:{port}/{database} user={username}";
+        }
+        catch
+        {
+            return "<unparseable>";
+        }
+    }
+
+    static string? ApplyNpgsqlTuning(
+        string? connectionString,
+        int openTimeoutSeconds,
+        int commandTimeoutSeconds,
+        int keepAliveSeconds,
+        int? maxPoolSize,
+        int? minPoolSize,
+        int? connectionIdleLifetimeSeconds,
+        int? connectionPruningIntervalSeconds)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return connectionString;
+
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(connectionString)
+            {
+                Timeout = Math.Max(1, openTimeoutSeconds),
+                CommandTimeout = Math.Max(1, commandTimeoutSeconds),
+                KeepAlive = Math.Max(0, keepAliveSeconds)
+            };
+
+            if (maxPoolSize.HasValue && maxPoolSize.Value > 0)
+                builder.MaxPoolSize = maxPoolSize.Value;
+            if (minPoolSize.HasValue && minPoolSize.Value >= 0)
+                builder.MinPoolSize = minPoolSize.Value;
+            if (connectionIdleLifetimeSeconds.HasValue && connectionIdleLifetimeSeconds.Value > 0)
+                builder.ConnectionIdleLifetime = connectionIdleLifetimeSeconds.Value;
+            if (connectionPruningIntervalSeconds.HasValue && connectionPruningIntervalSeconds.Value > 0)
+                builder.ConnectionPruningInterval = connectionPruningIntervalSeconds.Value;
+
+            return builder.ConnectionString;
+        }
+        catch
+        {
+            return connectionString;
+        }
+    }
+
+    var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+    var analyticsConnection = builder.Configuration.GetConnectionString("AnalyticsConnection");
+    var tunedDefaultConnection = ApplyNpgsqlTuning(
+        defaultConnection,
+        dbOpenTimeoutSeconds,
+        dbCommandTimeoutSeconds,
+        dbKeepAliveSeconds,
+        dbMaxPoolSize,
+        dbMinPoolSize,
+        dbConnectionIdleLifetimeSeconds,
+        dbConnectionPruningIntervalSeconds);
+    var tunedAnalyticsConnection = ApplyNpgsqlTuning(
+        analyticsConnection,
+        dbOpenTimeoutSeconds,
+        dbCommandTimeoutSeconds,
+        dbKeepAliveSeconds,
+        dbMaxPoolSize,
+        dbMinPoolSize,
+        dbConnectionIdleLifetimeSeconds,
+        dbConnectionPruningIntervalSeconds);
+
+    Console.WriteLine($"DefaultConnection target: {SummarizeConnection(defaultConnection)}");
+    Console.WriteLine($"AnalyticsConnection target: {SummarizeConnection(analyticsConnection)}");
+    Console.WriteLine(
+        $"Npgsql tuning: OpenTimeout={dbOpenTimeoutSeconds}s CommandTimeout={dbCommandTimeoutSeconds}s KeepAlive={dbKeepAliveSeconds}s MaxPoolSize={(dbMaxPoolSize?.ToString() ?? "default")} MinPoolSize={(dbMinPoolSize?.ToString() ?? "default")} IdleLifetime={(dbConnectionIdleLifetimeSeconds?.ToString() ?? "default")}s PruningInterval={(dbConnectionPruningIntervalSeconds?.ToString() ?? "default")}s EfRetryEnabled={enableEfRetryOnFailure} EfRetryMaxCount={efRetryMaxCount} EfRetryMaxDelay={efRetryMaxDelaySeconds}s");
 
     // DbContext
     builder.Services.AddDbContextFactory<TrendplusDbContext>(options =>
         options.UseNpgsql(
-                builder.Configuration.GetConnectionString("DefaultConnection"),
-                npgsql => npgsql.CommandTimeout(dbCommandTimeoutSeconds))
+                tunedDefaultConnection,
+                npgsql =>
+                {
+                    npgsql.CommandTimeout(dbCommandTimeoutSeconds);
+                    if (enableEfRetryOnFailure)
+                    {
+                        npgsql.EnableRetryOnFailure(efRetryMaxCount, TimeSpan.FromSeconds(Math.Max(1, efRetryMaxDelaySeconds)), null);
+                    }
+                })
                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
     builder.Services.AddDbContext<TrendplusDbContext>(options =>
         options.UseNpgsql(
-                builder.Configuration.GetConnectionString("DefaultConnection"),
-                npgsql => npgsql.CommandTimeout(dbCommandTimeoutSeconds))
+                tunedDefaultConnection,
+                npgsql =>
+                {
+                    npgsql.CommandTimeout(dbCommandTimeoutSeconds);
+                    if (enableEfRetryOnFailure)
+                    {
+                        npgsql.EnableRetryOnFailure(efRetryMaxCount, TimeSpan.FromSeconds(Math.Max(1, efRetryMaxDelaySeconds)), null);
+                    }
+                })
                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
     builder.Services.AddScoped<ITrendplusDbContext>(sp =>
@@ -140,8 +303,15 @@ try
 
     builder.Services.AddDbContext<AnalyticsDbContext>(options =>
         options.UseNpgsql(
-                builder.Configuration.GetConnectionString("AnalyticsConnection"),
-                npgsql => npgsql.CommandTimeout(dbCommandTimeoutSeconds))
+                tunedAnalyticsConnection,
+                npgsql =>
+                {
+                    npgsql.CommandTimeout(dbCommandTimeoutSeconds);
+                    if (enableEfRetryOnFailure)
+                    {
+                        npgsql.EnableRetryOnFailure(efRetryMaxCount, TimeSpan.FromSeconds(Math.Max(1, efRetryMaxDelaySeconds)), null);
+                    }
+                })
                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
     builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
@@ -149,15 +319,30 @@ try
 
     var openProductTrainingConnection =
         builder.Configuration.GetConnectionString("OpenProductTrainingConnection")
-        ?? builder.Configuration.GetConnectionString("AnalyticsConnection");
+        ?? analyticsConnection;
+    var tunedOpenProductTrainingConnection = ApplyNpgsqlTuning(
+        openProductTrainingConnection,
+        dbOpenTimeoutSeconds,
+        dbCommandTimeoutSeconds,
+        dbKeepAliveSeconds,
+        dbMaxPoolSize,
+        dbMinPoolSize,
+        dbConnectionIdleLifetimeSeconds,
+        dbConnectionPruningIntervalSeconds);
+
+    Console.WriteLine($"OpenProductTrainingConnection target: {SummarizeConnection(openProductTrainingConnection)}");
 
     builder.Services.AddDbContext<OpenProductTrainingDbContext>(options =>
         options.UseNpgsql(
-                openProductTrainingConnection,
+                tunedOpenProductTrainingConnection,
                 o =>
                 {
                     o.UseVector();
                     o.CommandTimeout(dbCommandTimeoutSeconds);
+                    if (enableEfRetryOnFailure)
+                    {
+                        o.EnableRetryOnFailure(efRetryMaxCount, TimeSpan.FromSeconds(Math.Max(1, efRetryMaxDelaySeconds)), null);
+                    }
                 })
                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
@@ -207,9 +392,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         new WorkerRuntimeControlService(
             workersEnabled,
             workersRuntimeToggleAllowed,
-            workersEnabledFromConfig.HasValue
-                ? "config"
-                : (builder.Environment.IsDevelopment() ? "development-default" : "production-default")));
+            workersEnabledSource));
     
     // Embedding service for AI-powered image search
     var pythonServiceUrl = builder.Configuration["EmbeddingService:BaseUrl"] ?? "http://localhost:8000";
@@ -318,22 +501,11 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     // Image providers for trends carousel are optional and resolved dynamically in endpoints
 
-    // Background workers are always registered, but execution is controlled at runtime
-    // via WorkerRuntimeControlService (so we can enable/disable without restart).
-    builder.Services.AddHostedService<Workers.SyncWorker>();
-    builder.Services.AddHostedService<Workers.OutboxProcessorWorker>();
-    builder.Services.AddHostedService<Workers.AnalyticsAggregationWorker>();
-    builder.Services.AddHostedService<Workers.AnalyticsDataQualityHealthWorker>();
-    builder.Services.AddHostedService<Workers.NightlyAnalyticsRefreshWorker>();
-    builder.Services.AddHostedService<Workers.OpenTrainingModelTrainingWorker>();
-    builder.Services.AddHostedService<Workers.TrendIngestionWorker>();
-    builder.Services.AddHostedService<Workers.DocumentGenerationWorker>();
-    builder.Services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
-    builder.Services.AddHostedService<AccessImportBackgroundWorker>();
-    builder.Services.AddHostedService<DeferredStartupTasksHostedService>();
-    // builder.Services.AddHostedService<Workers.DatabaseKeepAliveWorker>();
+    // P0 runtime gating: web processes must not register critical worker hosted services.
+    WorkerRuntimeConfig.RegisterWorkerHostedServices(builder.Services, isWorkerProcess);
     Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
     Console.WriteLine($"Background workers runtime toggle: {(workersRuntimeToggleAllowed ? "ALLOWED" : "LOCKED")}");
+    Console.WriteLine($"Worker hosted services registered: {(isWorkerProcess ? "YES" : "NO")}");
 
     builder.Services.AddControllers();
     builder.Services.ConfigureHttpJsonOptions(opts =>

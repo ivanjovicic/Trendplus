@@ -3,6 +3,7 @@ using System.Text.Json;
 using Api.Config;
 using Api.Models;
 using Api.Services.Access;
+using Application.Common.Interfaces;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -37,28 +38,31 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
 
     private readonly TrendplusDbContext _db;
     private readonly AccessImportOptions _accessOptions;
+    private readonly IFileStorage _fileStorage;
     private readonly ILogger<NivelacijaRepairService> _logger;
 
     public NivelacijaRepairService(
         TrendplusDbContext db,
         IOptions<AccessImportOptions> accessOptions,
+        IFileStorage fileStorage,
         ILogger<NivelacijaRepairService> logger)
     {
         _db = db;
         _accessOptions = accessOptions.Value;
+        _fileStorage = fileStorage;
         _logger = logger;
     }
 
     public async Task<NivelacijaRepairPreflightDto> RunPreflightAsync(string? explicitSourceFilePath = null, CancellationToken ct = default)
     {
-        var sourceFilePath = await ResolveSourceFilePathAsync(explicitSourceFilePath, ct);
-        await using var sessionHandle = await OpenAccessSessionAsync(sourceFilePath, ct);
+        var resolvedSource = await ResolveSourceFileAsync(explicitSourceFilePath, ct);
+        await using var sessionHandle = await OpenAccessSessionAsync(resolvedSource.WorkingPath, resolvedSource.DeleteAfterUse, ct);
         var requiredObjects = await CheckRequiredDatabaseObjectsAsync(ct);
         var accessTables = await ResolveAccessTablesAsync(sessionHandle.Session, ct);
 
         return new NivelacijaRepairPreflightDto
         {
-            ResolvedSourceFilePath = sourceFilePath,
+            ResolvedSourceFilePath = resolvedSource.DisplayReference,
             DatabaseReachable = requiredObjects.Values.All(static value => value),
             DefaultMaxRowsThreshold = DefaultMaxRowsThreshold,
             RequiredObjects = requiredObjects,
@@ -182,8 +186,8 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
 
     private async Task<AnalysisResult> AnalyzeAsync(string? explicitSourceFilePath, int maxRowsToModify, CancellationToken ct)
     {
-        var sourceFilePath = await ResolveSourceFilePathAsync(explicitSourceFilePath, ct);
-        await using var sessionHandle = await OpenAccessSessionAsync(sourceFilePath, ct);
+        var resolvedSource = await ResolveSourceFileAsync(explicitSourceFilePath, ct);
+        await using var sessionHandle = await OpenAccessSessionAsync(resolvedSource.WorkingPath, resolvedSource.DeleteAfterUse, ct);
         var accessLineage = await BuildAccessLineageAsync(sessionHandle.Session, ct);
 
         await using var connection = await OpenConnectionAsync(ct);
@@ -283,7 +287,7 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
         var verification = await CollectVerificationAsync(connection, transaction: null, accessLineage, ct);
         var plan = new NivelacijaRepairPlanDto
         {
-            SourceFilePath = sourceFilePath,
+            SourceFilePath = resolvedSource.DisplayReference,
             GeneratedAtUtc = DateTime.UtcNow,
             DetectedIssues = issues,
             ProposedFixes = fixes,
@@ -875,25 +879,58 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
         return connection;
     }
 
-    private async Task<string> ResolveSourceFilePathAsync(string? explicitSourceFilePath, CancellationToken ct)
+    private async Task<ResolvedSourceFile> ResolveSourceFileAsync(string? explicitSourceFilePath, CancellationToken ct)
     {
         if (!string.IsNullOrWhiteSpace(explicitSourceFilePath))
         {
+            if (TryParseStorageReference(explicitSourceFilePath, out var parsedStorageProvider, out var parsedStorageKey))
+            {
+                var stagedPath = await StageStorageSourceAsync(parsedStorageKey, ct);
+                var displayReference = BuildStorageReference(parsedStorageProvider, parsedStorageKey);
+                return new ResolvedSourceFile(stagedPath, displayReference, DeleteAfterUse: true);
+            }
+
             if (!File.Exists(explicitSourceFilePath))
                 throw new FileNotFoundException("Configured Access source file was not found.", explicitSourceFilePath);
 
-            return explicitSourceFilePath;
+            return new ResolvedSourceFile(explicitSourceFilePath, explicitSourceFilePath, DeleteAfterUse: false);
         }
 
-        var recentBatchPath = await _db.DataImportBatches
+        var recentBatchSource = await _db.DataImportBatches
             .AsNoTracking()
-            .Where(batch => batch.SourceSystem == "access" && batch.SourceFilePath != null && batch.SourceFilePath != string.Empty)
+            .Where(batch =>
+                batch.SourceSystem == "access" &&
+                ((batch.SourceFilePath != null && batch.SourceFilePath != string.Empty) ||
+                 (batch.SourceStorageKey != null && batch.SourceStorageKey != string.Empty)))
             .OrderByDescending(batch => batch.CompletedAtUtc ?? batch.StartedAtUtc)
-            .Select(batch => batch.SourceFilePath)
+            .Select(batch => new
+            {
+                batch.SourceFilePath,
+                batch.SourceStorageKey,
+                batch.SourceStorageProvider
+            })
             .FirstOrDefaultAsync(ct);
 
-        if (!string.IsNullOrWhiteSpace(recentBatchPath) && File.Exists(recentBatchPath))
-            return recentBatchPath;
+        if (recentBatchSource is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(recentBatchSource.SourceFilePath) && File.Exists(recentBatchSource.SourceFilePath))
+            {
+                return new ResolvedSourceFile(
+                    recentBatchSource.SourceFilePath,
+                    recentBatchSource.SourceFilePath,
+                    DeleteAfterUse: false);
+            }
+
+            if (!string.IsNullOrWhiteSpace(recentBatchSource.SourceStorageKey))
+            {
+                var provider = string.IsNullOrWhiteSpace(recentBatchSource.SourceStorageProvider)
+                    ? "storage"
+                    : recentBatchSource.SourceStorageProvider;
+                var stagedPath = await StageStorageSourceAsync(recentBatchSource.SourceStorageKey, ct);
+                var displayReference = BuildStorageReference(provider, recentBatchSource.SourceStorageKey);
+                return new ResolvedSourceFile(stagedPath, displayReference, DeleteAfterUse: true);
+            }
+        }
 
         var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
         var depth = 0;
@@ -903,7 +940,7 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
             {
                 var candidatePath = Path.Combine(directory.FullName, candidateName);
                 if (File.Exists(candidatePath))
-                    return candidatePath;
+                    return new ResolvedSourceFile(candidatePath, candidatePath, DeleteAfterUse: false);
             }
 
             directory = directory.Parent;
@@ -913,15 +950,92 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
         throw new FileNotFoundException("Access source file was not found. Provide sourceFilePath or place TRENDPLUS.mdb/TRENDPLUS.accdb in the repository root.");
     }
 
-    private Task<RepairAccessSession> OpenAccessSessionAsync(string sourceFilePath, CancellationToken ct)
+    private Task<RepairAccessSession> OpenAccessSessionAsync(
+        string sourceFilePath,
+        bool deleteSourceAfterUse,
+        CancellationToken ct)
     {
-        var effectivePath = MaybeCreateSnapshotCopy(sourceFilePath, out var deleteAfter);
+        ct.ThrowIfCancellationRequested();
+        var effectivePath = MaybeCreateSnapshotCopy(sourceFilePath, out var deleteSnapshotAfterUse);
+        var cleanupPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (deleteSnapshotAfterUse)
+        {
+            cleanupPaths.Add(effectivePath);
+            if (deleteSourceAfterUse)
+                cleanupPaths.Add(sourceFilePath);
+        }
+        else if (deleteSourceAfterUse)
+        {
+            cleanupPaths.Add(sourceFilePath);
+        }
+
         IAccessDataReaderSession session = OperatingSystem.IsWindows()
             ? new WindowsAccessSession(effectivePath, _accessOptions, _logger)
             : new MdbToolsCliSession(effectivePath, _accessOptions, _logger);
 
-        return Task.FromResult(new RepairAccessSession(session, effectivePath, deleteAfter, _logger));
+        return Task.FromResult(new RepairAccessSession(session, cleanupPaths, _logger));
     }
+
+    private async Task<string> StageStorageSourceAsync(string storageKey, CancellationToken ct)
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), "trendplus-nivelacija-repair");
+        Directory.CreateDirectory(tempDirectory);
+
+        var extension = Path.GetExtension(storageKey);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = ".accdb";
+        }
+
+        var baseName = Path.GetFileNameWithoutExtension(storageKey);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = "storage-source";
+        }
+
+        var stagedPath = Path.Combine(
+            tempDirectory,
+            $"{baseName}-storage-{Guid.NewGuid():N}{extension.ToLowerInvariant()}");
+
+        await using var sourceStream = await _fileStorage.OpenReadAsync(storageKey, ct);
+        await using var destinationStream = new FileStream(
+            stagedPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 81920,
+            useAsync: true);
+        await sourceStream.CopyToAsync(destinationStream, ct);
+        await destinationStream.FlushAsync(ct);
+
+        return stagedPath;
+    }
+
+    private static bool TryParseStorageReference(
+        string candidate,
+        out string storageProvider,
+        out string storageKey)
+    {
+        storageProvider = string.Empty;
+        storageKey = string.Empty;
+
+        const string scheme = "storage://";
+        if (!candidate.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var payload = candidate[scheme.Length..];
+        var separatorIndex = payload.IndexOf('/');
+        if (separatorIndex <= 0 || separatorIndex >= payload.Length - 1)
+            return false;
+
+        storageProvider = payload[..separatorIndex];
+        storageKey = payload[(separatorIndex + 1)..];
+        return !string.IsNullOrWhiteSpace(storageProvider) && !string.IsNullOrWhiteSpace(storageKey);
+    }
+
+    private static string BuildStorageReference(string storageProvider, string storageKey)
+        => $"storage://{storageProvider}/{storageKey}";
 
     private static string MaybeCreateSnapshotCopy(string sourceFilePath, out bool deleteAfter)
     {
@@ -1147,36 +1261,44 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
         NivelacijaRepairPlanDto Plan,
         AccessLineageResult AccessLineage);
 
+    private sealed record ResolvedSourceFile(
+        string WorkingPath,
+        string DisplayReference,
+        bool DeleteAfterUse);
+
     private sealed class RepairAccessSession : IAsyncDisposable
     {
         private readonly ILogger _logger;
-        private readonly bool _deleteAfter;
+        private readonly IReadOnlyCollection<string> _cleanupPaths;
 
-        public RepairAccessSession(IAccessDataReaderSession session, string effectivePath, bool deleteAfter, ILogger logger)
+        public RepairAccessSession(
+            IAccessDataReaderSession session,
+            IReadOnlyCollection<string> cleanupPaths,
+            ILogger logger)
         {
             Session = session;
-            EffectivePath = effectivePath;
-            _deleteAfter = deleteAfter;
+            _cleanupPaths = cleanupPaths;
             _logger = logger;
         }
 
         public IAccessDataReaderSession Session { get; }
 
-        public string EffectivePath { get; }
-
         public async ValueTask DisposeAsync()
         {
             await Session.DisposeAsync();
-            if (!_deleteAfter || !File.Exists(EffectivePath))
-                return;
+            foreach (var path in _cleanupPaths)
+            {
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                    continue;
 
-            try
-            {
-                File.Delete(EffectivePath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to delete temporary Access snapshot used by NivelacijaRepairService. Path: {Path}.", EffectivePath);
+                try
+                {
+                    File.Delete(path);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete temporary Access snapshot used by NivelacijaRepairService. Path: {Path}.", path);
+                }
             }
         }
     }

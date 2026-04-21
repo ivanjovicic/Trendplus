@@ -586,6 +586,14 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(800)
                         .HasColumnType("character varying(800)");
 
+                    b.Property<string>("SourceStorageKey")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("SourceStorageProvider")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("SourceSystem")
                         .IsRequired()
                         .HasMaxLength(64)

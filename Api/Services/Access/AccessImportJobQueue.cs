@@ -9,6 +9,8 @@ public sealed class AccessImportQueuedJob
 {
     public long BatchId { get; init; }
     public string SourceFilePath { get; init; } = string.Empty;
+    public string SourceStorageKey { get; init; } = string.Empty;
+    public string SourceStorageProvider { get; init; } = string.Empty;
     public string SourceFileName { get; init; } = string.Empty;
     public bool IncludeAnalytics { get; init; }
     public bool OverwriteExisting { get; init; }
@@ -59,6 +61,71 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
 
     public async Task<AccessImportQueuedJob?> ClaimNextAsync(CancellationToken ct = default)
     {
+        const string claimSqlStorageAware = """
+            WITH next_job AS (
+                SELECT "Id"
+                FROM "DataImportBatches"
+                WHERE "Status" = 'pending'
+                  AND "CompletedAtUtc" IS NULL
+                  AND COALESCE("CancellationRequested", FALSE) = FALSE
+                  AND (
+                        COALESCE(NULLIF("SourceFilePath", ''), '') <> ''
+                     OR COALESCE(NULLIF("SourceStorageKey", ''), '') <> ''
+                  )
+                ORDER BY "QueuedAtUtc" ASC NULLS FIRST, "Id" ASC
+                FOR UPDATE SKIP LOCKED
+                LIMIT 1
+            )
+            UPDATE "DataImportBatches" b
+            SET "Status" = 'running',
+                "StartedAtUtc" = NOW(),
+                "LastHeartbeatUtc" = NOW(),
+                "CurrentStep" = 'starting',
+                "CurrentTable" = 'all'
+            FROM next_job
+            WHERE b."Id" = next_job."Id"
+            RETURNING
+                b."Id",
+                COALESCE(b."SourceFilePath", ''),
+                COALESCE(b."SourceStorageKey", ''),
+                COALESCE(b."SourceStorageProvider", ''),
+                b."SourceFileName",
+                COALESCE(b."IncludeAnalytics", TRUE),
+                COALESCE(b."OverwriteExisting", TRUE),
+                COALESCE(b."IncludeTemporaryTables", FALSE);
+            """;
+
+        const string claimSqlLegacy = """
+            WITH next_job AS (
+                SELECT "Id"
+                FROM "DataImportBatches"
+                WHERE "Status" = 'pending'
+                  AND "CompletedAtUtc" IS NULL
+                  AND COALESCE("CancellationRequested", FALSE) = FALSE
+                  AND COALESCE(NULLIF("SourceFilePath", ''), '') <> ''
+                ORDER BY "QueuedAtUtc" ASC NULLS FIRST, "Id" ASC
+                FOR UPDATE SKIP LOCKED
+                LIMIT 1
+            )
+            UPDATE "DataImportBatches" b
+            SET "Status" = 'running',
+                "StartedAtUtc" = NOW(),
+                "LastHeartbeatUtc" = NOW(),
+                "CurrentStep" = 'starting',
+                "CurrentTable" = 'all'
+            FROM next_job
+            WHERE b."Id" = next_job."Id"
+            RETURNING
+                b."Id",
+                COALESCE(b."SourceFilePath", ''),
+                ''::text AS "SourceStorageKey",
+                ''::text AS "SourceStorageProvider",
+                b."SourceFileName",
+                COALESCE(b."IncludeAnalytics", TRUE),
+                COALESCE(b."OverwriteExisting", TRUE),
+                COALESCE(b."IncludeTemporaryTables", FALSE);
+            """;
+
         try
         {
             var connectionString = _db.Database.GetConnectionString();
@@ -67,60 +134,27 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
 
             await using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync(ct);
-            await using var cmd = connection.CreateCommand();
-            cmd.CommandText = """
-                WITH next_job AS (
-                    SELECT "Id"
-                    FROM "DataImportBatches"
-                    WHERE "Status" = 'pending'
-                      AND "CompletedAtUtc" IS NULL
-                      AND COALESCE("CancellationRequested", FALSE) = FALSE
-                      AND COALESCE(NULLIF("SourceFilePath", ''), '') <> ''
-                    ORDER BY "QueuedAtUtc" ASC NULLS FIRST, "Id" ASC
-                    FOR UPDATE SKIP LOCKED
-                    LIMIT 1
-                )
-                UPDATE "DataImportBatches" b
-                SET "Status" = 'running',
-                    "StartedAtUtc" = NOW(),
-                    "LastHeartbeatUtc" = NOW(),
-                    "CurrentStep" = 'starting',
-                    "CurrentTable" = 'all'
-                FROM next_job
-                WHERE b."Id" = next_job."Id"
-                RETURNING
-                    b."Id",
-                    COALESCE(b."SourceFilePath", ''),
-                    b."SourceFileName",
-                    COALESCE(b."IncludeAnalytics", TRUE),
-                    COALESCE(b."OverwriteExisting", TRUE),
-                    COALESCE(b."IncludeTemporaryTables", FALSE);
-                """;
-
-            AccessImportQueuedJob? job = null;
-            await using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow, ct))
+            AccessImportQueuedJob? job;
+            try
             {
-                if (await reader.ReadAsync(ct))
-                {
-                    job = new AccessImportQueuedJob
-                    {
-                        BatchId = reader.GetInt64(0),
-                        SourceFilePath = reader.GetString(1),
-                        SourceFileName = reader.GetString(2),
-                        IncludeAnalytics = reader.GetBoolean(3),
-                        OverwriteExisting = reader.GetBoolean(4),
-                        IncludeTemporaryTables = reader.GetBoolean(5)
-                    };
-                }
+                job = await ClaimNextWithCommandAsync(connection, claimSqlStorageAware, ct);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Access import queue claim is using legacy schema without storage metadata columns. Falling back to SourceFilePath-only claim.");
+                job = await ClaimNextWithCommandAsync(connection, claimSqlLegacy, ct);
             }
 
             if (job is null)
                 return null;
 
             _logger.LogInformation(
-                "Access import job claimed. BatchId: {BatchId}. SourceFileName: {SourceFileName}.",
+                "Access import job claimed. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StorageBacked: {StorageBacked}.",
                 job.BatchId,
-                job.SourceFileName);
+                job.SourceFileName,
+                !string.IsNullOrWhiteSpace(job.SourceStorageKey));
             return job;
         }
         catch (PostgresException ex) when (
@@ -132,5 +166,32 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
                 "Access import job queue claim skipped because DataImportBatches queue columns are not fully available yet.");
             return null;
         }
+    }
+
+    private static async Task<AccessImportQueuedJob?> ClaimNextWithCommandAsync(
+        NpgsqlConnection connection,
+        string commandText,
+        CancellationToken ct)
+    {
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = commandText;
+
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow, ct);
+        if (!await reader.ReadAsync(ct))
+        {
+            return null;
+        }
+
+        return new AccessImportQueuedJob
+        {
+            BatchId = reader.GetInt64(0),
+            SourceFilePath = reader.GetString(1),
+            SourceStorageKey = reader.GetString(2),
+            SourceStorageProvider = reader.GetString(3),
+            SourceFileName = reader.GetString(4),
+            IncludeAnalytics = reader.GetBoolean(5),
+            OverwriteExisting = reader.GetBoolean(6),
+            IncludeTemporaryTables = reader.GetBoolean(7)
+        };
     }
 }

@@ -9,9 +9,11 @@ using System.Diagnostics;
 using Api.Config;
 using Api.Models;
 using Api.Services.Access;
+using Application.Common.Interfaces;
 using Domain.Model;
 using Domain.Model.Povracaj;
 using Infrastructure.DbContexts;
+using Infrastructure.Configuration;
 using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -324,6 +326,8 @@ using NpgsqlTypes;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
     private readonly IAccessImportJobQueue? _jobQueue;
     private readonly IAccessImportCursorRepository? _cursorRepository;
+    private readonly IFileStorage? _fileStorage;
+    private readonly string _storageProviderName;
     private readonly string _incrementalLeaseOwner = $"{Environment.MachineName}:{Environment.ProcessId}:{Guid.NewGuid():N}";
     private ActiveIncrementalTableScope? _activeIncrementalScope;
     private readonly Dictionary<string, IncrementalTableSnapshot> _incrementalTableSnapshots = new(StringComparer.OrdinalIgnoreCase);
@@ -361,7 +365,9 @@ using NpgsqlTypes;
         IAnalyticsCacheService? analyticsCache = null,
         IServiceScopeFactory? serviceScopeFactory = null,
         IAccessImportJobQueue? jobQueue = null,
-        IAccessImportCursorRepository? cursorRepository = null)
+        IAccessImportCursorRepository? cursorRepository = null,
+        IFileStorage? fileStorage = null,
+        IOptions<StorageOptions>? storageOptions = null)
     {
         _trendDb = trendDb;
         _analyticsDb = analyticsDb;
@@ -371,6 +377,8 @@ using NpgsqlTypes;
         _serviceScopeFactory = serviceScopeFactory;
         _jobQueue = jobQueue;
         _cursorRepository = cursorRepository;
+        _fileStorage = fileStorage;
+        _storageProviderName = NormalizeStorageProviderName(storageOptions?.Value?.Provider);
     }
 
     private IAccessDataReaderSession CreateReadSession(string accessFilePath)
@@ -1901,6 +1909,8 @@ using NpgsqlTypes;
     {
         var (batch, _) = await CreateImportBatchAsync(
             sourceFilePath: accessFilePath,
+            sourceStorageKey: null,
+            sourceStorageProvider: null,
             sourceFileName: Path.GetFileName(accessFilePath),
             includeAnalytics: includeAnalytics,
             overwriteExisting: overwriteExisting,
@@ -1942,12 +1952,14 @@ using NpgsqlTypes;
             }
         }
 
-        var workingCopy = CreateBackgroundWorkingCopy(accessFilePath);
+        var preparedSource = await PrepareQueuedSourceAsync(accessFilePath, Path.GetFileName(accessFilePath), ct);
         AccessImportRunResponse result;
         try
         {
             (_, result) = await CreateImportBatchAsync(
-                sourceFilePath: workingCopy,
+                sourceFilePath: preparedSource.SourceFilePath,
+                sourceStorageKey: preparedSource.SourceStorageKey,
+                sourceStorageProvider: preparedSource.SourceStorageProvider,
                 sourceFileName: Path.GetFileName(accessFilePath),
                 includeAnalytics: includeAnalytics,
                 overwriteExisting: overwriteExisting,
@@ -1972,11 +1984,18 @@ using NpgsqlTypes;
                     return runningResponse;
             }
 
+            if (preparedSource.UploadedToStorage)
+                await DeleteQueuedStorageSourceBestEffortAsync(preparedSource.SourceStorageKey);
+
             throw;
         }
         catch
         {
-            TryDeleteFile(workingCopy, "batch-create-failed-cleanup", Path.GetFileName(accessFilePath), 0, "working-copy");
+            if (preparedSource.UploadedToStorage)
+                await DeleteQueuedStorageSourceBestEffortAsync(preparedSource.SourceStorageKey);
+
+            if (!string.IsNullOrWhiteSpace(preparedSource.SourceFilePath))
+                TryDeleteFile(preparedSource.SourceFilePath, "batch-create-failed-cleanup", Path.GetFileName(accessFilePath), 0, "working-copy");
             throw;
         }
 
@@ -2070,7 +2089,9 @@ using NpgsqlTypes;
             ct);
 
     private async Task<(DataImportBatch Batch, AccessImportRunResponse Result)> CreateImportBatchAsync(
-        string sourceFilePath,
+        string? sourceFilePath,
+        string? sourceStorageKey,
+        string? sourceStorageProvider,
         string sourceFileName,
         bool includeAnalytics,
         bool overwriteExisting,
@@ -2078,7 +2099,12 @@ using NpgsqlTypes;
         CancellationToken ct)
     {
         EnsurePlatformSupport();
-        if (!File.Exists(sourceFilePath))
+        var hasLocalSource = !string.IsNullOrWhiteSpace(sourceFilePath);
+        var hasStorageSource = !string.IsNullOrWhiteSpace(sourceStorageKey);
+        if (!hasLocalSource && !hasStorageSource)
+            throw new InvalidOperationException("Access import source is missing. Provide local source path or storage key.");
+
+        if (hasLocalSource && !File.Exists(sourceFilePath!))
             throw new FileNotFoundException("ACCDB fajl nije pronađen.", sourceFilePath);
 
         var now = DateTime.UtcNow;
@@ -2097,8 +2123,12 @@ using NpgsqlTypes;
         var batch = new DataImportBatch
         {
             SourceSystem = "access",
-            SourceFileName = string.IsNullOrWhiteSpace(sourceFileName) ? Path.GetFileName(sourceFilePath) : sourceFileName,
+            SourceFileName = string.IsNullOrWhiteSpace(sourceFileName)
+                ? (hasLocalSource ? Path.GetFileName(sourceFilePath!) : "access-import-source")
+                : sourceFileName,
             SourceFilePath = sourceFilePath,
+            SourceStorageKey = sourceStorageKey,
+            SourceStorageProvider = sourceStorageProvider,
             QueuedAtUtc = now,
             StartedAtUtc = now,
             LastHeartbeatUtc = now,
@@ -2198,7 +2228,7 @@ using NpgsqlTypes;
         includeAnalytics = batch.IncludeAnalytics;
         overwriteExisting = batch.OverwriteExisting;
         includeTemporaryTables = batch.IncludeTemporaryTables;
-        if (string.IsNullOrWhiteSpace(batch.SourceFilePath))
+        if (string.IsNullOrWhiteSpace(batch.SourceFilePath) && string.IsNullOrWhiteSpace(batch.SourceStorageKey))
             batch.SourceFilePath = accessFilePath;
         batch.SourceFileName = string.IsNullOrWhiteSpace(sourceFileName) ? batch.SourceFileName : sourceFileName;
 
@@ -7957,6 +7987,8 @@ using NpgsqlTypes;
                 "SourceSystem"    character varying(64)   NOT NULL DEFAULT 'access',
                 "SourceFileName"  character varying(300)  NOT NULL DEFAULT '',
                 "SourceFilePath"  character varying(800),
+                "SourceStorageKey" character varying(1024),
+                "SourceStorageProvider" character varying(32),
                 "QueuedAtUtc"     timestamp with time zone NOT NULL DEFAULT NOW(),
                 "StartedAtUtc"    timestamp with time zone NOT NULL DEFAULT NOW(),
                 "CompletedAtUtc"  timestamp with time zone,
@@ -8002,6 +8034,8 @@ using NpgsqlTypes;
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "CurrentStep" character varying(64);
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "CurrentTable" character varying(300);
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "SourceFilePath" character varying(800);
+            ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "SourceStorageKey" character varying(1024);
+            ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "SourceStorageProvider" character varying(32);
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "QueuedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW();
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "ErrorDetailsJson" text;
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "RequestedBy" character varying(200);
@@ -8701,6 +8735,88 @@ using NpgsqlTypes;
     }
 
     private sealed record AccessFileSnapshot(string FilePath, bool IsSnapshot, string? Warning);
+    private sealed record QueuedSourceMetadata(
+        string? SourceFilePath,
+        string? SourceStorageKey,
+        string? SourceStorageProvider,
+        bool UploadedToStorage);
+
+    private static string NormalizeStorageProviderName(string? provider)
+    {
+        return string.IsNullOrWhiteSpace(provider)
+            ? "local"
+            : provider.Trim().ToLowerInvariant();
+    }
+
+    private string BuildAccessSourceStorageKey(string sourceFileName)
+    {
+        var extension = Path.GetExtension(sourceFileName);
+        if (string.IsNullOrWhiteSpace(extension))
+            extension = ".accdb";
+
+        var safeName = Path.GetFileNameWithoutExtension(sourceFileName);
+        if (string.IsNullOrWhiteSpace(safeName))
+            safeName = "access-source";
+
+        return $"access-import/sources/{DateTime.UtcNow:yyyy/MM/dd}/{safeName}_{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
+    }
+
+    private async Task<QueuedSourceMetadata> PrepareQueuedSourceAsync(
+        string accessFilePath,
+        string sourceFileName,
+        CancellationToken ct)
+    {
+        if (_fileStorage is null || string.Equals(_storageProviderName, "local", StringComparison.Ordinal))
+        {
+            var workingCopy = CreateBackgroundWorkingCopy(accessFilePath);
+            return new QueuedSourceMetadata(
+                SourceFilePath: workingCopy,
+                SourceStorageKey: null,
+                SourceStorageProvider: null,
+                UploadedToStorage: false);
+        }
+
+        var storageKey = BuildAccessSourceStorageKey(sourceFileName);
+        await using var source = new FileStream(
+            accessFilePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 81920,
+            useAsync: true);
+        await _fileStorage.UploadAsync(storageKey, source, ct);
+
+        _logger.LogInformation(
+            "Access import source uploaded to durable storage. SourceFileName: {SourceFileName}. StorageProvider: {StorageProvider}. StorageKey: {StorageKey}.",
+            sourceFileName,
+            _storageProviderName,
+            storageKey);
+
+        return new QueuedSourceMetadata(
+            SourceFilePath: null,
+            SourceStorageKey: storageKey,
+            SourceStorageProvider: _storageProviderName,
+            UploadedToStorage: true);
+    }
+
+    private async Task DeleteQueuedStorageSourceBestEffortAsync(string? storageKey)
+    {
+        if (_fileStorage is null || string.IsNullOrWhiteSpace(storageKey))
+            return;
+
+        try
+        {
+            await _fileStorage.DeleteAsync(storageKey, CancellationToken.None);
+        }
+        catch (Exception cleanupEx)
+        {
+            _logger.LogWarning(
+                cleanupEx,
+                "Failed to clean up storage source after batch-create failure. StorageProvider: {StorageProvider}. StorageKey: {StorageKey}.",
+                _storageProviderName,
+                storageKey);
+        }
+    }
 
     private string CreateBackgroundWorkingCopy(string accessFilePath)
     {

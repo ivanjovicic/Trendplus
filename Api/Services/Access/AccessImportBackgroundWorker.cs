@@ -1,4 +1,5 @@
 using Api.Config;
+using Application.Common.Interfaces;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -18,17 +19,23 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<AccessImportBackgroundWorker> _logger;
     private readonly WorkerHealthService _healthService;
+    private readonly WorkerRuntimeControlService _controlService;
+    private readonly IFileStorage _fileStorage;
     private readonly AccessImportOptions _options;
 
     public AccessImportBackgroundWorker(
         IServiceProvider serviceProvider,
         ILogger<AccessImportBackgroundWorker> logger,
         WorkerHealthService healthService,
+        WorkerRuntimeControlService controlService,
+        IFileStorage fileStorage,
         IOptions<AccessImportOptions> options)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _healthService = healthService;
+        _controlService = controlService;
+        _fileStorage = fileStorage;
         _options = options.Value;
     }
 
@@ -47,15 +54,20 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (!_options.WorkerEnabled)
+            if (!_controlService.IsEnabled || !_options.WorkerEnabled)
             {
                 if (!paused)
                 {
+                    var reason = !_controlService.IsEnabled
+                        ? "Paused - global workers switch OFF."
+                        : "Paused - AccessImport:WorkerEnabled is false.";
+
                     _logger.LogInformation(
-                        "{WorkerName} paused. WorkerEnabled: {WorkerEnabled}.",
+                        "{WorkerName} paused. GlobalWorkersEnabled: {GlobalWorkersEnabled}. WorkerEnabled: {WorkerEnabled}.",
                         WorkerName,
+                        _controlService.IsEnabled,
                         _options.WorkerEnabled);
-                    _healthService.ReportStopped(WorkerName, "Paused by runtime settings.");
+                    _healthService.ReportStopped(WorkerName, reason);
                     paused = true;
                 }
 
@@ -163,12 +175,25 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
     {
         try
         {
+            var workingFilePath = job.SourceFilePath;
+            if (!string.IsNullOrWhiteSpace(job.SourceStorageKey))
+            {
+                workingFilePath = await StageSourceFromStorageAsync(job, stoppingToken);
+            }
+
+            if (string.IsNullOrWhiteSpace(workingFilePath) || !File.Exists(workingFilePath))
+            {
+                throw new FileNotFoundException(
+                    "Access import source file for claimed job was not found.",
+                    workingFilePath);
+            }
+
             await using var scope = _serviceProvider.CreateAsyncScope();
             var service = scope.ServiceProvider.GetRequiredService<IAccessImportService>();
 
             await service.RunExistingBatchAsync(
                 batchId: job.BatchId,
-                accessFilePath: job.SourceFilePath,
+                accessFilePath: workingFilePath,
                 sourceFileName: job.SourceFileName,
                 includeAnalytics: job.IncludeAnalytics,
                 overwriteExisting: job.OverwriteExisting,
@@ -198,6 +223,62 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
 
             await MarkBatchFailedBestEffortAsync(job.BatchId, ex);
         }
+    }
+
+    private async Task<string> StageSourceFromStorageAsync(AccessImportQueuedJob job, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(job.SourceStorageKey))
+        {
+            throw new InvalidOperationException(
+                $"Batch {job.BatchId} is marked as storage-backed but SourceStorageKey is empty.");
+        }
+
+        var storageRoot = string.IsNullOrWhiteSpace(_options.StorageRoot)
+            ? Path.Combine(Path.GetTempPath(), "trendplus_access_jobs")
+            : _options.StorageRoot;
+
+        var baseDirectory = Path.IsPathRooted(storageRoot)
+            ? storageRoot
+            : Path.Combine(Path.GetTempPath(), storageRoot);
+
+        var stagingDirectory = Path.Combine(baseDirectory, "staged-from-storage");
+        Directory.CreateDirectory(stagingDirectory);
+
+        var extension = Path.GetExtension(job.SourceFileName);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = ".accdb";
+        }
+
+        var baseName = Path.GetFileNameWithoutExtension(job.SourceFileName);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = $"access_batch_{job.BatchId}";
+        }
+
+        var localFileName = $"{baseName}_job_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
+        var localPath = Path.Combine(stagingDirectory, localFileName);
+
+        await using var sourceStream = await _fileStorage.OpenReadAsync(job.SourceStorageKey, ct);
+        await using var destinationStream = new FileStream(
+            localPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 81920,
+            useAsync: true);
+
+        await sourceStream.CopyToAsync(destinationStream, ct);
+        await destinationStream.FlushAsync(ct);
+
+        _logger.LogInformation(
+            "Access import source staged from storage. BatchId: {BatchId}. StorageProvider: {StorageProvider}. StorageKey: {StorageKey}. LocalPath: {LocalPath}.",
+            job.BatchId,
+            string.IsNullOrWhiteSpace(job.SourceStorageProvider) ? "unknown" : job.SourceStorageProvider,
+            job.SourceStorageKey,
+            localPath);
+
+        return localPath;
     }
 
     private async Task<bool> TryRequeueForRetryAsync(AccessImportQueuedJob job, Exception ex, CancellationToken stoppingToken)

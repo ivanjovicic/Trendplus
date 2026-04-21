@@ -54,8 +54,8 @@ public sealed class AnalyticsDataQualityHistoryService
                 unknown_supplier_revenue_share_pct = EXCLUDED.unknown_supplier_revenue_share_pct;
             """;
 
-        await _db.Database.ExecuteSqlRawAsync(
-            sql,
+        var parameters = new object[]
+        {
             new NpgsqlParameter("snapshotDateUtc", snapshot.GeneratedAtUtc.Date),
             new NpgsqlParameter("capturedAtUtc", snapshot.GeneratedAtUtc),
             new NpgsqlParameter("lookbackDays", snapshot.LookbackDays),
@@ -64,8 +64,10 @@ public sealed class AnalyticsDataQualityHistoryService
             new NpgsqlParameter("missingCostRevenueSharePct", snapshot.MissingCostRevenueSharePct),
             new NpgsqlParameter("unknownSupplierRevenue", snapshot.UnknownSupplierRevenue),
             new NpgsqlParameter("unknownSupplierRevenueSharePct", snapshot.UnknownSupplierRevenueSharePct),
-            new NpgsqlParameter("dataScope", NormalizeDataScope(dataScope)),
-            ct);
+            new NpgsqlParameter("dataScope", NormalizeDataScope(dataScope))
+        };
+
+        await _db.Database.ExecuteSqlRawAsync(sql, parameters, ct);
     }
 
     public async Task<IReadOnlyList<DataQualityTrendPointDto>> GetTrendAsync(int days, string? dataScope, CancellationToken ct)

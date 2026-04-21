@@ -7,6 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using System.Security.Cryptography;
+using System.IO;
+using System.Net.Sockets;
 
 namespace Infrastructure.Seed;
 
@@ -1733,8 +1735,12 @@ public static class DatabaseInitializer
         var runOpenTrainingOnStartup = configuration.GetValue<bool?>("DatabaseInitialization:RunOpenTrainingFullOnStartup") ?? false;
         var backfillLogger = logger;
         var backfillConnectionString = connectionString;
-        var trendDbForBackfill = trendDb;
-        var analyticsDbForBackfill = context;
+        var trendBackfillConnectionString = trendDb.Database.GetConnectionString()
+            ?? trendDb.Database.GetDbConnection().ConnectionString;
+        var analyticsBackfillConnectionString = context.Database.GetConnectionString()
+            ?? context.Database.GetDbConnection().ConnectionString;
+        var backfillCommandTimeoutSeconds = configuration.GetValue<int?>("Database:CommandTimeoutSeconds")
+            ?? 300;
 
         // 6️⃣ Defer Open Product Training 2.0 extensions and other non-critical analytics to background
         var openTrainingTasks = new[]
@@ -1805,8 +1811,8 @@ public static class DatabaseInitializer
         {
             // Do backfill synchronously during startup (slower startup but more data available immediately)
             logger.LogInformation("[Startup] Running backfill synchronously (backfill-on-startup enabled)...");
-            await BackfillSalesFactsAsync(trendDbForBackfill, analyticsDbForBackfill, backfillLogger);
-            await BackfillReturnFactsAsync(trendDbForBackfill, analyticsDbForBackfill, backfillLogger);
+            await BackfillSalesFactsAsync(trendDb, context, backfillLogger);
+            await BackfillReturnFactsAsync(trendDb, context, backfillLogger);
             logger.LogInformation("[Startup] Backfill operations completed.");
         }
         else
@@ -1817,12 +1823,16 @@ public static class DatabaseInitializer
             {
                 try
                 {
-                    await using var backfillScope = new TrendplusDbContext(
-                        new Microsoft.EntityFrameworkCore.DbContextOptions<TrendplusDbContext>());
-                    
                     backfillLogger.LogInformation("[BG] Starting deferred backfill operations...");
-                    await BackfillSalesFactsAsync(trendDbForBackfill, analyticsDbForBackfill, backfillLogger);
-                    await BackfillReturnFactsAsync(trendDbForBackfill, analyticsDbForBackfill, backfillLogger);
+                    await using var trendBackfillDb = CreateTrendplusBackfillDbContext(
+                        trendBackfillConnectionString,
+                        backfillCommandTimeoutSeconds);
+                    await using var analyticsBackfillDb = CreateAnalyticsBackfillDbContext(
+                        analyticsBackfillConnectionString,
+                        backfillCommandTimeoutSeconds);
+
+                    await BackfillSalesFactsAsync(trendBackfillDb, analyticsBackfillDb, backfillLogger);
+                    await BackfillReturnFactsAsync(trendBackfillDb, analyticsBackfillDb, backfillLogger);
                     backfillLogger.LogInformation("[BG] Deferred backfill operations completed successfully.");
                 }
                 catch (Exception ex)
@@ -2144,6 +2154,28 @@ public static class DatabaseInitializer
         }
 
         logger.LogInformation("✔ SalesFacts incremental backfill complete.");
+    }
+
+    private static TrendplusDbContext CreateTrendplusBackfillDbContext(
+        string connectionString,
+        int commandTimeoutSeconds)
+    {
+        var options = new DbContextOptionsBuilder<TrendplusDbContext>()
+            .UseNpgsql(connectionString, npgsql => npgsql.CommandTimeout(commandTimeoutSeconds))
+            .Options;
+
+        return new TrendplusDbContext(options);
+    }
+
+    private static AnalyticsDbContext CreateAnalyticsBackfillDbContext(
+        string connectionString,
+        int commandTimeoutSeconds)
+    {
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseNpgsql(connectionString, npgsql => npgsql.CommandTimeout(commandTimeoutSeconds))
+            .Options;
+
+        return new AnalyticsDbContext(options);
     }
 
     private static async Task BackfillReturnFactsAsync(
@@ -2532,6 +2564,28 @@ public static class DatabaseInitializer
             : string.Join(Environment.NewLine + "-- SQL_BATCH_BREAK" + Environment.NewLine, effectiveBatches);
         var scriptHash = ComputeSqlScriptHash(sqlForExecution);
 
+        // Temporary diagnostic logging: capture connection metadata for troubleshooting transient I/O errors.
+        string connHost = "<unknown>";
+        int connPort = 0;
+        string connDatabase = "<unknown>";
+        string connUser = "<unknown>";
+        try
+        {
+            var connBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+            connHost = connBuilder.Host ?? "<unknown>";
+            connPort = connBuilder.Port;
+            connDatabase = connBuilder.Database ?? "<unknown>";
+            connUser = connBuilder.Username ?? "<unknown>";
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to parse connection string for diagnostic logging.");
+        }
+
+        logger.LogInformation(
+            "Startup SQL diagnostics: Script={Script} Conn={Host}:{Port}/{Database} User={User} CommandTimeout={CommandTimeout} UseTransaction={UseTransaction} StartBatch={StartBatch} MaxBatch={MaxBatch}",
+            scriptDisplayIdentifier, connHost, connPort, connDatabase, connUser, commandTimeoutSeconds, useTransaction, startBatchNumber, maxBatchCount);
+
         await EnsureStartupSqlHistoryTableAsync(connectionString);
 
         var appliedHash = await GetAppliedStartupSqlHashAsync(connectionString, scriptHistoryIdentifier);
@@ -2551,7 +2605,19 @@ public static class DatabaseInitializer
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
+        var connOpenSw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            await connection.OpenAsync();
+            connOpenSw.Stop();
+            logger.LogInformation("Opened DB connection to {Host}:{Port}/{Database} in {ElapsedMs}ms for {Script}.", connHost, connPort, connDatabase, connOpenSw.ElapsedMilliseconds, scriptDisplayIdentifier);
+        }
+        catch (Exception exOpen)
+        {
+            connOpenSw.Stop();
+            logger.LogError(exOpen, "Failed to open DB connection to {Host}:{Port}/{Database} for script {Script} after {ElapsedMs}ms. CommandTimeout={CommandTimeout}.", connHost, connPort, connDatabase, scriptDisplayIdentifier, connOpenSw.ElapsedMilliseconds, commandTimeoutSeconds);
+            throw;
+        }
 
         NpgsqlTransaction? tx = null;
         try
@@ -2706,7 +2772,20 @@ public static class DatabaseInitializer
         catch (Exception ex)
         {
             await TryRollbackTransactionAsync(tx, logger, scriptDisplayIdentifier);
-            logger.LogError(ex, "Failed to execute SQL file: {FilePath}", scriptDisplayIdentifier);
+            var inner = ex.InnerException;
+            var innerType = inner?.GetType().FullName ?? ex.GetType().FullName;
+            var innerMessage = inner?.Message ?? ex.Message;
+            logger.LogError(
+                ex,
+                "Failed to execute SQL file: {FilePath}. Conn={Host}:{Port}/{Database} User={User} CmdTimeout={CmdTimeout}. InnerType={InnerType} InnerMessage={InnerMessage}",
+                scriptDisplayIdentifier,
+                connHost,
+                connPort,
+                connDatabase,
+                connUser,
+                commandTimeoutSeconds,
+                innerType,
+                innerMessage);
             throw;
         }
         finally

@@ -46,7 +46,13 @@ CREATE INDEX IF NOT EXISTS "IX_ReturnFacts_SupplierId_ReturnTimestampUtc"
 
 -- Dodavanje validacija
 ALTER TABLE "ReturnFacts"
+DROP CONSTRAINT IF EXISTS "CHK_Status";
+
+ALTER TABLE "ReturnFacts"
 ADD CONSTRAINT "CHK_Status" CHECK ("Status" IN ('Pending', 'Approved', 'Rejected'));
+
+ALTER TABLE "ReturnFacts"
+DROP CONSTRAINT IF EXISTS "CHK_DataOrigin";
 
 ALTER TABLE "ReturnFacts"
 ADD CONSTRAINT "CHK_DataOrigin" CHECK ("DataOrigin" IN ('existing', 'new'));
@@ -143,6 +149,8 @@ SELECT
 FROM "InventoryMovementFacts" imf;
 
 -- Materialized view za povracaj_zaglavlje
+DROP MATERIALIZED VIEW IF EXISTS povracaj_zaglavlje_mv;
+
 CREATE MATERIALIZED VIEW povracaj_zaglavlje_mv AS
 SELECT
     rf."ReturnId" AS id,

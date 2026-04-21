@@ -1,6 +1,7 @@
 using Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 using System.Text;
+using Application.Common.Interfaces;
 
 namespace Infrastructure.Services.Documents;
 
@@ -26,10 +27,21 @@ public interface IDocumentStorage
 public sealed class LocalDocumentStorage : IDocumentStorage
 {
     private readonly DocumentExportOptions _options;
+    private readonly IFileStorage? _fileStorage;
+    private readonly StorageOptions? _storageOptions;
 
+    // Preserve existing constructor for tests/compatibility
     public LocalDocumentStorage(IOptions<DocumentExportOptions> options)
     {
         _options = options.Value;
+    }
+
+    // DI constructor used in runtime - optional file storage is injected
+    public LocalDocumentStorage(IOptions<DocumentExportOptions> options, IFileStorage fileStorage, IOptions<StorageOptions> storageOptions)
+        : this(options)
+    {
+        _fileStorage = fileStorage;
+        _storageOptions = storageOptions?.Value;
     }
 
     public async Task<StoredDocumentDescriptor> SaveAsync(
@@ -57,20 +69,57 @@ public sealed class LocalDocumentStorage : IDocumentStorage
         }
 
         var fileInfo = new FileInfo(fullPath);
-        return new StoredDocumentDescriptor
+        var descriptor = new StoredDocumentDescriptor
         {
             RelativePath = relativePath.Replace('\\', '/'),
             FullPath = fullPath,
             FileName = sanitizedFileName,
             SizeBytes = fileInfo.Length
         };
+
+        // If a remote file storage provider is configured, upload the newly created local file
+        try
+        {
+            var provider = _storageOptions?.Provider?.Trim().ToLowerInvariant() ?? "local";
+            if (_fileStorage is not null && provider != "local")
+            {
+                // Use the relative path as the storage key (normalized by the storage backend)
+                await using var readStream = File.OpenRead(fullPath);
+                await _fileStorage.UploadAsync(descriptor.RelativePath, readStream, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Do not fail the document generation if remote upload fails; keep local file as fallback.
+            // Log to console for visibility; DI logger not injected here to keep constructor compatibility.
+            Console.WriteLine($"Warning: file storage upload failed for {descriptor.RelativePath}: {ex.Message}");
+        }
+
+        return descriptor;
     }
 
-    public Task<Stream> OpenReadAsync(string relativePath, CancellationToken ct = default)
+    public async Task<Stream> OpenReadAsync(string relativePath, CancellationToken ct = default)
     {
+        // Prefer the configured IFileStorage when the key exists there; otherwise fall back to local FS
+        if (_fileStorage is not null)
+        {
+            try
+            {
+                if (await _fileStorage.ExistsAsync(relativePath, ct))
+                {
+                    return await _fileStorage.OpenReadAsync(relativePath, ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Failover to local filesystem if storage backend check fails
+                Console.WriteLine($"Warning: file storage check/open failed for {relativePath}: {ex.Message}");
+            }
+        }
+
         var fullPath = Path.Combine(Path.GetFullPath(_options.StorageRoot), relativePath.Replace('/', Path.DirectorySeparatorChar));
         Stream stream = File.OpenRead(fullPath);
-        return Task.FromResult(stream);
+        return stream;
     }
 
     private static string SanitizeFileName(string fileName)
