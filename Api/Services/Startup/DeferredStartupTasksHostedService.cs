@@ -106,18 +106,17 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                 var trendDb = warmupScope.ServiceProvider.GetRequiredService<ITrendplusDbContext>();
                 var analyticsDb = warmupScope.ServiceProvider.GetRequiredService<IAnalyticsDbContext>();
 
-                var sql = "SELECT 1";
-                var sw = Stopwatch.StartNew();
-                await ((DbContext)trendDb).Database.ExecuteSqlRawAsync(sql, ct);
-                sw.Stop();
-                try { SqlCommandLoggingHelper.LogSqlExecution("trendplus", "ExecuteSqlRaw", sql, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
+                var trendOk = await DbConnectionHelper.TryExecuteSqlProbeAsync((DbContext)trendDb, _logger, ct);
+                var analyticsOk = await DbConnectionHelper.TryExecuteSqlProbeAsync((DbContext)analyticsDb, _logger, ct);
 
-                sw = Stopwatch.StartNew();
-                await ((DbContext)analyticsDb).Database.ExecuteSqlRawAsync(sql, ct);
-                sw.Stop();
-                try { SqlCommandLoggingHelper.LogSqlExecution("analytics", "ExecuteSqlRaw", sql, null, sw.ElapsedMilliseconds, true, null, null, Application.Logging.RequestLogContext.Current.RequestId, Application.Logging.RequestLogContext.Current.TraceId); } catch { }
-
-                _logger.LogInformation("[NeonWarmup] Databases are awake.");
+                if (trendOk && analyticsOk)
+                {
+                    _logger.LogInformation("[NeonWarmup] Databases are awake.");
+                }
+                else
+                {
+                    _logger.LogWarning("[NeonWarmup] Warmup probe reported failures. trendOk={TrendOk} analyticsOk={AnalyticsOk}", trendOk, analyticsOk);
+                }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
