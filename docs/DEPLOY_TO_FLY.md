@@ -33,6 +33,22 @@ flyctl deploy --config fly.toml --app trendplus --remote-only
 
 - After GitHub Actions runs, check Fly dashboard and logs for successful startup and the expected `DeferredStartupTasksHostedService` warmup logs.
 
+7) Render fallback (manual)
+
+- The repository keeps Render available as a fallback but does not auto-deploy to it.
+- To trigger a manual Render deploy use the GitHub Actions UI: open the workflow "Manual: Deploy to Render (fallback)" and run it (optionally specify a git ref, default `main`).
+- Make sure the repository has these secrets set in Settings → Secrets: `RENDER_API_KEY` and `RENDER_SERVICE_ID`.
+
+8) Frontend configuration
+
+- If your frontend is built and deployed separately (e.g., Render, Vercel, Netlify), set the frontend build environment variable `VITE_API_BASE_URL` to your Fly app URL, for example `https://trendplus.fly.dev`.
+- If the frontend is served from the backend (static files in `Api/wwwroot`), ensure the production build step uses `VITE_API_BASE_URL` set to the Fly URL before building the static bundle.
+- Alternatively, keep the frontend's current public domain and point its DNS (CNAME/ALIAS) at Fly so no frontend changes are needed.
+
+9) Cleanup on Render
+
+- After Fly is verified and receiving traffic, you can disable or delete the backend service in Render to avoid duplicate services and unexpected costs — or keep it running as a hot/cold fallback if you prefer.
+
 7) Frontend configuration
 
 - If your frontend is built and deployed separately (e.g., Render, Vercel, Netlify), set the frontend build environment variable `VITE_API_BASE_URL` to your Fly app URL, for example `https://trendplus.fly.dev`.
