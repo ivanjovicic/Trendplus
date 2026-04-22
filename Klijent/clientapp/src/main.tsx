@@ -5,7 +5,10 @@ import App from "./App";
 import { BackendStatusProvider } from "./context/BackendStatusContext";
 import { PingControlProvider } from "./context/PingControlContext";
 import { RequestActivityProvider } from "./context/RequestActivityContext";
+import { installApiFailoverFetchLayer } from "./utils/apiFailover";
 import "./skeleton.css";
+
+installApiFailoverFetchLayer();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>

@@ -1,8 +1,7 @@
 import { apiCircuitBreaker, CircuitBreakerError } from "./circuitBreaker";
 import { ApiException, parseApiError, getErrorMessage } from "./apiErrors";
 import { API_COLD_START_TIMEOUT_MS } from "./apiTimeouts";
-
-const API = import.meta.env.VITE_API_BASE_URL || "";
+import { apiUrl } from "./apiUrl";
 
 interface RequestConfig extends RequestInit {
     timeout?: number;
@@ -14,7 +13,7 @@ interface RequestConfig extends RequestInit {
  */
 class HttpClient {
     private getUrl(path: string): string {
-        return import.meta.env.DEV ? path : `${API}${path}`;
+        return apiUrl(path);
     }
 
     private async executeRequest(

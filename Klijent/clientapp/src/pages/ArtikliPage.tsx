@@ -12,7 +12,6 @@ export default function ArtikliPage() {
   const [tipovi, setTipovi] = React.useState<{ id: number; naziv: string }[]>([]);
   const [dobavljaci, setDobavljaci] = React.useState<{ id: number; naziv: string }[]>([]);
   const [loadingOptions, setLoadingOptions] = React.useState(true);
-  const API = import.meta.env.VITE_API_BASE_URL;
 
   // Extract state from navigation using useMemo (no setState in effect)
   const navigationState = useMemo(() => {

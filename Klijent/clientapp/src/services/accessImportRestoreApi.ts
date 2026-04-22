@@ -1,5 +1,4 @@
-const RAW_API = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "").replace(/\/+$/g, "");
-const API = RAW_API;
+import { apiUrl } from "../utils/apiUrl";
 
 async function parseError(res: Response): Promise<string> {
   try {
@@ -11,7 +10,7 @@ async function parseError(res: Response): Promise<string> {
 }
 
 export async function getRestoreScript(ids: number[]): Promise<string> {
-  const res = await fetch(`${API}/api/access-import/cleanup/archive/restore-script`, {
+  const res = await fetch(apiUrl("/api/access-import/cleanup/archive/restore-script"), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids }),

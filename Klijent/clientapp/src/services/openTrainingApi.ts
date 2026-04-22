@@ -1,4 +1,4 @@
-const BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+import { apiUrl } from "../utils/apiUrl";
 
 // -- Types ---------------------------------------------------------------------
 
@@ -105,13 +105,13 @@ export interface RecomputeLabelsResult {
 // -- API calls -----------------------------------------------------------------
 
 export async function fetchOpenTrainingStats(): Promise<OpenTrainingStats> {
-    const res = await fetch(`${BASE}/api/open-training/stats`);
+    const res = await fetch(apiUrl("/api/open-training/stats"));
     if (!res.ok) throw new Error(`Stats fetch failed: ${res.status}`);
     return res.json();
 }
 
 export async function fetchOpenTrainingDatasets(): Promise<OpenTrainingDataset[]> {
-    const res = await fetch(`${BASE}/api/open-training/datasets`);
+    const res = await fetch(apiUrl("/api/open-training/datasets"));
     if (!res.ok) throw new Error(`Datasets fetch failed: ${res.status}`);
     return res.json();
 }
@@ -126,13 +126,13 @@ export async function fetchTopLabels(
     if (shoeType) params.set("shoeType", shoeType);
     if (brand) params.set("brand", brand);
 
-    const res = await fetch(`${BASE}/api/open-training/labels/top?${params}`);
+    const res = await fetch(apiUrl(`/api/open-training/labels/top?${params}`));
     if (!res.ok) throw new Error(`Top labels fetch failed: ${res.status}`);
     return res.json();
 }
 
 export async function fetchShoeTypes(): Promise<ShoeTypeCount[]> {
-    const res = await fetch(`${BASE}/api/open-training/shoe-types`);
+    const res = await fetch(apiUrl("/api/open-training/shoe-types"));
     if (!res.ok) throw new Error(`Shoe types fetch failed: ${res.status}`);
     return res.json();
 }
@@ -142,7 +142,7 @@ export async function fetchBrands(shoeType?: string): Promise<BrandCount[]> {
     if (shoeType) params.set("shoeType", shoeType);
     const suffix = params.size > 0 ? `?${params}` : "";
 
-    const res = await fetch(`${BASE}/api/open-training/brands${suffix}`);
+    const res = await fetch(apiUrl(`/api/open-training/brands${suffix}`));
     if (!res.ok) throw new Error(`Brands fetch failed: ${res.status}`);
     return res.json();
 }
@@ -151,7 +151,7 @@ export async function fetchDiagnostics(
     labelType: "popularity_prior" | "deal_score" = "popularity_prior",
 ): Promise<Diagnostics> {
     const params = new URLSearchParams({ labelType });
-    const res = await fetch(`${BASE}/api/open-training/diagnostics?${params}`);
+    const res = await fetch(apiUrl(`/api/open-training/diagnostics?${params}`));
     if (!res.ok) throw new Error(`Diagnostics fetch failed: ${res.status}`);
     return res.json();
 }
@@ -159,7 +159,7 @@ export async function fetchDiagnostics(
 export async function recomputeLabels(
     body: RecomputeLabelsRequest,
 ): Promise<RecomputeLabelsResult> {
-    const res = await fetch(`${BASE}/api/open-training/recompute-labels`, {
+    const res = await fetch(apiUrl("/api/open-training/recompute-labels"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

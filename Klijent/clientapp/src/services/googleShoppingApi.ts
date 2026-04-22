@@ -1,4 +1,4 @@
-const BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+import { apiUrl } from "../utils/apiUrl";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,7 +57,7 @@ export async function syncGoogleShopping(
     if (gender && gender !== "all") params.append("gender", gender);
     if (minPrice != null) params.append("minPrice", String(minPrice));
     if (maxPrice != null) params.append("maxPrice", String(maxPrice));
-    const res = await fetch(`${BASE}/api/google/shopping/sync?${params}`);
+    const res = await fetch(apiUrl(`/api/google/shopping/sync?${params}`));
     if (!res.ok) throw new Error(`Sync failed: ${res.status} ${await res.text()}`);
     return res.json();
 }
@@ -71,7 +71,7 @@ export async function getGoogleShoppingByType(
 ): Promise<GooglePagedResult<GoogleShoppingProduct>> {
     const params = new URLSearchParams({ type, page: String(page), pageSize: String(pageSize), sortBy });
     if (gender && gender !== "all") params.append("gender", gender);
-    const res = await fetch(`${BASE}/api/google/shopping?${params}`);
+    const res = await fetch(apiUrl(`/api/google/shopping?${params}`));
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
 }
@@ -81,19 +81,19 @@ export async function getAllGoogleShopping(
     pageSize = 50,
 ): Promise<GooglePagedResult<GoogleShoppingProduct>> {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-    const res = await fetch(`${BASE}/api/google/shopping/all?${params}`);
+    const res = await fetch(apiUrl(`/api/google/shopping/all?${params}`));
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
 }
 
 export async function getGoogleShoppingCategories(): Promise<GoogleCategorySummary[]> {
-    const res = await fetch(`${BASE}/api/google/shopping/categories`);
+    const res = await fetch(apiUrl("/api/google/shopping/categories"));
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
 }
 
 export async function deleteGoogleShoppingCategory(category: string): Promise<{ deleted: number; category: string }> {
-    const res = await fetch(`${BASE}/api/google/shopping/category/${encodeURIComponent(category)}`, { method: "DELETE" });
+    const res = await fetch(apiUrl(`/api/google/shopping/category/${encodeURIComponent(category)}`), { method: "DELETE" });
     if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
     return res.json();
 }

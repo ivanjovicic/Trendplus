@@ -1,14 +1,13 @@
-﻿import type {
+import type {
   KreirajPovracajRequest,
   KreirajPovracajResponse,
   PovracajListResponse,
   PovracajDetaljno
 } from "../types/povracaj";
-
-const API = import.meta.env.VITE_API_BASE_URL;
+import { apiUrl } from "../utils/apiUrl";
 
 export async function kreirajPovracaj(request: KreirajPovracajRequest): Promise<KreirajPovracajResponse> {
-  const res = await fetch(`${API}/api/povracaj`, {
+  const res = await fetch(apiUrl("/api/povracaj"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request)
@@ -35,7 +34,7 @@ export async function getPovracaji(
     )
   });
 
-  const res = await fetch(`${API}/api/povracaj?${params}`);
+  const res = await fetch(apiUrl(`/api/povracaj?${params}`));
 
   if (!res.ok) {
     throw new Error("Greška pri učitavanju povraćaja");
@@ -45,7 +44,7 @@ export async function getPovracaji(
 }
 
 export async function getPovracajDetalji(id: number): Promise<PovracajDetaljno> {
-  const res = await fetch(`${API}/api/povracaj/${id}`);
+  const res = await fetch(apiUrl(`/api/povracaj/${id}`));
 
   if (!res.ok) {
     throw new Error("Greška pri učitavanju detalja povraćaja");

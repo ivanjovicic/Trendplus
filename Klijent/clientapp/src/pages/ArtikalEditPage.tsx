@@ -20,8 +20,6 @@ export default function ArtikalEditPage() {
     // Image state
     const [currentImagePath, setCurrentImagePath] = React.useState<string | null>(null);
 
-    const API = import.meta.env.VITE_API_BASE_URL;
-
     React.useEffect(() => {
         if (!artikalId || Number.isNaN(artikalId)) {
             setError("Neispravan ID artikla.");
@@ -96,7 +94,7 @@ export default function ArtikalEditPage() {
             aborted = true;
             controller.abort();
         };
-    }, [API, artikalId]);
+    }, [artikalId]);
 
     const handleEditSubmit = async (data: ArtikalFormData): Promise<void> => {
         if (!artikalId || Number.isNaN(artikalId)) {

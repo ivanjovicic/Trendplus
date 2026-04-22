@@ -1,7 +1,6 @@
 import type { DnevnikPromenaDetail, DnevnikPromenaResponse } from "../types/dnevnikPromena";
 import { appendDataScopeToParams } from "../utils/dataScope";
-
-const API = import.meta.env.VITE_API_BASE_URL as string;
+import { apiUrl } from "../utils/apiUrl";
 
 export async function getDnevnikPromena(
   pageNumber: number = 1,
@@ -32,7 +31,7 @@ export async function getDnevnikPromena(
   if (filters?.sortDir) params.append("sortDir", filters.sortDir);
   appendDataScopeToParams(params);
 
-  const resp = await fetch(`${API}/api/dnevnik-promena?${params.toString()}`);
+  const resp = await fetch(apiUrl(`/api/dnevnik-promena?${params.toString()}`));
   if (!resp.ok) {
     const body = await resp.json().catch(() => null);
     const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${resp.status}`;
@@ -43,7 +42,7 @@ export async function getDnevnikPromena(
 }
 
 export async function getDnevnikPromenaById(id: string | number): Promise<DnevnikPromenaDetail | null> {
-  const resp = await fetch(`${API}/api/dnevnik-promena/${id}`);
+  const resp = await fetch(apiUrl(`/api/dnevnik-promena/${id}`));
 
   if (resp.status === 404) {
     return null;

@@ -2,6 +2,7 @@
 import { ArtikalFormData } from "../types/artikalformdata";
 import { NivelacijeResponse } from "../types/nivelacije";
 import { appendDataScopeToParams } from "../utils/dataScope";
+import { apiUrl } from "../utils/apiUrl";
 
 export type CreateArtikalDto = {
     PLU?: string | null;
@@ -18,7 +19,6 @@ export type CreateArtikalDto = {
     idObjekat?: number | null;
     idSezona?: number | null;
 };
-const API = import.meta.env.VITE_API_BASE_URL;
 const ARTIKLI_PAGED_CACHE_TTL_MS = 30 * 1000;
 const artikliPagedCache = new Map<string, { expiresAt: number; data: ArtikliPagedResponse<any> }>();
 const artikliPagedInFlight = new Map<string, Promise<ArtikliPagedResponse<any>>>();
@@ -33,7 +33,7 @@ export type ArtikliPagedResponse<T> = {
 };
 
 export async function createArtikal(payload: CreateArtikalDto): Promise<number> {
-    const res = await fetch(`${API}/artikli`, {
+    const res = await fetch(apiUrl("/artikli"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -64,7 +64,7 @@ export async function createArtikal(payload: CreateArtikalDto): Promise<number> 
 }
 
 export async function getArtikal(id: number): Promise<Artikal> {
-    const res = await fetch(`${API}/artikli/${id}`);
+    const res = await fetch(apiUrl(`/artikli/${id}`));
     if (!res.ok) throw new Error("Artikal ne postoji");
     return res.json();
 }
@@ -84,7 +84,7 @@ export async function updateArtikal(id: number, data: ArtikalFormData): Promise<
         idSezona: data.idSezona ?? null,
     };
 
-    const resp = await fetch(`${API}/artikli/${id}`, {
+    const resp = await fetch(apiUrl(`/artikli/${id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dto),
@@ -102,7 +102,7 @@ export async function updateArtikal(id: number, data: ArtikalFormData): Promise<
 }
 
 export async function getArtikli(): Promise<Artikal[]> {
-    const res = await fetch(`${API}/artikli`);
+    const res = await fetch(apiUrl("/artikli"));
     if (!res.ok) {
         throw new Error(`Greška pri učitavanju artikala: ${res.status}`);
     }
@@ -153,7 +153,7 @@ export async function getArtikliPaged<T = any>(
     }
 
     const request = (async () => {
-        const res = await fetch(`${API}/api/artikli?${params.toString()}`);
+        const res = await fetch(apiUrl(`/api/artikli?${params.toString()}`));
         if (!res.ok) {
             const body = await res.json().catch(() => null);
             const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${res.status}`;
@@ -200,7 +200,7 @@ export function clearArtikliClientCaches(): void {
 }
 
 export async function nivelacijaCena(artikalId: number, novaProdajnaCena: number, komentar?: string): Promise<void> {
-    const resp = await fetch(`${API}/api/nivelacija`, {
+    const resp = await fetch(apiUrl("/api/nivelacija"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ artikalId, novaProdajnaCena, komentar: komentar ?? null }),
@@ -238,7 +238,7 @@ export async function getNivelacije(
     if (filters?.sortBy) params.append("sortBy", filters.sortBy);
     if (filters?.sortDir) params.append("sortDir", filters.sortDir);
 
-    const resp = await fetch(`${API}/api/nivelacije?${params.toString()}`);
+    const resp = await fetch(apiUrl(`/api/nivelacije?${params.toString()}`));
     if (!resp.ok) {
         const body = await resp.json().catch(() => null);
         const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${resp.status}`;

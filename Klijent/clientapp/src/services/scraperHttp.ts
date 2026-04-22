@@ -1,3 +1,5 @@
+import { apiUrl } from "../utils/apiUrl";
+
 type PostScraperOptions = {
     signal?: AbortSignal;
     timeoutMs?: number;
@@ -11,14 +13,11 @@ type CombinedSignalContext = {
 
 function buildCandidates(scraperPath: string): string[] {
     const pythonApi = (import.meta.env.VITE_PYTHON_API_URL || "").replace(/\/+$/, "");
-    const backendApi = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
     const candidates: string[] = [];
     if (pythonApi) candidates.push(`${pythonApi}/scrapers/${scraperPath}`);
-    if (backendApi) candidates.push(`${backendApi}/api/scrapers/${scraperPath}`);
-    candidates.push(`/api/scrapers/${scraperPath}`);
+    candidates.push(apiUrl(`/api/scrapers/${scraperPath}`));
 
-    // de-duplicate while preserving order
     return Array.from(new Set(candidates));
 }
 

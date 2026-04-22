@@ -75,9 +75,10 @@ function shouldTrackRequest(input: RequestInfo | URL): boolean {
   }
 
   const apiOrigin = getOrigin(import.meta.env.VITE_API_BASE_URL);
+  const fallbackApiOrigin = getOrigin(import.meta.env.VITE_API_FALLBACK_URL);
   const pythonOrigin = getOrigin(import.meta.env.VITE_PYTHON_API_URL);
 
-  if (apiOrigin && url.origin === apiOrigin) {
+  if ((apiOrigin && url.origin === apiOrigin) || (fallbackApiOrigin && url.origin === fallbackApiOrigin)) {
     return true;
   }
 
@@ -99,7 +100,11 @@ function shouldConfirmBackendReachability(input: RequestInfo | URL, response: Re
   }
 
   const apiOrigin = getOrigin(import.meta.env.VITE_API_BASE_URL);
-  return Boolean(apiOrigin && url.origin === apiOrigin);
+  const fallbackApiOrigin = getOrigin(import.meta.env.VITE_API_FALLBACK_URL);
+  return Boolean(
+    (apiOrigin && url.origin === apiOrigin) ||
+    (fallbackApiOrigin && url.origin === fallbackApiOrigin)
+  );
 }
 
 export const RequestActivityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

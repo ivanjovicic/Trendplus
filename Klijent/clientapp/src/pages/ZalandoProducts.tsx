@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { apiUrl } from "../utils/apiUrl";
 
 type ProductItem = {
   id: number;
@@ -14,8 +15,6 @@ export default function ZalandoProducts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const API = import.meta.env.VITE_API_BASE_URL || "";
-
   useEffect(() => {
     let aborted = false;
 
@@ -23,7 +22,7 @@ export default function ZalandoProducts() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API}/api/products?source=zalando`);
+        const res = await fetch(apiUrl("/api/products?source=zalando"));
         if (!res.ok) {
           const text = await res.text().catch(() => null);
           throw new Error(text ?? `HTTP ${res.status}`);
@@ -41,7 +40,7 @@ export default function ZalandoProducts() {
     return () => {
       aborted = true;
     };
-  }, [API]);
+  }, []);
 
   if (loading) return <div className="card">Učitavanje Zalando proizvoda...</div>;
   if (error) return <div className="card">Greška: {error}</div>;

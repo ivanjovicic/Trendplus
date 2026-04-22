@@ -1,11 +1,10 @@
 import type { Dobavljac } from "../types/Dobavljaci";
 import { getDataScope } from "../utils/dataScope";
-
-const API = import.meta.env.VITE_API_BASE_URL;
+import { apiUrl } from "../utils/apiUrl";
 
 export async function getDobavljaci(): Promise<Dobavljac[]> {
     const scope = getDataScope();
-    const res = await fetch(`${API}/api/dobavljaci?dataScope=${encodeURIComponent(scope)}`);
+    const res = await fetch(apiUrl(`/api/dobavljaci?dataScope=${encodeURIComponent(scope)}`));
     if (!res.ok) throw new Error("Ne mogu da dohvatim dobavljače");
     return res.json();
 }
@@ -16,7 +15,7 @@ export async function createDobavljac(
     telefon?: string,
     napomena?: string
 ): Promise<number> {
-    const res = await fetch(`${API}/api/dobavljaci`, {
+    const res = await fetch(apiUrl("/api/dobavljaci"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

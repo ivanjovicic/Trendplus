@@ -1,6 +1,6 @@
 import { appendDataScopeToParams } from "../utils/dataScope";
+import { apiUrl } from "../utils/apiUrl";
 
-const API = import.meta.env.VITE_API_BASE_URL;
 const LOOKUP_CACHE_TTL_MS = 15 * 1000;
 
 export type ProdajaArtikalLookupDto = {
@@ -37,7 +37,7 @@ export async function fetchProdajaArtikliLookup(
     }
 
     const request = (async () => {
-        const res = await fetch(`${API}/api/artikli/lookup?${params.toString()}`);
+        const res = await fetch(apiUrl(`/api/artikli/lookup?${params.toString()}`));
         if (!res.ok) {
             const body = await res.json().catch(() => null);
             const message = body?.detail ?? body?.title ?? body?.error ?? `HTTP ${res.status}`;

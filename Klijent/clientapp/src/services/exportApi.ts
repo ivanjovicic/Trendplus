@@ -1,6 +1,5 @@
 import type { ResolvedAnalyticsTablePayload } from "../types/analyticsTable";
-
-const API = import.meta.env.VITE_API_BASE_URL as string;
+import { apiUrl } from "../utils/apiUrl";
 export const SYNC_ROW_LIMIT = 5000;
 
 export type ExportFormat = "pdf" | "xlsx" | "csv";
@@ -74,16 +73,16 @@ function buildRequest(payload: ResolvedAnalyticsTablePayload, options: ExportOpt
 }
 
 export function resolveApiUrl(path: string): string {
-  if (!path) return API;
+  if (!path) return apiUrl("/");
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return `${API}${path}`;
+  return apiUrl(path);
 }
 
 export async function generateExport(
   payload: ResolvedAnalyticsTablePayload,
   options: ExportOptions
 ): Promise<DocumentOperationResponse> {
-  const response = await fetch(`${API}/api/documents/generate`, {
+  const response = await fetch(apiUrl("/api/documents/generate"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -103,7 +102,7 @@ export async function requestPrintPreview(
   payload: ResolvedAnalyticsTablePayload,
   options: Omit<ExportOptions, "format"> & { format?: ExportFormat }
 ): Promise<DocumentOperationResponse> {
-  const response = await fetch(`${API}/api/documents/print-preview`, {
+  const response = await fetch(apiUrl("/api/documents/print-preview"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -126,7 +125,7 @@ export async function requestPrintPreview(
 }
 
 export async function getExportStatus(documentId: string): Promise<DocumentStatusResponse> {
-  const response = await fetch(`${API}/api/exports/${documentId}/status`);
+  const response = await fetch(apiUrl(`/api/exports/${documentId}/status`));
   const body = (await response.json().catch(() => null)) as DocumentStatusResponse | { detail?: string; title?: string; message?: string } | null;
 
   if (!response.ok || !body || !("documentId" in body)) {
@@ -137,7 +136,7 @@ export async function getExportStatus(documentId: string): Promise<DocumentStatu
 }
 
 export async function listExports(take = 50): Promise<DocumentStatusResponse[]> {
-  const response = await fetch(`${API}/api/exports?take=${take}`);
+  const response = await fetch(apiUrl(`/api/exports?take=${take}`));
   const body = (await response.json().catch(() => null)) as DocumentStatusResponse[] | { detail?: string; title?: string; message?: string } | null;
 
   if (!response.ok || !Array.isArray(body)) {

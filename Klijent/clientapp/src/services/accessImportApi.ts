@@ -1,15 +1,7 @@
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 import { API_COLD_START_TIMEOUT_MS } from "../utils/apiTimeouts";
+import { apiUrl } from "../utils/apiUrl";
 
-const ACCESS_IMPORT_RENDER_BASE = "https://trendplus-api.onrender.com";
-const RAW_API = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
-const API = RAW_API.includes("trendplus.fly.dev") ? ACCESS_IMPORT_RENDER_BASE : RAW_API;
-if (RAW_API.includes("trendplus.fly.dev")) {
-    console.warn(
-        "[access-import] VITE_API_BASE_URL points to Fly; forcing Render base for access-import calls.",
-        { rawApi: RAW_API, forcedApi: API }
-    );
-}
 const BATCHES_DEBUG_PREFIX = "[access-import][batches]";
 let batchesInFlightPromise: Promise<AccessImportBatchDto[]> | null = null;
 let batchesRequestSeq = 0;
@@ -184,7 +176,7 @@ function buildFormData(file: File | null, options?: { useRootFile?: boolean; inc
 }
 
 export async function previewAccessImport(file: File | null, useRootFile = false): Promise<AccessImportPreviewResponse> {
-    const res = await fetch(`${API}/api/access-import/preview`, {
+    const res = await fetch(apiUrl("/api/access-import/preview"), {
         method: "POST",
         body: buildFormData(file, { useRootFile }),
     });
@@ -199,7 +191,7 @@ export async function runAccessImport(
     const headers: HeadersInit = {};
     if (options?.adminKey) headers["X-Admin-Key"] = options.adminKey;
 
-    const res = await fetch(`${API}/api/access-import/run`, {
+    const res = await fetch(apiUrl("/api/access-import/run"), {
         method: "POST",
         headers,
         body: buildFormData(file, options),
@@ -219,7 +211,7 @@ export async function getAccessImportBatches(
 
     const requestId = ++batchesRequestSeq;
     const startedAt = performance.now();
-    const url = `${API}/api/access-import/batches?take=${take}`;
+    const url = apiUrl(`/api/access-import/batches?take=${take}`);
     console.debug(`${BATCHES_DEBUG_PREFIX} request start`, { requestId, reason, take, url });
 
     const requestPromise = (async () => {
@@ -269,7 +261,7 @@ export async function getAccessImportBatchDetail(batchId: number, logTake = 200,
     const params = new URLSearchParams({ logTake: String(logTake) });
     if (severity) params.set("severity", severity);
     try {
-        const res = await fetchWithTimeout(`${API}/api/access-import/batches/${batchId}?${params}`, undefined, API_COLD_START_TIMEOUT_MS);
+        const res = await fetchWithTimeout(apiUrl(`/api/access-import/batches/${batchId}?${params}`), undefined, API_COLD_START_TIMEOUT_MS);
         if (!res.ok) throw new Error(await parseError(res));
         return res.json();
     } catch (error) {
@@ -292,7 +284,7 @@ export async function getAccessImportBatchLogs(
     if (opts?.tableName) params.set("tableName", opts.tableName);
     if (opts?.skip !== undefined) params.set("skip", String(opts.skip));
     if (opts?.take !== undefined) params.set("take", String(opts.take));
-    const res = await fetch(`${API}/api/access-import/batches/${batchId}/logs?${params}`);
+    const res = await fetch(apiUrl(`/api/access-import/batches/${batchId}/logs?${params}`));
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
@@ -341,7 +333,7 @@ export async function deleteAccessImportBatch(
     const headers: HeadersInit = {};
     if (adminKey) headers["X-Admin-Key"] = adminKey;
 
-    const res = await fetch(`${API}/api/access-import/batches/${batchId}?includeAnalytics=${includeAnalytics}`, {
+    const res = await fetch(apiUrl(`/api/access-import/batches/${batchId}?includeAnalytics=${includeAnalytics}`), {
         method: "DELETE",
         headers,
     });
@@ -350,19 +342,19 @@ export async function deleteAccessImportBatch(
 }
 
 export async function cancelAccessImportBatch(batchId: number): Promise<CancelBatchResult> {
-    const res = await fetch(`${API}/api/access-import/batches/${batchId}/cancel`, { method: "POST" });
+    const res = await fetch(apiUrl(`/api/access-import/batches/${batchId}/cancel`), { method: "POST" });
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
 
 export async function getAccessImportRuntimeStatus(): Promise<AccessImportRuntimeStatusResponse> {
-    const res = await fetch(`${API}/api/access-import/runtime-status`);
+    const res = await fetch(apiUrl("/api/access-import/runtime-status"));
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
 
 export async function previewCleanupNonAccess(): Promise<Record<string, number>> {
-    const res = await fetch(`${API}/api/access-import/cleanup/preview`, { method: "POST" });
+    const res = await fetch(apiUrl("/api/access-import/cleanup/preview"), { method: "POST" });
     if (!res.ok) throw new Error(await parseError(res));
     const body = await res.json();
     return body?.preview ?? {};
@@ -375,7 +367,7 @@ export async function executeCleanupNonAccess(
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (adminKey) headers["X-Admin-Key"] = adminKey;
 
-    const res = await fetch(`${API}/api/access-import/cleanup/execute`, {
+    const res = await fetch(apiUrl("/api/access-import/cleanup/execute"), {
         method: "POST",
         headers,
         body: JSON.stringify({ confirm }),

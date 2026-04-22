@@ -8,6 +8,7 @@ import { getDnevnikPromena } from "../services/dnevnikPromenaApi";
 import type { DnevnikPromenaItem } from "../types/dnevnikPromena";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
+import { apiUrl } from "../utils/apiUrl";
 
 const TABLE_STATE_KEY = "dnevnik-promena:list-state:v1";
 
@@ -126,8 +127,7 @@ export default function DnevnikPromenaPage() {
 
     const loadTipovi = async () => {
       try {
-        const API = import.meta.env.VITE_API_BASE_URL;
-        const res = await fetch(`${API}/api/dnevnik-promena/tipovi`);
+        const res = await fetch(apiUrl("/api/dnevnik-promena/tipovi"));
         if (!res.ok) throw new Error("Failed to load tipovi");
         const data = await res.json();
         if (!aborted) setTipoviPromena(data ?? []);

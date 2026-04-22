@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "";
+import { apiUrl } from "../utils/apiUrl";
 
 export interface RuntimeScoringEvaluateRequest {
     imageFile: File;
@@ -81,7 +81,7 @@ export async function evaluateRuntimeScoring(
     if (request.boja?.trim()) formData.append("boja", request.boja.trim());
     if (request.materijal?.trim()) formData.append("materijal", request.materijal.trim());
 
-    const res = await fetch(`${BASE}/api/v1/scoring/evaluate`, {
+    const res = await fetch(apiUrl("/api/v1/scoring/evaluate"), {
         method: "POST",
         body: formData,
     });
@@ -108,5 +108,5 @@ export async function evaluateRuntimeScoring(
 
 export function getRuntimeProductImageUrl(imageFileName: string | null | undefined): string | null {
     if (!imageFileName) return null;
-    return `${BASE}/product-images/${encodeURIComponent(imageFileName)}`;
+    return apiUrl(`/product-images/${encodeURIComponent(imageFileName)}`);
 }

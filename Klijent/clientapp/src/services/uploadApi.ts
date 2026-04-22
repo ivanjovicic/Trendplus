@@ -1,4 +1,4 @@
-﻿const API = import.meta.env.VITE_API_BASE_URL;
+import { apiUrl } from "../utils/apiUrl";
 
 export interface UploadImageResponse {
     success: boolean;
@@ -18,8 +18,8 @@ export async function uploadImage(
     formData: FormData,
     productId?: number
 ): Promise<UploadImageResponse> {
-    let url = `${API}/api/upload-image`;
-    
+    let url = apiUrl("/api/upload-image");
+
     if (productId) {
         url += `?productId=${productId}`;
     }
@@ -45,7 +45,7 @@ export async function uploadImage(
  * @returns Success response
  */
 export async function deleteProductImage(productId: number): Promise<{ success: boolean; message: string }> {
-    const response = await fetch(`${API}/api/product-images/${productId}`, {
+    const response = await fetch(apiUrl(`/api/product-images/${productId}`), {
         method: "DELETE",
     });
 
@@ -66,5 +66,5 @@ export async function deleteProductImage(productId: number): Promise<{ success: 
  */
 export function getImageUrl(fileName: string | null | undefined): string | null {
     if (!fileName) return null;
-    return `${API}/product-images/${fileName}`;
+    return apiUrl(`/product-images/${fileName}`);
 }

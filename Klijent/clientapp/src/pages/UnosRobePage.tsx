@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ClipboardPlus } from "lucide-react";
 import UnosRobeForm from "../components/UnosRobeForm";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
+import { apiUrl } from "../utils/apiUrl";
 
 interface Dobavljac {
     id: number;
@@ -14,15 +15,13 @@ export default function UnosRobePage() {
     const [dobavljaci, setDobavljaci] = useState<Dobavljac[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-
     useEffect(() => {
         let aborted = false;
         const controller = new AbortController();
 
         const fetchDobavljaci = async () => {
             try {
-                const response = await fetch(`${apiBaseUrl}/api/dobavljaci`, { signal: controller.signal });
+                const response = await fetch(apiUrl("/api/dobavljaci"), { signal: controller.signal });
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
@@ -51,7 +50,7 @@ export default function UnosRobePage() {
             aborted = true;
             controller.abort();
         };
-    }, [apiBaseUrl]);
+    }, []);
 
     return (
         <InventoryPageShell

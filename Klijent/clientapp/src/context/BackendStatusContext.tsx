@@ -60,13 +60,12 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
         let cancelled = false;
         let timeoutId: number | null = null;
 
-        const healthUrl = apiUrl("/health");
-
         const pingBackend = async () => {
             if (cancelled) return;
 
             setChecking(true);
             try {
+                const healthUrl = apiUrl("/health");
                 const res = await fetchWithTimeout(healthUrl, undefined, API_HEALTH_TIMEOUT_MS);
                 if (cancelled) return;
                 const checkedAt = Date.now();

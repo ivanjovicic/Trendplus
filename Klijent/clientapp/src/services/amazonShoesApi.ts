@@ -1,4 +1,4 @@
-// ── Types ────────────────────────────────────────────────────────────────────
+import { apiUrl } from "../utils/apiUrl";
 
 export type AmazonShoeProduct = {
     id: number;
@@ -43,20 +43,14 @@ export type CategorySummary = {
     lastSynced: string;
 };
 
-// ── API base ─────────────────────────────────────────────────────────────────
-
-const API_BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
-
 async function get<T>(path: string): Promise<T> {
-    const resp = await fetch(`${API_BASE}${path}`);
+    const resp = await fetch(apiUrl(path));
     if (!resp.ok) {
         const txt = await resp.text().catch(() => resp.statusText);
         throw new Error(`${resp.status}: ${txt}`);
     }
     return resp.json();
 }
-
-// ── Calls ────────────────────────────────────────────────────────────────────
 
 export async function syncAmazonShoes(
     type: string,
@@ -96,10 +90,9 @@ export async function getAmazonShoeCategories(): Promise<CategorySummary[]> {
 
 export async function deleteAmazonShoeCategory(category: string): Promise<{ deleted: number }> {
     const resp = await fetch(
-        `${API_BASE}/api/shoes/category/${encodeURIComponent(category)}`,
+        apiUrl(`/api/shoes/category/${encodeURIComponent(category)}`),
         { method: "DELETE" },
     );
     if (!resp.ok) throw new Error(`DELETE ${resp.status}`);
     return resp.json();
 }
-

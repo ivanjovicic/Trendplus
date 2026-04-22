@@ -1,4 +1,4 @@
-const BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+import { apiUrl } from "../utils/apiUrl";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,7 +57,7 @@ export async function syncEbayShoes(
     if (gender && gender !== "all") params.append("gender", gender);
     if (minPrice != null) params.append("minPrice", String(minPrice));
     if (maxPrice != null) params.append("maxPrice", String(maxPrice));
-    const res = await fetch(`${BASE}/api/ebay/shoes/sync?${params}`);
+    const res = await fetch(apiUrl(`/api/ebay/shoes/sync?${params}`));
     if (!res.ok) throw new Error(`Sync failed: ${res.status} ${await res.text()}`);
     return res.json();
 }
@@ -71,7 +71,7 @@ export async function getEbayShoesByType(
 ): Promise<EbayPagedResult<EbayShoeProduct>> {
     const params = new URLSearchParams({ type, page: String(page), pageSize: String(pageSize), sortBy });
     if (gender && gender !== "all") params.append("gender", gender);
-    const res = await fetch(`${BASE}/api/ebay/shoes?${params}`);
+    const res = await fetch(apiUrl(`/api/ebay/shoes?${params}`));
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
 }
@@ -81,19 +81,19 @@ export async function getAllEbayShoes(
     pageSize = 50,
 ): Promise<EbayPagedResult<EbayShoeProduct>> {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-    const res = await fetch(`${BASE}/api/ebay/shoes/all?${params}`);
+    const res = await fetch(apiUrl(`/api/ebay/shoes/all?${params}`));
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
 }
 
 export async function getEbayShoeCategories(): Promise<EbayCategorySummary[]> {
-    const res = await fetch(`${BASE}/api/ebay/shoes/categories`);
+    const res = await fetch(apiUrl("/api/ebay/shoes/categories"));
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
 }
 
 export async function deleteEbayShoeCategory(category: string): Promise<{ deleted: number; category: string }> {
-    const res = await fetch(`${BASE}/api/ebay/shoes/category/${encodeURIComponent(category)}`, { method: "DELETE" });
+    const res = await fetch(apiUrl(`/api/ebay/shoes/category/${encodeURIComponent(category)}`), { method: "DELETE" });
     if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
     return res.json();
 }

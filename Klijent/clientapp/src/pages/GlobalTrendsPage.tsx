@@ -4,6 +4,7 @@ import SearchableSelect from "../components/SearchableSelect";
 import { popularBrands } from "../components/brands";
 import Modal from "../components/Modal";
 import { runDeichmannScraper } from "../services/deichmannApi";
+import { apiUrl } from "../utils/apiUrl";
 
 interface TrendResult {
     productName: string;
@@ -55,7 +56,6 @@ export default function GlobalTrendsPage() {
     const [imageModalTitle, setImageModalTitle] = useState<string>("");
     const [filterActivationDate, setFilterActivationDate] = useState<string | undefined>(undefined);
 
-    const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
     const PYTHON_API = import.meta.env.VITE_PYTHON_API_URL || "http://localhost:8000";
     const categories = ["Patike", "Sandale", "Cipele", "Cizme"];
 
@@ -63,7 +63,7 @@ export default function GlobalTrendsPage() {
         setLoading(true);
         try {
             console.log(`🔍 Fetching trends for category: "${selectedCategory}"`);
-            const url = `${API_URL}/api/global-trends/social?category=${selectedCategory}`;
+            const url = apiUrl(`/api/global-trends/social?category=${selectedCategory}`);
             console.log(`📡 URL: ${url}`);
             
             const response = await fetch(url);
@@ -93,7 +93,7 @@ export default function GlobalTrendsPage() {
 
     const fetchProductsForSource = async (source: string) => {
         try {
-            const resp = await fetch(`${API_URL}/api/products?source=${encodeURIComponent(source)}`);
+            const resp = await fetch(apiUrl(`/api/products?source=${encodeURIComponent(source)}`));
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
             setScrapedProducts(Array.isArray(data) ? data : []);
@@ -106,7 +106,7 @@ export default function GlobalTrendsPage() {
 
     const getProductsCountForSource = async (source: string) => {
         try {
-            const resp = await fetch(`${API_URL}/api/products/debug-count?source=${encodeURIComponent(source)}`);
+            const resp = await fetch(apiUrl(`/api/products/debug-count?source=${encodeURIComponent(source)}`));
             if (!resp.ok) return 0;
             const data = await resp.json();
             return data?.count || 0;
@@ -124,7 +124,7 @@ export default function GlobalTrendsPage() {
                 deichmannPages
             };
 
-            const response = await fetch(`${API_URL}/api/global-trends/scrape`, {
+            const response = await fetch(apiUrl("/api/global-trends/scrape"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { Building2, Plus, Pencil, Trash2, X, Check, AlertCircle } from "lucide-react";
 import { createDobavljac, getDobavljaci } from "../services/dobavljaciApi";
+import { apiUrl } from "../utils/apiUrl";
 
 interface Dobavljac {
     id: number;
@@ -9,8 +10,6 @@ interface Dobavljac {
     telefon?: string;
     napomena?: string;
 }
-
-const API = import.meta.env.VITE_API_BASE_URL;
 
 export default function DobavljaciPage() {
     const [dobavljaci, setDobavljaci] = useState<Dobavljac[]>([]);
@@ -81,7 +80,7 @@ export default function DobavljaciPage() {
         setIsEditing(true);
         setError(null);
         try {
-            const res = await fetch(`${API}/api/dobavljaci/${editId}`, {
+            const res = await fetch(apiUrl(`/api/dobavljaci/${editId}`), {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ Naziv: editData.naziv, Adresa: editData.adresa || null, Telefon: editData.telefon || null, Napomena: editData.napomena || null }),
@@ -102,7 +101,7 @@ export default function DobavljaciPage() {
         setIsDeleting(true);
         setError(null);
         try {
-            const res = await fetch(`${API}/api/dobavljaci/${deleteId}`, { method: "DELETE" });
+            const res = await fetch(apiUrl(`/api/dobavljaci/${deleteId}`), { method: "DELETE" });
             if (!res.ok) throw new Error("Greška pri brisanju dobavljača.");
             setSuccess("Dobavljač obrisan.");
             setDeleteId(null);

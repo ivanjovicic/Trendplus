@@ -5,6 +5,7 @@ import { KreirajProdajuDto } from "../types/prodaja/prodaja";
 import { fetchProdajaArtikliLookup, type ProdajaArtikalLookupDto } from "../services/prodajaApi";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
 import { getDataScope, setDataScope, type DataScope } from "../utils/dataScope";
+import { apiUrl } from "../utils/apiUrl";
 
 type ProdajaArtikalOption = {
     id: number;
@@ -25,8 +26,6 @@ export default function ProdajaPage() {
     const [artikli, setArtikli] = React.useState<ProdajaArtikalOption[]>([]);
     const [catalogError, setCatalogError] = React.useState<string | null>(null);
     const [dataScope, setDataScopeValue] = React.useState<DataScope>(getDataScope());
-    const API = import.meta.env.VITE_API_BASE_URL;
-
     React.useEffect(() => {
         const handleScopeChange = () => {
             setDataScopeValue(getDataScope());
@@ -73,7 +72,7 @@ export default function ProdajaPage() {
         console.debug("Outgoing prodaja DTO:", data);
 
         try {
-            const res = await fetch(`${API}/api/prodaja`, {
+            const res = await fetch(apiUrl("/api/prodaja"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),

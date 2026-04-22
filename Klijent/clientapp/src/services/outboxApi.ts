@@ -1,7 +1,6 @@
 import { OutboxStatsResponse, OutboxMessagesResponse } from "../types/outbox";
 import CircuitBreaker from "../utils/circuitBreaker";
-
-const API = import.meta.env.VITE_API_BASE_URL || "";
+import { apiUrl } from "../utils/apiUrl";
 
 const outboxCircuitBreaker = new CircuitBreaker({
     name: "OutboxAPI",
@@ -31,9 +30,7 @@ async function fetchWithCircuitBreaker(
 }
 
 export async function getOutboxStats(): Promise<OutboxStatsResponse> {
-    const url = import.meta.env.DEV
-        ? `/api/outbox/stats`
-        : `${API}/api/outbox/stats`;
+    const url = apiUrl("/api/outbox/stats");
 
     const response = await fetchWithCircuitBreaker(url);
 
@@ -62,9 +59,7 @@ export async function getOutboxMessages(
     if (fromDate) params.append("fromDate", fromDate);
     if (toDate) params.append("toDate", toDate);
 
-    const url = import.meta.env.DEV
-        ? `/api/outbox/messages?${params.toString()}`
-        : `${API}/api/outbox/messages?${params.toString()}`;
+    const url = apiUrl(`/api/outbox/messages?${params.toString()}`);
 
     const response = await fetchWithCircuitBreaker(url);
 
@@ -76,9 +71,7 @@ export async function getOutboxMessages(
 }
 
 export async function retryOutboxMessage(id: number): Promise<void> {
-    const url = import.meta.env.DEV
-        ? `/api/outbox/retry/${id}`
-        : `${API}/api/outbox/retry/${id}`;
+    const url = apiUrl(`/api/outbox/retry/${id}`);
 
     const response = await fetchWithCircuitBreaker(url, {
         method: "POST",
@@ -91,9 +84,7 @@ export async function retryOutboxMessage(id: number): Promise<void> {
 }
 
 export async function retryAllFailedMessages(): Promise<{ count: number }> {
-    const url = import.meta.env.DEV
-        ? `/api/outbox/retry-all-failed`
-        : `${API}/api/outbox/retry-all-failed`;
+    const url = apiUrl("/api/outbox/retry-all-failed");
 
     const response = await fetchWithCircuitBreaker(url, {
         method: "POST",
@@ -108,9 +99,7 @@ export async function retryAllFailedMessages(): Promise<{ count: number }> {
 }
 
 export async function purgeProcessedMessages(olderThanDays: number = 7): Promise<{ count: number }> {
-    const url = import.meta.env.DEV
-        ? `/api/outbox/purge-processed?olderThanDays=${olderThanDays}`
-        : `${API}/api/outbox/purge-processed?olderThanDays=${olderThanDays}`;
+    const url = apiUrl(`/api/outbox/purge-processed?olderThanDays=${olderThanDays}`);
 
     const response = await fetchWithCircuitBreaker(url, {
         method: "POST",
@@ -133,9 +122,7 @@ export interface EventTypeStat {
 }
 
 export async function getEventTypeStats(): Promise<EventTypeStat[]> {
-    const url = import.meta.env.DEV
-        ? `/api/outbox/stats-by-type`
-        : `${API}/api/outbox/stats-by-type`;
+    const url = apiUrl("/api/outbox/stats-by-type");
 
     console.log("?? Fetching event type stats from:", url, "| DEV:", import.meta.env.DEV);
 

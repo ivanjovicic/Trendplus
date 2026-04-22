@@ -41,21 +41,22 @@ flyctl deploy --config fly.toml --app trendplus --remote-only
 
 8) Frontend configuration
 
-- If your frontend is built and deployed separately (e.g., Render, Vercel, Netlify), set the frontend build environment variable `VITE_API_BASE_URL` to your Fly app URL, for example `https://trendplus.fly.dev`.
-- If the frontend is served from the backend (static files in `Api/wwwroot`), ensure the production build step uses `VITE_API_BASE_URL` set to the Fly URL before building the static bundle.
-- Alternatively, keep the frontend's current public domain and point its DNS (CNAME/ALIAS) at Fly so no frontend changes are needed.
+- If your frontend is built and deployed separately (e.g., Render, Vercel, Netlify), set:
+  - `VITE_API_BASE_URL=https://trendplus.fly.dev` (primary)
+  - `VITE_API_FALLBACK_URL=https://trendplus-api.onrender.com` (runtime fallback)
+- If the frontend is served from the backend (static files in `Api/wwwroot`), ensure production build uses both variables before creating static assets.
+- Optional tuning vars:
+  - `VITE_API_REQUEST_TIMEOUT_MS`
+  - `VITE_API_FALLBACK_PROBE_TIMEOUT_MS`
+  - `VITE_API_PRIMARY_RETRY_COOLDOWN_MS`
+  - `VITE_API_FAILOVER_STATE_TTL_MS`
+  - `VITE_API_HEALTH_PATH` (default `/health`)
 
 9) Cleanup on Render
 
 - After Fly is verified and receiving traffic, you can disable or delete the backend service in Render to avoid duplicate services and unexpected costs — or keep it running as a hot/cold fallback if you prefer.
 
-7) Frontend configuration
-
-- If your frontend is built and deployed separately (e.g., Render, Vercel, Netlify), set the frontend build environment variable `VITE_API_BASE_URL` to your Fly app URL, for example `https://trendplus.fly.dev`.
-- If the frontend is served from the backend (static files in `Api/wwwroot`), ensure the production build step uses `VITE_API_BASE_URL` set to the Fly URL before building the static bundle.
-- Alternatively, keep the frontend's current public domain and point its DNS (CNAME/ALIAS) at Fly so no frontend changes are needed.
-
-8) Cleanup on Render
+9) Cleanup on Render
 
 - After Fly is verified and receiving traffic, disable or delete the backend service in Render to avoid duplicate services and unexpected costs.
 
