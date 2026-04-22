@@ -46,9 +46,13 @@ import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar
 import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
+import {
+  ANALYTICS_PERIOD_PRESET_OPTIONS,
+  type AnalyticsPeriodPreset,
+  getAnalyticsPeriodPresetRange,
+} from "../utils/analyticsPeriodPresets";
 import "./AnalyticsDashboard.css";
 
-type DatePreset = "today" | "yesterday" | "7d" | "30d" | "90d" | "thisMonth" | "lastMonth" | "custom";
 type TopTabKey = "revenue" | "units" | "velocity" | "margin";
 type Tone = "good" | "warning" | "critical" | "neutral";
 
@@ -145,30 +149,6 @@ function trendLabel(value?: number | null): string {
   return value >= 0 ? "Rast" : "Pad";
 }
 
-function buildPresetRange(preset: DatePreset): { from: string; to: string } | null {
-  const now = new Date();
-  const from = new Date(now);
-  const to = new Date(now);
-  to.setHours(23, 59, 59, 999);
-  if (preset === "today") from.setHours(0, 0, 0, 0);
-  if (preset === "yesterday") {
-    from.setDate(now.getDate() - 1);
-    to.setDate(now.getDate() - 1);
-    from.setHours(0, 0, 0, 0);
-  }
-  if (preset === "7d") from.setDate(now.getDate() - 6);
-  if (preset === "30d") from.setDate(now.getDate() - 29);
-  if (preset === "90d") from.setDate(now.getDate() - 89);
-  if (preset === "thisMonth") from.setDate(1);
-  if (preset === "lastMonth") {
-    from.setMonth(now.getMonth() - 1, 1);
-    to.setMonth(now.getMonth(), 0);
-  }
-  if (preset === "custom") return null;
-  from.setHours(0, 0, 0, 0);
-  return { from: formatInputDateTime(from), to: formatInputDateTime(to) };
-}
-
 function buildStoreLabel(store: StoreOption): string {
   const extras = [store.city, store.region].filter(Boolean).join(", ");
   return extras ? `${store.storeName} (${extras})` : store.storeName;
@@ -236,9 +216,10 @@ function MetricCard(props: { label: string; value: string; tone?: Tone; infoTip?
 export default function AnalyticsDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [preset, setPreset] = useState<DatePreset>("30d");
-  const [fromDate, setFromDate] = useState<string>(() => buildPresetRange("30d")?.from ?? formatInputDateTime(new Date()));
-  const [toDate, setToDate] = useState<string>(() => buildPresetRange("30d")?.to ?? formatInputDateTime(new Date()));
+  const [preset, setPreset] = useState<AnalyticsPeriodPreset>("30d");
+  const initialRange = getAnalyticsPeriodPresetRange("30d");
+  const [fromDate, setFromDate] = useState<string>(() => `${initialRange.fromDate}T00:00`);
+  const [toDate, setToDate] = useState<string>(() => `${initialRange.toDate}T23:59`);
   const [selectedStore, setSelectedStore] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState("");
   const [stores, setStores] = useState<StoreOption[]>([]);
@@ -272,12 +253,12 @@ export default function AnalyticsDashboard() {
   const storeId = useMemo(() => (selectedStore ? Number(selectedStore) : undefined), [selectedStore]);
   const supplierId = useMemo(() => (selectedSupplier ? Number(selectedSupplier) : undefined), [selectedSupplier]);
 
-  const applyPreset = useCallback((value: DatePreset) => {
+  const applyPreset = useCallback((value: AnalyticsPeriodPreset) => {
     setPreset(value);
-    const range = buildPresetRange(value);
+    const range = value === "custom" ? null : getAnalyticsPeriodPresetRange(value);
     if (!range) return;
-    setFromDate(range.from);
-    setToDate(range.to);
+    setFromDate(`${range.fromDate}T00:00`);
+    setToDate(`${range.toDate}T23:59`);
   }, []);
 
   const loadStores = useCallback(async () => {
@@ -544,15 +525,12 @@ export default function AnalyticsDashboard() {
         <div className="analytics-filter-grid">
           <label>
             Period
-            <select value={preset} onChange={(e) => applyPreset(e.target.value as DatePreset)}>
-              <option value="today">Danas</option>
-              <option value="yesterday">Juce</option>
-              <option value="7d">Poslednjih 7 dana</option>
-              <option value="30d">Poslednjih 30 dana</option>
-              <option value="90d">Poslednjih 90 dana</option>
-              <option value="thisMonth">Ovaj mesec</option>
-              <option value="lastMonth">Prosli mesec</option>
-              <option value="custom">Prilagodjeno</option>
+            <select value={preset} onChange={(e) => applyPreset(e.target.value as AnalyticsPeriodPreset)}>
+              {ANALYTICS_PERIOD_PRESET_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </label>
           {preset === "custom" && (

@@ -28,7 +28,7 @@ import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTo
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import "./ShoeTypeSalesStatsPage.css";
 
-type PeriodPreset = "30d" | "90d" | "365d" | "custom";
+type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField =
   | "tipObuceNaziv"
@@ -118,6 +118,7 @@ function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: st
   const from = new Date(to);
   if (preset === "30d") from.setDate(from.getDate() - 29);
   if (preset === "90d") from.setDate(from.getDate() - 89);
+  if (preset === "180d") from.setDate(from.getDate() - 179);
   if (preset === "365d") from.setDate(from.getDate() - 364);
 
   return {
@@ -888,6 +889,7 @@ export default function ShoeTypeSalesStatsPage() {
           <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
             <option value="30d">Poslednjih 30 dana</option>
             <option value="90d">Poslednjih 90 dana</option>
+            <option value="180d">Poslednjih 180 dana</option>
             <option value="365d">Poslednjih 365 dana</option>
             <option value="custom">Prilagođeno</option>
           </select>

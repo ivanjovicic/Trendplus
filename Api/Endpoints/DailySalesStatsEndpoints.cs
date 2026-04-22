@@ -2,6 +2,8 @@ using Api.Models;
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace Trendplus2.Endpoints;
 
@@ -17,50 +19,85 @@ public static class DailySalesStatsEndpoints
             [AsParameters] DailySalesStatsRequest request,
             IDailySalesStatsService service,
             IMemoryCache cache,
+            ILogger<Program> logger,
             CancellationToken ct) =>
         {
-            var safeTopN = Math.Clamp(request.TopN ?? DefaultTopN, 1, 25);
-            var toUtc = NormalizeUtcDate(request.ToDate) ?? DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
-            var fromUtc = NormalizeUtcDate(request.FromDate) ?? toUtc.AddDays(-(DefaultWindowDays - 1));
-
-            if (fromUtc > toUtc)
+            try
             {
-                return Results.BadRequest(new
+                var safeTopN = Math.Clamp(request.TopN ?? DefaultTopN, 1, 25);
+                var toUtc = NormalizeUtcDate(request.ToDate) ?? DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+                var fromUtc = NormalizeUtcDate(request.FromDate) ?? toUtc.AddDays(-(DefaultWindowDays - 1));
+
+                if (fromUtc > toUtc)
                 {
-                    message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
-                    fromDate = fromUtc,
-                    toDate = toUtc
-                });
-            }
+                    return Results.BadRequest(new
+                    {
+                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        fromDate = fromUtc,
+                        toDate = toUtc
+                    });
+                }
 
-            var totalDays = (int)(toUtc.Date - fromUtc.Date).TotalDays + 1;
-            if (totalDays > MaxRangeDays)
-            {
-                return Results.BadRequest(new
+                var totalDays = (int)(toUtc.Date - fromUtc.Date).TotalDays + 1;
+                if (totalDays > MaxRangeDays)
                 {
-                    message = $"Maksimalni opseg je {MaxRangeDays} dana.",
-                    fromDate = fromUtc,
-                    toDate = toUtc
-                });
-            }
+                    return Results.BadRequest(new
+                    {
+                        message = $"Maksimalni opseg je {MaxRangeDays} dana.",
+                        fromDate = fromUtc,
+                        toDate = toUtc
+                    });
+                }
 
-            var normalizedDataScope = NormalizeDataScope(request.DataScope);
-            var cacheKey = $"daily-sales:{fromUtc:yyyyMMdd}:{toUtc:yyyyMMdd}:{request.StoreId}:{safeTopN}:{normalizedDataScope}";
-            if (cache.TryGetValue(cacheKey, out DailySalesTableResponse? cached) && cached is not null)
+                var normalizedDataScope = NormalizeDataScope(request.DataScope);
+                var cacheKey = $"daily-sales:{fromUtc:yyyyMMdd}:{toUtc:yyyyMMdd}:{request.StoreId}:{safeTopN}:{normalizedDataScope}";
+                if (cache.TryGetValue(cacheKey, out DailySalesTableResponse? cached) && cached is not null)
+                {
+                    return Results.Ok(cached);
+                }
+
+                var result = await service.GetDailySalesAsync(
+                    requestedFromUtc: fromUtc,
+                    requestedToUtc: toUtc,
+                    storeId: request.StoreId,
+                    topN: safeTopN,
+                    dataScope: normalizedDataScope,
+                    ct);
+
+                cache.Set(cacheKey, result, TimeSpan.FromMinutes(2));
+                return Results.Ok(result);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
-                return Results.Ok(cached);
+                return Results.Problem(
+                    title: "Greška pri učitavanju dnevne analitike",
+                    detail: "Zahtev je otkazan.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
             }
-
-            var result = await service.GetDailySalesAsync(
-                requestedFromUtc: fromUtc,
-                requestedToUtc: toUtc,
-                storeId: request.StoreId,
-                topN: safeTopN,
-                dataScope: normalizedDataScope,
-                ct);
-
-            cache.Set(cacheKey, result, TimeSpan.FromMinutes(2));
-            return Results.Ok(result);
+            catch (TaskCanceledException ex)
+            {
+                logger.LogWarning(ex, "Daily sales request timed out or was cancelled.");
+                return Results.Problem(
+                    title: "Greška pri učitavanju dnevne analitike",
+                    detail: "Zahtev je istekao ili je prekinut.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogError(ex, "Daily sales analytics database error.");
+                return Results.Problem(
+                    title: "Greška pri učitavanju dnevne analitike",
+                    detail: "Problem pri povezivanju sa bazom podataka. Molimo pokušajte ponovo kasnije.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Daily sales analytics endpoint failed.");
+                return Results.Problem(
+                    title: "Greška pri učitavanju dnevne analitike",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
         })
         .WithName("GetDailySalesStats")
         .WithTags("Analytics")

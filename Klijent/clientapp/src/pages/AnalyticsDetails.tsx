@@ -13,9 +13,14 @@ import {
   getValidationNegativeQty,
 } from "../services/analyticsApi";
 import type { DashboardValidationEndpoint, DailySale, TopProductAdvancedItem, TopProductsAdvancedResult } from "../types/analytics";
+import {
+  ANALYTICS_PERIOD_PRESET_OPTIONS,
+  type AnalyticsPeriodPreset,
+  getAnalyticsPeriodPresetRange,
+} from "../utils/analyticsPeriodPresets";
 import "./AnalyticsDetails.css";
 
-type DatePreset = "today" | "yesterday" | "7d" | "30d" | "90d" | "thisMonth" | "lastMonth" | "custom";
+type DatePreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type TopTab = "revenue" | "units" | "velocity" | "margin";
 type Tone = "good" | "warning" | "critical" | "neutral";
 
@@ -28,14 +33,11 @@ interface TrendPoint {
 }
 
 const PRESETS: Record<DatePreset, string> = {
-  today: "Danas",
-  yesterday: "Juce",
-  "7d": "Poslednjih 7 dana",
   "30d": "Poslednjih 30 dana",
   "90d": "Poslednjih 90 dana",
-  thisMonth: "Ovaj mesec",
-  lastMonth: "Prosli mesec",
-  custom: "Prilagodjeno",
+  "180d": "Poslednjih 180 dana",
+  "365d": "Poslednjih 365 dana",
+  custom: "Prilagođeno",
 };
 
 const fmtCur = (v: number) => `${new Intl.NumberFormat("sr-RS", { maximumFractionDigits: 2 }).format(v)} RSD`;
@@ -59,19 +61,11 @@ function presetRange(p: DatePreset): { from: string; to: string } | null {
   const from = new Date(now);
   const to = new Date(now);
   to.setHours(23, 59, 59, 999);
-  if (p === "today") from.setHours(0, 0, 0, 0);
-  else if (p === "yesterday") {
-    from.setDate(now.getDate() - 1);
-    to.setDate(now.getDate() - 1);
-    from.setHours(0, 0, 0, 0);
-  } else if (p === "7d") from.setDate(now.getDate() - 6);
-  else if (p === "30d") from.setDate(now.getDate() - 29);
+  if (p === "30d") from.setDate(now.getDate() - 29);
   else if (p === "90d") from.setDate(now.getDate() - 89);
-  else if (p === "thisMonth") from.setDate(1);
-  else if (p === "lastMonth") {
-    from.setMonth(now.getMonth() - 1, 1);
-    to.setMonth(now.getMonth(), 0);
-  } else return null;
+  else if (p === "180d") from.setDate(now.getDate() - 179);
+  else if (p === "365d") from.setDate(now.getDate() - 364);
+  else return null;
   from.setHours(0, 0, 0, 0);
   return { from: inDate(from), to: inDate(to) };
 }
@@ -147,9 +141,10 @@ function compactErrorMessages(messages: string[]): string[] {
 }
 
 export default function AnalyticsDetails() {
-  const [preset, setPreset] = useState<DatePreset>("30d");
-  const [fromDate, setFromDate] = useState(() => presetRange("30d")?.from ?? inDate(new Date()));
-  const [toDate, setToDate] = useState(() => presetRange("30d")?.to ?? inDate(new Date()));
+  const initialRange = getAnalyticsPeriodPresetRange("30d");
+  const [preset, setPreset] = useState<AnalyticsPeriodPreset>("30d");
+  const [fromDate, setFromDate] = useState(() => `${initialRange.fromDate}T00:00`);
+  const [toDate, setToDate] = useState(() => `${initialRange.toDate}T23:59`);
   const [topTab, setTopTab] = useState<TopTab>("revenue");
   const [showFullList, setShowFullList] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -277,17 +272,17 @@ export default function AnalyticsDetails() {
           <select
             value={preset}
             onChange={(e) => {
-              const p = e.target.value as DatePreset;
+              const p = e.target.value as AnalyticsPeriodPreset;
               setPreset(p);
-              const r = presetRange(p);
+              const r = p === "custom" ? null : getAnalyticsPeriodPresetRange(p);
               if (!r) return;
-              setFromDate(r.from);
-              setToDate(r.to);
+              setFromDate(`${r.fromDate}T00:00`);
+              setToDate(`${r.toDate}T23:59`);
             }}
           >
-            {Object.entries(PRESETS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
+            {ANALYTICS_PERIOD_PRESET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>

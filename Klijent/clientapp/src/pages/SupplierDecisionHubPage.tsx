@@ -24,7 +24,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import type { Sezona } from "../types/Sezona";
 import "./SupplierDecisionHubPage.css";
 
-type PeriodPreset = "30d" | "90d" | "custom";
+type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField = "supplierName" | "revenue" | "sharePct" | "preMarkdownMarginPct" | "qualityTrendPct" | "status";
 type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
@@ -94,6 +94,8 @@ function getPresetRange(preset: Exclude<PeriodPreset, "custom">) {
   const from = new Date(to);
   if (preset === "30d") from.setDate(from.getDate() - 29);
   if (preset === "90d") from.setDate(from.getDate() - 89);
+  if (preset === "180d") from.setDate(from.getDate() - 179);
+  if (preset === "365d") from.setDate(from.getDate() - 364);
   return { fromDate: toDateInput(from), toDate: toDateInput(to) };
 }
 function buildPreviousRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
@@ -142,9 +144,9 @@ export default function SupplierDecisionHubPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
-  const initialRange = useMemo(() => getPresetRange("90d"), []);
+  const initialRange = useMemo(() => getPresetRange("30d"), []);
 
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
   const [fromDate, setFromDate] = useState(initialRange.fromDate);
   const [toDate, setToDate] = useState(initialRange.toDate);
   const [seasonId, setSeasonId] = useState<number | null>(null);
@@ -310,8 +312,8 @@ export default function SupplierDecisionHubPage() {
   };
   const handleApplyFilters = () => { if (!invalidRange) setActiveFilters({ fromDate, toDate, seasonId, minRevenue, onlyHighConfidence }); };
   const handleResetFilters = () => {
-    const range = getPresetRange("90d");
-    setPeriodPreset("90d");
+    const range = getPresetRange("30d");
+    setPeriodPreset("30d");
     setFromDate(range.fromDate);
     setToDate(range.toDate);
     setSeasonId(null);
@@ -343,7 +345,7 @@ export default function SupplierDecisionHubPage() {
       </header>
 
       <section className="sdh-decision-filters">
-        <label className="sdh-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="custom">Custom</option></select></label>
+        <label className="sdh-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="180d">Poslednjih 180 dana</option><option value="365d">Poslednjih 365 dana</option><option value="custom">Prilagođeno</option></select></label>
         <label className="sdh-decision-field"><span>Od</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
         <label className="sdh-decision-field"><span>Do</span><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
         <label className="sdh-decision-field"><span>Sezona</span><select value={seasonId ?? ""} onChange={(e) => setSeasonId(e.target.value ? Number(e.target.value) : null)}><option value="">Sve</option>{seasons.map((season) => <option key={season.id} value={season.id}>{season.naziv}</option>)}</select></label>

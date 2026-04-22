@@ -118,11 +118,10 @@ const TAB_TIPS: Record<TabKey, string> = {
 };
 
 const PERIOD_PRESETS = [
-  { label: "7d", days: 7 },
-  { label: "30d", days: 30 },
-  { label: "90d", days: 90 },
-  { label: "6m", days: 180 },
-  { label: "1g", days: 365 },
+  { label: "Poslednjih 30 dana", days: 30 },
+  { label: "Poslednjih 90 dana", days: 90 },
+  { label: "Poslednjih 180 dana", days: 180 },
+  { label: "Poslednjih 365 dana", days: 365 },
 ];
 
 const PAL = {

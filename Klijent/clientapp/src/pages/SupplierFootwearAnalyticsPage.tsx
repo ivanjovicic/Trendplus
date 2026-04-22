@@ -16,7 +16,7 @@ import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import "./SupplierFootwearAnalyticsPage.css";
 
-type PeriodPreset = "30d" | "90d" | "custom";
+type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField = "vendorName" | "postRevenue" | "sharePct" | "topFootwearType" | "trendPct" | "status";
 type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
@@ -60,6 +60,8 @@ function getPresetRange(preset: Exclude<PeriodPreset, "custom">) {
   const from = new Date(to);
   if (preset === "30d") from.setDate(from.getDate() - 29);
   if (preset === "90d") from.setDate(from.getDate() - 89);
+  if (preset === "180d") from.setDate(from.getDate() - 179);
+  if (preset === "365d") from.setDate(from.getDate() - 364);
   return { fromDate: toDateInput(from), toDate: toDateInput(to) };
 }
 function toUtcRange(fromDate: string, toDate: string) { return { from: `${fromDate}T00:00:00Z`, to: `${toDate}T23:59:59Z` }; }
@@ -174,9 +176,9 @@ export default function SupplierFootwearAnalyticsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
-  const initialRange = useMemo(() => getPresetRange("90d"), []);
+  const initialRange = useMemo(() => getPresetRange("30d"), []);
 
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
   const [fromDate, setFromDate] = useState(initialRange.fromDate);
   const [toDate, setToDate] = useState(initialRange.toDate);
   const [vendorId, setVendorId] = useState<number | null>(null);
@@ -390,8 +392,8 @@ export default function SupplierFootwearAnalyticsPage() {
   };
   const handleApplyFilters = () => { if (!invalidRange) setActiveFilters({ fromDate, toDate, vendorId, category }); };
   const handleResetFilters = () => {
-    const range = getPresetRange("90d");
-    setPeriodPreset("90d");
+    const range = getPresetRange("30d");
+    setPeriodPreset("30d");
     setFromDate(range.fromDate);
     setToDate(range.toDate);
     setVendorId(null);
@@ -430,7 +432,7 @@ export default function SupplierFootwearAnalyticsPage() {
       </header>
 
       <section className="sf-decision-filters">
-        <label className="sf-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="custom">Custom</option></select></label>
+        <label className="sf-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="180d">Poslednjih 180 dana</option><option value="365d">Poslednjih 365 dana</option><option value="custom">Prilagođeno</option></select></label>
         <label className="sf-decision-field"><span>Od</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
         <label className="sf-decision-field"><span>Do</span><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
         <label className="sf-decision-field"><span>Dobavljac</span><select value={vendorId ?? ""} onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : null)}><option value="">Svi</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.naziv}</option>)}</select></label>

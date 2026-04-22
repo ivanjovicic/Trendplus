@@ -24,7 +24,7 @@ import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import "./ColorSalesStatsPage.css";
 
-type PeriodPreset = "30d" | "90d" | "custom";
+type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField =
   | "boja"
@@ -91,6 +91,8 @@ function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: st
   const from = new Date(to);
   if (preset === "30d") from.setDate(from.getDate() - 29);
   if (preset === "90d") from.setDate(from.getDate() - 89);
+  if (preset === "180d") from.setDate(from.getDate() - 179);
+  if (preset === "365d") from.setDate(from.getDate() - 364);
 
   return {
     fromDate: toDateInput(from),
@@ -315,8 +317,8 @@ export default function ColorSalesStatsPage() {
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
-  const initialRange = useMemo(() => getPresetRange("90d"), []);
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("90d");
+  const initialRange = useMemo(() => getPresetRange("30d"), []);
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
   const [fromDate, setFromDate] = useState(initialRange.fromDate);
   const [toDate, setToDate] = useState(initialRange.toDate);
   const [sezonaId, setSezonaId] = useState<number | null>(null);
@@ -723,8 +725,8 @@ export default function ColorSalesStatsPage() {
   };
 
   const resetFilters = () => {
-    const range = getPresetRange("90d");
-    setPeriodPreset("90d");
+    const range = getPresetRange("30d");
+    setPeriodPreset("30d");
     setFromDate(range.fromDate);
     setToDate(range.toDate);
     setSezonaId(null);
@@ -771,6 +773,8 @@ export default function ColorSalesStatsPage() {
           <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
             <option value="30d">Poslednjih 30 dana</option>
             <option value="90d">Poslednjih 90 dana</option>
+            <option value="180d">Poslednjih 180 dana</option>
+            <option value="365d">Poslednjih 365 dana</option>
             <option value="custom">Prilagođeno</option>
           </select>
         </label>
