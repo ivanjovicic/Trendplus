@@ -26,6 +26,25 @@
   --dashboard-gradient-margin-start: var(--dashboard-secondary, #1ec8ff);
   --dashboard-gradient-margin-end: var(--dashboard-accent, #11f59e);
   --dashboard-on-accent: color-mix(in srgb, var(--dashboard-bg) 60%, black);
+  --dashboard-surface-overlay: color-mix(in srgb, var(--dashboard-surface) 74%, transparent);
+  --dashboard-surface-overlay-soft: color-mix(in srgb, var(--dashboard-surface) 64%, transparent);
+  --dashboard-surface-overlay-strong: color-mix(in srgb, var(--dashboard-surface) 84%, transparent);
+  --dashboard-surface-panel-top: color-mix(in srgb, var(--dashboard-surface-2) 72%, var(--dashboard-surface) 28%);
+  --dashboard-surface-panel-bottom: color-mix(in srgb, var(--dashboard-surface) 84%, var(--dashboard-bg-soft) 16%);
+  --dashboard-surface-control-top: color-mix(in srgb, var(--dashboard-surface) 78%, var(--dashboard-bg) 22%);
+  --dashboard-surface-control-bottom: color-mix(in srgb, var(--dashboard-bg-soft) 78%, var(--dashboard-bg) 22%);
+  --dashboard-surface-card-top: color-mix(in srgb, var(--dashboard-surface-2) 68%, var(--dashboard-surface) 32%);
+  --dashboard-surface-card-bottom: color-mix(in srgb, var(--dashboard-surface) 86%, var(--dashboard-bg-soft) 14%);
+  --dashboard-surface-table-head-top: color-mix(in srgb, var(--dashboard-surface-2) 82%, var(--dashboard-surface) 18%);
+  --dashboard-surface-table-head-bottom: color-mix(in srgb, var(--dashboard-surface) 86%, var(--dashboard-bg-soft) 14%);
+  --dashboard-surface-table-sorted-top: color-mix(in srgb, var(--dashboard-accent) 18%, var(--dashboard-surface-2) 82%);
+  --dashboard-surface-table-sorted-bottom: color-mix(in srgb, var(--dashboard-accent) 14%, var(--dashboard-surface) 86%);
+  --dashboard-surface-row: color-mix(in srgb, var(--dashboard-bg-soft) 78%, var(--dashboard-surface) 22%);
+  --dashboard-surface-row-hover: color-mix(in srgb, var(--dashboard-surface-2) 72%, var(--dashboard-surface) 28%);
+  --dashboard-surface-row-expanded: color-mix(in srgb, var(--dashboard-accent) 10%, var(--dashboard-surface) 90%);
+  --dashboard-surface-info: color-mix(in srgb, var(--dashboard-secondary) 14%, transparent);
+  --dashboard-surface-danger: color-mix(in srgb, var(--dashboard-danger) 14%, transparent);
+  --dashboard-focus-ring: color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
 
   background:
     radial-gradient(1200px 700px at 100% -20%, rgba(30, 200, 255, 0.16), transparent 56%),
@@ -104,8 +123,8 @@
 }
 
 .supplier-decision-generated {
-  background: rgba(8, 24, 34, 0.7);
-  border: 1px solid rgba(30, 200, 255, 0.28);
+  background: var(--dashboard-surface-overlay);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 32%, transparent);
   border-radius: 999px;
   color: var(--dashboard-secondary);
   font-size: 12px;
@@ -115,7 +134,7 @@
 }
 
 .supplier-decision-filters {
-  background: linear-gradient(180deg, rgba(12, 30, 42, 0.92), rgba(9, 22, 31, 0.92));
+  background: linear-gradient(180deg, var(--dashboard-surface-panel-top), var(--dashboard-surface-panel-bottom));
   border: 1px solid var(--dashboard-border-soft);
   border-radius: 14px;
   display: grid;
@@ -140,8 +159,8 @@
 
 .supplier-decision-field select,
 .supplier-decision-field input {
-  background: linear-gradient(180deg, rgba(8, 22, 30, 0.92), rgba(7, 17, 24, 0.92));
-  border: 1px solid rgba(92, 255, 127, 0.24);
+  background: linear-gradient(180deg, var(--dashboard-surface-control-top), var(--dashboard-surface-control-bottom));
+  border: 1px solid var(--dashboard-border-soft);
   border-radius: 10px;
   color: var(--dashboard-text);
   font-size: 13px;
@@ -164,8 +183,8 @@
 
 .supplier-decision-field select:focus,
 .supplier-decision-field input:focus {
-  border-color: rgba(30, 200, 255, 0.6);
-  box-shadow: 0 0 0 3px rgba(30, 200, 255, 0.2);
+  border-color: color-mix(in srgb, var(--dashboard-secondary) 62%, transparent);
+  box-shadow: 0 0 0 3px var(--dashboard-focus-ring);
   outline: none;
 }
 
@@ -202,8 +221,8 @@
 }
 
 .supplier-decision-actions button.secondary {
-  background: rgba(8, 24, 34, 0.72);
-  border: 1px solid rgba(30, 200, 255, 0.4);
+  background: var(--dashboard-surface-overlay);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 44%, transparent);
   color: var(--dashboard-secondary);
 }
 
@@ -223,14 +242,14 @@
 
 .supplier-decision-message.loading,
 .supplier-decision-message.info {
-  background: rgba(20, 170, 255, 0.12);
-  border: 1px solid rgba(30, 200, 255, 0.32);
+  background: var(--dashboard-surface-info);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 36%, transparent);
   color: var(--dashboard-secondary);
 }
 
 .supplier-decision-message.error {
-  background: rgba(251, 113, 133, 0.12);
-  border: 1px solid rgba(251, 113, 133, 0.42);
+  background: var(--dashboard-surface-danger);
+  border: 1px solid color-mix(in srgb, var(--dashboard-danger) 44%, transparent);
   color: var(--dashboard-danger);
 }
 
@@ -242,8 +261,8 @@
 }
 
 .supplier-decision-quality-link {
-  background: rgba(8, 24, 34, 0.64);
-  border: 1px solid rgba(30, 200, 255, 0.36);
+  background: var(--dashboard-surface-overlay-soft);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 40%, transparent);
   border-radius: 999px;
   color: var(--dashboard-secondary);
   display: inline-flex;
@@ -261,8 +280,8 @@
 }
 
 .supplier-decision-kpi {
-  background: linear-gradient(165deg, rgba(12, 32, 44, 0.92), rgba(7, 19, 27, 0.92));
-  border: 1px solid rgba(77, 255, 119, 0.24);
+  background: linear-gradient(165deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
+  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 28%, transparent);
   border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   padding: 12px;
@@ -328,7 +347,7 @@
 }
 
 .supplier-decision-card {
-  background: linear-gradient(162deg, rgba(10, 26, 36, 0.95), rgba(7, 17, 24, 0.95));
+  background: linear-gradient(162deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
   border: 1px solid var(--dashboard-border-soft);
   border-radius: 14px;
   box-shadow: 0 10px 24px rgba(1, 8, 14, 0.28);
@@ -355,8 +374,8 @@
 }
 
 .supplier-decision-chart-wrap {
-  background: linear-gradient(180deg, rgba(8, 24, 34, 0.62), rgba(6, 18, 25, 0.62));
-  border: 1px solid rgba(30, 200, 255, 0.18);
+  background: linear-gradient(180deg, var(--dashboard-surface-overlay-soft), color-mix(in srgb, var(--dashboard-surface-panel-bottom) 72%, transparent));
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
   border-radius: 12px;
   height: 300px;
   padding: 6px 6px 2px;
@@ -390,7 +409,7 @@
 
 .priority-chip {
   align-items: center;
-  background: rgba(8, 24, 34, 0.7);
+  background: var(--dashboard-surface-overlay);
   border: 1px solid rgba(77, 255, 119, 0.24);
   border-radius: 999px;
   color: var(--dashboard-text);
@@ -458,7 +477,7 @@
 }
 
 .supplier-decision-table th {
-  background: linear-gradient(180deg, rgba(15, 35, 48, 0.95), rgba(10, 24, 34, 0.95));
+  background: linear-gradient(180deg, var(--dashboard-surface-table-head-top), var(--dashboard-surface-table-head-bottom));
   border-bottom: 1px solid rgba(77, 255, 119, 0.18);
   border-right: 1px solid rgba(77, 255, 119, 0.08);
   padding: 11px 12px;
@@ -473,8 +492,8 @@
 }
 
 .supplier-decision-table th.is-sorted {
-  background: linear-gradient(180deg, rgba(12, 42, 33, 0.92), rgba(9, 29, 23, 0.92));
-  box-shadow: inset 0 -1px 0 rgba(102, 255, 126, 0.3);
+  background: linear-gradient(180deg, var(--dashboard-surface-table-sorted-top), var(--dashboard-surface-table-sorted-bottom));
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--dashboard-accent) 34%, transparent);
 }
 
 .supplier-decision-table th .sortable-header {
@@ -522,7 +541,7 @@
 }
 
 .supplier-decision-table td {
-  background: rgba(7, 20, 28, 0.78);
+  background: var(--dashboard-surface-row);
   border-bottom: 1px solid rgba(77, 255, 119, 0.12);
   border-right: 1px solid rgba(77, 255, 119, 0.07);
   color: var(--dashboard-text);
@@ -533,12 +552,12 @@
 }
 
 .supplier-decision-table tr:hover td {
-  background: rgba(12, 30, 42, 0.95);
-  box-shadow: inset 0 0 0 999px rgba(30, 200, 255, 0.05);
+  background: var(--dashboard-surface-row-hover);
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--dashboard-secondary) 8%, transparent);
 }
 
 .supplier-decision-table tr.expanded-row td {
-  background: rgba(13, 44, 36, 0.9);
+  background: var(--dashboard-surface-row-expanded);
 }
 
 .supplier-rank-row-1 td,
@@ -563,8 +582,8 @@
 
 .supplier-rank-badge {
   align-items: center;
-  background: rgba(8, 24, 34, 0.82);
-  border: 1px solid rgba(30, 200, 255, 0.34);
+  background: var(--dashboard-surface-overlay-strong);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 38%, transparent);
   border-radius: 999px;
   color: var(--dashboard-secondary);
   display: inline-flex;
@@ -734,8 +753,8 @@
 }
 
 .supplier-decision-detail-btn {
-  background: rgba(8, 24, 34, 0.74);
-  border: 1px solid rgba(30, 200, 255, 0.42);
+  background: var(--dashboard-surface-overlay);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 44%, transparent);
   border-radius: 8px;
   color: var(--dashboard-secondary);
   cursor: pointer;
@@ -775,8 +794,8 @@
 }
 
 .supplier-decision-detail {
-  background: linear-gradient(165deg, rgba(10, 26, 36, 0.95), rgba(7, 17, 24, 0.95));
-  border: 1px solid rgba(77, 255, 119, 0.2);
+  background: linear-gradient(165deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
+  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 24%, transparent);
   border-radius: 12px;
   margin-top: 12px;
   padding: 12px;
@@ -814,8 +833,8 @@
 }
 
 .supplier-decision-detail-grid article {
-  background: rgba(8, 23, 32, 0.88);
-  border: 1px solid rgba(30, 200, 255, 0.18);
+  background: var(--dashboard-surface-overlay-strong);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
   border-radius: 9px;
   padding: 10px;
 }
