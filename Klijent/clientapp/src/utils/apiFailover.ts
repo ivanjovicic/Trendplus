@@ -35,9 +35,15 @@ const healthProbePath = normalizePath(import.meta.env.VITE_API_HEALTH_PATH || "/
 
 const apiPathPrefixes = ["/api", "/health", "/artikli", "/scrapers", "/admin"];
 const debugEnabled = import.meta.env.DEV || import.meta.env.VITE_API_FALLBACK_DEBUG === "1";
+const primaryMissing = primaryBaseUrl.length === 0;
+const fallbackMatchesPrimary =
+  fallbackBaseUrl.length > 0 &&
+  primaryBaseUrl.length > 0 &&
+  fallbackBaseUrl === primaryBaseUrl;
 
 let runtimeState: RuntimeFailoverState = loadInitialState();
 let primaryProbeInFlight: Promise<boolean> | null = null;
+let misconfigurationWarned = false;
 
 function normalizeBaseUrl(raw: string | undefined): string {
   return (raw ?? "").trim().replace(/\/+$/, "");
@@ -224,6 +230,26 @@ function debugLog(message: string, extra?: Record<string, unknown>): void {
     return;
   }
   console.info(`[api-failover] ${message}`);
+}
+
+function warnIfFailoverIsMisconfigured(): void {
+  if (misconfigurationWarned) return;
+  misconfigurationWarned = true;
+
+  if (primaryMissing) {
+    console.warn("[api-failover] VITE_API_BASE_URL is empty; requests cannot target the intended primary API.");
+    return;
+  }
+
+  if (fallbackMatchesPrimary) {
+    console.warn(
+      "[api-failover] VITE_API_BASE_URL and VITE_API_FALLBACK_URL point to the same host; failover is effectively disabled.",
+      {
+        primaryBaseUrl,
+        fallbackBaseUrl,
+      }
+    );
+  }
 }
 
 function markPrimaryFailure(reason: string): void {
@@ -556,6 +582,7 @@ function installGlobalFlag(nativeFetch: typeof window.fetch): boolean {
 
 export function installApiFailoverFetchLayer(): void {
   if (typeof window === "undefined") return;
+  warnIfFailoverIsMisconfigured();
   if (!failoverConfigured) return;
 
   const nativeFetch = window.fetch.bind(window);

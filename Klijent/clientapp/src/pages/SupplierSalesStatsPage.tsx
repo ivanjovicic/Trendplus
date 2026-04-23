@@ -101,19 +101,19 @@ const REASON_CODE_LABELS: Record<string, string> = {
   pop_unavailable: "PoP nije dostupan",
 };
 
-const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, #8ad5a8)", fontSize: 12, fontWeight: 600 };
-const CHART_LEGEND_STYLE = { color: "var(--dashboard-chart-axis, #8ad5a8)", fontSize: 12, fontWeight: 600, paddingTop: 10 };
+const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, var(--text-muted, #8ad5a8))", fontSize: 12, fontWeight: 600 };
+const CHART_LEGEND_STYLE = { color: "var(--dashboard-chart-axis, var(--text-muted, #8ad5a8))", fontSize: 12, fontWeight: 600, paddingTop: 10 };
 const CHART_CURSOR_STYLE = { fill: "var(--dashboard-chart-hover, rgba(102, 255, 126, 0.14))" };
 const COMMAND_TOOLTIP_STYLE = {
   ...CHART_TOOLTIP_STYLE,
-  background: "linear-gradient(140deg, rgba(5, 15, 24, 0.96), rgba(11, 33, 46, 0.95))",
-  border: "1px solid rgba(102, 255, 126, 0.4)",
-  boxShadow: "0 14px 30px rgba(2, 8, 16, 0.45), 0 0 0 1px rgba(30, 200, 255, 0.22)",
+  background: "var(--dashboard-tooltip-bg, var(--surface-elevated, #0f172a))",
+  border: "1px solid var(--dashboard-tooltip-border, var(--border-default, rgba(148, 163, 184, 0.35)))",
+  boxShadow: "var(--dashboard-tooltip-shadow, 0 10px 24px rgba(0, 0, 0, 0.28))",
   borderRadius: "12px",
 };
 const COMMAND_TOOLTIP_LABEL_STYLE = {
   ...CHART_TOOLTIP_LABEL_STYLE,
-  color: "#dbffe8",
+  color: "var(--dashboard-tooltip-label, var(--text-primary, #dbffe8))",
   fontWeight: 700,
 };
 
@@ -1265,8 +1265,8 @@ export default function SupplierSalesStatsPage() {
                     <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
                       <defs>
                         <linearGradient id="supplierShareGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#33f28b" />
-                          <stop offset="100%" stopColor="#1ec8ff" />
+                          <stop offset="0%" stopColor="var(--dashboard-gradient-share-start, var(--dashboard-accent, #33f28b))" />
+                          <stop offset="100%" stopColor="var(--dashboard-gradient-share-end, var(--dashboard-secondary, #1ec8ff))" />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
@@ -1297,12 +1297,12 @@ export default function SupplierSalesStatsPage() {
                     <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
                       <defs>
                         <linearGradient id="supplierRevenueGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#8bff00" />
-                          <stop offset="100%" stopColor="#33f28b" />
+                          <stop offset="0%" stopColor="var(--dashboard-gradient-revenue-start, var(--dashboard-accent-strong, #8bff00))" />
+                          <stop offset="100%" stopColor="var(--dashboard-gradient-revenue-end, var(--dashboard-accent, #33f28b))" />
                         </linearGradient>
                         <linearGradient id="supplierMarginGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#1ec8ff" />
-                          <stop offset="100%" stopColor="#11f59e" />
+                          <stop offset="0%" stopColor="var(--dashboard-gradient-margin-start, var(--dashboard-secondary, #1ec8ff))" />
+                          <stop offset="100%" stopColor="var(--dashboard-gradient-margin-end, var(--dashboard-accent, #11f59e))" />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
