@@ -1278,7 +1278,7 @@ export default function ShoeTypeSalesStatsPage() {
                               <span>{fmtPct(row.marginPct, 1)}</span>
                               {tierNeedsWarning(row.marginQualityTier) ? (
                                 <span className={`quality-pill ${qualityTierClass(row.marginQualityTier)}`} title={row.marginQualityTooltip ?? row.marginQualityLabel ?? ""}>
-                                  {qualityTierIcon(row.marginQualityTier)} marža
+                                  marža
                                 </span>
                               ) : null}
                             </td>

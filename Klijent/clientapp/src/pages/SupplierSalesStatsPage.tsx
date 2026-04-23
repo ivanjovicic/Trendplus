@@ -1542,7 +1542,7 @@ export default function SupplierSalesStatsPage() {
                               <span>{fmtPct(supplier.marginPct, 1)}</span>
                               {tierNeedsWarning(supplier.marginQualityTier) ? (
                                 <span className={`quality-pill ${qualityTierClass(supplier.marginQualityTier)}`} title={supplier.marginQualityTooltip ?? supplier.marginQualityLabel ?? ""}>
-                                  {qualityTierIcon(supplier.marginQualityTier)} marža
+                                  marža
                                 </span>
                               ) : null}
                             </td>
