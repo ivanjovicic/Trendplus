@@ -510,8 +510,11 @@ async function probePrimaryAvailability(nativeFetch: typeof window.fetch): Promi
   }
 }
 
-async function maybeRecoverPrimary(nativeFetch: typeof window.fetch): Promise<void> {
-  if (!shouldAttemptPrimaryRecovery()) {
+async function maybeRecoverPrimary(
+  nativeFetch: typeof window.fetch,
+  forceProbe = false
+): Promise<void> {
+  if (!forceProbe && !shouldAttemptPrimaryRecovery()) {
     return;
   }
 
@@ -567,6 +570,12 @@ export function installApiFailoverFetchLayer(): void {
     probeTimeoutMs,
     primaryRetryCooldownMs,
   });
+
+  // If fallback state was persisted from a previous session, run a single
+  // startup probe so we can quickly return to primary when it is healthy again.
+  if (runtimeState.activeHost === "fallback") {
+    void maybeRecoverPrimary(nativeFetch, true);
+  }
 
   window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (!shouldManageRequest(input)) {
