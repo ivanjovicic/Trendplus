@@ -1,8 +1,10 @@
 using Api.Services;
 using Api.Services.Access;
 using Api.Config;
+using Api.Models;
 using System.Data;
 using System.IO;
+using System.Reflection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -317,6 +319,91 @@ public sealed class AccessImportServiceTests
         Assert.Equal(101, snapshot["IDProdaja"]);
         Assert.Equal(55.5m, snapshot["Cena"]);
         Assert.Equal("test", snapshot["Komentar"]);
+    }
+
+    [Fact]
+    public void ResolveProdajaLineNabavnaCena_PrefersRsdAlias()
+    {
+        var schema = new AccessDataSchema(["NabavnaCenaDin", "NabavnaCena", "PurchasePrice"]);
+        var row = new AccessDataRow(schema, [123.45m, 99m, 88m]);
+
+        var result = AccessImportService.ResolveProdajaLineNabavnaCena(row);
+
+        Assert.Equal(123.45m, result);
+    }
+
+    [Fact]
+    public void ResolveProdajaLineNabavnaCena_UsesLegacyAliases_WhenRsdMissing()
+    {
+        var schema = new AccessDataSchema(["PurchasePrice"]);
+        var row = new AccessDataRow(schema, [77.5m]);
+
+        var result = AccessImportService.ResolveProdajaLineNabavnaCena(row);
+
+        Assert.Equal(77.5m, result);
+    }
+
+    [Fact]
+    public void ResolveProdajaLineNabavnaCena_ReturnsNull_WhenPurchaseAliasesMissing()
+    {
+        var schema = new AccessDataSchema(["ProdajnaCena", "Kolicina"]);
+        var row = new AccessDataRow(schema, [1999m, 2]);
+
+        var result = AccessImportService.ResolveProdajaLineNabavnaCena(row);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void ResolveProdajaLineNabavnaCena_ReturnsNull_WhenValueIsZero()
+    {
+        var schema = new AccessDataSchema(["NabavnaCenaDin"]);
+        var row = new AccessDataRow(schema, [0m]);
+
+        var result = AccessImportService.ResolveProdajaLineNabavnaCena(row);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void SourceColumnsContainProdajaLineNabavnaCena_ReturnsTrue_WhenAliasExists()
+    {
+        var columns = new List<string> { "IDDnevnik", "IDArtikal", "NabavnaCenaDin" };
+
+        var result = AccessImportService.SourceColumnsContainProdajaLineNabavnaCena(columns);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void SourceColumnsContainProdajaLineNabavnaCena_ReturnsFalse_WhenAliasMissing()
+    {
+        var columns = new List<string> { "IDDnevnik", "IDArtikal", "ProdajnaCena" };
+
+        var result = AccessImportService.SourceColumnsContainProdajaLineNabavnaCena(columns);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void BuildFieldMappingsPreview_ForProdajaStavke_MapsNabavnaCenaAlias()
+    {
+        var method = typeof(AccessImportService).GetMethod(
+            "BuildFieldMappingsPreview",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(method);
+
+        var columns = new List<string> { "IDDnevnik", "IDArtikal", "Kolicina", "ProdajnaCena", "NabavnaCenaDin" };
+        var mappings = Assert.IsType<List<AccessImportFieldMappingPreview>>(
+            method!.Invoke(null, new object[] { "prodaja_stavke", columns }));
+
+        var nabavnaMapping = Assert.Single(
+            mappings,
+            m => m.TargetField.Equals("NabavnaCena", StringComparison.OrdinalIgnoreCase));
+
+        Assert.Equal("NabavnaCenaDin", nabavnaMapping.SourceColumn);
+        Assert.Equal("matched", nabavnaMapping.Status, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]

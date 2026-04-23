@@ -107,7 +107,8 @@ using NpgsqlTypes;
                 new FieldAlias("IdProdaja", "idprodaja", "saleid", "idzaglavlje", "iddnevnik"),
                 new FieldAlias("IdArtikal", "idartikal", "productid", "artiklid"),
                 new FieldAlias("Kolicina", "kolicina", "qty", "quantity"),
-                new FieldAlias("Cena", "prodajnacena", "cena", "unitprice", "price")
+                new FieldAlias("Cena", "prodajnacena", "cena", "unitprice", "price"),
+                new FieldAlias("NabavnaCena", "nabavnacenadin", "purchasepricersd", "nabavnacena", "purchaseprice", "cost", "nc")
             ],
             ["dnevnik_promena"] =
             [
@@ -231,6 +232,8 @@ using NpgsqlTypes;
     private static readonly string[] ArtikliDobavljacAliases = ["iddobavljac", "dobavljacid", "supplierid"];
     private static readonly string[] ArtikliNabavnaCenaAliases = ["nabavnacena", "purchaseprice", "cost"];
     private static readonly string[] ArtikliNabavnaCenaDinAliases = ["nabavnacenadin", "purchasepricersd"];
+    private static readonly string[] ProdajaLineNabavnaCenaAliases =
+        ["nabavnacenadin", "purchasepricersd", "nabavnacena", "purchaseprice", "cost", "nc"];
     private static readonly string[] ArtikliPrvaProdajnaCenaAliases = ["prvaprodajnacena", "firstsaleprice"];
     private static readonly string[] ArtikliProdajnaCenaAliases = ["prodajnacena", "saleprice", "price"];
     private static readonly string[] ArtikliVelicinaAliases = ["velicina", "size"];
@@ -1899,6 +1902,9 @@ using NpgsqlTypes;
             && !normalized.Contains("datumprodaje")
             && !normalized.Contains("brojracuna");
     }
+
+    internal static bool SourceColumnsContainProdajaLineNabavnaCena(IReadOnlyList<string> sourceColumns)
+        => HasAnyAliasInColumns(sourceColumns, ProdajaLineNabavnaCenaAliases);
 
     public async Task<AccessImportRunResponse> ImportAsync(
         string accessFilePath,
@@ -3718,9 +3724,13 @@ using NpgsqlTypes;
 
         var importedProdajaFromLineTable = false;
         var synthesizedProdajaFromDnevnik = false;
+        var saleLineCostColumnsKnown = false;
+        var saleLineCostColumnsPresent = false;
+        string? saleLineTableForCostDiscovery = null;
         if (!skipLinkedByDnevnikTrigger && prodaja is not null && await IsProdajaLineTableAsync(session, prodaja, ct))
         {
             importedProdajaFromLineTable = true;
+            saleLineTableForCostDiscovery = prodaja;
             result.Warnings.Add($"Tabela '{prodaja}' prepoznata je kao tabela stavki prodaje (IDDnevnik/IDArtikal). Uvozim prodaju kroz vezu sa DnevnikPromena.");
             await RunImportStepAsync("import-line-table", "prodaja_zaglavlje", prodaja, result, async innerCt =>
             {
@@ -3746,12 +3756,15 @@ using NpgsqlTypes;
                 }, ct);
             }
 
-                if (prodajaStavke is not null)
+            if (prodajaStavke is not null)
+            {
+                saleLineTableForCostDiscovery = prodajaStavke;
                 await RunImportStepAsync("import", "prodaja_stavke", prodajaStavke, result, async innerCt =>
                 {
                     await ImportProdajaStavkeAsync(session, prodajaStavke, prodaja, overwriteExisting, result, innerCt);
                     await FlushTrendWritesAsync(force: true, innerCt);
                 }, ct);
+            }
         }
 
         if (!skipLinkedByDnevnikTrigger && povracaj is not null)
@@ -3781,6 +3794,33 @@ using NpgsqlTypes;
             await RunImportStepAsync("import", "prenos_robe", prenosRobe, result, innerCt =>
                 ImportPrenosRobeAsync(session, prenosRobe, overwriteExisting, result, innerCt), ct);
         await FlushTrendWritesAsync(force: true, ct);
+
+        if (!skipLinkedByDnevnikTrigger && !string.IsNullOrWhiteSpace(saleLineTableForCostDiscovery))
+        {
+            var saleLineColumns = await session.GetColumnsAsync(saleLineTableForCostDiscovery, ct);
+            saleLineCostColumnsKnown = true;
+            saleLineCostColumnsPresent = SourceColumnsContainProdajaLineNabavnaCena(saleLineColumns);
+
+            if (saleLineCostColumnsPresent)
+            {
+                _logger.LogInformation(
+                    "Access prodaja line source contains purchase-price columns. TableName={TableName}. Approximation fallback backfill will be skipped.",
+                    saleLineTableForCostDiscovery);
+            }
+        }
+
+        if (!skipLinkedByDnevnikTrigger)
+        {
+            if (saleLineCostColumnsKnown && !saleLineCostColumnsPresent)
+            {
+                await ApplyApproximateProdajaStavkeNabavnaCenaBackfillAsync(result, ct);
+            }
+            else if (!saleLineCostColumnsKnown)
+            {
+                result.Warnings.Add(
+                    "Nije potvrdeno da li source prodajne stavke sadrze nabavnu cenu po stavci; fallback backfill iz Artikli master podataka nije automatski primenjen.");
+            }
+        }
 
         await AppendImportedSalesDiagnosticsAsync(result, ct);
 
@@ -4494,6 +4534,7 @@ using NpgsqlTypes;
             var id = I(row, "id", "idstavka", "lineid");
             var qty = I(row, "kolicina", "qty", "quantity") ?? 0;
             var cena = D(row, "cena", "unitprice", "price") ?? 0m;
+            var nabavnaCena = ResolveProdajaLineNabavnaCena(row);
 
             var sourceId = id.GetValueOrDefault();
             if (sourceId > 0 && existing.TryGetValue(sourceId, out var e))
@@ -4503,6 +4544,8 @@ using NpgsqlTypes;
                 e.IdArtikal = idArtikal.Value;
                 e.Kolicina = qty;
                 e.Cena = cena;
+                if (nabavnaCena.HasValue)
+                    e.NabavnaCena = nabavnaCena.Value;
                 _trendDb.ProdajaStavke.Update(e);
                 result.ProdajaStavkeUpdated++;
                 TrackTrendWrite();
@@ -4530,7 +4573,8 @@ using NpgsqlTypes;
                     IdProdaja = idProdaja.Value,
                     IdArtikal = idArtikal.Value,
                     Kolicina = qty,
-                    Cena = cena
+                    Cena = cena,
+                    NabavnaCena = nabavnaCena
                 };
                 _trendDb.ProdajaStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
@@ -4782,6 +4826,7 @@ using NpgsqlTypes;
                 qty = 1;
 
             var cena = D(row, "prodajnacena", "cena", "unitprice", "price") ?? 0m;
+            var nabavnaCena = ResolveProdajaLineNabavnaCena(row);
             var idObjekat = I(row, "idobjekat", "storeid");
             var brojRacunaFromRow = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
 
@@ -4845,7 +4890,8 @@ using NpgsqlTypes;
                 IdProdaja = zaglavlje.Id,
                 IdArtikal = idArtikal.Value,
                 Kolicina = qty,
-                Cena = cena
+                Cena = cena,
+                NabavnaCena = nabavnaCena
             };
             if (_trendDb.Entry(zaglavlje).State == EntityState.Added)
                 line.Prodaja = zaglavlje;
@@ -4883,6 +4929,75 @@ using NpgsqlTypes;
             result.Warnings.Add(
                 $"Tabela '{table}' ima {missingDnevnikHeaderRowCount} stavki prodaje bez odgovarajuceg reda u DnevnikPromena i bez validnog datuma. Preskoceno je {missingDnevnikHeaderIds.Count} racuna kako bi se izbeglo upisivanje datuma importa kao datuma prodaje. Primeri IDDnevnik: {sample}{suffix}.");
         }
+    }
+
+    private async Task ApplyApproximateProdajaStavkeNabavnaCenaBackfillAsync(AccessImportRunResponse result, CancellationToken ct)
+    {
+        var unresolvedBefore = await (
+            from ps in _trendDb.ProdajaStavke
+            join pz in _trendDb.ProdajaZaglavlja on ps.IdProdaja equals pz.Id
+            where pz.DataOrigin == "access" && ps.NabavnaCena == null
+            select ps.Id
+        ).CountAsync(ct);
+
+        if (unresolvedBefore == 0)
+            return;
+
+        var fromDin = await (
+            from ps in _trendDb.ProdajaStavke
+            join pz in _trendDb.ProdajaZaglavlja on ps.IdProdaja equals pz.Id
+            join a in _trendDb.Artikli on ps.IdArtikal equals a.Id
+            where pz.DataOrigin == "access"
+                  && ps.NabavnaCena == null
+                  && a.NabavnaCenaDin != null
+            select ps.Id
+        ).CountAsync(ct);
+
+        var fromLegacy = await (
+            from ps in _trendDb.ProdajaStavke
+            join pz in _trendDb.ProdajaZaglavlja on ps.IdProdaja equals pz.Id
+            join a in _trendDb.Artikli on ps.IdArtikal equals a.Id
+            where pz.DataOrigin == "access"
+                  && ps.NabavnaCena == null
+                  && a.NabavnaCenaDin == null
+                  && a.NabavnaCena != null
+            select ps.Id
+        ).CountAsync(ct);
+
+        var updated = await _trendDb.Database.ExecuteSqlRawAsync(
+            """
+            UPDATE prodaja_stavke ps
+            SET nabavna_cena = COALESCE(a."NabavnaCenaDin", a."NabavnaCena")
+            FROM prodaja_zaglavlje pz, "Artikli" a
+            WHERE ps.id_prodaja = pz.id
+              AND a."Id" = ps.id_artikal
+              AND pz.data_origin = 'access'
+              AND ps.nabavna_cena IS NULL
+              AND COALESCE(a."NabavnaCenaDin", a."NabavnaCena") IS NOT NULL;
+            """,
+            Array.Empty<object>(),
+            ct);
+
+        var unresolvedAfter = await (
+            from ps in _trendDb.ProdajaStavke
+            join pz in _trendDb.ProdajaZaglavlja on ps.IdProdaja equals pz.Id
+            where pz.DataOrigin == "access" && ps.NabavnaCena == null
+            select ps.Id
+        ).CountAsync(ct);
+
+        var approximationWarning =
+            "ProdajaStavke.NabavnaCena fallback backfill je uradjen iz Artikli master podataka (COALESCE(NabavnaCenaDin, NabavnaCena)); ovo je aproksimacija, nije istorijska nabavna cena sa trenutka prodaje.";
+
+        if (!result.Warnings.Any(x => x.Equals(approximationWarning, StringComparison.Ordinal)))
+            result.Warnings.Add(approximationWarning);
+
+        _logger.LogInformation(
+            "Access sale-line cost fallback applied (approximation). Updated={Updated}. CandidatesDin={CandidatesDin}. CandidatesLegacy={CandidatesLegacy}. RemainingNullBefore={Before}. RemainingNullAfter={After}.",
+            updated,
+            fromDin,
+            fromLegacy,
+            unresolvedBefore,
+            unresolvedAfter);
     }
 
     private async Task ImportPovracajAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
@@ -9405,6 +9520,17 @@ using NpgsqlTypes;
     private static DateTime? DT(AccessDataRow row, params string[] aliases) => ConvertToDate(Get(row, aliases));
     private static int? INormalized(AccessDataRow row, string? normalizedAlias) => ConvertToInt(GetNormalized(row, normalizedAlias));
     private static decimal? DNormalized(AccessDataRow row, string? normalizedAlias) => ConvertToDecimal(GetNormalized(row, normalizedAlias));
+
+    internal static decimal? ResolveProdajaLineNabavnaCena(AccessDataRow row)
+    {
+        // Prefer explicit RSD field when available; fallback to legacy purchase-price aliases.
+        var rsd = D(row, "nabavnacenadin", "purchasepricersd");
+        if (rsd is > 0)
+            return rsd.Value;
+
+        var legacy = D(row, "nabavnacena", "purchaseprice", "cost", "nc");
+        return legacy is > 0 ? legacy.Value : null;
+    }
 
     internal static int? ConvertToInt(object? v)
     {
