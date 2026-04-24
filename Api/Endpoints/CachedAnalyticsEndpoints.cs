@@ -228,7 +228,7 @@ public static class CachedAnalyticsEndpoints
                                 OutOfStock = g.Count(x => (x.Kolicina ?? 0) == 0),
                                 LowStock = g.Count(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= lowStockThreshold)
                             })
-                            .FirstOrDefaultAsync(ct);
+                            .SingleOrDefaultAsync(ct);
 
                         return new InventoryStatusDto(
                             inventoryData?.TotalSku ?? 0,
@@ -1359,6 +1359,7 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/filters/stores", async (
             IAnalyticsCacheService cache,
             IAnalyticsDbContext analyticsDb,
+            ITrendplusDbContext trendDb,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
@@ -1367,7 +1368,7 @@ public static class CachedAnalyticsEndpoints
             try
             {
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(15));
                 ct = timeoutCts.Token;
 
                 var result = await cache.GetOrSetAsync(
@@ -1396,17 +1397,20 @@ public static class CachedAnalyticsEndpoints
             catch (OperationCanceledException ex)
             {
                 logger.LogWarning(ex, "Store filters fallback due to timeout.");
-                return Results.Ok(Array.Empty<StoreFilterOptionDto>());
+                var fallback = await TryBuildStoreFiltersFallbackAsync(trendDb, logger, requestAborted);
+                return Results.Ok(fallback);
             }
             catch (NpgsqlException ex)
             {
                 logger.LogWarning(ex, "Store filters fallback due to database issue.");
-                return Results.Ok(Array.Empty<StoreFilterOptionDto>());
+                var fallback = await TryBuildStoreFiltersFallbackAsync(trendDb, logger, requestAborted);
+                return Results.Ok(fallback);
             }
             catch (TimeoutException ex)
             {
                 logger.LogWarning(ex, "Store filters fallback due to timeout.");
-                return Results.Ok(Array.Empty<StoreFilterOptionDto>());
+                var fallback = await TryBuildStoreFiltersFallbackAsync(trendDb, logger, requestAborted);
+                return Results.Ok(fallback);
             }
         });
 
@@ -2737,7 +2741,7 @@ public static class CachedAnalyticsEndpoints
                     TotalUnits = g.Sum(x => x.ps.Kolicina),
                     TotalTransactions = g.Select(x => x.p.Id).Distinct().Count()
                 })
-                .FirstOrDefaultAsync(ct)
+                .SingleOrDefaultAsync(ct)
             : await (
                 from p in trendDb.ProdajaZaglavlja.AsNoTracking()
                 join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
@@ -2753,7 +2757,7 @@ public static class CachedAnalyticsEndpoints
                     TotalUnits = g.Sum(x => x.ps.Kolicina),
                     TotalTransactions = g.Select(x => x.p.Id).Distinct().Count()
                 })
-                .FirstOrDefaultAsync(ct);
+                .SingleOrDefaultAsync(ct);
 
         var totalRevenue = totals?.TotalRevenue ?? 0m;
         var totalUnits = totals?.TotalUnits ?? 0;
@@ -2785,7 +2789,7 @@ public static class CachedAnalyticsEndpoints
                     OutOfStock = g.Count(x => (x.Kolicina ?? 0) == 0),
                     LowStock = g.Count(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= lowStockThreshold)
                 })
-                .FirstOrDefaultAsync(ct);
+                .SingleOrDefaultAsync(ct);
 
             return new InventoryStatusDto(
                 inventoryData?.TotalSku ?? 0,
@@ -3197,7 +3201,7 @@ public static class CachedAnalyticsEndpoints
                 AvgTransactionValue = g.Average(x => x.TotalValue),
                 TotalTransactions = g.Count()
             })
-            .FirstOrDefaultAsync(ct);
+            .SingleOrDefaultAsync(ct);
 
         if (stats is null)
             return new TransactionStatsDto();
@@ -3208,6 +3212,42 @@ public static class CachedAnalyticsEndpoints
             AvgTransactionValue = Math.Round(stats.AvgTransactionValue, 2),
             TotalTransactions = stats.TotalTransactions
         };
+    }
+
+    private static async Task<IReadOnlyList<StoreFilterOptionDto>> TryBuildStoreFiltersFallbackAsync(
+        ITrendplusDbContext trendDb,
+        ILogger logger,
+        CancellationToken ct)
+    {
+        try
+        {
+            var storeIds = await trendDb.ProdajaZaglavlja
+                .AsNoTracking()
+                .Where(x => x.IDObjekat.HasValue)
+                .Select(x => x.IDObjekat!.Value)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync(ct);
+
+            return storeIds
+                .Select(id => new StoreFilterOptionDto
+                {
+                    StoreId = id,
+                    StoreName = $"Objekat {id}",
+                    City = null,
+                    Region = null
+                })
+                .ToArray();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return Array.Empty<StoreFilterOptionDto>();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Store filters fallback query from Trend DB failed.");
+            return Array.Empty<StoreFilterOptionDto>();
+        }
     }
 
     private static async Task<List<PaymentDataDto>> BuildPaymentDataSnapshotAsync(
