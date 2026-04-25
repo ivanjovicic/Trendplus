@@ -32,6 +32,7 @@ using Application.Analytics.Queries.GetSalesSummary;
 using Application.Analytics.Queries.GetTopProducts;
 using Application.Config;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
@@ -49,6 +50,7 @@ using Infrastructure.Services.Email;
 using Infrastructure.Services.Storage;
 using Polly;
 using Polly.Extensions.Http;
+using System.Diagnostics;
 
 try
 {
@@ -124,6 +126,13 @@ try
 
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.Limits.MaxRequestBodySize = 25 * 1024 * 1024;
+        options.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(20);
+        options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(10);
+        options.Limits.MinRequestBodyDataRate = null;
+    });
 
     Console.WriteLine($"Configured to listen on port {port}");
 
@@ -204,6 +213,35 @@ try
         {
             return "<unparseable>";
         }
+    }
+
+    static bool IsLoopbackConnectionString(string? connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return false;
+
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
+            var hosts = (builder.Host ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var host in hosts)
+            {
+                if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+                    host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+                    host.Equals("::1", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore parse failures, caller can still proceed with original value.
+        }
+
+        return false;
     }
 
     static string? ApplyNpgsqlTuning(
@@ -317,9 +355,25 @@ try
     builder.Services.AddScoped<IAnalyticsDbContext>(sp =>
         sp.GetRequiredService<AnalyticsDbContext>());
 
-    var openProductTrainingConnection =
-        builder.Configuration.GetConnectionString("OpenProductTrainingConnection")
-        ?? analyticsConnection;
+    var configuredOpenProductTrainingConnection =
+        builder.Configuration.GetConnectionString("OpenProductTrainingConnection");
+    var openProductTrainingConnection = string.IsNullOrWhiteSpace(configuredOpenProductTrainingConnection)
+        ? analyticsConnection
+        : configuredOpenProductTrainingConnection;
+
+    // Production safety net:
+    // if OpenProductTrainingConnection accidentally points to localhost/loopback in non-dev,
+    // fallback to AnalyticsConnection (when available and not loopback).
+    if (!builder.Environment.IsDevelopment() &&
+        IsLoopbackConnectionString(openProductTrainingConnection) &&
+        !string.IsNullOrWhiteSpace(analyticsConnection) &&
+        !IsLoopbackConnectionString(analyticsConnection))
+    {
+        Console.WriteLine(
+            "WARNING: OpenProductTrainingConnection points to loopback host in non-development environment. " +
+            "Falling back to AnalyticsConnection.");
+        openProductTrainingConnection = analyticsConnection;
+    }
     var tunedOpenProductTrainingConnection = ApplyNpgsqlTuning(
         openProductTrainingConnection,
         dbOpenTimeoutSeconds,
@@ -355,6 +409,14 @@ try
     // Memory Cache - required by GetArtikliQueryHandler and other caching services
     builder.Services.AddMemoryCache();
     builder.Services.AddHttpContextAccessor();
+    builder.Services.AddSingleton<StartupReadinessState>();
+    builder.Services.AddHostedService<ReadinessWarmupHostedService>();
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
 
     // MediatR Pipeline Behaviors (order matters!)
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
@@ -687,6 +749,79 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     var app = builder.Build();
 
+    async Task<IResult> CheckDatabaseHealthAsync(CancellationToken ct)
+    {
+        static async Task<(bool Ok, long ElapsedMs, string? Error)> ProbeAsync(string name, string? connectionString, CancellationToken requestToken)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                return (false, 0, $"{name} connection string is missing");
+            }
+
+            var sw = Stopwatch.StartNew();
+
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(requestToken);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+                var csb = new NpgsqlConnectionStringBuilder(connectionString)
+                {
+                    Timeout = 5,
+                    CommandTimeout = 5
+                };
+
+                await using var connection = new NpgsqlConnection(csb.ConnectionString);
+                await connection.OpenAsync(timeoutCts.Token);
+
+                await using var command = new NpgsqlCommand("SELECT 1;", connection)
+                {
+                    CommandTimeout = 5
+                };
+
+                await command.ExecuteScalarAsync(timeoutCts.Token);
+                sw.Stop();
+                return (true, sw.ElapsedMilliseconds, null);
+            }
+            catch (OperationCanceledException) when (requestToken.IsCancellationRequested)
+            {
+                sw.Stop();
+                return (false, sw.ElapsedMilliseconds, "request_aborted");
+            }
+            catch (OperationCanceledException)
+            {
+                sw.Stop();
+                return (false, sw.ElapsedMilliseconds, "timeout");
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                return (false, sw.ElapsedMilliseconds, ex.GetBaseException().Message);
+            }
+        }
+
+        var defaultDb = await ProbeAsync("default", defaultConnection, ct);
+        var analyticsDb = await ProbeAsync("analytics", analyticsConnection, ct);
+        var ok = defaultDb.Ok && analyticsDb.Ok;
+
+        if (ok)
+        {
+            app.Services.GetRequiredService<StartupReadinessState>().MarkReady();
+        }
+
+        var payload = new
+        {
+            status = ok ? "healthy" : "unhealthy",
+            checks = new
+            {
+                defaultDb = new { ok = defaultDb.Ok, elapsedMs = defaultDb.ElapsedMs, error = defaultDb.Error },
+                analyticsDb = new { ok = analyticsDb.Ok, elapsedMs = analyticsDb.ElapsedMs, error = analyticsDb.Error }
+            }
+        };
+
+        return ok ? Results.Ok(payload) : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
     // --- Optional guarded automatic migrations ---
     // Applies migrations automatically in Development or when the configuration
     // flag `Database:AutoMigrate` is set to true. This is safe for local/dev
@@ -715,9 +850,40 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     // ================= MIDDLEWARE PIPELINE =================
 
+    app.UseForwardedHeaders();
+
     // 1. Global exception handler (first in pipeline)
     app.UseMiddleware<GlobalExceptionMiddleware>();
     app.UseMiddleware<SqlLoggingRequestContextMiddleware>();
+
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path;
+        if (path.StartsWithSegments("/health") ||
+            path.StartsWithSegments("/ready") ||
+            path.StartsWithSegments("/swagger"))
+        {
+            await next(context);
+            return;
+        }
+
+        var readiness = context.RequestServices.GetRequiredService<StartupReadinessState>();
+        if (!readiness.IsReady)
+        {
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            context.Response.ContentType = "application/json";
+            context.Response.Headers.RetryAfter = "5";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                status = "starting",
+                reason = readiness.Reason,
+                retryAfterSeconds = 5
+            }, context.RequestAborted);
+            return;
+        }
+
+        await next(context);
+    });
 
     // 2. Serilog request logging
     app.UseSerilogRequestLogging(opts =>
@@ -766,6 +932,22 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     // ================= ENDPOINTS =================
 
     // Map controllers and other minimal endpoints
+    app.MapGet("/health", CheckDatabaseHealthAsync).AllowAnonymous();
+    app.MapGet("/ready", (StartupReadinessState readiness) =>
+    {
+        var payload = new
+        {
+            ready = readiness.IsReady,
+            reason = readiness.Reason,
+            startedAtUtc = readiness.StartedAtUtc,
+            readyAtUtc = readiness.ReadyAtUtc
+        };
+
+        return readiness.IsReady
+            ? Results.Ok(payload)
+            : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }).AllowAnonymous();
+
     app.MapControllers();
     // Map all other endpoints from AllEndpoints.cs
     app.MapAllEndpoints();

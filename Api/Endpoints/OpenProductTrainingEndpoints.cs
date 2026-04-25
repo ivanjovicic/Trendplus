@@ -4,6 +4,7 @@ using Domain.Model.OpenProductTraining;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Npgsql;
 
 namespace Trendplus2.Endpoints
 {
@@ -125,39 +126,77 @@ namespace Trendplus2.Endpoints
 
             group.MapGet("/shoe-types", async (
                 OpenProductTrainingDbContext db,
+                ILogger<Program> logger,
                 CancellationToken ct) =>
             {
-                var rows = await db.Products
-                    .AsNoTracking()
-                    .Where(p => !string.IsNullOrWhiteSpace(p.ShoeType))
-                    .GroupBy(p => p.ShoeType!)
-                    .Select(g => new { shoeType = g.Key, productCount = g.Count() })
-                    .OrderByDescending(x => x.productCount)
-                    .ToListAsync(ct);
+                try
+                {
+                    var rows = await db.Products
+                        .AsNoTracking()
+                        .Where(p => !string.IsNullOrWhiteSpace(p.ShoeType))
+                        .GroupBy(p => p.ShoeType!)
+                        .Select(g => new { shoeType = g.Key, productCount = g.Count() })
+                        .OrderByDescending(x => x.productCount)
+                        .ToListAsync(ct);
 
-                return Results.Ok(rows);
+                    return Results.Ok(rows);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    return Results.Problem(
+                        title: "Request canceled",
+                        detail: "Request was canceled.",
+                        statusCode: StatusCodes.Status499ClientClosedRequest);
+                }
+                catch (Exception ex) when (IsTransientDatabaseConnectivityFailure(ex))
+                {
+                    logger.LogWarning(ex, "Open-training shoe-types temporarily unavailable due to database connectivity.");
+                    return Results.Problem(
+                        title: "Open training service unavailable",
+                        detail: "Open training data is temporarily unavailable. Please try again shortly.",
+                        statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
             })
             .WithName("GetOpenProductTrainingShoeTypes")
             .WithDescription("Returns distinct shoe types with product counts from the training dataset.");
 
             group.MapGet("/brands", async (
                 OpenProductTrainingDbContext db,
+                ILogger<Program> logger,
                 string? shoeType = null,
                 CancellationToken ct = default) =>
             {
-                var query = db.Products.AsNoTracking().Where(p => p.BrandId != null && p.Brand != null);
+                try
+                {
+                    var query = db.Products.AsNoTracking().Where(p => p.BrandId != null && p.Brand != null);
 
-                if (!string.IsNullOrWhiteSpace(shoeType))
-                    query = query.Where(p => p.ShoeType != null && p.ShoeType.ToLower(CultureInfo.InvariantCulture) == shoeType.Trim().ToLower(CultureInfo.InvariantCulture));
+                    if (!string.IsNullOrWhiteSpace(shoeType))
+                        query = query.Where(p => p.ShoeType != null && p.ShoeType.ToLower(CultureInfo.InvariantCulture) == shoeType.Trim().ToLower(CultureInfo.InvariantCulture));
 
-                var rows = await query
-                    .GroupBy(p => p.Brand!.Name)
-                    .Select(g => new { brand = g.Key, productCount = g.Count() })
-                    .OrderByDescending(x => x.productCount)
-                    .Take(50)
-                    .ToListAsync(ct);
+                    var rows = await query
+                        .GroupBy(p => p.Brand!.Name)
+                        .Select(g => new { brand = g.Key, productCount = g.Count() })
+                        .OrderByDescending(x => x.productCount)
+                        .Take(50)
+                        .ToListAsync(ct);
 
-                return Results.Ok(rows);
+                    return Results.Ok(rows);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    return Results.Problem(
+                        title: "Request canceled",
+                        detail: "Request was canceled.",
+                        statusCode: StatusCodes.Status499ClientClosedRequest);
+                }
+                catch (Exception ex) when (IsTransientDatabaseConnectivityFailure(ex))
+                {
+                    logger.LogWarning(ex, "Open-training brands temporarily unavailable due to database connectivity.");
+                    return Results.Problem(
+                        title: "Open training service unavailable",
+                        detail: "Open training data is temporarily unavailable. Please try again shortly.",
+                        statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
             })
             .WithName("GetOpenProductTrainingBrands")
             .WithDescription("Returns top brands with product counts, optionally filtered by shoe type.");
@@ -351,6 +390,18 @@ namespace Trendplus2.Endpoints
             }
 
             return query;
+        }
+
+        private static bool IsTransientDatabaseConnectivityFailure(Exception ex)
+        {
+            if (ex is TimeoutException or NpgsqlException)
+                return true;
+
+            if (ex is InvalidOperationException invalidOperation &&
+                invalidOperation.Message.Contains("likely due to a transient failure", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return ex.InnerException is not null && IsTransientDatabaseConnectivityFailure(ex.InnerException);
         }
 
         private static double Percentile(List<decimal> sorted, double p)

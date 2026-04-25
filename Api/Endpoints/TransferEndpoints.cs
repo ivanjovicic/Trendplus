@@ -17,6 +17,9 @@ namespace Api.Endpoints
             string messagePrefix,
             CancellationToken ct)
         {
+            if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+                return;
+
             var store = context.RequestServices.GetService<IErrorStore>();
             if (store == null) return;
 

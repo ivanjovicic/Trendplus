@@ -45,6 +45,16 @@ public class GlobalExceptionMiddleware
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception, string correlationId)
     {
+        if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+        {
+            _logger.LogInformation(
+                "Request aborted by client for {Method} {Path}. CorrelationId: {CorrelationId}",
+                context.Request.Method,
+                context.Request.Path,
+                correlationId);
+            return;
+        }
+
         var response = context.Response;
         response.ContentType = "application/json";
         await PersistErrorRecordAsync(context, exception, correlationId);
@@ -210,11 +220,16 @@ public class GlobalExceptionMiddleware
             WriteIndented = false
         });
 
-        await response.WriteAsync(json);
+        await response.WriteAsync(json, context.RequestAborted);
     }
 
     private async Task PersistErrorRecordAsync(HttpContext context, Exception exception, string correlationId)
     {
+        if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+        {
+            return;
+        }
+
         var errorStore = context.RequestServices.GetService<IErrorStore>();
         if (errorStore is null)
         {

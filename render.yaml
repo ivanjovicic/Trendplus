@@ -7,7 +7,7 @@ services:
     region: frankfurt
     branch: main
     autoDeploy: true
-    buildCommand: dotnet publish Trendplus2/Api.csproj -c Release -o out
+    buildCommand: dotnet publish Api/Api.csproj -c Release -o out
     startCommand: dotnet out/Api.dll
     healthCheckPath: /health
     envVars:
@@ -15,6 +15,24 @@ services:
         value: Production
       - key: ASPNETCORE_URLS
         value: http://0.0.0.0:8080
+      - key: PROCESS_TYPE
+        value: web
+      - key: Caching__UseRedis
+        value: "false"
+      - key: DOCUMENT_SIGNING_KEY
+        sync: false # Set in Render Dashboard (secret, at least 32 random bytes/chars)
+      - key: Database__CommandTimeoutSeconds
+        value: "12"
+      - key: Database__Npgsql__OpenTimeoutSeconds
+        value: "5"
+      - key: Database__Npgsql__EnableEfRetryOnFailure
+        value: "true"
+      - key: Database__Npgsql__EfRetry__MaxRetryCount
+        value: "1"
+      - key: Database__Npgsql__EfRetry__MaxRetryDelaySeconds
+        value: "1"
+      - key: Database__Npgsql__MaxPoolSize
+        value: "20"
       # RabbitMQ (CloudAMQP)
       - key: RabbitMq__HostName
         value: cow.rmq2.cloudamqp.com

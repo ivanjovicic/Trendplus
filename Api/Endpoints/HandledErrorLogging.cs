@@ -14,6 +14,11 @@ public static class HandledErrorLogging
         string messagePrefix,
         CancellationToken ct = default)
     {
+        if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+        {
+            return Task.CompletedTask;
+        }
+
         return PersistHandledIssueAsync(
             context,
             level: "Error",
