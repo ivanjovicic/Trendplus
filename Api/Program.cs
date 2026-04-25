@@ -748,6 +748,29 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     });
 
     var app = builder.Build();
+    var allowedHealthOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:8080",
+        "https://trendplus.vercel.app"
+    };
+
+    static void ApplyHealthCorsHeaders(HttpContext context, ISet<string> allowedOrigins)
+    {
+        if (!context.Request.Headers.TryGetValue("Origin", out var originValues))
+            return;
+
+        var origin = originValues.ToString();
+        if (string.IsNullOrWhiteSpace(origin) || !allowedOrigins.Contains(origin))
+            return;
+
+        context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+        context.Response.Headers["Vary"] = "Origin";
+        context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+        context.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With";
+        context.Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
+    }
 
     async Task<IResult> CheckDatabaseHealthAsync(CancellationToken ct)
     {
@@ -851,6 +874,22 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     // ================= MIDDLEWARE PIPELINE =================
 
     app.UseForwardedHeaders();
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path;
+        if (path.StartsWithSegments("/health") || path.StartsWithSegments("/ready"))
+        {
+            ApplyHealthCorsHeaders(context, allowedHealthOrigins);
+
+            if (HttpMethods.IsOptions(context.Request.Method))
+            {
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
+                return;
+            }
+        }
+
+        await next(context);
+    });
 
     // 1. Global exception handler (first in pipeline)
     app.UseMiddleware<GlobalExceptionMiddleware>();

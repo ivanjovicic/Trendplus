@@ -54,8 +54,8 @@ public static class AllEndpoints
     {
         // ============ HEALTH & MONITORING ============
         
-        // Main health check
-        app.MapGet("/health", (IMessageBroker messageBroker, WorkerHealthService workerHealth) =>
+        // System health details. The public /health endpoint is mapped in Program.cs and is used by hosts/clients.
+        app.MapGet("/api/system/health", (IMessageBroker messageBroker, WorkerHealthService workerHealth) =>
         {
             var rabbitMq = messageBroker as RabbitMqMessageBroker;
             var workersHealth = workerHealth.GetHealthSummary();
@@ -72,7 +72,7 @@ public static class AllEndpoints
                 Timestamp = DateTime.UtcNow
             });
         })
-        .WithName("HealthCheck")
+        .WithName("SystemHealthCheck")
         .WithTags("System");
 
         // Worker health status
