@@ -1,0 +1,122 @@
+- generic [ref=e4]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Trendplus
+        - heading "Backoffice" [level=1] [ref=e10]
+      - button "Skupi meni" [ref=e12]:
+        - img [ref=e13]
+    - navigation [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - button "Kontrolna tabla" [ref=e18]:
+            - generic [ref=e19]:
+              - img [ref=e20]
+              - generic [ref=e25]: Kontrolna tabla
+            - img [ref=e26]
+          - list [ref=e28]:
+            - listitem [ref=e29]:
+              - link "Početna" [ref=e30] [cursor=pointer]:
+                - /url: /
+                - img [ref=e31]
+                - generic [ref=e37]: Početna
+            - listitem [ref=e38]:
+              - link "Trend pregled Funkcionalnost u test fazi" [ref=e39] [cursor=pointer]:
+                - /url: /trend-dashboard
+                - img [ref=e40]
+                - generic [ref=e43]:
+                  - generic [ref=e44]: Trend pregled
+                  - generic "Funkcionalnost u test fazi" [ref=e45]: Test
+            - listitem [ref=e46]:
+              - link "Runtime Scoring Funkcionalnost u test fazi" [ref=e47] [cursor=pointer]:
+                - /url: /runtime-scoring
+                - img [ref=e48]
+                - generic [ref=e53]:
+                  - generic [ref=e54]: Runtime Scoring
+                  - generic "Funkcionalnost u test fazi" [ref=e55]: Test
+            - listitem [ref=e56]:
+              - link "Trening modela Funkcionalnost u test fazi" [ref=e57] [cursor=pointer]:
+                - /url: /open-training
+                - img [ref=e58]
+                - generic [ref=e63]:
+                  - generic [ref=e64]: Trening modela
+                  - generic "Funkcionalnost u test fazi" [ref=e65]: Test
+        - button "Unos i prodaja" [ref=e67]:
+          - generic [ref=e68]:
+            - img [ref=e69]
+            - generic [ref=e73]: Unos i prodaja
+          - img [ref=e74]
+        - button "Katalog i pregledi" [ref=e77]:
+          - generic [ref=e78]:
+            - img [ref=e79]
+            - generic [ref=e83]: Katalog i pregledi
+          - img [ref=e84]
+        - button "Šifarnici" [ref=e87]:
+          - generic [ref=e88]:
+            - img [ref=e89]
+            - generic [ref=e92]: Šifarnici
+          - img [ref=e93]
+        - button "Analitika" [ref=e96]:
+          - generic [ref=e97]:
+            - img [ref=e98]
+            - generic [ref=e100]: Analitika
+          - img [ref=e101]
+        - button "Trendovi i scraperi Ova sekcija je u fazi testa — mogući prekidi" [ref=e104]:
+          - generic [ref=e105]:
+            - img [ref=e106]
+            - generic [ref=e111]: Trendovi i scraperi
+            - generic "Ova sekcija je u fazi testa — mogući prekidi" [ref=e112]: Test
+          - img [ref=e113]
+        - button "Nadzor i admin" [ref=e116]:
+          - generic [ref=e117]:
+            - img [ref=e118]
+            - generic [ref=e120]: Nadzor i admin
+          - img [ref=e121]
+  - generic [ref=e123]:
+    - banner [ref=e124]:
+      - generic [ref=e125]:
+        - generic [ref=e126]:
+          - img [ref=e127]
+          - generic [ref=e130]: Backend
+          - generic [ref=e131]: PROVERA
+        - generic [ref=e132]:
+          - generic "Kontrola periodicnog pingovanja API-ja iz frontenda" [ref=e133]: "API ping: ON"
+          - button "Stop" [ref=e134]
+        - generic [ref=e135]:
+          - generic "Worker status" [ref=e136]: "Workeri: ucitavanje..."
+          - button "Locked" [disabled] [ref=e137]
+          - button "Osvezi" [ref=e138] [cursor=pointer]
+        - generic [ref=e139]:
+          - generic "Redis cache status" [ref=e140]: "Redis: ucitavanje..."
+          - button "Start Redis" [disabled] [ref=e141]
+        - generic [ref=e142]:
+          - generic [ref=e143]: Prikaz
+          - combobox [ref=e144]:
+            - option "Sve" [selected]
+            - option "Postojeci"
+            - option "Importovani"
+          - link "Teme" [ref=e145] [cursor=pointer]:
+            - /url: /settings/themes
+            - img [ref=e146]
+            - text: Teme
+          - button "Osvezi" [ref=e149]:
+            - img [ref=e150]
+            - text: Osvezi
+    - main [ref=e155]
+    - contentinfo [ref=e157]:
+      - generic [ref=e158]:
+        - generic [ref=e159]:
+          - heading "Obuća Trend Plus" [level=3] [ref=e160]
+          - paragraph [ref=e161]: Vaša pouzdana prodavnica obuće sa tradicijom i kvalitetom.
+        - generic [ref=e162]:
+          - heading "Lokacija" [level=4] [ref=e163]
+          - paragraph [ref=e164]: Trgovačka 30B, Beograd (Čukarica), Srbija
+          - link "Prikaži na mapi" [ref=e165] [cursor=pointer]:
+            - /url: https://www.google.com/maps/search/?api=1&query=Trgovačka+30B+Beograd+Čukarica
+        - generic [ref=e166]:
+          - heading "Pratite nas" [level=4] [ref=e167]
+          - paragraph [ref=e168]: Facebook @trendplusobuca
+          - paragraph [ref=e169]: Instagram @trendplusobuca
+      - generic [ref=e170]:
+        - generic [ref=e171]: © 2026 Obuća Trend Plus. Sva prava zadržana.
+        - generic [ref=e172]: Made with love in Belgrade

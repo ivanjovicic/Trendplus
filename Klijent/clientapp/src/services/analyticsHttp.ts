@@ -21,6 +21,10 @@ export class ApiHttpError extends Error {
 const DEFAULT_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
 
+type FailoverAwareWindow = Window & {
+  __trendplusFailoverInstalled?: boolean;
+};
+
 async function parseApiError(res: Response, fallbackMessage?: string): Promise<string> {
   const contentType = res.headers.get("content-type") ?? "";
 
@@ -45,6 +49,26 @@ async function parseApiError(res: Response, fallbackMessage?: string): Promise<s
   return fallbackMessage ?? `HTTP ${res.status}`;
 }
 
+function isApiFailoverLayerActive(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean((window as FailoverAwareWindow).__trendplusFailoverInstalled);
+}
+
+async function fetchAnalyticsResponse(
+  url: string,
+  signal: AbortSignal | undefined,
+  timeoutMs: number
+): Promise<Response> {
+  if (isApiFailoverLayerActive()) {
+    // The global failover fetch layer already applies host failover and per-host
+    // timeouts. Wrapping it in an additional timeout causes the first timeout to
+    // abort the fallback request before it can complete.
+    return fetch(url, { signal });
+  }
+
+  return fetchWithTimeout(url, { signal }, timeoutMs);
+}
+
 /**
  * Sends a request with automatic retry if backend appears to be cold-starting.
  * First attempt has a short timeout for quick failure detection.
@@ -56,10 +80,18 @@ async function fetchWithRetry<T>(
   timeoutMs: number,
   fallbackMessage?: string
 ): Promise<T> {
+  if (isApiFailoverLayerActive()) {
+    const response = await fetchAnalyticsResponse(url, signal, timeoutMs);
+    if (!response.ok) {
+      throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
+    }
+    return (await response.json()) as T;
+  }
+
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
   
   try {
-    const response = await fetchWithTimeout(url, { signal }, firstAttemptTimeoutMs);
+    const response = await fetchAnalyticsResponse(url, signal, firstAttemptTimeoutMs);
     if (!response.ok) {
       throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
     }
@@ -75,7 +107,7 @@ async function fetchWithRetry<T>(
     }
 
     // First attempt timed out - retry with longer timeout (for cold-start backends)
-  const response = await fetchWithTimeout(url, { signal }, totalTimeoutMs);
+    const response = await fetchAnalyticsResponse(url, signal, totalTimeoutMs);
     if (!response.ok) {
       throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
     }

@@ -1,0 +1,203 @@
+- generic [ref=e4]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Trendplus
+        - heading "Backoffice" [level=1] [ref=e10]
+      - button "Skupi meni" [ref=e12]:
+        - img [ref=e13]
+    - navigation [ref=e15]:
+      - generic [ref=e16]:
+        - button "Kontrolna tabla" [ref=e18]:
+          - generic [ref=e19]:
+            - img [ref=e20]
+            - generic [ref=e25]: Kontrolna tabla
+          - img [ref=e26]
+        - button "Unos i prodaja" [ref=e29]:
+          - generic [ref=e30]:
+            - img [ref=e31]
+            - generic [ref=e35]: Unos i prodaja
+          - img [ref=e36]
+        - button "Katalog i pregledi" [ref=e39]:
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e45]: Katalog i pregledi
+          - img [ref=e46]
+        - button "Šifarnici" [ref=e49]:
+          - generic [ref=e50]:
+            - img [ref=e51]
+            - generic [ref=e54]: Šifarnici
+          - img [ref=e55]
+        - generic [ref=e57]:
+          - button "Analitika" [ref=e58]:
+            - generic [ref=e59]:
+              - img [ref=e60]
+              - generic [ref=e62]: Analitika
+            - img [ref=e63]
+          - list [ref=e65]:
+            - listitem [ref=e66]:
+              - link "Prodaja po dobavljačima" [ref=e67] [cursor=pointer]:
+                - /url: /analytics/supplier-sales-stats
+                - img [ref=e68]
+                - generic [ref=e72]: Prodaja po dobavljačima
+            - listitem [ref=e73]:
+              - link "Prodaja po tipu obuće" [ref=e74] [cursor=pointer]:
+                - /url: /analytics/shoe-type-sales-stats
+                - img [ref=e75]
+                - generic [ref=e79]: Prodaja po tipu obuće
+            - listitem [ref=e80]:
+              - link "Prodaja po smeni i dobavljačima" [ref=e81] [cursor=pointer]:
+                - /url: /analytics/daily-sales
+                - img [ref=e82]
+                - generic [ref=e86]: Prodaja po smeni i dobavljačima
+            - listitem [ref=e87]:
+              - link "Pre/Posle nivelacije" [ref=e88] [cursor=pointer]:
+                - /url: /analytics/nivelacije-pre-post
+                - img [ref=e89]
+                - generic [ref=e93]: Pre/Posle nivelacije
+            - listitem [ref=e94]:
+              - link "Prodaja po boji artikla" [ref=e95] [cursor=pointer]:
+                - /url: /analytics/color-sales-stats
+                - img [ref=e96]
+                - generic [ref=e103]: Prodaja po boji artikla
+            - listitem [ref=e104]:
+              - link "Data quality" [ref=e105] [cursor=pointer]:
+                - /url: /analytics/data-quality
+                - img [ref=e106]
+                - generic [ref=e109]: Data quality
+            - listitem [ref=e110]:
+              - link "Bilans stanja" [ref=e111] [cursor=pointer]:
+                - /url: /analytics/inventory
+                - img [ref=e112]
+                - generic [ref=e123]: Bilans stanja
+            - listitem [ref=e124]:
+              - link "Pregled analitike" [ref=e125] [cursor=pointer]:
+                - /url: /analytics
+                - img [ref=e126]
+                - generic [ref=e129]: Pregled analitike
+            - listitem [ref=e130]:
+              - link "Prioriteti nivelacije" [ref=e131] [cursor=pointer]:
+                - /url: /analytics/pre-nivelacija-prioriteti
+                - img [ref=e132]
+                - generic [ref=e136]: Prioriteti nivelacije
+            - listitem [ref=e137]:
+              - link "Dobavljači i tipovi obuće" [ref=e138] [cursor=pointer]:
+                - /url: /analytics/dobavljaci-tipovi-obuce
+                - img [ref=e139]
+                - generic [ref=e143]: Dobavljači i tipovi obuće
+            - listitem [ref=e144]:
+              - link "Odluke o dobavljačima" [ref=e145] [cursor=pointer]:
+                - /url: /analytics/supplier-decision-hub
+                - img [ref=e146]
+                - generic [ref=e151]: Odluke o dobavljačima
+            - listitem [ref=e152]:
+              - link "Insight Studio" [ref=e153] [cursor=pointer]:
+                - /url: /analytics/insight-studio
+                - img [ref=e154]
+                - generic [ref=e159]: Insight Studio
+            - listitem [ref=e160]:
+              - link "Detaljne analize" [ref=e161] [cursor=pointer]:
+                - /url: /analytics-details
+                - img [ref=e162]
+                - generic [ref=e165]: Detaljne analize
+            - listitem [ref=e166]:
+              - link "Zajednički proizvodi" [ref=e167] [cursor=pointer]:
+                - /url: /admin/common-products
+                - img [ref=e168]
+                - generic [ref=e179]: Zajednički proizvodi
+        - button "Trendovi i scraperi Ova sekcija je u fazi testa — mogući prekidi" [ref=e181]:
+          - generic [ref=e182]:
+            - img [ref=e183]
+            - generic [ref=e188]: Trendovi i scraperi
+            - generic "Ova sekcija je u fazi testa — mogući prekidi" [ref=e189]: Test
+          - img [ref=e190]
+        - button "Nadzor i admin" [ref=e193]:
+          - generic [ref=e194]:
+            - img [ref=e195]
+            - generic [ref=e197]: Nadzor i admin
+          - img [ref=e198]
+  - generic [ref=e200]:
+    - banner [ref=e201]:
+      - generic [ref=e202]:
+        - generic [ref=e203]:
+          - img [ref=e204]
+          - generic [ref=e207]: Backend
+          - generic [ref=e208]: ONLINE
+        - generic [ref=e209]:
+          - generic "Kontrola periodicnog pingovanja API-ja iz frontenda" [ref=e210]: "API ping: ON"
+          - button "Stop" [ref=e211]
+        - generic [ref=e212]:
+          - generic "Worker status" [ref=e213]: "Workeri: ucitavanje..."
+          - button "Locked" [disabled] [ref=e214]
+          - button "Osvezi" [ref=e215] [cursor=pointer]
+        - generic [ref=e216]:
+          - generic "Redis cache status" [ref=e217]: "Redis: ucitavanje..."
+          - button "Start Redis" [disabled] [ref=e218]
+        - generic [ref=e219]:
+          - generic [ref=e220]: Prikaz
+          - combobox [ref=e221]:
+            - option "Sve" [selected]
+            - option "Postojeci"
+            - option "Importovani"
+          - link "Teme" [ref=e222] [cursor=pointer]:
+            - /url: /settings/themes
+            - img [ref=e223]
+            - text: Teme
+          - button "Osvezi" [ref=e226]:
+            - img [ref=e227]
+            - text: Osvezi
+    - main [ref=e232]:
+      - generic [ref=e234]:
+        - generic [ref=e236]:
+          - heading "Prodaja po dobavljačima" [level=1] [ref=e237]
+          - paragraph [ref=e238]: "Decision-support pregled za izbor dobavljača: fokus na promet, doprinos i akciju."
+        - generic [ref=e239]:
+          - generic [ref=e240]:
+            - generic [ref=e241]: Period
+            - combobox "Period" [ref=e242]:
+              - option "Poslednjih 30 dana" [selected]
+              - option "Poslednjih 90 dana"
+              - option "Poslednjih 180 dana"
+              - option "Poslednjih 365 dana"
+              - option "Prilagođeno"
+          - generic [ref=e243]:
+            - generic [ref=e244]: Od
+            - textbox "Od" [ref=e245]: 2026-03-27
+          - generic [ref=e246]:
+            - generic [ref=e247]: Do
+            - textbox "Do" [ref=e248]: 2026-04-25
+          - generic [ref=e249]:
+            - generic [ref=e250]: Sezona
+            - combobox "Sezona" [ref=e251]:
+              - option "Sve sezone" [selected]
+          - generic [ref=e252]:
+            - generic [ref=e253]: Objekat
+            - combobox "Objekat" [ref=e254]:
+              - option "Svi objekti" [selected]
+          - generic [ref=e255]:
+            - generic [ref=e256]: Prikazi unknown
+            - checkbox "Prikazi unknown" [checked] [ref=e257]
+          - generic [ref=e258]:
+            - button "Primeni" [disabled] [ref=e259]
+            - button "Reset" [disabled] [ref=e260]
+        - status [ref=e261]:
+          - status "Učitavam podatke o dobavljačima" [ref=e262]:
+            - generic [ref=e266]: Učitavam podatke o dobavljačima
+          - generic [ref=e267]: Učitavam podatke o dobavljačima...
+    - contentinfo [ref=e269]:
+      - generic [ref=e270]:
+        - generic [ref=e271]:
+          - heading "Obuća Trend Plus" [level=3] [ref=e272]
+          - paragraph [ref=e273]: Vaša pouzdana prodavnica obuće sa tradicijom i kvalitetom.
+        - generic [ref=e274]:
+          - heading "Lokacija" [level=4] [ref=e275]
+          - paragraph [ref=e276]: Trgovačka 30B, Beograd (Čukarica), Srbija
+          - link "Prikaži na mapi" [ref=e277] [cursor=pointer]:
+            - /url: https://www.google.com/maps/search/?api=1&query=Trgovačka+30B+Beograd+Čukarica
+        - generic [ref=e278]:
+          - heading "Pratite nas" [level=4] [ref=e279]
+          - paragraph [ref=e280]: Facebook @trendplusobuca
+          - paragraph [ref=e281]: Instagram @trendplusobuca
+      - generic [ref=e282]:
+        - generic [ref=e283]: © 2026 Obuća Trend Plus. Sva prava zadržana.
+        - generic [ref=e284]: Made with love in Belgrade
