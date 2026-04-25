@@ -13,6 +13,12 @@ type RuntimeFailoverState = {
   lastPrimaryProbeAt: number | null;
 };
 
+export const API_FAILOVER_TIMEOUT_MS_OPTION = "trendplusTimeoutMs" as const;
+
+export type ApiFailoverRequestInit = RequestInit & {
+  [API_FAILOVER_TIMEOUT_MS_OPTION]?: number;
+};
+
 const STORAGE_KEY = "trendplus:api-failover-state:v1";
 const HOST_CHANGED_EVENT = "trendplus:api-host-changed";
 
@@ -56,6 +62,22 @@ function normalizePath(raw: string): string {
 function readMsFromEnv(name: string, fallback: number): number {
   const parsed = Number(import.meta.env[name]);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function readPositiveMs(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getRequestTimeoutMs(init: ApiFailoverRequestInit | undefined): number {
+  return readPositiveMs(init?.[API_FAILOVER_TIMEOUT_MS_OPTION]) ?? requestTimeoutMs;
+}
+
+function stripFailoverOptions(init: ApiFailoverRequestInit | undefined): RequestInit | undefined {
+  if (!init || !(API_FAILOVER_TIMEOUT_MS_OPTION in init)) return init;
+
+  const { [API_FAILOVER_TIMEOUT_MS_OPTION]: _timeoutMs, ...nativeInit } = init;
+  return nativeInit;
 }
 
 function toOrigin(baseUrl: string): string | null {
@@ -396,16 +418,18 @@ async function fetchWithTimeoutVia(
 async function executeApiRequest(
   nativeFetch: typeof window.fetch,
   input: RequestInfo | URL,
-  init: RequestInit | undefined
+  init: ApiFailoverRequestInit | undefined
 ): Promise<Response> {
   const requestSource: RequestInfo | URL = input instanceof Request ? input.clone() : input;
   const targetBase = resolveTargetBaseUrl();
   const targetUrl = rewriteUrlForTarget(requestSource, targetBase);
   const targetInput = buildRewrittenInput(requestSource, targetUrl);
   const initialHost = runtimeState.activeHost;
+  const timeoutMs = getRequestTimeoutMs(init);
+  const nativeInit = stripFailoverOptions(init);
 
   try {
-    const response = await fetchWithTimeoutVia(nativeFetch, targetInput, init, requestTimeoutMs);
+    const response = await fetchWithTimeoutVia(nativeFetch, targetInput, nativeInit, timeoutMs);
 
     if (
       failoverConfigured &&
@@ -416,7 +440,7 @@ async function executeApiRequest(
       const retrySource = requestSource instanceof Request ? requestSource.clone() : requestSource;
       const fallbackUrl = rewriteUrlForTarget(retrySource, fallbackBaseUrl);
       const fallbackInput = buildRewrittenInput(retrySource, fallbackUrl);
-      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, init, requestTimeoutMs);
+      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, timeoutMs);
     }
 
     if (
@@ -427,7 +451,8 @@ async function executeApiRequest(
       const rescued = await tryPrimaryRescueAfterFallbackFailure(
         nativeFetch,
         requestSource,
-        init,
+        nativeInit,
+        timeoutMs,
         `status_${response.status}`
       );
       if (rescued) {
@@ -437,8 +462,8 @@ async function executeApiRequest(
 
     return response;
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError" && init?.signal?.aborted) {
-      const abortReason = init.signal.reason;
+    if (error instanceof DOMException && error.name === "AbortError" && nativeInit?.signal?.aborted) {
+      const abortReason = nativeInit.signal.reason;
       const timeoutAbort =
         abortReason instanceof DOMException &&
         abortReason.name === "TimeoutError";
@@ -457,7 +482,7 @@ async function executeApiRequest(
       const retrySource = requestSource instanceof Request ? requestSource.clone() : requestSource;
       const fallbackUrl = rewriteUrlForTarget(retrySource, fallbackBaseUrl);
       const fallbackInput = buildRewrittenInput(retrySource, fallbackUrl);
-      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, init, requestTimeoutMs);
+      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, timeoutMs);
     }
 
     if (
@@ -468,7 +493,8 @@ async function executeApiRequest(
       const rescued = await tryPrimaryRescueAfterFallbackFailure(
         nativeFetch,
         requestSource,
-        init,
+        nativeInit,
+        timeoutMs,
         error instanceof Error ? error.message : "fallback_transport_failure"
       );
       if (rescued) {
@@ -484,6 +510,7 @@ async function tryPrimaryRescueAfterFallbackFailure(
   nativeFetch: typeof window.fetch,
   requestSource: RequestInfo | URL,
   init: RequestInit | undefined,
+  timeoutMs: number,
   reason: string
 ): Promise<Response | null> {
   debugLog("Fallback API failed while active; probing primary immediately", { reason });
@@ -500,7 +527,7 @@ async function tryPrimaryRescueAfterFallbackFailure(
   const primaryInput = buildRewrittenInput(retrySource, primaryUrl);
 
   try {
-    const response = await fetchWithTimeoutVia(nativeFetch, primaryInput, init, requestTimeoutMs);
+    const response = await fetchWithTimeoutVia(nativeFetch, primaryInput, init, timeoutMs);
     if (isAvailabilityHttpStatus(response.status)) {
       keepFallbackActiveAfterPrimaryProbeFailure(`rescue_status_${response.status}`);
       return null;

@@ -1,4 +1,8 @@
 import { makeUrl } from "./analyticsApi";
+import {
+  API_FAILOVER_TIMEOUT_MS_OPTION,
+  type ApiFailoverRequestInit,
+} from "../utils/apiFailover";
 import { FetchTimeoutError, fetchWithTimeout } from "../utils/fetchWithTimeout";
 import { API_COLD_START_TIMEOUT_MS, getRetryTimeouts } from "../utils/apiTimeouts";
 
@@ -63,7 +67,11 @@ async function fetchAnalyticsResponse(
     // The global failover fetch layer already applies host failover and per-host
     // timeouts. Wrapping it in an additional timeout causes the first timeout to
     // abort the fallback request before it can complete.
-    return fetch(url, { signal });
+    const init: ApiFailoverRequestInit = {
+      signal,
+      [API_FAILOVER_TIMEOUT_MS_OPTION]: timeoutMs,
+    };
+    return fetch(url, init);
   }
 
   return fetchWithTimeout(url, { signal }, timeoutMs);
