@@ -34,6 +34,11 @@ const primaryOrigin = toOrigin(primaryBaseUrl);
 const fallbackOrigin = toOrigin(fallbackBaseUrl);
 
 const requestTimeoutMs = readMsFromEnv("VITE_API_REQUEST_TIMEOUT_MS", import.meta.env.DEV ? 15_000 : 25_000);
+const primaryRequestTimeoutMs = Math.min(
+  readMsFromEnv("VITE_API_PRIMARY_REQUEST_TIMEOUT_MS", import.meta.env.DEV ? 8_000 : 5_000),
+  requestTimeoutMs
+);
+const fallbackRequestTimeoutMs = readMsFromEnv("VITE_API_FALLBACK_REQUEST_TIMEOUT_MS", requestTimeoutMs);
 const probeTimeoutMs = readMsFromEnv("VITE_API_FALLBACK_PROBE_TIMEOUT_MS", import.meta.env.DEV ? 3_000 : 5_000);
 const primaryRetryCooldownMs = readMsFromEnv("VITE_API_PRIMARY_RETRY_COOLDOWN_MS", import.meta.env.DEV ? 30_000 : 180_000);
 const stateTtlMs = readMsFromEnv("VITE_API_FAILOVER_STATE_TTL_MS", import.meta.env.DEV ? 15 * 60_000 : 30 * 60_000);
@@ -69,8 +74,13 @@ function readPositiveMs(value: unknown): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function getRequestTimeoutMs(init: ApiFailoverRequestInit | undefined): number {
-  return readPositiveMs(init?.[API_FAILOVER_TIMEOUT_MS_OPTION]) ?? requestTimeoutMs;
+function getRequestTimeoutMs(init: ApiFailoverRequestInit | undefined, host: ApiHostRole): number {
+  const requestedTimeoutMs = readPositiveMs(init?.[API_FAILOVER_TIMEOUT_MS_OPTION]);
+  if (host === "primary") {
+    return Math.min(requestedTimeoutMs ?? primaryRequestTimeoutMs, primaryRequestTimeoutMs);
+  }
+
+  return requestedTimeoutMs ?? fallbackRequestTimeoutMs;
 }
 
 function stripFailoverOptions(init: ApiFailoverRequestInit | undefined): RequestInit | undefined {
@@ -425,11 +435,13 @@ async function executeApiRequest(
   const targetUrl = rewriteUrlForTarget(requestSource, targetBase);
   const targetInput = buildRewrittenInput(requestSource, targetUrl);
   const initialHost = runtimeState.activeHost;
-  const timeoutMs = getRequestTimeoutMs(init);
+  const initialTimeoutMs = getRequestTimeoutMs(init, initialHost);
+  const primaryTimeoutMs = getRequestTimeoutMs(init, "primary");
+  const fallbackTimeoutMs = getRequestTimeoutMs(init, "fallback");
   const nativeInit = stripFailoverOptions(init);
 
   try {
-    const response = await fetchWithTimeoutVia(nativeFetch, targetInput, nativeInit, timeoutMs);
+    const response = await fetchWithTimeoutVia(nativeFetch, targetInput, nativeInit, initialTimeoutMs);
 
     if (
       failoverConfigured &&
@@ -440,7 +452,7 @@ async function executeApiRequest(
       const retrySource = requestSource instanceof Request ? requestSource.clone() : requestSource;
       const fallbackUrl = rewriteUrlForTarget(retrySource, fallbackBaseUrl);
       const fallbackInput = buildRewrittenInput(retrySource, fallbackUrl);
-      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, timeoutMs);
+      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, fallbackTimeoutMs);
     }
 
     if (
@@ -452,7 +464,7 @@ async function executeApiRequest(
         nativeFetch,
         requestSource,
         nativeInit,
-        timeoutMs,
+        primaryTimeoutMs,
         `status_${response.status}`
       );
       if (rescued) {
@@ -482,7 +494,7 @@ async function executeApiRequest(
       const retrySource = requestSource instanceof Request ? requestSource.clone() : requestSource;
       const fallbackUrl = rewriteUrlForTarget(retrySource, fallbackBaseUrl);
       const fallbackInput = buildRewrittenInput(retrySource, fallbackUrl);
-      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, timeoutMs);
+      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, fallbackTimeoutMs);
     }
 
     if (
@@ -494,7 +506,7 @@ async function executeApiRequest(
         nativeFetch,
         requestSource,
         nativeInit,
-        timeoutMs,
+        primaryTimeoutMs,
         error instanceof Error ? error.message : "fallback_transport_failure"
       );
       if (rescued) {
@@ -621,14 +633,17 @@ export function installApiFailoverFetchLayer(): void {
     primaryBaseUrl,
     fallbackBaseUrl,
     requestTimeoutMs,
+    primaryRequestTimeoutMs,
+    fallbackRequestTimeoutMs,
     probeTimeoutMs,
     primaryRetryCooldownMs,
   });
 
-  // If fallback state was persisted from a previous session, run a single
-  // startup probe so we can quickly return to primary when it is healthy again.
+  // If fallback state was persisted, respect the cooldown before probing the
+  // primary again. A fast /health can recover before slower analytics endpoints
+  // are actually usable, so avoid flipping back on every page reload.
   if (runtimeState.activeHost === "fallback") {
-    void maybeRecoverPrimary(nativeFetch, true);
+    void maybeRecoverPrimary(nativeFetch);
   }
 
   window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
