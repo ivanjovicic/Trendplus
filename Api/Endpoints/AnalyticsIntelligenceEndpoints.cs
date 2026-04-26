@@ -757,8 +757,7 @@ LIMIT @limit OFFSET @offset;
     {
         if (!value.HasValue)
             return;
-
-        where.AppendLine($"  AND {sqlColumn} = @{parameterName}");
+        where.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AND {0} = @{1}", sqlColumn, parameterName));
         parameters.Add(new NpgsqlParameter(parameterName, NpgsqlDbType.Integer) { Value = value.Value });
     }
 
@@ -766,8 +765,7 @@ LIMIT @limit OFFSET @offset;
     {
         if (string.IsNullOrWhiteSpace(value))
             return;
-
-        where.AppendLine($"  AND LOWER(COALESCE({sqlColumn}, '')) = LOWER(@{parameterName})");
+        where.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AND LOWER(COALESCE({0}, '')) = LOWER(@{1})", sqlColumn, parameterName));
         parameters.Add(new NpgsqlParameter(parameterName, NpgsqlDbType.Text) { Value = value });
     }
 
@@ -775,8 +773,7 @@ LIMIT @limit OFFSET @offset;
     {
         if (!value.HasValue)
             return;
-
-        where.AppendLine($"  AND COALESCE({sqlColumn}, 0) >= @{parameterName}");
+        where.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AND COALESCE({0}, 0) >= @{1}", sqlColumn, parameterName));
         parameters.Add(new NpgsqlParameter(parameterName, NpgsqlDbType.Numeric) { Value = value.Value });
     }
 

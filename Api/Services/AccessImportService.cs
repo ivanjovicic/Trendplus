@@ -1247,15 +1247,18 @@ using NpgsqlTypes;
 
             _lastBatchHeartbeatPersistedUtc = now;
             Interlocked.Increment(ref _batchHeartbeatPersistCount);
-            _logger.LogDebug(
-                "Access import batch heartbeat persisted. BatchId: {BatchId}. Step: {Step}. TableName: {TableName}. Reason: {Reason}. Imported: {Imported}. Updated: {Updated}. Errors: {Errors}.",
-                batch.Id,
-                batch.CurrentStep ?? "<none>",
-                batch.CurrentTable ?? "<none>",
-                reason,
-                batch.TotalImported,
-                batch.TotalUpdated,
-                batch.TotalErrors);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug(
+                    "Access import batch heartbeat persisted. BatchId: {BatchId}. Step: {Step}. TableName: {TableName}. Reason: {Reason}. Imported: {Imported}. Updated: {Updated}. Errors: {Errors}.",
+                    batch.Id,
+                    batch.CurrentStep ?? "<none>",
+                    batch.CurrentTable ?? "<none>",
+                    reason,
+                    batch.TotalImported,
+                    batch.TotalUpdated,
+                    batch.TotalErrors);
+            }
         }
         catch (PostgresException ex) when (
             ex.SqlState == PostgresErrorCodes.UndefinedTable ||

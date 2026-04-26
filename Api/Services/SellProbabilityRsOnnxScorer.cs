@@ -183,7 +183,10 @@ public sealed class SellProbabilityRsOnnxScorer : ISellProbabilityRsOnnxScorer, 
 
             old?.Session.Dispose();
 
-            _logger.LogInformation("Loaded active ONNX model: {ModelType} v{Version} ({Path})", newEntry.ModelType, newEntry.Version, newEntry.OnnxPath);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Loaded active ONNX model: {ModelType} v{Version} ({Path})", newEntry.ModelType, newEntry.Version, newEntry.OnnxPath);
+            }
             return _cache;
         }
         finally
