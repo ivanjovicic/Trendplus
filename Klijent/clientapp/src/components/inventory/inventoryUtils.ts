@@ -67,7 +67,8 @@ export function buildInventoryRow(item: InventoryListItem, stores: StoreOption[]
   const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName ?? (item.idDobavljac != null ? `Dobavljac #${item.idDobavljac}` : "Nerasporedjen");
   const storeName = stores.find((entry) => entry.storeId === item.idObjekat)?.storeName ?? (item.idObjekat != null ? `Objekat #${item.idObjekat}` : "Sve lokacije");
   const unitCost = item.nabavnaCena ?? 0;
-  const estimatedValueAmount = item.estimatedValue ?? unitCost * quantity;
+  const positiveQuantity = Math.max(quantity, 0);
+  const estimatedValueAmount = item.estimatedValue ?? unitCost * positiveQuantity;
   const coverageRatio = minimum > 0 ? quantity / minimum : null;
   const stock = getStockState(quantity, minimum);
 

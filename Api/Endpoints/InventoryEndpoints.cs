@@ -30,10 +30,10 @@ public static class InventoryEndpoints
             var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null);
 
             var totalSku = await query.CountAsync(ct);
-            var totalOnHand = await query.SumAsync(a => (int?)a.Kolicina, ct) ?? 0;
+            var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
             var lowStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= (a.MinimalnaKolicina ?? 0) && (a.Kolicina ?? 0) > 0, ct);
             var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
-            var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * (a.Kolicina ?? 0)), ct) ?? 0m;
+            var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
 
             return Results.Ok(new InventoryBalanceDto(
                 TotalSku: totalSku,
@@ -72,7 +72,7 @@ public static class InventoryEndpoints
                     a.Kolicina,
                     a.MinimalnaKolicina,
                     a.NabavnaCena,
-                    (a.NabavnaCena ?? 0m) * (a.Kolicina ?? 0),
+                    (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0),
                     a.IDObjekat,
                     a.IDDobavljac))
                 .ToListAsync(ct);
@@ -513,7 +513,7 @@ public static class InventoryEndpoints
         return sortBy?.Trim().ToLowerInvariant() switch
         {
             "naziv" => query.OrderBy(a => a.Naziv).ThenBy(a => a.Id),
-            "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * (a.Kolicina ?? 0)).ThenBy(a => a.Naziv),
+            "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)).ThenBy(a => a.Naziv),
             "azuriranje" => query.OrderByDescending(a => a.UpdatedAt).ThenBy(a => a.Naziv),
             _ => query.OrderByDescending(a => a.Kolicina ?? 0).ThenBy(a => a.Naziv)
         };
@@ -583,7 +583,7 @@ public static class InventoryEndpoints
                     item.Quantity,
                     item.Minimum,
                     item.UnitCost,
-                    item.UnitCost * item.Quantity,
+                    item.UnitCost * Math.Max(item.Quantity, 0),
                     item.StoreId,
                     ResolveLookup(storeNameMap, item.StoreId),
                     item.SupplierId,

@@ -81,14 +81,14 @@ function AppShell() {
                 <Route path="/analytics/supplier-sales-stats" element={<SupplierSalesStatsPage />} />
                 <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
                 <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+                <Route path="/analytics/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
+                <Route path="/analytics/inventory" element={<InventoryPage />} />
                 <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
                 <Route path="/analytics/data-quality" element={<DataQualityPage />} />
-                <Route path="/analytics/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
                 <Route path="/analytics/insight-studio" element={<InsightStudioPage />} />
                 <Route path="/analytics/pre-nivelacija-prioriteti" element={<PreNivelacijaPriorityPage />} />
                 <Route path="/analytics/dobavljaci-tipovi-obuce" element={<SupplierFootwearAnalyticsPage />} />
                 <Route path="/analytics/supplier-decision-hub" element={<SupplierDecisionHubPage />} />
-                <Route path="/analytics/inventory" element={<InventoryPage />} />
                 <Route path="/analytics-details" element={<AnalyticsDetails />} />
                 <Route path="/analitika/:table/:id" element={<AnalyticsDetailPage />} />
                 <Route path="/print/analytics/:table" element={<AnalyticsPrintPage />} />

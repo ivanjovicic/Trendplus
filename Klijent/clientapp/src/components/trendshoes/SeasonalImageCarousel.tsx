@@ -1,6 +1,10 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import "../../imagecarousel.css";
 import { makeUrl } from "../../services/analyticsApi";
+import {
+    API_FAILOVER_TIMEOUT_MS_OPTION,
+    type ApiFailoverRequestInit,
+} from "../../utils/apiFailover";
 
 type ImageItem = {
     id: number;
@@ -11,6 +15,24 @@ type ImageItem = {
     sourceUrl?: string | null;
 };
 
+const SEASONAL_IMAGES_TIMEOUT_MS = 7_000;
+
+function isExpectedImageLoadFailure(error: unknown): boolean {
+    if (error instanceof DOMException && error.name === "AbortError") return true;
+
+    if (error instanceof Error) {
+        const text = `${error.name} ${error.message}`.toLowerCase();
+        return (
+            text.includes("timeout") ||
+            text.includes("failed to fetch") ||
+            text.includes("networkerror") ||
+            text.includes("api request timed out")
+        );
+    }
+
+    return false;
+}
+
 export default function SeasonalImageCarousel() {
     const [images, setImages] = useState<ImageItem[]>([]);
     const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
@@ -19,7 +41,12 @@ export default function SeasonalImageCarousel() {
 
     useEffect(() => {
         const ac = new AbortController();
-        void fetch(makeUrl("/api/trends/seasonal-images"), { signal: ac.signal })
+        const init: ApiFailoverRequestInit = {
+            signal: ac.signal,
+            [API_FAILOVER_TIMEOUT_MS_OPTION]: SEASONAL_IMAGES_TIMEOUT_MS,
+        };
+
+        void fetch(makeUrl("/api/trends/seasonal-images"), init)
             .then(r => {
                 if (!r.ok) throw new Error("Failed to load images");
                 return r.json();
@@ -33,7 +60,11 @@ export default function SeasonalImageCarousel() {
                 }
             })
             .catch(err => {
-                if ((err as any)?.name === 'AbortError') return;
+                if (isExpectedImageLoadFailure(err)) {
+                    setImages([]);
+                    return;
+                }
+
                 console.error("Error loading seasonal images:", err);
                 setImages([]);
             });
