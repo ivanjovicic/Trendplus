@@ -77,6 +77,15 @@ public static class AnalyticsCacheKeys
         return normalized.ToString("yyyyMMddHHmm");
     }
 
+    private static string FormatTicks(DateTime? value) =>
+        value.HasValue ? value.Value.Ticks.ToString() : string.Empty;
+
+    private static string FormatNullable(int? value) =>
+        value.HasValue ? value.Value.ToString() : string.Empty;
+
+    private static string FormatNullable(long? value) =>
+        value.HasValue ? value.Value.ToString() : string.Empty;
+
     private static string FilterSuffix(int? storeId, int? supplierId, string? dataScope = null) =>
         $"store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}";
     
@@ -156,6 +165,18 @@ public static class AnalyticsCacheKeys
 
     public const string Stores = $"{Prefix}filters:stores";
 
+    // Keeps the historical heavy-endpoint key dimensions: period, store, season, data scope, and active snapshot batch.
+    public static string SupplierSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
+        $"{Prefix}supplier-sales-stats:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
+
+    public static string ShoeTypeSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
+        $"{Prefix}shoe-type-sales-stats:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
+
+    public static string SalesDataWindow(int? storeId = null, string? dataScope = null) =>
+        $"{Prefix}data-window:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}";
+
+    public static string Metadata(string cacheKey) => $"{cacheKey}:metadata";
+
     public static string DashboardBootstrap(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) =>
         $"{Prefix}dashboard-bootstrap:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
@@ -192,6 +213,9 @@ public static class CacheExpiration
     
     /// <summary>Duži rok - 15 minuta (za podatke koji se retko menjaju)</summary>
     public static readonly TimeSpan Long = TimeSpan.FromMinutes(15);
+
+    /// <summary>Teški analytics ekrani - 20 minuta da se smanji broj skupih recompute-ova.</summary>
+    public static readonly TimeSpan HeavyAnalytics = TimeSpan.FromMinutes(20);
     
     /// <summary>Veoma dugo - 1 sat (za historijske podatke)</summary>
     public static readonly TimeSpan VeryLong = TimeSpan.FromHours(1);

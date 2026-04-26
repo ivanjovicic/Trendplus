@@ -28,6 +28,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
 using Infrastructure.Configuration;
+using Infrastructure.Services.Caching;
 using Microsoft.Extensions.Options;
 using Domain.Model.TrendShoes;
 using Application.TrendShoes;
@@ -977,6 +978,7 @@ public static class AllEndpoints
             TrendplusDbContext db,
             IMemoryCache cache,
             ILogger<Program> logger,
+            HttpContext httpContext,
             IOptions<AnalyticsSnapshotOptions> snapshotOptionsRaw,
             int? sezonaId = null,
             DateTime? fromDate = null,
@@ -1084,13 +1086,17 @@ public static class AllEndpoints
 
                 var snapshotPathUsed = snapshotOptions.UseSnapshotCost && activeBatchId.HasValue;
 
-                var cacheKey = $"supplier-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}:snap:{activeBatchId}";
+                var isPrewarmRequest = IsPrewarmRequest(httpContext);
+                var cacheKey = AnalyticsCacheKeys.SupplierSalesStats(fromUtc, toUtc, storeId, sezonaId, normalizedDataScope, activeBatchId);
+                var cacheMetadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
                 if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
                 {
+                    var cacheMetadata = cache.Get<AnalyticsCacheEntryMetadata>(cacheMetadataKey);
                     requestStopwatch.Stop();
                     logger.LogInformation(
-                        "Supplier-sales-stats served from cache in {ElapsedMs}ms (snapshotFeatureEnabled={SnapshotFeatureEnabled}, snapshotPathUsed={SnapshotPathUsed}, activeBatchId={ActiveBatchId}, dataScope={DataScope}, storeId={StoreId}, sezonaId={SezonaId})",
+                        "Supplier-sales-stats cache hit in {ElapsedMs}ms. Prewarmed={Prewarmed} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId}",
                         requestStopwatch.ElapsedMilliseconds,
+                        cacheMetadata?.CreatedByPrewarm ?? false,
                         snapshotOptions.UseSnapshotCost,
                         snapshotPathUsed,
                         activeBatchId,
@@ -1099,6 +1105,18 @@ public static class AllEndpoints
                         sezonaId);
                     return Results.Ok(cachedResponse);
                 }
+
+                logger.LogInformation(
+                    "Supplier-sales-stats cache miss. PrewarmRequest={PrewarmRequest} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId}",
+                    isPrewarmRequest,
+                    snapshotOptions.UseSnapshotCost,
+                    snapshotPathUsed,
+                    activeBatchId,
+                    normalizedDataScope,
+                    storeId,
+                    sezonaId);
+
+                var dbStopwatch = Stopwatch.StartNew();
 
                 // Load per-article snapshot costs when active batch exists
                 Dictionary<int, decimal> snapshotCostByArtikalId = [];
@@ -1111,27 +1129,9 @@ public static class AllEndpoints
                         .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
                 }
 
-                var dataWindow = await (
-                    from pz in db.ProdajaZaglavlja.AsNoTracking()
-                    join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
-                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                    where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                       && (!importedOnly || a.DataOrigin == "access")
-                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
-                    group pz by 1 into g
-                    select new
-                    {
-                        fromDate = g.Min(x => (DateTime?)x.DatumProdaje),
-                        toDate = g.Max(x => (DateTime?)x.DatumProdaje)
-                    })
-                    .FirstOrDefaultAsync(ct);
-
-                DateTime? dataWindowFrom = dataWindow?.fromDate.HasValue == true
-                    ? DateTime.SpecifyKind(dataWindow.fromDate.Value, DateTimeKind.Utc)
-                    : null;
-                DateTime? dataWindowTo = dataWindow?.toDate.HasValue == true
-                    ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
-                    : null;
+                var dataWindow = await GetSalesDataWindowAsync(db, cache, logger, storeId, normalizedDataScope, ct);
+                DateTime? dataWindowFrom = dataWindow.FromDate;
+                DateTime? dataWindowTo = dataWindow.ToDate;
 
                 var supplierNames = await db.Dobavljaci.AsNoTracking()
                     .Select(d => new { d.Id, d.Naziv })
@@ -1226,6 +1226,28 @@ public static class AllEndpoints
                         ProductCostLegacy = g.Key.ProductCostLegacy
                     })
                     .ToListAsync(ct);
+
+                var sezone = (await db.Sezone.AsNoTracking()
+                    .OrderByDescending(s => s.DatumOd)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.Naziv,
+                        s.DatumOd,
+                        s.DatumDo
+                    })
+                    .ToListAsync(ct))
+                    .Select(s => new
+                    {
+                        id = s.Id,
+                        naziv = s.Naziv,
+                        datumOd = DateTime.SpecifyKind(s.DatumOd.Date, DateTimeKind.Utc),
+                        datumDo = DateTime.SpecifyKind(s.DatumDo.Date, DateTimeKind.Utc)
+                    })
+                    .ToList();
+
+                dbStopwatch.Stop();
+                var processingStopwatch = Stopwatch.StartNew();
 
                 string ResolveSupplierName(int? supplierId)
                 {
@@ -1605,25 +1627,6 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
-                var sezone = (await db.Sezone.AsNoTracking()
-                    .OrderByDescending(s => s.DatumOd)
-                    .Select(s => new
-                    {
-                        s.Id,
-                        s.Naziv,
-                        s.DatumOd,
-                        s.DatumDo
-                    })
-                    .ToListAsync(ct))
-                    .Select(s => new
-                    {
-                        id = s.Id,
-                        naziv = s.Naziv,
-                        datumOd = DateTime.SpecifyKind(s.DatumOd.Date, DateTimeKind.Utc),
-                        datumDo = DateTime.SpecifyKind(s.DatumDo.Date, DateTimeKind.Utc)
-                    })
-                    .ToList();
-
                 var response = new
                 {
                     generatedAt = DateTime.UtcNow,
@@ -1640,11 +1643,19 @@ public static class AllEndpoints
                     sezone
                 };
 
-                cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+                processingStopwatch.Stop();
+                cache.Set(cacheKey, response, CacheExpiration.HeavyAnalytics);
+                cache.Set(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics);
                 requestStopwatch.Stop();
                 logger.LogInformation(
-                    "Supplier-sales-stats computed in {ElapsedMs}ms (snapshotFeatureEnabled={SnapshotFeatureEnabled}, snapshotPathUsed={SnapshotPathUsed}, activeBatchId={ActiveBatchId}, dataScope={DataScope}, storeId={StoreId}, sezonaId={SezonaId}, supplierCount={SupplierCount}, snapshotCoveragePct={SnapshotCoveragePct:F2}, liveFallbackPct={LiveFallbackPct:F2}, noCostPct={NoCostPct:F2})",
+                    "Supplier-sales-stats cache miss computed in {ElapsedMs}ms. DbMs={DbMs} ProcessingMs={ProcessingMs} DataWindowCacheHit={DataWindowCacheHit} DataWindowMs={DataWindowMs} PrewarmRequest={PrewarmRequest} TtlMinutes={TtlMinutes} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId} SupplierCount={SupplierCount} SnapshotCoveragePct={SnapshotCoveragePct:F2} LiveFallbackPct={LiveFallbackPct:F2} NoCostPct={NoCostPct:F2}",
                     requestStopwatch.ElapsedMilliseconds,
+                    dbStopwatch.ElapsedMilliseconds,
+                    processingStopwatch.ElapsedMilliseconds,
+                    dataWindow.CacheHit,
+                    dataWindow.ElapsedMs,
+                    isPrewarmRequest,
+                    CacheExpiration.HeavyAnalytics.TotalMinutes,
                     snapshotOptions.UseSnapshotCost,
                     snapshotPathUsed,
                     activeBatchId,
@@ -1719,6 +1730,7 @@ public static class AllEndpoints
             TrendplusDbContext db,
             IMemoryCache cache,
             ILogger<Program> logger,
+            HttpContext httpContext,
             IOptions<AnalyticsSnapshotOptions> snapshotOptionsRaw2,
             int? sezonaId = null,
             DateTime? fromDate = null,
@@ -1826,13 +1838,17 @@ public static class AllEndpoints
 
                 var snapshotPathUsed2 = snapshotOptions2.UseSnapshotCost && activeBatchId2.HasValue;
 
-                var cacheKey = $"shoe-type-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}:snap:{activeBatchId2}";
+                var isPrewarmRequest = IsPrewarmRequest(httpContext);
+                var cacheKey = AnalyticsCacheKeys.ShoeTypeSalesStats(fromUtc, toUtc, storeId, sezonaId, normalizedDataScope, activeBatchId2);
+                var cacheMetadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
                 if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
                 {
+                    var cacheMetadata = cache.Get<AnalyticsCacheEntryMetadata>(cacheMetadataKey);
                     requestStopwatch.Stop();
                     logger.LogInformation(
-                        "Shoe-type-sales-stats served from cache in {ElapsedMs}ms (snapshotFeatureEnabled={SnapshotFeatureEnabled}, snapshotPathUsed={SnapshotPathUsed}, activeBatchId={ActiveBatchId}, dataScope={DataScope}, storeId={StoreId}, sezonaId={SezonaId})",
+                        "Shoe-type-sales-stats cache hit in {ElapsedMs}ms. Prewarmed={Prewarmed} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId}",
                         requestStopwatch.ElapsedMilliseconds,
+                        cacheMetadata?.CreatedByPrewarm ?? false,
                         snapshotOptions2.UseSnapshotCost,
                         snapshotPathUsed2,
                         activeBatchId2,
@@ -1841,6 +1857,18 @@ public static class AllEndpoints
                         sezonaId);
                     return Results.Ok(cachedResponse);
                 }
+
+                logger.LogInformation(
+                    "Shoe-type-sales-stats cache miss. PrewarmRequest={PrewarmRequest} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId}",
+                    isPrewarmRequest,
+                    snapshotOptions2.UseSnapshotCost,
+                    snapshotPathUsed2,
+                    activeBatchId2,
+                    normalizedDataScope,
+                    storeId,
+                    sezonaId);
+
+                var dbStopwatch = Stopwatch.StartNew();
 
                 Dictionary<int, decimal> snapshotCostByArtikalId2 = [];
                 if (activeBatchId2.HasValue)
@@ -1852,27 +1880,9 @@ public static class AllEndpoints
                         .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
                 }
 
-                var dataWindow = await (
-                    from pz in db.ProdajaZaglavlja.AsNoTracking()
-                    join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
-                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                    where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                       && (!importedOnly || a.DataOrigin == "access")
-                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
-                    group pz by 1 into g
-                    select new
-                    {
-                        fromDate = g.Min(x => (DateTime?)x.DatumProdaje),
-                        toDate = g.Max(x => (DateTime?)x.DatumProdaje)
-                    })
-                    .FirstOrDefaultAsync(ct);
-
-                DateTime? dataWindowFrom = dataWindow?.fromDate.HasValue == true
-                    ? DateTime.SpecifyKind(dataWindow.fromDate.Value, DateTimeKind.Utc)
-                    : null;
-                DateTime? dataWindowTo = dataWindow?.toDate.HasValue == true
-                    ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
-                    : null;
+                var dataWindow = await GetSalesDataWindowAsync(db, cache, logger, storeId, normalizedDataScope, ct);
+                DateTime? dataWindowFrom = dataWindow.FromDate;
+                DateTime? dataWindowTo = dataWindow.ToDate;
 
                 var prvaNivelacijaPoArtiklu = await db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
@@ -1966,6 +1976,28 @@ public static class AllEndpoints
                         ProductCostLegacy = g.Key.ProductCostLegacy
                     })
                     .ToListAsync(ct);
+
+                var sezone = (await db.Sezone.AsNoTracking()
+                    .OrderByDescending(s => s.DatumOd)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.Naziv,
+                        s.DatumOd,
+                        s.DatumDo
+                    })
+                    .ToListAsync(ct))
+                    .Select(s => new
+                    {
+                        id = s.Id,
+                        naziv = s.Naziv,
+                        datumOd = DateTime.SpecifyKind(s.DatumOd.Date, DateTimeKind.Utc),
+                        datumDo = DateTime.SpecifyKind(s.DatumDo.Date, DateTimeKind.Utc)
+                    })
+                    .ToList();
+
+                dbStopwatch.Stop();
+                var processingStopwatch = Stopwatch.StartNew();
 
                 var shoeTypes = stavke
                     .GroupBy(s => s.TipObuceId)
@@ -2273,25 +2305,6 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
-                var sezone = (await db.Sezone.AsNoTracking()
-                    .OrderByDescending(s => s.DatumOd)
-                    .Select(s => new
-                    {
-                        s.Id,
-                        s.Naziv,
-                        s.DatumOd,
-                        s.DatumDo
-                    })
-                    .ToListAsync(ct))
-                    .Select(s => new
-                    {
-                        id = s.Id,
-                        naziv = s.Naziv,
-                        datumOd = DateTime.SpecifyKind(s.DatumOd.Date, DateTimeKind.Utc),
-                        datumDo = DateTime.SpecifyKind(s.DatumDo.Date, DateTimeKind.Utc)
-                    })
-                    .ToList();
-
                 var response = new
                 {
                     generatedAt = DateTime.UtcNow,
@@ -2308,11 +2321,19 @@ public static class AllEndpoints
                     sezone
                 };
 
-                cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+                processingStopwatch.Stop();
+                cache.Set(cacheKey, response, CacheExpiration.HeavyAnalytics);
+                cache.Set(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics);
                 requestStopwatch.Stop();
                 logger.LogInformation(
-                    "Shoe-type-sales-stats computed in {ElapsedMs}ms (snapshotFeatureEnabled={SnapshotFeatureEnabled}, snapshotPathUsed={SnapshotPathUsed}, activeBatchId={ActiveBatchId}, dataScope={DataScope}, storeId={StoreId}, sezonaId={SezonaId}, shoeTypeCount={ShoeTypeCount}, snapshotCoveragePct={SnapshotCoveragePct:F2}, liveFallbackPct={LiveFallbackPct:F2}, noCostPct={NoCostPct:F2})",
+                    "Shoe-type-sales-stats cache miss computed in {ElapsedMs}ms. DbMs={DbMs} ProcessingMs={ProcessingMs} DataWindowCacheHit={DataWindowCacheHit} DataWindowMs={DataWindowMs} PrewarmRequest={PrewarmRequest} TtlMinutes={TtlMinutes} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId} ShoeTypeCount={ShoeTypeCount} SnapshotCoveragePct={SnapshotCoveragePct:F2} LiveFallbackPct={LiveFallbackPct:F2} NoCostPct={NoCostPct:F2}",
                     requestStopwatch.ElapsedMilliseconds,
+                    dbStopwatch.ElapsedMilliseconds,
+                    processingStopwatch.ElapsedMilliseconds,
+                    dataWindow.CacheHit,
+                    dataWindow.ElapsedMs,
+                    isPrewarmRequest,
+                    CacheExpiration.HeavyAnalytics.TotalMinutes,
                     snapshotOptions2.UseSnapshotCost,
                     snapshotPathUsed2,
                     activeBatchId2,
@@ -6037,6 +6058,116 @@ public static class AllEndpoints
             OOSRate = null,
             MetricsStatus = reason
         };
+    }
+
+    private sealed record SalesDataWindowCacheEntry(DateTime? FromDate, DateTime? ToDate);
+
+    private sealed record SalesDataWindowResult(DateTime? FromDate, DateTime? ToDate, bool CacheHit, long ElapsedMs);
+
+    private sealed record AnalyticsCacheEntryMetadata(bool CreatedByPrewarm, DateTime CreatedAtUtc);
+
+    private static bool IsPrewarmRequest(HttpContext context) =>
+        string.Equals(context.Request.Query["prewarm"].FirstOrDefault(), "1", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(context.Request.Query["prewarm"].FirstOrDefault(), "true", StringComparison.OrdinalIgnoreCase);
+
+    private static async Task<SalesDataWindowResult> GetSalesDataWindowAsync(
+        TrendplusDbContext db,
+        IMemoryCache cache,
+        ILogger logger,
+        int? storeId,
+        string normalizedDataScope,
+        CancellationToken ct)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var cacheKey = AnalyticsCacheKeys.SalesDataWindow(storeId, normalizedDataScope);
+
+        if (cache.TryGetValue(cacheKey, out SalesDataWindowCacheEntry? cachedWindow) && cachedWindow is not null)
+        {
+            stopwatch.Stop();
+            logger.LogInformation(
+                "Sales dataWindow cache hit in {ElapsedMs}ms. StoreId={StoreId} DataScope={DataScope}",
+                stopwatch.ElapsedMilliseconds,
+                storeId,
+                normalizedDataScope);
+
+            return new SalesDataWindowResult(
+                EnsureUtc(cachedWindow.FromDate),
+                EnsureUtc(cachedWindow.ToDate),
+                CacheHit: true,
+                stopwatch.ElapsedMilliseconds);
+        }
+
+        var importedOnly = string.Equals(normalizedDataScope, "imported", StringComparison.OrdinalIgnoreCase);
+        var existingOnly = string.Equals(normalizedDataScope, "existing", StringComparison.OrdinalIgnoreCase);
+
+        DateTime? fromDate;
+        DateTime? toDate;
+
+        if (!importedOnly && !existingOnly)
+        {
+            // dataScope=all does not need the Artikli join; the sale-line join keeps the historical window scoped to actual sold items.
+            var window = await (
+                from pz in db.ProdajaZaglavlja.AsNoTracking()
+                join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
+                where !storeId.HasValue || pz.IDObjekat == storeId.Value
+                group pz by 1 into g
+                select new
+                {
+                    FromDate = g.Min(x => (DateTime?)x.DatumProdaje),
+                    ToDate = g.Max(x => (DateTime?)x.DatumProdaje)
+                })
+                .FirstOrDefaultAsync(ct);
+
+            fromDate = window?.FromDate;
+            toDate = window?.ToDate;
+        }
+        else
+        {
+            var window = await (
+                from pz in db.ProdajaZaglavlja.AsNoTracking()
+                join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
+                join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                   && (!importedOnly || a.DataOrigin == "access")
+                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                group pz by 1 into g
+                select new
+                {
+                    FromDate = g.Min(x => (DateTime?)x.DatumProdaje),
+                    ToDate = g.Max(x => (DateTime?)x.DatumProdaje)
+                })
+                .FirstOrDefaultAsync(ct);
+
+            fromDate = window?.FromDate;
+            toDate = window?.ToDate;
+        }
+
+        var entry = new SalesDataWindowCacheEntry(EnsureUtc(fromDate), EnsureUtc(toDate));
+        cache.Set(cacheKey, entry, CacheExpiration.VeryLong);
+
+        stopwatch.Stop();
+        logger.LogInformation(
+            "Sales dataWindow cache miss computed in {ElapsedMs}ms. StoreId={StoreId} DataScope={DataScope} From={FromDate} To={ToDate} TtlMinutes={TtlMinutes}",
+            stopwatch.ElapsedMilliseconds,
+            storeId,
+            normalizedDataScope,
+            entry.FromDate,
+            entry.ToDate,
+            CacheExpiration.VeryLong.TotalMinutes);
+
+        return new SalesDataWindowResult(entry.FromDate, entry.ToDate, CacheHit: false, stopwatch.ElapsedMilliseconds);
+    }
+
+    private static DateTime? EnsureUtc(DateTime? value)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        return value.Value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
+            : value.Value.ToUniversalTime();
     }
 
     private static async Task<List<Sezona>> LoadSezoneCompatibilityFallbackAsync(

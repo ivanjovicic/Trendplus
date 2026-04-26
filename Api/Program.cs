@@ -411,6 +411,10 @@ try
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddSingleton<StartupReadinessState>();
     builder.Services.AddHostedService<ReadinessWarmupHostedService>();
+    if (!isWorkerProcess)
+    {
+        builder.Services.AddHostedService<AnalyticsCachePrewarmHostedService>();
+    }
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;

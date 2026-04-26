@@ -12,6 +12,7 @@ using MediatR;
 using Trendplus2.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Diagnostics;
 using System.Globalization;
 
 namespace Trendplus2.Endpoints;
@@ -1364,6 +1365,8 @@ public static class CachedAnalyticsEndpoints
             CancellationToken ct = default) =>
         {
             var requestAborted = ct;
+            var totalStopwatch = Stopwatch.StartNew();
+            var cacheKey = AnalyticsCacheKeys.Stores;
 
             try
             {
@@ -1371,21 +1374,41 @@ public static class CachedAnalyticsEndpoints
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(15));
                 ct = timeoutCts.Token;
 
-                var result = await cache.GetOrSetAsync(
-                    AnalyticsCacheKeys.Stores,
-                    async () => await analyticsDb.StoresDim
-                        .AsNoTracking()
-                        .OrderBy(x => x.StoreName)
-                        .Select(x => new StoreFilterOptionDto
-                        {
-                            StoreId = x.StoreId,
-                            StoreName = x.StoreName,
-                            City = x.City,
-                            Region = x.Region
-                        })
-                        .ToListAsync(ct),
-                    CacheExpiration.Long,
-                    ct);
+                var cached = await cache.GetAsync<List<StoreFilterOptionDto>>(cacheKey, ct);
+                if (cached is not null)
+                {
+                    totalStopwatch.Stop();
+                    logger.LogInformation(
+                        "Store filters cache hit in {ElapsedMs}ms. StoreCount={StoreCount}",
+                        totalStopwatch.ElapsedMilliseconds,
+                        cached.Count);
+
+                    return Results.Ok(cached);
+                }
+
+                var dbStopwatch = Stopwatch.StartNew();
+                var result = await analyticsDb.StoresDim
+                    .AsNoTracking()
+                    .OrderBy(x => x.StoreName)
+                    .Select(x => new StoreFilterOptionDto
+                    {
+                        StoreId = x.StoreId,
+                        StoreName = x.StoreName,
+                        City = x.City,
+                        Region = x.Region
+                    })
+                    .ToListAsync(ct);
+
+                dbStopwatch.Stop();
+                await cache.SetAsync(cacheKey, result, CacheExpiration.VeryLong, ct);
+
+                totalStopwatch.Stop();
+                logger.LogInformation(
+                    "Store filters cache miss computed in {ElapsedMs}ms. DbMs={DbMs} StoreCount={StoreCount} TtlMinutes={TtlMinutes}",
+                    totalStopwatch.ElapsedMilliseconds,
+                    dbStopwatch.ElapsedMilliseconds,
+                    result.Count,
+                    CacheExpiration.VeryLong.TotalMinutes);
 
                 return Results.Ok(result);
             }
