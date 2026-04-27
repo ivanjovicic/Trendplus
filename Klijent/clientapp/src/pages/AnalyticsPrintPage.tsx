@@ -11,11 +11,15 @@ export default function AnalyticsPrintPage() {
   );
   const isDenseDailySalesBlank = payload?.documentType === "daily-sales-blank";
   const isDailySalesPrint = payload?.tableKey === "daily-sales-stats" || payload?.tableKey === "daily-sales-stats-blank" || isDenseDailySalesBlank;
-  const pageOrientation = isDailySalesPrint ? "portrait" : "landscape";
-  const pageMarginMm = isDenseDailySalesBlank ? 8 : 14;
+  // Blank forms with many columns need landscape; filled daily-sales still portrait
+  const pageOrientation = isDenseDailySalesBlank ? "landscape" : isDailySalesPrint ? "portrait" : "landscape";
+  const pageMarginMm = isDenseDailySalesBlank ? 7 : 14;
   const tableFontSizePx = isDenseDailySalesBlank ? 9 : 12;
-  const cellPadding = isDenseDailySalesBlank ? "8px 5px" : isDailySalesPrint ? "10px 8px" : "8px";
-  const rowMinHeightPx = isDenseDailySalesBlank ? 30 : isDailySalesPrint ? 26 : 0;
+  // Separate padding for th and td so we can control row height properly
+  const thPadding = isDenseDailySalesBlank ? "6px 4px" : isDailySalesPrint ? "10px 8px" : "8px";
+  const tdPadding = isDenseDailySalesBlank ? "18px 5px" : isDailySalesPrint ? "10px 8px" : "8px";
+  // height on <td> acts as min-height (unlike min-height which is ignored on table cells)
+  const blankTdHeightPx = 46;
   const titleFontSizePx = isDenseDailySalesBlank ? 22 : 28;
 
   React.useEffect(() => {
@@ -50,22 +54,67 @@ export default function AnalyticsPrintPage() {
         .analytics-print-table th,
         .analytics-print-table td {
           border: 1px solid var(--border);
-          padding: ${cellPadding};
           font-size: ${tableFontSizePx}px;
           vertical-align: top;
-          min-height: ${rowMinHeightPx}px;
         }
+        .analytics-print-table th { padding: ${thPadding}; }
+        .analytics-print-table td { padding: ${tdPadding}; }
         .analytics-print-table th {
           background: var(--surface-elevated);
           text-align: left;
         }
+
+        /* ── Blank daily-sales form ──────────────────────────────── */
         .analytics-print-page-dense .analytics-print-table {
-          table-layout: fixed;
+          /* auto layout: named cols size to content, blank supplier cols get min-width below */
+          table-layout: auto;
         }
-        .analytics-print-page-dense .analytics-print-table th,
-        .analytics-print-page-dense .analytics-print-table td {
-          overflow-wrap: anywhere;
-          word-break: break-word;
+        /* Named columns (Datum, Smena, Prihod, Ostali, Ukupno) */
+        .analytics-print-page-dense .analytics-print-table .named-col {
+          min-width: 28mm;
+        }
+        .analytics-print-page-dense .analytics-print-table th.named-col {
+          font-size: 8px;
+          line-height: 1.35;
+          padding: 7px 5px;
+          vertical-align: bottom;
+          overflow-wrap: break-word;
+          word-break: normal;
+          hyphens: auto;
+          white-space: normal;
+        }
+        .analytics-print-page-dense .analytics-print-table td.named-col {
+          padding: ${tdPadding};
+          height: ${blankTdHeightPx}px;
+          vertical-align: middle;
+        }
+        /* Supplier blank columns: narrow slots for hand-written numbers */
+        .analytics-print-page-dense .analytics-print-table .blank-col {
+          min-width: 16mm;
+          max-width: 20mm;
+          width: 18mm;
+        }
+        .analytics-print-page-dense .analytics-print-table th.blank-col {
+          font-size: 7px;
+          padding: 5px 2px;
+          vertical-align: bottom;
+          text-align: center;
+        }
+        .analytics-print-page-dense .analytics-print-table td.blank-col {
+          padding: ${tdPadding};
+          height: ${blankTdHeightPx}px;
+          vertical-align: middle;
+          background: #ffffff !important;
+        }
+        /* Even rows stay white on blank form — no tinting for clean writing space */
+        .analytics-print-page-dense .analytics-print-table tbody tr:nth-child(even) td {
+          background: #ffffff !important;
+        }
+        @media print {
+          .analytics-print-page-dense .analytics-print-table td {
+            background: #ffffff !important;
+            height: ${blankTdHeightPx}px;
+          }
         }
       `}</style>
 
@@ -120,7 +169,7 @@ export default function AnalyticsPrintPage() {
         <thead>
           <tr>
             {payload.columns.map((column) => (
-              <th key={column.key}>{column.header}</th>
+              <th key={column.key} className={column.header ? "named-col" : "blank-col"}>{column.header}</th>
             ))}
           </tr>
         </thead>
@@ -132,7 +181,7 @@ export default function AnalyticsPrintPage() {
           ) : payload.rows.map((row, index) => (
             <tr key={`${payload.tableKey}-${index}`}>
               {payload.columns.map((column) => (
-                <td key={column.key}>{row[column.key] == null ? "-" : String(row[column.key])}</td>
+                <td key={column.key} className={column.header ? "named-col" : "blank-col"}>{row[column.key] == null ? "" : String(row[column.key])}</td>
               ))}
             </tr>
           ))}
