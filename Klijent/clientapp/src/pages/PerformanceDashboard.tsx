@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Activity,
     ArrowUpDown,
@@ -6,7 +6,6 @@ import {
     Clock3,
     Gauge,
     RefreshCw,
-    Search,
     TimerReset,
     TriangleAlert,
     X,
@@ -90,10 +89,10 @@ function rowStatus(stat: PerformanceStat): "success" | "failed" | "slow" {
 }
 
 const tooltipStyle = {
-    background: "var(--surface-elevated)",
-    border: "1px solid var(--border-default)",
-    borderRadius: 8,
-    color: "var(--text-primary)",
+    background: "var(--color-surface)",
+    border: "var(--border-width-sm) solid var(--color-border)",
+    borderRadius: "var(--radius-md)",
+    color: "var(--color-text)",
 };
 
 export default function PerformanceDashboard() {
@@ -229,6 +228,8 @@ export default function PerformanceDashboard() {
     const failedRate = summary?.totalRequests
         ? (summary.failedRequests / summary.totalRequests) * 100
         : 0;
+    const hasTimeline = chartTimeline.length > 0;
+    const hasEndpointStats = topEndpointChart.length > 0;
 
     const sortIcon = (key: SortKey) => {
         if (sortKey !== key) return <ArrowUpDown size={13} />;
@@ -267,6 +268,7 @@ export default function PerformanceDashboard() {
         <div className="observability-page">
             <div className="observability-header">
                 <div>
+                    <span className="observability-eyebrow">System observability</span>
                     <h1 className="observability-title">
                         <Gauge size={22} />
                         Performance
@@ -440,7 +442,7 @@ export default function PerformanceDashboard() {
                     </select>
                 </div>
 
-                <div className="observability-inline-actions">
+                <div className="observability-inline-actions observability-filter-actions">
                     <button className="observability-button observability-button--compact" type="button" onClick={() => setQuickRangeHours(1)}>
                         1h
                     </button>
@@ -466,92 +468,108 @@ export default function PerformanceDashboard() {
                     <section className="observability-chart-grid" aria-label="Performance charts">
                         <div className="observability-chart-card">
                             <h2 className="observability-card-title">Latency Timeline</h2>
-                            <div className="observability-chart">
-                                <ResponsiveContainer>
-                                    <AreaChart data={chartTimeline}>
-                                        <CartesianGrid vertical={false} />
-                                        <XAxis dataKey="bucketLabel" minTickGap={22} />
-                                        <YAxis tickFormatter={(value) => `${value}ms`} />
-                                        <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown, name?: string) => [formatDuration(Number(value)), name ?? "Value"]} />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="p95DurationMs"
-                                            name="P95"
-                                            stroke="var(--warning)"
-                                            fill="var(--warning-soft)"
-                                            strokeWidth={2}
-                                        />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="averageDurationMs"
-                                            name="Avg"
-                                            stroke="var(--info)"
-                                            fill="var(--info-soft)"
-                                            strokeWidth={2}
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
+                            {hasTimeline ? (
+                                <div className="observability-chart">
+                                    <ResponsiveContainer>
+                                        <AreaChart data={chartTimeline}>
+                                            <CartesianGrid vertical={false} />
+                                            <XAxis dataKey="bucketLabel" minTickGap={22} />
+                                            <YAxis tickFormatter={(value) => `${value}ms`} />
+                                            <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown, name?: string) => [formatDuration(Number(value)), name ?? "Value"]} />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="p95DurationMs"
+                                                name="P95"
+                                                stroke="var(--color-warning)"
+                                                fill="var(--warning-soft)"
+                                                strokeWidth={2}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="averageDurationMs"
+                                                name="Avg"
+                                                stroke="var(--color-info)"
+                                                fill="var(--info-soft)"
+                                                strokeWidth={2}
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <div className="observability-empty">No latency samples for this range.</div>
+                            )}
                         </div>
 
                         <div className="observability-chart-card">
                             <h2 className="observability-card-title">Throughput & Error Rate</h2>
-                            <div className="observability-chart observability-chart--short">
-                                <ResponsiveContainer>
-                                    <BarChart data={chartTimeline}>
-                                        <CartesianGrid vertical={false} />
-                                        <XAxis dataKey="bucketLabel" minTickGap={28} />
-                                        <YAxis yAxisId="left" />
-                                        <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
-                                        <Tooltip contentStyle={tooltipStyle} />
-                                        <Bar yAxisId="left" dataKey="requestCount" name="Requests" fill="var(--info)" radius={[4, 4, 0, 0]} />
-                                        <Bar yAxisId="right" dataKey="errorRate" name="Error %" fill="var(--error)" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
+                            {hasTimeline ? (
+                                <div className="observability-chart observability-chart--short">
+                                    <ResponsiveContainer>
+                                        <BarChart data={chartTimeline}>
+                                            <CartesianGrid vertical={false} />
+                                            <XAxis dataKey="bucketLabel" minTickGap={28} />
+                                            <YAxis yAxisId="left" />
+                                            <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
+                                            <Tooltip contentStyle={tooltipStyle} />
+                                            <Bar yAxisId="left" dataKey="requestCount" name="Requests" fill="var(--color-info)" radius={[4, 4, 0, 0]} />
+                                            <Bar yAxisId="right" dataKey="errorRate" name="Error %" fill="var(--color-error)" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <div className="observability-empty">No throughput samples for this range.</div>
+                            )}
                         </div>
                     </section>
 
                     <section className="observability-chart-grid" aria-label="Endpoint analysis">
                         <div className="observability-chart-card">
                             <h2 className="observability-card-title">Slowest Endpoints by P95</h2>
-                            <div className="observability-chart observability-chart--short">
-                                <ResponsiveContainer>
-                                    <BarChart data={topEndpointChart} layout="vertical" margin={{ left: 24 }}>
-                                        <CartesianGrid horizontal={false} />
-                                        <XAxis type="number" tickFormatter={(value) => `${value}ms`} />
-                                        <YAxis type="category" dataKey="shortName" width={150} />
-                                        <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => formatDuration(Number(value))} />
-                                        <Bar dataKey="p95DurationMs" name="P95" fill="var(--warning)" radius={[0, 4, 4, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
+                            {hasEndpointStats ? (
+                                <div className="observability-chart observability-chart--short">
+                                    <ResponsiveContainer>
+                                        <BarChart data={topEndpointChart} layout="vertical" margin={{ left: 24 }}>
+                                            <CartesianGrid horizontal={false} />
+                                            <XAxis type="number" tickFormatter={(value) => `${value}ms`} />
+                                            <YAxis type="category" dataKey="shortName" width={150} />
+                                            <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => formatDuration(Number(value))} />
+                                            <Bar dataKey="p95DurationMs" name="P95" fill="var(--color-warning)" radius={[0, 4, 4, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <div className="observability-empty">No endpoint rollups for this filter.</div>
+                            )}
                         </div>
 
                         <div className="observability-chart-card">
                             <h2 className="observability-card-title">Latency Heatmap</h2>
-                            <div className="observability-heatmap">
-                                {chartTimeline.slice(-48).map((point) => {
-                                    const heatClass = point.p95DurationMs >= 3000
-                                        ? "observability-heatmap__cell--high"
-                                        : point.p95DurationMs >= 1000
-                                            ? "observability-heatmap__cell--medium"
-                                            : "observability-heatmap__cell--low";
+                            {hasTimeline ? (
+                                <div className="observability-heatmap">
+                                    {chartTimeline.slice(-48).map((point) => {
+                                        const heatClass = point.p95DurationMs >= 3000
+                                            ? "observability-heatmap__cell--high"
+                                            : point.p95DurationMs >= 1000
+                                                ? "observability-heatmap__cell--medium"
+                                                : "observability-heatmap__cell--low";
 
-                                    return (
-                                        <div
-                                            key={point.bucketStart}
-                                            className={`observability-heatmap__cell ${heatClass}`}
-                                            title={`${point.bucketLabel}: ${formatDuration(point.p95DurationMs)} P95, ${point.requestCount} requests`}
-                                        />
-                                    );
-                                })}
-                            </div>
+                                        return (
+                                            <div
+                                                key={point.bucketStart}
+                                                className={`observability-heatmap__cell ${heatClass}`}
+                                                title={`${point.bucketLabel}: ${formatDuration(point.p95DurationMs)} P95, ${point.requestCount} requests`}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="observability-empty">No latency buckets to render.</div>
+                            )}
                         </div>
                     </section>
 
                     <section className="observability-panel observability-table-shell" aria-label="Slow request table">
-                        <table className="observability-table">
+                        <table className="observability-table observability-table--performance">
                             <thead>
                                 <tr>
                                     <th onClick={() => handleSort("timestamp")}>Time {sortIcon("timestamp")}</th>
@@ -571,16 +589,18 @@ export default function PerformanceDashboard() {
                                     const isExpanded = expandedRow === stat.id;
 
                                     return (
-                                        <tr key={stat.id}>
-                                            <td className="observability-mono observability-muted">{formatDate(stat.timestamp)}</td>
-                                            <td>{stat.requestName}</td>
-                                            <td className="observability-table__right observability-mono">{formatDuration(stat.durationMs)}</td>
-                                            <td className="observability-table__center">
-                                                <span className={`status-badge status-badge--${status}`}>{status}</span>
-                                            </td>
-                                            <td className="observability-table__actions">
-                                                {stat.exceptionMessage ? (
-                                                    <>
+                                        <Fragment key={stat.id}>
+                                            <tr>
+                                                <td className="observability-mono observability-muted">{formatDate(stat.timestamp)}</td>
+                                                <td>
+                                                    <span className="observability-truncate" title={stat.requestName}>{stat.requestName}</span>
+                                                </td>
+                                                <td className="observability-table__right observability-mono">{formatDuration(stat.durationMs)}</td>
+                                                <td className="observability-table__center">
+                                                    <span className={`status-badge status-badge--${status}`}>{status}</span>
+                                                </td>
+                                                <td className="observability-table__actions">
+                                                    {stat.exceptionMessage ? (
                                                         <button
                                                             className="observability-button observability-button--compact"
                                                             type="button"
@@ -588,17 +608,25 @@ export default function PerformanceDashboard() {
                                                         >
                                                             {isExpanded ? "Hide" : "Show"}
                                                         </button>
-                                                        {isExpanded ? (
+                                                    ) : (
+                                                        <span className="observability-muted">-</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+
+                                            {isExpanded && stat.exceptionMessage ? (
+                                                <tr className="observability-row-detail">
+                                                    <td colSpan={5}>
+                                                        <div className="observability-detail-box">
+                                                            <h4>Exception</h4>
                                                             <pre className="observability-pre observability-mono">
                                                                 {stat.exceptionMessage}
                                                             </pre>
-                                                        ) : null}
-                                                    </>
-                                                ) : (
-                                                    <span className="observability-muted">-</span>
-                                                )}
-                                            </td>
-                                        </tr>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ) : null}
+                                        </Fragment>
                                     );
                                 })}
                             </tbody>

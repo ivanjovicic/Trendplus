@@ -147,8 +147,8 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
         var tdFont      = portrait ? "9px"          : "11px";
         var tdPadding   = portrait ? "9px 4px"      : "12px 8px";
 
-        return $"""
-            body {{ font-family: "Segoe UI", Arial, sans-serif; font-size: {bodyFont}; color: #111827; background: #f3f4f6; margin: 0; }}
+        return $$$"""
+            body {{ font-family: "Segoe UI", Arial, sans-serif; font-size: {{{bodyFont}}}; color: #111827; background: #f3f4f6; margin: 0; }}
             .sheet {{ max-width: 1280px; margin: 0 auto; padding: 20px 28px 40px; background: #ffffff; }}
             .doc-header {{ border-bottom: 2px solid #0f172a; margin-bottom: 12px; padding-bottom: 10px; }}
             .doc-header h1 {{ margin: 0; font-size: 17px; line-height: 1.3; }}
@@ -165,9 +165,9 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
               background: #dde4ef;
               text-align: left;
               font-weight: 700;
-              font-size: {thFont};
+              font-size: {{{thFont}}};
               line-height: 1.3;
-              padding: {thPadding};
+              padding: {{{thPadding}}};
               vertical-align: bottom;
               overflow-wrap: break-word;
               word-break: normal;
@@ -175,8 +175,8 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
               color: #1e293b;
             }}
             td {{
-              font-size: {tdFont};
-              padding: {tdPadding};
+              font-size: {{{tdFont}}};
+              padding: {{{tdPadding}}};
               line-height: 1.4;
               vertical-align: middle;
               word-break: break-word;
@@ -188,7 +188,7 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
             @media print {{
               body {{ background: #ffffff; }}
               .sheet {{ margin: 0; padding: 10px; box-shadow: none; }}
-              @page {{ size: {pageSize}; margin: {pageMargin}; }}
+              @page {{ size: {{{pageSize}}}; margin: {{{pageMargin}}}; }}
               thead {{ display: table-header-group; }}
               tr {{ page-break-inside: avoid; page-break-after: auto; }}
               table {{ page-break-inside: auto; }}

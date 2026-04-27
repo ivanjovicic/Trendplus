@@ -183,7 +183,7 @@ public static class AllEndpoints
         
         app.MapGet("/api/logs", async (
             IErrorStore store,
-            IMemoryCache cache,
+            IAnalyticsCacheService cache,
             HttpContext httpContext,
             ILogger<Program> logger,
             int pageNumber = 1,
@@ -191,32 +191,39 @@ public static class AllEndpoints
             string? level = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
-            string? searchText = null) =>
+            string? searchText = null,
+            CancellationToken ct = default) =>
         {
             try
             {
                 var safePageNumber = pageNumber <= 0 ? 1 : pageNumber;
                 var safePageSize = pageSize <= 0 ? 50 : Math.Min(pageSize, 500);
 
-                // Convert dates to UTC if they have Unspecified kind
-                if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-                    fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
-
-                if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-                    toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                fromDate = EnsureUtc(fromDate);
+                toDate = EnsureUtc(toDate);
 
                 var normalizedLevel = string.IsNullOrWhiteSpace(level) ? null : level.Trim();
                 var normalizedSearch = string.IsNullOrWhiteSpace(searchText) ? null : searchText.Trim();
 
-                var cacheKey = $"logs:{safePageNumber}:{safePageSize}:{normalizedLevel}:{fromDate?.Ticks}:{toDate?.Ticks}:{normalizedSearch}";
-                if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
+                var cacheKey = AnalyticsCacheKeys.ObservabilityLogs(
+                    safePageNumber,
+                    safePageSize,
+                    normalizedLevel,
+                    fromDate,
+                    toDate,
+                    normalizedSearch);
+                var cachedResponse = await cache.GetAsync<LogsPageResponseDto>(cacheKey, ct);
+                if (cachedResponse is not null)
+                {
                     return Results.Ok(cachedResponse);
+                }
 
                 var total = await store.GetCountAsync(
                     normalizedLevel,
                     fromDate,
                     toDate,
-                    normalizedSearch);
+                    normalizedSearch,
+                    ct);
 
                 var paged = await store.GetPagedAsync(
                     safePageNumber,
@@ -224,19 +231,18 @@ public static class AllEndpoints
                     normalizedLevel,
                     fromDate,
                     toDate,
-                    normalizedSearch);
+                    normalizedSearch,
+                    ct);
 
                 var logs = paged.Select(MapLogEntry).ToList();
 
-                var response = new
-                {
+                var response = new LogsPageResponseDto(
                     logs,
-                    totalCount = total,
-                    pageNumber = safePageNumber,
-                    pageSize = safePageSize
-                };
+                    total,
+                    safePageNumber,
+                    safePageSize);
 
-                cache.Set(cacheKey, (object)response, TimeSpan.FromSeconds(20));
+                await cache.SetAsync(cacheKey, response, CacheExpiration.ObservabilityLive, ct);
                 return Results.Ok(response);
             }
             catch (Exception ex)
@@ -245,7 +251,8 @@ public static class AllEndpoints
                 await HandledErrorLogging.PersistHandledExceptionAsync(
                     httpContext,
                     ex,
-                    "Failed to fetch logs");
+                    "Failed to fetch logs",
+                    ct);
                 return Results.Problem(
                     detail: "Unable to fetch logs. Please run migrations: dotnet ef database update",
                     statusCode: 500,
@@ -297,6 +304,7 @@ public static class AllEndpoints
             IConfiguration configuration,
             IHostEnvironment environment,
             TrendplusDbContext trendDb,
+            IAnalyticsCacheService cache,
             ILogger<Program> logger,
             DateTime? beforeDate = null,
             string? level = null,
@@ -334,6 +342,7 @@ public static class AllEndpoints
                 }
 
                 var deletedCount = await query.ExecuteDeleteAsync(ct);
+                await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.ObservabilityLogsPrefix, ct);
                 logger.LogWarning("Logs clear executed. Deleted {DeletedCount} rows.", deletedCount);
 
                 return Results.Ok(new { deletedCount });
@@ -360,7 +369,7 @@ public static class AllEndpoints
         
         app.MapGet("/api/performance", async (
             IMediator mediator,
-            IMemoryCache cache,
+            IAnalyticsCacheService cache,
             HttpContext httpContext,
             ILogger<Program> logger,
             int topCount = 20,
@@ -368,31 +377,48 @@ public static class AllEndpoints
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? requestName = null,
-            string? status = null) =>
+            string? status = null,
+            CancellationToken ct = default) =>
         {
             try
             {
+                var safeTopCount = Math.Clamp(topCount, 1, 200);
+                var safeMinDurationMs = Math.Max(0, minDurationMs);
+                var normalizedRequestName = string.IsNullOrWhiteSpace(requestName) ? null : requestName.Trim();
+                var normalizedStatus = string.IsNullOrWhiteSpace(status) ? null : status.Trim();
+
                 logger.LogInformation(
                     "Performance stats request: top={TopCount}, min={MinDuration}ms, requestName={RequestName}, status={Status}",
-                    topCount,
-                    minDurationMs,
-                    requestName,
-                    status);
+                    safeTopCount,
+                    safeMinDurationMs,
+                    normalizedRequestName,
+                    normalizedStatus);
 
-                // Convert dates to UTC if they have Unspecified kind
-                if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-                    fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                fromDate = EnsureUtc(fromDate);
+                toDate = EnsureUtc(toDate);
 
-                if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-                    toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
-
-                var cacheKey = $"perf:{topCount}:{minDurationMs}:{fromDate?.Ticks}:{toDate?.Ticks}:{requestName}:{status}";
-                if (cache.TryGetValue(cacheKey, out GetPerformanceStatsResult? cachedResult) && cachedResult is not null)
+                var cacheKey = AnalyticsCacheKeys.ObservabilityPerformance(
+                    safeTopCount,
+                    safeMinDurationMs,
+                    fromDate,
+                    toDate,
+                    normalizedRequestName,
+                    normalizedStatus);
+                var cachedResult = await cache.GetAsync<GetPerformanceStatsResult>(cacheKey, ct);
+                if (cachedResult is not null)
+                {
                     return Results.Ok(cachedResult);
+                }
 
-                var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate, requestName, status);
-                var result = await mediator.Send(query);
-                cache.Set(cacheKey, result, TimeSpan.FromSeconds(45));
+                var query = new GetPerformanceStatsQuery(
+                    safeTopCount,
+                    safeMinDurationMs,
+                    fromDate,
+                    toDate,
+                    normalizedRequestName,
+                    normalizedStatus);
+                var result = await mediator.Send(query, ct);
+                await cache.SetAsync(cacheKey, result, CacheExpiration.ObservabilitySummary, ct);
                 return Results.Ok(result);
             }
             catch (Exception ex)
@@ -401,7 +427,8 @@ public static class AllEndpoints
                 await HandledErrorLogging.PersistHandledExceptionAsync(
                     httpContext,
                     ex,
-                    "Failed to fetch performance stats");
+                    "Failed to fetch performance stats",
+                    ct);
                 return Results.Problem(
                     detail: "Unable to fetch performance stats.",
                     statusCode: 500,
@@ -6330,24 +6357,20 @@ public static class AllEndpoints
         };
     }
 
-    private static object MapLogEntry(ErrorRecord e)
-        => new
-        {
-            id = e.Id,
-            timestamp = e.Timestamp.ToString("o"),
-            level = string.IsNullOrWhiteSpace(e.Level) ? "Error" : e.Level,
-            message = e.Message,
-            exception = !string.IsNullOrEmpty(e.StackTrace)
+    private static LogEntryDto MapLogEntry(ErrorRecord e)
+        => new(
+            Id: e.Id,
+            Timestamp: e.Timestamp.ToString("o"),
+            Level: string.IsNullOrWhiteSpace(e.Level) ? "Error" : e.Level,
+            Message: e.Message,
+            Exception: !string.IsNullOrEmpty(e.StackTrace)
                 ? $"{e.ExceptionType}\n{e.StackTrace}"
                 : null,
-            properties = new
-            {
-                path = e.Path,
-                userName = e.UserName,
-                clientApp = e.ClientApp,
-                correlationId = e.CorrelationId
-            }
-        };
+            Properties: new LogEntryPropertiesDto(
+                Path: e.Path,
+                UserName: e.UserName,
+                ClientApp: e.ClientApp,
+                CorrelationId: e.CorrelationId));
 
     private static bool IsAdminRequest(
         HttpContext context,
@@ -6396,6 +6419,26 @@ public static class AllEndpoints
         return result is not null;
     }
 }
+
+public sealed record LogsPageResponseDto(
+    IReadOnlyList<LogEntryDto> Logs,
+    int TotalCount,
+    int PageNumber,
+    int PageSize);
+
+public sealed record LogEntryDto(
+    int Id,
+    string Timestamp,
+    string Level,
+    string Message,
+    string? Exception,
+    LogEntryPropertiesDto Properties);
+
+public sealed record LogEntryPropertiesDto(
+    string? Path,
+    string? UserName,
+    string? ClientApp,
+    string? CorrelationId);
 
 // Fix NivelacijaRequest DTO (use Komentar)
 public record NivelacijaRequest(int ArtikalId, decimal NovaProdajnaCena, string? Komentar);

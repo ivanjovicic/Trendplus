@@ -117,7 +117,7 @@ public class HybridCacheService : IAnalyticsCacheService
                     if (value != null)
                     {
                         // Promovisi u L1 cache
-                        SetMemoryCache(key, value, CacheExpiration.Medium);
+                        SetMemoryCache(key, value, GetPromotionExpiration(key));
                         _logger.LogDebug("Cache L2 HIT (promoted to L1): {Key}", key);
                         return value;
                     }
@@ -271,5 +271,20 @@ public class HybridCacheService : IAnalyticsCacheService
 
         _memoryCache.Set(key, value, options);
         _keys.TryAdd(key, 0);
+    }
+
+    private static TimeSpan GetPromotionExpiration(string key)
+    {
+        if (key.StartsWith(AnalyticsCacheKeys.ObservabilityLogsPrefix, StringComparison.Ordinal))
+        {
+            return CacheExpiration.ObservabilityLive;
+        }
+
+        if (key.StartsWith(AnalyticsCacheKeys.ObservabilityPerformancePrefix, StringComparison.Ordinal))
+        {
+            return CacheExpiration.ObservabilitySummary;
+        }
+
+        return CacheExpiration.Medium;
     }
 }

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -58,6 +60,8 @@ public interface IAnalyticsCacheService
 public static class AnalyticsCacheKeys
 {
     public const string Prefix = "analytics:";
+    public const string ObservabilityLogsPrefix = $"{Prefix}observability:logs:";
+    public const string ObservabilityPerformancePrefix = $"{Prefix}observability:performance:";
 
     private static string NormalizeDataScope(string? dataScope)
     {
@@ -85,6 +89,17 @@ public static class AnalyticsCacheKeys
 
     private static string FormatNullable(long? value) =>
         value.HasValue ? value.Value.ToString() : string.Empty;
+
+    private static string HashPart(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "all";
+        }
+
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value.Trim().ToLowerInvariant()));
+        return Convert.ToHexString(bytes)[..16].ToLowerInvariant();
+    }
 
     private static string FilterSuffix(int? storeId, int? supplierId, string? dataScope = null) =>
         $"store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}";
@@ -198,6 +213,24 @@ public static class AnalyticsCacheKeys
     public const string ValidationLostSales = $"{Prefix}validation:lost-sales";
     public static string ValidationNegativeQty(DateTime? from, DateTime? to) =>
         $"{Prefix}validation:negative-qty:{FormatInstant(from)}:{FormatInstant(to)}";
+
+    public static string ObservabilityLogs(
+        int pageNumber,
+        int pageSize,
+        string? level,
+        DateTime? from,
+        DateTime? to,
+        string? searchText) =>
+        $"{ObservabilityLogsPrefix}page:{pageNumber}:size:{pageSize}:level:{HashPart(level)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:search:{HashPart(searchText)}";
+
+    public static string ObservabilityPerformance(
+        int topCount,
+        int minDurationMs,
+        DateTime? from,
+        DateTime? to,
+        string? requestName,
+        string? status) =>
+        $"{ObservabilityPerformancePrefix}top:{topCount}:min:{minDurationMs}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:request:{HashPart(requestName)}:status:{HashPart(status)}";
 }
 
 /// <summary>
@@ -207,6 +240,12 @@ public static class CacheExpiration
 {
     /// <summary>Kratkoročni podaci - 1 minut</summary>
     public static readonly TimeSpan Short = TimeSpan.FromMinutes(1);
+
+    /// <summary>Live observability rows - very short to avoid misleading stale logs.</summary>
+    public static readonly TimeSpan ObservabilityLive = TimeSpan.FromSeconds(10);
+
+    /// <summary>Observability summaries - short cache for repeated dashboard refreshes.</summary>
+    public static readonly TimeSpan ObservabilitySummary = TimeSpan.FromSeconds(30);
     
     /// <summary>Srednji rok - 5 minuta (default za većinu analytics)</summary>
     public static readonly TimeSpan Medium = TimeSpan.FromMinutes(5);

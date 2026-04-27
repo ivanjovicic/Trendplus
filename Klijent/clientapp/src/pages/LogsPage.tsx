@@ -263,6 +263,7 @@ export default function LogsPage() {
         <div className="observability-page">
             <div className="observability-header">
                 <div>
+                    <span className="observability-eyebrow">System observability</span>
                     <h1 className="observability-title">
                         <Filter size={22} />
                         Logs
@@ -422,7 +423,7 @@ export default function LogsPage() {
                     </div>
                 </div>
 
-                <div className="observability-inline-actions">
+                <div className="observability-inline-actions observability-filter-actions">
                     <button
                         className="observability-button observability-button--primary"
                         type="button"
@@ -457,7 +458,15 @@ export default function LogsPage() {
             ) : (
                 <>
                     <section className="observability-panel observability-table-shell" aria-label="Log table">
-                        <table className="observability-table">
+                        <table className="observability-table observability-table--logs">
+                            <colgroup>
+                                <col className="observability-col-log-time" />
+                                <col className="observability-col-log-severity" />
+                                <col className="observability-col-log-message" />
+                                <col className="observability-col-log-path" />
+                                <col className="observability-col-log-correlation" />
+                                <col className="observability-col-log-actions" />
+                            </colgroup>
                             <thead>
                                 <tr>
                                     <th>Time</th>
@@ -493,16 +502,20 @@ export default function LogsPage() {
                                                         {log.message}
                                                     </div>
                                                 </td>
-                                                <td className="observability-mono observability-truncate">
-                                                    {log.properties?.path || "-"}
+                                                <td className="observability-mono">
+                                                    <span className="observability-truncate" title={log.properties?.path || "-"}>
+                                                        {log.properties?.path || "-"}
+                                                    </span>
                                                 </td>
-                                                <td className="observability-mono observability-truncate">
-                                                    {correlationId !== "none" ? correlationId : "-"}
-                                                    {groupedCount > 1 ? (
-                                                        <span className="observability-muted"> ({groupedCount})</span>
-                                                    ) : null}
+                                                <td className="observability-mono">
+                                                    <span className="observability-truncate" title={correlationId !== "none" ? correlationId : "-"}>
+                                                        {correlationId !== "none" ? correlationId : "-"}
+                                                        {groupedCount > 1 ? (
+                                                            <span className="observability-muted"> ({groupedCount})</span>
+                                                        ) : null}
+                                                    </span>
                                                 </td>
-                                                <td className="observability-table__right">
+                                                <td className="observability-table__actions">
                                                     <div className="observability-inline-actions">
                                                         <button
                                                             type="button"
