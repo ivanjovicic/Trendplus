@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Domain.Model
 {
-    public class Artikli
+    public class Artikli : IAccessImportSourceLineage
     {
         [Key]
         public int Id { get; set; }
@@ -36,6 +36,11 @@ namespace Domain.Model
 
         // Origin of the row: "existing" or "access"
         public string DataOrigin { get; set; } = "existing";
+        public string? SourceTableKey { get; set; }
+        public long? SourceRowId { get; set; }
+        public DateTime? SourceUpdatedAtUtc { get; set; }
+        public string? SourceHash { get; set; }
+        public long? SourceBatchId { get; set; }
         
         // Image support
         public string? ImagePath { get; set; } // Path to main product image

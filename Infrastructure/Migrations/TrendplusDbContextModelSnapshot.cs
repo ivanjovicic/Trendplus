@@ -31,10 +31,18 @@ namespace Infrastructure.Migrations
                     b.Property<long?>("CursorId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("CursorIdColumn")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("CursorMode")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<string>("CursorTimestampColumn")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<long?>("CursorTieBreakerId")
                         .HasColumnType("bigint");
@@ -45,6 +53,19 @@ namespace Infrastructure.Migrations
                     b.Property<string>("LastError")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<int?>("LastLagSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LastRowsMerged")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("LastRowsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime?>("LastRunCompletedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -70,6 +91,10 @@ namespace Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(60);
 
+                    b.Property<string>("SourceKey")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -80,6 +105,8 @@ namespace Infrastructure.Migrations
                     b.HasIndex("LastSuccessfulBatchId");
 
                     b.HasIndex("LeaseExpiresAtUtc");
+
+                    b.HasIndex("TableKey", "LeaseExpiresAtUtc");
 
                     b.ToTable("AccessImportCursors", (string)null);
                 });
@@ -368,6 +395,23 @@ namespace Infrastructure.Migrations
                     b.Property<decimal?>("PrvaProdajnaCena")
                         .HasColumnType("numeric");
 
+                    b.Property<long?>("SourceBatchId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long?>("SourceRowId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceTableKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("SourceUpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -385,6 +429,12 @@ namespace Infrastructure.Migrations
                     b.HasIndex("ImagePath");
 
                     b.HasIndex("IDObjekat", "IDDobavljac");
+
+                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceRowId")
+                        .IsUnique()
+                        .HasFilter("\"DataOrigin\" = 'access' AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
+
+                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
                     b.ToTable("Artikli", (string)null);
                 });
@@ -468,6 +518,12 @@ namespace Infrastructure.Migrations
                     b.Property<string>("CursorSnapshot")
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("CursorAfterJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("CursorBeforeJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("DataOrigin")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -491,6 +547,13 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasDefaultValue("auto");
+
+                    b.Property<string>("ImportStrategy")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("full");
 
                     b.Property<bool>("IncludeAnalytics")
                         .ValueGeneratedOnAdd()
@@ -552,6 +615,21 @@ namespace Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
+                    b.Property<int>("RowsRejected")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("RowsSkippedStale")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("RowsStaged")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("RowsUnchanged")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -582,6 +660,10 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<string>("SourceFileHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("SourceFilePath")
                         .HasMaxLength(800)
                         .HasColumnType("character varying(800)");
@@ -609,6 +691,11 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("SummaryJson")
                         .HasColumnType("text");
+
+                    b.Property<int>("ShadowMismatchCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("TotalErrors")
                         .ValueGeneratedOnAdd()
@@ -694,6 +781,23 @@ namespace Infrastructure.Migrations
                     b.Property<decimal?>("StaraProdajnaCena")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<long?>("SourceBatchId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long?>("SourceRowId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceTableKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("SourceUpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("TipPromene")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -704,6 +808,11 @@ namespace Infrastructure.Migrations
                     b.HasIndex("DataOrigin");
 
                     b.HasIndex("IDObjekat", "Datum");
+
+                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceRowId")
+                        .HasFilter("\"DataOrigin\" = 'access' AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
+
+                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
                     b.ToTable("DnevnikPromena", (string)null);
                 });
@@ -1133,11 +1242,39 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("stanje_artikla");
 
+                    b.Property<long?>("SourceBatchId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_batch_id");
+
+                    b.Property<string>("SourceHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_hash");
+
+                    b.Property<long?>("SourceRowId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_row_id");
+
+                    b.Property<string>("SourceTableKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_table_key");
+
+                    b.Property<DateTime?>("SourceUpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("source_updated_at_utc");
+
                     b.HasKey("Id");
 
                     b.HasIndex("IdArtikal");
 
                     b.HasIndex("IdPovracaj");
+
+                    b.HasIndex("SourceTableKey", "SourceRowId")
+                        .IsUnique()
+                        .HasFilter("source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+
+                    b.HasIndex("SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
                     b.ToTable("povracaj_stavke", (string)null);
                 });
@@ -1199,6 +1336,28 @@ namespace Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("razlog_povracaja");
 
+                    b.Property<long?>("SourceBatchId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_batch_id");
+
+                    b.Property<string>("SourceHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_hash");
+
+                    b.Property<long?>("SourceRowId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_row_id");
+
+                    b.Property<string>("SourceTableKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_table_key");
+
+                    b.Property<DateTime?>("SourceUpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("source_updated_at_utc");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1217,6 +1376,12 @@ namespace Infrastructure.Migrations
                     b.HasIndex("DatumPovracaja");
 
                     b.HasIndex("IDDobavljac");
+
+                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceRowId")
+                        .IsUnique()
+                        .HasFilter("data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+
+                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
                     b.ToTable("povracaj_zaglavlje", (string)null);
                 });
@@ -1250,11 +1415,39 @@ namespace Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("nabavna_cena");
 
+                    b.Property<long?>("SourceBatchId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_batch_id");
+
+                    b.Property<string>("SourceHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_hash");
+
+                    b.Property<long?>("SourceRowId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_row_id");
+
+                    b.Property<string>("SourceTableKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_table_key");
+
+                    b.Property<DateTime?>("SourceUpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("source_updated_at_utc");
+
                     b.HasKey("Id");
 
                     b.HasIndex("IdArtikal");
 
                     b.HasIndex("IdProdaja", "IdArtikal");
+
+                    b.HasIndex("SourceTableKey", "SourceRowId")
+                        .IsUnique()
+                        .HasFilter("source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+
+                    b.HasIndex("SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
                     b.ToTable("prodaja_stavke", (string)null);
                 });
@@ -1299,11 +1492,39 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("nacin_placanja");
 
+                    b.Property<long?>("SourceBatchId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_batch_id");
+
+                    b.Property<string>("SourceHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_hash");
+
+                    b.Property<long?>("SourceRowId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_row_id");
+
+                    b.Property<string>("SourceTableKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_table_key");
+
+                    b.Property<DateTime?>("SourceUpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("source_updated_at_utc");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DataOrigin", "DatumProdaje");
 
                     b.HasIndex("DatumProdaje", "IDObjekat");
+
+                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceRowId")
+                        .IsUnique()
+                        .HasFilter("data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+
+                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
                     b.ToTable("prodaja_zaglavlje", (string)null);
                 });

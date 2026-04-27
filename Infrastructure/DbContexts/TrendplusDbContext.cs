@@ -23,6 +23,11 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.DataOrigin)
                   .HasMaxLength(32)
                   .HasDefaultValue("existing");
+                eb.Property(e => e.SourceTableKey).HasMaxLength(128);
+                eb.Property(e => e.SourceRowId);
+                eb.Property(e => e.SourceUpdatedAtUtc);
+                eb.Property(e => e.SourceHash).HasMaxLength(128);
+                eb.Property(e => e.SourceBatchId);
                 
                 eb.Property(e => e.Materijal)
                   .HasMaxLength(100)
@@ -38,6 +43,10 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => e.IDDobavljac);
                 eb.HasIndex(e => e.DataOrigin);
                 eb.HasIndex(e => new { e.IDObjekat, e.IDDobavljac });
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceRowId })
+                  .IsUnique()
+                  .HasFilter("\"DataOrigin\" = 'access' AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
                 
                 // Navigation to multiple images
                 eb.HasMany(e => e.Images)
@@ -95,8 +104,16 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.StaraProdajnaCena).HasColumnType("decimal(18,2)");
                 eb.Property(e => e.NovaProdajnaCena).HasColumnType("decimal(18,2)");
                 eb.Property(e => e.DataOrigin).IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+                eb.Property(e => e.SourceTableKey).HasMaxLength(128);
+                eb.Property(e => e.SourceRowId);
+                eb.Property(e => e.SourceUpdatedAtUtc);
+                eb.Property(e => e.SourceHash).HasMaxLength(128);
+                eb.Property(e => e.SourceBatchId);
                 eb.HasIndex(e => e.DataOrigin);
                 eb.HasIndex(e => new { e.IDObjekat, e.Datum });
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceRowId })
+                  .HasFilter("\"DataOrigin\" = 'access' AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
             });
 
             modelBuilder.Entity<Sezona>(eb =>
@@ -206,9 +223,18 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.IDObjekat).HasColumnName("id_objekat");
                 eb.Property(e => e.KorisnikIme).HasColumnName("korisnik_ime").HasMaxLength(200);
                 eb.Property(e => e.DataOrigin).HasColumnName("data_origin").IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+                eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
+                eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
+                eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");
+                eb.Property(e => e.SourceHash).HasColumnName("source_hash").HasMaxLength(128);
+                eb.Property(e => e.SourceBatchId).HasColumnName("source_batch_id");
 
                 eb.HasIndex(e => new { e.DatumProdaje, e.IDObjekat });
                 eb.HasIndex(e => new { e.DataOrigin, e.DatumProdaje });
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceRowId })
+                  .IsUnique()
+                  .HasFilter("data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
                 
                 eb.HasMany(e => e.Stavke)
                   .WithOne(s => s.Prodaja)
@@ -228,9 +254,18 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Kolicina).HasColumnName("kolicina").IsRequired();
                 eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
                 eb.Property(e => e.NabavnaCena).HasColumnName("nabavna_cena").HasColumnType("decimal(18,2)");
+                eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
+                eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
+                eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");
+                eb.Property(e => e.SourceHash).HasColumnName("source_hash").HasMaxLength(128);
+                eb.Property(e => e.SourceBatchId).HasColumnName("source_batch_id");
 
                 eb.HasIndex(e => e.IdArtikal);
                 eb.HasIndex(e => new { e.IdProdaja, e.IdArtikal });
+                eb.HasIndex(e => new { e.SourceTableKey, e.SourceRowId })
+                  .IsUnique()
+                  .HasFilter("source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                eb.HasIndex(e => new { e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
             });
 
             // Povracaj mapping
@@ -252,10 +287,19 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.DatumKreiranja).HasColumnName("datum_kreiranja").IsRequired();
                 eb.Property(e => e.DatumOdobrenja).HasColumnName("datum_odobrenja");
                 eb.Property(e => e.DataOrigin).HasColumnName("data_origin").IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+                eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
+                eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
+                eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");
+                eb.Property(e => e.SourceHash).HasColumnName("source_hash").HasMaxLength(128);
+                eb.Property(e => e.SourceBatchId).HasColumnName("source_batch_id");
                 
                 eb.HasIndex(e => e.BrojZapisnika).IsUnique();
                 eb.HasIndex(e => e.IDDobavljac);
                 eb.HasIndex(e => e.DatumPovracaja);
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceRowId })
+                  .IsUnique()
+                  .HasFilter("data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
                 
                 eb.HasMany(e => e.Stavke)
                   .WithOne(s => s.Povracaj)
@@ -275,8 +319,17 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
                 eb.Property(e => e.Razlog).HasColumnName("razlog");
                 eb.Property(e => e.StanjeArtikla).HasColumnName("stanje_artikla").HasMaxLength(100);
+                eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
+                eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
+                eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");
+                eb.Property(e => e.SourceHash).HasColumnName("source_hash").HasMaxLength(128);
+                eb.Property(e => e.SourceBatchId).HasColumnName("source_batch_id");
                 
                 eb.HasIndex(e => e.IdArtikal);
+                eb.HasIndex(e => new { e.SourceTableKey, e.SourceRowId })
+                  .IsUnique()
+                  .HasFilter("source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                eb.HasIndex(e => new { e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
             });
 
             modelBuilder.Entity<DataImportBatch>(eb =>
@@ -300,6 +353,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.ErrorDetailsJson);
                 eb.Property(e => e.RequestedBy).HasMaxLength(200);
                 eb.Property(e => e.ImportMode).IsRequired().HasMaxLength(16).HasDefaultValue("auto");
+                eb.Property(e => e.ImportStrategy).IsRequired().HasMaxLength(32).HasDefaultValue("full");
                 eb.Property(e => e.IncludeAnalytics).HasDefaultValue(true);
                 eb.Property(e => e.OverwriteExisting).HasDefaultValue(true);
                 eb.Property(e => e.IncludeTemporaryTables).HasDefaultValue(false);
@@ -313,11 +367,18 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.RowsWritten).HasDefaultValue(0);
                 eb.Property(e => e.IsIncremental).HasDefaultValue(false);
                 eb.Property(e => e.CursorSnapshot).HasColumnType("jsonb");
+                eb.Property(e => e.CursorBeforeJson).HasColumnType("jsonb");
+                eb.Property(e => e.CursorAfterJson).HasColumnType("jsonb");
                 eb.Property(e => e.ProcessedRowCount).HasDefaultValue(0);
                 eb.Property(e => e.SkippedRowCount).HasDefaultValue(0);
                 eb.Property(e => e.RowsInserted).HasDefaultValue(0);
                 eb.Property(e => e.RowsUpdated).HasDefaultValue(0);
                 eb.Property(e => e.RowsUnchanged).HasDefaultValue(0);
+                eb.Property(e => e.RowsStaged).HasDefaultValue(0);
+                eb.Property(e => e.RowsSkippedStale).HasDefaultValue(0);
+                eb.Property(e => e.RowsRejected).HasDefaultValue(0);
+                eb.Property(e => e.ShadowMismatchCount).HasDefaultValue(0);
+                eb.Property(e => e.SourceFileHash).HasMaxLength(128);
                 eb.Property(e => e.DurationSeconds);
                 eb.Property(e => e.TotalImported).HasDefaultValue(0);
                 eb.Property(e => e.TotalUpdated).HasDefaultValue(0);
@@ -342,10 +403,16 @@ namespace Infrastructure.DbContexts
                 eb.HasKey(e => e.TableKey);
                 eb.Property(e => e.TableKey).HasMaxLength(128);
                 eb.Property(e => e.CursorMode).IsRequired().HasMaxLength(32);
+                eb.Property(e => e.SourceKey).HasMaxLength(256);
+                eb.Property(e => e.CursorTimestampColumn).HasMaxLength(128);
+                eb.Property(e => e.CursorIdColumn).HasMaxLength(128);
                 eb.Property(e => e.CursorTimestampUtc);
                 eb.Property(e => e.CursorId);
                 eb.Property(e => e.CursorTieBreakerId);
                 eb.Property(e => e.OverlapSeconds).HasDefaultValue(60);
+                eb.Property(e => e.LastRowsRead).HasDefaultValue(0);
+                eb.Property(e => e.LastRowsMerged).HasDefaultValue(0);
+                eb.Property(e => e.LastLagSeconds);
                 eb.Property(e => e.LastSuccessfulBatchId);
                 eb.Property(e => e.LastRunStartedAtUtc);
                 eb.Property(e => e.LastRunCompletedAtUtc);

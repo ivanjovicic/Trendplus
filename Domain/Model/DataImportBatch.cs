@@ -30,6 +30,8 @@ namespace Domain.Model
         public string? RequestedBy { get; set; }
         [MaxLength(16)]
         public string ImportMode { get; set; } = "auto";
+        [MaxLength(32)]
+        public string ImportStrategy { get; set; } = "full";
         public bool IncludeAnalytics { get; set; } = true;
         public bool OverwriteExisting { get; set; } = true;
         public bool IncludeTemporaryTables { get; set; }
@@ -43,11 +45,19 @@ namespace Domain.Model
         public int RowsWritten { get; set; }
         public bool IsIncremental { get; set; }
         public string? CursorSnapshot { get; set; }
+        public string? CursorBeforeJson { get; set; }
+        public string? CursorAfterJson { get; set; }
         public int ProcessedRowCount { get; set; }
         public int SkippedRowCount { get; set; }
         public int RowsInserted { get; set; }
         public int RowsUpdated { get; set; }
         public int RowsUnchanged { get; set; }
+        public int RowsStaged { get; set; }
+        public int RowsSkippedStale { get; set; }
+        public int RowsRejected { get; set; }
+        public int ShadowMismatchCount { get; set; }
+        [MaxLength(128)]
+        public string? SourceFileHash { get; set; }
 
         // ── Enhanced columns (migration 015) ──
         public int? DurationSeconds { get; set; }

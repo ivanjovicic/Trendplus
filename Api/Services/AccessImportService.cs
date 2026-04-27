@@ -3,6 +3,7 @@ using System.Data.Odbc;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
 using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -268,7 +269,11 @@ using NpgsqlTypes;
             ["prodaja_zaglavlje"] = ["id", "idprodaja", "saleid", "iddnevnik"],
             ["prodaja_stavke"] = ["id", "idstavka", "lineid"],
             ["povracaj_zaglavlje"] = ["id", "idpovracaj", "returnid"],
-            ["povracaj_stavke"] = ["id", "idstavka", "lineid"]
+            ["povracaj_stavke"] = ["id", "idstavka", "lineid"],
+            ["nivelacije"] = ["iddnevnik", "id", "idlog"],
+            ["unos_robe"] = ["iddnevnik", "id", "idlog"],
+            ["povratnice"] = ["iddnevnik", "id", "idpovratnice", "idlog"],
+            ["prenos_robe"] = ["iddnevnik", "id", "brprenos", "idlog"]
         };
 
     private sealed class ActiveIncrementalTableScope
@@ -606,6 +611,11 @@ using NpgsqlTypes;
                 nextTimestamp,
                 nextId,
                 nextTieBreakerId,
+                checked((int)Math.Min(int.MaxValue, Math.Max(0, scope.RowsScanned))),
+                checked((int)Math.Min(int.MaxValue, Math.Max(0, scope.RowsAccepted))),
+                nextTimestamp.HasValue
+                    ? checked((int)Math.Min(int.MaxValue, Math.Max(0, (DateTime.UtcNow - nextTimestamp.Value).TotalSeconds)))
+                    : null,
                 scope.BatchId,
                 ct);
         }
@@ -735,6 +745,151 @@ using NpgsqlTypes;
         }
 
         return null;
+    }
+
+    private void ApplyAccessSourceLineage(IAccessImportSourceLineage entity, string tableKey, AccessDataRow row)
+    {
+        var scope = _activeIncrementalScope;
+        var useScopeAliases = scope is not null && scope.TableKey.Equals(tableKey, StringComparison.OrdinalIgnoreCase);
+        var idAliases = useScopeAliases
+            ? scope!.IdAliases
+            : ResolveDefaultLineageIdAliases(tableKey);
+        var timestampAliases = useScopeAliases
+            ? scope!.TimestampAliases
+            : ResolveDefaultLineageTimestampAliases();
+
+        entity.SourceTableKey = Normalize(tableKey);
+        entity.SourceRowId = ReadCursorInt(row, idAliases);
+        entity.SourceUpdatedAtUtc = ReadCursorTimestamp(row, timestampAliases);
+        entity.SourceHash = ComputeAccessRowHash(row);
+        entity.SourceBatchId = _activeBatchId;
+    }
+
+    private bool ShouldSkipStaleOrUnchangedAccessOverwrite(
+        IAccessImportSourceLineage existing,
+        string tableKey,
+        AccessDataRow row)
+    {
+        var incomingTimestamp = ReadCursorTimestamp(row, ResolveLineageTimestampAliasesForTable(tableKey));
+        var incomingRowId = ReadCursorInt(row, ResolveLineageIdAliasesForTable(tableKey));
+
+        if (incomingTimestamp.HasValue && existing.SourceUpdatedAtUtc.HasValue)
+        {
+            if (existing.SourceUpdatedAtUtc.Value > incomingTimestamp.Value)
+            {
+                _logger.LogInformation(
+                    "Access import skipped stale overwrite. TableKey: {TableKey}. ExistingSourceTimestamp: {ExistingSourceTimestamp}. IncomingSourceTimestamp: {IncomingSourceTimestamp}. ExistingSourceRowId: {ExistingSourceRowId}. IncomingSourceRowId: {IncomingSourceRowId}.",
+                    tableKey,
+                    existing.SourceUpdatedAtUtc,
+                    incomingTimestamp,
+                    existing.SourceRowId,
+                    incomingRowId);
+                MarkStaleOverwriteSkipped();
+                return true;
+            }
+
+            if (existing.SourceUpdatedAtUtc.Value == incomingTimestamp.Value &&
+                existing.SourceRowId.HasValue &&
+                incomingRowId.HasValue &&
+                existing.SourceRowId.Value > incomingRowId.Value)
+            {
+                _logger.LogInformation(
+                    "Access import skipped stale tie-breaker overwrite. TableKey: {TableKey}. SourceTimestamp: {SourceTimestamp}. ExistingSourceRowId: {ExistingSourceRowId}. IncomingSourceRowId: {IncomingSourceRowId}.",
+                    tableKey,
+                    incomingTimestamp,
+                    existing.SourceRowId,
+                    incomingRowId);
+                MarkStaleOverwriteSkipped();
+                return true;
+            }
+        }
+
+        var incomingHash = ComputeAccessRowHash(row);
+        return !string.IsNullOrWhiteSpace(existing.SourceHash) &&
+               string.Equals(existing.SourceHash, incomingHash, StringComparison.Ordinal);
+    }
+
+    private void MarkStaleOverwriteSkipped()
+    {
+        if (_activeBatchResult is not null)
+            _activeBatchResult.RowsSkippedStale++;
+    }
+
+    private sealed class AccessLineageSnapshot : IAccessImportSourceLineage
+    {
+        public string? SourceTableKey { get; set; }
+        public long? SourceRowId { get; set; }
+        public DateTime? SourceUpdatedAtUtc { get; set; }
+        public string? SourceHash { get; set; }
+        public long? SourceBatchId { get; set; }
+    }
+
+    private string[] ResolveLineageIdAliasesForTable(string tableKey)
+    {
+        var scope = _activeIncrementalScope;
+        return scope is not null && scope.TableKey.Equals(tableKey, StringComparison.OrdinalIgnoreCase)
+            ? scope.IdAliases
+            : ResolveDefaultLineageIdAliases(tableKey);
+    }
+
+    private string[] ResolveLineageTimestampAliasesForTable(string tableKey)
+    {
+        var scope = _activeIncrementalScope;
+        return scope is not null && scope.TableKey.Equals(tableKey, StringComparison.OrdinalIgnoreCase)
+            ? scope.TimestampAliases
+            : ResolveDefaultLineageTimestampAliases();
+    }
+
+    private static string[] ResolveDefaultLineageIdAliases(string tableKey)
+    {
+        var aliases = IncrementalIdAliasesByTable.TryGetValue(tableKey, out var configured)
+            ? configured
+            : ["id"];
+
+        return aliases
+            .Select(Normalize)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static string[] ResolveDefaultLineageTimestampAliases()
+        => DefaultCursorTimestampAliases
+            .Select(Normalize)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private static string ComputeAccessRowHash(AccessDataRow row)
+    {
+        var builder = new StringBuilder();
+        foreach (var item in row.ToDictionary().OrderBy(x => Normalize(x.Key), StringComparer.OrdinalIgnoreCase))
+        {
+            builder
+                .Append(Normalize(item.Key))
+                .Append('\u001f')
+                .Append(NormalizeLineageHashValue(item.Value))
+                .Append('\u001e');
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(builder.ToString());
+        return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+    }
+
+    private static string NormalizeLineageHashValue(object? value)
+    {
+        if (value is null or DBNull)
+            return string.Empty;
+
+        return value switch
+        {
+            DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture),
+            decimal d => d.ToString(CultureInfo.InvariantCulture),
+            double d => d.ToString("R", CultureInfo.InvariantCulture),
+            float f => f.ToString("R", CultureInfo.InvariantCulture),
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture) ?? string.Empty,
+            _ => value.ToString()?.Trim() ?? string.Empty
+        };
     }
 
     private bool ShouldIncludeRowForIncrementalScope(ActiveIncrementalTableScope scope, AccessDataRow row)
@@ -1234,6 +1389,7 @@ using NpgsqlTypes;
             batch.RowsRead = CountSourceRows(_activeBatchResult);
             batch.RowsAccepted = CountAcceptedRows(_activeBatchResult);
             batch.RowsWritten = CountImportedRows(_activeBatchResult) + CountUpdatedRows(_activeBatchResult);
+            batch.RowsSkippedStale = _activeBatchResult.RowsSkippedStale;
             batch.ProgressPercent = ComputeProgressPercent(
                 status: batch.Status,
                 currentStep: batch.CurrentStep,
@@ -2149,6 +2305,11 @@ using NpgsqlTypes;
             IncludeTemporaryTables = includeTemporaryTables,
             SkipInvalidForeignKeys = _options.SkipInvalidForeignKeys,
             ImportMode = "auto",
+            ImportStrategy = IsIncrementalWriteMode()
+                ? "incremental"
+                : IsIncrementalShadowMode()
+                    ? "shadow"
+                    : "full",
             ProgressPercent = 0,
             RowsRead = 0,
             RowsAccepted = 0,
@@ -2157,6 +2318,13 @@ using NpgsqlTypes;
             CancellationRequested = false,
             IsIncremental = IsIncrementalFeatureEnabled(),
             CursorSnapshot = IsIncrementalFeatureEnabled()
+                ? JsonSerializer.Serialize(new
+                {
+                    mode = _options.Incremental.Mode,
+                    createdAtUtc = now
+                })
+                : null,
+            CursorBeforeJson = IsIncrementalFeatureEnabled()
                 ? JsonSerializer.Serialize(new
                 {
                     mode = _options.Incremental.Mode,
@@ -2343,7 +2511,9 @@ using NpgsqlTypes;
                 batch.ProgressPercent = 100;
                 UpdateBatchDurationSeconds(batch, result.CompletedAtUtc ?? DateTime.UtcNow);
                 ApplyBatchMetricsFromResult(batch, result);
-                batch.CursorSnapshot = BuildBatchCursorSnapshotJson();
+                var completedCursorSnapshot = BuildBatchCursorSnapshotJson();
+                batch.CursorSnapshot = completedCursorSnapshot;
+                batch.CursorAfterJson = completedCursorSnapshot;
                 batch.SummaryJson = JsonSerializer.Serialize(result);
                 await _trendDb.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
@@ -2388,7 +2558,9 @@ using NpgsqlTypes;
                 type = ex.GetType().FullName,
                 message = ex.Message
             });
-            batch.CursorSnapshot = BuildBatchCursorSnapshotJson();
+            var cancelledCursorSnapshot = BuildBatchCursorSnapshotJson();
+            batch.CursorSnapshot = cancelledCursorSnapshot;
+            batch.CursorAfterJson = cancelledCursorSnapshot;
             batch.SummaryJson = JsonSerializer.Serialize(result);
             foreach (var entry in _trendDb.ChangeTracker.Entries().Where(e => !ReferenceEquals(e.Entity, batch)).ToList())
                 entry.State = EntityState.Detached;
@@ -2445,7 +2617,9 @@ using NpgsqlTypes;
                 baseType = ex.GetBaseException().GetType().FullName,
                 message = ex.GetBaseException().Message
             });
-            batch.CursorSnapshot = BuildBatchCursorSnapshotJson();
+            var failedCursorSnapshot = BuildBatchCursorSnapshotJson();
+            batch.CursorSnapshot = failedCursorSnapshot;
+            batch.CursorAfterJson = failedCursorSnapshot;
             batch.SummaryJson = JsonSerializer.Serialize(result);
 
             try
@@ -4132,11 +4306,29 @@ using NpgsqlTypes;
     private async Task ImportArtikliAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var preloadSw = System.Diagnostics.Stopwatch.StartNew();
-        var existingIds = (await _trendDb.Artikli
+        var existingRows = await _trendDb.Artikli
             .AsNoTracking()
-            .Select(x => x.Id)
-            .ToListAsync(ct))
-            .ToHashSet();
+            .Select(x => new
+            {
+                x.Id,
+                x.SourceTableKey,
+                x.SourceRowId,
+                x.SourceUpdatedAtUtc,
+                x.SourceHash,
+                x.SourceBatchId
+            })
+            .ToListAsync(ct);
+        var existingIds = existingRows.Select(x => x.Id).ToHashSet();
+        var existingLineageById = existingRows.ToDictionary(
+            x => x.Id,
+            x => new AccessLineageSnapshot
+            {
+                SourceTableKey = x.SourceTableKey,
+                SourceRowId = x.SourceRowId,
+                SourceUpdatedAtUtc = x.SourceUpdatedAtUtc,
+                SourceHash = x.SourceHash,
+                SourceBatchId = x.SourceBatchId
+            });
         preloadSw.Stop();
 
         _logger.LogInformation(
@@ -4199,6 +4391,12 @@ using NpgsqlTypes;
                     if (!overwriteExisting)
                         continue;
 
+                    if (existingLineageById.TryGetValue(assignedId, out var existingLineage) &&
+                        ShouldSkipStaleOrUnchangedAccessOverwrite(existingLineage, "artikli", row))
+                    {
+                        continue;
+                    }
+
                     e = new Artikli { Id = assignedId };
                     _trendDb.Artikli.Attach(e);
                     trackedCurrentBatch[assignedId] = e;
@@ -4215,6 +4413,7 @@ using NpgsqlTypes;
                     _trendDb.Artikli.Add(e);
                     trackedCurrentBatch[assignedId] = e;
                     existingIds.Add(assignedId);
+                    existingLineageById[assignedId] = new AccessLineageSnapshot();
                     result.ArtikliInserted++;
                     isInsert = true;
                 }
@@ -4224,10 +4423,22 @@ using NpgsqlTypes;
                 if (!overwriteExisting)
                     continue;
 
+                if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "artikli", row))
+                    continue;
+
                 result.ArtikliUpdated++;
             }
 
             ApplyArtikliValues(e, row, naziv!, aliasMap);
+            ApplyAccessSourceLineage(e, "artikli", row);
+            existingLineageById[e.Id] = new AccessLineageSnapshot
+            {
+                SourceTableKey = e.SourceTableKey,
+                SourceRowId = e.SourceRowId,
+                SourceUpdatedAtUtc = e.SourceUpdatedAtUtc,
+                SourceHash = e.SourceHash,
+                SourceBatchId = e.SourceBatchId
+            };
             TrackAnalyticsProductId(e.Id);
             TrackAnalyticsTypeId(e.IDTipObuce);
             TrackAnalyticsSupplierId(e.IDDobavljac);
@@ -4403,6 +4614,9 @@ using NpgsqlTypes;
             }
             else if (overwriteExisting)
             {
+                if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "prodaja_zaglavlje", row))
+                    continue;
+
                 e.BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
                 e.DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow;
                 e.NacinPlacanja = S(row, "nacinplacanja", "paymenttype");
@@ -4414,6 +4628,7 @@ using NpgsqlTypes;
                 TrackTrendWrite();
             }
 
+            ApplyAccessSourceLineage(e, "prodaja_zaglavlje", row);
             TrackAnalyticsStoreId(e.IDObjekat);
 
             await FlushTrendWritesAsync(force: false, ct);
@@ -4543,12 +4758,16 @@ using NpgsqlTypes;
             if (sourceId > 0 && existing.TryGetValue(sourceId, out var e))
             {
                 if (!overwriteExisting) continue;
+                if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "prodaja_stavke", row))
+                    continue;
+
                 e.IdProdaja = idProdaja.Value;
                 e.IdArtikal = idArtikal.Value;
                 e.Kolicina = qty;
                 e.Cena = cena;
                 if (nabavnaCena.HasValue)
                     e.NabavnaCena = nabavnaCena.Value;
+                ApplyAccessSourceLineage(e, "prodaja_stavke", row);
                 _trendDb.ProdajaStavke.Update(e);
                 result.ProdajaStavkeUpdated++;
                 TrackTrendWrite();
@@ -4579,6 +4798,7 @@ using NpgsqlTypes;
                     Cena = cena,
                     NabavnaCena = nabavnaCena
                 };
+                ApplyAccessSourceLineage(newLine, "prodaja_stavke", row);
                 _trendDb.ProdajaStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
                 result.ProdajaStavkeInserted++;
@@ -4694,6 +4914,9 @@ using NpgsqlTypes;
             }
             else if (overwriteExisting)
             {
+                if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "dnevnik_promena", row))
+                    continue;
+
                 result.DnevnikUpdated++;
             }
             else
@@ -4736,6 +4959,7 @@ using NpgsqlTypes;
             e.RedniBroj = I(row, "rednibr", "rednibrojartikla", "rbrartikla", "rbr", "rbroj",
                              "sek", "seqno", "seq", "linebr", "redni");
             e.DataOrigin = "access";
+            ApplyAccessSourceLineage(e, "dnevnik_promena", row);
             TrackAnalyticsMovementId(e.Id);
             TrackAnalyticsProductId(e.ArtikalId ?? 0);
             TrackAnalyticsSupplierId(e.DobavljacId);
@@ -4875,6 +5099,7 @@ using NpgsqlTypes;
                 }
             }
 
+            ApplyAccessSourceLineage(zaglavlje, "prodaja_zaglavlje", row);
             TrackAnalyticsStoreId(zaglavlje.IDObjekat);
 
             var lineKey = BuildProdajaLineKey(zaglavlje.Id, idArtikal.Value, qty, cena);
@@ -4896,6 +5121,7 @@ using NpgsqlTypes;
                 Cena = cena,
                 NabavnaCena = nabavnaCena
             };
+            ApplyAccessSourceLineage(line, "prodaja_stavke", row);
             if (_trendDb.Entry(zaglavlje).State == EntityState.Added)
                 line.Prodaja = zaglavlje;
 
@@ -5067,6 +5293,9 @@ using NpgsqlTypes;
             }
             else if (overwriteExisting)
             {
+                if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "povracaj_zaglavlje", row))
+                    continue;
+
                 result.PovracajUpdated++;
             }
             else
@@ -5086,6 +5315,7 @@ using NpgsqlTypes;
             e.Komentar = S(row, "komentar", "comment", "napomena");
             e.KreatorKorisnik = S(row, "korisnik", "kreirao", "user", "username", "operater");
             e.DataOrigin = "access";
+            ApplyAccessSourceLineage(e, "povracaj_zaglavlje", row);
 
             if (!isInsert)
                 _trendDb.PovracajZaglavlja.Update(e);
@@ -5133,6 +5363,8 @@ using NpgsqlTypes;
             {
                 if (!overwriteExisting)
                     continue;
+                if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "povracaj_stavke", row))
+                    continue;
 
                 e.IdPovracaj = idPovracaj.Value;
                 e.IdArtikal = idArtikal.Value;
@@ -5140,6 +5372,7 @@ using NpgsqlTypes;
                 e.Cena = cena;
                 e.Razlog = razlog;
                 e.StanjeArtikla = stanje;
+                ApplyAccessSourceLineage(e, "povracaj_stavke", row);
                 _trendDb.PovracajStavke.Update(e);
                 result.PovracajStavkeUpdated++;
                 TrackTrendWrite();
@@ -5170,6 +5403,7 @@ using NpgsqlTypes;
                     Razlog = razlog,
                     StanjeArtikla = stanje
                 };
+                ApplyAccessSourceLineage(newLine, "povracaj_stavke", row);
                 _trendDb.PovracajStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
                 existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
@@ -5339,7 +5573,7 @@ using NpgsqlTypes;
 
             usedIds.Add(assignedId);
             existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
-            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            var movement = new DnevnikPromena
             {
                 Id = assignedId,
                 TipPromene = TipPromeneConstants.Nivelacija,
@@ -5354,7 +5588,9 @@ using NpgsqlTypes;
                 BrojRacuna = S(row, "brdokumenta", "iddnevnik"),
                 DobavljacId = supplierId,
                 DataOrigin = "access"
-            });
+            };
+            ApplyAccessSourceLineage(movement, "nivelacije", row);
+            _trendDb.DnevnikPromena.Add(movement);
             result.NivelacijeInserted++;
             TrackTrendWrite();
             TrackAnalyticsMovementId(assignedId);
@@ -5414,7 +5650,7 @@ using NpgsqlTypes;
 
             usedIds.Add(assignedId);
             existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
-            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            var movement = new DnevnikPromena
             {
                 Id = assignedId,
                 TipPromene = TipPromeneConstants.UlazRobe,
@@ -5428,7 +5664,9 @@ using NpgsqlTypes;
                 RedniBroj = I(row, "rednibr", "rbr", "seqno"),
                 BrojRacuna = S(row, "brdokumenta", "iddnevnik"),
                 DataOrigin = "access"
-            });
+            };
+            ApplyAccessSourceLineage(movement, "unos_robe", row);
+            _trendDb.DnevnikPromena.Add(movement);
             result.UnosRobeInserted++;
             TrackTrendWrite();
             TrackAnalyticsMovementId(assignedId);
@@ -5488,7 +5726,7 @@ using NpgsqlTypes;
 
             usedIds.Add(assignedId);
             existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
-            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            var movement = new DnevnikPromena
             {
                 Id = assignedId,
                 TipPromene = TipPromeneConstants.PovratKupca,
@@ -5501,7 +5739,9 @@ using NpgsqlTypes;
                 RedniBroj = I(row, "rednibr", "rbr"),
                 Komentar = S(row, "razlog", "reason", "napomena"),
                 DataOrigin = "access"
-            });
+            };
+            ApplyAccessSourceLineage(movement, "povratnice", row);
+            _trendDb.DnevnikPromena.Add(movement);
             result.PovratnicaInserted++;
             TrackTrendWrite();
             TrackAnalyticsMovementId(assignedId);
@@ -5563,7 +5803,7 @@ using NpgsqlTypes;
 
             var idOut = AllocateNextId(usedIds, ref next);
             existingCompositeKeys[ckIzlaz] = existingCompositeKeys.GetValueOrDefault(ckIzlaz) + 1;
-            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            var movementOut = new DnevnikPromena
             {
                 Id = idOut,
                 TipPromene = TipPromeneConstants.PrenosIzlaz,
@@ -5575,7 +5815,9 @@ using NpgsqlTypes;
                 IDObjekat = idIz,
                 BrojRacuna = brDok,
                 DataOrigin = "access"
-            });
+            };
+            ApplyAccessSourceLineage(movementOut, "prenos_robe", row);
+            _trendDb.DnevnikPromena.Add(movementOut);
             result.PrenosRobeInserted++;
             TrackTrendWrite();
             TrackAnalyticsMovementId(idOut);
@@ -5585,7 +5827,7 @@ using NpgsqlTypes;
             var idIn = AllocateNextId(usedIds, ref next);
             var ckUlazNew = (TipPromeneConstants.PrenosUlaz, idArtikal.Value, datum, iznos);
             existingCompositeKeys[ckUlazNew] = existingCompositeKeys.GetValueOrDefault(ckUlazNew) + 1;
-            _trendDb.DnevnikPromena.Add(new DnevnikPromena
+            var movementIn = new DnevnikPromena
             {
                 Id = idIn,
                 TipPromene = TipPromeneConstants.PrenosUlaz,
@@ -5597,7 +5839,9 @@ using NpgsqlTypes;
                 IDObjekat = idU,
                 BrojRacuna = brDok,
                 DataOrigin = "access"
-            });
+            };
+            ApplyAccessSourceLineage(movementIn, "prenos_robe", row);
+            _trendDb.DnevnikPromena.Add(movementIn);
             result.PrenosRobeInserted++;
             TrackTrendWrite();
             TrackAnalyticsMovementId(idIn);
@@ -9310,6 +9554,7 @@ using NpgsqlTypes;
         batch.RowsInserted = batch.TotalImported;
         batch.RowsUpdated = batch.TotalUpdated;
         batch.RowsUnchanged = Math.Max(0, batch.RowsAccepted - batch.RowsWritten);
+        batch.RowsSkippedStale = result.RowsSkippedStale;
     }
 
     private static int ComputeProgressPercent(

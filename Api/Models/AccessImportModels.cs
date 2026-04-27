@@ -100,6 +100,7 @@ namespace Api.Models
         public Dictionary<string, int> SourceRowsByTable { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> ImportedRowsByTable { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, AccessImportCoverageMetric> CoverageByTable { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public int RowsSkippedStale { get; set; }
 
         public List<string> Warnings { get; set; } = new();
     }

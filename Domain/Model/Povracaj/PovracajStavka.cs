@@ -3,7 +3,7 @@
     /// <summary>
     /// Stavka zapisnika o povraćaju - pojedina?an artikal koji se vra?a
     /// </summary>
-    public class PovracajStavka
+    public class PovracajStavka : Domain.Model.IAccessImportSourceLineage
     {
         public int Id { get; set; }
 
@@ -36,6 +36,11 @@
         /// Stanje artikla: Ošte?eno, Pogrešna veli?ina, Neprodat, Dobar, itd.
         /// </summary>
         public string? StanjeArtikla { get; set; }
+        public string? SourceTableKey { get; set; }
+        public long? SourceRowId { get; set; }
+        public System.DateTime? SourceUpdatedAtUtc { get; set; }
+        public string? SourceHash { get; set; }
+        public long? SourceBatchId { get; set; }
 
         /// <summary>
         /// Navigaciona property ka zaglavlju

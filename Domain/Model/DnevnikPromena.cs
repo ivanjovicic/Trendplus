@@ -2,7 +2,7 @@ using System;
 
 namespace Domain.Model
 {
-    public class DnevnikPromena
+    public class DnevnikPromena : IAccessImportSourceLineage
     {
         public int Id { get; set; }
         /// <summary>Movement type. Use <see cref="TipPromeneConstants"/> constants for all comparisons.</summary>
@@ -22,5 +22,10 @@ namespace Domain.Model
         public string? Komentar { get; set; }
         public string? KorisnikIme { get; set; }
         public string DataOrigin { get; set; } = "existing";
+        public string? SourceTableKey { get; set; }
+        public long? SourceRowId { get; set; }
+        public DateTime? SourceUpdatedAtUtc { get; set; }
+        public string? SourceHash { get; set; }
+        public long? SourceBatchId { get; set; }
     }
 }

@@ -253,6 +253,9 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         DateTime? cursorTimestampUtc,
         long? cursorId,
         long? cursorTieBreakerId,
+        int rowsRead,
+        int rowsMerged,
+        int? lagSeconds,
         long? lastSuccessfulBatchId,
         CancellationToken ct)
     {
@@ -264,6 +267,9 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
             SET "CursorTimestampUtc" = {cursorTimestampUtc},
                 "CursorId" = {cursorId},
                 "CursorTieBreakerId" = {cursorTieBreakerId},
+                "LastRowsRead" = {Math.Max(0, rowsRead)},
+                "LastRowsMerged" = {Math.Max(0, rowsMerged)},
+                "LastLagSeconds" = {lagSeconds},
                 "LastSuccessfulBatchId" = {lastSuccessfulBatchId},
                 "LastError" = NULL,
                 "LastRunCompletedAtUtc" = {now},

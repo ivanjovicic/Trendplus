@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 
+using Domain.Model;
+
 namespace Domain.Model.Povracaj
 {
     /// <summary>
     /// Zaglavlje zapisnika o povraćaju robe dobavlja?u.
     /// Predstavlja ceo dokument sa osnovnim podacima.
     /// </summary>
-    public class PovracajZaglavlje
+    public class PovracajZaglavlje : IAccessImportSourceLineage
     {
         public int Id { get; set; }
 
@@ -72,5 +74,10 @@ namespace Domain.Model.Povracaj
         public List<PovracajStavka> Stavke { get; set; } = new();
 
         public string DataOrigin { get; set; } = "existing";
+        public string? SourceTableKey { get; set; }
+        public long? SourceRowId { get; set; }
+        public DateTime? SourceUpdatedAtUtc { get; set; }
+        public string? SourceHash { get; set; }
+        public long? SourceBatchId { get; set; }
     }
 }

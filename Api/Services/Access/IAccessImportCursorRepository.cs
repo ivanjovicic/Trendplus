@@ -19,6 +19,9 @@ public interface IAccessImportCursorRepository
         DateTime? cursorTimestampUtc,
         long? cursorId,
         long? cursorTieBreakerId,
+        int rowsRead,
+        int rowsMerged,
+        int? lagSeconds,
         long? lastSuccessfulBatchId,
         CancellationToken ct);
 

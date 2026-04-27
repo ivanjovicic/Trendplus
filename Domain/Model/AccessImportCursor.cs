@@ -11,11 +11,20 @@ public sealed class AccessImportCursor
     // timestamp | id | none | timestamp_then_id | id_or_composite
     [MaxLength(32)]
     public string CursorMode { get; set; } = "id";
+    [MaxLength(256)]
+    public string? SourceKey { get; set; }
+    [MaxLength(128)]
+    public string? CursorTimestampColumn { get; set; }
+    [MaxLength(128)]
+    public string? CursorIdColumn { get; set; }
 
     public DateTime? CursorTimestampUtc { get; set; }
     public long? CursorId { get; set; }
     public long? CursorTieBreakerId { get; set; }
     public int OverlapSeconds { get; set; } = 60;
+    public int LastRowsRead { get; set; }
+    public int LastRowsMerged { get; set; }
+    public int? LastLagSeconds { get; set; }
     public long? LastSuccessfulBatchId { get; set; }
     public DateTime? LastRunStartedAtUtc { get; set; }
     public DateTime? LastRunCompletedAtUtc { get; set; }
