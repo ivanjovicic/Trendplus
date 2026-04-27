@@ -562,7 +562,7 @@ export default function PerformanceDashboard() {
                                     <th className="observability-table__center" onClick={() => handleSort("isSuccess")}>
                                         Status {sortIcon("isSuccess")}
                                     </th>
-                                    <th>Details</th>
+                                    <th className="observability-table__actions">Details</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -578,7 +578,7 @@ export default function PerformanceDashboard() {
                                             <td className="observability-table__center">
                                                 <span className={`status-badge status-badge--${status}`}>{status}</span>
                                             </td>
-                                            <td>
+                                            <td className="observability-table__actions">
                                                 {stat.exceptionMessage ? (
                                                     <>
                                                         <button

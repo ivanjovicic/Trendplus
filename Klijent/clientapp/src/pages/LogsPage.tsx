@@ -465,7 +465,7 @@ export default function LogsPage() {
                                     <th>Message</th>
                                     <th>Path</th>
                                     <th>Correlation</th>
-                                    <th className="observability-table__right">Actions</th>
+                                    <th className="observability-table__actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>

@@ -183,6 +183,7 @@ public static class AllEndpoints
         
         app.MapGet("/api/logs", async (
             IErrorStore store,
+            IMemoryCache cache,
             HttpContext httpContext,
             ILogger<Program> logger,
             int pageNumber = 1,
@@ -207,6 +208,10 @@ public static class AllEndpoints
                 var normalizedLevel = string.IsNullOrWhiteSpace(level) ? null : level.Trim();
                 var normalizedSearch = string.IsNullOrWhiteSpace(searchText) ? null : searchText.Trim();
 
+                var cacheKey = $"logs:{safePageNumber}:{safePageSize}:{normalizedLevel}:{fromDate?.Ticks}:{toDate?.Ticks}:{normalizedSearch}";
+                if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
+                    return Results.Ok(cachedResponse);
+
                 var total = await store.GetCountAsync(
                     normalizedLevel,
                     fromDate,
@@ -221,15 +226,18 @@ public static class AllEndpoints
                     toDate,
                     normalizedSearch);
 
-                var logs = paged.Select(MapLogEntry);
+                var logs = paged.Select(MapLogEntry).ToList();
 
-                return Results.Ok(new
+                var response = new
                 {
                     logs,
                     totalCount = total,
                     pageNumber = safePageNumber,
                     pageSize = safePageSize
-                });
+                };
+
+                cache.Set(cacheKey, (object)response, TimeSpan.FromSeconds(20));
+                return Results.Ok(response);
             }
             catch (Exception ex)
             {
@@ -352,6 +360,7 @@ public static class AllEndpoints
         
         app.MapGet("/api/performance", async (
             IMediator mediator,
+            IMemoryCache cache,
             HttpContext httpContext,
             ILogger<Program> logger,
             int topCount = 20,
@@ -377,8 +386,13 @@ public static class AllEndpoints
                 if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                     toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
+                var cacheKey = $"perf:{topCount}:{minDurationMs}:{fromDate?.Ticks}:{toDate?.Ticks}:{requestName}:{status}";
+                if (cache.TryGetValue(cacheKey, out GetPerformanceStatsResult? cachedResult) && cachedResult is not null)
+                    return Results.Ok(cachedResult);
+
                 var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate, requestName, status);
                 var result = await mediator.Send(query);
+                cache.Set(cacheKey, result, TimeSpan.FromSeconds(45));
                 return Results.Ok(result);
             }
             catch (Exception ex)

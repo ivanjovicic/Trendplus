@@ -231,8 +231,10 @@
 
 .observability-table-shell {
   overflow: auto;
+  width: 100%;
   max-height: 640px;
   border-radius: 8px;
+  margin-bottom: 16px;
 }
 
 .observability-table {
@@ -273,6 +275,17 @@
 
 .observability-table__center {
   text-align: center;
+}
+
+/* Actions column — shrink to content, never wrap buttons */
+.observability-table__actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.observability-table td .observability-inline-actions {
+  flex-wrap: nowrap;
 }
 
 .observability-mono {
