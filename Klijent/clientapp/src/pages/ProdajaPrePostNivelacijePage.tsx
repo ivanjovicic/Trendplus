@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import InfoTip from "../components/ui/InfoTip";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
@@ -257,6 +258,86 @@ function parseMetricsStatus(value: string | null | undefined): string[] {
     .split(";")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+type MetricWarningMeta = {
+  label: string;
+  severity: "info" | "watch";
+  explanation: string;
+  isExpected: boolean;
+};
+
+const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
+  "Rolling pre/post unavailable (no eventDate filter)": {
+    label: "Rolling analiza preskočena",
+    severity: "info",
+    explanation:
+      "Rolling 7-dnevni pre/post zahteva tačan datum nivelacije. U mode-u pregleda po periodu, ova metrika se ne računa — to je očekivano ponašanje, ne greška.",
+    isExpected: true,
+  },
+  "No rolling data (view missing)": {
+    label: "Rolling 7d view nedostupan",
+    severity: "info",
+    explanation: "vw_sales_rolling_7d nije aktivan na ovoj bazi. Ostali podaci su ispravni.",
+    isExpected: true,
+  },
+  "No momentum data (view missing)": {
+    label: "Momentum signal nedostupan",
+    severity: "info",
+    explanation:
+      "vw_sales_momentum view nije kreiran. Momentum (trend ubrzanja prodaje) nije uključen u ocenu. Ostale komponente score-a su ispravne.",
+    isExpected: true,
+  },
+  "No OOS data (view missing)": {
+    label: "OOS metrika nedostupna",
+    severity: "info",
+    explanation:
+      "vw_stock_red_zone view nije kreiran. Procena prodajnog gubitka zbog iscrpljenosti zalihe (lost sales OOS) nije dostupna.",
+    isExpected: true,
+  },
+  "No DiD data (view missing)": {
+    label: "DiD metrika nedostupna",
+    severity: "info",
+    explanation:
+      "vw_nivelacija_did view nije kreiran. Difference-in-Differences kauzalna procena nije uključena.",
+    isExpected: true,
+  },
+  "Article stats capped": {
+    label: "Podaci ograničeni (cap)",
+    severity: "watch",
+    explanation:
+      "Broj article redova je ograničen zbog veličine upita. Neke stavke možda nisu vidljive — suzite filter.",
+    isExpected: false,
+  },
+  "OOS/DiD mapping failed": {
+    label: "OOS/DiD mapiranje neuspešno",
+    severity: "watch",
+    explanation:
+      "Neočekivana greška pri učitavanju OOS ili DiD podataka. Osnovna analiza je ispravna — proverite konfiguraciju baze.",
+    isExpected: false,
+  },
+  "Metrics mapping failed": {
+    label: "Mapiranje metrika neuspešno",
+    severity: "watch",
+    explanation:
+      "Greška pri obradi naprednih metrika. Osnovna analiza (promet pre/posle, promena cene) je ispravna.",
+    isExpected: false,
+  },
+};
+
+function getMetricWarningMeta(rawKey: string): MetricWarningMeta {
+  // Exact match
+  if (METRIC_WARNING_META[rawKey]) return METRIC_WARNING_META[rawKey];
+  // Prefix match (e.g. "Article stats capped to 5000 rows")
+  const prefixMatch = Object.entries(METRIC_WARNING_META).find(([k]) => rawKey.startsWith(k));
+  if (prefixMatch) return prefixMatch[1];
+  // Fallback
+  return {
+    label: rawKey,
+    severity: "watch",
+    explanation: "Neočekivano upozorenje pri obradi podataka.",
+    isExpected: false,
+  };
 }
 
 function averageNullable(values: Array<number | null | undefined>): number | null {
@@ -623,12 +704,23 @@ export default function ProdajaPrePostNivelacijePage() {
     const analyzedShare = data?.dataQuality.analyzedSharePercent ?? 0;
     const duplicateRows = data?.dataQuality.duplicateRowsRemoved ?? 0;
     const inactiveRows = data?.dataQuality.inactiveRows ?? 0;
+    const analyzedRows = data?.dataQuality.analyzedRows ?? 0;
+    const deduplicatedRows = data?.dataQuality.deduplicatedRows ?? 0;
+    const unchangedPriceRows = data?.dataQuality.unchangedPriceRows ?? 0;
 
-    if (analyzedShare >= 70 && dataQualityWarnings.length === 0) {
+    const countDetail = deduplicatedRows > 0
+      ? `${analyzedRows} od ${deduplicatedRows} nivelacija redova (${fmtPct(analyzedShare, 0)})`
+      : `${fmtPct(analyzedShare, 0)} redova`;
+
+    const details = `Analizirano: ${countDetail} | bez prodajnog prozora: ${inactiveRows} | nepromenjene cene: ${unchangedPriceRows} | duplikati uklonjeni: ${duplicateRows}`;
+
+    const hasUnexpectedWarnings = dataQualityWarnings.some((w) => !getMetricWarningMeta(w).isExpected);
+
+    if (analyzedShare >= 70 && !hasUnexpectedWarnings) {
       return {
         label: "Visoko poverenje",
         tone: "strong" as const,
-        details: `Analizirano ${fmtPct(analyzedShare, 0)} redova | duplicati ${duplicateRows} | neaktivni ${inactiveRows}`,
+        details,
       };
     }
 
@@ -636,16 +728,24 @@ export default function ProdajaPrePostNivelacijePage() {
       return {
         label: "Srednje poverenje",
         tone: "watch" as const,
-        details: `Analizirano ${fmtPct(analyzedShare, 0)} redova | duplicati ${duplicateRows} | neaktivni ${inactiveRows}`,
+        details,
       };
     }
 
     return {
       label: "Nisko poverenje",
       tone: "weak" as const,
-      details: `Analizirano ${fmtPct(analyzedShare, 0)} redova | duplicati ${duplicateRows} | neaktivni ${inactiveRows}`,
+      details,
     };
-  }, [data?.dataQuality.analyzedSharePercent, data?.dataQuality.duplicateRowsRemoved, data?.dataQuality.inactiveRows, dataQualityWarnings.length]);
+  }, [
+    data?.dataQuality.analyzedSharePercent,
+    data?.dataQuality.duplicateRowsRemoved,
+    data?.dataQuality.inactiveRows,
+    data?.dataQuality.analyzedRows,
+    data?.dataQuality.deduplicatedRows,
+    data?.dataQuality.unchangedPriceRows,
+    dataQualityWarnings,
+  ]);
 
   const leadingCategory = useMemo(() => {
     const rows = [...(data?.categoryStats ?? [])].sort((left, right) => right.changeRevenue - left.changeRevenue);
@@ -657,12 +757,32 @@ export default function ProdajaPrePostNivelacijePage() {
     return rows[0] ?? null;
   }, [data?.priceDirectionStats]);
 
-  const advancedSignals = useMemo(
+const advancedSignals = useMemo(
     () => [
-      { label: "Momentum", value: fmtOptionalRsd(data?.avgMomentumRevenue), hint: "avg rev" },
-      { label: "Elasticnost", value: fmtMetric(data?.avgElasticity, 2), hint: "avg" },
-      { label: "DID", value: fmtOptionalRsd(data?.avgDidRevenue), hint: "avg rev" },
-      { label: "Lost sales OOS", value: fmtOptionalRsd(data?.avgLostSalesOOS), hint: "avg" },
+      {
+        label: "Momentum",
+        value: fmtOptionalRsd(data?.avgMomentumRevenue),
+        hint: "avg rev",
+        tip: "Prosečan prihod od ubrzanja prodaje (momentum signal). Pokazuje da li prodajni trend dobija na brzini pre/posle nivelacije. Nedostupno ako vw_sales_momentum view nije kreiran u bazi.",
+      },
+      {
+        label: "Elasticnost",
+        value: fmtMetric(data?.avgElasticity, 2),
+        hint: "avg",
+        tip: "Prosečna cenovana elastičnost po artiklima dobavljača. Vrednost < 0 znači da rast cene smanjuje prodaju. Računa se kao %Δqty / %Δcena za svaki artikal.",
+      },
+      {
+        label: "DID",
+        value: fmtOptionalRsd(data?.avgDidRevenue),
+        hint: "avg rev",
+        tip: "Difference-in-Differences procena uzročnog efekta nivelacije. Poredi promenu prodaje sa kontrolnom grupom (artikli bez nivelacije). Nedostupno ako vw_nivelacija_did nije kreiran.",
+      },
+      {
+        label: "Lost sales OOS",
+        value: fmtOptionalRsd(data?.avgLostSalesOOS),
+        hint: "avg",
+        tip: "Procena prihoda izgubljenog zbog iscrpljenosti zalihe (Out of Stock). Izračunava se iz vw_stock_red_zone podataka. Nedostupno dok taj view nije kreiran u bazi.",
+      },
     ],
     [data?.avgDidRevenue, data?.avgElasticity, data?.avgLostSalesOOS, data?.avgMomentumRevenue]
   );
@@ -924,15 +1044,24 @@ export default function ProdajaPrePostNivelacijePage() {
           <section className="ppn-decision-signals">
             <article className="ppn-decision-card ppn-signal-card">
               <div className="ppn-card-topline">
-                <h2>Poverenje u signal</h2>
+                <h2 className="ppn-card-topline-label">
+                  Poverenje u signal
+                  <InfoTip text="Ocena pouzdanosti podataka za ovu analizu. Bazira se na procentu nivelacija redova koji imaju aktivnu prodajnu aktivnost u pre/post prozoru. 'Nisko poverenje' ne znači grešku — može biti da većina nivelacija nema prodajne podatke u izabranom periodu." />
+                </h2>
                 <span className={confidenceClass(dataTrustSummary.tone)}>{dataTrustSummary.label}</span>
               </div>
-              <p>{dataTrustSummary.details}</p>
+              <p className="ppn-trust-details">{dataTrustSummary.details}</p>
               {dataQualityWarnings.length > 0 ? (
-                <div className="ppn-chip-wrap">
-                  {dataQualityWarnings.slice(0, 4).map((warning) => (
-                    <span key={warning} className="ppn-signal-pill signal-watch">{warning}</span>
-                  ))}
+                <div className="ppn-warning-list">
+                  {dataQualityWarnings.slice(0, 5).map((warning) => {
+                    const meta = getMetricWarningMeta(warning);
+                    return (
+                      <div key={warning} className={`ppn-warning-item ppn-warning-${meta.severity}`}>
+                        <span className="ppn-warning-label">{meta.label}</span>
+                        <span className="ppn-warning-explanation">{meta.explanation}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="ppn-chip-wrap">
@@ -976,17 +1105,26 @@ export default function ProdajaPrePostNivelacijePage() {
 
             <article className="ppn-decision-card ppn-signal-card">
               <div className="ppn-card-topline">
-                <h2>Napredni signali</h2>
+                <h2 className="ppn-card-topline-label">
+                  Napredni signali
+                  <InfoTip text="Napredniji analitički signali koji zahtevaju dodatne database view-ove. Ako su vrednosti 'N/A', view nije kreiran u ovoj bazi — osnovna analiza (promet pre/posle, trend, decision score) ostaje ispravna." />
+                </h2>
                 <span className="ppn-signal-pill signal-neutral">Avg</span>
               </div>
               <div className="ppn-mini-metrics">
-                {advancedSignals.map((item) => (
-                  <article key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                    <small>{item.hint}</small>
-                  </article>
-                ))}
+                {advancedSignals.map((item) => {
+                  const isUnavailable = item.value === "N/A";
+                  return (
+                    <article key={item.label} className={isUnavailable ? "ppn-mini-metric-na" : ""}>
+                      <span className="ppn-mini-metric-label">
+                        {item.label}
+                        <InfoTip text={item.tip} />
+                      </span>
+                      <strong className={isUnavailable ? "ppn-na-value" : ""}>{item.value}</strong>
+                      <small>{isUnavailable ? "view nedostupan" : item.hint}</small>
+                    </article>
+                  );
+                })}
               </div>
             </article>
           </section>
@@ -1113,16 +1251,19 @@ export default function ProdajaPrePostNivelacijePage() {
                         <button type="button" onClick={() => handleSort("trendPct")}>
                           Trend{sortMarker("trendPct", sortField, sortDir)}
                         </button>
+                        <InfoTip text="Procentualna promena prometa: (postRevenue − preRevenue) / preRevenue. Pozitivno = rast posle nivelacije." />
                       </th>
                       <th className="align-center">
                         <button type="button" onClick={() => handleSort("volatilityPct")}>
                           Volatilnost{sortMarker("volatilityPct", sortField, sortDir)}
                         </button>
+                        <InfoTip text="Variranje post-window prometa vs prethodni event-opseg istog perioda. Visoka volatilnost znači nestabilan signal — preporuku treba uzeti s rezervom." />
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
                           Preporuka{sortMarker("status", sortField, sortDir)}
                         </button>
+                        <InfoTip text="Decision score kombinuje: udeo prometa (35%), promena prometa (30%), trend (20%), pouzdanost signala (15%). Pojacaj ≥68, Zadrzi 43–67, Smanji <43. Nisko poverenje automatski spušta 'Pojacaj' → 'Zadrzi'." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -1144,7 +1285,10 @@ export default function ProdajaPrePostNivelacijePage() {
                               <div className="ppn-vendor-cell">
                                 <strong title={row.vendorName || "Nepoznat dobavljac"}>{row.vendorName || "Nepoznat dobavljac"}</strong>
                                 <div className="ppn-chip-wrap">
-                                  <span className={confidenceClass(row.confidenceTone)}>{row.confidenceLabel} signal</span>
+                                  <span className={confidenceClass(row.confidenceTone)}>
+                                    {row.confidenceLabel} signal
+                                    <InfoTip text={`Pouzdanost: ${fmtPct(row.reliabilityPct, 0)} — bazira se na aktivnim artiklima (${row.activeArticlesCount}/${row.articleCount}) i poznatosti dobavljača. Visoko ≥70%, Srednje 40–70%, Nisko <40%.`} />
+                                  </span>
                                   <span className="ppn-signal-pill signal-neutral">{row.activeArticlesCount}/{row.articleCount} aktivno</span>
                                 </div>
                               </div>
@@ -1217,11 +1361,17 @@ export default function ProdajaPrePostNivelacijePage() {
                   <strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong>
                 </article>
                 <article>
-                  <span>Pouzdanost signala</span>
+                  <span>
+                    Pouzdanost signala
+                    <InfoTip text="Pouzdanost = (aktivni artikli / ukupno artikala) × 70% + (poznati dobavljač ? 30% : 0%). Meri koliko je signal statistički podložan za donosennje odluka." />
+                  </span>
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Volatilnost vs prethodni period</span>
+                  <span>
+                    Volatilnost vs prethodni period
+                    <InfoTip text="Procentualna razlika post-window prometa ovog perioda vs prethodnog event-opsega. Visoka volatilnost (>30%) znači nestabilan signal — preporuka je manje sigurna." />
+                  </span>
                   <strong>{selectedRow.volatilityPct == null ? selectedRow.volatilityLabel : fmtSignedPct(selectedRow.volatilityPct, 1)}</strong>
                 </article>
                 <article>
@@ -1233,7 +1383,10 @@ export default function ProdajaPrePostNivelacijePage() {
                   <strong>{selectedRow.decreasedPriceArticlesCount}</strong>
                 </article>
                 <article>
-                  <span>Decision score</span>
+                  <span>
+                    Decision score
+                    <InfoTip text="Kompozitni score: udeo prometa × 35% + promena prometa × 30% + trend × 20% + pouzdanost × 15%. Normalizovano 0–100. Pojacaj ≥68, Zadrzi 43–67, Smanji <43." />
+                  </span>
                   <strong>{selectedRow.decisionScore}</strong>
                 </article>
               </div>
@@ -1266,9 +1419,12 @@ export default function ProdajaPrePostNivelacijePage() {
                     <small>Lost sales {fmtOptionalRsd(selectedDriverSummary.avgLostSalesOOS)}</small>
                   </article>
                   <article>
-                    <span>Najcesci metric reason</span>
-                    <strong>{selectedDriverSummary.topMetricReasons[0] ?? "N/A"}</strong>
-                    <small>{selectedDriverSummary.topMetricReasons.slice(1).join(" | ") || "Bez dodatnih upozorenja"}</small>
+                    <span>
+                      Najcesci metric reason
+                      <InfoTip text="Interni razlog zašto neki artikli nemaju sve metrike (rolling, momentum, OOS, DiD). Obično se radi o nedostajućim analytics view-ovima — ne utiče na ispravnost osnovne pre/post analize." />
+                    </span>
+                    <strong>{selectedDriverSummary.topMetricReasons[0] ? getMetricWarningMeta(selectedDriverSummary.topMetricReasons[0].split(" (")[0]).label : "N/A"}</strong>
+                    <small>{selectedDriverSummary.topMetricReasons.slice(1).map((r) => getMetricWarningMeta(r.split(" (")[0]).label).join(" | ") || "Bez dodatnih upozorenja"}</small>
                   </article>
                 </div>
               ) : null}

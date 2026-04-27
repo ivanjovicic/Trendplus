@@ -336,7 +336,7 @@
   padding: 8px;
 }
 
-.ppn-mini-metrics span,
+.ppn-mini-metrics span:not(.ppn-mini-metric-label),
 .ppn-mini-metrics small {
   color: var(--dashboard-text-muted);
   display: block;
@@ -722,6 +722,85 @@
   color: var(--dashboard-text-muted);
   font-size: 13px;
   margin: 12px 0 0;
+}
+
+/* ── Warning list (replaces raw pill warnings) ─────────────────────────── */
+
+.ppn-warning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ppn-warning-item {
+  border-left: 3px solid transparent;
+  border-radius: 0 8px 8px 0;
+  padding: 7px 10px;
+}
+
+.ppn-warning-info {
+  background: color-mix(in srgb, var(--dashboard-secondary) 10%, transparent);
+  border-left-color: color-mix(in srgb, var(--dashboard-secondary) 50%, transparent);
+}
+
+.ppn-warning-watch {
+  background: var(--warning-soft, color-mix(in srgb, var(--warning) 12%, transparent));
+  border-left-color: var(--warning, #facc15);
+}
+
+.ppn-warning-label {
+  color: var(--dashboard-text);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.ppn-warning-explanation {
+  color: var(--dashboard-text-muted);
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* ── Trust summary detail line ──────────────────────────────────────────── */
+
+.ppn-trust-details {
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 4px 0 6px;
+}
+
+/* ── Card topline label with inline InfoTip ────────────────────────────── */
+
+.ppn-card-topline-label {
+  align-items: center;
+  display: flex;
+  font-size: 15px;
+  font-weight: 700;
+  gap: 5px;
+  margin: 0;
+}
+
+/* ── Napredni signali: N/A state ────────────────────────────────────────── */
+
+.ppn-mini-metric-na {
+  opacity: 0.55;
+}
+
+.ppn-na-value {
+  color: var(--dashboard-text-muted) !important;
+  font-size: 13px !important;
+}
+
+.ppn-mini-metric-label {
+  align-items: center;
+  display: flex;
+  gap: 4px;
 }
 
 @media (max-width: 1200px) {
