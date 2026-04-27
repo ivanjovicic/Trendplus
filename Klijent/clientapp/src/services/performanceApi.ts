@@ -66,7 +66,7 @@ export async function getPerformanceStats(
         return response.json();
     } catch (error) {
         if (error instanceof TypeError) {
-            throw new Error("Network error while fetching performance stats");
+            throw new Error("Mrezna greska pri ucitavanju performansi.");
         }
 
         throw error;

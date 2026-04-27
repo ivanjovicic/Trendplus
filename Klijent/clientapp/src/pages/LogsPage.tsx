@@ -146,7 +146,7 @@ export default function LogsPage() {
             setLogs(result.logs);
             setTotalCount(result.totalCount);
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Unable to load logs.";
+            const message = err instanceof Error ? err.message : "Nije moguce ucitati logove.";
             setError(message);
         } finally {
             setLoading(false);
@@ -217,7 +217,7 @@ export default function LogsPage() {
             setLogs((current) => [log, ...current.filter((item) => item.id !== log.id)]);
             setExpandedRow(String(log.id ?? log.timestamp));
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Unable to load log by ID.";
+            const message = err instanceof Error ? err.message : "Nije moguce ucitati log po ID-u.";
             setError(message);
         } finally {
             setLoadingLogById(false);

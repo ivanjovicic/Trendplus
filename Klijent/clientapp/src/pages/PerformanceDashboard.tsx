@@ -88,6 +88,12 @@ function rowStatus(stat: PerformanceStat): "success" | "failed" | "slow" {
     return "success";
 }
 
+const statusLabel: Record<ReturnType<typeof rowStatus>, string> = {
+    success: "uspesno",
+    failed: "greska",
+    slow: "sporo",
+};
+
 const tooltipStyle = {
     background: "var(--color-surface)",
     border: "var(--border-width-sm) solid var(--color-border)",
@@ -160,7 +166,7 @@ export default function PerformanceDashboard() {
             setLastUpdatedAt(new Date());
         } catch (reason) {
             if (requestId !== activeRequestIdRef.current) return;
-            setError(reason instanceof Error ? reason.message : "Unable to load performance data.");
+            setError(reason instanceof Error ? reason.message : "Nije moguce ucitati podatke o performansama.");
         } finally {
             if (requestId === activeRequestIdRef.current) {
                 setLoading(false);
@@ -230,10 +236,13 @@ export default function PerformanceDashboard() {
         : 0;
     const hasTimeline = chartTimeline.length > 0;
     const hasEndpointStats = topEndpointChart.length > 0;
+    const hasAnyPerformanceData = (summary?.totalRequests ?? 0) > 0 || stats.length > 0 || hasTimeline || hasEndpointStats;
+    const emptyPerformanceMessage =
+        "Backend trenutno vraca 0 performansnih zapisa za izabrani opseg i filtere. Prosiri period na 7 dana, ukloni filter za endpoint/status ili proveri da li je backend restartovan nakon ukljucivanja HTTP performance logovanja.";
 
     const sortIcon = (key: SortKey) => {
         if (sortKey !== key) return <ArrowUpDown size={13} />;
-        return sortDirection === "asc" ? "ASC" : "DESC";
+        return sortDirection === "asc" ? "RAST" : "OPAD";
     };
 
     const handleSort = (key: SortKey) => {
@@ -268,12 +277,12 @@ export default function PerformanceDashboard() {
         <div className="observability-page">
             <div className="observability-header">
                 <div>
-                    <span className="observability-eyebrow">System observability</span>
+                    <span className="observability-eyebrow">Sistemski nadzor</span>
                     <h1 className="observability-title">
                         <Gauge size={22} />
-                        Performance
+                        Performanse
                     </h1>
-                    <p className="observability-subtitle">Latency, error pressure, throughput, and slow endpoints.</p>
+                    <p className="observability-subtitle">Latencija, greske, protok zahteva i najsporiji endpointi.</p>
                 </div>
 
                 <div className="observability-actions">
@@ -284,7 +293,7 @@ export default function PerformanceDashboard() {
                             onChange={(event) => setAutoRefresh(event.target.checked)}
                             disabled={!apiPingEnabled}
                         />
-                        Auto-refresh
+                        Automatsko osvezavanje
                     </label>
 
                     <button
@@ -294,7 +303,7 @@ export default function PerformanceDashboard() {
                         disabled={loading || refreshing}
                     >
                         <RefreshCw size={16} />
-                        {refreshing ? "Refreshing" : "Refresh"}
+                        {refreshing ? "Osvezavanje" : "Osvezi"}
                     </button>
                 </div>
             </div>
@@ -302,20 +311,20 @@ export default function PerformanceDashboard() {
             <div className="observability-status observability-status--spaced">
                 <span className="observability-status__dot" />
                 {lastUpdatedAt
-                    ? `Updated ${lastUpdatedAt.toLocaleString("sr-RS")}`
-                    : "Waiting for first sample"}
-                {!apiPingEnabled ? " - global polling paused" : ""}
+                    ? `Azurirano ${lastUpdatedAt.toLocaleString("sr-RS")}`
+                    : "Ceka se prvi uzorak"}
+                {!apiPingEnabled ? " - globalno osvezavanje je pauzirano" : ""}
             </div>
 
             {summary && (
-                <section className="observability-kpis observability-kpis--six" aria-label="Performance overview">
+                <section className="observability-kpis observability-kpis--six" aria-label="Pregled performansi">
                     <div className="observability-kpi">
                         <div className="observability-kpi__label">
                             <Activity size={15} />
-                            Requests
+                            Zahtevi
                         </div>
                         <div className="observability-kpi__value">{summary.totalRequests}</div>
-                        <div className="observability-kpi__meta">Filtered sample</div>
+                        <div className="observability-kpi__meta">Filtrirani uzorak</div>
                     </div>
 
                     <div className="observability-kpi">
@@ -324,7 +333,7 @@ export default function PerformanceDashboard() {
                             P50
                         </div>
                         <div className="observability-kpi__value">{formatDuration(summary.p50DurationMs)}</div>
-                        <div className="observability-kpi__meta">Median latency</div>
+                        <div className="observability-kpi__meta">Medijana latencije</div>
                     </div>
 
                     <div className="observability-kpi">
@@ -339,35 +348,35 @@ export default function PerformanceDashboard() {
                     <div className="observability-kpi">
                         <div className="observability-kpi__label">
                             <TriangleAlert size={15} />
-                            Errors
+                            Greske
                         </div>
                         <div className="observability-kpi__value">{failedRate.toFixed(1)}%</div>
-                        <div className="observability-kpi__meta">{summary.failedRequests} failed</div>
+                        <div className="observability-kpi__meta">{summary.failedRequests} neuspesnih</div>
                     </div>
 
                     <div className="observability-kpi">
                         <div className="observability-kpi__label">
                             <Clock3 size={15} />
-                            Slow
+                            Sporo
                         </div>
                         <div className="observability-kpi__value">{slowRate.toFixed(1)}%</div>
-                        <div className="observability-kpi__meta">{summary.slowRequests} over 1s</div>
+                        <div className="observability-kpi__meta">{summary.slowRequests} preko 1s</div>
                     </div>
 
                     <div className="observability-kpi">
                         <div className="observability-kpi__label">
                             <BarChart3 size={15} />
-                            Max
+                            Maks.
                         </div>
                         <div className="observability-kpi__value">{formatDuration(summary.maxDurationMs)}</div>
-                        <div className="observability-kpi__meta">Avg {formatDuration(summary.averageDurationMs)}</div>
+                        <div className="observability-kpi__meta">Prosek {formatDuration(summary.averageDurationMs)}</div>
                     </div>
                 </section>
             )}
 
-            <section className="observability-panel observability-filters" aria-label="Performance filters">
+            <section className="observability-panel observability-filters" aria-label="Filteri performansi">
                 <div className="observability-field">
-                    <label htmlFor="perf-top">Rows</label>
+                    <label htmlFor="perf-top">Redova</label>
                     <input
                         id="perf-top"
                         type="number"
@@ -380,7 +389,7 @@ export default function PerformanceDashboard() {
                 </div>
 
                 <div className="observability-field">
-                    <label htmlFor="perf-min">Min duration</label>
+                    <label htmlFor="perf-min">Min. trajanje</label>
                     <input
                         id="perf-min"
                         type="number"
@@ -394,7 +403,7 @@ export default function PerformanceDashboard() {
                 </div>
 
                 <div className="observability-field">
-                    <label htmlFor="perf-from">From</label>
+                    <label htmlFor="perf-from">Od</label>
                     <input
                         id="perf-from"
                         type="datetime-local"
@@ -405,7 +414,7 @@ export default function PerformanceDashboard() {
                 </div>
 
                 <div className="observability-field">
-                    <label htmlFor="perf-to">To</label>
+                    <label htmlFor="perf-to">Do</label>
                     <input
                         id="perf-to"
                         type="datetime-local"
@@ -435,10 +444,10 @@ export default function PerformanceDashboard() {
                         value={statusFilter}
                         onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
                     >
-                        <option value="all">All</option>
-                        <option value="success">Success</option>
-                        <option value="failed">Failed</option>
-                        <option value="slow">Slow</option>
+                        <option value="all">Svi</option>
+                        <option value="success">Uspesni</option>
+                        <option value="failed">Neuspesni</option>
+                        <option value="slow">Spori</option>
                     </select>
                 </div>
 
@@ -454,7 +463,7 @@ export default function PerformanceDashboard() {
                     </button>
                     <button className="observability-button observability-button--compact" type="button" onClick={resetAllFilters}>
                         <X size={14} />
-                        Reset
+                        Resetuj
                     </button>
                 </div>
             </section>
@@ -462,182 +471,192 @@ export default function PerformanceDashboard() {
             {error && <div className="observability-error">{error}</div>}
 
             {loading ? (
-                <div className="observability-loading">Loading performance telemetry...</div>
+                <div className="observability-loading">Ucitavanje telemetrije performansi...</div>
             ) : (
                 <>
-                    <section className="observability-chart-grid" aria-label="Performance charts">
-                        <div className="observability-chart-card">
-                            <h2 className="observability-card-title">Latency Timeline</h2>
-                            {hasTimeline ? (
-                                <div className="observability-chart">
-                                    <ResponsiveContainer>
-                                        <AreaChart data={chartTimeline}>
-                                            <CartesianGrid vertical={false} />
-                                            <XAxis dataKey="bucketLabel" minTickGap={22} />
-                                            <YAxis tickFormatter={(value) => `${value}ms`} />
-                                            <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown, name?: string) => [formatDuration(Number(value)), name ?? "Value"]} />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="p95DurationMs"
-                                                name="P95"
-                                                stroke="var(--color-warning)"
-                                                fill="var(--warning-soft)"
-                                                strokeWidth={2}
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="averageDurationMs"
-                                                name="Avg"
-                                                stroke="var(--color-info)"
-                                                fill="var(--info-soft)"
-                                                strokeWidth={2}
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            ) : (
-                                <div className="observability-empty">No latency samples for this range.</div>
-                            )}
-                        </div>
-
-                        <div className="observability-chart-card">
-                            <h2 className="observability-card-title">Throughput & Error Rate</h2>
-                            {hasTimeline ? (
-                                <div className="observability-chart observability-chart--short">
-                                    <ResponsiveContainer>
-                                        <BarChart data={chartTimeline}>
-                                            <CartesianGrid vertical={false} />
-                                            <XAxis dataKey="bucketLabel" minTickGap={28} />
-                                            <YAxis yAxisId="left" />
-                                            <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
-                                            <Tooltip contentStyle={tooltipStyle} />
-                                            <Bar yAxisId="left" dataKey="requestCount" name="Requests" fill="var(--color-info)" radius={[4, 4, 0, 0]} />
-                                            <Bar yAxisId="right" dataKey="errorRate" name="Error %" fill="var(--color-error)" radius={[4, 4, 0, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            ) : (
-                                <div className="observability-empty">No throughput samples for this range.</div>
-                            )}
-                        </div>
-                    </section>
-
-                    <section className="observability-chart-grid" aria-label="Endpoint analysis">
-                        <div className="observability-chart-card">
-                            <h2 className="observability-card-title">Slowest Endpoints by P95</h2>
-                            {hasEndpointStats ? (
-                                <div className="observability-chart observability-chart--short">
-                                    <ResponsiveContainer>
-                                        <BarChart data={topEndpointChart} layout="vertical" margin={{ left: 24 }}>
-                                            <CartesianGrid horizontal={false} />
-                                            <XAxis type="number" tickFormatter={(value) => `${value}ms`} />
-                                            <YAxis type="category" dataKey="shortName" width={150} />
-                                            <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => formatDuration(Number(value))} />
-                                            <Bar dataKey="p95DurationMs" name="P95" fill="var(--color-warning)" radius={[0, 4, 4, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            ) : (
-                                <div className="observability-empty">No endpoint rollups for this filter.</div>
-                            )}
-                        </div>
-
-                        <div className="observability-chart-card">
-                            <h2 className="observability-card-title">Latency Heatmap</h2>
-                            {hasTimeline ? (
-                                <div className="observability-heatmap">
-                                    {chartTimeline.slice(-48).map((point) => {
-                                        const heatClass = point.p95DurationMs >= 3000
-                                            ? "observability-heatmap__cell--high"
-                                            : point.p95DurationMs >= 1000
-                                                ? "observability-heatmap__cell--medium"
-                                                : "observability-heatmap__cell--low";
-
-                                        return (
-                                            <div
-                                                key={point.bucketStart}
-                                                className={`observability-heatmap__cell ${heatClass}`}
-                                                title={`${point.bucketLabel}: ${formatDuration(point.p95DurationMs)} P95, ${point.requestCount} requests`}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="observability-empty">No latency buckets to render.</div>
-                            )}
-                        </div>
-                    </section>
-
-                    <section className="observability-panel observability-table-shell" aria-label="Slow request table">
-                        <table className="observability-table observability-table--performance">
-                            <thead>
-                                <tr>
-                                    <th onClick={() => handleSort("timestamp")}>Time {sortIcon("timestamp")}</th>
-                                    <th onClick={() => handleSort("requestName")}>Request {sortIcon("requestName")}</th>
-                                    <th className="observability-table__right" onClick={() => handleSort("durationMs")}>
-                                        Duration {sortIcon("durationMs")}
-                                    </th>
-                                    <th className="observability-table__center" onClick={() => handleSort("isSuccess")}>
-                                        Status {sortIcon("isSuccess")}
-                                    </th>
-                                    <th className="observability-table__actions">Details</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedStats.map((stat) => {
-                                    const status = rowStatus(stat);
-                                    const isExpanded = expandedRow === stat.id;
-
-                                    return (
-                                        <Fragment key={stat.id}>
-                                            <tr>
-                                                <td className="observability-mono observability-muted">{formatDate(stat.timestamp)}</td>
-                                                <td>
-                                                    <span className="observability-truncate" title={stat.requestName}>{stat.requestName}</span>
-                                                </td>
-                                                <td className="observability-table__right observability-mono">{formatDuration(stat.durationMs)}</td>
-                                                <td className="observability-table__center">
-                                                    <span className={`status-badge status-badge--${status}`}>{status}</span>
-                                                </td>
-                                                <td className="observability-table__actions">
-                                                    {stat.exceptionMessage ? (
-                                                        <button
-                                                            className="observability-button observability-button--compact"
-                                                            type="button"
-                                                            onClick={() => setExpandedRow(isExpanded ? null : stat.id)}
-                                                        >
-                                                            {isExpanded ? "Hide" : "Show"}
-                                                        </button>
-                                                    ) : (
-                                                        <span className="observability-muted">-</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-
-                                            {isExpanded && stat.exceptionMessage ? (
-                                                <tr className="observability-row-detail">
-                                                    <td colSpan={5}>
-                                                        <div className="observability-detail-box">
-                                                            <h4>Exception</h4>
-                                                            <pre className="observability-pre observability-mono">
-                                                                {stat.exceptionMessage}
-                                                            </pre>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ) : null}
-                                        </Fragment>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </section>
-
-                    {sortedStats.length === 0 && (
+                    {!hasAnyPerformanceData ? (
                         <div className="observability-empty observability-empty--spaced">
-                            No performance rows match the selected filters.
+                            {emptyPerformanceMessage}
                         </div>
-                    )}
+                    ) : null}
+
+                    {hasAnyPerformanceData ? (
+                        <>
+                            <section className="observability-chart-grid" aria-label="Grafici performansi">
+                                <div className="observability-chart-card">
+                                    <h2 className="observability-card-title">Vremenska linija latencije</h2>
+                                    {hasTimeline ? (
+                                        <div className="observability-chart">
+                                            <ResponsiveContainer>
+                                                <AreaChart data={chartTimeline}>
+                                                    <CartesianGrid vertical={false} />
+                                                    <XAxis dataKey="bucketLabel" minTickGap={22} />
+                                                    <YAxis tickFormatter={(value) => `${value}ms`} />
+                                                    <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown, name?: string) => [formatDuration(Number(value)), name ?? "Vrednost"]} />
+                                                    <Area
+                                                        type="monotone"
+                                                        dataKey="p95DurationMs"
+                                                        name="P95"
+                                                        stroke="var(--color-warning)"
+                                                        fill="var(--warning-soft)"
+                                                        strokeWidth={2}
+                                                    />
+                                                    <Area
+                                                        type="monotone"
+                                                        dataKey="averageDurationMs"
+                                                        name="Prosek"
+                                                        stroke="var(--color-info)"
+                                                        fill="var(--info-soft)"
+                                                        strokeWidth={2}
+                                                    />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    ) : (
+                                        <div className="observability-empty">Nema vremenske linije latencije za trenutni odgovor API-ja.</div>
+                                    )}
+                                </div>
+
+                                <div className="observability-chart-card">
+                                    <h2 className="observability-card-title">Protok i stopa gresaka</h2>
+                                    {hasTimeline ? (
+                                        <div className="observability-chart observability-chart--short">
+                                            <ResponsiveContainer>
+                                                <BarChart data={chartTimeline}>
+                                                    <CartesianGrid vertical={false} />
+                                                    <XAxis dataKey="bucketLabel" minTickGap={28} />
+                                                    <YAxis yAxisId="left" />
+                                                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
+                                                    <Tooltip contentStyle={tooltipStyle} />
+                                                    <Bar yAxisId="left" dataKey="requestCount" name="Zahtevi" fill="var(--color-info)" radius={[4, 4, 0, 0]} />
+                                                    <Bar yAxisId="right" dataKey="errorRate" name="Greske %" fill="var(--color-error)" radius={[4, 4, 0, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    ) : (
+                                        <div className="observability-empty">Nema vremenske linije protoka za trenutni odgovor API-ja.</div>
+                                    )}
+                                </div>
+                            </section>
+
+                            <section className="observability-chart-grid" aria-label="Analiza endpointa">
+                                <div className="observability-chart-card">
+                                    <h2 className="observability-card-title">Najsporiji endpointi po P95</h2>
+                                    {hasEndpointStats ? (
+                                        <div className="observability-chart observability-chart--short">
+                                            <ResponsiveContainer>
+                                                <BarChart data={topEndpointChart} layout="vertical" margin={{ left: 24 }}>
+                                                    <CartesianGrid horizontal={false} />
+                                                    <XAxis type="number" tickFormatter={(value) => `${value}ms`} />
+                                                    <YAxis type="category" dataKey="shortName" width={150} />
+                                                    <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => formatDuration(Number(value))} />
+                                                    <Bar dataKey="p95DurationMs" name="P95" fill="var(--color-warning)" radius={[0, 4, 4, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    ) : (
+                                        <div className="observability-empty">Nema agregacije po endpointima za trenutni odgovor API-ja.</div>
+                                    )}
+                                </div>
+
+                                <div className="observability-chart-card">
+                                    <h2 className="observability-card-title">Toplotna mapa latencije</h2>
+                                    {hasTimeline ? (
+                                        <div className="observability-heatmap">
+                                            {chartTimeline.slice(-48).map((point) => {
+                                                const heatClass = point.p95DurationMs >= 3000
+                                                    ? "observability-heatmap__cell--high"
+                                                    : point.p95DurationMs >= 1000
+                                                        ? "observability-heatmap__cell--medium"
+                                                        : "observability-heatmap__cell--low";
+
+                                                return (
+                                                    <div
+                                                        key={point.bucketStart}
+                                                        className={`observability-heatmap__cell ${heatClass}`}
+                                                        title={`${point.bucketLabel}: ${formatDuration(point.p95DurationMs)} P95, ${point.requestCount} zahteva`}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="observability-empty">Nema vremenskih segmenata latencije za trenutni odgovor API-ja.</div>
+                                    )}
+                                </div>
+                            </section>
+
+                            <section className="observability-panel observability-table-shell" aria-label="Tabela sporih zahteva">
+                                <table className="observability-table observability-table--performance">
+                                    <thead>
+                                        <tr>
+                                            <th onClick={() => handleSort("timestamp")}>Vreme {sortIcon("timestamp")}</th>
+                                            <th onClick={() => handleSort("requestName")}>Zahtev {sortIcon("requestName")}</th>
+                                            <th className="observability-table__right" onClick={() => handleSort("durationMs")}>
+                                                Trajanje {sortIcon("durationMs")}
+                                            </th>
+                                            <th className="observability-table__center" onClick={() => handleSort("isSuccess")}>
+                                                Status {sortIcon("isSuccess")}
+                                            </th>
+                                            <th className="observability-table__actions">Detalji</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sortedStats.map((stat) => {
+                                            const status = rowStatus(stat);
+                                            const isExpanded = expandedRow === stat.id;
+
+                                            return (
+                                                <Fragment key={stat.id}>
+                                                    <tr>
+                                                        <td className="observability-mono observability-muted">{formatDate(stat.timestamp)}</td>
+                                                        <td>
+                                                            <span className="observability-truncate" title={stat.requestName}>{stat.requestName}</span>
+                                                        </td>
+                                                        <td className="observability-table__right observability-mono">{formatDuration(stat.durationMs)}</td>
+                                                        <td className="observability-table__center">
+                                                            <span className={`status-badge status-badge--${status}`}>{statusLabel[status]}</span>
+                                                        </td>
+                                                        <td className="observability-table__actions">
+                                                            {stat.exceptionMessage ? (
+                                                                <button
+                                                                    className="observability-button observability-button--compact"
+                                                                    type="button"
+                                                                    onClick={() => setExpandedRow(isExpanded ? null : stat.id)}
+                                                                >
+                                                                    {isExpanded ? "Sakrij" : "Prikazi"}
+                                                                </button>
+                                                            ) : (
+                                                                <span className="observability-muted">-</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+
+                                                    {isExpanded && stat.exceptionMessage ? (
+                                                        <tr className="observability-row-detail">
+                                                            <td colSpan={5}>
+                                                                <div className="observability-detail-box">
+                                                                    <h4>Izuzetak</h4>
+                                                                    <pre className="observability-pre observability-mono">
+                                                                        {stat.exceptionMessage}
+                                                                    </pre>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ) : null}
+                                                </Fragment>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </section>
+
+                            {sortedStats.length === 0 && (
+                                <div className="observability-empty observability-empty--spaced">
+                                    Nema redova performansi za izabrane filtere.
+                                </div>
+                            )}
+                        </>
+                    ) : null}
                 </>
             )}
         </div>

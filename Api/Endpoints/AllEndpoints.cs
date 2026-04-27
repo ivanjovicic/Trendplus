@@ -430,9 +430,9 @@ public static class AllEndpoints
                     "Failed to fetch performance stats",
                     ct);
                 return Results.Problem(
-                    detail: "Unable to fetch performance stats.",
+                    detail: "Nije moguce ucitati podatke o performansama.",
                     statusCode: 500,
-                    title: "Database Error");
+                    title: "Greska baze podataka");
             }
         })
         .WithName("GetPerformance")
