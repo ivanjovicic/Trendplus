@@ -67,6 +67,7 @@ export default function InventoryPage() {
   const [detailSizeCurveLoading, setDetailSizeCurveLoading] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [printOrientation, setPrintOrientation] = useState<"landscape" | "portrait">("landscape");
   const [workflowBusyKey, setWorkflowBusyKey] = useState<string | null>(null);
   const [schedulerBusy, setSchedulerBusy] = useState(false);
   const [schedulerMessage, setSchedulerMessage] = useState<string | null>(null);
@@ -345,12 +346,12 @@ export default function InventoryPage() {
       setExportBusy(true);
       setExportStatus(preview ? "Pripremam print preview na serveru..." : "Server priprema dokument za izvoz...");
       if (preview) {
-        const previewResult = await previewInventoryReport({ orientation: "landscape", includeFiltersAndMetadata: true, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy });
+        const previewResult = await previewInventoryReport({ orientation: printOrientation, includeFiltersAndMetadata: true, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy });
         if (previewResult.printUrl) window.open(resolveApiUrl(previewResult.printUrl), "_blank", "noopener");
         setExportStatus("Print preview je otvoren u novom tabu.");
         return;
       }
-      const result = await exportInventoryReport({ format, orientation: "landscape", includeFiltersAndMetadata: true, forceAsync: totalCount > 5000, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy });
+      const result = await exportInventoryReport({ format, orientation: printOrientation, includeFiltersAndMetadata: true, forceAsync: totalCount > 5000, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy });
       if (result.isAsync) {
         setExportStatus("Dokument je u redu cekanja. Cekam da eksport bude spreman...");
         const completed = await waitForExport(result.documentId);
@@ -371,7 +372,7 @@ export default function InventoryPage() {
     try {
       setExportBusy(true);
       setExportStatus("Pripremam prazan obrazac za stampu...");
-      const result = await printBlankInventoryForm();
+      const result = await printBlankInventoryForm({ orientation: printOrientation });
       if (result.printUrl) window.open(resolveApiUrl(result.printUrl), "_blank", "noopener");
       setExportStatus("Prazan obrazac je otvoren u novom tabu.");
     } catch (reason) {
@@ -573,6 +574,22 @@ export default function InventoryPage() {
               <p className="text-sm text-muted">Pretrazi bilans, suzi lokaciju i odmah pokreni report ili stampu.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex rounded-xl border border-muted overflow-hidden text-xs font-semibold" role="group" aria-label="Orijentacija štampe">
+                <button
+                  type="button"
+                  aria-pressed={printOrientation === "landscape"}
+                  onClick={() => setPrintOrientation("landscape")}
+                  className={`px-3 py-2 transition-colors duration-150 ${printOrientation === "landscape" ? "bg-[var(--info)] text-white" : "surface-elevated text-contrast hover:bg-[var(--surface-darker)]"}`}
+                  title="Horizontalno (A4 landscape)"
+                >↔ Hor.</button>
+                <button
+                  type="button"
+                  aria-pressed={printOrientation === "portrait"}
+                  onClick={() => setPrintOrientation("portrait")}
+                  className={`px-3 py-2 border-l border-muted transition-colors duration-150 ${printOrientation === "portrait" ? "bg-[var(--info)] text-white" : "surface-elevated text-contrast hover:bg-[var(--surface-darker)]"}`}
+                  title="Vertikalno (A4 portrait)"
+                >↕ Ver.</button>
+              </span>
               <button type="button" aria-label="Otvori print preview filtriranog izvestaja" onClick={() => void runServerExport("pdf", true)} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Print preview</button>
               <button type="button" aria-label="Odštampaj prazan obrazac bilansa stanja" onClick={() => void runBlankPrint()} disabled={exportBusy} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-[var(--warning)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Prazan obrazac</button>
               <button type="button" aria-label="Izvezi CSV za trenutni ekran" onClick={exportVisibleCsv} disabled={rows.length === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV ekran</button>

@@ -327,12 +327,13 @@ public static class InventoryEndpoints
         .RequireRateLimiting("writes");
 
         group.MapPost("/print-blank", async (
+            string? orientation,
             IDocumentService documentService,
             IDocumentUserContextAccessor userContextAccessor,
             CancellationToken ct) =>
         {
             var result = await documentService.GenerateAsync(
-                BuildBlankDocumentRequest(),
+                BuildBlankDocumentRequest(orientation),
                 userContextAccessor.GetCurrent(),
                 ct);
 
@@ -1234,8 +1235,9 @@ public static class InventoryEndpoints
         };
     }
 
-    private static DocumentGenerationRequest BuildBlankDocumentRequest()
+    private static DocumentGenerationRequest BuildBlankDocumentRequest(string? orientation = null)
     {
+        var resolvedOrientation = string.IsNullOrWhiteSpace(orientation) ? "landscape" : orientation.Trim().ToLowerInvariant();
         var columns = new List<DocumentColumnDefinition>
         {
             new() { Key = "plu",               Header = "PLU",                DataType = "text" },
@@ -1261,7 +1263,7 @@ public static class InventoryEndpoints
         return new DocumentGenerationRequest
         {
             Format = "html",
-            Orientation = "landscape",
+            Orientation = resolvedOrientation,
             IncludeFiltersAndMetadata = false,
             Preview = true,
             ForceAsync = false,

@@ -776,9 +776,14 @@ export async function previewInventoryReport(options?: {
   );
 }
 
-export async function printBlankInventoryForm(): Promise<DocumentOperationResponse> {
+export async function printBlankInventoryForm(options?: {
+  orientation?: "portrait" | "landscape";
+}): Promise<DocumentOperationResponse> {
+  const params = new URLSearchParams();
+  if (options?.orientation) params.set("orientation", options.orientation);
+  const qs = params.size > 0 ? `?${params.toString()}` : "";
   return postJson(
-    "/api/analytics/inventory/print-blank",
+    `/api/analytics/inventory/print-blank${qs}`,
     {},
     "Greska pri pripremi praznog obrasca za stampu"
   );
