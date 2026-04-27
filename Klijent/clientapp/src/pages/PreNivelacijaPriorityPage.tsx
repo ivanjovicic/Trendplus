@@ -10,10 +10,12 @@ import {
   YAxis,
 } from "recharts";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getPreNivelacijaPrioriteti } from "../services/preNivelacijaApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { PreNivelacijaPriorityResponse, PreNivelacijaSkuCandidate } from "../types/preNivelacija";
+import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import "./PreNivelacijaPriorityPage.css";
 
 type SortDir = "asc" | "desc";
@@ -44,6 +46,15 @@ type DecisionCandidate = PreNivelacijaSkuCandidate & {
   statusReason: string;
 };
 
+type FocusFilter = "all" | "boost" | "keep" | "reduce" | "highPriority";
+const FOCUS_LABELS: Record<FocusFilter, string> = {
+  all: "Sve",
+  boost: "Pojačaj",
+  keep: "Zadrži",
+  reduce: "Smanji",
+  highPriority: "Visok prioritet",
+};
+
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
   Pojacaj: 3,
   Zadrzi: 2,
@@ -56,34 +67,35 @@ const BOOST_MIN_RELIABILITY_PCT = 40;
 const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
   { key: "supplierName", header: "Dobavljac", dataType: "text" },
-  { key: "preNivelacijaScore", header: "Pre score", dataType: "number" },
-  { key: "stockUnits", header: "Stock", dataType: "number" },
-  { key: "daysSinceLastSale", header: "No-sale days", dataType: "number" },
-  { key: "revenueDelta", header: "Rev delta", dataType: "currency" },
-  { key: "status", header: "Preporuka", dataType: "text" },
+  { key: "preNivelacijaScore", header: "Pre-niv. score", dataType: "number" },
+  { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },
+  { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
+  { key: "revenueDelta", header: "Highlight vs Markdown (prihod)", dataType: "currency" },
+  { key: "reliabilityPct", header: "Pouzdanost %", dataType: "number" },
   { key: "decisionScore", header: "Decision score", dataType: "number" },
+  { key: "status", header: "Preporuka", dataType: "text" },
 ];
 
 interface CustomSupplierTooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: { name: string; sharePct: number } }>;
+  payload?: Array<{ payload: { name: string; sharePct: number; weekOverWeekRiskDeltaPct: number } }>;
 }
 
 function CustomSupplierTooltip({ active, payload }: CustomSupplierTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
   const data = payload[0].payload;
+  const wowPct = data.weekOverWeekRiskDeltaPct;
   return (
-    <div
-      style={{
-        backgroundColor: "var(--surface-card)",
-        border: "1px solid var(--border-default)",
-        borderRadius: "6px",
-        padding: "8px 12px",
-        color: "var(--text-primary)",
-      }}
-    >
+    <div style={CHART_TOOLTIP_STYLE}>
       <p style={{ margin: 0, fontSize: "12px", fontWeight: 500 }}>{data.name}</p>
-      <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>{fmtPct(data.sharePct, 2)}</p>
+      <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
+        Action share: {fmtPct(data.sharePct, 2)}
+      </p>
+      {wowPct != null ? (
+        <p style={{ margin: "4px 0 0", fontSize: "12px", color: wowPct >= 0 ? "#ef4444" : "#16a34a" }}>
+          WoW promena rizika: {wowPct >= 0 ? "+" : ""}{fmtPct(wowPct, 1)}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -186,6 +198,7 @@ export default function PreNivelacijaPriorityPage() {
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedArtikalId, setExpandedArtikalId] = useState<number | null>(null);
+  const [focusFilter, setFocusFilter] = useState<FocusFilter>("all");
 
   const load = useCallback(async (filters: ActiveFilters, nextPage: number) => {
     const requestId = ++requestIdRef.current;
@@ -325,12 +338,29 @@ export default function PreNivelacijaPriorityPage() {
     const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
     const keep = sortedRows.filter((row) => row.status === "Zadrzi").length;
     const reduce = sortedRows.filter((row) => row.status === "Smanji").length;
-    return { boost, keep, reduce };
+    const highPriority = sortedRows.filter((row) => (row.priorityBand ?? "").toLowerCase() === "high").length;
+    return { boost, keep, reduce, highPriority };
   }, [sortedRows]);
+
+  const filteredRows = useMemo(() => {
+    if (focusFilter === "all") return sortedRows;
+    if (focusFilter === "boost") return sortedRows.filter((row) => row.status === "Pojacaj");
+    if (focusFilter === "keep") return sortedRows.filter((row) => row.status === "Zadrzi");
+    if (focusFilter === "reduce") return sortedRows.filter((row) => row.status === "Smanji");
+    if (focusFilter === "highPriority") return sortedRows.filter((row) => (row.priorityBand ?? "").toLowerCase() === "high");
+    return sortedRows;
+  }, [focusFilter, sortedRows]);
+
+  const isDirty =
+    supplierId !== activeFilters.supplierId ||
+    seasonId !== activeFilters.seasonId ||
+    footwearTypeId !== activeFilters.footwearTypeId ||
+    minScore !== activeFilters.minScore ||
+    noSaleDaysMin !== activeFilters.noSaleDaysMin;
 
   const supplierActionShare = useMemo(() => {
     const items = data?.supplierLeaderboard ?? [];
-    if (items.length === 0) return [] as Array<{ name: string; sharePct: number }>;
+    if (items.length === 0) return [] as Array<{ name: string; sharePct: number; weekOverWeekRiskDeltaPct: number }>;
 
     const top = [...items].sort((a, b) => b.actionScore - a.actionScore).slice(0, 7);
     const total = top.reduce((sum, item) => sum + item.actionScore, 0);
@@ -339,6 +369,7 @@ export default function PreNivelacijaPriorityPage() {
     return top.map((item) => ({
       name: item.supplierName,
       sharePct: (item.actionScore / total) * 100,
+      weekOverWeekRiskDeltaPct: item.weekOverWeekRiskDeltaPct,
     }));
   }, [data?.supplierLeaderboard]);
 
@@ -382,6 +413,7 @@ export default function PreNivelacijaPriorityPage() {
 
   const handleApplyFilters = () => {
     setPage(1);
+    setFocusFilter("all");
     setActiveFilters({
       supplierId,
       seasonId,
@@ -398,6 +430,7 @@ export default function PreNivelacijaPriorityPage() {
     setMinScore(40);
     setNoSaleDaysMin(14);
     setPage(1);
+    setFocusFilter("all");
     setActiveFilters({
       supplierId: null,
       seasonId: null,
@@ -482,6 +515,7 @@ export default function PreNivelacijaPriorityPage() {
         </label>
 
         <div className="pnp-decision-actions">
+          {isDirty ? <span className="pnp-dirty-indicator">Neprimenjeni filteri</span> : null}
           <button type="button" onClick={handleApplyFilters} disabled={loading}>Primeni</button>
           <button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button>
         </div>
@@ -492,25 +526,42 @@ export default function PreNivelacijaPriorityPage() {
 
       {!loading && data ? (
         <>
+          {data.alerts && data.alerts.length > 0 ? (
+            <section className="pnp-alerts">
+              {data.alerts.map((alert, i) => (
+                <div key={i} className={`pnp-alert pnp-alert--${alert.severity}`}>
+                  <span className="pnp-alert-icon">
+                    {alert.severity === "critical" ? "⚠" : alert.severity === "warning" ? "⚡" : "ℹ"}
+                  </span>
+                  <span>
+                    {alert.message}
+                    {alert.supplierName ? ` (${alert.supplierName})` : ""}
+                  </span>
+                </div>
+              ))}
+            </section>
+          ) : null}
+
           <section className="pnp-decision-kpis">
             <article className="pnp-decision-kpi">
-              <span>Kandidati</span>
+              <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i imaju aktivan pre-nivelacija signal." /></span>
               <strong>{data.summary.candidatesCount}</strong>
             </article>
             <article className="pnp-decision-kpi">
-              <span>High priority SKU</span>
+              <span>High priority SKU <InfoTip text="SKU sa prioritetnom kategorijom 'high'. Najjači signal za intervenciju pre nivelacije." /></span>
               <strong>{data.summary.highPriorityCount}</strong>
             </article>
             <article className="pnp-decision-kpi">
-              <span>Stock at risk</span>
+              <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih kandidatskih SKU. Ovo je broj komada, ne RSD vrednost." /></span>
               <strong>{data.summary.totalStockAtRisk}</strong>
+              <em>kom ukupno</em>
             </article>
             <article className="pnp-decision-kpi">
-              <span>Expected uplift</span>
+              <span>Uplift projekcija <InfoTip text="Procenjeni prihod: highlight scenario minus markdown scenario za sve 'Pojačaj' kandidate. PROCENA — bazirana na scenariju, ne garantovani prihod." /></span>
               <strong>{fmtRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
             </article>
             <article className="pnp-decision-kpi">
-              <span>Avoidable markdown loss</span>
+              <span>Izbegljivi markdown gubitak <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom. PROCENA bazirana na scenario modelu." /></span>
               <strong className="trend-down">{fmtRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
             </article>
           </section>
@@ -541,7 +592,7 @@ export default function PreNivelacijaPriorityPage() {
                 <div>
                   <h2>Prioritetna lista SKU</h2>
                   <p>
-                    Pojacaj: {candidateCounts.boost} | Zadrzi: {candidateCounts.keep} | Smanji: {candidateCounts.reduce}
+                    Pojačaj: {candidateCounts.boost} | Zadrži: {candidateCounts.keep} | Smanji: {candidateCounts.reduce} | Visok prioritet: {candidateCounts.highPriority}
                   </p>
                 </div>
                 <div className="pnp-decision-table-controls">
@@ -560,6 +611,30 @@ export default function PreNivelacijaPriorityPage() {
                 />
               </div>
 
+              <div className="pnp-focus-tabs" role="tablist">
+                {(["all", "boost", "keep", "reduce", "highPriority"] as FocusFilter[]).map((f) => {
+                  const count =
+                    f === "all" ? sortedRows.length
+                    : f === "boost" ? candidateCounts.boost
+                    : f === "keep" ? candidateCounts.keep
+                    : f === "reduce" ? candidateCounts.reduce
+                    : candidateCounts.highPriority;
+                  const tabClass = f === "boost" ? "tab-boost" : f === "keep" ? "tab-keep" : f === "reduce" ? "tab-reduce" : f === "highPriority" ? "tab-high" : "";
+                  return (
+                    <button
+                      key={f}
+                      role="tab"
+                      type="button"
+                      aria-selected={focusFilter === f}
+                      className={`pnp-focus-tab ${tabClass}${focusFilter === f ? " active" : ""}`.trim()}
+                      onClick={() => setFocusFilter(f)}
+                    >
+                      {FOCUS_LABELS[f]} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="pnp-decision-table-wrap">
                 <table className="pnp-decision-table">
                   <thead>
@@ -568,34 +643,45 @@ export default function PreNivelacijaPriorityPage() {
                         <button type="button" onClick={() => handleSort("sku")}>SKU{sortMarker("sku", sortField, sortDir)}</button>
                       </th>
                       <th>
-                        <button type="button" onClick={() => handleSort("supplierName")}>Dobavljac{sortMarker("supplierName", sortField, sortDir)}</button>
+                        <button type="button" onClick={() => handleSort("supplierName")}>Dobavljač{sortMarker("supplierName", sortField, sortDir)}</button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("preNivelacijaScore")}>Score{sortMarker("preNivelacijaScore", sortField, sortDir)}</button>
+                        <InfoTip text="Pre-nivelacija score (0–100): kompozit od pritiska zalihe, brzine prodaje, starosti poslednje prodaje, markdown šanse i margin potencijala." />
                       </th>
                       <th className="align-right">
-                        <button type="button" onClick={() => handleSort("stockUnits")}>Stock{sortMarker("stockUnits", sortField, sortDir)}</button>
+                        <button type="button" onClick={() => handleSort("stockUnits")}>Zaliha{sortMarker("stockUnits", sortField, sortDir)}</button>
+                        <InfoTip text="Tekuća zaliha SKU u komadima." />
                       </th>
                       <th className="align-right">
-                        <button type="button" onClick={() => handleSort("daysSinceLastSale")}>No-sale days{sortMarker("daysSinceLastSale", sortField, sortDir)}</button>
+                        <button type="button" onClick={() => handleSort("daysSinceLastSale")}>Dana bez prod.{sortMarker("daysSinceLastSale", sortField, sortDir)}</button>
+                        <InfoTip text="Broj dana od poslednje prodaje. Veći broj = veći rizik stagnacije zalihe." />
                       </th>
                       <th className="align-right">
-                        <button type="button" onClick={() => handleSort("revenueDelta")}>Rev delta{sortMarker("revenueDelta", sortField, sortDir)}</button>
+                        <button type="button" onClick={() => handleSort("revenueDelta")}>Highlight vs Markdown{sortMarker("revenueDelta", sortField, sortDir)}</button>
+                        <InfoTip text="Razlika prihoda (30d): pojačaj scenario minus markdown scenario. Pozitivno = isplativije pojačati pre nivelacije." />
+                      </th>
+                      <th className="align-center">
+                        Pouzdanost
+                        <InfoTip text="Pouzdanost signala: Visoko/Srednje/Nisko. Proxy vrednosti: Visoko≈90%, Srednje≈65%, Nisko≈35%. Nije statistički precizni procenat — bazira se na confidence tagu iz modela." />
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button>
+                        <InfoTip text="Sistemska preporuka: Pojačaj / Zadrži / Smanji — bazirana na decision score, pouzdanosti i prioritetnoj bandi." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedRows.length === 0 ? (
+                    {filteredRows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="pnp-decision-empty-row">Nema podataka za izabrane filtere.</td>
+                        <td colSpan={9} className="pnp-decision-empty-row">Nema podataka za izabrane filtere.</td>
                       </tr>
                     ) : (
-                      sortedRows.map((row) => {
+                      filteredRows.map((row) => {
                         const expanded = expandedArtikalId === row.artikalId;
+                        const reliabilityLabel = row.reliabilityPct >= 70 ? "Visoko" : row.reliabilityPct >= BOOST_MIN_RELIABILITY_PCT ? "Srednje" : "Nisko";
+                        const reliabilityClass = row.reliabilityPct >= 70 ? "signal-strong" : row.reliabilityPct >= BOOST_MIN_RELIABILITY_PCT ? "signal-watch" : "signal-weak";
                         return (
                           <tr key={row.artikalId} className={expanded ? "expanded-row" : ""}>
                             <td>{row.sku}</td>
@@ -604,6 +690,9 @@ export default function PreNivelacijaPriorityPage() {
                             <td className="align-right">{row.stockUnits}</td>
                             <td className="align-right">{row.daysSinceLastSale}</td>
                             <td className={`align-right ${row.revenueDelta >= 0 ? "trend-up" : "trend-down"}`}>{fmtRsd(row.revenueDelta)}</td>
+                            <td className="align-center">
+                              <span className={`pnp-signal-pill ${reliabilityClass}`}>{reliabilityLabel}</span>
+                            </td>
                             <td>
                               <span
                                 className={statusClass(row.status)}
@@ -681,6 +770,93 @@ export default function PreNivelacijaPriorityPage() {
               <p className="pnp-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
               </p>
+
+              {selectedRow.scoreBreakdown ? (
+                <div className="pnp-score-breakdown">
+                  <h4>Komponente score-a</h4>
+                  <div className="pnp-score-grid">
+                    {[
+                      { label: "Pritisak zalihe", value: selectedRow.scoreBreakdown.stockPressure },
+                      { label: "Rizik brzine prodaje", value: selectedRow.scoreBreakdown.velocityRisk },
+                      { label: "Rizik starosti prodaje", value: selectedRow.scoreBreakdown.recencyRisk },
+                      { label: "Markdown šansa", value: selectedRow.scoreBreakdown.markdownOpportunity },
+                      { label: "Margin potencijal", value: selectedRow.scoreBreakdown.marginPotential },
+                      { label: "Sezonski boost", value: selectedRow.scoreBreakdown.seasonRecencyBoost },
+                    ].map((c) => (
+                      <div key={c.label} className="pnp-score-component">
+                        <span>{c.label}</span>
+                        <div className="pnp-score-bar-wrap">
+                          <div className="pnp-score-bar" style={{ width: `${clamp(c.value, 0, 100)}%` }} />
+                        </div>
+                        <strong>{c.value.toFixed(1)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
+          {data.queues && (data.queues.highlightNow.length > 0 || data.queues.monitor.length > 0 || data.queues.likelyMarkdownSoon.length > 0) ? (
+            <section className="pnp-queues">
+              <h2 className="pnp-queues-title">
+                Redovi čekanja
+                <InfoTip text="SKU raspoređeni u operativne redove: Highlight Now (odmah istaknuti), Pod nadzorom (pratiti), Verovatni markdown (verovatno idu na sniženje). Bazira se na priorityBand i signal snazi." />
+              </h2>
+              <div className="pnp-queues-grid">
+                <article className="pnp-queue-panel pnp-queue-panel--boost">
+                  <h3>Highlight Now ({data.queues.highlightNow.length})</h3>
+                  {data.queues.highlightNow.length === 0 ? (
+                    <p className="pnp-queue-empty">Nema SKU u ovom redu.</p>
+                  ) : (
+                    data.queues.highlightNow.map((item) => (
+                      <div key={item.artikalId} className="pnp-queue-item">
+                        <div>
+                          <div className="pnp-queue-item-sku">{item.sku}</div>
+                          <div className="pnp-queue-item-supplier">{item.supplierName}</div>
+                        </div>
+                        <span className={`pnp-decision-status ${item.priorityBand.toLowerCase() === "high" ? "status-boost" : "status-keep"}`}>
+                          {item.priorityBand}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </article>
+                <article className="pnp-queue-panel pnp-queue-panel--keep">
+                  <h3>Pod nadzorom ({data.queues.monitor.length})</h3>
+                  {data.queues.monitor.length === 0 ? (
+                    <p className="pnp-queue-empty">Nema SKU u ovom redu.</p>
+                  ) : (
+                    data.queues.monitor.map((item) => (
+                      <div key={item.artikalId} className="pnp-queue-item">
+                        <div>
+                          <div className="pnp-queue-item-sku">{item.sku}</div>
+                          <div className="pnp-queue-item-supplier">{item.supplierName}</div>
+                        </div>
+                        <span className={`pnp-decision-status ${item.priorityBand.toLowerCase() === "high" ? "status-boost" : "status-keep"}`}>
+                          {item.priorityBand}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </article>
+                <article className="pnp-queue-panel pnp-queue-panel--reduce">
+                  <h3>Verovatni markdown ({data.queues.likelyMarkdownSoon.length})</h3>
+                  {data.queues.likelyMarkdownSoon.length === 0 ? (
+                    <p className="pnp-queue-empty">Nema SKU u ovom redu.</p>
+                  ) : (
+                    data.queues.likelyMarkdownSoon.map((item) => (
+                      <div key={item.artikalId} className="pnp-queue-item">
+                        <div>
+                          <div className="pnp-queue-item-sku">{item.sku}</div>
+                          <div className="pnp-queue-item-supplier">{item.supplierName}</div>
+                        </div>
+                        <span className="pnp-decision-status status-reduce">{item.priorityBand}</span>
+                      </div>
+                    ))
+                  )}
+                </article>
+              </div>
             </section>
           ) : null}
         </>
