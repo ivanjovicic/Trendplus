@@ -147,6 +147,15 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
         var tdFont      = portrait ? "9px"          : "11px";
         var tdPadding   = portrait ? "9px 4px"      : "12px 8px";
 
+        // ── Blank-form specific overrides ──────────────────────────────────────
+        // Row height ≈ 50% taller than normal (achieved via padding + height as min-height).
+        // Header font is slightly smaller with controlled wrapping so no word is needlessly cut.
+        var blankThFont     = portrait ? "7px"   : "8px";
+        var blankThPadding  = portrait ? "6px 4px" : "8px 8px";
+        var blankThHeight   = portrait ? "30px"  : "34px";
+        var blankTdPadding  = portrait ? "16px 5px" : "22px 10px";
+        var blankTdHeight   = portrait ? "36px"  : "46px";
+
         return $$$"""
             body {{ font-family: "Segoe UI", Arial, sans-serif; font-size: {{{bodyFont}}}; color: #111827; background: #f3f4f6; margin: 0; }}
             .sheet {{ max-width: 1280px; margin: 0 auto; padding: 20px 28px 40px; background: #ffffff; }}
@@ -183,7 +192,28 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
               color: #111827;
             }}
             tr:nth-child(even) td {{ background: #f8fafc; }}
-            .blank-form td {{ background: #ffffff !important; }}
+
+            /* ── Blank-form: taller rows, smaller headers, more writing space ── */
+            .blank-form th {{
+              font-size: {{{blankThFont}}};
+              line-height: 1.35;
+              padding: {{{blankThPadding}}};
+              height: {{{blankThHeight}}};
+              vertical-align: bottom;
+              overflow-wrap: break-word;
+              word-break: break-word;
+              hyphens: auto;
+            }}
+            .blank-form td {{
+              background: #ffffff !important;
+              padding: {{{blankTdPadding}}};
+              height: {{{blankTdHeight}}};
+              vertical-align: middle;
+              border-bottom: 1px solid #94a3b8;
+            }}
+            /* Remove alternating row tint on blank form so all rows look clean */
+            .blank-form tr:nth-child(even) td {{ background: #ffffff !important; }}
+
             .doc-footer {{ display: flex; justify-content: space-between; margin-top: 14px; padding-top: 8px; border-top: 1px solid #94a3b8; color: #475569; font-size: 10px; }}
             @media print {{
               body {{ background: #ffffff; }}
@@ -192,6 +222,9 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
               thead {{ display: table-header-group; }}
               tr {{ page-break-inside: avoid; page-break-after: auto; }}
               table {{ page-break-inside: auto; }}
+              /* Blank-form print: keep white rows, preserve height for writing */
+              .blank-form td {{ background: #ffffff !important; height: {{{blankTdHeight}}}; }}
+              .blank-form tr:nth-child(even) td {{ background: #ffffff !important; }}
             }}
             """;
     }
