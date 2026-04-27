@@ -120,31 +120,27 @@ namespace Application.Behaviors
                 // Log to database if slow or failed
                 if (durationMs > SlowRequestThresholdMs || !isSuccess)
                 {
-                    _ = Task.Run(async () =>
+                    try
                     {
-                        try
+                        var performanceLog = new PerformanceLog
                         {
-                            var performanceLog = new PerformanceLog
-                            {
-                                Timestamp = DateTime.UtcNow,
-                                RequestType = typeof(TRequest).FullName ?? requestName,
-                                RequestName = requestName,
-                                DurationMs = durationMs,
-                                RequestData = SerializeObject(request),
-                                ResponseData = response != null ? SerializeObject(response) : null,
-                                ExceptionMessage = exception?.Message,
-                                IsSuccess = isSuccess
-                            };
+                            Timestamp = DateTime.UtcNow,
+                            RequestType = typeof(TRequest).FullName ?? requestName,
+                            RequestName = requestName,
+                            DurationMs = durationMs,
+                            RequestData = SerializeObject(request),
+                            ResponseData = response != null ? SerializeObject(response) : null,
+                            ExceptionMessage = exception?.Message,
+                            IsSuccess = isSuccess
+                        };
 
-                            _analyticsDb.PerformanceLogs.Add(performanceLog);
-                            await _analyticsDb.SaveChangesAsync(CancellationToken.None);
-                        }
-                        catch (Exception ex)
-                        {
-                            // Use a separate logger since _logger is generic to the behavior
-                            Console.WriteLine($"Failed to save performance log to database: {ex.Message}");
-                        }
-                    });
+                        _analyticsDb.PerformanceLogs.Add(performanceLog);
+                        await _analyticsDb.SaveChangesAsync(CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to save performance log for {RequestName}", requestName);
+                    }
                 }
             }
         }

@@ -326,6 +326,35 @@ public static class InventoryEndpoints
         .WithName("PreviewInventoryReport")
         .RequireRateLimiting("writes");
 
+        group.MapPost("/print-blank", async (
+            IDocumentService documentService,
+            IDocumentUserContextAccessor userContextAccessor,
+            CancellationToken ct) =>
+        {
+            var result = await documentService.GenerateAsync(
+                BuildBlankDocumentRequest(),
+                userContextAccessor.GetCurrent(),
+                ct);
+
+            return Results.Ok(new DocumentOperationResponseDto
+            {
+                DocumentId = result.DocumentId,
+                BatchId = result.BatchId,
+                Status = result.Status,
+                IsAsync = result.IsAsync,
+                FileName = result.FileName,
+                MimeType = result.MimeType,
+                SizeBytes = result.SizeBytes,
+                CreatedAtUtc = result.CreatedAtUtc,
+                CompletedAtUtc = result.CompletedAtUtc,
+                ExpiresAtUtc = result.ExpiresAtUtc,
+                StatusUrl = $"/api/exports/{result.DocumentId}/status",
+                PrintUrl = $"/api/documents/{result.DocumentId}/print"
+            });
+        })
+        .WithName("PrintBlankInventoryForm")
+        .RequireRateLimiting("writes");
+
         group.MapGet("/store-comparison", async (
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
@@ -1202,6 +1231,55 @@ public static class InventoryEndpoints
             TemplateName = "analytics-table-default",
             DocumentType = "analytics-table-report",
             Table = table
+        };
+    }
+
+    private static DocumentGenerationRequest BuildBlankDocumentRequest()
+    {
+        var columns = new List<DocumentColumnDefinition>
+        {
+            new() { Key = "plu",               Header = "PLU",                DataType = "text" },
+            new() { Key = "naziv",             Header = "Naziv",              DataType = "text" },
+            new() { Key = "supplier",          Header = "Dobavljac",          DataType = "text" },
+            new() { Key = "store",             Header = "Prodavnica",         DataType = "text" },
+            new() { Key = "stock",             Header = "Status",             DataType = "text" },
+            new() { Key = "abc",               Header = "ABC",                DataType = "text" },
+            new() { Key = "aging",             Header = "Aging",              DataType = "text" },
+            new() { Key = "quantity",          Header = "Kolicina",           DataType = "number" },
+            new() { Key = "minimum",           Header = "Minimum",            DataType = "number" },
+            new() { Key = "gap",               Header = "Gap",                DataType = "number" },
+            new() { Key = "unitCost",          Header = "Nabavna cena",       DataType = "currency" },
+            new() { Key = "estimatedValue",    Header = "Vrednost zalihe",    DataType = "currency" },
+            new() { Key = "daysSinceMovement", Header = "Dana bez kretanja",  DataType = "number" },
+            new() { Key = "lastMovementAt",    Header = "Poslednje kretanje", DataType = "text" },
+        };
+
+        var emptyRows = Enumerable.Range(0, 35)
+            .Select(_ => columns.Select(_ => (string?)null).ToList())
+            .ToList();
+
+        return new DocumentGenerationRequest
+        {
+            Format = "html",
+            Orientation = "landscape",
+            IncludeFiltersAndMetadata = false,
+            Preview = true,
+            ForceAsync = false,
+            Locale = "sr-RS",
+            TemplateName = "analytics-table-default",
+            DocumentType = "inventory-balance-blank",
+            Table = new DocumentTablePayload
+            {
+                TableKey = "inventory-balance-blank",
+                TableTitle = "Bilans stanja — Prazan obrazac",
+                Columns = columns,
+                Filters = [],
+                Metadata =
+                [
+                    new() { Key = "datum", Label = "Datum", Value = DateTime.Now.ToString("dd.MM.yyyy", SerbianCulture) }
+                ],
+                Rows = emptyRows
+            }
         };
     }
 

@@ -1,87 +1,61 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+    AlertCircle,
+    ChevronDown,
+    ChevronRight,
+    CircleAlert,
+    CircleCheck,
+    Clock3,
+    Copy,
+    Eye,
+    Filter,
+    Info,
+    RefreshCw,
+    Search,
+    Trash2,
+    X,
+} from "lucide-react";
 import { clearLogs, getLogById, getLogs } from "../services/logsApi";
 import type { LogEntry } from "../types/logs";
+import "./ObservabilityPages.css";
 
 type TimePeriod = "" | "30m" | "1h" | "6h" | "1d" | "2d" | "7d";
 
 const PAGE_SIZE = 100;
 
 const timePeriodOptions: { value: TimePeriod; label: string }[] = [
-    { value: "", label: "Prilagođeni period" },
-    { value: "30m", label: "Poslednjih 30 minuta" },
-    { value: "1h", label: "Poslednji sat" },
-    { value: "6h", label: "Poslednjih 6 sati" },
-    { value: "1d", label: "Poslednji dan" },
-    { value: "2d", label: "Poslednja 2 dana" },
-    { value: "7d", label: "Poslednjih 7 dana" },
+    { value: "", label: "Custom range" },
+    { value: "30m", label: "Last 30 min" },
+    { value: "1h", label: "Last hour" },
+    { value: "6h", label: "Last 6 hours" },
+    { value: "1d", label: "Last day" },
+    { value: "2d", label: "Last 2 days" },
+    { value: "7d", label: "Last 7 days" },
 ];
+
+function toDateTimeLocalValue(date: Date): string {
+    const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
+    return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+}
 
 function getDateRangeFromPeriod(period: TimePeriod): { from: string; to: string } {
     if (!period) return { from: "", to: "" };
 
     const now = new Date();
-    const to = now.toISOString().slice(0, 16);
-
-    let from: Date;
-    switch (period) {
-        case "30m":
-            from = new Date(now.getTime() - 30 * 60 * 1000);
-            break;
-        case "1h":
-            from = new Date(now.getTime() - 60 * 60 * 1000);
-            break;
-        case "6h":
-            from = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-            break;
-        case "1d":
-            from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            break;
-        case "2d":
-            from = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
-            break;
-        case "7d":
-            from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            break;
-        default:
-            return { from: "", to: "" };
-    }
-
-    return {
-        from: from.toISOString().slice(0, 16),
-        to,
+    const minutesByPeriod: Record<Exclude<TimePeriod, "">, number> = {
+        "30m": 30,
+        "1h": 60,
+        "6h": 6 * 60,
+        "1d": 24 * 60,
+        "2d": 2 * 24 * 60,
+        "7d": 7 * 24 * 60,
     };
-}
 
-function getLevelColor(level: string): string {
-    switch (level.toUpperCase()) {
-        case "ERROR":
-        case "FATAL":
-            return "var(--error)";
-        case "WARNING":
-            return "var(--warning)";
-        case "INFORMATION":
-        case "INFO":
-            return "var(--info)";
-        case "DEBUG":
-            return "var(--text-secondary)";
-        default:
-            return "var(--text-muted)";
-    }
-}
-
-function getLevelBgColor(level: string): string {
-    switch (level.toUpperCase()) {
-        case "ERROR":
-        case "FATAL":
-            return "var(--error-soft)";
-        case "WARNING":
-            return "var(--warning-soft)";
-        case "INFORMATION":
-        case "INFO":
-            return "var(--info-soft)";
-        default:
-            return "transparent";
-    }
+    const from = new Date(now.getTime() - minutesByPeriod[period] * 60 * 1000);
+    return {
+        from: toDateTimeLocalValue(from),
+        to: toDateTimeLocalValue(now),
+    };
 }
 
 function formatDate(timestamp: string): string {
@@ -96,22 +70,55 @@ function formatDate(timestamp: string): string {
     });
 }
 
+function severityKind(level: string): "error" | "warning" | "info" | "neutral" {
+    switch (level.toUpperCase()) {
+        case "ERROR":
+        case "FATAL":
+            return "error";
+        case "WARNING":
+        case "WARN":
+            return "warning";
+        case "INFORMATION":
+        case "INFO":
+            return "info";
+        default:
+            return "neutral";
+    }
+}
+
+function SeverityIcon({ level }: { level: string }) {
+    const kind = severityKind(level);
+    if (kind === "error") return <AlertCircle size={14} />;
+    if (kind === "warning") return <CircleAlert size={14} />;
+    if (kind === "info") return <Info size={14} />;
+    return <CircleCheck size={14} />;
+}
+
+function rowKey(log: LogEntry, index: number): string {
+    return String(log.id ?? `${log.timestamp}-${index}`);
+}
+
+function getCorrelationId(log: LogEntry): string {
+    return log.properties?.correlationId?.trim() || "none";
+}
+
 export default function LogsPage() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedLevel, setSelectedLevel] = useState("");
-    const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("");
-    const [fromDate, setFromDate] = useState("");
-    const [toDate, setToDate] = useState("");
+    const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1d");
+    const [fromDate, setFromDate] = useState(() => getDateRangeFromPeriod("1d").from);
+    const [toDate, setToDate] = useState(() => getDateRangeFromPeriod("1d").to);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-    const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
     const [logIdInput, setLogIdInput] = useState("");
     const [loadingLogById, setLoadingLogById] = useState(false);
     const [clearingLogs, setClearingLogs] = useState(false);
+    const [expandedRow, setExpandedRow] = useState<string | null>(null);
+    const [copiedValue, setCopiedValue] = useState<string | null>(null);
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
@@ -122,7 +129,7 @@ export default function LogsPage() {
         return () => window.clearTimeout(timer);
     }, [searchTerm]);
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         setLoading(true);
         setError(null);
 
@@ -139,16 +146,40 @@ export default function LogsPage() {
             setLogs(result.logs);
             setTotalCount(result.totalCount);
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Greška pri učitavanju logova";
+            const message = err instanceof Error ? err.message : "Unable to load logs.";
             setError(message);
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, debouncedSearchTerm, fromDate, selectedLevel, toDate]);
 
     useEffect(() => {
-        fetchLogs();
-    }, [currentPage, selectedLevel, fromDate, toDate, debouncedSearchTerm]);
+        void fetchLogs();
+    }, [fetchLogs]);
+
+    const pageStats = useMemo(() => {
+        const errors = logs.filter((log) => severityKind(log.level) === "error").length;
+        const warnings = logs.filter((log) => severityKind(log.level) === "warning").length;
+        const info = logs.filter((log) => severityKind(log.level) === "info").length;
+        const grouped = new Map<string, number>();
+
+        for (const log of logs) {
+            const correlationId = getCorrelationId(log);
+            if (correlationId !== "none") {
+                grouped.set(correlationId, (grouped.get(correlationId) ?? 0) + 1);
+            }
+        }
+
+        return {
+            errors,
+            warnings,
+            info,
+            grouped,
+            groupedCount: Array.from(grouped.values()).filter((count) => count > 1).length,
+        };
+    }, [logs]);
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
     const handlePeriodChange = (period: TimePeriod) => {
         setSelectedPeriod(period);
@@ -165,15 +196,17 @@ export default function LogsPage() {
         setCurrentPage(1);
     };
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        alert("Kopirano u clipboard!");
+    const copyToClipboard = async (text: string, label: string) => {
+        if (!text) return;
+        await navigator.clipboard?.writeText(text);
+        setCopiedValue(label);
+        window.setTimeout(() => setCopiedValue(null), 1400);
     };
 
     const openLogById = async () => {
         const parsedId = Number.parseInt(logIdInput, 10);
         if (!Number.isInteger(parsedId) || parsedId <= 0) {
-            setError("Unesi ispravan ID loga.");
+            setError("Enter a valid log ID.");
             return;
         }
 
@@ -181,9 +214,10 @@ export default function LogsPage() {
         setError(null);
         try {
             const log = await getLogById(parsedId);
-            setSelectedLog(log);
+            setLogs((current) => [log, ...current.filter((item) => item.id !== log.id)]);
+            setExpandedRow(String(log.id ?? log.timestamp));
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Greška pri učitavanju loga po ID.";
+            const message = err instanceof Error ? err.message : "Unable to load log by ID.";
             setError(message);
         } finally {
             setLoadingLogById(false);
@@ -191,54 +225,116 @@ export default function LogsPage() {
     };
 
     const handleClearLogs = async () => {
-        if (!window.confirm("Potvrdi brisanje logova za zadate filtere.")) {
+        if (!window.confirm("Confirm log deletion for the selected level and upper date boundary.")) {
             return;
         }
 
-        const adminKey = window.prompt("Unesite admin key za brisanje logova");
-        if (!adminKey || !adminKey.trim()) {
-            setError("Admin key je obavezan za brisanje logova.");
+        const adminKey = window.prompt("Admin key");
+        if (!adminKey?.trim()) {
+            setError("Admin key is required.");
             return;
         }
 
         setClearingLogs(true);
         setError(null);
         try {
-            const result = await clearLogs(
-                adminKey.trim(),
-                toDate || undefined,
-                selectedLevel || undefined
-            );
+            await clearLogs(adminKey.trim(), toDate || undefined, selectedLevel || undefined);
             await fetchLogs();
-            alert(`Obrisano logova: ${result.deletedCount}`);
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Greška pri brisanju logova.";
+            const message = err instanceof Error ? err.message : "Unable to clear logs.";
             setError(message);
         } finally {
             setClearingLogs(false);
         }
     };
 
-    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    const resetFilters = () => {
+        const range = getDateRangeFromPeriod("1d");
+        setSelectedLevel("");
+        setSelectedPeriod("1d");
+        setFromDate(range.from);
+        setToDate(range.to);
+        setSearchTerm("");
+        setCurrentPage(1);
+        setExpandedRow(null);
+    };
 
     return (
-        <div className="card max-w-[1400px]">
-            <h2 className="text-2xl font-bold mb-6 text-contrast flex items-center gap-2">
-                <span>{"\u{1F4CB}"}</span> Pregled logova
-            </h2>
+        <div className="observability-page">
+            <div className="observability-header">
+                <div>
+                    <h1 className="observability-title">
+                        <Filter size={22} />
+                        Logs
+                    </h1>
+                    <p className="observability-subtitle">Operational events grouped by request context and severity.</p>
+                </div>
 
-            <div className="toolbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6 p-4 rounded-xl border border-muted bg-surface-darker">
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Nivo</label>
+                <div className="observability-actions">
+                    <span className="observability-status">
+                        <span className="observability-status__dot" />
+                        {copiedValue ? `${copiedValue} copied` : `${totalCount} records`}
+                    </span>
+                    <button
+                        className="observability-icon-button"
+                        type="button"
+                        title="Refresh logs"
+                        onClick={() => void fetchLogs()}
+                        disabled={loading}
+                    >
+                        <RefreshCw size={17} />
+                    </button>
+                </div>
+            </div>
+
+            <section className="observability-kpis" aria-label="Log overview">
+                <div className="observability-kpi">
+                    <div className="observability-kpi__label">
+                        <Clock3 size={15} />
+                        Total
+                    </div>
+                    <div className="observability-kpi__value">{totalCount}</div>
+                    <div className="observability-kpi__meta">Page {currentPage} of {totalPages}</div>
+                </div>
+                <div className="observability-kpi">
+                    <div className="observability-kpi__label">
+                        <AlertCircle size={15} />
+                        Errors
+                    </div>
+                    <div className="observability-kpi__value">{pageStats.errors}</div>
+                    <div className="observability-kpi__meta">Current page</div>
+                </div>
+                <div className="observability-kpi">
+                    <div className="observability-kpi__label">
+                        <CircleAlert size={15} />
+                        Warnings
+                    </div>
+                    <div className="observability-kpi__value">{pageStats.warnings}</div>
+                    <div className="observability-kpi__meta">Current page</div>
+                </div>
+                <div className="observability-kpi">
+                    <div className="observability-kpi__label">
+                        <Search size={15} />
+                        Request Groups
+                    </div>
+                    <div className="observability-kpi__value">{pageStats.groupedCount}</div>
+                    <div className="observability-kpi__meta">Repeated correlation IDs</div>
+                </div>
+            </section>
+
+            <section className="observability-panel observability-filters" aria-label="Log filters">
+                <div className="observability-field">
+                    <label htmlFor="log-level">Severity</label>
                     <select
-                        className="input-big w-full"
+                        id="log-level"
+                        className="observability-select"
                         value={selectedLevel}
-                        onChange={(e) => {
-                            setSelectedLevel(e.target.value);
+                        onChange={(event) => {
+                            setSelectedLevel(event.target.value);
                             setCurrentPage(1);
                         }}
                     >
-                        <option value="">Svi nivoi</option>
+                        <option value="">All severities</option>
                         <option value="Debug">Debug</option>
                         <option value="Information">Information</option>
                         <option value="Warning">Warning</option>
@@ -247,12 +343,13 @@ export default function LogsPage() {
                     </select>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Vremenski period</label>
+                <div className="observability-field">
+                    <label htmlFor="log-period">Range</label>
                     <select
-                        className="input-big w-full"
+                        id="log-period"
+                        className="observability-select"
                         value={selectedPeriod}
-                        onChange={(e) => handlePeriodChange(e.target.value as TimePeriod)}
+                        onChange={(event) => handlePeriodChange(event.target.value as TimePeriod)}
                     >
                         {timePeriodOptions.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -262,309 +359,219 @@ export default function LogsPage() {
                     </select>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Pretraga</label>
+                <div className="observability-field">
+                    <label htmlFor="log-search">Search</label>
                     <input
-                        type="text"
-                        className="input-big w-full"
-                        placeholder="Poruka, User, ID..."
+                        id="log-search"
+                        type="search"
+                        className="observability-input"
+                        placeholder="Message, path, user, correlation"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(event) => setSearchTerm(event.target.value)}
                     />
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Od datuma</label>
+                <div className="observability-field">
+                    <label htmlFor="log-from">From</label>
                     <input
+                        id="log-from"
                         type="datetime-local"
-                        className="input-big w-full"
+                        className="observability-input"
                         value={fromDate}
-                        onChange={(e) => handleCustomDateChange("from", e.target.value)}
+                        onChange={(event) => handleCustomDateChange("from", event.target.value)}
                     />
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Do datuma</label>
+                <div className="observability-field">
+                    <label htmlFor="log-to">To</label>
                     <input
+                        id="log-to"
                         type="datetime-local"
-                        className="input-big w-full"
+                        className="observability-input"
                         value={toDate}
-                        onChange={(e) => handleCustomDateChange("to", e.target.value)}
+                        onChange={(event) => handleCustomDateChange("to", event.target.value)}
                     />
                 </div>
 
-                <div className="flex items-end gap-2">
+                <div className="observability-field">
+                    <label htmlFor="log-id">Log ID</label>
+                    <div className="observability-inline-actions">
+                        <input
+                            id="log-id"
+                            type="number"
+                            min={1}
+                            className="observability-input"
+                            placeholder="ID"
+                            value={logIdInput}
+                            onChange={(event) => setLogIdInput(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    void openLogById();
+                                }
+                            }}
+                        />
+                        <button
+                            type="button"
+                            className="observability-icon-button"
+                            title="Open log by ID"
+                            disabled={loadingLogById}
+                            onClick={() => void openLogById()}
+                        >
+                            <Eye size={17} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="observability-inline-actions">
                     <button
-                        className="button-big flex-1"
-                        onClick={fetchLogs}
-                        title="Osveži logove"
+                        className="observability-button observability-button--primary"
                         type="button"
+                        onClick={() => void fetchLogs()}
+                        disabled={loading}
                     >
-                        {"\u{1F504}"} Osveži
+                        <RefreshCw size={16} />
+                        Refresh
                     </button>
-                    <button
-                        className="button-big button-secondary !px-3"
-                        onClick={() => {
-                            setSelectedLevel("");
-                            setSelectedPeriod("");
-                            setFromDate("");
-                            setToDate("");
-                            setSearchTerm("");
-                            setCurrentPage(1);
-                        }}
-                        title="Resetuj filtere"
-                        type="button"
-                    >
+                    <button className="observability-button" type="button" onClick={resetFilters}>
+                        <X size={16} />
                         Reset
                     </button>
                     <button
-                        className="button-big button-danger !px-3"
-                        onClick={() => {
-                            void handleClearLogs();
-                        }}
-                        title="Obriši logove (admin)"
+                        className="observability-button observability-button--danger"
                         type="button"
+                        onClick={() => void handleClearLogs()}
                         disabled={clearingLogs}
                     >
-                        {clearingLogs ? "..." : "Obriši"}
+                        <Trash2 size={16} />
+                        Clear
                     </button>
                 </div>
-            </div>
+            </section>
 
-            <div className="flex justify-between items-center flex-wrap gap-4 mb-4 p-3 rounded-lg border border-muted bg-surface/30 text-sm">
-                <span className="text-contrast">
-                    <strong className="text-muted">Ukupno:</strong> {totalCount} logova |{" "}
-                    <strong className="text-muted">Stranica:</strong> {currentPage} od {totalPages}
-                </span>
-                <div className="flex items-center gap-2">
-                    <input
-                        type="number"
-                        min={1}
-                        className="input-big !mb-0 !py-2 !px-3 w-36"
-                        placeholder="ID loga"
-                        value={logIdInput}
-                        onChange={(e) => setLogIdInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                void openLogById();
-                            }
-                        }}
-                    />
-                    <button
-                        type="button"
-                        className="button-big !py-2 !px-4"
-                        disabled={loadingLogById}
-                        onClick={() => {
-                            void openLogById();
-                        }}
-                    >
-                        {loadingLogById ? "..." : "Otvori ID"}
-                    </button>
-                </div>
-                {selectedPeriod && (
-                    <span className="text-info font-bold">
-                        {"\u{1F4C5}"} {timePeriodOptions.find((option) => option.value === selectedPeriod)?.label}
-                    </span>
-                )}
-            </div>
-
-            {error && (
-                <div className="mb-4 rounded-lg border border-error bg-error/10 p-4 text-sm text-error">
-                    {error}
-                </div>
-            )}
+            {error && <div className="observability-error">{error}</div>}
 
             {loading ? (
-                <div className="py-20 text-center text-muted">Učitavanje logova...</div>
+                <div className="observability-loading">Loading logs...</div>
+            ) : logs.length === 0 ? (
+                <div className="observability-empty">No logs match the selected filters.</div>
             ) : (
                 <>
-                    <div className="overflow-hidden rounded-xl border border-muted bg-surface-elevated">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-muted text-sm">
-                                <thead className="bg-surface-darker text-muted">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider w-40">Vreme</th>
-                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider w-24">Nivo</th>
-                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider">Poruka</th>
-                                        <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider w-20">Akcije</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-muted/50 text-contrast font-mono text-[11px]">
-                                    {logs.map((log, index) => (
-                                        <React.Fragment key={log.id ?? `${log.timestamp}-${index}`}>
-                                            <tr
-                                                className="table-row-hover transition-colors cursor-pointer"
-                                                style={{ backgroundColor: getLevelBgColor(log.level) }}
-                                                onClick={() => setSelectedLog(log)}
-                                            >
-                                                <td className="px-4 py-2 whitespace-nowrap opacity-70">
+                    <section className="observability-panel observability-table-shell" aria-label="Log table">
+                        <table className="observability-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Severity</th>
+                                    <th>Message</th>
+                                    <th>Path</th>
+                                    <th>Correlation</th>
+                                    <th className="observability-table__right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {logs.map((log, index) => {
+                                    const key = rowKey(log, index);
+                                    const isExpanded = expandedRow === key;
+                                    const correlationId = getCorrelationId(log);
+                                    const groupedCount = pageStats.grouped.get(correlationId) ?? 0;
+                                    const kind = severityKind(log.level);
+
+                                    return (
+                                        <React.Fragment key={key}>
+                                            <tr>
+                                                <td className="observability-mono observability-muted">
                                                     {formatDate(log.timestamp)}
                                                 </td>
-                                                <td className="px-4 py-2">
-                                                    <span
-                                                        className="font-bold uppercase px-1.5 py-0.5 rounded text-[10px]"
-                                                        style={{ 
-                                                            color: getLevelColor(log.level),
-                                                            backgroundColor: `${getLevelColor(log.level)}20`,
-                                                            border: `1px solid ${getLevelColor(log.level)}40`
-                                                        }}
-                                                    >
+                                                <td>
+                                                    <span className={`severity-badge severity-badge--${kind}`}>
+                                                        <SeverityIcon level={log.level} />
                                                         {log.level}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-2 break-all max-w-md truncate" title={log.message}>
-                                                    {log.message}
+                                                <td className="observability-message-cell">
+                                                    <div className="observability-truncate" title={log.message}>
+                                                        {log.message}
+                                                    </div>
                                                 </td>
-                                                <td className="px-4 py-2 text-right">
-                                                    <button 
-                                                        className="text-muted hover:text-contrast"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedLog(log);
-                                                        }}
-                                                    >
-                                                        {"\u{1F441}"}
-                                                    </button>
+                                                <td className="observability-mono observability-truncate">
+                                                    {log.properties?.path || "-"}
+                                                </td>
+                                                <td className="observability-mono observability-truncate">
+                                                    {correlationId !== "none" ? correlationId : "-"}
+                                                    {groupedCount > 1 ? (
+                                                        <span className="observability-muted"> ({groupedCount})</span>
+                                                    ) : null}
+                                                </td>
+                                                <td className="observability-table__right">
+                                                    <div className="observability-inline-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="observability-icon-button"
+                                                            title={isExpanded ? "Collapse details" : "Expand details"}
+                                                            onClick={() => setExpandedRow(isExpanded ? null : key)}
+                                                        >
+                                                            {isExpanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="observability-icon-button"
+                                                            title="Copy log JSON"
+                                                            onClick={() => void copyToClipboard(JSON.stringify(log, null, 2), "Log")}
+                                                        >
+                                                            <Copy size={16} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
-                                            {log.exception && (
-                                                <tr className="bg-error/5 border-l-2 border-l-error">
-                                                    <td colSpan={4} className="px-4 py-1.5">
-                                                        <div className="flex items-center gap-2 text-error text-[10px] font-bold opacity-80">
-                                                            <span>{"\u{1F41E}"}</span>
-                                                            <span className="truncate">{log.exception.split('\n')[0]}</span>
+
+                                            {isExpanded ? (
+                                                <tr className="observability-row-detail">
+                                                    <td colSpan={6}>
+                                                        <div className="observability-detail-grid">
+                                                            <div className="observability-detail-box">
+                                                                <h4>Context</h4>
+                                                                <pre className="observability-pre observability-mono">
+                                                                    {JSON.stringify(log.properties ?? {}, null, 2)}
+                                                                </pre>
+                                                            </div>
+                                                            <div className="observability-detail-box">
+                                                                <h4>{log.exception ? "Exception" : "Message"}</h4>
+                                                                <pre className="observability-pre observability-mono">
+                                                                    {log.exception || log.message}
+                                                                </pre>
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            )}
+                                            ) : null}
                                         </React.Fragment>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </section>
 
-                    {/* Pagination */}
-                    <div className="flex justify-center flex-wrap gap-2 mt-6">
+                    <div className="observability-actions observability-actions--center">
                         <button
-                            className="button-big button-secondary !px-4"
+                            className="observability-button"
+                            type="button"
                             onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                             disabled={currentPage === 1 || loading}
-                            type="button"
                         >
-                            {"\u2190"} Prethodna
+                            Previous
                         </button>
-                        <div className="flex items-center gap-1 font-semibold mx-4 text-contrast">
-                            Stranica {currentPage} od {totalPages}
-                        </div>
+                        <span className="observability-status">
+                            Page {currentPage} / {totalPages}
+                        </span>
                         <button
-                            className="button-big button-secondary !px-4"
+                            className="observability-button"
+                            type="button"
                             onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                             disabled={currentPage >= totalPages || loading}
-                            type="button"
                         >
-                            Sledeća {"\u2192"}
+                            Next
                         </button>
                     </div>
-
-                    {/* Modal za Detalje */}
-                    {selectedLog && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
-                            <div className="bg-surface-elevated border border-muted w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                                <div className="p-4 border-b border-muted bg-surface-darker flex justify-between items-center">
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-bold uppercase px-2 py-1 rounded text-xs" style={{ 
-                                            color: getLevelColor(selectedLog.level),
-                                            backgroundColor: `${getLevelColor(selectedLog.level)}20`,
-                                        }}>
-                                            {selectedLog.level}
-                                        </span>
-                                        <h3 className="font-bold text-contrast truncate max-w-xl">{selectedLog.message}</h3>
-                                    </div>
-                                    <button onClick={() => setSelectedLog(null)} className="text-muted hover:text-contrast text-2xl">&times;</button>
-                                </div>
-                                
-                                <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-sm">
-                                        <div className="space-y-3">
-                                            <div>
-                                                <label className="text-xs text-muted uppercase font-bold">ID</label>
-                                                <div className="text-contrast font-mono">{selectedLog.id ?? "-"}</div>
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-muted uppercase font-bold">Vreme (Lokalno)</label>
-                                                <div className="text-contrast font-mono">{formatDate(selectedLog.timestamp)}</div>
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-muted uppercase font-bold">Korisnik</label>
-                                                <div className="text-contrast font-mono">{selectedLog.properties?.userName || "Sistem"}</div>
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-muted uppercase font-bold">Putanja</label>
-                                                <div className="text-contrast font-mono">{selectedLog.properties?.path || "/"}</div>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <div>
-                                                <label className="text-xs text-muted uppercase font-bold">Correlation ID</label>
-                                                <div className="text-info font-mono text-xs break-all flex items-center gap-2">
-                                                    {selectedLog.properties?.correlationId}
-                                                    <button onClick={() => copyToClipboard(selectedLog.properties?.correlationId || "")} className="text-[10px] underline hover:text-contrast">Copy</button>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-muted uppercase font-bold">Klijent</label>
-                                                <div className="text-contrast font-mono">{selectedLog.properties?.clientApp || "Browser"}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {selectedLog.exception && (
-                                        <div className="mb-6">
-                                            <label className="text-xs text-error uppercase font-bold block mb-2">Stack Trace</label>
-                                            <pre className="bg-surface-darker border border-error/20 p-4 rounded-xl text-[11px] text-error overflow-x-auto whitespace-pre font-mono leading-relaxed max-h-60 custom-scrollbar">
-                                                {selectedLog.exception}
-                                            </pre>
-                                            <button 
-                                                onClick={() => copyToClipboard(selectedLog.exception || "")}
-                                                className="mt-2 text-xs text-muted hover:text-error underline"
-                                            >
-                                                Kopiraj Stack Trace
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    <div>
-                                        <label className="text-xs text-muted uppercase font-bold block mb-2">Raw Properties (JSON)</label>
-                                        <pre className="bg-surface-darker border border-muted p-4 rounded-xl text-[11px] text-info overflow-x-auto font-mono">
-                                            {JSON.stringify(selectedLog.properties, null, 2)}
-                                        </pre>
-                                    </div>
-                                </div>
-
-                                <div className="p-4 border-t border-muted bg-surface-darker flex justify-end gap-3">
-                                    <button 
-                                        className="button button-secondary text-sm"
-                                        onClick={() => copyToClipboard(JSON.stringify(selectedLog, null, 2))}
-                                    >
-                                        Kopiraj ceo log
-                                    </button>
-                                    <button 
-                                        className="button-big text-sm"
-                                        onClick={() => setSelectedLog(null)}
-                                    >
-                                        Zatvori
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {logs.length === 0 && !loading && (
-                        <div className="py-20 text-center text-muted border border-dashed border-muted rounded-xl mt-4">
-                            Nema logova za zadate kriterijume.
-                        </div>
-                    )}
                 </>
             )}
         </div>

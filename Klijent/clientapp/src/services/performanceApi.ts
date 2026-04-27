@@ -35,7 +35,9 @@ export async function getPerformanceStats(
     topCount: number = 20,
     minDurationMs: number = 1000,
     fromDate?: string,
-    toDate?: string
+    toDate?: string,
+    requestName?: string,
+    status?: string
 ): Promise<PerformanceStatsResponse> {
     const safeTopCount = Number.isFinite(topCount) ? Math.min(200, Math.max(1, Math.floor(topCount))) : 20;
     const safeMinDuration = Number.isFinite(minDurationMs) ? Math.max(0, Math.floor(minDurationMs)) : 1000;
@@ -49,6 +51,8 @@ export async function getPerformanceStats(
 
     if (fromDateParam) params.append("fromDate", fromDateParam);
     if (toDateParam) params.append("toDate", toDateParam);
+    if (requestName?.trim()) params.append("requestName", requestName.trim());
+    if (status && status !== "all") params.append("status", status);
 
     const url = getPerformanceUrl(params);
 

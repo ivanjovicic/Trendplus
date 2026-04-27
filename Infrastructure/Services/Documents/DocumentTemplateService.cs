@@ -86,8 +86,9 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
 
     private static string BuildTable(DocumentGenerationRequest request)
     {
+        var isBlankForm = request.DocumentType is "inventory-balance-blank";
         var builder = new StringBuilder();
-        builder.Append("<table><thead><tr>");
+        builder.Append(isBlankForm ? "<table class=\"blank-form\"><thead><tr>" : "<table><thead><tr>");
         foreach (var column in request.Table.Columns)
         {
             builder.Append("<th>");
@@ -137,27 +138,51 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
     private static string BuildStyles()
     {
         return """
-            body { font-family: "Segoe UI", Arial, sans-serif; color: #111827; background: #f3f4f6; margin: 0; }
-            .sheet { max-width: 1280px; margin: 0 auto; padding: 24px 32px 48px; background: #ffffff; }
-            .doc-header { border-bottom: 2px solid #0f172a; margin-bottom: 16px; padding-bottom: 12px; }
-            .doc-header h1 { margin: 0; font-size: 24px; }
-            .doc-header p { margin: 4px 0 0; color: #475569; }
-            .meta { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 16px; }
-            .named-values { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0 0 16px; }
+            body { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; color: #111827; background: #f3f4f6; margin: 0; }
+            .sheet { max-width: 1280px; margin: 0 auto; padding: 20px 28px 40px; background: #ffffff; }
+            .doc-header { border-bottom: 2px solid #0f172a; margin-bottom: 12px; padding-bottom: 10px; }
+            .doc-header h1 { margin: 0; font-size: 17px; line-height: 1.3; }
+            .doc-header p { margin: 4px 0 0; font-size: 10px; color: #475569; }
+            .meta { display: grid; gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 10px; font-size: 10px; }
+            .named-values { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0 0 10px; font-size: 10px; }
             .named-values dt { font-weight: 600; color: #0f172a; }
             .named-values dd { margin: 0; color: #334155; }
             .empty { color: #64748b; }
-            .table-section { margin-top: 12px; }
+            .table-section { margin-top: 8px; }
             table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-            th, td { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; word-break: break-word; }
-            th { background: #e2e8f0; text-align: left; font-weight: 700; }
+            th, td { border: 1px solid #64748b; }
+            th {
+              background: #dde4ef;
+              text-align: left;
+              font-weight: 700;
+              font-size: 9px;
+              line-height: 1.3;
+              padding: 6px 8px;
+              vertical-align: bottom;
+              overflow-wrap: break-word;
+              word-break: normal;
+              hyphens: auto;
+              color: #1e293b;
+            }
+            td {
+              font-size: 11px;
+              padding: 12px 8px;
+              line-height: 1.4;
+              vertical-align: middle;
+              word-break: break-word;
+              color: #111827;
+            }
             tr:nth-child(even) td { background: #f8fafc; }
-            .doc-footer { display: flex; justify-content: space-between; margin-top: 18px; padding-top: 10px; border-top: 1px solid #cbd5e1; color: #475569; font-size: 12px; }
+            .blank-form td { background: #ffffff !important; }
+            .doc-footer { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 8px; border-top: 1px solid #94a3b8; color: #475569; font-size: 10px; }
             @media print {
               body { background: #ffffff; }
-              .sheet { margin: 0; padding: 16px; box-shadow: none; }
-              @page { size: A4 landscape; margin: 12mm; }
-              body.portrait @page { size: A4 portrait; }
+              .sheet { margin: 0; padding: 12px; box-shadow: none; }
+              @page { size: A4 landscape; margin: 10mm; }
+              body.portrait @page { size: A4 portrait; margin: 12mm; }
+              thead { display: table-header-group; }
+              tr { page-break-inside: avoid; page-break-after: auto; }
+              table { page-break-inside: auto; }
             }
             """;
     }

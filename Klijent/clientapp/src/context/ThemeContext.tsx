@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-export type ThemeName = "inventory-dark" | "light" | "high-contrast" | "soft-gray";
+export type ThemeName = "inventory-dark" | "light" | "high-contrast" | "soft-gray" | "neon-light" | "neon-dark";
 
 export interface Theme {
   name: ThemeName;
@@ -55,6 +55,9 @@ const COMMON_VARS: Record<string, string> = {
   "--error-rgb": "239,68,68",
   "--info-rgb": "59,130,246",
   "--border-muted": "var(--border-default)",
+  "--accent-secondary": "var(--theme-color-7c3aed, #7c3aed)",
+  "--glow-accent": "0 0 0 transparent",
+  "--glow-panel": "0 16px 34px -32px var(--card-shadow)",
 };
 
 function withBaseVars(overrides: Record<string, string>): Record<string, string> {
@@ -126,6 +129,72 @@ const THEMES: Record<ThemeName, Theme> = {
       "--card-shadow": "var(--theme-color-rgba-16-24-40-0p06, rgba(16,24,40,0.06))",
     }),
   },
+  "neon-light": {
+    name: "neon-light",
+    displayName: "Neon Light",
+    description: "Bright analytical theme with restrained neon accents",
+    cssVars: withBaseVars({
+      "--surface-default": "var(--theme-color-f7fbff, #f7fbff)",
+      "--surface-light": "var(--theme-color-ffffff, #ffffff)",
+      "--surface-elevated": "var(--theme-color-ffffff, #ffffff)",
+      "--surface-darker": "var(--theme-color-eaf4ff, #eaf4ff)",
+      "--text-primary": "var(--theme-color-06152f, #06152f)",
+      "--text-secondary": "var(--theme-color-31445f, #31445f)",
+      "--text-muted": "var(--theme-color-64748b, #64748b)",
+      "--border-default": "var(--theme-color-c9e4ff, #c9e4ff)",
+      "--border-hover": "var(--theme-color-6ee7ff, #6ee7ff)",
+      "--focus-ring": "var(--theme-color-0057d8, #0057d8)",
+      "--focus-ring-shadow": "var(--theme-color-rgba-0-217-255-0p18, rgba(0, 217, 255, 0.18))",
+      "--accent-primary": "var(--theme-color-0057d8, #0057d8)",
+      "--accent-secondary": "var(--theme-color-9b1fe8, #9b1fe8)",
+      "--info": "var(--theme-color-0057d8, #0057d8)",
+      "--warning": "var(--theme-color-b45309, #b45309)",
+      "--warning-strong": "var(--theme-color-92400e, #92400e)",
+      "--error": "var(--theme-color-d11a2a, #d11a2a)",
+      "--success": "var(--theme-color-087f5b, #087f5b)",
+      "--info-soft": "var(--theme-color-rgba-0-87-216-0p12, rgba(0, 87, 216, 0.12))",
+      "--warning-soft": "var(--theme-color-rgba-180-83-9-0p12, rgba(180, 83, 9, 0.12))",
+      "--error-soft": "var(--theme-color-rgba-209-26-42-0p1, rgba(209, 26, 42, 0.10))",
+      "--success-soft": "var(--theme-color-rgba-8-127-91-0p12, rgba(8, 127, 91, 0.12))",
+      "--card-shadow": "var(--theme-color-rgba-0-87-216-0p16, rgba(0, 87, 216, 0.16))",
+      "--glow-accent": "0 0 18px var(--theme-color-rgba-0-217-255-0p22, rgba(0, 217, 255, 0.22))",
+      "--glow-panel": "0 18px 44px -32px var(--theme-color-rgba-0-87-216-0p34, rgba(0, 87, 216, 0.34))",
+      "--text-on-primary": "var(--theme-color-ffffff, #ffffff)",
+    }),
+  },
+  "neon-dark": {
+    name: "neon-dark",
+    displayName: "Neon Dark",
+    description: "Dark analytical theme with cyan and violet signal accents",
+    cssVars: withBaseVars({
+      "--surface-default": "var(--theme-color-050912, #050912)",
+      "--surface-light": "var(--theme-color-0b1220, #0b1220)",
+      "--surface-elevated": "var(--theme-color-0f172a, #0f172a)",
+      "--surface-darker": "var(--theme-color-020617, #020617)",
+      "--text-primary": "var(--theme-color-e8fbff, #e8fbff)",
+      "--text-secondary": "var(--theme-color-9ec8d8, #9ec8d8)",
+      "--text-muted": "var(--theme-color-6f8da0, #6f8da0)",
+      "--border-default": "var(--theme-color-183047, #183047)",
+      "--border-hover": "var(--theme-color-00d9ff, #00d9ff)",
+      "--focus-ring": "var(--theme-color-00d9ff, #00d9ff)",
+      "--focus-ring-shadow": "var(--theme-color-rgba-0-217-255-0p18, rgba(0, 217, 255, 0.18))",
+      "--accent-primary": "var(--theme-color-00d9ff, #00d9ff)",
+      "--accent-secondary": "var(--theme-color-b86bff, #b86bff)",
+      "--info": "var(--theme-color-5ee7ff, #5ee7ff)",
+      "--warning": "var(--theme-color-facc15, #facc15)",
+      "--warning-strong": "var(--theme-color-f59e0b, #f59e0b)",
+      "--error": "var(--theme-color-ff6b8a, #ff6b8a)",
+      "--success": "var(--theme-color-45f3b2, #45f3b2)",
+      "--info-soft": "var(--theme-color-rgba-0-217-255-0p13, rgba(0, 217, 255, 0.13))",
+      "--warning-soft": "var(--theme-color-rgba-250-204-21-0p13, rgba(250, 204, 21, 0.13))",
+      "--error-soft": "var(--theme-color-rgba-255-107-138-0p13, rgba(255, 107, 138, 0.13))",
+      "--success-soft": "var(--theme-color-rgba-69-243-178-0p13, rgba(69, 243, 178, 0.13))",
+      "--card-shadow": "var(--theme-color-rgba-0-0-0-0p72, rgba(0,0,0,0.72))",
+      "--glow-accent": "0 0 18px var(--theme-color-rgba-0-217-255-0p25, rgba(0, 217, 255, 0.25))",
+      "--glow-panel": "0 20px 52px -34px var(--theme-color-rgba-0-217-255-0p32, rgba(0, 217, 255, 0.32))",
+      "--text-on-primary": "var(--theme-color-03111a, #03111a)",
+    }),
+  },
   "high-contrast": {
     name: "high-contrast",
     displayName: "Visoki kontrast",
@@ -185,7 +254,7 @@ export function ThemeProvider({ children, defaultTheme = "inventory-dark" }: The
     });
   }, [currentTheme]);
 
-  const isDark = currentTheme === "inventory-dark" || currentTheme === "high-contrast";
+  const isDark = currentTheme === "inventory-dark" || currentTheme === "high-contrast" || currentTheme === "neon-dark";
 
   return (
     <ThemeContext.Provider

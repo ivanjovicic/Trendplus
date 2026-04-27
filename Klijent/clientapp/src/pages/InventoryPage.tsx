@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, FileText, Printer, RefreshCw, Search, Warehouse } from "lucide-react";
-import { createInventoryReportSchedule, exportInventoryReport, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, runInventoryReportScheduleNow, saveInventoryActionDecision } from "../services/analyticsApi";
+import { createInventoryReportSchedule, exportInventoryReport, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import { ActionWorkflowPanel } from "../components/inventory/ActionWorkflowPanel";
@@ -367,8 +367,21 @@ export default function InventoryPage() {
     }
   }
 
+  async function runBlankPrint() {
+    try {
+      setExportBusy(true);
+      setExportStatus("Pripremam prazan obrazac za stampu...");
+      const result = await printBlankInventoryForm();
+      if (result.printUrl) window.open(resolveApiUrl(result.printUrl), "_blank", "noopener");
+      setExportStatus("Prazan obrazac je otvoren u novom tabu.");
+    } catch (reason) {
+      setExportStatus(reason instanceof Error ? reason.message : "Priprema praznog obrasca nije uspela.");
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
   function exportVisibleCsv() {
-    if (rows.length === 0) return;
     const lines = [
       ["PLU", "Naziv", "Dobavljac", "Prodavnica", "Status", "Kolicina", "Minimum", "Gap", "NabavnaCena", "Vrednost"].join(";"),
       ...rows.map((row) => [csvEscape(row.plu ?? ""), csvEscape(row.naziv), csvEscape(row.supplierName), csvEscape(row.storeName), csvEscape(row.stockStateLabel), row.quantity, row.minimum, row.reorderGap, row.unitCost.toFixed(2), row.estimatedValueAmount.toFixed(2)].join(";")),
@@ -561,6 +574,7 @@ export default function InventoryPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" aria-label="Otvori print preview filtriranog izvestaja" onClick={() => void runServerExport("pdf", true)} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Print preview</button>
+              <button type="button" aria-label="Odštampaj prazan obrazac bilansa stanja" onClick={() => void runBlankPrint()} disabled={exportBusy} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-[var(--warning)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Prazan obrazac</button>
               <button type="button" aria-label="Izvezi CSV za trenutni ekran" onClick={exportVisibleCsv} disabled={rows.length === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV ekran</button>
               <button type="button" aria-label="Izvezi CSV filtrirano" onClick={() => void runServerExport("csv")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV filtrirano</button>
               <button type="button" aria-label="Izvezi Excel filtrirano" onClick={() => void runServerExport("xlsx")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--success)] transition-all duration-200 hover:border-[var(--success)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><FileSpreadsheet size={14} />Excel filtrirano</button>

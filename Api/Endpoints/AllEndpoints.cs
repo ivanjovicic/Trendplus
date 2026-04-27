@@ -357,11 +357,18 @@ public static class AllEndpoints
             int topCount = 20,
             int minDurationMs = 1000,
             DateTime? fromDate = null,
-            DateTime? toDate = null) =>
+            DateTime? toDate = null,
+            string? requestName = null,
+            string? status = null) =>
         {
             try
             {
-                logger.LogInformation("Performance stats request: top={TopCount}, min={MinDuration}ms", topCount, minDurationMs);
+                logger.LogInformation(
+                    "Performance stats request: top={TopCount}, min={MinDuration}ms, requestName={RequestName}, status={Status}",
+                    topCount,
+                    minDurationMs,
+                    requestName,
+                    status);
 
                 // Convert dates to UTC if they have Unspecified kind
                 if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -370,7 +377,7 @@ public static class AllEndpoints
                 if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                     toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-                var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate);
+                var query = new GetPerformanceStatsQuery(topCount, minDurationMs, fromDate, toDate, requestName, status);
                 var result = await mediator.Send(query);
                 return Results.Ok(result);
             }

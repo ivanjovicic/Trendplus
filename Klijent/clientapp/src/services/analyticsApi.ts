@@ -776,6 +776,14 @@ export async function previewInventoryReport(options?: {
   );
 }
 
+export async function printBlankInventoryForm(): Promise<DocumentOperationResponse> {
+  return postJson(
+    "/api/analytics/inventory/print-blank",
+    {},
+    "Greska pri pripremi praznog obrasca za stampu"
+  );
+}
+
 export async function getInventoryStoreComparison(options?: {
   compareStoreIds?: number[];
   supplierId?: number | null;

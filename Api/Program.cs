@@ -898,6 +898,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     // 1. Global exception handler (first in pipeline)
     app.UseMiddleware<GlobalExceptionMiddleware>();
     app.UseMiddleware<SqlLoggingRequestContextMiddleware>();
+    app.UseMiddleware<RequestPerformanceLoggingMiddleware>();
 
     app.Use(async (context, next) =>
     {

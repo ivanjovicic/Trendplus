@@ -1,14 +1,39 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+    Activity,
+    ArrowUpDown,
+    BarChart3,
+    Clock3,
+    Gauge,
+    RefreshCw,
+    Search,
+    TimerReset,
+    TriangleAlert,
+    X,
+    Zap,
+} from "lucide-react";
+import {
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 import { usePingControl } from "../context/PingControlContext";
 import { getPerformanceStats } from "../services/performanceApi";
-import { PerformanceStat, PerformanceSummary } from "../types/performance";
+import type { EndpointPerformance, PerformanceStat, PerformanceSummary, PerformanceTimelinePoint } from "../types/performance";
+import "./ObservabilityPages.css";
 
 type SortKey = "timestamp" | "requestName" | "durationMs" | "isSuccess";
 type SortDirection = "asc" | "desc";
-type StatusFilter = "all" | "success" | "failed";
+type StatusFilter = "all" | "success" | "failed" | "slow";
 
-const DEFAULT_TOP_COUNT = 20;
-const DEFAULT_MIN_DURATION = 1000;
+const DEFAULT_TOP_COUNT = 50;
+const DEFAULT_MIN_DURATION = 0;
 const AUTO_REFRESH_MS = 15_000;
 
 function clampNumber(value: number, min: number, max: number): number {
@@ -19,6 +44,15 @@ function clampNumber(value: number, min: number, max: number): number {
 function toDateTimeLocalValue(date: Date): string {
     const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
     return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+}
+
+function getQuickRange(hours: number): { from: string; to: string } {
+    const now = new Date();
+    const from = new Date(now.getTime() - hours * 60 * 60 * 1000);
+    return {
+        from: toDateTimeLocalValue(from),
+        to: toDateTimeLocalValue(now),
+    };
 }
 
 function formatDate(timestamp: string): string {
@@ -33,24 +67,44 @@ function formatDate(timestamp: string): string {
     });
 }
 
+function formatBucket(timestamp: string): string {
+    const date = new Date(timestamp);
+    return date.toLocaleString("sr-RS", {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
 function formatDuration(ms: number): string {
-    if (ms < 1000) return `${ms} ms`;
+    if (!Number.isFinite(ms)) return "-";
+    if (ms < 1000) return `${Math.round(ms)} ms`;
     return `${(ms / 1000).toFixed(2)} s`;
 }
 
-function durationColor(ms: number): string {
-    if (ms < 1000) return "var(--success)";
-    if (ms < 3000) return "var(--warning)";
-    if (ms < 5000) return "var(--warning-strong)";
-    return "var(--error)";
+function rowStatus(stat: PerformanceStat): "success" | "failed" | "slow" {
+    if (!stat.isSuccess) return "failed";
+    if (stat.durationMs >= 1000) return "slow";
+    return "success";
 }
+
+const tooltipStyle = {
+    background: "var(--surface-elevated)",
+    border: "1px solid var(--border-default)",
+    borderRadius: 8,
+    color: "var(--text-primary)",
+};
 
 export default function PerformanceDashboard() {
     const { apiPingEnabled } = usePingControl();
     const activeRequestIdRef = useRef(0);
+    const initialRange = useMemo(() => getQuickRange(24), []);
 
     const [stats, setStats] = useState<PerformanceStat[]>([]);
     const [summary, setSummary] = useState<PerformanceSummary | null>(null);
+    const [endpointStats, setEndpointStats] = useState<EndpointPerformance[]>([]);
+    const [timeline, setTimeline] = useState<PerformanceTimelinePoint[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -61,11 +115,21 @@ export default function PerformanceDashboard() {
 
     const [topCount, setTopCount] = useState(DEFAULT_TOP_COUNT);
     const [minDuration, setMinDuration] = useState(DEFAULT_MIN_DURATION);
-    const [fromDate, setFromDate] = useState<string>("");
-    const [toDate, setToDate] = useState<string>("");
+    const [fromDate, setFromDate] = useState<string>(initialRange.from);
+    const [toDate, setToDate] = useState<string>(initialRange.to);
     const [requestFilter, setRequestFilter] = useState("");
+    const [debouncedRequestFilter, setDebouncedRequestFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [autoRefresh, setAutoRefresh] = useState(false);
+    const [expandedRow, setExpandedRow] = useState<number | null>(null);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setDebouncedRequestFilter(requestFilter.trim());
+        }, 350);
+
+        return () => window.clearTimeout(timer);
+    }, [requestFilter]);
 
     const fetchStats = useCallback(async (silent = false) => {
         const requestId = ++activeRequestIdRef.current;
@@ -83,25 +147,28 @@ export default function PerformanceDashboard() {
                 topCount,
                 minDuration,
                 fromDate || undefined,
-                toDate || undefined
+                toDate || undefined,
+                debouncedRequestFilter || undefined,
+                statusFilter
             );
 
             if (requestId !== activeRequestIdRef.current) return;
 
             setStats(result.slowestRequests);
             setSummary(result.summary);
+            setEndpointStats(result.endpointStats ?? []);
+            setTimeline(result.timeline ?? []);
             setLastUpdatedAt(new Date());
         } catch (reason) {
             if (requestId !== activeRequestIdRef.current) return;
-            console.error("Error fetching performance stats:", reason);
-            setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju performance podataka");
+            setError(reason instanceof Error ? reason.message : "Unable to load performance data.");
         } finally {
             if (requestId === activeRequestIdRef.current) {
                 setLoading(false);
                 setRefreshing(false);
             }
         }
-    }, [fromDate, minDuration, toDate, topCount]);
+    }, [debouncedRequestFilter, fromDate, minDuration, statusFilter, toDate, topCount]);
 
     useEffect(() => {
         void fetchStats(false);
@@ -117,50 +184,60 @@ export default function PerformanceDashboard() {
         return () => window.clearInterval(intervalId);
     }, [apiPingEnabled, autoRefresh, fetchStats]);
 
-    const visibleStats = useMemo(() => {
-        const normalizedRequestFilter = requestFilter.trim().toLocaleLowerCase("sr-Latn-RS");
+    const sortedStats = useMemo(() => {
         const sortedDirection = sortDirection === "asc" ? 1 : -1;
 
-        return stats
-            .filter((stat) => {
-                if (statusFilter === "success" && !stat.isSuccess) return false;
-                if (statusFilter === "failed" && stat.isSuccess) return false;
-                if (!normalizedRequestFilter) return true;
-                return stat.requestName.toLocaleLowerCase("sr-Latn-RS").includes(normalizedRequestFilter);
-            })
-            .sort((a, b) => {
-                let comparison = 0;
-                switch (sortKey) {
-                    case "timestamp":
-                        comparison = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-                        break;
-                    case "requestName":
-                        comparison = a.requestName.localeCompare(b.requestName, "sr");
-                        break;
-                    case "durationMs":
-                        comparison = a.durationMs - b.durationMs;
-                        break;
-                    case "isSuccess":
-                        comparison = Number(a.isSuccess) - Number(b.isSuccess);
-                        break;
-                    default:
-                        comparison = a.id - b.id;
-                        break;
-                }
+        return [...stats].sort((a, b) => {
+            let comparison = 0;
+            switch (sortKey) {
+                case "timestamp":
+                    comparison = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                    break;
+                case "requestName":
+                    comparison = a.requestName.localeCompare(b.requestName, "sr");
+                    break;
+                case "durationMs":
+                    comparison = a.durationMs - b.durationMs;
+                    break;
+                case "isSuccess":
+                    comparison = Number(a.isSuccess) - Number(b.isSuccess);
+                    break;
+                default:
+                    comparison = a.id - b.id;
+                    break;
+            }
 
-                if (comparison === 0) return a.id - b.id;
-                return comparison * sortedDirection;
-            });
-    }, [requestFilter, sortDirection, sortKey, stats, statusFilter]);
+            if (comparison === 0) return a.id - b.id;
+            return comparison * sortedDirection;
+        });
+    }, [sortDirection, sortKey, stats]);
+
+    const chartTimeline = useMemo(() => timeline.map((point) => ({
+        ...point,
+        bucketLabel: formatBucket(point.bucketStart),
+        errorRate: point.requestCount > 0 ? Number(((point.failedRequests / point.requestCount) * 100).toFixed(2)) : 0,
+    })), [timeline]);
+
+    const topEndpointChart = useMemo(() => endpointStats.slice(0, 8).map((endpoint) => ({
+        ...endpoint,
+        shortName: endpoint.requestName.length > 34 ? `${endpoint.requestName.slice(0, 34)}...` : endpoint.requestName,
+    })), [endpointStats]);
+
+    const slowRate = summary?.totalRequests
+        ? (summary.slowRequests / summary.totalRequests) * 100
+        : 0;
+    const failedRate = summary?.totalRequests
+        ? (summary.failedRequests / summary.totalRequests) * 100
+        : 0;
 
     const sortIcon = (key: SortKey) => {
-        if (sortKey !== key) return "-";
-        return sortDirection === "asc" ? "^" : "v";
+        if (sortKey !== key) return <ArrowUpDown size={13} />;
+        return sortDirection === "asc" ? "ASC" : "DESC";
     };
 
     const handleSort = (key: SortKey) => {
         if (sortKey === key) {
-            setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+            setSortDirection((previous) => (previous === "asc" ? "desc" : "asc"));
             return;
         }
 
@@ -169,114 +246,130 @@ export default function PerformanceDashboard() {
     };
 
     const setQuickRangeHours = (hours: number) => {
-        const now = new Date();
-        const from = new Date(now.getTime() - hours * 60 * 60 * 1000);
-        setFromDate(toDateTimeLocalValue(from));
-        setToDate(toDateTimeLocalValue(now));
+        const range = getQuickRange(hours);
+        setFromDate(range.from);
+        setToDate(range.to);
     };
 
     const resetAllFilters = () => {
+        const range = getQuickRange(24);
         setTopCount(DEFAULT_TOP_COUNT);
         setMinDuration(DEFAULT_MIN_DURATION);
-        setFromDate("");
-        setToDate("");
+        setFromDate(range.from);
+        setToDate(range.to);
         setRequestFilter("");
+        setDebouncedRequestFilter("");
         setStatusFilter("all");
+        setExpandedRow(null);
     };
 
-    const failedRate = summary?.totalRequests
-        ? (summary.failedRequests / summary.totalRequests) * 100
-        : 0;
-    const slowRate = summary?.totalRequests
-        ? (summary.slowRequests / summary.totalRequests) * 100
-        : 0;
-
     return (
-        <div className="card max-w-[1400px]">
-            <div className="toolbar flex flex-wrap items-center justify-between gap-4 mb-4">
-                <h2 className="text-2xl font-bold text-contrast m-0">Performance dashboard</h2>
+        <div className="observability-page">
+            <div className="observability-header">
+                <div>
+                    <h1 className="observability-title">
+                        <Gauge size={22} />
+                        Performance
+                    </h1>
+                    <p className="observability-subtitle">Latency, error pressure, throughput, and slow endpoints.</p>
+                </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm text-secondary">
+                <div className="observability-actions">
+                    <label className="observability-switch">
                         <input
                             type="checkbox"
                             checked={autoRefresh}
                             onChange={(event) => setAutoRefresh(event.target.checked)}
                             disabled={!apiPingEnabled}
                         />
-                        Auto-refresh (15s){!apiPingEnabled ? " - pauziran globalno" : ""}
+                        Auto-refresh
                     </label>
 
                     <button
                         type="button"
-                        className="button-big button-secondary"
-                        style={{ width: "auto", padding: "10px 14px", margin: 0 }}
+                        className="observability-button observability-button--primary"
                         onClick={() => void fetchStats(true)}
                         disabled={loading || refreshing}
                     >
-                        {refreshing ? "Osvezavam..." : "Osvezi sada"}
+                        <RefreshCw size={16} />
+                        {refreshing ? "Refreshing" : "Refresh"}
                     </button>
                 </div>
             </div>
 
-            <div className="mb-6 text-sm text-muted">
+            <div className="observability-status observability-status--spaced">
+                <span className="observability-status__dot" />
                 {lastUpdatedAt
-                    ? `Poslednje osvezavanje: ${lastUpdatedAt.toLocaleString("sr-RS")}`
-                    : "Podaci jos nisu osvezeni."}
+                    ? `Updated ${lastUpdatedAt.toLocaleString("sr-RS")}`
+                    : "Waiting for first sample"}
+                {!apiPingEnabled ? " - global polling paused" : ""}
             </div>
 
             {summary && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-                    <div className="p-4 rounded-xl border border-muted bg-surface-light">
-                        <div className="text-xs uppercase tracking-wider text-muted mb-2">Total requests</div>
-                        <div className="text-3xl font-bold" style={{ color: "var(--info)" }}>
-                            {summary.totalRequests}
+                <section className="observability-kpis observability-kpis--six" aria-label="Performance overview">
+                    <div className="observability-kpi">
+                        <div className="observability-kpi__label">
+                            <Activity size={15} />
+                            Requests
                         </div>
+                        <div className="observability-kpi__value">{summary.totalRequests}</div>
+                        <div className="observability-kpi__meta">Filtered sample</div>
                     </div>
 
-                    <div className="p-4 rounded-xl border border-muted bg-surface-light">
-                        <div className="text-xs uppercase tracking-wider text-muted mb-2">Slow requests</div>
-                        <div className="text-3xl font-bold" style={{ color: "var(--warning)" }}>
-                            {summary.slowRequests}
+                    <div className="observability-kpi">
+                        <div className="observability-kpi__label">
+                            <TimerReset size={15} />
+                            P50
                         </div>
+                        <div className="observability-kpi__value">{formatDuration(summary.p50DurationMs)}</div>
+                        <div className="observability-kpi__meta">Median latency</div>
                     </div>
 
-                    <div className="p-4 rounded-xl border border-muted bg-surface-light">
-                        <div className="text-xs uppercase tracking-wider text-muted mb-2">Failed requests</div>
-                        <div className="text-3xl font-bold" style={{ color: "var(--error)" }}>
-                            {summary.failedRequests}
+                    <div className="observability-kpi">
+                        <div className="observability-kpi__label">
+                            <Zap size={15} />
+                            P95 / P99
                         </div>
+                        <div className="observability-kpi__value">{formatDuration(summary.p95DurationMs)}</div>
+                        <div className="observability-kpi__meta">P99 {formatDuration(summary.p99DurationMs)}</div>
                     </div>
 
-                    <div className="p-4 rounded-xl border border-muted bg-surface-light">
-                        <div className="text-xs uppercase tracking-wider text-muted mb-2">Avg duration</div>
-                        <div className="text-3xl font-bold text-contrast">
-                            {formatDuration(summary.averageDurationMs)}
+                    <div className="observability-kpi">
+                        <div className="observability-kpi__label">
+                            <TriangleAlert size={15} />
+                            Errors
                         </div>
+                        <div className="observability-kpi__value">{failedRate.toFixed(1)}%</div>
+                        <div className="observability-kpi__meta">{summary.failedRequests} failed</div>
                     </div>
 
-                    <div className="p-4 rounded-xl border border-muted bg-surface-light">
-                        <div className="text-xs uppercase tracking-wider text-muted mb-2">Max duration</div>
-                        <div className="text-3xl font-bold" style={{ color: "var(--error)" }}>
-                            {formatDuration(summary.maxDurationMs)}
+                    <div className="observability-kpi">
+                        <div className="observability-kpi__label">
+                            <Clock3 size={15} />
+                            Slow
                         </div>
+                        <div className="observability-kpi__value">{slowRate.toFixed(1)}%</div>
+                        <div className="observability-kpi__meta">{summary.slowRequests} over 1s</div>
                     </div>
 
-                    <div className="p-4 rounded-xl border border-muted bg-surface-light">
-                        <div className="text-xs uppercase tracking-wider text-muted mb-2">Error / Slow rate</div>
-                        <div className="text-lg font-bold text-contrast">
-                            {failedRate.toFixed(1)}% / {slowRate.toFixed(1)}%
+                    <div className="observability-kpi">
+                        <div className="observability-kpi__label">
+                            <BarChart3 size={15} />
+                            Max
                         </div>
+                        <div className="observability-kpi__value">{formatDuration(summary.maxDurationMs)}</div>
+                        <div className="observability-kpi__meta">Avg {formatDuration(summary.averageDurationMs)}</div>
                     </div>
-                </div>
+                </section>
             )}
 
-            <div className="toolbar grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-4 mb-6 p-4 rounded-xl border border-muted bg-surface-darker">
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Broj zapisa</label>
+            <section className="observability-panel observability-filters" aria-label="Performance filters">
+                <div className="observability-field">
+                    <label htmlFor="perf-top">Rows</label>
                     <input
+                        id="perf-top"
                         type="number"
-                        className="input-big w-full"
+                        className="observability-input"
                         value={topCount}
                         onChange={(event) => setTopCount(clampNumber(Number(event.target.value), 1, 200))}
                         min={1}
@@ -284,11 +377,12 @@ export default function PerformanceDashboard() {
                     />
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Min trajanje (ms)</label>
+                <div className="observability-field">
+                    <label htmlFor="perf-min">Min duration</label>
                     <input
+                        id="perf-min"
                         type="number"
-                        className="input-big w-full"
+                        className="observability-input"
                         value={minDuration}
                         onChange={(event) => setMinDuration(clampNumber(Number(event.target.value), 0, 120000))}
                         min={0}
@@ -297,208 +391,223 @@ export default function PerformanceDashboard() {
                     />
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Od datuma</label>
+                <div className="observability-field">
+                    <label htmlFor="perf-from">From</label>
                     <input
+                        id="perf-from"
                         type="datetime-local"
-                        className="input-big w-full"
+                        className="observability-input"
                         value={fromDate}
                         onChange={(event) => setFromDate(event.target.value)}
                     />
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Do datuma</label>
+                <div className="observability-field">
+                    <label htmlFor="perf-to">To</label>
                     <input
+                        id="perf-to"
                         type="datetime-local"
-                        className="input-big w-full"
+                        className="observability-input"
                         value={toDate}
                         onChange={(event) => setToDate(event.target.value)}
                     />
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Request filter</label>
+                <div className="observability-field">
+                    <label htmlFor="perf-request">Endpoint</label>
                     <input
+                        id="perf-request"
                         type="search"
-                        className="input-big w-full"
+                        className="observability-input"
                         value={requestFilter}
                         onChange={(event) => setRequestFilter(event.target.value)}
-                        placeholder="npr. GetTopProducts"
+                        placeholder="GET /api/logs"
                     />
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">Status</label>
+                <div className="observability-field">
+                    <label htmlFor="perf-status">Status</label>
                     <select
-                        className="input-big w-full"
+                        id="perf-status"
+                        className="observability-select"
                         value={statusFilter}
                         onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
                     >
-                        <option value="all">Sve</option>
-                        <option value="success">Samo uspeh</option>
-                        <option value="failed">Samo greske</option>
+                        <option value="all">All</option>
+                        <option value="success">Success</option>
+                        <option value="failed">Failed</option>
+                        <option value="slow">Slow</option>
                     </select>
                 </div>
 
-                <div className="flex flex-col gap-2 justify-end">
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            className="button-big button-secondary"
-                            style={{ width: "auto", margin: 0, padding: "8px 10px", fontSize: "0.85rem" }}
-                            onClick={() => setQuickRangeHours(24)}
-                        >
-                            24h
-                        </button>
-                        <button
-                            type="button"
-                            className="button-big button-secondary"
-                            style={{ width: "auto", margin: 0, padding: "8px 10px", fontSize: "0.85rem" }}
-                            onClick={() => setQuickRangeHours(24 * 7)}
-                        >
-                            7d
-                        </button>
-                        <button
-                            type="button"
-                            className="button-big button-secondary"
-                            style={{ width: "auto", margin: 0, padding: "8px 10px", fontSize: "0.85rem" }}
-                            onClick={() => setQuickRangeHours(24 * 30)}
-                        >
-                            30d
-                        </button>
-                    </div>
-
-                    <button
-                        type="button"
-                        className="button-big button-secondary"
-                        style={{ margin: 0 }}
-                        onClick={resetAllFilters}
-                    >
-                        Resetuj sve
+                <div className="observability-inline-actions">
+                    <button className="observability-button observability-button--compact" type="button" onClick={() => setQuickRangeHours(1)}>
+                        1h
+                    </button>
+                    <button className="observability-button observability-button--compact" type="button" onClick={() => setQuickRangeHours(24)}>
+                        24h
+                    </button>
+                    <button className="observability-button observability-button--compact" type="button" onClick={() => setQuickRangeHours(24 * 7)}>
+                        7d
+                    </button>
+                    <button className="observability-button observability-button--compact" type="button" onClick={resetAllFilters}>
+                        <X size={14} />
+                        Reset
                     </button>
                 </div>
-            </div>
+            </section>
 
-            {error && (
-                <div className="mb-6 p-4 rounded-xl border border-error bg-error/10 text-error text-sm">
-                    {error}
-                </div>
-            )}
+            {error && <div className="observability-error">{error}</div>}
 
             {loading ? (
-                <div className="py-20 text-center text-muted uppercase tracking-widest text-xs font-bold">
-                    Ucitavanje podataka o performansama...
-                </div>
+                <div className="observability-loading">Loading performance telemetry...</div>
             ) : (
                 <>
-                    <div className="flex items-center justify-between mb-3 gap-4">
-                        <h3 className="text-lg font-bold text-contrast m-0">Najsporiji zahtevi</h3>
-                        <div className="text-sm text-muted">
-                            Prikazano: {visibleStats.length} / {stats.length}
+                    <section className="observability-chart-grid" aria-label="Performance charts">
+                        <div className="observability-chart-card">
+                            <h2 className="observability-card-title">Latency Timeline</h2>
+                            <div className="observability-chart">
+                                <ResponsiveContainer>
+                                    <AreaChart data={chartTimeline}>
+                                        <CartesianGrid vertical={false} />
+                                        <XAxis dataKey="bucketLabel" minTickGap={22} />
+                                        <YAxis tickFormatter={(value) => `${value}ms`} />
+                                        <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown, name?: string) => [formatDuration(Number(value)), name ?? "Value"]} />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="p95DurationMs"
+                                            name="P95"
+                                            stroke="var(--warning)"
+                                            fill="var(--warning-soft)"
+                                            strokeWidth={2}
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="averageDurationMs"
+                                            name="Avg"
+                                            stroke="var(--info)"
+                                            fill="var(--info-soft)"
+                                            strokeWidth={2}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="overflow-hidden rounded-xl border border-muted bg-surface-elevated">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-muted text-sm">
-                                <thead className="bg-surface-darker text-muted">
-                                    <tr>
-                                        <th
-                                            className="px-4 py-3 text-left font-semibold uppercase tracking-wider cursor-pointer hover:text-contrast transition-colors"
-                                            onClick={() => handleSort("timestamp")}
-                                        >
-                                            Vreme {sortIcon("timestamp")}
-                                        </th>
-                                        <th
-                                            className="px-4 py-3 text-left font-semibold uppercase tracking-wider cursor-pointer hover:text-contrast transition-colors"
-                                            onClick={() => handleSort("requestName")}
-                                        >
-                                            Request {sortIcon("requestName")}
-                                        </th>
-                                        <th
-                                            className="px-4 py-3 text-right font-semibold uppercase tracking-wider cursor-pointer hover:text-contrast transition-colors"
-                                            onClick={() => handleSort("durationMs")}
-                                        >
-                                            Trajanje {sortIcon("durationMs")}
-                                        </th>
-                                        <th
-                                            className="px-4 py-3 text-center font-semibold uppercase tracking-wider cursor-pointer hover:text-contrast transition-colors"
-                                            onClick={() => handleSort("isSuccess")}
-                                        >
-                                            Status {sortIcon("isSuccess")}
-                                        </th>
-                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider">
-                                            Exception
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-muted/50 text-contrast font-mono text-xs">
-                                    {visibleStats.map((stat) => (
-                                        <tr
-                                            key={stat.id}
-                                            className={stat.isSuccess ? "table-row-hover transition-colors" : "table-row-error transition-colors"}
-                                        >
-                                            <td className="px-4 py-3 whitespace-nowrap opacity-75">{formatDate(stat.timestamp)}</td>
-                                            <td className="px-4 py-3 font-semibold text-sm font-sans">{stat.requestName}</td>
-                                            <td
-                                                className="px-4 py-3 text-right font-bold text-sm"
-                                                style={{ color: durationColor(stat.durationMs) }}
-                                            >
-                                                {formatDuration(stat.durationMs)}
+                        <div className="observability-chart-card">
+                            <h2 className="observability-card-title">Throughput & Error Rate</h2>
+                            <div className="observability-chart observability-chart--short">
+                                <ResponsiveContainer>
+                                    <BarChart data={chartTimeline}>
+                                        <CartesianGrid vertical={false} />
+                                        <XAxis dataKey="bucketLabel" minTickGap={28} />
+                                        <YAxis yAxisId="left" />
+                                        <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
+                                        <Tooltip contentStyle={tooltipStyle} />
+                                        <Bar yAxisId="left" dataKey="requestCount" name="Requests" fill="var(--info)" radius={[4, 4, 0, 0]} />
+                                        <Bar yAxisId="right" dataKey="errorRate" name="Error %" fill="var(--error)" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="observability-chart-grid" aria-label="Endpoint analysis">
+                        <div className="observability-chart-card">
+                            <h2 className="observability-card-title">Slowest Endpoints by P95</h2>
+                            <div className="observability-chart observability-chart--short">
+                                <ResponsiveContainer>
+                                    <BarChart data={topEndpointChart} layout="vertical" margin={{ left: 24 }}>
+                                        <CartesianGrid horizontal={false} />
+                                        <XAxis type="number" tickFormatter={(value) => `${value}ms`} />
+                                        <YAxis type="category" dataKey="shortName" width={150} />
+                                        <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => formatDuration(Number(value))} />
+                                        <Bar dataKey="p95DurationMs" name="P95" fill="var(--warning)" radius={[0, 4, 4, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="observability-chart-card">
+                            <h2 className="observability-card-title">Latency Heatmap</h2>
+                            <div className="observability-heatmap">
+                                {chartTimeline.slice(-48).map((point) => {
+                                    const heatClass = point.p95DurationMs >= 3000
+                                        ? "observability-heatmap__cell--high"
+                                        : point.p95DurationMs >= 1000
+                                            ? "observability-heatmap__cell--medium"
+                                            : "observability-heatmap__cell--low";
+
+                                    return (
+                                        <div
+                                            key={point.bucketStart}
+                                            className={`observability-heatmap__cell ${heatClass}`}
+                                            title={`${point.bucketLabel}: ${formatDuration(point.p95DurationMs)} P95, ${point.requestCount} requests`}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="observability-panel observability-table-shell" aria-label="Slow request table">
+                        <table className="observability-table">
+                            <thead>
+                                <tr>
+                                    <th onClick={() => handleSort("timestamp")}>Time {sortIcon("timestamp")}</th>
+                                    <th onClick={() => handleSort("requestName")}>Request {sortIcon("requestName")}</th>
+                                    <th className="observability-table__right" onClick={() => handleSort("durationMs")}>
+                                        Duration {sortIcon("durationMs")}
+                                    </th>
+                                    <th className="observability-table__center" onClick={() => handleSort("isSuccess")}>
+                                        Status {sortIcon("isSuccess")}
+                                    </th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedStats.map((stat) => {
+                                    const status = rowStatus(stat);
+                                    const isExpanded = expandedRow === stat.id;
+
+                                    return (
+                                        <tr key={stat.id}>
+                                            <td className="observability-mono observability-muted">{formatDate(stat.timestamp)}</td>
+                                            <td>{stat.requestName}</td>
+                                            <td className="observability-table__right observability-mono">{formatDuration(stat.durationMs)}</td>
+                                            <td className="observability-table__center">
+                                                <span className={`status-badge status-badge--${status}`}>{status}</span>
                                             </td>
-                                            <td className="px-4 py-3 text-center">
-                                                {stat.isSuccess ? (
-                                                    <span
-                                                        className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase"
-                                                        style={{
-                                                            color: "var(--success)",
-                                                            border: "1px solid var(--success)",
-                                                            background: "var(--surface-light)",
-                                                        }}
-                                                    >
-                                                        Success
-                                                    </span>
-                                                ) : (
-                                                    <span
-                                                        className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase"
-                                                        style={{
-                                                            color: "var(--error)",
-                                                            border: "1px solid var(--error)",
-                                                            background: "var(--surface-light)",
-                                                        }}
-                                                    >
-                                                        Failed
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3">
+                                            <td>
                                                 {stat.exceptionMessage ? (
-                                                    <details>
-                                                        <summary className="cursor-pointer text-secondary text-xs">
-                                                            Prikazi detalje
-                                                        </summary>
-                                                        <pre
-                                                            className="mt-2 p-2 rounded border border-muted bg-surface-light text-[11px] whitespace-pre-wrap break-words"
-                                                            style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" }}
+                                                    <>
+                                                        <button
+                                                            className="observability-button observability-button--compact"
+                                                            type="button"
+                                                            onClick={() => setExpandedRow(isExpanded ? null : stat.id)}
                                                         >
-                                                            {stat.exceptionMessage}
-                                                        </pre>
-                                                    </details>
+                                                            {isExpanded ? "Hide" : "Show"}
+                                                        </button>
+                                                        {isExpanded ? (
+                                                            <pre className="observability-pre observability-mono">
+                                                                {stat.exceptionMessage}
+                                                            </pre>
+                                                        ) : null}
+                                                    </>
                                                 ) : (
-                                                    <span className="text-muted">-</span>
+                                                    <span className="observability-muted">-</span>
                                                 )}
                                             </td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </section>
 
-                    {visibleStats.length === 0 && (
-                        <div className="py-20 text-center text-muted border border-dashed border-muted rounded-xl mt-4">
-                            Nema podataka za izabrane filtere.
+                    {sortedStats.length === 0 && (
+                        <div className="observability-empty observability-empty--spaced">
+                            No performance rows match the selected filters.
                         </div>
                     )}
                 </>
