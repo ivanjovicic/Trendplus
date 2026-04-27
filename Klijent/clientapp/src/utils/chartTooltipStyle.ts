@@ -5,7 +5,7 @@ export const CHART_TOOLTIP_STYLE: CSSProperties = {
   border: "1px solid var(--border-default, var(--theme-color-32406b, #32406b))",
   color: "var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb))",
   borderRadius: "8px",
-  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+  boxShadow: "var(--chart-tooltip-shadow, var(--card-shadow, none))",
 };
 
 export const CHART_TOOLTIP_LABEL_STYLE: CSSProperties = {

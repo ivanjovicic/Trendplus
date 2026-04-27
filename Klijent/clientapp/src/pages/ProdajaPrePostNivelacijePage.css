@@ -1,9 +1,55 @@
 .ppn-decision-page {
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: 14px;
-  color: var(--text-primary);
-  padding: 16px;
+  --dashboard-bg: var(--surface-default, #060f17);
+  --dashboard-bg-soft: var(--surface-elevated, #0b1722);
+  --dashboard-surface: var(--surface-elevated, #0d1a26);
+  --dashboard-surface-2: var(--surface-light, #112234);
+  --dashboard-border: var(--border-hover, rgba(77, 255, 119, 0.28));
+  --dashboard-border-soft: var(--border-default, rgba(77, 255, 119, 0.14));
+  --dashboard-text: var(--text-primary, #dcfcea);
+  --dashboard-text-muted: var(--text-secondary, #98bcae);
+  --dashboard-accent: var(--success, #66ff7e);
+  --dashboard-accent-strong: var(--warning, #8bff00);
+  --dashboard-secondary: var(--info, #1ec8ff);
+  --dashboard-warning: var(--warning, #facc15);
+  --dashboard-danger: var(--error, #fb7185);
+  --dashboard-grid: color-mix(in srgb, var(--dashboard-accent) 24%, transparent);
+  --dashboard-chart-axis: color-mix(in srgb, var(--dashboard-text-muted) 78%, var(--dashboard-accent) 22%);
+  --dashboard-chart-hover: color-mix(in srgb, var(--dashboard-accent) 16%, transparent);
+  --dashboard-tooltip-bg: var(--surface-elevated, #0f172a);
+  --dashboard-tooltip-border: var(--border-default, rgba(148, 163, 184, 0.35));
+  --dashboard-tooltip-label: var(--text-primary, #dbffe8);
+  --dashboard-tooltip-shadow: 0 10px 24px color-mix(in srgb, black 28%, transparent);
+  --dashboard-on-accent: color-mix(in srgb, var(--dashboard-bg) 60%, black);
+  --dashboard-surface-overlay: color-mix(in srgb, var(--dashboard-surface) 74%, transparent);
+  --dashboard-surface-overlay-soft: color-mix(in srgb, var(--dashboard-surface) 64%, transparent);
+  --dashboard-surface-overlay-strong: color-mix(in srgb, var(--dashboard-surface) 84%, transparent);
+  --dashboard-surface-panel-top: color-mix(in srgb, var(--dashboard-surface-2) 72%, var(--dashboard-surface) 28%);
+  --dashboard-surface-panel-bottom: color-mix(in srgb, var(--dashboard-surface) 84%, var(--dashboard-bg-soft) 16%);
+  --dashboard-surface-control-top: color-mix(in srgb, var(--dashboard-surface) 78%, var(--dashboard-bg) 22%);
+  --dashboard-surface-control-bottom: color-mix(in srgb, var(--dashboard-bg-soft) 78%, var(--dashboard-bg) 22%);
+  --dashboard-surface-card-top: color-mix(in srgb, var(--dashboard-surface-2) 68%, var(--dashboard-surface) 32%);
+  --dashboard-surface-card-bottom: color-mix(in srgb, var(--dashboard-surface) 86%, var(--dashboard-bg-soft) 14%);
+  --dashboard-surface-table-head-top: color-mix(in srgb, var(--dashboard-surface-2) 82%, var(--dashboard-surface) 18%);
+  --dashboard-surface-table-head-bottom: color-mix(in srgb, var(--dashboard-surface) 86%, var(--dashboard-bg-soft) 14%);
+  --dashboard-surface-row: color-mix(in srgb, var(--dashboard-bg-soft) 78%, var(--dashboard-surface) 22%);
+  --dashboard-surface-row-hover: color-mix(in srgb, var(--dashboard-surface-2) 72%, var(--dashboard-surface) 28%);
+  --dashboard-surface-row-expanded: color-mix(in srgb, var(--dashboard-accent) 10%, var(--dashboard-surface) 90%);
+  --dashboard-surface-info: color-mix(in srgb, var(--dashboard-secondary) 14%, transparent);
+  --dashboard-surface-danger: color-mix(in srgb, var(--dashboard-danger) 14%, transparent);
+  --dashboard-focus-ring: color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
+
+  background:
+    radial-gradient(1200px 700px at 100% -20%, color-mix(in srgb, var(--dashboard-secondary) 16%, transparent), transparent 56%),
+    radial-gradient(1000px 620px at -20% 0%, color-mix(in srgb, var(--dashboard-accent) 13%, transparent), transparent 60%),
+    linear-gradient(160deg, var(--dashboard-bg), var(--dashboard-bg-soft));
+  border: 1px solid var(--dashboard-border-soft);
+  border-radius: 16px;
+  box-shadow:
+    0 24px 48px color-mix(in srgb, black 45%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--dashboard-secondary) 10%, transparent);
+  color: var(--dashboard-text);
+  padding: 18px;
 }
 
 .ppn-decision-header {
@@ -15,14 +61,16 @@
 }
 
 .ppn-decision-title {
-  color: var(--text-primary);
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 4px;
+  color: var(--dashboard-text);
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  margin: 0 0 6px;
 }
 
 .ppn-decision-subtitle {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   font-size: 13px;
   line-height: 1.5;
   margin: 0;
@@ -30,15 +78,20 @@
 }
 
 .ppn-decision-generated {
-  color: var(--text-secondary);
+  background: var(--dashboard-surface-overlay);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 32%, transparent);
+  border-radius: 999px;
+  color: var(--dashboard-secondary);
   font-size: 12px;
+  font-weight: 650;
+  padding: 6px 12px;
   white-space: nowrap;
 }
 
 .ppn-decision-filters {
-  background: var(--surface-darker);
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
+  background: linear-gradient(180deg, var(--dashboard-surface-panel-top), var(--dashboard-surface-panel-bottom));
+  border: 1px solid var(--dashboard-border-soft);
+  border-radius: 14px;
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -53,25 +106,25 @@
 }
 
 .ppn-decision-field span {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   font-size: 12px;
   font-weight: 600;
 }
 
 .ppn-decision-field select,
 .ppn-decision-field input {
-  background: var(--surface-card);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  color: var(--text-primary);
+  background: linear-gradient(180deg, var(--dashboard-surface-control-top), var(--dashboard-surface-control-bottom));
+  border: 1px solid var(--dashboard-border-soft);
+  border-radius: 10px;
+  color: var(--dashboard-text);
   font-size: 13px;
   padding: 8px 10px;
 }
 
 .ppn-decision-field select:focus,
 .ppn-decision-field input:focus {
-  border-color: var(--accent-primary);
-  box-shadow: var(--focus-ring);
+  border-color: color-mix(in srgb, var(--dashboard-secondary) 62%, transparent);
+  box-shadow: 0 0 0 3px var(--dashboard-focus-ring);
   outline: none;
 }
 
@@ -83,10 +136,10 @@
 }
 
 .ppn-decision-actions button {
-  background: var(--accent-primary);
+  background: linear-gradient(120deg, var(--dashboard-accent), color-mix(in srgb, var(--dashboard-accent) 70%, var(--dashboard-secondary)));
   border: 0;
-  border-radius: 8px;
-  color: var(--text-on-primary);
+  border-radius: 10px;
+  color: var(--dashboard-on-accent);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
@@ -94,9 +147,9 @@
 }
 
 .ppn-decision-actions button.secondary {
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  color: var(--text-primary);
+  background: var(--dashboard-surface-overlay);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 44%, transparent);
+  color: var(--dashboard-secondary);
 }
 
 .ppn-decision-actions button:disabled {
@@ -112,15 +165,15 @@
 }
 
 .ppn-decision-message.loading {
-  background: var(--info-10);
-  border: 1px solid var(--info-border);
-  color: var(--info-text);
+  background: var(--dashboard-surface-info);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 36%, transparent);
+  color: var(--dashboard-secondary);
 }
 
 .ppn-decision-message.error {
-  background: var(--error-soft);
-  border: 1px solid var(--error-border);
-  color: var(--error-text);
+  background: var(--dashboard-surface-danger);
+  border: 1px solid color-mix(in srgb, var(--dashboard-danger) 44%, transparent);
+  color: var(--dashboard-danger);
 }
 
 .ppn-decision-kpis {
@@ -138,21 +191,22 @@
 }
 
 .ppn-decision-kpi {
-  background: var(--surface-darker);
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
+  background: linear-gradient(165deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
+  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 28%, transparent);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
   padding: 12px;
 }
 
 .ppn-decision-kpi span {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   display: block;
   font-size: 12px;
   font-weight: 600;
 }
 
 .ppn-decision-kpi strong {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
   display: block;
   font-size: 22px;
   font-weight: 700;
@@ -160,11 +214,11 @@
 }
 
 .ppn-decision-kpi strong.trend-up {
-  color: var(--success);
+  color: var(--dashboard-accent);
 }
 
 .ppn-decision-kpi strong.trend-down {
-  color: var(--error);
+  color: var(--dashboard-danger);
 }
 
 .ppn-decision-panels {
@@ -174,20 +228,21 @@
 }
 
 .ppn-decision-card {
-  background: var(--surface-darker);
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  padding: 12px;
+  background: linear-gradient(162deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
+  border: 1px solid var(--dashboard-border-soft);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px color-mix(in srgb, black 28%, transparent);
+  padding: 14px;
 }
 
 .ppn-decision-card h2 {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
   font-size: 16px;
   margin: 0 0 4px;
 }
 
 .ppn-decision-card p {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   font-size: 12px;
   margin: 0 0 12px;
 }
@@ -217,7 +272,7 @@
 .ppn-signal-pill.signal-strong {
   background: var(--success-soft);
   border-color: var(--success-border);
-  color: var(--success);
+  color: var(--dashboard-accent);
 }
 
 .ppn-signal-pill.signal-watch {
@@ -230,19 +285,19 @@
 .ppn-signal-pill.signal-negative {
   background: var(--error-soft);
   border-color: var(--error-border);
-  color: var(--error);
+  color: var(--dashboard-danger);
 }
 
 .ppn-signal-pill.signal-neutral {
-  background: var(--surface-card);
-  border-color: var(--border-default);
-  color: var(--text-secondary);
+  background: var(--dashboard-surface-overlay);
+  border-color: color-mix(in srgb, var(--dashboard-secondary) 26%, transparent);
+  color: var(--dashboard-text-muted);
 }
 
 .ppn-signal-pill.signal-positive {
-  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
-  border-color: color-mix(in srgb, var(--accent-primary) 50%, var(--border-default));
-  color: var(--accent-primary);
+  background: color-mix(in srgb, var(--dashboard-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--dashboard-accent) 50%, var(--dashboard-border-soft));
+  color: var(--dashboard-accent);
 }
 
 .ppn-chip-wrap {
@@ -258,12 +313,12 @@
 }
 
 .ppn-stat-pair strong {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
   font-size: 22px;
 }
 
 .ppn-stat-pair span {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -275,21 +330,21 @@
 }
 
 .ppn-mini-metrics article {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
+  background: var(--dashboard-surface-overlay-strong);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
   border-radius: 8px;
   padding: 8px;
 }
 
 .ppn-mini-metrics span,
 .ppn-mini-metrics small {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   display: block;
   font-size: 11px;
 }
 
 .ppn-mini-metrics strong {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
   display: block;
   font-size: 15px;
   margin: 4px 0;
@@ -303,13 +358,13 @@
 }
 
 .ppn-insight {
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--dashboard-border-soft);
   border-radius: 10px;
   padding: 12px;
 }
 
 .ppn-insight span {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   display: block;
   font-size: 11px;
   font-weight: 700;
@@ -319,7 +374,7 @@
 }
 
 .ppn-insight strong {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
   display: block;
   font-size: 20px;
   margin-bottom: 6px;
@@ -345,18 +400,49 @@
 }
 
 .ppn-insight.neutral {
-  background: var(--surface-darker);
+  background: var(--dashboard-surface-overlay);
 }
 
 .ppn-decision-chart-wrap {
+  background: linear-gradient(180deg, var(--dashboard-surface-overlay-soft), color-mix(in srgb, var(--dashboard-surface-panel-bottom) 72%, transparent));
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
+  border-radius: 12px;
   height: 300px;
+  padding: 6px 6px 2px;
+}
+
+.ppn-chart-tooltip {
+  background: var(--dashboard-tooltip-bg);
+  border: 1px solid var(--dashboard-tooltip-border);
+  border-radius: 8px;
+  box-shadow: var(--dashboard-tooltip-shadow);
+  color: var(--dashboard-tooltip-label);
+  padding: 8px 12px;
+}
+
+.ppn-chart-tooltip-title,
+.ppn-chart-tooltip-value {
+  margin: 0;
+}
+
+.ppn-chart-tooltip-title {
+  color: var(--dashboard-tooltip-label);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ppn-chart-tooltip-value {
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  font-weight: 650;
+  margin-top: 4px;
 }
 
 .ppn-decision-empty {
   align-items: center;
-  border: 1px dashed var(--border-default);
+  border: 1px dashed color-mix(in srgb, var(--dashboard-accent) 28%, transparent);
   border-radius: 8px;
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   display: flex;
   font-size: 13px;
   justify-content: center;
@@ -381,10 +467,10 @@
 
 .ppn-focus-chip {
   align-items: center;
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
+  background: var(--dashboard-surface-overlay);
+  border: 1px solid var(--dashboard-border-soft);
   border-radius: 999px;
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   cursor: pointer;
   display: inline-flex;
   font-size: 12px;
@@ -394,32 +480,33 @@
 }
 
 .ppn-focus-chip span {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
 }
 
 .ppn-focus-chip.active {
-  background: color-mix(in srgb, var(--accent-primary) 16%, transparent);
-  border-color: color-mix(in srgb, var(--accent-primary) 45%, var(--border-default));
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--dashboard-accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--dashboard-accent) 45%, var(--dashboard-border-soft));
+  color: var(--dashboard-text);
 }
 
 .ppn-decision-table-wrap {
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 22%, transparent);
+  border-radius: 12px;
   max-height: 620px;
   overflow-x: auto;
   overflow-y: visible;
 }
 
 .ppn-decision-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   min-width: 900px;
   width: 100%;
 }
 
 .ppn-decision-table th {
-  background: var(--surface-card);
-  border-bottom: 1px solid var(--border-default);
+  background: linear-gradient(180deg, var(--dashboard-surface-table-head-top), var(--dashboard-surface-table-head-bottom));
+  border-bottom: 1px solid color-mix(in srgb, var(--dashboard-accent) 18%, transparent);
   padding: 10px 12px;
   position: sticky;
   top: 0;
@@ -432,7 +519,7 @@
   z-index: 2;
   background: transparent;
   border: 0;
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
@@ -446,8 +533,9 @@
 }
 
 .ppn-decision-table td {
-  border-bottom: 1px solid var(--border-default);
-  color: var(--text-primary);
+  background: var(--dashboard-surface-row);
+  border-bottom: 1px solid color-mix(in srgb, var(--dashboard-accent) 12%, transparent);
+  color: var(--dashboard-text);
   font-size: 13px;
   padding: 10px 12px;
 }
@@ -459,16 +547,17 @@
 }
 
 .ppn-vendor-cell strong {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
   font-size: 13px;
 }
 
-.ppn-decision-table tr:hover {
-  background: var(--row-hover);
+.ppn-decision-table tr:hover td {
+  background: var(--dashboard-surface-row-hover);
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--dashboard-secondary) 8%, transparent);
 }
 
-.ppn-decision-table tr.expanded-row {
-  background: var(--accent-soft);
+.ppn-decision-table tr.expanded-row td {
+  background: var(--dashboard-surface-row-expanded);
 }
 
 .align-right {
@@ -492,7 +581,7 @@
 .ppn-decision-status.status-boost {
   background: var(--success-soft);
   border: 1px solid var(--success-border);
-  color: var(--success);
+  color: var(--dashboard-accent);
 }
 
 .ppn-decision-status.status-keep {
@@ -504,26 +593,26 @@
 .ppn-decision-status.status-reduce {
   background: var(--error-soft);
   border: 1px solid var(--error-border);
-  color: var(--error);
+  color: var(--dashboard-danger);
 }
 
 .trend-up {
-  color: var(--success);
+  color: var(--dashboard-accent);
 }
 
 .trend-down {
-  color: var(--error);
+  color: var(--dashboard-danger);
 }
 
 .trend-neutral {
-  color: var(--accent-text);
+  color: var(--dashboard-secondary);
 }
 
 .ppn-decision-detail-btn {
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  color: var(--text-primary);
+  background: var(--dashboard-surface-overlay);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 44%, transparent);
+  border-radius: 8px;
+  color: var(--dashboard-secondary);
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
@@ -531,15 +620,15 @@
 }
 
 .ppn-decision-empty-row {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   padding: 20px !important;
   text-align: center;
 }
 
 .ppn-decision-detail {
-  background: var(--surface-darker);
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
+  background: linear-gradient(165deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
+  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 24%, transparent);
+  border-radius: 12px;
   margin-top: 12px;
   padding: 12px;
 }
@@ -553,16 +642,16 @@
 }
 
 .ppn-decision-detail-head h3 {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
   font-size: 16px;
   margin: 0;
 }
 
 .ppn-decision-detail-head button {
-  background: var(--accent-primary);
+  background: linear-gradient(120deg, var(--dashboard-accent), color-mix(in srgb, var(--dashboard-accent) 70%, var(--dashboard-secondary)));
   border: 0;
   border-radius: 8px;
-  color: var(--text-on-primary);
+  color: var(--dashboard-on-accent);
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
@@ -576,20 +665,20 @@
 }
 
 .ppn-decision-detail-grid article {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
+  background: var(--dashboard-surface-overlay-strong);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
   border-radius: 8px;
   padding: 9px;
 }
 
 .ppn-decision-detail-grid article span {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   display: block;
   font-size: 11px;
 }
 
 .ppn-decision-detail-grid article strong {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
   display: block;
   font-size: 15px;
   margin-top: 5px;
@@ -603,34 +692,34 @@
 }
 
 .ppn-driver-grid article {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
+  background: var(--dashboard-surface-overlay-strong);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
   border-radius: 8px;
   padding: 9px;
 }
 
 .ppn-driver-grid article span,
 .ppn-driver-grid article small {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   display: block;
   font-size: 11px;
 }
 
 .ppn-driver-grid article strong {
-  color: var(--text-primary);
+  color: var(--dashboard-text);
   display: block;
   font-size: 14px;
   margin: 5px 0;
 }
 
 .ppn-chart-hint {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   font-size: 11px;
   margin-top: 10px;
 }
 
 .ppn-decision-reason {
-  color: var(--text-secondary);
+  color: var(--dashboard-text-muted);
   font-size: 13px;
   margin: 12px 0 0;
 }

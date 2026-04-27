@@ -136,6 +136,7 @@ export interface VendorSalesNivelacijaQuery {
     to?: string | null;
     category?: string | null;
     includeInactive?: boolean;
+    maxRows?: number;
 }
 
 export interface VendorSalesNivelacijaOption {
@@ -164,6 +165,7 @@ export async function getVendorSalesNivelacija(
     if (query.to) params.set("to", query.to);
     if (query.category) params.set("category", query.category);
     if (query.includeInactive != null) params.set("includeInactive", String(query.includeInactive));
+    if (query.maxRows != null) params.set("maxRows", String(query.maxRows));
 
     const baseUrl = apiUrl("/api/analytics/vendor-sales-nivelacija");
     const url = params.toString()

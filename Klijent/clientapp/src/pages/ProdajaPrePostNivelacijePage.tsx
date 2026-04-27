@@ -13,6 +13,7 @@ import {
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
+import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import {
   getVendorSalesNivelacija,
   type VendorSalesNivelacijaResponse,
@@ -81,6 +82,21 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
 const BOOST_SCORE_THRESHOLD = 68;
 const KEEP_SCORE_THRESHOLD = 43;
 const BOOST_MIN_RELIABILITY_PCT = 40;
+const VENDOR_NIVELACIJA_MAX_ROWS = 50_000;
+const CHART_GRID_STROKE = "var(--dashboard-grid, var(--border-default))";
+const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, var(--text-secondary))", fontSize: 12, fontWeight: 600 };
+const CHART_CURSOR_STYLE = { fill: "var(--dashboard-chart-hover, var(--accent-soft))" };
+const COMMAND_TOOLTIP_STYLE = {
+  ...CHART_TOOLTIP_STYLE,
+  background: "var(--dashboard-tooltip-bg, var(--surface-elevated))",
+  border: "1px solid var(--dashboard-tooltip-border, var(--border-default))",
+  color: "var(--dashboard-tooltip-label, var(--text-primary))",
+  boxShadow: "var(--dashboard-tooltip-shadow, var(--shadow-md, none))",
+};
+const COMMAND_TOOLTIP_LABEL_STYLE = {
+  ...CHART_TOOLTIP_LABEL_STYLE,
+  color: "var(--dashboard-tooltip-label, var(--text-primary))",
+};
 
 const UNKNOWN_SUPPLIERS = new Set(["", "N/A", "NEPOZNATO", "UNKNOWN", "UNKNOWN SUPPLIER"]);
 
@@ -109,17 +125,9 @@ function CustomConcentrationTooltip({ active, payload }: CustomConcentrationTool
   if (!active || !payload || payload.length === 0) return null;
   const data = payload[0].payload as ConcentrationDatum;
   return (
-    <div
-      style={{
-        backgroundColor: "var(--surface-card)",
-        border: "1px solid var(--border-default)",
-        borderRadius: "6px",
-        padding: "8px 12px",
-        color: "var(--text-primary)",
-      }}
-    >
-      <p style={{ margin: 0, fontSize: "12px", fontWeight: 500 }}>{data.name}</p>
-      <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>{fmtPct(data.sharePct, 2)}</p>
+    <div className="ppn-chart-tooltip">
+      <p className="ppn-chart-tooltip-title">{data.name}</p>
+      <p className="ppn-chart-tooltip-value">{fmtPct(data.sharePct, 2)}</p>
     </div>
   );
 }
@@ -412,12 +420,14 @@ export default function ProdajaPrePostNivelacijePage() {
           vendorId: filters.vendorId,
           category: filters.category || null,
           includeInactive: false,
+          maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
         }),
         getVendorSalesNivelacija({
           ...previousRange,
           vendorId: filters.vendorId,
           category: filters.category || null,
           includeInactive: false,
+          maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
         }),
       ]);
 
@@ -579,9 +589,15 @@ export default function ProdajaPrePostNivelacijePage() {
 
   const totalChangeRevenue = data?.totals.changeRevenue ?? 0;
   const periodGrowthPct = useMemo(() => {
-    if (previousRevenue == null || previousRevenue <= 0) return data?.totals.changePercent ?? null;
+    if (previousRevenue == null || previousRevenue <= 0) return null;
     return ((totalRevenue - previousRevenue) / previousRevenue) * 100;
-  }, [data?.totals.changePercent, previousRevenue, totalRevenue]);
+  }, [previousRevenue, totalRevenue]);
+
+  const periodGrowthDisplay = useMemo(() => {
+    if (previousRevenue == null) return "N/A";
+    if (previousRevenue <= 0) return totalRevenue > 0 ? "Nova baza" : "0,0%";
+    return fmtSignedPct(periodGrowthPct);
+  }, [periodGrowthPct, previousRevenue, totalRevenue]);
 
   const vendorCounts = useMemo(() => {
     const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
@@ -839,8 +855,8 @@ export default function ProdajaPrePostNivelacijePage() {
         <div>
           <h1 className="ppn-decision-title">Prodaja Pre/Post Nivelacije</h1>
           <p className="ppn-decision-subtitle">
-            Fokusiran ekran za brzu odluku: koji dobavljaci posle nivelacije realno dobijaju promet,
-            koje treba pojacati, a koje smanjiti.
+            Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljacu.
+            Nije izolovan profit, vec poslovni signal za prioritet nabavke i nadzor cene.
           </p>
         </div>
         <div className="ppn-decision-generated">
@@ -989,7 +1005,7 @@ export default function ProdajaPrePostNivelacijePage() {
 
           <section className="ppn-decision-kpis">
             <article className="ppn-decision-kpi">
-              <span>Ukupan promet posle nivelacije</span>
+              <span>Post-window promet posle nivelacije</span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="ppn-decision-kpi">
@@ -1001,28 +1017,28 @@ export default function ProdajaPrePostNivelacijePage() {
               <strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong>
             </article>
             <article className="ppn-decision-kpi">
-              <span>Rast/PAD vs prethodni period</span>
-              <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
+              <span>Rast/pad vs prethodni event-opseg</span>
+              <strong className={trendClass(periodGrowthPct)}>{periodGrowthDisplay}</strong>
             </article>
           </section>
 
           <section className="ppn-decision-panels">
             <article className="ppn-decision-card">
               <h2>Koncentracija promena po dobavljacima</h2>
-              <p>Udeo post-prometa po dobavljacu za brzu procenu koncentracije.</p>
+              <p>Udeo post-window prometa po dobavljacu za brzu procenu koncentracije signala.</p>
               {concentrationData.length > 0 ? (
                 <div className="ppn-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                     <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} onClick={handleChartClick}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-                      <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
-                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} label={{ value: null }} />
-                      <Tooltip content={<CustomConcentrationTooltip />} />
+                      <CartesianGrid strokeDasharray="2 6" stroke={CHART_GRID_STROKE} />
+                      <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} label={{ value: null }} />
+                      <Tooltip content={<CustomConcentrationTooltip />} contentStyle={COMMAND_TOOLTIP_STYLE} labelStyle={COMMAND_TOOLTIP_LABEL_STYLE} cursor={CHART_CURSOR_STYLE} />
                       <Bar dataKey="sharePct" radius={[0, 8, 8, 0]}>
                         {concentrationData.map((entry) => (
                           <Cell
                             key={`${entry.name}-${entry.vendorKey ?? "rest"}`}
-                            fill={entry.selected ? "var(--accent-secondary)" : entry.vendorKey ? "var(--accent-primary)" : "var(--border-strong)"}
+                            fill={entry.selected ? "var(--dashboard-secondary)" : entry.vendorKey ? "var(--dashboard-accent)" : "var(--dashboard-border)"}
                             onClick={() => handleCellClick(entry)}
                             style={{ cursor: entry.vendorKey ? "pointer" : "default" }}
                           />
