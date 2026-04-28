@@ -41,6 +41,8 @@ namespace Trendplus2.Endpoints;
 public static class AllEndpoints
 {
     private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+    private const int VendorSalesNivelacijaCommandTimeoutSeconds = 45;
+    private const int OptionalNivelacijaMetricCommandTimeoutSeconds = 5;
 
     private static readonly string[] SeasonalFallbackImageUrls =
     {
@@ -846,6 +848,7 @@ public static class AllEndpoints
         app.MapGet("/api/analytics/vendor-sales-nivelacija/options", async (
             TrendplusDbContext trendplusDb,
             ILogger<Program> logger,
+            IAnalyticsCacheService cache,
             int? vendorId = null,
             string? category = null,
             int take = 200,
@@ -863,6 +866,22 @@ public static class AllEndpoints
                 }
 
                 take = Math.Clamp(take, 10, 1000);
+                var categoryTrimmed = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
+                var stopwatch = Stopwatch.StartNew();
+                var cacheKey = AnalyticsCacheKeys.VendorSalesNivelacijaOptions(vendorId, categoryTrimmed, take);
+
+                var cachedOptions = await cache.GetAsync<List<VendorSalesNivelacijaOptionDto>>(cacheKey, ct);
+                if (cachedOptions is not null)
+                {
+                    logger.LogInformation(
+                        "Vendor sales nivelacija options cache hit. VendorId={VendorId}, CategorySet={CategorySet}, Take={Take}, ElapsedMs={ElapsedMs}",
+                        vendorId,
+                        categoryTrimmed is not null,
+                        take,
+                        stopwatch.ElapsedMilliseconds);
+
+                    return Results.Ok(cachedOptions);
+                }
 
                 var options = new List<VendorSalesNivelacijaOptionDto>();
 
@@ -955,7 +974,10 @@ public static class AllEndpoints
                         LIMIT @take::int;
                         """;
 
-                await using var command = new NpgsqlCommand(sql, connection);
+                await using var command = new NpgsqlCommand(sql, connection)
+                {
+                    CommandTimeout = VendorSalesNivelacijaCommandTimeoutSeconds
+                };
 
                 var vendorIdParam = new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
                 {
@@ -965,15 +987,15 @@ public static class AllEndpoints
 
                 var categoryParam = new NpgsqlParameter("category", NpgsqlTypes.NpgsqlDbType.Text)
                 {
-                    Value = (object?)category ?? DBNull.Value
+                    Value = (object?)categoryTrimmed ?? DBNull.Value
                 };
                 command.Parameters.Add(categoryParam);
 
                 var categoryPatternParam = new NpgsqlParameter("categoryPattern", NpgsqlTypes.NpgsqlDbType.Text)
                 {
-                    Value = string.IsNullOrWhiteSpace(category)
+                    Value = string.IsNullOrWhiteSpace(categoryTrimmed)
                         ? DBNull.Value
-                        : $"%{category.Trim()}%"
+                        : $"%{categoryTrimmed}%"
                 };
                 command.Parameters.Add(categoryPatternParam);
 
@@ -997,6 +1019,16 @@ public static class AllEndpoints
                         Label = $"{reader.GetDateTime(0):dd.MM.yyyy} - aktivni {reader.GetInt32(4)}/{reader.GetInt32(3)} artikala / {reader.GetInt32(2)} dobavljaca"
                     });
                 }
+
+                await cache.SetAsync(cacheKey, options, CacheExpiration.HeavyAnalytics, ct);
+                logger.LogInformation(
+                    "Vendor sales nivelacija options computed and cached. VendorId={VendorId}, CategorySet={CategorySet}, Take={Take}, Count={Count}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
+                    vendorId,
+                    categoryTrimmed is not null,
+                    take,
+                    options.Count,
+                    stopwatch.ElapsedMilliseconds,
+                    CacheExpiration.HeavyAnalytics.TotalMinutes);
 
                 return Results.Ok(options);
             }
@@ -2966,6 +2998,7 @@ public static class AllEndpoints
         app.MapGet("/api/analytics/vendor-sales-nivelacija", async (
             TrendplusDbContext trendplusDb,
             ILogger<Program> logger,
+            IAnalyticsCacheService cache,
             int? vendorId = null,
             DateTime? eventDate = null,
             DateTime? from = null,
@@ -3004,6 +3037,43 @@ public static class AllEndpoints
                 var categoryPattern = string.IsNullOrWhiteSpace(categoryTrimmed) ? null : $"%{categoryTrimmed}%";
                 maxRows = Math.Clamp(maxRows, 100, 50_000);
 
+                var endpointStopwatch = Stopwatch.StartNew();
+                var cacheKey = AnalyticsCacheKeys.VendorSalesNivelacija(
+                    vendorId,
+                    eventDate,
+                    from,
+                    to,
+                    categoryTrimmed,
+                    includeInactive,
+                    maxRows);
+
+                var cachedResponse = await cache.GetAsync<VendorSalesNivelacijaResponseDto>(cacheKey, ct);
+                if (cachedResponse is not null)
+                {
+                    logger.LogInformation(
+                        "Vendor sales nivelacija cache hit. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}, ElapsedMs={ElapsedMs}",
+                        vendorId,
+                        eventDateOnly,
+                        fromDateOnly,
+                        toDateOnly,
+                        categoryTrimmed is not null,
+                        includeInactive,
+                        maxRows,
+                        endpointStopwatch.ElapsedMilliseconds);
+
+                    return Results.Ok(cachedResponse);
+                }
+
+                logger.LogInformation(
+                    "Vendor sales nivelacija cache miss. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}",
+                    vendorId,
+                    eventDateOnly,
+                    fromDateOnly,
+                    toDateOnly,
+                    categoryTrimmed is not null,
+                    includeInactive,
+                    maxRows);
+
                 await using var connection = new NpgsqlConnection(connectionString);
                 await connection.OpenAsync(ct);
 
@@ -3027,6 +3097,7 @@ public static class AllEndpoints
                 var rawRows = 0;
                 await using (var cmd = new NpgsqlCommand(rawCountSql, connection))
                 {
+                    cmd.CommandTimeout = VendorSalesNivelacijaCommandTimeoutSeconds;
                     cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
                     {
                         Value = (object?)vendorId ?? DBNull.Value
@@ -3073,6 +3144,7 @@ public static class AllEndpoints
 
                 await using (var cmd = new NpgsqlCommand(categoriesSql, connection))
                 {
+                    cmd.CommandTimeout = VendorSalesNivelacijaCommandTimeoutSeconds;
                     cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
                     {
                         Value = (object?)vendorId ?? DBNull.Value
@@ -3120,6 +3192,8 @@ public static class AllEndpoints
                                 COALESCE(pre_revenue, 0)::numeric AS pre_revenue,
                                 COALESCE(post_qty, 0)::numeric AS post_qty,
                                 COALESCE(post_revenue, 0)::numeric AS post_revenue,
+                                COALESCE(coverage_pre30, 0)::numeric AS coverage_pre30,
+                                COALESCE(coverage_post30, 0)::numeric AS coverage_post30,
                                 COALESCE(change_qty, 0)::numeric AS change_qty,
                                 COALESCE(change_revenue, 0)::numeric AS change_revenue,
                                 COALESCE({changePercentExpr}, 0)::numeric AS change_percent,
@@ -3154,6 +3228,8 @@ public static class AllEndpoints
                             pre_revenue,
                             post_qty,
                             post_revenue,
+                            coverage_pre30,
+                            coverage_post30,
                             change_qty,
                             change_revenue,
                             change_percent
@@ -3179,6 +3255,8 @@ public static class AllEndpoints
                                 COALESCE(pre_revenue, 0)::numeric AS pre_revenue,
                                 COALESCE(post_qty, 0)::numeric AS post_qty,
                                 COALESCE(post_revenue, 0)::numeric AS post_revenue,
+                                COALESCE(coverage_pre30, 0)::numeric AS coverage_pre30,
+                                COALESCE(coverage_post30, 0)::numeric AS coverage_post30,
                                 COALESCE(change_qty, 0)::numeric AS change_qty,
                                 COALESCE(change_revenue, 0)::numeric AS change_revenue,
                                 COALESCE({changePercentExpr}, 0)::numeric AS change_percent,
@@ -3211,6 +3289,8 @@ public static class AllEndpoints
                             pre_revenue,
                             post_qty,
                             post_revenue,
+                            coverage_pre30,
+                            coverage_post30,
                             change_qty,
                             change_revenue,
                             change_percent
@@ -3227,6 +3307,7 @@ public static class AllEndpoints
 
                 await using (var cmd = new NpgsqlCommand(rowsSql, connection))
                 {
+                    cmd.CommandTimeout = VendorSalesNivelacijaCommandTimeoutSeconds;
                     cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
                     {
                         Value = (object?)vendorId ?? DBNull.Value
@@ -3279,9 +3360,11 @@ public static class AllEndpoints
                         var preRevenue = reader.IsDBNull(11) ? 0m : reader.GetDecimal(11);
                         var postQty = reader.IsDBNull(12) ? 0 : (int)reader.GetDecimal(12);
                         var postRevenue = reader.IsDBNull(13) ? 0m : reader.GetDecimal(13);
-                        var changeQty = reader.IsDBNull(14) ? 0 : (int)reader.GetDecimal(14);
-                        var changeRevenue = reader.IsDBNull(15) ? 0m : reader.GetDecimal(15);
-                        var changePercentRevenue = reader.IsDBNull(16) ? 0m : reader.GetDecimal(16);
+                        var coveragePre30 = reader.IsDBNull(14) ? 0m : reader.GetDecimal(14);
+                        var coveragePost30 = reader.IsDBNull(15) ? 0m : reader.GetDecimal(15);
+                        var changeQty = reader.IsDBNull(16) ? 0 : (int)reader.GetDecimal(16);
+                        var changeRevenue = reader.IsDBNull(17) ? 0m : reader.GetDecimal(17);
+                        var changePercentRevenue = reader.IsDBNull(18) ? 0m : reader.GetDecimal(18);
 
                         var hasSalesWindow =
                             preQty != 0 || postQty != 0 || preRevenue != 0m || postRevenue != 0m;
@@ -3316,6 +3399,8 @@ public static class AllEndpoints
                             ChangeQty = changeQty,
                             ChangeRevenue = changeRevenue,
                             ChangePercent = changePercentRevenue,
+                            CoveragePre30 = coveragePre30,
+                            CoveragePost30 = coveragePost30,
                             HasSalesWindow = hasSalesWindow,
                             PriceChanged = priceChanged,
                             PriceChangePercent = priceChangePercent
@@ -3410,6 +3495,10 @@ public static class AllEndpoints
                     .DefaultIfEmpty()
                     .Average();
 
+                var avgCoveragePre30 = analyzedRows == 0 ? 0m : Math.Round(analyzed.Average(x => x.CoveragePre30), 4);
+                var avgCoveragePost30 = analyzedRows == 0 ? 0m : Math.Round(analyzed.Average(x => x.CoveragePost30), 4);
+                var lowPostCoverageRows = analyzed.Count(x => x.CoveragePost30 < 0.2m);
+
                 var totals = new VendorSalesNivelacijaTotalsDto
                 {
                     PreQty = totalPreQty,
@@ -3424,7 +3513,10 @@ public static class AllEndpoints
                     ActiveArticlesCount = activeArticlesCount,
                     AvgRevenuePerArticlePre = avgRevenuePerArticlePre,
                     AvgRevenuePerArticlePost = avgRevenuePerArticlePost,
-                    AvgPriceChangePercent = Math.Round(avgPriceChangePercent, 2)
+                    AvgPriceChangePercent = Math.Round(avgPriceChangePercent, 2),
+                    AbsoluteChangeRevenue = 0m,
+                    AvgCoveragePre30 = avgCoveragePre30,
+                    AvgCoveragePost30 = avgCoveragePost30
                 };
 
                 // Vendor stats
@@ -3447,6 +3539,11 @@ public static class AllEndpoints
                             ChangeQty = g.Sum(x => x.ChangeQty),
                             ChangeRevenue = g.Sum(x => x.ChangeRevenue),
                             ChangePercent = Pct(preRev, postRev),
+                            AbsoluteChangeRevenue = Math.Abs(g.Sum(x => x.ChangeRevenue)),
+                            ChangeSharePercent = 0m,
+                            PostRevenueSharePercent = 0m,
+                            AvgCoveragePre30 = Math.Round(g.Average(x => x.CoveragePre30), 4),
+                            AvgCoveragePost30 = Math.Round(g.Average(x => x.CoveragePost30), 4),
                             ArticleCount = g
                                 .Select(x => x.Sku)
                                 .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -3463,6 +3560,20 @@ public static class AllEndpoints
                     })
                     .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
                     .ToList();
+
+                var totalAbsoluteChangeRevenue = vendorStats.Sum(x => x.AbsoluteChangeRevenue);
+                totals.AbsoluteChangeRevenue = totalAbsoluteChangeRevenue;
+
+                foreach (var vendor in vendorStats)
+                {
+                    vendor.ChangeSharePercent = totalAbsoluteChangeRevenue == 0m
+                        ? 0m
+                        : Math.Round((vendor.AbsoluteChangeRevenue / totalAbsoluteChangeRevenue) * 100m, 2);
+
+                    vendor.PostRevenueSharePercent = totalPostRevenue == 0m
+                        ? 0m
+                        : Math.Round((vendor.PostRevenue / totalPostRevenue) * 100m, 2);
+                }
 
                 // Category stats (top 50)
                 var categoryStats = analyzed
@@ -3596,7 +3707,10 @@ public static class AllEndpoints
                         InactiveRows = inactiveRows,
                         UnchangedPriceRows = unchangedPriceRows,
                         AnalyzedRows = analyzedRows,
-                        AnalyzedSharePercent = analyzedSharePercent
+                        AnalyzedSharePercent = analyzedSharePercent,
+                        LowPostCoverageRows = lowPostCoverageRows,
+                        AvgCoveragePre30 = avgCoveragePre30,
+                        AvgCoveragePost30 = avgCoveragePost30
                     },
                     CategoryStats = categoryStats,
                     PriceDirectionStats = priceDirectionStats,
@@ -3608,6 +3722,21 @@ public static class AllEndpoints
                     OOSRate = avgOosRate,
                     MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal))
                 };
+
+                await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
+
+                logger.LogInformation(
+                    "Vendor sales nivelacija computed and cached. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, RawRows={RawRows}, AnalyzedRows={AnalyzedRows}, Vendors={Vendors}, Articles={Articles}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
+                    vendorId,
+                    eventDateOnly,
+                    fromDateOnly,
+                    toDateOnly,
+                    rawRows,
+                    analyzedRows,
+                    totals.VendorsCount,
+                    totals.ArticlesCount,
+                    endpointStopwatch.ElapsedMilliseconds,
+                    CacheExpiration.HeavyAnalytics.TotalMinutes);
 
                 return Results.Ok(response);
             }
@@ -5825,6 +5954,7 @@ public static class AllEndpoints
                     GROUP BY UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text)));
                     """;
                 await using var cmd = new NpgsqlCommand(rollingSql, connection);
+                cmd.CommandTimeout = OptionalNivelacijaMetricCommandTimeoutSeconds;
                 cmd.Parameters.AddWithValue("eventDate", eventDate.Value.Date);
                 cmd.Parameters.AddWithValue("skuKeys", skuKeys);
                 await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -5860,8 +5990,9 @@ public static class AllEndpoints
                 FROM vw_sales_momentum m
                 JOIN "Artikli" a ON a."Id" = m.article_id
                 WHERE UPPER(TRIM(COALESCE(sku, ''))) = ANY(@skuKeys);
-                """;
+            """;
             await using var cmd = new NpgsqlCommand(momentumSql, connection);
+            cmd.CommandTimeout = OptionalNivelacijaMetricCommandTimeoutSeconds;
             cmd.Parameters.AddWithValue("skuKeys", skuKeys);
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
@@ -5925,8 +6056,9 @@ public static class AllEndpoints
                 FROM vw_stock_red_zone
                 WHERE UPPER(TRIM(COALESCE(sku, ''))) = ANY(@skuKeys)
                 GROUP BY UPPER(TRIM(COALESCE(sku, '')));
-                """;
+            """;
             await using var cmd = new NpgsqlCommand(oosSql, connection);
+            cmd.CommandTimeout = OptionalNivelacijaMetricCommandTimeoutSeconds;
             cmd.Parameters.AddWithValue("skuKeys", skuKeys);
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
@@ -5955,8 +6087,9 @@ public static class AllEndpoints
                 FROM vw_nivelacija_did
                 WHERE UPPER(TRIM(COALESCE(sku, ''))) = ANY(@skuKeys)
                 GROUP BY UPPER(TRIM(COALESCE(sku, '')));
-                """;
+            """;
             await using var cmd = new NpgsqlCommand(didSql, connection);
+            cmd.CommandTimeout = OptionalNivelacijaMetricCommandTimeoutSeconds;
             cmd.Parameters.AddWithValue("skuKeys", skuKeys);
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))

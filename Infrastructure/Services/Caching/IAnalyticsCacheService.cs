@@ -231,6 +231,19 @@ public static class AnalyticsCacheKeys
         string? requestName,
         string? status) =>
         $"{ObservabilityPerformancePrefix}top:{topCount}:min:{minDurationMs}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:request:{HashPart(requestName)}:status:{HashPart(status)}";
+
+    public static string VendorSalesNivelacija(
+        int? vendorId,
+        DateTime? eventDate,
+        DateTime? from,
+        DateTime? to,
+        string? category,
+        bool includeInactive,
+        int maxRows) =>
+        $"{Prefix}vendor-sales-nivelacija:v2:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}";
+
+    public static string VendorSalesNivelacijaOptions(int? vendorId, string? category, int take) =>
+        $"{Prefix}vendor-sales-nivelacija-options:v1:vendor:{FormatNullable(vendorId)}:category:{HashPart(category)}:take:{take}";
 }
 
 /// <summary>

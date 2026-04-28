@@ -41,8 +41,10 @@ type ActiveFilters = {
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   sharePct: number;
+  postSharePct: number;
   trendPct: number;
   reliabilityPct: number;
+  avgCoveragePost30: number;
   decisionScore: number;
   status: DecisionStatus;
   statusReason: string;
@@ -57,6 +59,8 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
 type ConcentrationDatum = {
   name: string;
   sharePct: number;
+  changeRevenue: number;
+  articleCount: number;
   vendorKey: string | null;
   selected: boolean;
 };
@@ -105,7 +109,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "vendorName", header: "Dobavljac", dataType: "text" },
   { key: "preRevenue", header: "Promet pre", dataType: "currency" },
   { key: "postRevenue", header: "Promet posle", dataType: "currency" },
-  { key: "sharePct", header: "Udeo %", dataType: "percent" },
+  { key: "sharePct", header: "Udeo promene %", dataType: "percent" },
   { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "reliabilityPct", header: "Pouzdanost %", dataType: "percent" },
@@ -129,6 +133,11 @@ function CustomConcentrationTooltip({ active, payload }: CustomConcentrationTool
     <div className="ppn-chart-tooltip">
       <p className="ppn-chart-tooltip-title">{data.name}</p>
       <p className="ppn-chart-tooltip-value">{fmtPct(data.sharePct, 2)}</p>
+      {data.vendorKey ? (
+        <p className="ppn-chart-tooltip-subtitle">
+          Promena: {fmtRsd(data.changeRevenue)} | artikala: {data.articleCount}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -560,8 +569,13 @@ export default function ProdajaPrePostNivelacijePage() {
     if (rows.length === 0) return [];
 
     const totalRevenue = rows.reduce((sum, item) => sum + item.postRevenue, 0);
+    const totalAbsoluteChangeRevenue =
+      data?.totals.absoluteChangeRevenue ??
+      rows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0);
     const topShare = rows.reduce((max, item) => {
-      const share = totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0;
+      const share = totalAbsoluteChangeRevenue > 0
+        ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100
+        : 0;
       return Math.max(max, share);
     }, 0);
 
@@ -572,11 +586,17 @@ export default function ProdajaPrePostNivelacijePage() {
     const avgShare = rows.length > 0 ? 100 / rows.length : 0;
 
     return rows.map((item) => {
-      const sharePct = totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0;
+      const sharePct = item.changeSharePercent ?? (
+        totalAbsoluteChangeRevenue > 0 ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100 : 0
+      );
+      const postSharePct = item.postRevenueSharePercent ?? (
+        totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0
+      );
       const trendPct = item.changePercent;
       const coveragePct = item.articleCount > 0 ? (item.activeArticlesCount / item.articleCount) * 100 : 0;
+      const avgCoveragePost30 = (item.avgCoveragePost30 ?? 0) * 100;
       const knownSupplier = !UNKNOWN_SUPPLIERS.has(normalizeName(item.vendorName));
-      const reliabilityPct = clamp(coveragePct * 0.7 + (knownSupplier ? 30 : 0), 0, 100);
+      const reliabilityPct = clamp(coveragePct * 0.45 + avgCoveragePost30 * 0.25 + (knownSupplier ? 30 : 0), 0, 100);
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
       const confidence = buildConfidenceMeta(reliabilityPct);
       const volatility = buildVolatilityMeta(item.postRevenue, previousPostRevenue);
@@ -611,8 +631,10 @@ export default function ProdajaPrePostNivelacijePage() {
       return {
         ...item,
         sharePct,
+        postSharePct,
         trendPct,
         reliabilityPct,
+        avgCoveragePost30,
         decisionScore,
         status,
         statusReason,
@@ -624,7 +646,7 @@ export default function ProdajaPrePostNivelacijePage() {
         volatilityTone: volatility.tone,
       };
     });
-  }, [data?.vendorStats, previousRevenueByVendorKey]);
+  }, [data?.totals.absoluteChangeRevenue, data?.vendorStats, previousRevenueByVendorKey]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -660,14 +682,16 @@ export default function ProdajaPrePostNivelacijePage() {
   }, [focusFilter, sortedRows]);
 
   const totalRevenue = data?.totals.postRevenue ?? 0;
+  const totalAbsoluteChangeRevenue = data?.totals.absoluteChangeRevenue
+    ?? sortedRows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0);
   const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue <= 0) return 0;
+    if (sortedRows.length === 0 || totalAbsoluteChangeRevenue <= 0) return 0;
     const top5 = [...sortedRows]
-      .sort((a, b) => b.postRevenue - a.postRevenue)
+      .sort((a, b) => b.sharePct - a.sharePct)
       .slice(0, 5)
-      .reduce((sum, item) => sum + item.postRevenue, 0);
-    return (top5 / totalRevenue) * 100;
-  }, [sortedRows, totalRevenue]);
+      .reduce((sum, item) => sum + item.sharePct, 0);
+    return top5;
+  }, [sortedRows, totalAbsoluteChangeRevenue]);
 
   const totalChangeRevenue = data?.totals.changeRevenue ?? 0;
   const periodGrowthPct = useMemo(() => {
@@ -748,6 +772,48 @@ export default function ProdajaPrePostNivelacijePage() {
     dataQualityWarnings,
   ]);
 
+  const concentrationQuality = useMemo(() => {
+    const analyzedRows = data?.dataQuality.analyzedRows ?? 0;
+    const vendorRows = decisionRows.length;
+    const nonZeroChangeVendors = decisionRows.filter((row) => Math.abs(row.changeRevenue) > 0.0001).length;
+    const avgPostCoveragePct = (data?.dataQuality.avgCoveragePost30 ?? 0) * 100;
+
+    if (analyzedRows === 0 || vendorRows === 0 || totalAbsoluteChangeRevenue <= 0) {
+      return {
+        tone: "weak" as const,
+        label: "Nema pouzdanog signala",
+        details: "Nema dovoljno analiziranih promena za koncentraciju po dobavljacima.",
+      };
+    }
+
+    if (analyzedRows < 40 || nonZeroChangeVendors < 5 || avgPostCoveragePct < 20) {
+      return {
+        tone: "weak" as const,
+        label: "Nizak signal",
+        details: `Koncentracija je izracunata iz ${analyzedRows} redova i ${nonZeroChangeVendors} dobavljaca sa promenom; post-window pokrivenost je ${fmtPct(avgPostCoveragePct, 0)}. Kratak ili svez period tumaci oprezno.`,
+      };
+    }
+
+    if (analyzedRows < 120 || avgPostCoveragePct < 60) {
+      return {
+        tone: "watch" as const,
+        label: "Srednji signal",
+        details: `Uzorak je upotrebljiv, ali nije potpuno zreo: ${analyzedRows} redova, post-window pokrivenost ${fmtPct(avgPostCoveragePct, 0)}.`,
+      };
+    }
+
+    return {
+      tone: "strong" as const,
+      label: "Stabilan signal",
+      details: `Dovoljno promena i pokrivenosti za citanje koncentracije: ${analyzedRows} redova, post-window pokrivenost ${fmtPct(avgPostCoveragePct, 0)}.`,
+    };
+  }, [
+    data?.dataQuality.analyzedRows,
+    data?.dataQuality.avgCoveragePost30,
+    decisionRows,
+    totalAbsoluteChangeRevenue,
+  ]);
+
   const leadingCategory = useMemo(() => {
     const rows = [...(data?.categoryStats ?? [])].sort((left, right) => right.changeRevenue - left.changeRevenue);
     return rows[0] ?? null;
@@ -789,7 +855,7 @@ const advancedSignals = useMemo(
   );
 
   const concentrationData = useMemo(() => {
-    if (focusedRows.length === 0) return [] as ConcentrationDatum[];
+    if (focusedRows.length === 0 || totalAbsoluteChangeRevenue <= 0) return [] as ConcentrationDatum[];
 
     const top = [...focusedRows]
       .sort((a, b) => b.sharePct - a.sharePct)
@@ -797,6 +863,8 @@ const advancedSignals = useMemo(
       .map((row) => ({
         name: row.vendorName,
         sharePct: row.sharePct,
+        changeRevenue: row.changeRevenue,
+        articleCount: row.articleCount,
         vendorKey: vendorKey(row),
         selected: expandedVendorKey === vendorKey(row),
       }));
@@ -805,9 +873,9 @@ const advancedSignals = useMemo(
     const rest = clamp(100 - topShare, 0, 100);
 
     return rest > 0.1
-      ? [...top, { name: "Ostali", sharePct: rest, vendorKey: null, selected: false }]
+      ? [...top, { name: "Ostali", sharePct: rest, changeRevenue: 0, articleCount: 0, vendorKey: null, selected: false }]
       : top;
-  }, [expandedVendorKey, focusedRows]);
+  }, [expandedVendorKey, focusedRows, totalAbsoluteChangeRevenue]);
 
   const selectedRow = useMemo(() => {
     if (!expandedVendorKey) return null;
@@ -1156,7 +1224,7 @@ const advancedSignals = useMemo(
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="ppn-decision-kpi">
-              <span>Udeo top 5 dobavljaca</span>
+              <span>Top 5 udeo u promeni</span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="ppn-decision-kpi">
@@ -1171,8 +1239,21 @@ const advancedSignals = useMemo(
 
           <section className="ppn-decision-panels">
             <article className="ppn-decision-card">
-              <h2>Koncentracija promena po dobavljacima</h2>
-              <p>Udeo post-window prometa po dobavljacu za brzu procenu koncentracije signala.</p>
+              <div className="ppn-decision-card-heading">
+                <div>
+                  <h2>Koncentracija promena po dobavljacima</h2>
+                  <p>Udeo dobavljaca u apsolutnoj promeni prometa: |promena dobavljaca| / zbir |promena svih dobavljaca|.</p>
+                </div>
+                <span className={confidenceClass(concentrationQuality.tone)}>
+                  {concentrationQuality.label}
+                  <InfoTip text={concentrationQuality.details} />
+                </span>
+              </div>
+              {concentrationQuality.tone === "weak" ? (
+                <div className="ppn-signal-note">
+                  {concentrationQuality.details}
+                </div>
+              ) : null}
               {concentrationData.length > 0 ? (
                 <div className="ppn-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -1195,9 +1276,9 @@ const advancedSignals = useMemo(
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="ppn-decision-empty">Nema podataka za grafikon koncentracije.</div>
+                <div className="ppn-decision-empty">Nedovoljno promena u izabranom periodu za pouzdanu koncentraciju.</div>
               )}
-              <div className="ppn-chart-hint">Klik na traku otvara detalj dobavljaca u tabeli.</div>
+              <div className="ppn-chart-hint">Klik na traku otvara detalj dobavljaca u tabeli. Svez 30d period moze imati nizak post-window signal.</div>
             </article>
 
             <article className="ppn-decision-card">
@@ -1248,8 +1329,9 @@ const advancedSignals = useMemo(
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo{sortMarker("sharePct", sortField, sortDir)}
+                          Udeo promene{sortMarker("sharePct", sortField, sortDir)}
                         </button>
+                        <InfoTip text="Udeo u apsolutnoj promeni prometa: |promena dobavljaca| / zbir |promena svih dobavljaca|. Ako je post-window pokrivenost niska, signal pokazuje koncentraciju rizika, ali ne i konacan efekat nivelacije." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("changeRevenue")}>
@@ -1272,7 +1354,7 @@ const advancedSignals = useMemo(
                         <button type="button" onClick={() => handleSort("status")}>
                           Preporuka{sortMarker("status", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Decision score kombinuje: udeo prometa (35%), promena prometa (30%), trend (20%), pouzdanost signala (15%). Pojacaj ≥68, Zadrzi 43–67, Smanji <43. Nisko poverenje automatski spušta 'Pojacaj' → 'Zadrzi'." />
+                        <InfoTip text="Decision score kombinuje: udeo u promeni (35%), velicinu promene (30%), trend (20%), pouzdanost signala (15%). Pojacaj >=68, Zadrzi 43-67, Smanji <43. Nisko poverenje automatski spusta Pojacaj na Zadrzi." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -1296,7 +1378,7 @@ const advancedSignals = useMemo(
                                 <div className="ppn-chip-wrap">
                                   <span className={confidenceClass(row.confidenceTone)}>
                                     {row.confidenceLabel} signal
-                                    <InfoTip text={`Pouzdanost: ${fmtPct(row.reliabilityPct, 0)} — bazira se na aktivnim artiklima (${row.activeArticlesCount}/${row.articleCount}) i poznatosti dobavljača. Visoko ≥70%, Srednje 40–70%, Nisko <40%.`} />
+                                    <InfoTip text={`Pouzdanost: ${fmtPct(row.reliabilityPct, 0)} - bazira se na aktivnim artiklima (${row.activeArticlesCount}/${row.articleCount}), poznatosti dobavljaca i post-window pokrivenosti (${fmtPct(row.avgCoveragePost30, 0)}). Visoko >=70%, Srednje 40-70%, Nisko <40%.`} />
                                   </span>
                                   <span className="ppn-signal-pill signal-neutral">{row.activeArticlesCount}/{row.articleCount} aktivno</span>
                                 </div>

@@ -17,6 +17,8 @@ public sealed class VendorSalesNivelacijaArticleStatDto
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
     public decimal ChangePercent { get; set; }
+    public decimal CoveragePre30 { get; set; }
+    public decimal CoveragePost30 { get; set; }
     public bool HasSalesWindow { get; set; }
     public bool PriceChanged { get; set; }
     public decimal? PriceChangePercent { get; set; }
@@ -44,6 +46,11 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
     public decimal ChangePercent { get; set; }
+    public decimal AbsoluteChangeRevenue { get; set; }
+    public decimal ChangeSharePercent { get; set; }
+    public decimal PostRevenueSharePercent { get; set; }
+    public decimal AvgCoveragePre30 { get; set; }
+    public decimal AvgCoveragePost30 { get; set; }
     public int ArticleCount { get; set; }
     public int ActiveArticlesCount { get; set; }
     public int IncreasedPriceArticlesCount { get; set; }
@@ -65,6 +72,9 @@ public sealed class VendorSalesNivelacijaTotalsDto
     public decimal AvgRevenuePerArticlePre { get; set; }
     public decimal AvgRevenuePerArticlePost { get; set; }
     public decimal AvgPriceChangePercent { get; set; }
+    public decimal AbsoluteChangeRevenue { get; set; }
+    public decimal AvgCoveragePre30 { get; set; }
+    public decimal AvgCoveragePost30 { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaDataQualityDto
@@ -76,6 +86,9 @@ public sealed class VendorSalesNivelacijaDataQualityDto
     public int UnchangedPriceRows { get; set; }
     public int AnalyzedRows { get; set; }
     public decimal AnalyzedSharePercent { get; set; }
+    public int LowPostCoverageRows { get; set; }
+    public decimal AvgCoveragePre30 { get; set; }
+    public decimal AvgCoveragePost30 { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaCategoryStatDto
