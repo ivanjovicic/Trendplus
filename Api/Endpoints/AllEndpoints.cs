@@ -1662,7 +1662,7 @@ public static class AllEndpoints
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,
-                    isEstimatedMargin = suppliers.Any() && suppliers.Sum(r => r.estimatedCostRevenue) > suppliers.Sum(r => r.historicalCostRevenue),
+                    isEstimatedMargin = suppliers.Count > 0 && suppliers.Sum(r => r.estimatedCostRevenue) > suppliers.Sum(r => r.historicalCostRevenue),
                     snapshotCostRevenue = Math.Round(suppliers.Sum(r => r.snapshotCostRevenue), 2),
                     snapshotCostCoveragePct = totalSnapshotPct,
                     isSnapshotActive = activeBatchId.HasValue,
@@ -2340,7 +2340,7 @@ public static class AllEndpoints
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,
-                    isEstimatedMargin = shoeTypes.Any() && shoeTypes.Sum(r => r.estimatedCostRevenue) > shoeTypes.Sum(r => r.historicalCostRevenue),
+                    isEstimatedMargin = shoeTypes.Count > 0 && shoeTypes.Sum(r => r.estimatedCostRevenue) > shoeTypes.Sum(r => r.historicalCostRevenue),
                     snapshotCostRevenue = Math.Round(shoeTypes.Sum(r => r.snapshotCostRevenue), 2),
                     snapshotCostCoveragePct = totalSnapshotPct2,
                     isSnapshotActive = activeBatchId2.HasValue,
@@ -2896,7 +2896,7 @@ public static class AllEndpoints
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,
-                    isEstimatedMargin = colors.Any() && colors.Sum(r => r.estimatedCostRevenue) > colors.Sum(r => r.historicalCostRevenue),
+                    isEstimatedMargin = colors.Count > 0 && colors.Sum(r => r.estimatedCostRevenue) > colors.Sum(r => r.historicalCostRevenue),
                     marginQualityLabel = totalMarginQuality.Label,
                     marginQualityTier = totalMarginQuality.Tier,
                     marginQualityShortLabel = totalMarginQuality.ShortLabel,
@@ -6169,7 +6169,7 @@ public static class AllEndpoints
 
     private static void MapMetricReasons(
         List<VendorSalesNivelacijaArticleStatDto> articles,
-        IReadOnlyCollection<string> globalWarnings)
+        List<string> globalWarnings)
     {
         foreach (var row in articles)
         {

@@ -255,31 +255,41 @@
 }
 
 .summary-card {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  padding: 12px;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated, var(--surface-card, #111c2d)) 86%, var(--info, #1ec8ff) 14%), var(--surface-darker, #060d16));
+  border: 1px solid rgba(30, 200, 255, 0.28);
+  border-radius: 18px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
+  box-shadow: 0 0 28px rgba(30, 200, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
 }
 
 .summary-card .label {
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: 11px;
+  color: var(--text-muted, var(--text-secondary));
   text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  font-weight: 700;
+  letter-spacing: 0.22em;
 }
 
 .summary-card .value {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
+  margin-top: 16px;
+  text-shadow: 0 0 18px currentColor;
 }
 
 .summary-card .value.highlight {
-  color: var(--warning);
+  color: var(--warning, #fbbf24);
 }
 
 .impact-box {

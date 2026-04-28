@@ -51,7 +51,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         public AnalyticsFilters Filters { get; init; } = new();
         public Dictionary<int, DateTime> PrvaNivelacijaPoArtiklu { get; init; } = [];
         public List<SalesRow> SalesRows { get; init; } = [];
-        public IReadOnlyDictionary<int, decimal> ArticleSnapshotCosts { get; init; } = new Dictionary<int, decimal>();
+        public Dictionary<int, decimal> ArticleSnapshotCosts { get; init; } = new Dictionary<int, decimal>();
         public bool IsSnapshotActive { get; init; }
         public DateTime? SnapshotGeneratedAtUtc { get; init; }
     }

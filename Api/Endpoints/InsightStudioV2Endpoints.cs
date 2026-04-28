@@ -14,6 +14,8 @@ namespace Trendplus2.Endpoints;
 /// </summary>
 public static class InsightStudioV2Endpoints
 {
+    private static readonly string[] DayNames = ["Pon", "Uto", "Sre", "\u010cet", "Pet", "Sub", "Ned"];
+
     public static void MapInsightStudioV2Endpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/analytics/advanced/v2")
@@ -43,8 +45,8 @@ public static class InsightStudioV2Endpoints
                     select new { pz.DatumProdaje, ps.Kolicina, ps.Cena }
                 ).ToListAsync(ct);
 
-                // Build heatmap: dayOfWeek (0=Mon..6=Sun) Ã— week number
-                var dayNames = new[] { "Pon", "Uto", "Sre", "ÄŒet", "Pet", "Sub", "Ned" };
+                // Build heatmap: dayOfWeek (0=Mon..6=Sun) × week number
+                var dayNames = DayNames;
                 var byDayAndWeek = salesData
                     .GroupBy(s => new
                     {

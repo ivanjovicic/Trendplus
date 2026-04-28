@@ -1134,7 +1134,7 @@ namespace Api.Services
             }
         }
 
-        private static IReadOnlyDictionary<string, double> BuildEnterpriseCanonicalFeatures(
+        private static Dictionary<string, double> BuildEnterpriseCanonicalFeatures(
             double priceFitScore,
             double marginScore,
             double popularityScore,
@@ -1264,7 +1264,7 @@ namespace Api.Services
             return Clamp01(weighted / sumWeights);
         }
 
-        private static IReadOnlyDictionary<string, float> BuildSellProbabilityRsOnnxFeatures(
+        private static Dictionary<string, float> BuildSellProbabilityRsOnnxFeatures(
             decimal? price,
             RuntimeScoringSignals training,
             decimal momentumProxy,
@@ -1417,7 +1417,7 @@ namespace Api.Services
             return arr.Length % 2 == 0 ? Math.Round((arr[m - 1] + arr[m]) / 2m, 2) : arr[m];
         }
 
-        private static double ComputeImageSimilarity(IReadOnlyCollection<SimilarProduct> items)
+        private static double ComputeImageSimilarity(List<SimilarProduct> items)
             // Return 0 when embedding unavailable — do not inflate score artificially
             => items.Count == 0 ? 0 : ClampScore(items.OrderByDescending(x => x.Similarity).Take(3).Average(x => x.Similarity) * 100d);
 

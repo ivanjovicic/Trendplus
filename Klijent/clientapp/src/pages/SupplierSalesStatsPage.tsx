@@ -1635,17 +1635,61 @@ export default function SupplierSalesStatsPage() {
 
           {selectedSupplier ? (
             <section className="supplier-decision-detail" ref={detailSectionRef}>
-              <div className="supplier-decision-detail-head">
-                <h3>Detalj: {selectedSupplier.dobavljacNaziv}</h3>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span className={statusClass(selectedSupplier.status)}>
+              {/* ── Hero glava ── */}
+              <div className="supplier-detail-hero-head">
+                <div className="supplier-detail-hero-left">
+                  <div className="supplier-detail-overline">Detaljan pregled dobavljača</div>
+                  <h3 className="supplier-detail-name">{selectedSupplier.dobavljacNaziv}</h3>
+                  <div className="supplier-detail-meta-row">
+                    <span className="supplier-detail-meta-chip">
+                      {activeFilters.fromDate} → {activeFilters.toDate}
+                    </span>
+                    {activeFilters.storeId != null ? (
+                      <span className="supplier-detail-meta-chip">
+                        {stores.find((s) => s.storeId === activeFilters.storeId)?.storeName ?? `Objekat ${activeFilters.storeId}`}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="supplier-detail-hero-right">
+                  <div
+                    className={`${statusClass(selectedSupplier.status)} supplier-detail-status-badge`}
+                    title={buildStatusTooltip(selectedSupplier)}
+                  >
                     {statusLabelSr(selectedSupplier.status)}
-                  </span>
-                  <button type="button" onClick={() => openSupplierDetail(selectedSupplier)}>
-                    Otvori puni detalj
+                  </div>
+                  <button
+                    type="button"
+                    className="supplier-detail-open-btn"
+                    onClick={() => openSupplierDetail(selectedSupplier)}
+                    title="Otvori puni AI detalj sa preporukom, historijom i analizom artikala"
+                  >
+                    Puni detalj →
+                  </button>
+                  <button
+                    type="button"
+                    className="supplier-detail-close-btn"
+                    onClick={() => setExpandedSupplierKey(null)}
+                    title="Zatvori detalj"
+                    aria-label="Zatvori detalj"
+                  >
+                    ✕
                   </button>
                 </div>
               </div>
+
+              {/* Sažetak razloga preporuke */}
+              {selectedSupplier.statusReason ? (
+                <div className="supplier-detail-reason-banner">
+                  <span className="supplier-detail-reason-label">Razlog preporuke:</span>
+                  <span>{selectedSupplier.statusReason}</span>
+                  {selectedSupplier.reasonCodes.length > 0 ? (
+                    <span className="supplier-detail-reason-codes">
+                      {selectedSupplier.reasonCodes.map(formatReasonCode).join(" · ")}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
 
               {/* Poslovni pokazatelji */}
               <h4 className="supplier-detail-section-title">Poslovni pokazatelji</h4>
@@ -1866,9 +1910,9 @@ export default function SupplierSalesStatsPage() {
               </div>
 
               {selectedSupplier.prePostSignalNote ? (
-                <p className="supplier-decision-reason">
+                <div className="supplier-detail-note-box">
                   <strong>Napomena za pre/post signal:</strong> {selectedSupplier.prePostSignalNote}
-                </p>
+                </div>
               ) : null}
 
               {(() => {
@@ -1881,9 +1925,9 @@ export default function SupplierSalesStatsPage() {
                   data.totals.isSnapshotActive
                 );
                 return marginNote ? (
-                  <p className="supplier-decision-reason">
+                  <div className="supplier-detail-note-box supplier-detail-note-warning">
                     <strong>Napomena za maržu:</strong> {marginNote}
-                  </p>
+                  </div>
                 ) : null;
               })()}
 
@@ -1894,16 +1938,11 @@ export default function SupplierSalesStatsPage() {
                   fmtPct
                 );
                 return recCaveat ? (
-                  <p className="supplier-decision-reason">
+                  <div className="supplier-detail-note-box supplier-detail-note-caution">
                     <strong>Napomena za preporuku:</strong> {recCaveat}
-                  </p>
+                  </div>
                 ) : null;
               })()}
-
-              <p className="supplier-decision-reason">
-                <strong>Razlog preporuke:</strong> {selectedSupplier.statusReason}
-                {selectedSupplier.reasonCodes.length > 0 ? ` (${selectedSupplier.reasonCodes.map(formatReasonCode).join(", ")})` : ""}
-              </p>
             </section>
           ) : null}
         </div>
