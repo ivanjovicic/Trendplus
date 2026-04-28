@@ -10,7 +10,7 @@ primary_region = "fra"
   auto_stop_machines = "off"
   auto_start_machines = false
   min_machines_running = 1
-  processes = ["app"]
+  processes = ["app"] 
 
 [[vm]]
   memory = "256mb"

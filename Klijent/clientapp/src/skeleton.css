@@ -588,6 +588,15 @@ textarea.input-big {
     padding: 0.28rem 0.62rem;
 }
 
+.backend-wakeup-overlay--success .backend-wakeup-overlay__panel {
+    border-color: var(--success);
+}
+
+.backend-wakeup-overlay--success .backend-wakeup-overlay__badge {
+    border-color: var(--success);
+    background: var(--theme-color-rgba-34-197-94-0p16, rgba(34,197,94,0.16));
+}
+
 .backend-wakeup-overlay h2 {
     margin: 0;
     font-size: 1.2rem;
@@ -604,6 +613,11 @@ textarea.input-big {
 .backend-wakeup-overlay p + p {
     color: var(--muted);
     font-size: 0.86rem;
+}
+
+.backend-wakeup-overlay__meta {
+    color: var(--muted) !important;
+    font-size: 0.84rem !important;
 }
 
 @media (max-width: 640px) {

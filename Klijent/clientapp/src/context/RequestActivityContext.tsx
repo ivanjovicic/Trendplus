@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { notifyBackendReachable } from "./backendReachabilityEvents";
 
 type RequestActivityState = {
   activeRequests: number;
@@ -89,24 +88,6 @@ function shouldTrackRequest(input: RequestInfo | URL): boolean {
   return false;
 }
 
-function shouldConfirmBackendReachability(input: RequestInfo | URL, response: Response): boolean {
-  const url = parseUrl(response.url || toRequestUrl(input));
-  if (!url) return false;
-
-  const pathname = url.pathname.toLowerCase();
-
-  if (TRACKED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
-    return true;
-  }
-
-  const apiOrigin = getOrigin(import.meta.env.VITE_API_BASE_URL);
-  const fallbackApiOrigin = getOrigin(import.meta.env.VITE_API_FALLBACK_URL);
-  return Boolean(
-    (apiOrigin && url.origin === apiOrigin) ||
-    (fallbackApiOrigin && url.origin === fallbackApiOrigin)
-  );
-}
-
 export const RequestActivityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeRequests, setActiveRequests] = useState(0);
   const mountedRef = useRef(true);
@@ -127,15 +108,7 @@ export const RequestActivityProvider: React.FC<{ children: React.ReactNode }> = 
       }
 
       try {
-        const response = await originalFetch(input, init);
-        if (shouldConfirmBackendReachability(input, response)) {
-          notifyBackendReachable({
-            source: "request",
-            status: response.status,
-            url: response.url || toRequestUrl(input),
-          });
-        }
-        return response;
+        return await originalFetch(input, init);
       } finally {
         if (mountedRef.current) {
           setActiveRequests((current) => Math.max(0, current - 1));
