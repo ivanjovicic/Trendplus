@@ -1,0 +1,95 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   InfoTip — global tooltip badge
+   Imported by InfoTip.tsx — applies to any page that renders <InfoTip />.
+   Uses ONLY design-system CSS custom properties (no hardcoded colors).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Trigger button */
+.info-tip {
+  /* Reset browser button defaults */
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  /* Layout — centers the SVG icon */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  vertical-align: middle;
+  position: relative;
+  /* Color */
+  color: var(--focus-ring, #44d0ff);
+  /* Interaction */
+  cursor: help;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 140ms ease, opacity 140ms ease, transform 140ms ease;
+  user-select: none;
+}
+
+.info-tip:hover {
+  color: var(--text-primary, #dbe6fb);
+  opacity: 0.85;
+  transform: scale(1.15);
+}
+
+/* Keyboard focus ring — WCAG 2.4.7 */
+.info-tip:focus-visible {
+  outline: 2px solid var(--focus-ring, #44d0ff);
+  outline-offset: 3px;
+  border-radius: 50%;
+}
+
+/* ── Tooltip popup ─────────────────────────────────────────────────── */
+.info-tip-portal {
+  /* Positioning (top/left set by JS) */
+  position: fixed;
+  z-index: 9999;
+  /* Centering + base animation offset for "above" placement */
+  transform: translateX(-50%) translateY(-100%) scale(0.9);
+  /* Sizing */
+  max-width: 264px;
+  width: max-content;
+  /* Visual */
+  background: var(--surface-darker, #0a0d14);
+  border: 1px solid color-mix(in srgb, var(--focus-ring, #44d0ff) 38%, transparent);
+  border-radius: 10px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 0 1px color-mix(in srgb, var(--focus-ring, #44d0ff) 12%, transparent),
+    0 0 18px color-mix(in srgb, var(--focus-ring, #44d0ff) 8%, transparent);
+  /* Typography */
+  color: var(--text-primary, #dbe6fb);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.55;
+  padding: 9px 12px;
+  white-space: normal;
+  /* Don't intercept mouse events — tooltip is read-only */
+  pointer-events: none;
+  /* Entry animation (opacity + scale) */
+  opacity: 0;
+  transition:
+    opacity 180ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* When tooltip appears below the trigger (trigger near top of viewport) */
+.info-tip-portal--below {
+  transform: translateX(-50%) scale(0.9);
+}
+
+/* Active (visible) state — triggered one rAF after mount */
+.info-tip-portal--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(calc(-100% - 8px)) scale(1);
+}
+
+.info-tip-portal--below.info-tip-portal--visible {
+  transform: translateX(-50%) translateY(8px) scale(1);
+}

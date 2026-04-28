@@ -543,24 +543,5 @@ body {
   color: var(--text-muted);
 }
 
-/* Global circular badge icon (SVG mask) — applied to any element with a class containing "badge" */
-[class*="badge"]::before {
-  content: "";
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  vertical-align: middle;
-  margin-right: 6px;
-  background-color: currentColor;
-  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='white' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/></svg>") center/contain no-repeat;
-  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='white' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/></svg>") center/contain no-repeat;
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 0 10px currentColor;
-}
-
-/* allow tone-specific colorization: elements should set their color (currentColor) to desired neon tone */
-[class*="badge"] {
-  color: var(--tooltip-badge-color, var(--text-primary));
-}
+/* InfoTip badge styles are co-located in components/ui/InfoTip.css */
 
