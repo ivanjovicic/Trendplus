@@ -646,7 +646,7 @@ export default function PreNivelacijaPriorityPage() {
                         <button type="button" onClick={() => handleSort("supplierName")}>Dobavljač{sortMarker("supplierName", sortField, sortDir)}</button>
                       </th>
                       <th className="align-right">
-                        <button type="button" onClick={() => handleSort("preNivelacijaScore")}>Score{sortMarker("preNivelacijaScore", sortField, sortDir)}</button>
+                        <button type="button" onClick={() => handleSort("preNivelacijaScore")}>Skor{sortMarker("preNivelacijaScore", sortField, sortDir)}</button>
                         <InfoTip text="Skor nivelacije (0–100): kompozitni signal od pritiska zalihe, brzine prodaje (sell-through), dana bez prodaje, šanse za sniženje i marže potencijala. Viši skor = veći prioritet za intervenciju." />
                       </th>
                       <th className="align-right">
@@ -658,7 +658,7 @@ export default function PreNivelacijaPriorityPage() {
                         <InfoTip text="Broj kalendarskih dana od poslednje evidentirane prodaje ovog SKU. Veći broj = jači signal stagnacije zalihe. Vrednosti > 30 dana zaslužuju prioritetnu pažnju." />
                       </th>
                       <th className="align-right">
-                        <button type="button" onClick={() => handleSort("revenueDelta")}>Highlight vs Markdown{sortMarker("revenueDelta", sortField, sortDir)}</button>
+                        <button type="button" onClick={() => handleSort("revenueDelta")}>Isticanje vs sniženje{sortMarker("revenueDelta", sortField, sortDir)}</button>
                         <InfoTip text="Razlika procenjenog prihoda u 30-dnevnom prozoru: scenario isticanja minus scenario sniženja. Pozitivna vrednost = isplativije je istaknuti artikal pre nivelacije nego ga odmah sniziti. Negativno = sniženje verovatno donosi više." />
                       </th>
                       <th className="align-center">

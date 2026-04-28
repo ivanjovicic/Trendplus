@@ -1178,27 +1178,7 @@ export default function SupplierSalesStatsPage() {
       {!loading && !error && emptyStateHint ? (
         <div className="supplier-decision-message info">{emptyStateHint}</div>
       ) : null}
-      {!loading && !error && qualityNotes.length > 0 ? (
-        <div className="supplier-decision-message info">
-          <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
-          <div className="supplier-decision-quality-actions">
-            <Link
-              to={`/analytics/data-quality?${dataQualityContextQuery}`}
-              className="supplier-decision-quality-link"
-            >
-              Otvori Data Quality centar
-            </Link>
-            {unknownSuppliers.length > 0 ? (
-              <Link
-                to={`/analytics/data-quality?${dataQualityContextQuery}`}
-                className="supplier-decision-quality-link"
-              >
-                Pregledaj artikle bez dobavljača
-              </Link>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+
 
       {data ? (
         <div
@@ -1220,7 +1200,7 @@ export default function SupplierSalesStatsPage() {
               <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." /></span>
+              <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
               <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
             </article>
             <article className="supplier-decision-kpi">
@@ -1254,6 +1234,22 @@ export default function SupplierSalesStatsPage() {
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
+
+          {qualityNotes.length > 0 ? (
+            <div className="supplier-decision-message info">
+              <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
+              <div className="supplier-decision-quality-actions">
+                <Link to={`/analytics/data-quality?${dataQualityContextQuery}`} className="supplier-decision-quality-link">
+                  Otvori pregled kvaliteta podataka
+                </Link>
+                {unknownSuppliers.length > 0 ? (
+                  <Link to={`/analytics/data-quality?${dataQualityContextQuery}`} className="supplier-decision-quality-link">
+                    Pregledaj artikle bez dobavljača
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           <section className="supplier-decision-panels">
             <article className="supplier-decision-card supplier-decision-card--chart">
@@ -1289,7 +1285,7 @@ export default function SupplierSalesStatsPage() {
             </article>
 
             <article className="supplier-decision-card supplier-decision-card--chart">
-              <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz fallback izvora, i ovaj signal treba čitati oprezno." /></h2>
+              <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
               <p>Poređenje udela u prometu i udela u maržnom doprinosu - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="supplier-decision-chart-wrap">
@@ -1403,7 +1399,7 @@ export default function SupplierSalesStatsPage() {
                           data-sort-dir={isSortActive("totalCost", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("totalCost")}
                         >
-                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." />
+                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." />
                         </button>
                       </th>
                       <th className={isSortActive("sharePct", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1611,7 +1607,7 @@ export default function SupplierSalesStatsPage() {
                   <strong>{fmtQty(selectedSupplier.ukupnaKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Nabavna vrednost <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." /></span>
+                  <span>Nabavna vrednost <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
                   <strong>{fmtRsd(selectedSupplier.totalCost)}</strong>
                 </article>
                 <article>
@@ -1648,23 +1644,23 @@ export default function SupplierSalesStatsPage() {
               <h4 className="supplier-detail-section-title">Trend u odnosu na prethodni period</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>PoP trend prometa <InfoTip text="Promena vrednosti prometa u odnosu na isti period prethodne godine (%)." /></span>
+                  <span>PoP trend prometa <InfoTip text="Promena vrednosti prometa u odnosu na prethodni uporedivi period iste dužine (%)." /></span>
                   <strong className={describePopMetric(selectedSupplier).className} title={describePopMetric(selectedSupplier).title}>
                     {describePopMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Prethodni period promet <InfoTip text="Vrednost prometa u istom periodu prethodne godine." /></span>
+                  <span>Prethodni period promet <InfoTip text="Vrednost prometa u prethodnom uporedivom periodu iste dužine." /></span>
                   <strong>{selectedSupplier.previousPeriodRevenue != null ? fmtRsd(selectedSupplier.previousPeriodRevenue) : "N/A"}</strong>
                 </article>
                 <article>
-                  <span>PoP trend količine <InfoTip text="Promena količine prodanih komada u odnosu na isti period prethodne godine (%)." /></span>
+                  <span>PoP trend količine <InfoTip text="Promena količine prodanih komada u odnosu na prethodni uporedivi period iste dužine (%)." /></span>
                   <strong className={describePopUnitsMetric(selectedSupplier).className} title={describePopUnitsMetric(selectedSupplier).title}>
                     {describePopUnitsMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Prethodni period količina <InfoTip text="Količina prodanih komada u istom periodu prethodne godine." /></span>
+                  <span>Prethodni period količina <InfoTip text="Količina prodanih komada u prethodnom uporedivom periodu iste dužine." /></span>
                   <strong>{selectedSupplier.previousPeriodUnits != null ? fmtQty(selectedSupplier.previousPeriodUnits) : "N/A"}</strong>
                 </article>
               </div>

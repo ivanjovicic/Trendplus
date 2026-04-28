@@ -56,7 +56,7 @@ export function InventoryItemsTable({
                 </th>
                 <th className="px-4 py-3 text-right">
                   Gap
-                  <InfoTip text="Razlika između minimuma i trenutne kolicine. Pozitivan Gap = kolicina je iznad minimuma. Negativan ili nula = potrebna je dopuna." />
+                  <InfoTip text="Koliko komada nedostaje do minimalnog nivoa zalihe. Formula: minimum − količina (klampovano na 0). Nula = zaliha dostiže ili prelazi minimum — dopuna nije hitna. Pozitivna vrednost = koliko treba naručiti da se dostigne minimum." />
                 </th>
                 <th className="px-4 py-3 text-right">
                   Nabavna

@@ -548,19 +548,19 @@ export default function InventoryPage() {
           </div>
           <div className="grid min-w-[280px] gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--warning)]">Aktivni SKU</div>
+              <div className="mt-2 text-3xl font-semibold text-contrast">{formatPercent(activeSkuShare)}</div>
+              <div className="mt-2 text-sm text-secondary">Udeo artikala koji nisu bez zaliha.</div>
+            </div>
+            <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-xs uppercase tracking-[0.22em] text-[var(--info)]">Health score</div>
+                <div className="text-xs uppercase tracking-[0.22em] text-[var(--text-primary)]">Stanje fonda</div>
                 <svg width="60" height="24" viewBox="0 0 60 24" aria-hidden="true" className="shrink-0">
                   <path d={healthSparklinePath} fill="none" stroke="var(--focus-ring)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <div className="mt-2 text-3xl font-semibold text-contrast">{inventoryHealthScore}</div>
+              <div className="mt-2 text-2xl font-semibold text-contrast">{inventoryHealthScore}<span className="text-sm font-normal text-secondary">/100</span></div>
               <div className="mt-2 text-sm text-secondary">{inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno pracenje kriticnih SKU." : "Povecan rizik od praznih polica."}</div>
-            </div>
-            <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--warning)]">Aktivni SKU</div>
-              <div className="mt-2 text-3xl font-semibold text-contrast">{formatPercent(activeSkuShare)}</div>
-              <div className="mt-2 text-sm text-secondary">Udeo artikala koji nisu bez zaliha.</div>
             </div>
           </div>
         </div>

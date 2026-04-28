@@ -919,7 +919,7 @@ export default function DailySalesStatsPage() {
     const total = problemSignals.length;
     if (dangerCount > 0) return { tone: "danger" as const, label: `\u26a0 ${total} problem${total === 1 ? "" : "a"} u podacima`, count: total };
     if (total > 0) return { tone: "warning" as const, label: `\u26a0 ${total} upozorenje${total === 1 ? "" : "a"}`, count: total };
-    return { tone: "good" as const, label: "\u2713 Podaci uredu", count: 0 };
+    return { tone: "good" as const, label: "\u2713 Podaci u redu", count: 0 };
   }, [qualitySignals]);
 
   const decisionInsights = useMemo<InsightCard[]>(() => {
@@ -965,7 +965,7 @@ export default function DailySalesStatsPage() {
 
     if ((data?.metadata.unknownSupplierPct ?? 0) >= 5 || mismatchCount > 0 || missingShiftCount > 0) {
       insights.push({
-        title: "Prvo srediti kvalitet podataka",
+        title: "Upozorenje: podaci zahtevaju pažnju",
         detail: `Unknown share je ${fmtPct(data?.metadata.unknownSupplierPct ?? 0, 1)}, mismatch dana ${fmtNumber(mismatchCount)}, dana bez satnice ${fmtNumber(missingShiftCount)}.`,
         tone: "warning",
       });
@@ -1289,11 +1289,6 @@ export default function DailySalesStatsPage() {
               <strong>{fmtPct(supplierConcentration.top3QtySharePct, 1)}</strong>
               <small>Udeo top 3 dobavljača po komadima</small>
             </article>
-            <article>
-              <span>Van smene <InfoTip text="Komadi i prihod evidentirani van definisanih smena (pre 06:00 ili posle 21:59). Moze biti posledica gresaka u POS-u ili nestandardnih transakcija — vredi proveriti uzrok." /></span>
-              <strong>{fmtNumber(data.metadata.offShiftItems)}</strong>
-              <small>{fmtRsdShort(data.metadata.offShiftRevenue)}</small>
-            </article>
           </section>
 
           <section className="daily-sales-table-card">
@@ -1466,7 +1461,7 @@ export default function DailySalesStatsPage() {
                 <div>
                   <h2 className="with-tip">
                     <span>Kvalitet podataka</span>
-                    <InfoTip text="Signali koji uticu na pouzdanost odluka u ovom periodu. Nepoznati dobavljac: prodaja bez mapiranog dobavljaca. Dani nepodudaranja: zbir po dobavljacima ne odgovara dnevnom totalu. Dani bez satnice: nema pouzdanog smenskog razdvajanja. Dupli/neuskladjeni racuni: POS inconsistencies. Visoke vrednosti na bilo kom signalu = zadrzi oprez pri interpretaciji trendova." />
+                    <InfoTip text="Signali koji uticu na pouzdanost odluka u ovom periodu. Nepoznati dobavljac: prodaja bez mapiranog dobavljaca. Dani nepodudaranja: zbir po dobavljacima ne odgovara dnevnom totalu. Dani bez satnice: nema pouzdanog smenskog razdvajanja. Dupli/neuskladjeni racuni: neregularnosti u kasi. Visoke vrednosti na bilo kom signalu = zadrzi oprez pri interpretaciji trendova." />
                   </h2>
                   <p>Dijagnosticki sloj — bitno samo ako planirate dublje analize pouzdanosti.</p>
                 </div>

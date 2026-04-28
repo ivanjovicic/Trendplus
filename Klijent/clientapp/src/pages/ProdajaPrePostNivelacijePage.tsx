@@ -875,13 +875,13 @@ const advancedSignals = useMemo(
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "vendorsCount", label: "Dobavljaca", value: data?.totals.vendorsCount ?? 0 },
       { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
-      { key: "windowDays", label: "Window", value: data?.windowDays ?? 0 },
+      { key: "windowDays", label: "Prozor analize", value: data?.windowDays ?? 0 },
       { key: "rowsExported", label: "Vidljivih redova", value: focusedRows.length },
       { key: "dataTrust", label: "Poverenje", value: dataTrustSummary.label },
       { key: "analyzedShare", label: "Analizirani redovi", value: fmtPct(data?.dataQuality.analyzedSharePercent, 0) },
       { key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: data?.dataQuality.duplicateRowsRemoved ?? 0 },
       { key: "inactiveRows", label: "Neaktivni redovi", value: data?.dataQuality.inactiveRows ?? 0 },
-      { key: "metricsStatus", label: "Metrics status", value: data?.metricsStatus ?? "OK" },
+      { key: "metricsStatus", label: "Status metrika", value: data?.metricsStatus ?? "OK" },
     ],
     [
       data?.dataQuality.analyzedSharePercent,
@@ -1115,31 +1115,6 @@ const advancedSignals = useMemo(
                 <span>{leadingPriceDirection ? fmtSignedPct(leadingPriceDirection.avgPriceChangePercent, 1) : "N/A"}</span>
               </div>
             </article>
-
-            <article className="ppn-decision-card ppn-signal-card">
-              <div className="ppn-card-topline">
-                <h2 className="ppn-card-topline-label">
-                  Napredni signali
-                  <InfoTip text="Napredniji analitički signali koji zahtevaju dodatne database view-ove. Ako su vrednosti 'N/A', view nije kreiran u ovoj bazi — osnovna analiza (promet pre/posle, trend, decision score) ostaje ispravna." />
-                </h2>
-                <span className="ppn-signal-pill signal-neutral">Avg</span>
-              </div>
-              <div className="ppn-mini-metrics">
-                {advancedSignals.map((item) => {
-                  const isUnavailable = item.value === "N/A";
-                  return (
-                    <article key={item.label} className={isUnavailable ? "ppn-mini-metric-na" : ""}>
-                      <span className="ppn-mini-metric-label">
-                        {item.label}
-                        <InfoTip text={item.tip} />
-                      </span>
-                      <strong className={isUnavailable ? "ppn-na-value" : ""}>{item.value}</strong>
-                      <small>{isUnavailable ? "view nedostupan" : item.hint}</small>
-                    </article>
-                  );
-                })}
-              </div>
-            </article>
           </section>
 
           {data.insights.length > 0 ? (
@@ -1151,6 +1126,27 @@ const advancedSignals = useMemo(
                   <p>{insight.details}</p>
                 </article>
               ))}
+            </section>
+          ) : null}
+
+          {advancedSignals.some((item) => item.value !== "N/A") ? (
+            <section className="ppn-advanced-signals-secondary">
+              <h3 className="ppn-section-label">
+                Dodatni analitički signali
+                <InfoTip text="Dodatni signali izračunati iz naprednih pogleda. Dostupni su samo ako su potrebni pogledi kreirani u bazi — osnovna analiza ostaje ispravna i kada su ovi signali nedostupni." />
+              </h3>
+              <div className="ppn-mini-metrics ppn-mini-metrics--secondary">
+                {advancedSignals.filter((item) => item.value !== "N/A").map((item) => (
+                  <article key={item.label}>
+                    <span className="ppn-mini-metric-label">
+                      {item.label}
+                      <InfoTip text={item.tip} />
+                    </span>
+                    <strong>{item.value}</strong>
+                    <small>{item.hint}</small>
+                  </article>
+                ))}
+              </div>
             </section>
           ) : null}
 
@@ -1397,7 +1393,7 @@ const advancedSignals = useMemo(
                 </article>
                 <article>
                   <span>
-                    Decision score
+                    Ocena preporuke
                     <InfoTip text="Kompozitni score: udeo prometa × 35% + promena prometa × 30% + trend × 20% + pouzdanost × 15%. Normalizovano 0–100. Pojacaj ≥68, Zadrzi 43–67, Smanji <43." />
                   </span>
                   <strong>{selectedRow.decisionScore}</strong>

@@ -967,11 +967,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
       {!loading && !error && emptyStateHint ? (
         <div className="shoetype-decision-message info">{emptyStateHint}</div>
       ) : null}
-      {!loading && !error && qualityNotes.length > 0 ? (
-        <div className="shoetype-decision-message info">
-          <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
-        </div>
-      ) : null}
+
 
       {data ? (
         <div
@@ -993,7 +989,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
               <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." /></span>
+              <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
               <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
@@ -1028,6 +1024,12 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
             </article>
           </section>
 
+          {qualityNotes.length > 0 ? (
+            <div className="shoetype-decision-message info">
+              <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
+            </div>
+          ) : null}
+
           <section className="shoetype-decision-panels">
             <article className="shoetype-decision-card shoetype-decision-card--chart">
               <h2>Koncentracija prometa po tipu obuće <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose tipovi obuće. Koristi samo promet, bez tumačenja profita ili neto marže." /></h2>
@@ -1057,7 +1059,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
             </article>
 
             <article className="shoetype-decision-card shoetype-decision-card--chart">
-              <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu po tipu obuće. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz fallback izvora, i ovaj signal treba čitati oprezno." /></h2>
+              <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu po tipu obuće. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
               <p>Poređenje udela u prometu i udela u marznom doprinosu - tipovi obuće s visokim prometom ne moraju imati i visok marzni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap">
@@ -1164,7 +1166,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
                           data-sort-dir={isSortActive("totalCost", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("totalCost")}
                         >
-                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." />
+                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." />
                         </button>
                       </th>
                       <th className={isSortActive("sharePct", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1335,7 +1337,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
                   <strong>{fmtQty(selectedRow.ukupnaKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Nabavna vrednost <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili fallback troškom. Operativni troškovi nisu uključeni." /></span>
+                  <span>Nabavna vrednost <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
                   <strong>{fmtRsd(selectedRow.totalCost)}</strong>
                 </article>
                 <article>

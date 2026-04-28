@@ -86,7 +86,7 @@ export function InventoryPriorityPanels({
         <div className="mt-5 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.2em] text-[var(--text-primary)]">Bez zaliha</div><div className="mt-2 text-xl font-semibold text-white">{balance ? formatNumber(balance.outOfStockCount) : "-"}</div></div>
-            <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.2em] text-[var(--text-primary)]">Low stock share</div><div className="mt-2 text-xl font-semibold text-white">{formatPercent(lowStockShare)}</div></div>
+            <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.2em] text-[var(--text-primary)]">Niska zaliha %</div><div className="mt-2 text-xl font-semibold text-white">{formatPercent(lowStockShare)}</div></div>
             <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.2em] text-[var(--text-primary)]">Ukupno filtrirano</div><div className="mt-2 text-xl font-semibold text-white">{formatNumber(totalCount)}</div></div>
           </div>
         </div>
