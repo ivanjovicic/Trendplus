@@ -26,6 +26,9 @@ export type BackendStatus = {
     lastReachableAt: number | null;
     lastUnavailableAt: number | null;
     lastError: string | null;
+    hadConfirmedOutage: boolean;
+    recoveryNoticeVisible: boolean;
+    recoveryNoticeAt: number | null;
 };
 
 export const BackendStatusContext = createContext<BackendStatus>({
@@ -36,6 +39,9 @@ export const BackendStatusContext = createContext<BackendStatus>({
     lastReachableAt: null,
     lastUnavailableAt: null,
     lastError: null,
+    hadConfirmedOutage: false,
+    recoveryNoticeVisible: false,
+    recoveryNoticeAt: null,
 });
 
 export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -45,8 +51,13 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
     const [lastReachableAt, setLastReachableAt] = useState<number | null>(null);
     const [lastUnavailableAt, setLastUnavailableAt] = useState<number | null>(null);
     const [lastError, setLastError] = useState<string | null>(null);
+    const [hadConfirmedOutage, setHadConfirmedOutage] = useState(false);
+    const [recoveryNoticeVisible, setRecoveryNoticeVisible] = useState(false);
+    const [recoveryNoticeAt, setRecoveryNoticeAt] = useState<number | null>(null);
     const statusRef = useRef<BackendAvailabilityStatus>("unknown");
     const lastReachableAtRef = useRef<number | null>(null);
+    const hadConfirmedOutageRef = useRef(false);
+    const recoveryHideTimerRef = useRef<number | null>(null);
     const { apiPingEnabled } = usePingControl();
 
     const ONLINE_POLL_INTERVAL_MS = import.meta.env.DEV ? 30_000 : 60_000;
@@ -57,14 +68,47 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
     }, [status]);
 
     useEffect(() => {
+        hadConfirmedOutageRef.current = hadConfirmedOutage;
+    }, [hadConfirmedOutage]);
+
+    useEffect(() => () => {
+        if (recoveryHideTimerRef.current !== null) {
+            window.clearTimeout(recoveryHideTimerRef.current);
+        }
+    }, []);
+
+    useEffect(() => {
+        const hideRecoveryNoticeLater = () => {
+            if (recoveryHideTimerRef.current !== null) {
+                window.clearTimeout(recoveryHideTimerRef.current);
+            }
+
+            recoveryHideTimerRef.current = window.setTimeout(() => {
+                setRecoveryNoticeVisible(false);
+                recoveryHideTimerRef.current = null;
+            }, 1800);
+        };
+
         const markReachable = (detail?: BackendReachabilityDetail) => {
             const checkedAt = detail?.checkedAt ?? Date.now();
+            const previousStatus = statusRef.current;
+            const shouldShowRecoveryNotice =
+                hadConfirmedOutageRef.current && (previousStatus === "down" || previousStatus === "recovering");
+
             lastReachableAtRef.current = checkedAt;
             setStatus("up");
             setChecking(false);
             setLastCheckedAt(checkedAt);
             setLastReachableAt(checkedAt);
             setLastError(null);
+
+            if (shouldShowRecoveryNotice) {
+                hadConfirmedOutageRef.current = false;
+                setRecoveryNoticeVisible(true);
+                setRecoveryNoticeAt(checkedAt);
+                setHadConfirmedOutage(false);
+                hideRecoveryNoticeLater();
+            }
         };
 
         const markUnreachable = (detail?: BackendUnreachableDetail) => {
@@ -83,6 +127,13 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
             setStatus("down");
             setChecking(false);
             setLastError(detail?.message ?? (detail?.status ? `HTTP ${detail.status}` : detail?.reason ?? null));
+            hadConfirmedOutageRef.current = true;
+            if (recoveryHideTimerRef.current !== null) {
+                window.clearTimeout(recoveryHideTimerRef.current);
+                recoveryHideTimerRef.current = null;
+            }
+            setHadConfirmedOutage(true);
+            setRecoveryNoticeVisible(false);
         };
 
         const handleReachable = (event: Event) => {
@@ -223,8 +274,22 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
             lastReachableAt,
             lastUnavailableAt,
             lastError,
+            hadConfirmedOutage,
+            recoveryNoticeVisible,
+            recoveryNoticeAt,
         }),
-        [checking, lastCheckedAt, lastError, lastReachableAt, lastUnavailableAt, online, status]
+        [
+            checking,
+            hadConfirmedOutage,
+            lastCheckedAt,
+            lastError,
+            lastReachableAt,
+            lastUnavailableAt,
+            online,
+            recoveryNoticeAt,
+            recoveryNoticeVisible,
+            status,
+        ]
     );
 
     return (

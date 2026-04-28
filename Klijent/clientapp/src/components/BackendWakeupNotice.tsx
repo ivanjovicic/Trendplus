@@ -1,5 +1,4 @@
 import { AlertTriangle } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useBackendStatus } from "../context/useBackendStatus";
 import UltraSpinner from "./ui/UltraSpinner";
 
@@ -13,29 +12,15 @@ function buildWaitHint(seconds: number): string {
 }
 
 export default function BackendWakeupNotice() {
-  const { status, checking, lastCheckedAt, lastError } = useBackendStatus();
+  const { status, checking, lastError, recoveryNoticeVisible } = useBackendStatus();
   const rawWakeupSeconds = Number(import.meta.env.VITE_BACKEND_WAKEUP_SECONDS ?? 60);
   const wakeupSeconds = Number.isFinite(rawWakeupSeconds) && rawWakeupSeconds > 0 ? rawWakeupSeconds : 60;
-  const [recentlyRecovered, setRecentlyRecovered] = useState(false);
 
   const isUnavailable = status === "down";
   const isReconnecting = isUnavailable && checking;
 
-  useEffect(() => {
-    if (status !== "up" || lastCheckedAt === null) {
-      return;
-    }
-
-    setRecentlyRecovered(true);
-    const timeoutId = window.setTimeout(() => setRecentlyRecovered(false), 1800);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [lastCheckedAt, status]);
-
   if (!isUnavailable) {
-    if (recentlyRecovered) {
+    if (recoveryNoticeVisible) {
       return (
         <div className="backend-wakeup-overlay backend-wakeup-overlay--success" role="status" aria-live="polite">
           <section className="backend-wakeup-overlay__panel">
