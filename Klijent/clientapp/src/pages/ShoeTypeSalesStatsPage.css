@@ -296,9 +296,27 @@
 .shoetype-decision-kpi-badge {
   cursor: help;
   display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   font-size: 11px;
   font-weight: 700;
   margin-top: 5px;
+}
+
+.shoetype-decision-kpi-badge::before {
+  content: "ℹ";
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  margin-right: 6px;
+  color: var(--dashboard-text);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--dashboard-surface) 86%, var(--dashboard-accent) 14%), var(--dashboard-bg-soft));
+  border: 1px solid rgba(77, 255, 119, 0.28);
+  box-shadow: 0 0 10px rgba(77, 255, 119, 0.10);
 }
 
 .shoetype-decision-kpi-badge.quality-confirmed {
