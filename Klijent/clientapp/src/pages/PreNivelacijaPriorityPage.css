@@ -625,6 +625,34 @@
   transition: width 0.3s ease;
 }
 
+/* ─── Score cell: inline value + mini heat bar ──────────────── */
+.pnp-score-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.pnp-score-mini-bar {
+  height: 4px;
+  border-radius: 3px;
+  min-width: 4px;
+  max-width: 100%;
+  transition: width 0.25s ease;
+}
+
+.pnp-score-mini-bar[data-level="high"] {
+  background: var(--accent-success, #33f28b);
+}
+
+.pnp-score-mini-bar[data-level="mid"] {
+  background: var(--accent-warning, #facc15);
+}
+
+.pnp-score-mini-bar[data-level="low"] {
+  background: var(--accent-danger, #f87171);
+}
+
 /* ─── Queues section ─────────────────────────────────────────── */
 .pnp-queues {
   margin-top: 24px;

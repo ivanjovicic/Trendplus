@@ -468,6 +468,7 @@ export default function ProdajaPrePostNivelacijePage() {
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
+  const [trustPanelOpen, setTrustPanelOpen] = useState(false);
   const [focusFilter, setFocusFilter] = useState<FocusFilter>("all");
 
   const invalidRange = useMemo(() => {
@@ -1041,15 +1042,25 @@ const advancedSignals = useMemo(
 
       {!loading && data ? (
         <>
-          <section className="ppn-decision-signals">
-            <article className="ppn-decision-card ppn-signal-card">
-              <div className="ppn-card-topline">
-                <h2 className="ppn-card-topline-label">
-                  Poverenje u signal
-                  <InfoTip text="Ocena pouzdanosti podataka za ovu analizu. Bazira se na procentu nivelacija redova koji imaju aktivnu prodajnu aktivnost u pre/post prozoru. 'Nisko poverenje' ne znači grešku — može biti da većina nivelacija nema prodajne podatke u izabranom periodu." />
-                </h2>
-                <span className={confidenceClass(dataTrustSummary.tone)}>{dataTrustSummary.label}</span>
-              </div>
+          {/* Compact Data Health badge — collapsible trust/quality layer */}
+          <div className="ppn-data-health-bar">
+            <button
+              type="button"
+              className={`ppn-data-health-badge ppn-data-health-badge--${dataTrustSummary.tone}`}
+              onClick={() => setTrustPanelOpen((prev) => !prev)}
+              aria-expanded={trustPanelOpen}
+              title={trustPanelOpen ? "Sakrij detalje kvaliteta signala" : "Prikaži detalje kvaliteta signala"}
+            >
+              {dataTrustSummary.tone === "strong" ? "✓" : "⚠"} Kvalitet signala: {dataTrustSummary.label}
+              <span className="ppn-health-caret">{trustPanelOpen ? " ▲" : " ▼"}</span>
+            </button>
+            <span className="ppn-data-health-hint">
+              Analiza poredjena po nivelacionom prozoru od {data.windowDays ?? 30} dana.
+            </span>
+          </div>
+
+          {trustPanelOpen ? (
+            <div className="ppn-trust-drawer">
               <p className="ppn-trust-details">{dataTrustSummary.details}</p>
               {dataQualityWarnings.length > 0 ? (
                 <div className="ppn-warning-list">
@@ -1066,11 +1077,13 @@ const advancedSignals = useMemo(
               ) : (
                 <div className="ppn-chip-wrap">
                   <span className="ppn-signal-pill signal-strong">Bez aktivnih upozorenja</span>
-                  <span className="ppn-signal-pill signal-neutral">Rows {data.dataQuality.analyzedRows}/{data.dataQuality.rawRows}</span>
+                  <span className="ppn-signal-pill signal-neutral">Redovi {data.dataQuality.analyzedRows}/{data.dataQuality.rawRows}</span>
                 </div>
               )}
-            </article>
+            </div>
+          ) : null}
 
+          <section className="ppn-decision-signals">
             <article className="ppn-decision-card ppn-signal-card">
               <div className="ppn-card-topline">
                 <h2>Najjaca kategorija</h2>

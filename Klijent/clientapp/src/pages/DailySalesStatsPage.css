@@ -194,6 +194,56 @@
   line-height: 1.45;
 }
 
+/* Data Health badge button */
+.daily-sales-health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-elevated);
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.daily-sales-health-badge:hover {
+  background: color-mix(in srgb, var(--surface-elevated) 80%, var(--border-default) 20%);
+}
+
+.daily-sales-health-badge--good {
+  color: var(--accent-success, #33f28b);
+  border-color: color-mix(in srgb, var(--accent-success, #33f28b) 45%, var(--border-default));
+}
+
+.daily-sales-health-badge--warning {
+  color: var(--accent-warning, #facc15);
+  border-color: color-mix(in srgb, var(--accent-warning, #facc15) 55%, var(--border-default));
+}
+
+.daily-sales-health-badge--danger {
+  color: var(--accent-danger, #f87171);
+  border-color: color-mix(in srgb, var(--accent-danger, #f87171) 50%, var(--border-default));
+}
+
+.daily-sales-health-caret {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+/* Mute the quality panel heading — it's a secondary/diagnostic zone */
+.daily-sales-panel--quality > .daily-sales-panel-head h2 {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.daily-sales-panel--quality > .daily-sales-panel-head p {
+  font-size: 0.78rem;
+}
+
 .daily-sales-chart-wrap {
   min-height: 320px;
 }

@@ -162,7 +162,7 @@ function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals)
 }
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${data.status}: ${data.statusReason} | Score ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Confidence ${data.confidence}`;
+  return `${data.status}: ${data.statusReason} | Skor ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${data.confidence}`;
 }
 
 function reliabilityFromConfidence(confidence: string): number {
@@ -686,7 +686,16 @@ export default function PreNivelacijaPriorityPage() {
                           <tr key={row.artikalId} className={expanded ? "expanded-row" : ""}>
                             <td>{row.sku}</td>
                             <td title={row.supplierName}>{row.supplierName}</td>
-                            <td className="align-right">{row.preNivelacijaScore.toFixed(1)}</td>
+                            <td className="align-right">
+                              <div className="pnp-score-cell">
+                                <span>{row.preNivelacijaScore.toFixed(1)}</span>
+                                <div
+                                  className="pnp-score-mini-bar"
+                                  style={{ width: `${clamp(row.preNivelacijaScore, 0, 100)}%` }}
+                                  data-level={row.preNivelacijaScore >= 68 ? "high" : row.preNivelacijaScore >= 43 ? "mid" : "low"}
+                                />
+                              </div>
+                            </td>
                             <td className="align-right">{row.stockUnits}</td>
                             <td className="align-right">{row.daysSinceLastSale}</td>
                             <td className={`align-right ${row.revenueDelta >= 0 ? "trend-up" : "trend-down"}`}>{fmtRsd(row.revenueDelta)}</td>
@@ -734,35 +743,35 @@ export default function PreNivelacijaPriorityPage() {
                   <strong title={selectedRow.supplierName}>{selectedRow.supplierName}</strong>
                 </article>
                 <article>
-                  <span>Priority band</span>
+                  <span>Prioritetna kategorija</span>
                   <strong>{selectedRow.priorityBand}</strong>
                 </article>
                 <article>
-                  <span>Scenario highlight (30d prihod)</span>
+                  <span>Scenario isticanje (30d prihod)</span>
                   <strong>{fmtRsd(selectedRow.scenarioHighlightNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>
-                  <span>Scenario markdown (30d prihod)</span>
+                  <span>Scenario snizenje (30d prihod)</span>
                   <strong>{fmtRsd(selectedRow.scenarioMarkdownNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>
-                  <span>Revenue delta</span>
+                  <span>Delta prihoda</span>
                   <strong className={selectedRow.revenueDelta >= 0 ? "trend-up" : "trend-down"}>{fmtRsd(selectedRow.revenueDelta)}</strong>
                 </article>
                 <article>
-                  <span>Margin delta</span>
+                  <span>Delta marze</span>
                   <strong className={selectedRow.marginDelta >= 0 ? "trend-up" : "trend-down"}>{fmtRsd(selectedRow.marginDelta)}</strong>
                 </article>
                 <article>
-                  <span>Stock units</span>
+                  <span>Zaliha (kom.)</span>
                   <strong>{selectedRow.stockUnits}</strong>
                 </article>
                 <article>
-                  <span>No-sale days</span>
+                  <span>Dana bez prodaje</span>
                   <strong>{selectedRow.daysSinceLastSale}</strong>
                 </article>
                 <article>
-                  <span>Decision score</span>
+                  <span>Ocena preporuke</span>
                   <strong>{selectedRow.decisionScore}</strong>
                 </article>
               </div>
@@ -805,7 +814,7 @@ export default function PreNivelacijaPriorityPage() {
               </h2>
               <div className="pnp-queues-grid">
                 <article className="pnp-queue-panel pnp-queue-panel--boost">
-                  <h3>Highlight Now ({data.queues.highlightNow.length})</h3>
+                  <h3>Odmah istaknuti ({data.queues.highlightNow.length})</h3>
                   {data.queues.highlightNow.length === 0 ? (
                     <p className="pnp-queue-empty">Nema SKU u ovom redu.</p>
                   ) : (

@@ -49,7 +49,7 @@ export function InventoryInsightPanels({
           {agingBuckets.length === 0 ? (
             <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Aging analitika nije dostupna za trenutne filtere.</div>
           ) : agingBuckets.map((bucket) => (
-            <article key={bucket.bucketKey} className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
+            <article key={bucket.bucketKey} className={`rounded-2xl border bg-[var(--surface-elevated)] p-4${bucket.bucketKey === "90+" ? " border-[var(--accent-danger,#f87171)] ring-1 ring-[var(--accent-danger,#f87171)/30]" : " border-[var(--border-default)]"}`} data-stale={bucket.bucketKey === "90+" || undefined}>
               <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAgingTone(bucket.bucketKey)}`}>{bucket.label}</div>
               <div className="mt-4 text-2xl font-semibold text-white">{formatNumber(bucket.itemCount)}</div>
               <div className="mt-2 text-sm text-[var(--text-primary)]">{formatNumber(bucket.totalUnits)} komada | {formatCurrency(bucket.estimatedValue)}</div>

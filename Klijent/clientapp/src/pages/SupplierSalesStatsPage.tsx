@@ -827,7 +827,7 @@ export default function SupplierSalesStatsPage() {
     }
 
     if (estimatedCostShare != null && estimatedCostShare > 0) {
-      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa marža je procenjena iz fallback troška artikla — koristite je oprezno.`);
+      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenjena (bez direktnog troška) — maržu čitati oprezno.`);
     }
 
     if (unknownShare != null && unknownShare > 0) {
@@ -860,12 +860,12 @@ export default function SupplierSalesStatsPage() {
       { key: "suppliers", label: "Dobavljaca", value: data?.totals.brojDobavljaca ?? 0 },
       { key: "unknownSuppliers", label: "Nepoznato/N-A", value: unknownSuppliers.length },
       { key: "marginCoverage", label: "Pokrice istorijskog troska %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
-      { key: "fallbackCoverage", label: "Promet procenjen iz fallback troska %", value: fmtPct(data?.dataQuality.estimatedCostRevenueSharePct, 1) },
-      { key: "noCostCoverage", label: "Promet bez troska %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(data?.dataQuality.estimatedCostRevenueSharePct, 1) },
+      { key: "noCostCoverage", label: "Promet bez nabavne cene %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "totalsPopTrend", label: "Ukupan PoP trend", value: fmtPct(data?.totals.popRevenueChangePct, 1) },
       { key: "totalsPrePostImpact", label: "Ukupan nivelacija uticaj", value: fmtPct(data?.totals.prePostNivelacijaRevenueImpactPct, 1) },
       { key: "splitCoverage", label: "Uporedivo pre/post pokrivanje", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
-      { key: "snapshotCoverage", label: "Snapshot trosak pokrice %", value: fmtPct(data?.totals.snapshotCostCoveragePct, 1) },
+      { key: "snapshotCoverage", label: "Zamrznuta procena (snapshot) %", value: fmtPct(data?.totals.snapshotCostCoveragePct, 1) },
       { key: "isSnapshotActive", label: "Snapshot aktivan", value: data?.totals.isSnapshotActive ? "da" : "ne" },
       { key: "increaseFocus", label: "Pojačaj fokus", value: supplierCounts.increaseFocus },
       { key: "maintain", label: "Zadrži", value: supplierCounts.maintain },
@@ -1714,15 +1714,15 @@ export default function SupplierSalesStatsPage() {
                   <strong>{fmtPct(selectedSupplier.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Pokrice istorijskog troska % <InfoTip text="Procenat prometa za koji je trosak preuzet sa prodajne stavke, bez fallback procene iz artikla. Formula: promet sa istorijskim troskom / ukupan promet x 100." /></span>
+                  <span>Pokrice direktnom nabavnom % <InfoTip text="Procenat prometa za koji je trosak preuzet sa prodajne stavke, bez procene iz artikla. Formula: promet sa istorijskim troskom / ukupan promet x 100." /></span>
                   <strong>{fmtPct(selectedSupplier.historicalCostCoveragePct ?? selectedSupplier.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Promet procenjen iz fallback troska % <InfoTip text="Procenat prometa gde je trosak procenjen iz fallback izvora artikla. Formula: promet sa fallback troskom / ukupan promet x 100. Operativni troskovi nisu ukljuceni." /></span>
+                  <span>Promet sa procenjenom nabavnom % <InfoTip text="Procenat prometa gde je nabavna cena procenjena iz artikla (bez direktnog troška na stavci prodaje). Formula: promet sa procenjenom nabavnom / ukupan promet x 100. Operativni troskovi nisu ukljuceni." /></span>
                   <strong>{fmtPct(selectedSupplier.estimatedCostCoveragePct ?? selectedSupplier.fallbackCostCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Promet bez troska % <InfoTip text="Procenat prometa koji nema ni istorijski ni fallback trosak, pa ne ulazi u obracun marznog doprinosa ni marze %. Formula: promet bez troska / ukupan promet x 100." /></span>
+                  <span>Promet bez nabavne cene % <InfoTip text="Procenat prometa koji nema ni direktni ni procenjeni trosak, pa ne ulazi u obracun marznog doprinosa ni marze %. Formula: promet bez troska / ukupan promet x 100." /></span>
                   <strong>{fmtPct(selectedSupplier.noCostCoveragePct, 1)}</strong>
                 </article>
                 {(selectedSupplier.snapshotCostCoveragePct ?? 0) > 0 ? (

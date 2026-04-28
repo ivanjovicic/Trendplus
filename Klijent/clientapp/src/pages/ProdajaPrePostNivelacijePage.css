@@ -190,6 +190,68 @@
   margin-bottom: 14px;
 }
 
+/* ── Data Health compact bar (trust summary moved here) ─────────────────── */
+
+.ppn-data-health-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.ppn-data-health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-default, rgba(255,255,255,0.12));
+  background: var(--dashboard-surface-card-top, rgba(255,255,255,0.04));
+  padding: 0.3rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.ppn-data-health-badge:hover {
+  background: color-mix(in srgb, var(--dashboard-surface-card-top, rgba(255,255,255,0.04)) 80%, var(--dashboard-accent, #33f28b) 20%);
+}
+
+.ppn-data-health-badge--strong {
+  color: var(--dashboard-accent, #33f28b);
+  border-color: color-mix(in srgb, var(--dashboard-accent, #33f28b) 45%, transparent);
+}
+
+.ppn-data-health-badge--watch {
+  color: var(--accent-warning, #facc15);
+  border-color: color-mix(in srgb, var(--accent-warning, #facc15) 55%, transparent);
+}
+
+.ppn-data-health-badge--weak {
+  color: var(--accent-danger, #f87171);
+  border-color: color-mix(in srgb, var(--accent-danger, #f87171) 50%, transparent);
+}
+
+.ppn-health-caret {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+.ppn-data-health-hint {
+  color: var(--dashboard-text-muted);
+  font-size: 0.76rem;
+}
+
+.ppn-trust-drawer {
+  background: var(--dashboard-surface-card-top, rgba(255,255,255,0.03));
+  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 18%, transparent);
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 10px;
+}
+
 .ppn-decision-kpi {
   background: linear-gradient(165deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
   border: 1px solid color-mix(in srgb, var(--dashboard-accent) 28%, transparent);

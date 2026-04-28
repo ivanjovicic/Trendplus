@@ -422,6 +422,7 @@ export default function DailySalesStatsPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
 
   const memoizedQueryDataScope = useMemo(() => queryDataScope, [queryDataScope]);
 
@@ -910,6 +911,16 @@ export default function DailySalesStatsPage() {
     mismatchCount,
     missingShiftCount,
   ]);
+
+  // Data Health badge: count non-info, non-good signals
+  const dataHealthSummary = useMemo(() => {
+    const problemSignals = qualitySignals.filter((s) => s.tone === "danger" || s.tone === "warning");
+    const dangerCount = qualitySignals.filter((s) => s.tone === "danger").length;
+    const total = problemSignals.length;
+    if (dangerCount > 0) return { tone: "danger" as const, label: `\u26a0 ${total} problem${total === 1 ? "" : "a"} u podacima`, count: total };
+    if (total > 0) return { tone: "warning" as const, label: `\u26a0 ${total} upozorenje${total === 1 ? "" : "a"}`, count: total };
+    return { tone: "good" as const, label: "\u2713 Podaci uredu", count: 0 };
+  }, [qualitySignals]);
 
   const decisionInsights = useMemo<InsightCard[]>(() => {
     const insights: InsightCard[] = [];
@@ -1450,26 +1461,38 @@ export default function DailySalesStatsPage() {
               </div>
             </article>
 
-            <article className="daily-sales-panel">
+            <article className="daily-sales-panel daily-sales-panel--quality">
               <div className="daily-sales-panel-head">
                 <div>
                   <h2 className="with-tip">
-                    <span>Kvalitet i operativa</span>
+                    <span>Kvalitet podataka</span>
                     <InfoTip text="Signali koji uticu na pouzdanost odluka u ovom periodu. Nepoznati dobavljac: prodaja bez mapiranog dobavljaca. Dani nepodudaranja: zbir po dobavljacima ne odgovara dnevnom totalu. Dani bez satnice: nema pouzdanog smenskog razdvajanja. Dupli/neuskladjeni racuni: POS inconsistencies. Visoke vrednosti na bilo kom signalu = zadrzi oprez pri interpretaciji trendova." />
                   </h2>
-                  <p>Ove metrike govore koliko mozemo da verujemo smenskoj i supplier analitici.</p>
+                  <p>Dijagnosticki sloj — bitno samo ako planirate dublje analize pouzdanosti.</p>
                 </div>
+                <button
+                  type="button"
+                  className={`daily-sales-health-badge daily-sales-health-badge--${dataHealthSummary.tone}`}
+                  onClick={() => setQualityPanelOpen((prev) => !prev)}
+                  aria-expanded={qualityPanelOpen}
+                  title={qualityPanelOpen ? "Sakrij detalje kvaliteta" : "Prikaži detalje kvaliteta"}
+                >
+                  {dataHealthSummary.label}
+                  <span className="daily-sales-health-caret">{qualityPanelOpen ? "▲" : "▼"}</span>
+                </button>
               </div>
 
-              <div className="daily-sales-quality-grid">
-                {qualitySignals.map((signal) => (
-                  <article key={signal.key} className="daily-sales-quality-card" data-tone={signal.tone}>
-                    <span>{signal.label}</span>
-                    <strong>{signal.value}</strong>
-                    <small>{signal.description}</small>
-                  </article>
-                ))}
-              </div>
+              {qualityPanelOpen ? (
+                <div className="daily-sales-quality-grid">
+                  {qualitySignals.map((signal) => (
+                    <article key={signal.key} className="daily-sales-quality-card" data-tone={signal.tone}>
+                      <span>{signal.label}</span>
+                      <strong>{signal.value}</strong>
+                      <small>{signal.description}</small>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
             </article>
           </section>
 
