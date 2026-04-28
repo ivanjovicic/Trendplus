@@ -235,21 +235,7 @@
   transition: background 0.15s;
 }
 
-.daily-sales-health-badge::before {
-  content: "ℹ";
-  display: inline-grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 800;
-  margin-right: 6px;
-  color: var(--text-primary);
-  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 86%, var(--ds-accent) 14%), var(--ds-surface-dark));
-  border: 1px solid rgba(30, 200, 255, 0.18);
-  box-shadow: 0 0 10px rgba(30, 200, 255, 0.08);
-}
+/* icon handled globally via tailwind.css [class*="badge"]::before */
 
 .daily-sales-health-badge:hover {
   background: color-mix(in srgb, var(--surface-elevated) 80%, var(--border-default) 20%);
