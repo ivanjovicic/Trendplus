@@ -67,12 +67,12 @@ const BOOST_MIN_RELIABILITY_PCT = 40;
 const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
   { key: "supplierName", header: "Dobavljac", dataType: "text" },
-  { key: "preNivelacijaScore", header: "Pre-niv. score", dataType: "number" },
+  { key: "preNivelacijaScore", header: "Skor nivelacije", dataType: "number" },
   { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },
   { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
-  { key: "revenueDelta", header: "Highlight vs Markdown (prihod)", dataType: "currency" },
+  { key: "revenueDelta", header: "Isticanje vs sniženje (prihod)", dataType: "currency" },
   { key: "reliabilityPct", header: "Pouzdanost %", dataType: "number" },
-  { key: "decisionScore", header: "Decision score", dataType: "number" },
+  { key: "decisionScore", header: "Ocena preporuke", dataType: "number" },
   { key: "status", header: "Preporuka", dataType: "text" },
 ];
 
@@ -89,11 +89,11 @@ function CustomSupplierTooltip({ active, payload }: CustomSupplierTooltipProps) 
     <div style={CHART_TOOLTIP_STYLE}>
       <p style={{ margin: 0, fontSize: "12px", fontWeight: 500 }}>{data.name}</p>
       <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
-        Action share: {fmtPct(data.sharePct, 2)}
+        Udeo u akciji: {fmtPct(data.sharePct, 2)}
       </p>
       {wowPct != null ? (
         <p style={{ margin: "4px 0 0", fontSize: "12px", color: wowPct >= 0 ? "#ef4444" : "#16a34a" }}>
-          WoW promena rizika: {wowPct >= 0 ? "+" : ""}{fmtPct(wowPct, 1)}
+          Sedm. promena rizika: {wowPct >= 0 ? "+" : ""}{fmtPct(wowPct, 1)}
         </p>
       ) : null}
     </div>
@@ -386,9 +386,9 @@ export default function PreNivelacijaPriorityPage() {
       { key: "supplierId", label: "Dobavljac", value: activeFilters.supplierId ?? "" },
       { key: "seasonId", label: "Sezona", value: activeFilters.seasonId ?? "" },
       { key: "footwearTypeId", label: "Tip obuce", value: activeFilters.footwearTypeId ?? "" },
-      { key: "minScore", label: "Min score", value: activeFilters.minScore },
-      { key: "noSaleDaysMin", label: "No-sale days", value: activeFilters.noSaleDaysMin },
-      { key: "page", label: "Page", value: page },
+      { key: "minScore", label: "Min. skor", value: activeFilters.minScore },
+      { key: "noSaleDaysMin", label: "Min. dana bez prodaje", value: activeFilters.noSaleDaysMin },
+      { key: "page", label: "Strana", value: page },
     ],
     [activeFilters.footwearTypeId, activeFilters.minScore, activeFilters.noSaleDaysMin, activeFilters.seasonId, activeFilters.supplierId, page]
   );
@@ -464,8 +464,8 @@ export default function PreNivelacijaPriorityPage() {
         <div>
           <h1 className="pnp-decision-title">Pre-Nivelacija Prioriteti</h1>
           <p className="pnp-decision-subtitle">
-            Operativni decision-support za SKU pre markdown faze: gde treba pojacati izlaganje,
-            sta zadrzati pod nadzorom i sta spustiti iz fokusa.
+            Operativni podršku za odluke za SKU pre faze sniženja: gde treba pojačati izlaganje,
+            šta zadržati pod nadzorom i šta spustiti iz fokusa.
           </p>
         </div>
         <div className="pnp-decision-generated">
@@ -505,12 +505,12 @@ export default function PreNivelacijaPriorityPage() {
         </label>
 
         <label className="pnp-decision-field">
-          <span>Min score</span>
+          <span>Min. skor</span>
           <input type="number" min={0} max={100} value={minScore} onChange={(e) => setMinScore(Number(e.target.value) || 0)} />
         </label>
 
         <label className="pnp-decision-field">
-          <span>No-sale days min</span>
+          <span>Min. dana bez prodaje</span>
           <input type="number" min={0} value={noSaleDaysMin} onChange={(e) => setNoSaleDaysMin(Number(e.target.value) || 0)} />
         </label>
 
@@ -544,24 +544,24 @@ export default function PreNivelacijaPriorityPage() {
 
           <section className="pnp-decision-kpis">
             <article className="pnp-decision-kpi">
-              <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i imaju aktivan pre-nivelacija signal." /></span>
+              <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i imaju aktivan signal pre nivelacije (pre-nivelacioni skor ≥ min. skora). Ovo su artikli koji imaju zalihu i prodajni signal dovoljan za intervenciju." /></span>
               <strong>{data.summary.candidatesCount}</strong>
             </article>
             <article className="pnp-decision-kpi">
-              <span>High priority SKU <InfoTip text="SKU sa prioritetnom kategorijom 'high'. Najjači signal za intervenciju pre nivelacije." /></span>
+              <span>Visok prioritet <InfoTip text="SKU u prioritetnoj bandi 'high' — imaju najjači kompozitni signal (visok skor zalihe + stagnacija prodaje). Ovo su artikli gde je intervencija pre nivelacije najhitnija." /></span>
               <strong>{data.summary.highPriorityCount}</strong>
             </article>
             <article className="pnp-decision-kpi">
-              <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih kandidatskih SKU. Ovo je broj komada, ne RSD vrednost." /></span>
+              <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih prikazanih kandidatskih SKU (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. Veća zaliha bez prodaje = veći operativni rizik." /></span>
               <strong>{data.summary.totalStockAtRisk}</strong>
               <em>kom ukupno</em>
             </article>
             <article className="pnp-decision-kpi">
-              <span>Uplift projekcija <InfoTip text="Procenjeni prihod: highlight scenario minus markdown scenario za sve 'Pojačaj' kandidate. PROCENA — bazirana na scenariju, ne garantovani prihod." /></span>
+              <span>Projekcija povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja za sve 'Pojačaj' kandidate. PROCENA — bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod. Tretirati kao relativni signal, ne kao apsolutnu predikciju." /></span>
               <strong>{fmtRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
             </article>
             <article className="pnp-decision-kpi">
-              <span>Izbegljivi markdown gubitak <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom. PROCENA bazirana na scenario modelu." /></span>
+              <span>Izbegljivi gubitak od sniženja <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom pre nivelacije. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru). Apsolutni iznos je okvirna procena — relativni odnos između SKU-ova je relevantniji." /></span>
               <strong className="trend-down">{fmtRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
             </article>
           </section>
@@ -647,27 +647,27 @@ export default function PreNivelacijaPriorityPage() {
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("preNivelacijaScore")}>Score{sortMarker("preNivelacijaScore", sortField, sortDir)}</button>
-                        <InfoTip text="Pre-nivelacija score (0–100): kompozit od pritiska zalihe, brzine prodaje, starosti poslednje prodaje, markdown šanse i margin potencijala." />
+                        <InfoTip text="Skor nivelacije (0–100): kompozitni signal od pritiska zalihe, brzine prodaje (sell-through), dana bez prodaje, šanse za sniženje i marže potencijala. Viši skor = veći prioritet za intervenciju." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("stockUnits")}>Zaliha{sortMarker("stockUnits", sortField, sortDir)}</button>
-                        <InfoTip text="Tekuća zaliha SKU u komadima." />
+                        <InfoTip text="Tekuća raspoloživa zaliha ovog SKU u komadima. Viša zaliha uz nisku prodaju = veći rizik i veći prioritet za akciju." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("daysSinceLastSale")}>Dana bez prod.{sortMarker("daysSinceLastSale", sortField, sortDir)}</button>
-                        <InfoTip text="Broj dana od poslednje prodaje. Veći broj = veći rizik stagnacije zalihe." />
+                        <InfoTip text="Broj kalendarskih dana od poslednje evidentirane prodaje ovog SKU. Veći broj = jači signal stagnacije zalihe. Vrednosti > 30 dana zaslužuju prioritetnu pažnju." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("revenueDelta")}>Highlight vs Markdown{sortMarker("revenueDelta", sortField, sortDir)}</button>
-                        <InfoTip text="Razlika prihoda (30d): pojačaj scenario minus markdown scenario. Pozitivno = isplativije pojačati pre nivelacije." />
+                        <InfoTip text="Razlika procenjenog prihoda u 30-dnevnom prozoru: scenario isticanja minus scenario sniženja. Pozitivna vrednost = isplativije je istaknuti artikal pre nivelacije nego ga odmah sniziti. Negativno = sniženje verovatno donosi više." />
                       </th>
                       <th className="align-center">
                         Pouzdanost
-                        <InfoTip text="Pouzdanost signala: Visoko/Srednje/Nisko. Proxy vrednosti: Visoko≈90%, Srednje≈65%, Nisko≈35%. Nije statistički precizni procenat — bazira se na confidence tagu iz modela." />
+                        <InfoTip text="Pouzdanost signala: Visoko / Srednje / Nisko. Okvirne vrednosti: Visoko ≈ 90%, Srednje ≈ 65%, Nisko ≈ 35%. Nije statistički precizan procenat — bazira se na confidence tagu iz modela. Nisko poverenje automatski spušta preporuku 'Pojačaj' → 'Zadrži'." />
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button>
-                        <InfoTip text="Sistemska preporuka: Pojačaj / Zadrži / Smanji — bazirana na decision score, pouzdanosti i prioritetnoj bandi." />
+                        <InfoTip text="Sistemska preporuka: Pojačaj / Zadrži / Smanji — bazirana na oceni preporuke (0–100), pouzdanosti signala i prioritetnoj bandi. Formula: skor nivelacije×50% + delta prihoda×20% + stagnacija×15% + pouzdanost×15%. Pojačaj ≥68, Zadrži 43–67, Smanji <43." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -801,7 +801,7 @@ export default function PreNivelacijaPriorityPage() {
             <section className="pnp-queues">
               <h2 className="pnp-queues-title">
                 Redovi čekanja
-                <InfoTip text="SKU raspoređeni u operativne redove: Highlight Now (odmah istaknuti), Pod nadzorom (pratiti), Verovatni markdown (verovatno idu na sniženje). Bazira se na priorityBand i signal snazi." />
+                <InfoTip text="SKU raspoređeni u operativne kategorije: 'Odmah istaknuti' (Pojačaj), 'Pod nadzorom' (Zadrži), 'Verovatno sniženje' (Smanji). Raspored se bazira na prioritetnoj bandi i snazi signal kombinacije." />
               </h2>
               <div className="pnp-queues-grid">
                 <article className="pnp-queue-panel pnp-queue-panel--boost">

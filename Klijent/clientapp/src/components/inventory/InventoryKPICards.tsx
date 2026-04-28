@@ -1,3 +1,4 @@
+import InfoTip from "../ui/InfoTip";
 import { formatCurrency, formatNumber, formatPercent } from "./inventoryUtils";
 
 type InventoryKPICardsProps = {
@@ -10,6 +11,14 @@ type InventoryKPICardsProps = {
 };
 
 type KpiTone = "cyan" | "green" | "amber" | "blue" | "value";
+
+const KPI_TIPS: Record<string, string> = {
+  "Ukupno SKU": "Broj jedinstvenih artikala (SKU) u izabranom filteru (prodavnica + dobavljač). Prikazuje obim asortimana, ne zalihu.",
+  "Ukupno na stanju": "Zbir pozitivnih raspolozivih kolicina za sve SKU u filteru. Ne uracunava negativne (korektivne) kolicine niti prednarudzbine.",
+  "Niska zaliha": "Broj SKU kod kojih je trenutna kolicina <= minimalnog nivoa (ili <= 2 kom ako minimum nije definisan). Procenat u napomeni je udeo ovih SKU u ukupnom broju.",
+  "Prosecno po SKU": "Srednja raspoloziva kolicina po jedinstvenom artiklu u filteru. Formula: ukupno na stanju / ukupno SKU. Visoke vrednosti mogu znaciti prekomerne zalihe.",
+  "Procena vrednosti": "Procenjena nabavna vrednost pozitivne raspolozive zalihe. Formula: kolicina × nabavna cena po SKU. Nabavna cena moze biti istorijska ili fallback procena — nije garantovano tacna za sve artikle.",
+};
 
 export function InventoryKPICards({
   totalSku,
@@ -42,7 +51,10 @@ export function InventoryKPICards({
           key={card.label}
           className={`rounded-[18px] border bg-[linear-gradient(165deg,color-mix(in_srgb,var(--surface-elevated)_86%,var(--success)_14%),var(--surface-darker))] p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 ${toneClasses[card.tone]}`}
         >
-          <div className="text-xs font-bold uppercase tracking-[0.22em] text-muted">{card.label}</div>
+          <div className="text-xs font-bold uppercase tracking-[0.22em] text-muted flex items-center gap-1">
+            {card.label}
+            <InfoTip text={KPI_TIPS[card.label] ?? card.label} />
+          </div>
           <div className="mt-4 text-2xl font-extrabold tracking-tight drop-shadow-[0_0_12px_currentColor]">{card.value}</div>
           <p className="mt-3 text-sm leading-5 text-muted">{card.note}</p>
         </article>

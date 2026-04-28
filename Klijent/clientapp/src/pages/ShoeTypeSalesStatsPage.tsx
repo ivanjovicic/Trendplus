@@ -997,7 +997,7 @@ export default function ShoeTypeSalesStatsPage() {
               <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>Ukupan marzni doprinos <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za sve stavke sa dostupnim troskom, grupisano po tipu obuće. Operativni troskovi, plate, zakup i ostali indirektni troskovi nisu ukljuceni." /></span>
+              <span>Ukupan maržni doprinos <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za sve stavke sa dostupnim troškom, grupisano po tipu obuće. Operativni troškovi, plate, zakup i ostali indirektni troškovi nisu uključeni." /></span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
               <small
                 className={`shoetype-decision-kpi-badge ${qualityTierClass(data.totals.marginQualityTier)}`}
@@ -1023,7 +1023,7 @@ export default function ShoeTypeSalesStatsPage() {
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="shoetype-decision-kpi">
-              <span>PoP trend prometa <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste duzine. Formula: (trenutni promet - prethodni promet) / prethodni promet x 100. N/A ako prethodni period nije dostupan." /></span>
+              <span>PoP trend prometa <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet − prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>

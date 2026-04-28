@@ -1,4 +1,5 @@
 ﻿import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import InfoTip from "../ui/InfoTip";
 import type { InventoryBalance } from "../../types/analytics";
 import { formatCurrency, formatNumber, formatPercent } from "./inventoryUtils";
 import type { InventoryRow } from "./types";
@@ -29,7 +30,7 @@ export function InventoryPriorityPanels({
       <div className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Rizik i prioriteti</h2>
+            <h2 className="text-lg font-semibold text-white">Rizik i prioriteti <InfoTip text="Artrikli sa statusom 'Kriticno' ili 'Niska zaliha' na trenutnoj strani tabele, i oni sa najvecom procenjenom nabavnom vrednoscu. Sluzi kao brzi operativni pregled — klikni na red za detalj i preporuku akcije." /></h2>
             <p className="text-sm text-[var(--text-primary)]">Najrizicniji artikli i oni sa najvecom vezanom vrednoscu na trenutnoj strani.</p>
           </div>
           <span className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">{rows.length} redova na ekranu</span>
@@ -37,7 +38,7 @@ export function InventoryPriorityPanels({
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-            <h3 className="text-sm font-semibold text-white">Najveci rizici</h3>
+            <h3 className="text-sm font-semibold text-white">Najveci rizici <InfoTip text="Artikli sa najlosijim statusom zalihe (Kriticno > Niska zaliha) na ovoj strani tabele. Klik otvara detalj sa preporukom." /></h3>
             <div className="mt-3 space-y-3">
               {topRiskRows.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema rizicnih artikala na ovoj strani.</div> : topRiskRows.map((row) => (
                 <button key={`risk-${row.id}`} type="button" onClick={() => onOpenDetail(row)} className="flex w-full items-center justify-between rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
@@ -49,7 +50,7 @@ export function InventoryPriorityPanels({
           </div>
 
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-            <h3 className="text-sm font-semibold text-white">Najveca vrednost</h3>
+            <h3 className="text-sm font-semibold text-white">Najveca vrednost <InfoTip text="Artikli sa najvecom procenjenom nabavnom vrednoscu (kolicina x nabavna cena) na ovoj strani tabele. Veci kapital veze vece operativne resurse i zahteva pazljiviju nabavku." /></h3>
             <div className="mt-3 space-y-3">
               {highestValueRows.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema podataka za prikaz.</div> : highestValueRows.map((row) => (
                 <button key={`value-${row.id}`} type="button" onClick={() => onOpenDetail(row)} className="flex w-full items-center justify-between rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
@@ -64,7 +65,7 @@ export function InventoryPriorityPanels({
 
       <div className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div>
-          <h2 className="text-lg font-semibold text-white">Vrednost po dobavljacu</h2>
+          <h2 className="text-lg font-semibold text-white">Vrednost po dobavljacu <InfoTip text="Procenjena nabavna vrednost raspolozive zalihe grupisana po dobavljacima za prikazane artikle. Koristiti za prioritizaciju nabavke, pregovaranje i analizu zavisnosti od pojedinih dobavljaca." /></h2>
           <p className="text-sm text-[var(--text-primary)]">Top dobavljaci po procenjenoj vrednosti u trenutnoj tabeli.</p>
         </div>
         <div className="mt-5 h-[320px]">

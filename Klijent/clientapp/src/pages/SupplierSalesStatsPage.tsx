@@ -1250,7 +1250,7 @@ export default function SupplierSalesStatsPage() {
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="supplier-decision-kpi">
-              <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste duzine. Formula: (trenutni promet - prethodni promet) / prethodni promet x 100." /></span>
+              <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet − prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
@@ -1458,7 +1458,7 @@ export default function SupplierSalesStatsPage() {
                           data-sort-dir={isSortActive("popRevenueChangePct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("popRevenueChangePct")}
                         >
-                          PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text="Promena prometa vs prethodni period." />
+                          PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text="Međuperiodni trend prometa (Period over Period). Formula: (trenutni promet − prethodni promet) / prethodni promet × 100. Prethodni period je isti vremenski opseg, pomeren unazad. N/A ako prethodni promet nije dostupan; 'Nova baza' ako je prethodni promet bio 0." />
                         </button>
                       </th>
                       <th className={isSortActive("status", sortField) ? "is-sorted" : undefined}>

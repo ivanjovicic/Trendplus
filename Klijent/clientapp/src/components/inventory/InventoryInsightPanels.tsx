@@ -1,4 +1,5 @@
 ﻿import { Clock3 } from "lucide-react";
+import InfoTip from "../ui/InfoTip";
 import type { InventoryInsightItem, InventoryInsights, StoreOption, SupplierFilterOption } from "../../types/analytics";
 import { buildRowFromInsightItem, formatCurrency, formatNumber, formatPercent, getAbcTone, getAgingTone } from "./inventoryUtils";
 import type { InventoryRow } from "./types";
@@ -36,7 +37,7 @@ export function InventoryInsightPanels({
       <div className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Aging i obrt fonda robe</h2>
+            <h2 className="text-lg font-semibold text-white">Aging i obrt fonda robe <InfoTip text="Grupisanje artikala po broju dana bez kretanja zalihe (poslednja prodaja ili prijem). 0–30 d: aktivan fond. 30–60 d: prati. 60–90 d: upozorenje. 90+ d: visok rizik zastarevanja — kandidati za akciju ili otpis." /></h2>
             <p className="text-sm text-[var(--text-primary)]">Dani bez kretanja su racunati po poslednjem movement-u, uz fallback na poslednje azuriranje artikla.</p>
           </div>
           <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
@@ -81,7 +82,7 @@ export function InventoryInsightPanels({
       <div className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">ABC segmentacija kapitala</h2>
+            <h2 className="text-lg font-semibold text-white">ABC segmentacija kapitala <InfoTip text="Klasifikacija artikala po udeju nabavne vrednosti zalihe. Klasa A (~70% vrednosti, manji broj artikala): zahteva najjaci nadzor. Klasa B (~20%): pratiti redovno. Klasa C (~10%): najmanji uticaj. Koristi za prioritizaciju nabavke i inventara." /></h2>
             <p className="text-sm text-[var(--text-primary)]">Klasa A predstavlja artikle koji nose najveci deo nabavne vrednosti filtrirane zalihe.</p>
           </div>
           <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">

@@ -1,4 +1,5 @@
-﻿import { formatCurrency, formatNumber, getCoverageText, getStockState } from "./inventoryUtils";
+﻿import InfoTip from "../ui/InfoTip";
+import { formatCurrency, formatNumber, getCoverageText, getStockState } from "./inventoryUtils";
 import type { InventoryRow } from "./types";
 
 type InventoryItemsTableProps = {
@@ -37,14 +38,38 @@ export function InventoryItemsTable({
           <table aria-label="Lista artikala na stanju" className="min-w-full text-sm">
             <thead className="bg-[var(--surface-elevated)] text-left text-[var(--text-primary)]">
               <tr>
-                <th className="px-4 py-3">Artikal</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Kolicina</th>
-                <th className="px-4 py-3 text-right">Minimum</th>
-                <th className="px-4 py-3 text-right">Gap</th>
-                <th className="px-4 py-3 text-right">Nabavna</th>
-                <th className="px-4 py-3 text-right">Vrednost</th>
-                <th className="px-4 py-3">Prodavnica</th>
+                <th className="px-4 py-3">
+                  Artikal
+                  <InfoTip text="Naziv artikla i PLU kod. Klik na red otvara detalj sa preporukom akcije, istorijatom i size curve analizom." />
+                </th>
+                <th className="px-4 py-3">
+                  Status
+                  <InfoTip text="Status zalihe: Kritično (ispod minimuma), Niska zaliha (≤ 20% iznad minimuma), Uredu (iznad minimuma). Bazira se na definisanom minimumu ili fallback pragovima." />
+                </th>
+                <th className="px-4 py-3 text-right">
+                  Kolicina
+                  <InfoTip text="Trenutna raspoloziva kolicina u komadima. Ne uracunava nerasporedjen ili blokiran fond." />
+                </th>
+                <th className="px-4 py-3 text-right">
+                  Minimum
+                  <InfoTip text="Minimalni nivo zalihe definisan za ovaj artikal i prodavnicu. Kada je kolicina <= minimuma, artikal ulazi u 'Niska zaliha' ili 'Kriticno' status." />
+                </th>
+                <th className="px-4 py-3 text-right">
+                  Gap
+                  <InfoTip text="Razlika između minimuma i trenutne kolicine. Pozitivan Gap = kolicina je iznad minimuma. Negativan ili nula = potrebna je dopuna." />
+                </th>
+                <th className="px-4 py-3 text-right">
+                  Nabavna
+                  <InfoTip text="Nabavna cena po komadu. Moze biti istorijska (iz poslednjeg prijema) ili fallback procena. Koristiti oprezno — nije uvek ažurna." />
+                </th>
+                <th className="px-4 py-3 text-right">
+                  Vrednost
+                  <InfoTip text="Procenjena nabavna vrednost zalihe ovog artikla. Formula: kolicina × nabavna cena. Podlezna nepreciznosti ako je cena fallback." />
+                </th>
+                <th className="px-4 py-3">
+                  Prodavnica
+                  <InfoTip text="Lokacija (prodajni objekat) gde se artikal nalazi." />
+                </th>
                 <th className="px-4 py-3">Dobavljac</th>
               </tr>
             </thead>

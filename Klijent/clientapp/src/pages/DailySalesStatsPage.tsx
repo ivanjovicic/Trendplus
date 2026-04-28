@@ -830,7 +830,7 @@ export default function DailySalesStatsPage() {
   const qualitySignals = useMemo(() => ([
     {
       key: "unknown",
-      label: "Unknown supplier",
+      label: "Nepoznati dobavljac",
       value: fmtPct(data?.metadata.unknownSupplierPct ?? 0, 1),
       tone: (data?.metadata.unknownSupplierPct ?? 0) >= 5 ? "danger" : (data?.metadata.unknownSupplierPct ?? 0) > 0 ? "warning" : "good",
       description: "Udeo prodaje bez mapiranog dobavljača.",
@@ -851,7 +851,7 @@ export default function DailySalesStatsPage() {
     },
     {
       key: "mismatch",
-      label: "Mismatch dani",
+      label: "Dani nepodudaranja",
       value: fmtNumber(mismatchCount),
       tone: mismatchCount > 0 ? "danger" : "good",
       description: "Dani gde se totals ne poklapaju sa top+others sabiranjem.",
@@ -872,7 +872,7 @@ export default function DailySalesStatsPage() {
     },
     {
       key: "receiptMismatch",
-      label: "Racun mismatch",
+      label: "Neuskladjeni racuni",
       value: fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0),
       tone: (data?.metadata.receiptAmountMismatchCount ?? 0) > 0 ? "danger" : "good",
       description: "Racuni gde dnevnik i suma stavki ne daju isti iznos.",
@@ -1244,42 +1244,42 @@ export default function DailySalesStatsPage() {
         <>
           <section className="daily-sales-kpis">
             <article>
-              <span>Ukupan prihod</span>
+              <span>Ukupan prihod <InfoTip text="Suma prihoda od prodaje za sve dane u izabranom opsegu i prodavnici. Prihod / dan je prosek po broju kalendarskih dana u opsegu." /></span>
               <strong>{fmtRsd(currentSummary.totalRevenue)}</strong>
               <small>{fmtRsdShort(currentSummary.avgRevenuePerDay)} / dan</small>
             </article>
             <article>
-              <span>Ukupno komada</span>
+              <span>Ukupno komada <InfoTip text="Ukupan broj prodatih komada vidljivih u tabeli. Moze biti manji od baze ako je primenjen filter na prodavnicu ili top-N dobavljaca." /></span>
               <strong>{fmtNumber(currentSummary.totalVisibleItems)}</strong>
               <small>{fmtNumber(Math.round(currentSummary.avgItemsPerDay))} / dan</small>
             </article>
             <article>
-              <span>Dana u opsegu</span>
+              <span>Dana u opsegu <InfoTip text="Broj kalendarskih dana izabranog perioda. Koristi se kao imenilac za dnevne proseke. Prethodni period je isti opseg, pomeren unazad." /></span>
               <strong>{fmtNumber(data.metadata.totalDays)}</strong>
               <small>Prethodni period: {fmtDateShort(previousRange.fromDate)} - {fmtDateShort(previousRange.toDate)}</small>
             </article>
             <article>
-              <span>RSD po komadu</span>
+              <span>RSD po komadu <InfoTip text="Prosecna prodajna cena po komadu: Ukupan prihod / Ukupno komada. Bazira se na vidljivim komadima u tabeli, ne na svim transakcijama." /></span>
               <strong>{fmtRsd(currentSummary.avgRevenuePerItem)}</strong>
               <small>Na osnovu vidljivih komada u tabeli</small>
             </article>
             <article>
-              <span>Prva smena</span>
+              <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00–13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu ukljuceni u ovaj procenat." /></span>
               <strong>{fmtPct(currentSummary.firstShiftSharePct, 1)}</strong>
               <small>{fmtNumber(currentSummary.firstShiftItems)} komada</small>
             </article>
             <article>
-              <span>Druga smena</span>
+              <span>Druga smena <InfoTip text="Udeo komada prodatih u drugoj smeni (14:00–21:59) u odnosu na ukupne smenske komade. Komplementarno sa Prvom smenom." /></span>
               <strong>{fmtPct(currentSummary.secondShiftSharePct, 1)}</strong>
               <small>{fmtNumber(currentSummary.secondShiftItems)} komada</small>
             </article>
             <article>
-              <span>Top 3 share</span>
+              <span>Udeo top 3 dob. <InfoTip text="Procenat komada koje nose tri dobavljaca sa najvecim prometom u opsegu. Formula: (top 3 dobavljaci) / ukupni komadi × 100. Visoka vrednost = visoka zavisnost od malog broja dobavljaca." /></span>
               <strong>{fmtPct(supplierConcentration.top3QtySharePct, 1)}</strong>
               <small>Udeo top 3 dobavljača po komadima</small>
             </article>
             <article>
-              <span>Van smene</span>
+              <span>Van smene <InfoTip text="Komadi i prihod evidentirani van definisanih smena (pre 06:00 ili posle 21:59). Moze biti posledica gresaka u POS-u ili nestandardnih transakcija — vredi proveriti uzrok." /></span>
               <strong>{fmtNumber(data.metadata.offShiftItems)}</strong>
               <small>{fmtRsdShort(data.metadata.offShiftRevenue)}</small>
             </article>
@@ -1455,7 +1455,7 @@ export default function DailySalesStatsPage() {
                 <div>
                   <h2 className="with-tip">
                     <span>Kvalitet i operativa</span>
-                    <InfoTip text="Signali koji uticu na pouzdanost odluka: unknown supplier, off-shift prodaja, mismatch i satnica." />
+                    <InfoTip text="Signali koji uticu na pouzdanost odluka u ovom periodu. Nepoznati dobavljac: prodaja bez mapiranog dobavljaca. Dani nepodudaranja: zbir po dobavljacima ne odgovara dnevnom totalu. Dani bez satnice: nema pouzdanog smenskog razdvajanja. Dupli/neuskladjeni racuni: POS inconsistencies. Visoke vrednosti na bilo kom signalu = zadrzi oprez pri interpretaciji trendova." />
                   </h2>
                   <p>Ove metrike govore koliko mozemo da verujemo smenskoj i supplier analitici.</p>
                 </div>
@@ -1478,7 +1478,7 @@ export default function DailySalesStatsPage() {
               <div>
                 <h2 className="with-tip">
                   <span>Trend prihoda i komada</span>
-                  <InfoTip text="Dnevni trend plus 7d moving average za prihod i komade. Dobar za detekciju momentum-a i nestabilnosti." />
+                  <InfoTip text="Dnevni trend sa 7-dnevnim pokretnim prosekom (MA7) za prihod i komade. Pokretni prosek gladi kratkorocne oscilacije i otkriva stvarni pravac kretanja. Dobar za detekciju pozitivnog ili negativnog momenta i nestabilnosti prodaje." />
                 </h2>
                 <p>Koristi 7d prosek da odvojis stvarni trend od dnevnog suma.</p>
               </div>
