@@ -280,21 +280,6 @@
 }
 
 .supplier-decision-kpi {
-<<<<<<< HEAD
-  background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--success) 14%), var(--surface-darker));
-  border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
-  border-radius: 18px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-  padding: 20px;
-  transition: transform 200ms ease;
-=======
-  background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated, var(--dashboard-surface-card-top, #111c2d)) 86%, var(--info, #1ec8ff) 14%), var(--surface-darker, var(--dashboard-surface-card-bottom, #060d16)));
-  border: 1px solid rgba(30, 200, 255, 0.28);
-  border-radius: 18px;
-  box-shadow: 0 0 28px rgba(30, 200, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.15);
-  padding: 20px;
-  transition: transform 200ms ease, box-shadow 200ms ease;
->>>>>>> 388505f18cd1ca720f2e2022c50dd9bee9e69efc
 }
 
 .supplier-decision-kpi:hover {
@@ -302,11 +287,6 @@
 }
 
 .supplier-decision-kpi span {
-<<<<<<< HEAD
-  color: var(--text-muted);
-=======
-  color: var(--dashboard-text-muted, var(--text-muted, var(--muted)));
->>>>>>> 388505f18cd1ca720f2e2022c50dd9bee9e69efc
   display: block;
   font-size: 11px;
   font-weight: 700;
@@ -315,22 +295,12 @@
 }
 
 .supplier-decision-kpi strong {
-<<<<<<< HEAD
-  color: var(--text-primary);
-=======
-  color: var(--dashboard-text, var(--text-primary));
->>>>>>> 388505f18cd1ca720f2e2022c50dd9bee9e69efc
   display: block;
   font-size: 24px;
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.01em;
   margin-top: 16px;
-<<<<<<< HEAD
-  text-shadow: 0 0 12px currentColor;
-=======
-  text-shadow: 0 0 18px currentColor;
->>>>>>> 388505f18cd1ca720f2e2022c50dd9bee9e69efc
 }
 
 .supplier-decision-kpi strong.trend-up {
