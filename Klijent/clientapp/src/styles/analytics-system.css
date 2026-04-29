@@ -74,6 +74,21 @@
   --analytics-glow-strong: 0 0 34px color-mix(in srgb, var(--success) 18%, transparent);
 }
 
+.shoetype-decision-page,
+.sf-decision-page {
+  --analytics-accent: var(--success);
+  --analytics-accent-2: var(--info);
+  --analytics-page-bg: radial-gradient(74rem 40rem at 98% -8%, color-mix(in srgb, var(--info) 14%, transparent), transparent 58%), radial-gradient(56rem 34rem at -14% 4%, color-mix(in srgb, var(--success) 12%, transparent), transparent 62%), linear-gradient(162deg, var(--surface-default), var(--surface-darker));
+  --analytics-panel-bg: linear-gradient(160deg, color-mix(in srgb, var(--surface-elevated) 90%, var(--success) 10%), color-mix(in srgb, var(--surface-light) 88%, var(--surface-darker) 12%));
+  --analytics-panel-bg-strong: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--success) 14%), var(--surface-darker));
+  --analytics-border: color-mix(in srgb, var(--info) 28%, var(--border-default) 72%);
+  --analytics-border-soft: color-mix(in srgb, var(--success) 14%, var(--border-default) 86%);
+  --analytics-border-strong: color-mix(in srgb, var(--info) 34%, var(--success) 26%, var(--border-default) 40%);
+  --analytics-value-text: color-mix(in srgb, var(--text-primary) 82%, var(--info) 18%);
+  --analytics-glow: 0 0 24px color-mix(in srgb, var(--info) 14%, transparent);
+  --analytics-glow-strong: 0 0 34px color-mix(in srgb, var(--success) 18%, transparent);
+}
+
 .analytics-header h1,
 .supplier-decision-title,
 .supplier-decision-header h1,
@@ -271,6 +286,143 @@
   margin-top: var(--space-2);
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+
+.analytics-kpi-card,
+.supplier-decision-kpi.analytics-kpi-card,
+.shoetype-decision-kpi.analytics-kpi-card,
+.sf-decision-kpi.analytics-kpi-card,
+.pnp-decision-kpi.analytics-kpi-card,
+.ppn-decision-kpi.analytics-kpi-card {
+  --analytics-kpi-accent: var(--analytics-accent-2);
+  --analytics-kpi-border: color-mix(in srgb, var(--analytics-kpi-accent) 34%, transparent);
+  --analytics-kpi-glow: 0 0 28px color-mix(in srgb, var(--analytics-kpi-accent) 14%, transparent);
+  --analytics-kpi-value: color-mix(in srgb, var(--analytics-value-text) 84%, var(--analytics-kpi-accent) 16%);
+
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--analytics-panel-bg-strong) 84%, var(--analytics-kpi-accent) 16%),
+    var(--surface-darker)
+  );
+  border: var(--border-width-sm) solid var(--analytics-kpi-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--analytics-shadow-soft), var(--analytics-kpi-glow);
+  min-height: calc(var(--space-12) + var(--space-12));
+  overflow: hidden;
+  padding: var(--space-5);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.analytics-kpi-card:hover,
+.supplier-decision-kpi.analytics-kpi-card:hover,
+.shoetype-decision-kpi.analytics-kpi-card:hover,
+.sf-decision-kpi.analytics-kpi-card:hover,
+.pnp-decision-kpi.analytics-kpi-card:hover,
+.ppn-decision-kpi.analytics-kpi-card:hover {
+  border-color: color-mix(in srgb, var(--analytics-kpi-accent) 44%, transparent);
+  box-shadow: var(--analytics-shadow), 0 0 34px color-mix(in srgb, var(--analytics-kpi-accent) 20%, transparent);
+  transform: translateY(calc(var(--space-px) - var(--space-px) - var(--space-px)));
+}
+
+.analytics-kpi-card > span,
+.supplier-decision-kpi.analytics-kpi-card > span,
+.shoetype-decision-kpi.analytics-kpi-card > span,
+.sf-decision-kpi.analytics-kpi-card > span,
+.pnp-decision-kpi.analytics-kpi-card > span,
+.ppn-decision-kpi.analytics-kpi-card > span,
+.analytics-kpi-card__label {
+  align-items: center;
+  color: var(--analytics-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-heavy);
+  gap: var(--space-1);
+  letter-spacing: 0.22em;
+  line-height: var(--line-height-title);
+  text-transform: uppercase;
+}
+
+.analytics-kpi-card > strong,
+.supplier-decision-kpi.analytics-kpi-card > strong,
+.shoetype-decision-kpi.analytics-kpi-card > strong,
+.sf-decision-kpi.analytics-kpi-card > strong,
+.pnp-decision-kpi.analytics-kpi-card > strong,
+.ppn-decision-kpi.analytics-kpi-card > strong,
+.analytics-kpi-card__value {
+  color: var(--analytics-kpi-value);
+  display: block;
+  font-size: clamp(1.45rem, 2.3vw, 1.95rem);
+  font-weight: var(--font-weight-heavy);
+  letter-spacing: var(--letter-spacing-label);
+  line-height: var(--line-height-tight);
+  margin-top: var(--space-4);
+  overflow-wrap: anywhere;
+  text-shadow: 0 0 14px currentColor;
+}
+
+.analytics-kpi-card__note,
+.analytics-kpi-card[data-note]::after {
+  color: var(--analytics-text-muted);
+  display: block;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  margin-top: var(--space-3);
+  overflow-wrap: anywhere;
+}
+
+.analytics-kpi-card > small,
+.supplier-decision-kpi.analytics-kpi-card > small,
+.shoetype-decision-kpi.analytics-kpi-card > small,
+.sf-decision-kpi.analytics-kpi-card > small,
+.pnp-decision-kpi.analytics-kpi-card > small,
+.ppn-decision-kpi.analytics-kpi-card > small,
+.analytics-kpi-card > em,
+.supplier-decision-kpi.analytics-kpi-card > em,
+.shoetype-decision-kpi.analytics-kpi-card > em,
+.sf-decision-kpi.analytics-kpi-card > em,
+.pnp-decision-kpi.analytics-kpi-card > em,
+.ppn-decision-kpi.analytics-kpi-card > em {
+  color: var(--analytics-text-muted);
+  display: block;
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-2);
+}
+
+.analytics-kpi-card[data-note]::after {
+  content: attr(data-note);
+}
+
+.analytics-kpi-card--tone-info {
+  --analytics-kpi-accent: var(--info);
+}
+
+.analytics-kpi-card--tone-success {
+  --analytics-kpi-accent: var(--success);
+}
+
+.analytics-kpi-card--tone-warning {
+  --analytics-kpi-accent: var(--warning);
+}
+
+.analytics-kpi-card--tone-neutral {
+  --analytics-kpi-accent: color-mix(in srgb, var(--analytics-accent) 42%, var(--analytics-accent-2) 58%);
+}
+
+.analytics-kpi-card--tone-value {
+  --analytics-kpi-accent: color-mix(in srgb, var(--success) 70%, var(--analytics-accent-2) 30%);
+}
+
+.analytics-surface-panel,
+.supplier-decision-card.analytics-surface-panel,
+.shoetype-decision-card.analytics-surface-panel,
+.sf-decision-card.analytics-surface-panel,
+.pnp-decision-card.analytics-surface-panel,
+.ppn-decision-card.analytics-surface-panel {
+  background: linear-gradient(162deg, var(--analytics-panel-bg), color-mix(in srgb, var(--analytics-panel-bg-strong) 82%, var(--surface-darker) 18%));
+  border: var(--border-width-sm) solid var(--analytics-border);
+  border-radius: var(--analytics-radius-lg);
+  box-shadow: var(--analytics-shadow-soft), 0 0 24px color-mix(in srgb, var(--analytics-accent-2) 10%, transparent);
 }
 
 .supplier-decision-kpis,

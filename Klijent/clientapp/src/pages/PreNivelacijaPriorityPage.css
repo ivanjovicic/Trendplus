@@ -1,9 +1,10 @@
 .pnp-decision-page {
-  background: var(--surface-elevated, var(--theme-color-ffffff, #ffffff));
-  border: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
-  border-radius: 14px;
-  color: var(--text-primary, var(--theme-color-111827, #111827));
-  padding: 16px;
+  background: var(--analytics-page-bg, var(--surface-elevated, var(--theme-color-ffffff, #ffffff)));
+  border: var(--border-width-sm, 1px) solid var(--analytics-border-soft, var(--border-default, var(--theme-color-e5e7eb, #e5e7eb)));
+  border-radius: var(--analytics-radius-xl, 14px);
+  box-shadow: var(--analytics-shadow, none);
+  color: var(--analytics-text, var(--text-primary, var(--theme-color-111827, #111827)));
+  padding: var(--space-4, 16px);
 }
 
 .pnp-decision-header {

@@ -1243,19 +1243,19 @@ export default function SupplierSalesStatsPage() {
             </div>
           ) : null}
           <section className="supplier-decision-kpis">
-            <article className="supplier-decision-kpi">
+            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Vrednost prodaje kroz aktivne dobavljace u periodu.">
               <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljača u izabranom periodu. Formula: zbir prodajnih vrednosti svih prodajnih stavki u periodu. U promet ne ulaze operativni troškovi." /></span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
-            <article className="supplier-decision-kpi">
+            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Ukupan obim prodaje izrazen u komadima.">
               <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljača u izabranom periodu." /></span>
               <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
-            <article className="supplier-decision-kpi">
+            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe pokriven istorijskim ili procenjenim ulazom.">
               <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
               <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
             </article>
-            <article className="supplier-decision-kpi">
+            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto doprinos marze pre operativnih troskova.">
               <span>Ukupan maržni doprinos <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za stavke sa dostupnim troškom. Formula: zbir prodajna vrednost - nabavna vrednost. Operativni troškovi, plate, zakup i ostali indirektni troškovi nisu uključeni." /></span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
               <small
@@ -1273,15 +1273,15 @@ export default function SupplierSalesStatsPage() {
                 </small>
               ) : null}
             </article>
-            <article className="supplier-decision-kpi">
+            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Signal kvaliteta miks marze kroz dobavljace.">
               <span>Prosečna marža <InfoTip text="Prosečan procenat maržnog doprinosa po dobavljaču. Formula po dobavljaču: maržni doprinos / promet sa dostupnim troškom × 100. Prikazana vrednost je aritmetički prosek po dobavljačima — nije ponderisana prometom." /></span>
               <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
             </article>
-            <article className="supplier-decision-kpi">
+            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjacim partnerima.">
               <span>Udeo top 5 dobavljača <InfoTip text="Procenat ukupnog prometa koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
-            <article className="supplier-decision-kpi">
+            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Momentum prema prethodnom uporedivom periodu.">
               <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet − prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
@@ -1304,7 +1304,7 @@ export default function SupplierSalesStatsPage() {
           ) : null}
 
           <section className="supplier-decision-panels">
-            <article className="supplier-decision-card supplier-decision-card--chart">
+            <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
               <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose najveći dobavljači. Koristi samo promet, bez tumačenja profita ili neto marže." /></h2>
               <p>Top udeo prometa za brzu procenu gde je biznis koncentrisan.</p>
               {concentrationData.length > 0 ? (
@@ -1336,7 +1336,7 @@ export default function SupplierSalesStatsPage() {
               )}
             </article>
 
-            <article className="supplier-decision-card supplier-decision-card--chart">
+            <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
               <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
               <p>Poređenje udela u prometu i udela u maržnom doprinosu - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
               {comparisonData.length > 0 ? (
@@ -1375,7 +1375,7 @@ export default function SupplierSalesStatsPage() {
           </section>
 
           <section className="supplier-decision-panels">
-            <article className="supplier-decision-card">
+            <article className="supplier-decision-card analytics-surface-panel">
               <div className="supplier-decision-table-head">
                 <div>
                   <h2>Prioritetna lista dobavljača</h2>

@@ -165,7 +165,7 @@
   margin-bottom: 14px;
 }
 
-.sf-decision-kpi {
+.sf-decision-kpi:not(.analytics-kpi-card) {
   background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--success) 14%), var(--surface-darker));
   border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
   border-radius: 18px;
@@ -174,11 +174,11 @@
   transition: transform 200ms ease;
 }
 
-.sf-decision-kpi:hover {
+.sf-decision-kpi:not(.analytics-kpi-card):hover {
   transform: translateY(-2px);
 }
 
-.sf-decision-kpi span {
+.sf-decision-kpi:not(.analytics-kpi-card) span {
   color: var(--text-muted);
   display: block;
   font-size: 12px;
@@ -187,7 +187,7 @@
   letter-spacing: 0.22em;
 }
 
-.sf-decision-kpi strong {
+.sf-decision-kpi:not(.analytics-kpi-card) strong {
   color: var(--text-primary);
   display: block;
   font-size: 24px;
@@ -204,7 +204,7 @@
   grid-template-columns: minmax(320px, 0.9fr) minmax(560px, 1.1fr);
 }
 
-.sf-decision-card {
+.sf-decision-card:not(.analytics-surface-panel) {
   background: var(--surface-darker, var(--theme-color-0b1220, #0b1220));
   border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 10px;
@@ -217,8 +217,8 @@
   margin: 0 0 4px;
 }
 
-.sf-decision-card {
-  background: var(--surface-card, var(--theme-color-ffffff, #ffffff));
+.sf-decision-card p {
+  color: var(--text-secondary, var(--theme-color-94a3b8, #94a3b8));
   font-size: 12px;
   margin: 0 0 12px;
 }
@@ -414,20 +414,20 @@
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
-.sf-decision-detail-grid article {
+.sf-decision-detail-grid article:not(.analytics-kpi-card) {
   background: var(--surface-card, var(--theme-color-ffffff, #ffffff));
   border: 1px solid var(--border-default, var(--theme-color-1f2937, #1f2937));
   border-radius: 8px;
   padding: 9px;
 }
 
-.sf-decision-detail-grid article span {
+.sf-decision-detail-grid article:not(.analytics-kpi-card) span {
   color: var(--text-secondary, var(--theme-color-9ca3af, #9ca3af));
   display: block;
   font-size: 11px;
 }
 
-.sf-decision-detail-grid article strong {
+.sf-decision-detail-grid article:not(.analytics-kpi-card) strong {
   color: var(--text-primary, var(--theme-color-f8fafc, #f8fafc));
   display: block;
   font-size: 15px;

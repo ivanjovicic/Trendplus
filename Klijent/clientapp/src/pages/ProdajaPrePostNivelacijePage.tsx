@@ -1219,26 +1219,26 @@ const advancedSignals = useMemo(
           ) : null}
 
           <section className="ppn-decision-kpis">
-            <article className="ppn-decision-kpi">
+            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet realizovan u post-window periodu nakon nivelacije.">
               <span>Post-window promet posle nivelacije</span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
-            <article className="ppn-decision-kpi">
+            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koliko top 5 dobavljaca nosi ukupnu promenu signala.">
               <span>Top 5 udeo u promeni</span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
-            <article className="ppn-decision-kpi">
+            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Apsolutna promena prometa pre i posle nivelacije.">
               <span>Ukupna promena prometa</span>
               <strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong>
             </article>
-            <article className="ppn-decision-kpi">
+            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Trend prema prethodnom uporedivom event-opsegu.">
               <span>Rast/pad vs prethodni event-opseg</span>
               <strong className={trendClass(periodGrowthPct)}>{periodGrowthDisplay}</strong>
             </article>
           </section>
 
           <section className="ppn-decision-panels">
-            <article className="ppn-decision-card">
+            <article className="ppn-decision-card analytics-surface-panel">
               <div className="ppn-decision-card-heading">
                 <div>
                   <h2>Koncentracija promena po dobavljacima</h2>
@@ -1281,7 +1281,7 @@ const advancedSignals = useMemo(
               <div className="ppn-chart-hint">Klik na traku otvara detalj dobavljaca u tabeli. Svez 30d period moze imati nizak post-window signal.</div>
             </article>
 
-            <article className="ppn-decision-card">
+            <article className="ppn-decision-card analytics-surface-panel">
               <div className="ppn-decision-table-head">
                 <div>
                   <h2>Prioritetna lista dobavljaca</h2>

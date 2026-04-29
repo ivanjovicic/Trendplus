@@ -543,31 +543,31 @@ export default function PreNivelacijaPriorityPage() {
           ) : null}
 
           <section className="pnp-decision-kpis">
-            <article className="pnp-decision-kpi">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="SKU koji zadovoljavaju filtere i prag skora.">
               <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i imaju aktivan signal pre nivelacije (pre-nivelacioni skor ≥ min. skora). Ovo su artikli koji imaju zalihu i prodajni signal dovoljan za intervenciju." /></span>
               <strong>{data.summary.candidatesCount}</strong>
             </article>
-            <article className="pnp-decision-kpi">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Kandidati sa najjacim signalom za brzu intervenciju.">
               <span>Visok prioritet <InfoTip text="SKU u prioritetnoj bandi 'high' — imaju najjači kompozitni signal (visok skor zalihe + stagnacija prodaje). Ovo su artikli gde je intervencija pre nivelacije najhitnija." /></span>
               <strong>{data.summary.highPriorityCount}</strong>
             </article>
-            <article className="pnp-decision-kpi">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Ukupna zaliha kod SKU koji nose operativni rizik.">
               <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih prikazanih kandidatskih SKU (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. Veća zaliha bez prodaje = veći operativni rizik." /></span>
               <strong>{data.summary.totalStockAtRisk}</strong>
               <em>kom ukupno</em>
             </article>
-            <article className="pnp-decision-kpi">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se kandidati istaknu umesto snize.">
               <span>Projekcija povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja za sve 'Pojačaj' kandidate. PROCENA — bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod. Tretirati kao relativni signal, ne kao apsolutnu predikciju." /></span>
               <strong>{fmtRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
             </article>
-            <article className="pnp-decision-kpi">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena gubitka koji moze da se izbegne pre nivelacije.">
               <span>Izbegljivi gubitak od sniženja <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom pre nivelacije. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru). Apsolutni iznos je okvirna procena — relativni odnos između SKU-ova je relevantniji." /></span>
               <strong className="trend-down">{fmtRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
             </article>
           </section>
 
           <section className="pnp-decision-panels">
-            <article className="pnp-decision-card">
+            <article className="pnp-decision-card analytics-surface-panel">
               <h2>Koncentracija akcije po dobavljacima</h2>
               <p>Top dobavljaci po action score u aktuelnom prioritetnom setu.</p>
               {supplierActionShare.length > 0 ? (
@@ -587,7 +587,7 @@ export default function PreNivelacijaPriorityPage() {
               )}
             </article>
 
-            <article className="pnp-decision-card">
+            <article className="pnp-decision-card analytics-surface-panel">
               <div className="pnp-decision-table-head">
                 <div>
                   <h2>Prioritetna lista SKU</h2>
