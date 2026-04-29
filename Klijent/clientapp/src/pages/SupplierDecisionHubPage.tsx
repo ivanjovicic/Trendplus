@@ -57,10 +57,10 @@ const KEEP_SCORE_THRESHOLD = 43;
 const BOOST_MIN_CONFIDENCE_PCT = 55;
 
 const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
-  { key: "supplierName", header: "Dobavljac", dataType: "text" },
+  { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "revenue", header: "Prihod", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
-  { key: "preMarkdownMarginPct", header: "Marza %", dataType: "percent" },
+  { key: "preMarkdownMarginPct", header: "Marža %", dataType: "percent" },
   { key: "qualityTrendPct", header: "Kvalitet trend %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
   { key: "decisionScore", header: "Decision score", dataType: "number" },
@@ -82,6 +82,11 @@ function statusClass(status: DecisionStatus): string {
   if (status === "Pojacaj") return "sdh-decision-status status-boost";
   if (status === "Smanji") return "sdh-decision-status status-reduce";
   return "sdh-decision-status status-keep";
+}
+function statusDisplayLabel(status: DecisionStatus): string {
+  if (status === "Pojacaj") return "Pojačaj";
+  if (status === "Smanji") return "Smanji";
+  return "Zadrži";
 }
 function trendClass(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "trend-neutral";
@@ -122,17 +127,17 @@ function recommendationToStatus(code: string, confidence: number): DecisionStatu
 function buildStatusReason(status: DecisionStatus, code: string, qualityTrendPct: number, confidence: number): string {
   const lowConfidence = confidence < BOOST_MIN_CONFIDENCE_PCT;
   if (status === "Pojacaj") {
-    if (lowConfidence) return "Signal za rast postoji, ali je pouzdanost granicna; siriti postepeno.";
-    if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "Dobavljac drzi zdrav signal bez preterane zavisnosti od markdown-a.";
+    if (lowConfidence) return "Signal za rast postoji, ali je pouzdanost granična; širiti postepeno.";
+    if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "Dobavljač drži zdrav signal bez pretjerane zavisnosti od markdown-a.";
     return "Pozitivan zbirni signal za veci fokus.";
   }
   if (status === "Zadrzi") {
-    if (lowConfidence) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
-    if (qualityTrendPct < 0) return "Signal kvaliteta slabi; zadrzati uz pojacan nadzor.";
+    if (lowConfidence) return "Niža pouzdanost podataka; odluku držati konzervativnom dok se signal ne stabilizuje.";;
+    if (qualityTrendPct < 0) return "Signal kvaliteta slabi; zadržati uz pojačan nadzor.";
     return "Stabilan signal bez jasnog razloga za promenu prioriteta.";
   }
   if (code === "ASSORTMENT_REDUCE") return "Visoka zavisnost od markdown-a i rizik zaliha; smanjiti fokus.";
-  if (code === "PRICE_NEGOTIATE") return "Potreban je bolji cenovni ulaz pre daljeg sirenja.";
+  if (code === "PRICE_NEGOTIATE") return "Potreban je bolji cenovni ulaz pre daljeg širenja.";
   return "Nizak signal doprinosa i rizik po profitabilnost.";
 }
 
@@ -194,7 +199,7 @@ export default function SupplierDecisionHubPage() {
         getSupplierDecisionSummary(prevFilters),
       ]);
       if (requestId !== requestIdRef.current) return;
-      if (summaryResult.status === "rejected" || rankingResult.status === "rejected") throw new Error("Neuspesno ucitavanje supplier decision podataka.");
+      if (summaryResult.status === "rejected" || rankingResult.status === "rejected") throw new Error("Neušpešno učitavanje supplier decision podataka.");
       setSummary(summaryResult.value);
       setRanking(rankingResult.value);
       setPreviousSummary(previousResult.status === "fulfilled" ? previousResult.value : null);
@@ -204,7 +209,7 @@ export default function SupplierDecisionHubPage() {
       setSummary(null);
       setPreviousSummary(null);
       setRanking(null);
-      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju supplier decision hub-a.");
+      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju Supplier Decision Hub-a.");
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
@@ -288,13 +293,13 @@ export default function SupplierDecisionHubPage() {
     { key: "toDate", label: "Do", value: activeFilters.toDate },
     { key: "seasonId", label: "Sezona", value: activeFilters.seasonId ?? "" },
     { key: "minRevenue", label: "Min prihod", value: activeFilters.minRevenue ?? "" },
-    { key: "onlyHighConfidence", label: "Only high confidence", value: activeFilters.onlyHighConfidence },
+    { key: "onlyHighConfidence", label: "Samo visoka pouzdanost", value: activeFilters.onlyHighConfidence },
   ], [activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.toDate, periodPreset]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "summaryFrom", label: "Summary od", value: summary?.from ?? "" },
     { key: "summaryTo", label: "Summary do", value: summary?.to ?? "" },
-    { key: "supplierCount", label: "Dobavljaca", value: summary?.supplierCount ?? 0 },
+    { key: "supplierCount", label: "Dobavljača", value: summary?.supplierCount ?? 0 },
     { key: "capitalAtRisk", label: "Kapital u riziku", value: summary?.capitalAtRisk ?? 0 },
   ], [summary?.capitalAtRisk, summary?.from, summary?.supplierCount, summary?.to]);
 
@@ -340,7 +345,7 @@ export default function SupplierDecisionHubPage() {
       <header className="sdh-decision-header">
         <div>
           <h1 className="sdh-decision-title">Supplier Decision Hub</h1>
-          <p className="sdh-decision-subtitle">Executive decision-support: ko nosi prihod, gde je zdrav odnos full-price i markdown prodaje i koji dobavljaci zasluzuju veci fokus u nabavci.</p>
+          <p className="sdh-decision-subtitle">Executive decision-support: ko nosi prihod, gde je zdrav odnos full-price i markdown prodaje i koji dobavljači zaslužuju veći fokus u nabavci.</p>
         </div>
       </header>
 
@@ -354,16 +359,16 @@ export default function SupplierDecisionHubPage() {
         <div className="sdh-decision-actions"><button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button><button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button></div>
       </section>
 
-      {invalidRange ? <div className="sdh-decision-message error">Datum od ne moze biti posle datuma do.</div> : null}
+      {invalidRange ? <div className="sdh-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
       {error ? <div className="sdh-decision-message error">{error}</div> : null}
-      {loading ? <div className="sdh-decision-message loading">Ucitavam supplier decision signal...</div> : null}
+      {loading ? <div className="sdh-decision-message loading">Učitavam podatke za analizu dobavljača...</div> : null}
 
       {!loading && summary && ranking ? (
         <>
           <section className="sdh-decision-kpis">
             <article className="sdh-decision-kpi"><span>Ukupan prihod</span><strong>{fmtRsd(totalRevenue)}</strong></article>
-            <article className="sdh-decision-kpi"><span>Udeo top 5 dobavljaca</span><strong>{fmtPct(top5SharePct)}</strong></article>
-            <article className="sdh-decision-kpi"><span>Ukupan marzni doprinos</span><strong>{fmtRsd(totalMarginContribution)}</strong></article>
+            <article className="sdh-decision-kpi"><span>Udeo top 5 dobavljača</span><strong>{fmtPct(top5SharePct)}</strong></article>
+            <article className="sdh-decision-kpi"><span>Ukupan maržni doprinos</span><strong>{fmtRsd(totalMarginContribution)}</strong></article>
             <article className="sdh-decision-kpi"><span>Kapital u riziku</span><strong className="trend-down">{fmtRsd(summary.capitalAtRisk)}</strong></article>
             <article className="sdh-decision-kpi"><span>Promena full-price udela vs prethodni period</span><strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPct(fullPriceDeltaPctPoints)}</strong></article>
           </section>
@@ -388,17 +393,17 @@ export default function SupplierDecisionHubPage() {
 
             <article className="sdh-decision-card">
               <div className="sdh-decision-table-head">
-                <div><h2>Prioritetna lista dobavljaca</h2><p>Pojacaj: {supplierCounts.boost} | Zadrzi: {supplierCounts.keep} | Smanji: {supplierCounts.reduce}</p></div>
+                <div><h2>Prioritetna lista dobavljača</h2><p>Pojačaj: {supplierCounts.boost} | Zadrži: {supplierCounts.keep} | Smanji: {supplierCounts.reduce}</p></div>
                 <AnalyticsTableToolbar tableKey="supplier-decision-hub" tableTitle="Supplier decision hub - compact" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
               </div>
               <div className="sdh-decision-table-wrap">
                 <table className="sdh-decision-table">
                   <thead>
                     <tr>
-                      <th><button type="button" onClick={() => handleSort("supplierName")}>Dobavljac{sortMarker("supplierName", sortField, sortDir)}</button></th>
+                      <th><button type="button" onClick={() => handleSort("supplierName")}>Dobavljač{sortMarker("supplierName", sortField, sortDir)}</button></th>
                       <th className="align-right"><button type="button" onClick={() => handleSort("revenue")}>Prihod{sortMarker("revenue", sortField, sortDir)}</button></th>
                       <th className="align-right"><button type="button" onClick={() => handleSort("sharePct")}>Udeo{sortMarker("sharePct", sortField, sortDir)}</button></th>
-                      <th className="align-right"><button type="button" onClick={() => handleSort("preMarkdownMarginPct")}>Marza{sortMarker("preMarkdownMarginPct", sortField, sortDir)}</button></th>
+                      <th className="align-right"><button type="button" onClick={() => handleSort("preMarkdownMarginPct")}>Marža{sortMarker("preMarkdownMarginPct", sortField, sortDir)}</button></th>
                       <th className="align-right"><button type="button" onClick={() => handleSort("qualityTrendPct")}>Kvalitet trend{sortMarker("qualityTrendPct", sortField, sortDir)}</button></th>
                       <th><button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button></th>
                       <th className="align-center">Detalj</th>
@@ -417,7 +422,7 @@ export default function SupplierDecisionHubPage() {
                             <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
                             <td className="align-right">{fmtPct(row.preMarkdownMarginPct * 100, 2)}</td>
                             <td className={`align-right ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPct(row.qualityTrendPct, 2)}</td>
-                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{row.status}</span></td>
+                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status)}</span></td>
                             <td className="align-center"><button type="button" className="sdh-decision-detail-btn" onClick={() => setExpandedSupplierId(expanded ? null : row.supplierId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
                           </tr>
                         );

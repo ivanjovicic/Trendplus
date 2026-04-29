@@ -43,7 +43,7 @@ const BOOST_MIN_RELIABILITY_PCT = 40;
 const UNKNOWN_SUPPLIERS = new Set(["", "N/A", "NEPOZNATO", "UNKNOWN", "UNKNOWN SUPPLIER"]);
 
 const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
-  { key: "vendorName", header: "Dobavljac", dataType: "text" },
+  { key: "vendorName", header: "Dobavljač", dataType: "text" },
   { key: "postRevenue", header: "Promet", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
   { key: "topFootwearType", header: "Glavni tip", dataType: "text" },
@@ -98,6 +98,11 @@ function statusClass(status: DecisionStatus): string {
   if (status === "Smanji") return "sf-decision-status status-reduce";
   return "sf-decision-status status-keep";
 }
+function statusDisplayLabel(status: DecisionStatus): string {
+  if (status === "Pojacaj") return "Pojačaj";
+  if (status === "Smanji") return "Smanji";
+  return "Zadrži";
+}
 function trendClass(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "trend-neutral";
   if (value > 0) return "trend-up";
@@ -116,8 +121,8 @@ function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals)
 
   if (status === "Pojacaj") {
     if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
-    if (positiveTrend && concentratedType) return "Jak trend i dominantan tip obuce koji nosi rezultat.";
-    if (signals.sharePct >= signals.avgShare) return "Stabilan udeo i zdrav signal po tipu obuce.";
+    if (positiveTrend && concentratedType) return "Jak trend i dominantan tip obuće koji nosi rezultat.";
+    if (signals.sharePct >= signals.avgShare) return "Stabilan udeo i zdrav signal po tipu obuće.";
     return "Dobar potencijal rasta uz kontrolisani portfolio tipova.";
   }
   if (status === "Zadrzi") {
@@ -263,7 +268,7 @@ export default function SupplierFootwearAnalyticsPage() {
       setPreviousRevenue(null);
       setDataHint(null);
       setSuggestedRange(null);
-      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju dobavljaci-tipovi analitike.");
+      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju analize dobavljača i tipova obuće.");
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
@@ -367,13 +372,13 @@ export default function SupplierFootwearAnalyticsPage() {
     { key: "periodPreset", label: "Period", value: periodPreset },
     { key: "fromDate", label: "Od", value: activeFilters.fromDate },
     { key: "toDate", label: "Do", value: activeFilters.toDate },
-    { key: "vendorId", label: "Dobavljac", value: activeFilters.vendorId ?? "" },
+      { key: "vendorId", label: "Dobavljač", value: activeFilters.vendorId ?? "" },
     { key: "category", label: "Kategorija", value: activeFilters.category },
   ], [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, periodPreset]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-    { key: "vendorsCount", label: "Dobavljaca", value: data?.totals.vendorsCount ?? 0 },
+      { key: "vendorsCount", label: "Dobavljača", value: data?.totals.vendorsCount ?? 0 },
     { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
     { key: "windowDays", label: "Window", value: data?.windowDays ?? 0 },
   ], [data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.windowDays]);
@@ -413,7 +418,7 @@ export default function SupplierFootwearAnalyticsPage() {
       table: "dobavljaci-tipovi-obuce",
       recordId: String(row.vendorId ?? row.vendorName),
       title: row.vendorName,
-      subtitle: "Decision support po dobavljacu i tipu obuce",
+      subtitle: "Decision support po dobavljaču i tipu obuće",
       columns: decisionColumns,
       row,
       metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -425,8 +430,8 @@ export default function SupplierFootwearAnalyticsPage() {
     <div className="sf-decision-page">
       <header className="sf-decision-header">
         <div>
-          <h1 className="sf-decision-title">Dobavljaci i Tipovi Obuce</h1>
-          <p className="sf-decision-subtitle">Decision-support ekran koji spaja dobavljaca i dominantan tip obuce, da se brzo vidi gde je najveci promet, koji tip nosi rezultat i gde treba pojacati fokus.</p>
+          <h1 className="sf-decision-title">Dobavljači i tipovi obuće</h1>
+          <p className="sf-decision-subtitle">Decision-support ekran koji spaja dobavljača i dominantan tip obuće, da se brzo vidi gde je najveći promet, koji tip nosi rezultat i gde treba pojačati fokus.</p>
         </div>
         <div className="sf-decision-generated">Generisano: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("sr-RS") : "-"}</div>
       </header>
@@ -435,14 +440,14 @@ export default function SupplierFootwearAnalyticsPage() {
         <label className="sf-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="180d">Poslednjih 180 dana</option><option value="365d">Poslednjih 365 dana</option><option value="custom">Prilagođeno</option></select></label>
         <label className="sf-decision-field"><span>Od</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
         <label className="sf-decision-field"><span>Do</span><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
-        <label className="sf-decision-field"><span>Dobavljac</span><select value={vendorId ?? ""} onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : null)}><option value="">Svi</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.naziv}</option>)}</select></label>
+        <label className="sf-decision-field"><span>Dobavljač</span><select value={vendorId ?? ""} onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : null)}><option value="">Svi</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.naziv}</option>)}</select></label>
         <label className="sf-decision-field"><span>Kategorija</span><select value={category} onChange={(e) => setCategory(e.target.value)}><option value="">Sve</option>{(data?.categories ?? []).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <div className="sf-decision-actions"><button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button><button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button></div>
       </section>
 
-      {invalidRange ? <div className="sf-decision-message error">Datum od ne moze biti posle datuma do.</div> : null}
+      {invalidRange ? <div className="sf-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
       {error ? <div className="sf-decision-message error">{error}</div> : null}
-      {loading ? <div className="sf-decision-message loading">Ucitavam dobavljace i tipove obuce...</div> : null}
+      {loading ? <div className="sf-decision-message loading">Učitavam dobavljače i tipove obuće...</div> : null}
       {!loading && !error && dataHint ? <div className="sf-decision-message info">{dataHint}</div> : null}
       {!loading && !error && suggestedRange ? (
         <div className="sf-decision-message suggestion">
@@ -454,7 +459,7 @@ export default function SupplierFootwearAnalyticsPage() {
       {!loading && data ? (
         <>
           <section className="sf-decision-kpis">
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljaca u izabranom periodu."><span>Ukupan promet</span><strong>{fmtRsd(totalRevenue)}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljača u izabranom periodu."><span>Ukupan promet</span><strong>{fmtRsd(totalRevenue)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drzi pet najjacih dobavljaca."><span>Udeo top 5 dobavljaca</span><strong>{fmtPct(top5SharePct)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/PAD vs prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
@@ -481,14 +486,14 @@ export default function SupplierFootwearAnalyticsPage() {
 
             <article className="sf-decision-card analytics-surface-panel">
               <div className="sf-decision-table-head">
-                <div><h2>Prioritetna lista dobavljaca</h2><p>Pojacaj: {vendorCounts.boost} | Zadrzi: {vendorCounts.keep} | Smanji: {vendorCounts.reduce}</p></div>
-                <AnalyticsTableToolbar tableKey="dobavljaci-tipovi-obuce" tableTitle="Dobavljaci-tipovi decision support" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
+                <div><h2>Prioritetna lista dobavljača</h2><p>Pojačaj: {vendorCounts.boost} | Zadrži: {vendorCounts.keep} | Smanji: {vendorCounts.reduce}</p></div>
+                <AnalyticsTableToolbar tableKey="dobavljaci-tipovi-obuce" tableTitle="Dobavljači i tipovi obuće" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
               </div>
               <div className="sf-decision-table-wrap">
                 <table className="sf-decision-table">
                   <thead>
                     <tr>
-                      <th><button type="button" onClick={() => handleSort("vendorName")}>Dobavljac{sortMarker("vendorName", sortField, sortDir)}</button></th>
+                      <th><button type="button" onClick={() => handleSort("vendorName")}>Dobavljač{sortMarker("vendorName", sortField, sortDir)}</button></th>
                       <th className="align-right"><button type="button" onClick={() => handleSort("postRevenue")}>Promet{sortMarker("postRevenue", sortField, sortDir)}</button></th>
                       <th className="align-right"><button type="button" onClick={() => handleSort("sharePct")}>Udeo{sortMarker("sharePct", sortField, sortDir)}</button></th>
                       <th><button type="button" onClick={() => handleSort("topFootwearType")}>Glavni tip{sortMarker("topFootwearType", sortField, sortDir)}</button></th>
@@ -505,12 +510,12 @@ export default function SupplierFootwearAnalyticsPage() {
                         const rowId = vendorKey(row); const expanded = expandedVendorKey === rowId;
                         return (
                           <tr key={rowId} className={expanded ? "expanded-row" : ""}>
-                            <td>{row.vendorName || "Nepoznat dobavljac"}</td>
+                            <td>{row.vendorName || "Nepoznat dobavljač"}</td>
                             <td className="align-right">{fmtRsd(row.postRevenue)}</td>
                             <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
-                            <td><strong>{row.topFootwearType}</strong><div className="sf-mini-note">{fmtPct(row.topFootwearTypeSharePct, 1)} udela kod dobavljaca</div></td>
+                            <td><strong>{row.topFootwearType}</strong><div className="sf-mini-note">{fmtPct(row.topFootwearTypeSharePct, 1)} udela kod dobavljača</div></td>
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
-                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{row.status}</span></td>
+                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status)}</span></td>
                             <td className="align-center"><button type="button" className="sf-decision-detail-btn" onClick={() => setExpandedVendorKey(expanded ? null : rowId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
                           </tr>
                         );
@@ -524,14 +529,14 @@ export default function SupplierFootwearAnalyticsPage() {
 
           {selectedRow ? (
             <section className="sf-decision-detail">
-              <div className="sf-decision-detail-head"><h3>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljac"}</h3><button type="button" onClick={() => openVendorDetail(selectedRow)}>Otvori puni detalj</button></div>
+              <div className="sf-decision-detail-head"><h3>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljač"}</h3><button type="button" onClick={() => openVendorDetail(selectedRow)}>Otvori puni detalj</button></div>
               <div className="sf-decision-detail-grid">
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivelacije promet</span><strong>{fmtRsd(selectedRow.preRevenue)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Posle nivelacije promet</span><strong>{fmtRsd(selectedRow.postRevenue)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo kolicina</span><strong>{fmtQty(selectedRow.preQty)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo kolicina</span><strong>{fmtQty(selectedRow.postQty)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Glavni tip obuce</span><strong>{selectedRow.topFootwearType} ({fmtPct(selectedRow.topFootwearTypeSharePct, 1)})</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-warning"><span>Elasticnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Glavni tip obuće</span><strong>{selectedRow.topFootwearType} ({fmtPct(selectedRow.topFootwearTypeSharePct, 1)})</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-warning"><span>Elastičnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Aktivni artikli</span><strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Decision score</span><strong>{selectedRow.decisionScore}</strong></article>

@@ -1045,7 +1045,7 @@ export default function SupplierSalesStatsPage() {
 
   const handleApplyFilters = () => {
     if (invalidRange) {
-      setError("Datum od ne moze biti posle datuma do.");
+      setError("Datum 'od' ne može biti posle datuma 'do'.");
       return;
     }
 
@@ -1218,7 +1218,7 @@ export default function SupplierSalesStatsPage() {
       </section>
 
       {invalidRange ? (
-        <div className="supplier-decision-message error">Datum od ne moze biti posle datuma do.</div>
+        <div className="supplier-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
       {error ? <div className="supplier-decision-message error">{error}</div> : null}
       {loading && !data ? (

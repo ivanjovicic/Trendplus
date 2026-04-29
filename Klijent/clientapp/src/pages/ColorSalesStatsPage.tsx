@@ -373,7 +373,7 @@ export default function ColorSalesStatsPage() {
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
-      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju podataka po boji.");
+      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka po boji.");
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);

@@ -421,15 +421,15 @@ function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals)
   const negativeTrend = signals.trendPct < 0;
 
   if (status === "Pojacaj") {
-    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
+    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre većeg ulaganja.";
     if (positiveTrend && signals.changeRevenue > 0) return "Rast prometa i pozitivan trend posle nivelacije.";
     if (signals.sharePct >= signals.avgShare) return "Zdrav udeo i stabilan doprinos nakon promene cene.";
     return "Stabilan doprinos i prostor za veci fokus u nabavci.";
   }
 
   if (status === "Zadrzi") {
-    if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
-    if (negativeTrend && signals.changeRevenue < 0) return "Pad trenda posle nivelacije; zadrzati uz pojacan nadzor.";
+    if (lowReliability) return "Niža pouzdanost podataka; odluku držati konzervativnom dok se signal ne stabilizuje.";
+    if (negativeTrend && signals.changeRevenue < 0) return "Pad trenda posle nivelacije; zadržati uz pojačan nadzor.";
     return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
   }
 
@@ -782,7 +782,7 @@ export default function ProdajaPrePostNivelacijePage() {
       return {
         tone: "weak" as const,
         label: "Nema pouzdanog signala",
-        details: "Nema dovoljno analiziranih promena za koncentraciju po dobavljacima.",
+        details: "Nema dovoljno analiziranih promena za koncentraciju po dobavljačima.",
       };
     }
 
@@ -790,7 +790,7 @@ export default function ProdajaPrePostNivelacijePage() {
       return {
         tone: "weak" as const,
         label: "Nizak signal",
-        details: `Koncentracija je izracunata iz ${analyzedRows} redova i ${nonZeroChangeVendors} dobavljaca sa promenom; post-window pokrivenost je ${fmtPct(avgPostCoveragePct, 0)}. Kratak ili svez period tumaci oprezno.`,
+        details: `Koncentracija je izračunata iz ${analyzedRows} redova i ${nonZeroChangeVendors} dobavljača sa promenom; post-window pokrivenost je ${fmtPct(avgPostCoveragePct, 0)}. Kratak ili svež period tumači oprezno.`,
       };
     }
 
@@ -1042,10 +1042,10 @@ const advancedSignals = useMemo(
     <div className="ppn-decision-page">
       <header className="ppn-decision-header">
         <div>
-          <h1 className="ppn-decision-title">Prodaja Pre/Post Nivelacije</h1>
+          <h1 className="ppn-decision-title">Prodaja pre/posle nivelacije</h1>
           <p className="ppn-decision-subtitle">
-            Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljacu.
-            Nije izolovan profit, vec poslovni signal za prioritet nabavke i nadzor cene.
+            Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču.
+            Nije izolovani profit, već poslovni signal za prioritet nabavke i nadzor cene.
           </p>
         </div>
         <div className="ppn-decision-generated">
@@ -1076,7 +1076,7 @@ const advancedSignals = useMemo(
         </label>
 
         <label className="ppn-decision-field">
-          <span>Dobavljac</span>
+          <span>Dobavljač</span>
           <select
             value={vendorId ?? ""}
             onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : null)}
@@ -1104,9 +1104,9 @@ const advancedSignals = useMemo(
         </div>
       </section>
 
-      {invalidRange ? <div className="ppn-decision-message error">Datum od ne moze biti posle datuma do.</div> : null}
+      {invalidRange ? <div className="ppn-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
       {error ? <div className="ppn-decision-message error">{error}</div> : null}
-      {loading ? <div className="ppn-decision-message loading">Ucitavam pre/post signal po dobavljacima...</div> : null}
+      {loading ? <div className="ppn-decision-message loading">Učitavam pre/post signal po dobavljačima...</div> : null}
 
       {!loading && data ? (
         <>
@@ -1278,15 +1278,15 @@ const advancedSignals = useMemo(
               ) : (
                 <div className="ppn-decision-empty">Nedovoljno promena u izabranom periodu za pouzdanu koncentraciju.</div>
               )}
-              <div className="ppn-chart-hint">Klik na traku otvara detalj dobavljaca u tabeli. Svez 30d period moze imati nizak post-window signal.</div>
+              <div className="ppn-chart-hint">Klik na traku otvara detalj dobavljača u tabeli. Svež 30d period može imati nizak post-window signal.</div>
             </article>
 
             <article className="ppn-decision-card analytics-surface-panel">
               <div className="ppn-decision-table-head">
                 <div>
-                  <h2>Prioritetna lista dobavljaca</h2>
+                  <h2>Prioritetna lista dobavljača</h2>
                   <p>
-                    Pojacaj: {vendorCounts.boost} | Zadrzi: {vendorCounts.keep} | Smanji: {vendorCounts.reduce}
+                    Pojačaj: {vendorCounts.boost} | Zadrži: {vendorCounts.keep} | Smanji: {vendorCounts.reduce}
                   </p>
                 </div>
                 <AnalyticsTableToolbar
@@ -1331,7 +1331,7 @@ const advancedSignals = useMemo(
                         <button type="button" onClick={() => handleSort("sharePct")}>
                           Udeo promene{sortMarker("sharePct", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Udeo u apsolutnoj promeni prometa: |promena dobavljaca| / zbir |promena svih dobavljaca|. Ako je post-window pokrivenost niska, signal pokazuje koncentraciju rizika, ali ne i konacan efekat nivelacije." />
+                        <InfoTip text="Udeo u apsolutnoj promeni prometa: |promena dobavljača| / zbir |promena svih dobavljača|. Ako je post-window pokrivenost niska, signal pokazuje koncentraciju rizika, ali ne i konačan efekat nivelacije." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("changeRevenue")}>
@@ -1354,7 +1354,7 @@ const advancedSignals = useMemo(
                         <button type="button" onClick={() => handleSort("status")}>
                           Preporuka{sortMarker("status", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Decision score kombinuje: udeo u promeni (35%), velicinu promene (30%), trend (20%), pouzdanost signala (15%). Pojacaj >=68, Zadrzi 43-67, Smanji <43. Nisko poverenje automatski spusta Pojacaj na Zadrzi." />
+                        <InfoTip text="Decision score kombinuje: udeo u promeni (35%), veličinu promene (30%), trend (20%), pouzdanost signala (15%). Pojačaj >=68, Zadrži 43-67, Smanji <43. Nisko poverenje automatski spusta Pojačaj na Zadrži." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -1378,7 +1378,7 @@ const advancedSignals = useMemo(
                                 <div className="ppn-chip-wrap">
                                   <span className={confidenceClass(row.confidenceTone)}>
                                     {row.confidenceLabel} signal
-                                    <InfoTip text={`Pouzdanost: ${fmtPct(row.reliabilityPct, 0)} - bazira se na aktivnim artiklima (${row.activeArticlesCount}/${row.articleCount}), poznatosti dobavljaca i post-window pokrivenosti (${fmtPct(row.avgCoveragePost30, 0)}). Visoko >=70%, Srednje 40-70%, Nisko <40%.`} />
+                                    <InfoTip text={`Pouzdanost: ${fmtPct(row.reliabilityPct, 0)} - bazira se na aktivnim artiklima (${row.activeArticlesCount}/${row.articleCount}), poznatosti dobavljača i post-window pokrivenosti (${fmtPct(row.avgCoveragePost30, 0)}). Visoko >=70%, Srednje 40-70%, Nisko <40%.`} />
                                   </span>
                                   <span className="ppn-signal-pill signal-neutral">{row.activeArticlesCount}/{row.articleCount} aktivno</span>
                                 </div>
@@ -1476,7 +1476,7 @@ const advancedSignals = useMemo(
                 <article>
                   <span>
                     Ocena preporuke
-                    <InfoTip text="Kompozitni score: udeo prometa × 35% + promena prometa × 30% + trend × 20% + pouzdanost × 15%. Normalizovano 0–100. Pojacaj ≥68, Zadrzi 43–67, Smanji <43." />
+                    <InfoTip text="Kompozitni score: udeo prometa × 35% + promena prometa × 30% + trend × 20% + pouzdanost × 15%. Normalizovano 0–100. Pojačaj ≥68, Zadrži 43–67, Smanji <43." />
                   </span>
                   <strong>{selectedRow.decisionScore}</strong>
                 </article>

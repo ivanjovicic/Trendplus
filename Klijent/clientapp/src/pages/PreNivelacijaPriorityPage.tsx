@@ -383,9 +383,9 @@ export default function PreNivelacijaPriorityPage() {
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
-      { key: "supplierId", label: "Dobavljac", value: activeFilters.supplierId ?? "" },
+      { key: "supplierId", label: "Dobavljač", value: activeFilters.supplierId ?? "" },
       { key: "seasonId", label: "Sezona", value: activeFilters.seasonId ?? "" },
-      { key: "footwearTypeId", label: "Tip obuce", value: activeFilters.footwearTypeId ?? "" },
+      { key: "footwearTypeId", label: "Tip obuće", value: activeFilters.footwearTypeId ?? "" },
       { key: "minScore", label: "Min. skor", value: activeFilters.minScore },
       { key: "noSaleDaysMin", label: "Min. dana bez prodaje", value: activeFilters.noSaleDaysMin },
       { key: "page", label: "Strana", value: page },
@@ -462,9 +462,9 @@ export default function PreNivelacijaPriorityPage() {
     <div className="pnp-decision-page">
       <header className="pnp-decision-header">
         <div>
-          <h1 className="pnp-decision-title">Pre-Nivelacija Prioriteti</h1>
+          <h1 className="pnp-decision-title">Prioriteti pre-nivelacije</h1>
           <p className="pnp-decision-subtitle">
-            Operativni podršku za odluke za SKU pre faze sniženja: gde treba pojačati izlaganje,
+            Operativna podrška za odluke po SKU pre faze sniženja: gde treba pojačati izlaganje,
             šta zadržati pod nadzorom i šta spustiti iz fokusa.
           </p>
         </div>
@@ -475,7 +475,7 @@ export default function PreNivelacijaPriorityPage() {
 
       <section className="pnp-decision-filters">
         <label className="pnp-decision-field">
-          <span>Dobavljac</span>
+          <span>Dobavljač</span>
           <select value={supplierId ?? ""} onChange={(e) => setSupplierId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">Svi</option>
             {supplierOptions.map((item) => (
@@ -522,7 +522,7 @@ export default function PreNivelacijaPriorityPage() {
       </section>
 
       {error ? <div className="pnp-decision-message error">{error}</div> : null}
-      {loading ? <div className="pnp-decision-message loading">Ucitavam pre-nivelacija prioritete...</div> : null}
+      {loading ? <div className="pnp-decision-message loading">Učitavam prioritete pre-nivelacije...</div> : null}
 
       {!loading && data ? (
         <>
@@ -568,8 +568,8 @@ export default function PreNivelacijaPriorityPage() {
 
           <section className="pnp-decision-panels">
             <article className="pnp-decision-card analytics-surface-panel">
-              <h2>Koncentracija akcije po dobavljacima</h2>
-              <p>Top dobavljaci po action score u aktuelnom prioritetnom setu.</p>
+              <h2>Koncentracija akcije po dobavljačima</h2>
+              <p>Top dobavljači po action score u aktuelnom prioritetnom setu.</p>
               {supplierActionShare.length > 0 ? (
                 <div className="pnp-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -598,7 +598,7 @@ export default function PreNivelacijaPriorityPage() {
                 <div className="pnp-decision-table-controls">
                   <button type="button" onClick={() => canGoPrev && setPage((p) => p - 1)} disabled={!canGoPrev || loading}>Prethodna</button>
                   <span>Strana {page}</span>
-                  <button type="button" onClick={() => canGoNext && setPage((p) => p + 1)} disabled={!canGoNext || loading}>Sledeca</button>
+                  <button type="button" onClick={() => canGoNext && setPage((p) => p + 1)} disabled={!canGoNext || loading}>Sledeća</button>
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="pre-nivelacija-prioriteti"

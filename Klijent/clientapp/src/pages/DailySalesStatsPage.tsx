@@ -866,21 +866,21 @@ export default function DailySalesStatsPage() {
     },
     {
       key: "duplicateReceipts",
-      label: "Dupli racuni",
+      label: "Dupli računi",
       value: fmtNumber(data?.metadata.duplicateReceiptGroupCount ?? 0),
       tone: (data?.metadata.duplicateReceiptGroupCount ?? 0) > 0 ? "danger" : "good",
-      description: "Isti broj racuna vise puta za isti datum i objekat.",
+      description: "Isti broj računa više puta za isti datum i objekat.",
     },
     {
       key: "receiptMismatch",
-      label: "Neuskladjeni racuni",
+      label: "Neusklađeni računi",
       value: fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0),
       tone: (data?.metadata.receiptAmountMismatchCount ?? 0) > 0 ? "danger" : "good",
-      description: "Racuni gde dnevnik i suma stavki ne daju isti iznos.",
+      description: "Računi gde dnevnik i suma stavki ne daju isti iznos.",
     },
     {
       key: "nonStandardReceipts",
-      label: "Nestandardni racuni",
+      label: "Nestandardni računi",
       value: fmtNumber(data?.metadata.nonStandardReceiptCount ?? 0),
       tone: (data?.metadata.nonStandardReceiptCount ?? 0) > 0 ? "warning" : "good",
       description: "Dokumenti sa nenumerickim brojem racuna, npr. DUG.",
@@ -1068,7 +1068,7 @@ export default function DailySalesStatsPage() {
 
   const handleApplyFilters = () => {
     if (invalidRange) {
-      setError("Datum od ne moze biti posle datuma do.");
+      setError("Datum 'od' ne može biti posle datuma 'do'.");
       return;
     }
 
@@ -1234,13 +1234,13 @@ export default function DailySalesStatsPage() {
       </section>
 
       {invalidRange ? (
-        <div className="daily-sales-message error">Datum od ne moze biti posle datuma do.</div>
+        <div className="daily-sales-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
       {error ? <div className="daily-sales-message error">{error}</div> : null}
       {loading ? (
         <div className="daily-sales-message loading">
           <UltraSpinner size="sm" label="Loading daily sales data" className="daily-sales-inline-spinner" />
-          <span>Ucitavam dnevne podatke...</span>
+          <span>Učitavam dnevne podatke...</span>
         </div>
       ) : null}
 
@@ -1305,9 +1305,9 @@ export default function DailySalesStatsPage() {
                     type="button"
                     onClick={handlePrintBlank}
                     className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-                    title="Otvori prazan obrazac za rucno popunjavanje"
+                    title="Otvori prazan obrazac za ručno popunjavanje"
                   >
-                    Stampaj prazno
+                    Štampaj obrazac
                   </button>
                 )}
               />
@@ -1454,7 +1454,7 @@ export default function DailySalesStatsPage() {
                 <div>
                   <h2 className="with-tip">
                     <span>Kvalitet podataka</span>
-                    <InfoTip text="Signali koji uticu na pouzdanost odluka u ovom periodu. Nepoznati dobavljac: prodaja bez mapiranog dobavljaca. Dani nepodudaranja: zbir po dobavljacima ne odgovara dnevnom totalu. Dani bez satnice: nema pouzdanog smenskog razdvajanja. Dupli/neuskladjeni racuni: neregularnosti u kasi. Visoke vrednosti na bilo kom signalu = zadrzi oprez pri interpretaciji trendova." />
+                    <InfoTip text="Signali koji utiču na pouzdanost odluka u ovom periodu. Nepoznati dobavljač: prodaja bez mapiranog dobavljača. Dani nepodudaranja: zbir po dobavljačima ne odgovara dnevnom totalu. Dani bez satnice: nema pouzdanog smenskog razdvajanja. Dupli/neusklađeni računi: neregularnosti u kasi. Visoke vrednosti na bilo kom signalu = zadržite oprez pri interpretaciji trendova." />
                   </h2>
                   <p>Dijagnosticki sloj — bitno samo ako planirate dublje analize pouzdanosti.</p>
                 </div>
