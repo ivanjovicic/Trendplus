@@ -1,4 +1,4 @@
-.daily-sales-page {
+﻿.daily-sales-page {
   --ds-accent: var(--info, #1ec8ff);
   --ds-success: var(--success, #33f28b);
   --ds-warning: var(--warning, #fbbf24);
@@ -138,20 +138,6 @@
 }
 
 .daily-sales-kpis article {
-<<<<<<< HEAD
-  background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--success) 14%), var(--surface-darker));
-  border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
-  border-radius: 18px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  transition: transform 200ms ease;
-}
-
-.daily-sales-kpis article:hover {
-=======
   background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 86%, var(--ds-accent) 14%), var(--ds-surface-dark));
   border: 1px solid rgba(30, 200, 255, 0.28);
   border-radius: 18px;
@@ -168,28 +154,10 @@
   box-shadow:
     0 0 32px rgba(30, 200, 255, 0.18),
     0 4px 12px rgba(0, 0, 0, 0.20);
->>>>>>> 388505f18cd1ca720f2e2022c50dd9bee9e69efc
   transform: translateY(-2px);
 }
 
 .daily-sales-kpis span {
-<<<<<<< HEAD
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
-}
-
-.daily-sales-kpis strong {
-  color: var(--text-primary);
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  margin-top: 16px;
-  text-shadow: 0 0 12px currentColor;
-=======
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;
@@ -202,7 +170,6 @@
   font-weight: 800;
   margin-top: 16px;
   text-shadow: 0 0 18px currentColor;
->>>>>>> 388505f18cd1ca720f2e2022c50dd9bee9e69efc
 }
 
 .daily-sales-kpis small {
