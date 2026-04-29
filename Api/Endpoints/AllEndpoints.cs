@@ -1105,6 +1105,9 @@ public static class AllEndpoints
                 static string BuildSupplierBucketKey(int? supplierId)
                     => supplierId.HasValue ? $"id:{supplierId.Value}" : "unknown";
 
+                static string BuildSupplierFootwearBucketKey(int? supplierId, int? footwearTypeId)
+                    => $"{BuildSupplierBucketKey(supplierId)}|type:{(footwearTypeId.HasValue ? footwearTypeId.Value.ToString() : "unknown")}";
+
                 static string NormalizeDataScope(string? rawScope)
                 {
                     var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
@@ -1220,14 +1223,22 @@ public static class AllEndpoints
                         x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
                         ct);
 
+                var footwearTypeNames = await db.TipoviObuce.AsNoTracking()
+                    .Select(t => new { t.Id, t.Naziv })
+                    .ToDictionaryAsync(
+                        x => x.Id,
+                        x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
+                        ct);
+
                 var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousSupplierMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
+                var previousSupplierFootwearMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 decimal? previousPeriodRevenue = null;
                 int? previousPeriodUnits = null;
 
                 if (previousFromUtc.HasValue && previousToUtc.HasValue)
                 {
-                    var previousRows = await (
+                    var previousFootwearRows = await (
                         from ps in db.ProdajaStavke.AsNoTracking()
                         join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
@@ -1236,20 +1247,28 @@ public static class AllEndpoints
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
-                        group ps by a.IDDobavljac into g
+                        group ps by new { a.IDDobavljac, a.IDTipObuce } into g
                         select new
                         {
-                            SupplierId = g.Key,
+                            SupplierId = g.Key.IDDobavljac,
+                            FootwearTypeId = g.Key.IDTipObuce,
                             Revenue = g.Sum(x => x.Kolicina * x.Cena),
                             Units = g.Sum(x => x.Kolicina)
                         })
                         .ToListAsync(ct);
 
-                    previousPeriodRevenue = previousRows.Sum(x => x.Revenue);
-                    previousPeriodUnits = previousRows.Sum(x => x.Units);
+                    previousPeriodRevenue = previousFootwearRows.Sum(x => x.Revenue);
+                    previousPeriodUnits = previousFootwearRows.Sum(x => x.Units);
 
-                    previousSupplierMetrics = previousRows.ToDictionary(
-                        x => BuildSupplierBucketKey(x.SupplierId),
+                    previousSupplierMetrics = previousFootwearRows
+                        .GroupBy(x => x.SupplierId)
+                        .ToDictionary(
+                            g => BuildSupplierBucketKey(g.Key),
+                            g => (g.Sum(x => x.Revenue), g.Sum(x => x.Units)),
+                            StringComparer.Ordinal);
+
+                    previousSupplierFootwearMetrics = previousFootwearRows.ToDictionary(
+                        x => BuildSupplierFootwearBucketKey(x.SupplierId, x.FootwearTypeId),
                         x => (x.Revenue, x.Units),
                         StringComparer.Ordinal);
                 }
@@ -1287,6 +1306,7 @@ public static class AllEndpoints
                     } by new
                     {
                         SupplierId = a.IDDobavljac,
+                        FootwearTypeId = a.IDTipObuce,
                         ArtikalId = a.Id,
                         DatumProdaje = pz.DatumProdaje,
                         SaleLineCost = ps.NabavnaCena,
@@ -1297,6 +1317,7 @@ public static class AllEndpoints
                     select new
                     {
                         DobavljacId = g.Key.SupplierId,
+                        TipObuceId = g.Key.FootwearTypeId,
                         ArtikalId = g.Key.ArtikalId,
                         DatumProdaje = g.Key.DatumProdaje,
                         Kolicina = g.Sum(x => x.Kolicina),
@@ -1337,6 +1358,18 @@ public static class AllEndpoints
                     }
 
                     return supplierNames.TryGetValue(supplierId.Value, out var name) && !string.IsNullOrWhiteSpace(name)
+                        ? name
+                        : "Nepoznato";
+                }
+
+                string ResolveFootwearTypeName(int? footwearTypeId)
+                {
+                    if (!footwearTypeId.HasValue)
+                    {
+                        return "Nepoznato";
+                    }
+
+                    return footwearTypeNames.TryGetValue(footwearTypeId.Value, out var name) && !string.IsNullOrWhiteSpace(name)
                         ? name
                         : "Nepoznato";
                 }
@@ -1397,6 +1430,94 @@ public static class AllEndpoints
                         var isUnknown = !g.Key.DobavljacId.HasValue
                             || string.Equals(normalizedSupplierName, "Nepoznato", StringComparison.OrdinalIgnoreCase);
                         var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
+                        var supplierMarginContribution = marginSnapshot.MarginContribution;
+
+                        var footwearBreakdown = g
+                            .GroupBy(s => s.TipObuceId)
+                            .Select(typeGroup =>
+                            {
+                                var footwearBucketKey = BuildSupplierFootwearBucketKey(g.Key.DobavljacId, typeGroup.Key);
+                                var previousTypeRevenue = 0m;
+                                var previousTypeUnits = 0;
+                                if (hasPreviousComparablePeriod && previousSupplierFootwearMetrics.TryGetValue(footwearBucketKey, out var previousTypeMetrics))
+                                {
+                                    previousTypeRevenue = previousTypeMetrics.Revenue;
+                                    previousTypeUnits = previousTypeMetrics.Units;
+                                }
+
+                                decimal typeRevenue = 0m;
+                                int typeQuantity = 0;
+                                var typeMargin = new MarginAccumulator();
+                                var typeArticleIds = new HashSet<int>();
+
+                                foreach (var row in typeGroup)
+                                {
+                                    typeRevenue += row.Prihod;
+                                    typeQuantity += row.Kolicina;
+                                    typeArticleIds.Add(row.ArtikalId);
+
+                                    decimal? snapshotCost = null;
+                                    if (row.SaleLineCost is null && snapshotCostByArtikalId.TryGetValue(row.ArtikalId, out var sc))
+                                        snapshotCost = sc;
+
+                                    typeMargin.Add(
+                                        row.Prihod,
+                                        row.Kolicina,
+                                        row.SaleLineCost,
+                                        snapshotCost,
+                                        row.ProductCostRsd,
+                                        row.ProductCostLegacy);
+                                }
+
+                                var typeMarginSnapshot = typeMargin.Build(typeRevenue);
+                                var typeMarginQuality = MarginQualityClassifier.ClassifyFromSnapshot(typeMarginSnapshot, typeRevenue);
+
+                                return new
+                                {
+                                    tipObuceId = typeGroup.Key,
+                                    tipObuceNaziv = ResolveFootwearTypeName(typeGroup.Key),
+                                    ukupanPromet = Math.Round(typeRevenue, 2),
+                                    ukupnaKolicina = typeQuantity,
+                                    brojArtikala = typeArticleIds.Count,
+                                    totalCost = typeMarginSnapshot.TotalCost,
+                                    marginContribution = typeMarginSnapshot.MarginContribution,
+                                    marginPct = typeMarginSnapshot.MarginPct,
+                                    shareOfSupplierRevenuePct = totalRevenue > 0m
+                                        ? Math.Round((double)(typeRevenue / totalRevenue * 100m), 2)
+                                        : 0d,
+                                    shareOfSupplierMarginContributionPct = supplierMarginContribution > 0m
+                                        ? Math.Round((double)(typeMarginSnapshot.MarginContribution / supplierMarginContribution * 100m), 2)
+                                        : 0d,
+                                    previousPeriodRevenue = hasPreviousComparablePeriod
+                                        ? Math.Round(previousTypeRevenue, 2)
+                                        : (decimal?)null,
+                                    previousPeriodUnits = hasPreviousComparablePeriod
+                                        ? previousTypeUnits
+                                        : (int?)null,
+                                    popRevenueChangePct = hasPreviousComparablePeriod && previousTypeRevenue > 0m
+                                        ? Math.Round((double)((typeRevenue - previousTypeRevenue) / previousTypeRevenue * 100m), 2)
+                                        : (double?)null,
+                                    popUnitsChangePct = hasPreviousComparablePeriod && previousTypeUnits > 0
+                                        ? Math.Round((typeQuantity - previousTypeUnits) / (double)previousTypeUnits * 100d, 2)
+                                        : (double?)null,
+                                    historicalCostRevenue = typeMarginSnapshot.HistoricalCostRevenue,
+                                    historicalCostCoveragePct = typeMarginSnapshot.HistoricalMarginCoveragePct ?? 0d,
+                                    estimatedCostRevenue = typeMarginSnapshot.EstimatedCostRevenue,
+                                    estimatedCostCoveragePct = typeMarginSnapshot.FallbackCostCoveragePct ?? 0d,
+                                    snapshotCostRevenue = typeMarginSnapshot.SnapshotCostRevenue,
+                                    snapshotCostCoveragePct = typeMarginSnapshot.SnapshotCostCoveragePct ?? 0d,
+                                    noCostRevenue = Math.Round(typeRevenue - typeMarginSnapshot.RevenueWithCost, 2),
+                                    noCostCoveragePct = typeRevenue > 0m
+                                        ? Math.Round((double)((typeRevenue - typeMarginSnapshot.RevenueWithCost) / typeRevenue * 100m), 2)
+                                        : 0d,
+                                    marginQualityLabel = typeMarginQuality.Label,
+                                    marginQualityTier = typeMarginQuality.Tier,
+                                    marginQualityShortLabel = typeMarginQuality.ShortLabel,
+                                    marginQualityTooltip = typeMarginQuality.Tooltip
+                                };
+                            })
+                            .OrderByDescending(x => x.ukupanPromet)
+                            .ToList();
 
                         return new
                         {
@@ -1453,6 +1574,10 @@ public static class AllEndpoints
                             prePostNivelacijaRevenueCoveragePct = splitSnapshot.ComparableRevenueCoveragePct,
                             prePostSignalNote = splitSnapshot.SignalNote,
                             prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
+                            primaryFootwearType = footwearBreakdown.FirstOrDefault()?.tipObuceNaziv ?? "N/A",
+                            primaryFootwearTypeSharePct = footwearBreakdown.FirstOrDefault()?.shareOfSupplierRevenuePct ?? 0d,
+                            footwearTypeCount = footwearBreakdown.Count,
+                            footwearBreakdown,
                             // Legacy compatibility aliases (pre/post impact metric in old response shape)
                             promenaPrometa = splitSnapshot.RevenueImpactPct,
                             promenaKolicine = splitSnapshot.UnitsImpactPct
@@ -1617,6 +1742,10 @@ public static class AllEndpoints
                             supplier.prePostNivelacijaRevenueCoveragePct,
                             supplier.prePostSignalNote,
                             supplier.prePostComparableArticleCount,
+                            supplier.primaryFootwearType,
+                            supplier.primaryFootwearTypeSharePct,
+                            supplier.footwearTypeCount,
+                            supplier.footwearBreakdown,
                             sharePct,
                             shareOfMarginContribution,
                             shareOfProfit = shareOfMarginContribution,
@@ -1681,6 +1810,7 @@ public static class AllEndpoints
                         : (decimal?)null,
                     previousPeriodUnits,
                     brojDobavljaca = suppliers.Count,
+                    brojDobavljacTipObuceKombinacija = suppliers.Sum(r => r.footwearTypeCount),
                     popRevenueChangePct = previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
                         ? Math.Round((double)((totalRevenue - previousPeriodRevenue.Value) / previousPeriodRevenue.Value * 100m), 2)
                         : (double?)null,

@@ -141,7 +141,7 @@ function withBaseVars(overrides: Record<string, string>): Record<string, string>
 const THEMES: Record<ThemeName, Theme> = {
   "inventory-dark": {
     name: "inventory-dark",
-    displayName: "Bilans Stanja — Tamna",
+    displayName: "Tamna",
     description: "Optimizovana za dugotrajno citanje tabela",
     cssVars: withBaseVars({
       "--surface-default": "var(--theme-color-0f1318, #0f1318)",
@@ -302,7 +302,7 @@ interface ThemeProviderProps {
   defaultTheme?: ThemeName;
 }
 
-export function ThemeProvider({ children, defaultTheme = "inventory-dark" }: ThemeProviderProps) {
+export function ThemeProvider({ children, defaultTheme = "neon-dark" }: ThemeProviderProps) {
   const [currentTheme, setCurrentTheme] = useState<ThemeName>(() => {
     const saved = localStorage.getItem("app-theme");
     return saved && (saved in THEMES) ? (saved as ThemeName) : defaultTheme;

@@ -10,6 +10,35 @@ export interface AnalyticsRecommendation {
   reasonCodes: string[];
 }
 
+export interface SupplierFootwearBreakdown {
+  tipObuceId: number | null;
+  tipObuceNaziv: string;
+  ukupanPromet: number;
+  ukupnaKolicina: number;
+  brojArtikala: number;
+  totalCost: number;
+  marginContribution: number;
+  marginPct: number;
+  shareOfSupplierRevenuePct: number;
+  shareOfSupplierMarginContributionPct: number;
+  previousPeriodRevenue: number | null;
+  previousPeriodUnits: number | null;
+  popRevenueChangePct: number | null;
+  popUnitsChangePct: number | null;
+  historicalCostRevenue?: number;
+  historicalCostCoveragePct?: number;
+  estimatedCostRevenue?: number;
+  estimatedCostCoveragePct?: number;
+  snapshotCostRevenue?: number;
+  snapshotCostCoveragePct?: number;
+  noCostRevenue?: number;
+  noCostCoveragePct?: number;
+  marginQualityLabel?: string | null;
+  marginQualityTier?: string | null;
+  marginQualityShortLabel?: string | null;
+  marginQualityTooltip?: string | null;
+}
+
 export interface SupplierSalesStat {
   dobavljacId: number | null;
   dobavljacNaziv: string;
@@ -51,6 +80,10 @@ export interface SupplierSalesStat {
   prePostNivelacijaRevenueCoveragePct: number | null;
   prePostSignalNote?: string | null;
   prePostComparableArticleCount?: number;
+  primaryFootwearType?: string | null;
+  primaryFootwearTypeSharePct?: number;
+  footwearTypeCount?: number;
+  footwearBreakdown?: SupplierFootwearBreakdown[];
   sharePct?: number;
   shareOfMarginContribution?: number;
   /** @deprecated Use shareOfMarginContribution. */
@@ -88,6 +121,7 @@ export interface SupplierSalesTotals {
   previousPeriodRevenue: number | null;
   previousPeriodUnits: number | null;
   brojDobavljaca: number;
+  brojDobavljacTipObuceKombinacija?: number;
   popRevenueChangePct: number | null;
   popUnitsChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;

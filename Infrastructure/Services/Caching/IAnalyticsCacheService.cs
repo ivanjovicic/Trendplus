@@ -182,7 +182,7 @@ public static class AnalyticsCacheKeys
 
     // Keeps the historical heavy-endpoint key dimensions: period, store, season, data scope, and active snapshot batch.
     public static string SupplierSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
-        $"{Prefix}supplier-sales-stats:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
+        $"{Prefix}supplier-sales-stats:v2:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
 
     public static string ShoeTypeSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
         $"{Prefix}shoe-type-sales-stats:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";

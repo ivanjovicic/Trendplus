@@ -280,27 +280,36 @@
 }
 
 .supplier-decision-kpi {
-  background: linear-gradient(165deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
-  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 28%, transparent);
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  padding: 12px;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--success) 14%), var(--surface-darker));
+  border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  transition: transform 200ms ease;
+}
+
+.supplier-decision-kpi:hover {
+  transform: translateY(-2px);
 }
 
 .supplier-decision-kpi span {
-  color: var(--dashboard-text-muted);
+  color: var(--text-muted);
   display: block;
   font-size: 12px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
 }
 
 .supplier-decision-kpi strong {
-  color: var(--dashboard-text);
+  color: var(--text-primary);
   display: block;
   font-size: 24px;
   font-weight: 800;
   line-height: 1.1;
-  margin-top: 7px;
+  letter-spacing: -0.01em;
+  margin-top: 16px;
+  text-shadow: 0 0 12px currentColor;
 }
 
 .supplier-decision-kpi strong.trend-up {
@@ -887,6 +896,146 @@
   margin-top: 6px;
 }
 
+.supplier-footwear-breakdown {
+  background: var(--dashboard-surface-overlay-soft);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.supplier-footwear-summary {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.supplier-footwear-summary p {
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+  text-align: right;
+}
+
+.supplier-footwear-mix {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 5px 10px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.supplier-footwear-mix.mix-high {
+  background: color-mix(in srgb, var(--dashboard-warning) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dashboard-warning) 44%, transparent);
+  color: var(--dashboard-warning);
+}
+
+.supplier-footwear-mix.mix-medium {
+  background: color-mix(in srgb, var(--dashboard-secondary) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 40%, transparent);
+  color: var(--dashboard-secondary);
+}
+
+.supplier-footwear-mix.mix-balanced {
+  background: color-mix(in srgb, var(--dashboard-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 38%, transparent);
+  color: var(--dashboard-accent);
+}
+
+.supplier-footwear-table-wrap {
+  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 18%, transparent);
+  border-radius: 9px;
+  overflow-x: auto;
+}
+
+.supplier-footwear-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 880px;
+  width: 100%;
+}
+
+.supplier-footwear-table th {
+  background: linear-gradient(180deg, var(--dashboard-surface-table-head-top), var(--dashboard-surface-table-head-bottom));
+  border-bottom: 1px solid color-mix(in srgb, var(--dashboard-accent) 18%, transparent);
+  color: var(--dashboard-text);
+  font-size: 11px;
+  font-weight: 780;
+  padding: 9px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.supplier-footwear-table td {
+  background: var(--dashboard-surface-row);
+  border-bottom: 1px solid color-mix(in srgb, var(--dashboard-accent) 12%, transparent);
+  color: var(--dashboard-text);
+  font-size: 12px;
+  padding: 9px 10px;
+  vertical-align: middle;
+}
+
+.supplier-footwear-table tr:hover td {
+  background: var(--dashboard-surface-row-hover);
+}
+
+.supplier-footwear-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.supplier-footwear-name strong {
+  color: var(--dashboard-text);
+  font-size: 12px;
+}
+
+.supplier-footwear-name span,
+.supplier-footwear-cost-note {
+  color: var(--dashboard-text-muted);
+  font-size: 10px;
+}
+
+.supplier-footwear-cost-note {
+  cursor: help;
+  display: block;
+  font-weight: 700;
+  margin-top: 3px;
+}
+
+.supplier-footwear-share {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 110px;
+}
+
+.supplier-footwear-share-track {
+  background: color-mix(in srgb, var(--dashboard-border-soft) 58%, transparent);
+  border-radius: 999px;
+  height: 5px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.supplier-footwear-share-track div {
+  background: linear-gradient(90deg, var(--dashboard-gradient-share-start), var(--dashboard-gradient-share-end));
+  border-radius: inherit;
+  height: 100%;
+}
+
+.supplier-footwear-empty {
+  margin-bottom: 10px;
+}
+
 .supplier-decision-page .recharts-default-legend {
   font-size: 12px;
 }
@@ -905,9 +1054,14 @@
 @media (max-width: 940px) {
   .supplier-decision-header,
   .supplier-decision-table-head,
+  .supplier-footwear-summary,
   .supplier-decision-detail-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .supplier-footwear-summary p {
+    text-align: left;
   }
 
   .supplier-decision-actions {

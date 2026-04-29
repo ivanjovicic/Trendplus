@@ -253,26 +253,36 @@
 }
 
 .ppn-decision-kpi {
-  background: linear-gradient(165deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
-  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 28%, transparent);
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
-  padding: 12px;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--success) 14%), var(--surface-darker));
+  border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  transition: transform 200ms ease;
+}
+
+.ppn-decision-kpi:hover {
+  transform: translateY(-2px);
 }
 
 .ppn-decision-kpi span {
-  color: var(--dashboard-text-muted);
+  color: var(--text-muted);
   display: block;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
 }
 
 .ppn-decision-kpi strong {
-  color: var(--dashboard-text);
+  color: var(--text-primary);
   display: block;
-  font-size: 22px;
-  font-weight: 700;
-  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin-top: 16px;
+  text-shadow: 0 0 12px currentColor;
 }
 
 .ppn-decision-kpi strong.trend-up {
