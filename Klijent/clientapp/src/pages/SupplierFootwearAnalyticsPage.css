@@ -94,14 +94,20 @@
 }
 
 .sf-decision-actions button {
-  background: var(--accent-primary, var(--theme-color-2563eb, #2563eb));
+  background: var(--accent-primary, #2563eb);
   border: 0;
-  border-radius: 8px;
-  color: var(--text-on-primary, var(--theme-color-ffffff, #ffffff));
+  border-radius: 10px;
+  color: var(--text-on-primary, #ffffff);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
-  padding: 9px 12px;
+  padding: 9px 14px;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sf-decision-actions button:hover:not(:disabled) {
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-primary) 32%, transparent);
+  filter: brightness(1.08);
 }
 
 .sf-decision-actions button.secondary {

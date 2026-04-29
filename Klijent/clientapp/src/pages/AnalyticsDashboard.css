@@ -80,10 +80,17 @@
 .analytics-controls button,
 .analytics-custom-range button {
   cursor: pointer;
-  background: var(--accent-primary, var(--info));
-  border-color: var(--accent-primary, var(--info));
-  color: var(--text-on-primary, var(--theme-color-ffffff, #ffffff));
-  font-weight: 600;
+  background: var(--accent-primary, #2563eb);
+  border-color: transparent;
+  color: var(--text-on-primary, #ffffff);
+  font-weight: 700;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.analytics-controls button:hover:not(:disabled),
+.analytics-custom-range button:hover:not(:disabled) {
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-primary) 32%, transparent);
+  filter: brightness(1.08);
 }
 
 .analytics-controls button:disabled,

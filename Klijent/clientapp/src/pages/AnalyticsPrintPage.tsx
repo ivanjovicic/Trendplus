@@ -10,17 +10,18 @@ export default function AnalyticsPrintPage() {
     [searchParams]
   );
   const isDenseDailySalesBlank = payload?.documentType === "daily-sales-blank";
-  const isDailySalesPrint = payload?.tableKey === "daily-sales-stats" || payload?.tableKey === "daily-sales-stats-blank" || isDenseDailySalesBlank;
-  // Blank forms with many columns need landscape; filled daily-sales still portrait
-  const pageOrientation = isDenseDailySalesBlank ? "landscape" : isDailySalesPrint ? "portrait" : "landscape";
-  const pageMarginMm = isDenseDailySalesBlank ? 7 : 14;
+  const isPortraitShiftBlank = payload?.documentType === "daily-sales-blank-portrait";
+  const isDailySalesPrint = payload?.tableKey === "daily-sales-stats" || payload?.tableKey === "daily-sales-stats-blank" || isDenseDailySalesBlank || isPortraitShiftBlank;
+  // Blank forms with many columns need landscape; portrait shift form and filled daily-sales stay portrait
+  const pageOrientation = isDenseDailySalesBlank ? "landscape" : "portrait";
+  const pageMarginMm = isDenseDailySalesBlank ? 7 : isPortraitShiftBlank ? 8 : 14;
   const tableFontSizePx = isDenseDailySalesBlank ? 9 : 12;
   // Separate padding for th and td so we can control row height properly
   const thPadding = isDenseDailySalesBlank ? "6px 4px" : isDailySalesPrint ? "10px 8px" : "8px";
   const tdPadding = isDenseDailySalesBlank ? "18px 5px" : isDailySalesPrint ? "10px 8px" : "8px";
   // height on <td> acts as min-height (unlike min-height which is ignored on table cells)
   const blankTdHeightPx = 46;
-  const titleFontSizePx = isDenseDailySalesBlank ? 22 : 28;
+  const titleFontSizePx = isDenseDailySalesBlank ? 22 : isPortraitShiftBlank ? 16 : 28;
 
   React.useEffect(() => {
     if (!payload) return;
@@ -39,7 +40,7 @@ export default function AnalyticsPrintPage() {
 
   return (
     <div
-      className={`analytics-print-page${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}`}
+      className={`analytics-print-page${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}${isPortraitShiftBlank ? " analytics-print-page-portrait-shift" : ""}`}
       style={{ background: "var(--surface)", color: "var(--foreground)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}
     >
       <style>{`
@@ -116,6 +117,66 @@ export default function AnalyticsPrintPage() {
             height: ${blankTdHeightPx}px;
           }
         }
+
+        /* ── Portrait shift blank form (30 rows on A4 portrait) ───── */
+        /* A4 portrait: 297mm - 16mm margins = 281mm.
+           Title block ~18mm + table header ~8mm = 26mm overhead.
+           255mm / 30 rows = 8.5mm ≈ 32px per row. */
+        .analytics-print-page-portrait-shift .analytics-print-table {
+          table-layout: fixed;
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .analytics-print-page-portrait-shift .analytics-print-table th,
+        .analytics-print-page-portrait-shift .analytics-print-table td {
+          border: 1px solid #888;
+          font-size: 8px;
+          overflow: hidden;
+        }
+        .analytics-print-page-portrait-shift .analytics-print-table th {
+          padding: 4px 3px;
+          background: #eeeeee !important;
+          font-weight: bold;
+          text-align: left;
+          vertical-align: bottom;
+          line-height: 1.3;
+          word-break: break-word;
+          white-space: normal;
+        }
+        .analytics-print-page-portrait-shift .analytics-print-table td {
+          padding: 0 3px;
+          height: 32px;
+          background: #ffffff !important;
+          vertical-align: middle;
+        }
+        /* Alternating row shade — very light, so writing stays visible */
+        .analytics-print-page-portrait-shift .analytics-print-table tbody tr:nth-child(even) td {
+          background: #f5f5f5 !important;
+        }
+        /* Column widths (total = 194mm on portrait with 8mm margins) */
+        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(1),
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(1) { width: 22mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(2),
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(2) { width: 40mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(3),
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(3) { width: 20mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(4),
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(4) { width: 40mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(5),
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(5) { width: 20mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(6),
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(6) { width: 28mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(7),
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(7) { width: 24mm; }
+        @media print {
+          .analytics-print-page-portrait-shift .analytics-print-table td {
+            background: #ffffff !important;
+            height: 32px;
+          }
+          .analytics-print-page-portrait-shift .analytics-print-table tbody tr:nth-child(even) td {
+            background: #f5f5f5 !important;
+          }
+        }
       `}</style>
 
       <div className="analytics-print-actions" style={{ marginBottom: 20, display: "flex", gap: 12 }}>
@@ -132,7 +193,7 @@ export default function AnalyticsPrintPage() {
           Trendplus analitika
         </div>
         <h1 style={{ margin: "6px 0 4px", fontSize: titleFontSizePx }}>{payload.tableTitle}</h1>
-        {!isDenseDailySalesBlank && (
+        {!isDenseDailySalesBlank && !isPortraitShiftBlank && (
           <div style={{ fontSize: 12, color: "var(--muted)" }}>
             Table key: {params.table ?? payload.tableKey} | Generated in browser print view
           </div>

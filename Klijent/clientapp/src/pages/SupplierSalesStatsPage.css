@@ -202,22 +202,20 @@
 }
 
 .supplier-decision-actions button {
-  background: linear-gradient(120deg, var(--dashboard-accent), var(--dashboard-gradient-margin-end));
+  background: var(--accent-primary, #2563eb);
   border: 0;
   border-radius: 10px;
-  color: var(--dashboard-on-accent);
+  color: var(--text-on-primary, #ffffff);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  padding: 10px 13px;
-  transition: transform 0.16s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  font-weight: 700;
+  padding: 9px 14px;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
 }
 
 .supplier-decision-actions button:hover {
-  box-shadow: 0 8px 20px rgba(70, 255, 135, 0.28);
-  filter: saturate(1.06);
-  transform: translateY(-1px);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-primary) 32%, transparent);
+  filter: brightness(1.08);
 }
 
 .supplier-decision-actions button.secondary {

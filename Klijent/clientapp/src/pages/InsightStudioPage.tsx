@@ -550,7 +550,7 @@ function OverviewTab({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <KpiCard label="Ukupan prihod" value={fmtRsd(kpi.revenue)} sub="vs. preth. period" change={kpi.revenueChange} accent={PAL.blue} sparkline={kpi.sparkline} icon="💰" tooltip="Ukupna prodaja za izabrani period" />
             <KpiCard label="Bruto marža" value={fmtPct(kpi.marginPct)} sub="Procenjena profitabilnost" accent={PAL.green} icon="📈" tooltip="(Prodajna - Nabavna) / Prodajna × 100" />
-            <KpiCard label="Prodato kom." value={fmtNum(kpi.units)} sub="vs. preth. period" change={kpi.unitsChange} accent={PAL.purple} icon="👟" />
+            <KpiCard label="Prodato kom." value={fmtNum(kpi.units)} sub="vs. preth. period" change={kpi.unitsChange} accent={PAL.cyan} icon="👟" />
             <KpiCard label="Transakcije" value={fmtNum(kpi.transactions)} sub={`Avg. ${fmtRsd(kpi.transactions > 0 ? kpi.revenue / kpi.transactions : 0)}/tr`} accent={PAL.yellow} icon="🧾" tooltip="Prosečna vrednost transakcije" />
             <KpiCard label="OOS / Malo" value={`${kpi.oosCount} / ${kpi.lowStockCount}`} sub="SKU bez zaliha / ispod min" accent={kpi.oosCount > 10 ? PAL.red : PAL.orange} icon="⚠️" tooltip="Artikli bez zaliha i artikli ispod minimalne količine" />
           </div>
@@ -2224,7 +2224,7 @@ export default function InsightStudioPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <KpiCard label="Ukupan prihod" value={fmtRsd(kpi.revenue)} sub="vs. preth." change={kpi.revenueChange} accent={PAL.blue} sparkline={kpi.sparkline} icon="💰" tooltip="Ukupna prodaja za period" />
           <KpiCard label="Bruto marža" value={fmtPct(kpi.marginPct)} sub="Procenjena" accent={PAL.green} icon="📈" tooltip="(Prodajna - Nabavna) / Prodajna × 100" />
-          <KpiCard label="Prodato kom." value={fmtNum(kpi.units)} sub="vs. preth." change={kpi.unitsChange} accent={PAL.purple} icon="👟" />
+          <KpiCard label="Prodato kom." value={fmtNum(kpi.units)} sub="vs. preth." change={kpi.unitsChange} accent={PAL.cyan} icon="👟" />
           <KpiCard label="Transakcije" value={fmtNum(kpi.transactions)} sub={`Avg ${fmtRsd(kpi.transactions > 0 ? kpi.revenue / kpi.transactions : 0)}`} accent={PAL.yellow} icon="🧾" />
           <KpiCard label="OOS / Malo" value={`${kpi.oosCount} / ${kpi.lowStockCount}`} sub="Bez zaliha / ispod min" accent={kpi.oosCount > 10 ? PAL.red : PAL.orange} icon="⚠️" />
         </div>

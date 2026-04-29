@@ -55,10 +55,19 @@
 
 .ad-controls button,
 .ad-custom button {
-  background: var(--accent-gradient, linear-gradient(135deg, var(--theme-color-36d2a0, #36d2a0), var(--theme-color-3f7cff, #3f7cff)));
-  border-color: var(--theme-color-rgba-255-255-255-0p2, rgba(255, 255, 255, 0.2));
+  background: var(--accent-primary, #2563eb);
+  border-color: transparent;
+  color: var(--text-on-primary, #ffffff);
   cursor: pointer;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ad-controls button:hover:not(:disabled),
+.ad-custom button:hover:not(:disabled) {
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-primary) 32%, transparent);
+  filter: brightness(1.08);
 }
 
 .ad-controls button:disabled {

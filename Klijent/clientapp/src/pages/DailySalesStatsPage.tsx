@@ -1115,36 +1115,29 @@ export default function DailySalesStatsPage() {
   };
 
   const handlePrintBlank = useCallback(() => {
-    const blankSupplierColumns = Array.from({ length: BLANK_SUPPLIER_COLUMN_COUNT }, (_, index) => ({
-      key: `supplierBlank${index + 1}`,
-      header: "",
-      dataType: "text",
-    }));
-
     const blankColumns = [
-      { key: "date", header: "Datum", dataType: "date" },
-      { key: "firstShiftTotalItems", header: "Prva smena (ime: ________)", dataType: "text" },
-      { key: "secondShiftTotalItems", header: "Druga smena (ime: ________)", dataType: "text" },
-      { key: "totalRevenue", header: "Prihod dana", dataType: "currency" },
-      ...blankSupplierColumns,
-      { key: "othersCount", header: "Ostali (kom.)", dataType: "number" },
-      { key: "totalItemsSold", header: "Ukupno kom", dataType: "number" },
+      { key: "date",    header: "Datum",               dataType: "text" },
+      { key: "worker1", header: "Prodavac (1. smena)",  dataType: "text" },
+      { key: "shift1",  header: "Kom.",                 dataType: "text" },
+      { key: "worker2", header: "Prodavac (2. smena)",  dataType: "text" },
+      { key: "shift2",  header: "Kom.",                 dataType: "text" },
+      { key: "revenue", header: "Prihod (RSD)",         dataType: "text" },
+      { key: "total",   header: "Ukupno (kom.)",        dataType: "text" },
     ];
 
-    const rowCount = Math.max(BLANK_PRINT_ROW_COUNT, sortedRows.length);
-    const blankRows = Array.from({ length: rowCount }, () =>
-      Object.fromEntries(blankColumns.map((column) => [column.key, ""]))
+    const blankRows = Array.from({ length: 30 }, () =>
+      Object.fromEntries(blankColumns.map((col) => [col.key, ""]))
     );
 
     const stateKey = savePrintPayload({
       tableKey: "daily-sales-stats-blank",
-      tableTitle: "Dnevna prodaja po smeni i dobavljačima (prazan obrazac)",
+      tableTitle: "Dnevna prodaja po smeni",
       columns: blankColumns,
       rows: blankRows,
       filters: [],
       metadata: [],
       locale: "sr-RS",
-      documentType: "daily-sales-blank",
+      documentType: "daily-sales-blank-portrait",
     });
 
     window.open(
@@ -1152,7 +1145,7 @@ export default function DailySalesStatsPage() {
       "_blank",
       "noopener"
     );
-  }, [sortedRows.length]);
+  }, []);
 
   return (
     <div className="daily-sales-page">

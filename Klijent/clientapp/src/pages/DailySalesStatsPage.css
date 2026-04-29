@@ -90,13 +90,20 @@
 }
 
 .daily-sales-actions button {
-  border: 1px solid var(--border-default);
+  border: 0;
   border-radius: 10px;
-  padding: 0.55rem 0.85rem;
-  font-weight: 600;
-  background: var(--accent-primary);
-  color: var(--primary-text);
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--accent-primary, #2563eb);
+  color: var(--text-on-primary, #ffffff);
   cursor: pointer;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.daily-sales-actions button:hover:not(:disabled) {
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-primary) 32%, transparent);
+  filter: brightness(1.08);
 }
 
 .daily-sales-actions button.secondary {
