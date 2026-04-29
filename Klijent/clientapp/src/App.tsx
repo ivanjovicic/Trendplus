@@ -167,7 +167,7 @@ function AppRouterContent() {
 export default function App() {
     return (
         <ErrorBoundary>
-            <ThemeProvider defaultTheme="inventory-dark">
+            <ThemeProvider defaultTheme="neon-dark">
                 <ToastProvider>
                     <BrowserRouter>
                         <AppRouterContent />

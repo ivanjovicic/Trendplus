@@ -1,0 +1,420 @@
+/* Shared analytics chrome. Theme tokens live in ThemeContext; this file only applies them. */
+
+.analytics-dashboard,
+.analytics-details,
+.supplier-decision-page,
+.sf-decision-page,
+.ppn-decision-page,
+.observability-page,
+.sdh-decision-page {
+  --dashboard-bg: var(--surface-default);
+  --dashboard-bg-soft: var(--surface-darker);
+  --dashboard-surface: var(--surface-elevated);
+  --dashboard-surface-2: var(--surface-light);
+  --dashboard-border: var(--analytics-border-strong);
+  --dashboard-border-soft: var(--analytics-border-soft);
+  --dashboard-text: var(--analytics-text);
+  --dashboard-text-muted: var(--analytics-text-muted);
+  --dashboard-accent: var(--analytics-accent);
+  --dashboard-accent-strong: var(--analytics-accent-2);
+  --dashboard-secondary: var(--info);
+  --dashboard-warning: var(--warning);
+  --dashboard-danger: var(--error);
+  --dashboard-grid: var(--analytics-chart-grid);
+  --dashboard-chart-axis: var(--analytics-chart-axis);
+  --dashboard-chart-hover: var(--analytics-row-hover-bg);
+  --dashboard-tooltip-bg: var(--analytics-chart-tooltip-bg);
+  --dashboard-tooltip-border: var(--analytics-chart-tooltip-border);
+  --dashboard-tooltip-label: var(--analytics-title-text);
+  --dashboard-tooltip-shadow: var(--analytics-chart-tooltip-shadow);
+  --dashboard-gradient-share-start: var(--analytics-accent);
+  --dashboard-gradient-share-end: var(--analytics-accent-2);
+  --dashboard-gradient-revenue-start: var(--analytics-accent-2);
+  --dashboard-gradient-revenue-end: var(--analytics-accent);
+  --dashboard-gradient-margin-start: var(--info);
+  --dashboard-gradient-margin-end: var(--success);
+  --dashboard-surface-overlay: color-mix(in srgb, var(--surface-elevated) 78%, transparent);
+  --dashboard-surface-overlay-soft: color-mix(in srgb, var(--surface-elevated) 66%, transparent);
+  --dashboard-surface-overlay-strong: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
+  --dashboard-surface-panel-top: color-mix(in srgb, var(--surface-light) 74%, var(--analytics-accent) 26%);
+  --dashboard-surface-panel-bottom: color-mix(in srgb, var(--surface-elevated) 86%, var(--surface-darker) 14%);
+  --dashboard-surface-control-top: color-mix(in srgb, var(--surface-elevated) 82%, var(--analytics-accent) 18%);
+  --dashboard-surface-control-bottom: color-mix(in srgb, var(--surface-darker) 82%, var(--surface-elevated) 18%);
+  --dashboard-surface-card-top: color-mix(in srgb, var(--surface-light) 76%, var(--analytics-accent) 24%);
+  --dashboard-surface-card-bottom: color-mix(in srgb, var(--surface-elevated) 86%, var(--surface-darker) 14%);
+  --dashboard-surface-table-head-top: color-mix(in srgb, var(--surface-light) 78%, var(--analytics-accent) 22%);
+  --dashboard-surface-table-head-bottom: color-mix(in srgb, var(--surface-elevated) 88%, var(--surface-darker) 12%);
+  --dashboard-surface-table-sorted-top: color-mix(in srgb, var(--analytics-accent) 22%, var(--surface-light) 78%);
+  --dashboard-surface-table-sorted-bottom: color-mix(in srgb, var(--analytics-accent) 14%, var(--surface-elevated) 86%);
+  --dashboard-surface-row: var(--analytics-row-bg);
+  --dashboard-surface-row-hover: var(--analytics-row-hover-bg);
+  --dashboard-surface-row-expanded: color-mix(in srgb, var(--analytics-accent) 14%, var(--surface-elevated) 86%);
+  --dashboard-focus-ring: color-mix(in srgb, var(--analytics-accent) 24%, transparent);
+
+  background: var(--analytics-page-bg);
+  border: var(--border-width-sm) solid var(--analytics-border-soft);
+  border-radius: var(--analytics-radius-xl);
+  box-shadow: var(--analytics-shadow);
+  color: var(--analytics-text);
+}
+
+.analytics-header h1,
+.supplier-decision-title,
+.supplier-decision-header h1,
+.sf-decision-title,
+.ppn-decision-title,
+.observability-title,
+.analytics-section > h2,
+.supplier-decision-card h2,
+.sf-decision-card h2,
+.ppn-decision-card h2,
+.sdh-decision-card h2 {
+  color: var(--analytics-title-text);
+  font-weight: var(--font-weight-heavy);
+  letter-spacing: var(--letter-spacing-label);
+}
+
+.analytics-header p,
+.supplier-decision-subtitle,
+.sf-decision-subtitle,
+.ppn-decision-subtitle,
+.observability-subtitle,
+.section-note {
+  color: var(--analytics-text-muted);
+}
+
+.analytics-panel,
+.metric-card,
+.stock-card,
+.validation-card,
+.glossary-card,
+.ad-kpi-card,
+.ad-risk-card,
+.ad-chart,
+.supplier-decision-kpi,
+.supplier-decision-card,
+.supplier-decision-detail,
+.supplier-decision-panel,
+.sf-decision-kpi,
+.sf-decision-card,
+.sf-decision-detail,
+.ppn-decision-kpi,
+.ppn-decision-signal,
+.ppn-decision-card,
+.ppn-decision-detail,
+.observability-kpi,
+.observability-panel,
+.observability-chart-card,
+.sdh-decision-kpi,
+.sdh-decision-card {
+  background: var(--analytics-panel-bg);
+  border: var(--border-width-sm) solid var(--analytics-border);
+  border-radius: var(--analytics-radius-lg);
+  box-shadow: var(--analytics-shadow-soft), var(--analytics-glow);
+  color: var(--analytics-text);
+}
+
+.metric-card,
+.supplier-decision-kpi,
+.sf-decision-kpi,
+.ppn-decision-kpi,
+.observability-kpi,
+.sdh-decision-kpi,
+.ad-kpi-card {
+  background: var(--analytics-panel-bg-strong);
+  border-color: var(--analytics-border-strong);
+  box-shadow: var(--analytics-shadow), var(--analytics-glow);
+}
+
+.metric-card:hover,
+.supplier-decision-kpi:hover,
+.sf-decision-kpi:hover,
+.ppn-decision-kpi:hover,
+.observability-kpi:hover,
+.sdh-decision-kpi:hover,
+.ad-kpi-card:hover {
+  border-color: var(--analytics-border-strong);
+  box-shadow: var(--analytics-shadow), var(--analytics-glow-strong);
+  transform: translateY(calc(var(--space-px) - var(--space-px) - var(--space-px)));
+}
+
+.metric-card strong,
+.stock-card strong,
+.supplier-decision-kpi strong,
+.sf-decision-kpi strong,
+.ppn-decision-kpi strong,
+.observability-kpi__value,
+.sdh-decision-kpi strong,
+.ad-kpi-card strong,
+.ad-risk-card strong {
+  color: var(--analytics-value-text);
+  font-weight: var(--font-weight-heavy);
+  text-shadow: var(--analytics-glow);
+}
+
+.metric-card > span,
+.metric-card .metric-label,
+.supplier-decision-kpi span,
+.sf-decision-kpi span,
+.ppn-decision-kpi span,
+.observability-kpi__label,
+.sdh-decision-kpi span,
+.ad-kpi-card span,
+.ad-risk-card span {
+  color: var(--analytics-text-muted);
+  letter-spacing: var(--letter-spacing-label);
+}
+
+.analytics-filter-bar,
+.analytics-custom-range,
+.supplier-decision-filters,
+.sf-decision-filters,
+.ppn-decision-filters,
+.observability-filters,
+.sdh-decision-filters {
+  background: var(--analytics-panel-bg);
+  border: var(--border-width-sm) solid var(--analytics-border);
+  border-radius: var(--analytics-radius-lg);
+  box-shadow: var(--analytics-shadow-soft);
+}
+
+.analytics-controls select,
+.analytics-controls button,
+.analytics-custom-range input,
+.analytics-custom-range button,
+.analytics-filter-grid select,
+.analytics-filter-grid input,
+.supplier-decision-field select,
+.supplier-decision-field input,
+.sf-decision-field select,
+.sf-decision-field input,
+.ppn-decision-field select,
+.ppn-decision-field input,
+.observability-input,
+.observability-select,
+.sdh-decision-filters select,
+.sdh-decision-filters input {
+  background: var(--analytics-control-bg);
+  border: var(--border-width-sm) solid var(--analytics-border-soft);
+  border-radius: var(--analytics-radius-sm);
+  box-shadow: inset 0 var(--space-px) 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
+  color: var(--analytics-text);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.analytics-controls select:focus,
+.analytics-controls button:focus-visible,
+.analytics-custom-range input:focus,
+.analytics-custom-range button:focus-visible,
+.analytics-filter-grid select:focus,
+.analytics-filter-grid input:focus,
+.supplier-decision-field select:focus,
+.supplier-decision-field input:focus,
+.sf-decision-field select:focus,
+.sf-decision-field input:focus,
+.ppn-decision-field select:focus,
+.ppn-decision-field input:focus,
+.observability-input:focus,
+.observability-select:focus,
+.observability-button:focus-visible,
+.observability-icon-button:focus-visible,
+.sdh-decision-filters select:focus,
+.sdh-decision-filters input:focus {
+  border-color: var(--analytics-border-strong);
+  box-shadow: var(--analytics-focus-ring);
+  outline: none;
+}
+
+.analytics-controls button,
+.analytics-custom-range button,
+.supplier-decision-actions button,
+.sf-decision-actions button,
+.ppn-decision-actions button,
+.observability-button--primary,
+.sdh-decision-filters button:not(.secondary) {
+  background: linear-gradient(120deg, var(--analytics-accent), var(--analytics-accent-2));
+  border-color: var(--analytics-border-strong);
+  border-radius: var(--analytics-radius-sm);
+  box-shadow: var(--analytics-glow);
+  color: var(--text-on-primary);
+}
+
+.supplier-decision-actions button.secondary,
+.sf-decision-actions button.secondary,
+.ppn-decision-actions button.secondary,
+.observability-button,
+.observability-icon-button {
+  background: var(--analytics-control-bg);
+  border-color: var(--analytics-border-soft);
+  color: var(--analytics-text);
+}
+
+.filter-chip,
+.supplier-decision-generated,
+.sf-decision-generated,
+.ppn-decision-generated,
+.supplier-decision-kpi-badge,
+.quality-snapshot,
+.observability-status,
+.ppn-data-health-badge {
+  background: var(--analytics-badge-bg);
+  border: var(--border-width-sm) solid var(--analytics-badge-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--analytics-glow);
+  color: var(--analytics-badge-text);
+}
+
+.top-table-wrap,
+.supplier-decision-table-wrap,
+.supplier-footwear-table-wrap,
+.sf-decision-table-wrap,
+.ppn-decision-table-wrap,
+.observability-table-shell,
+.observability-table-wrap {
+  background: var(--analytics-panel-bg);
+  border: var(--border-width-sm) solid var(--analytics-border);
+  border-radius: var(--analytics-radius-lg);
+  box-shadow: var(--analytics-shadow-soft);
+  overflow: auto;
+}
+
+.top-table-wrap table,
+.supplier-decision-table,
+.supplier-footwear-table,
+.sf-decision-table,
+.ppn-decision-table,
+.observability-table {
+  border-collapse: separate;
+  border-spacing: var(--space-0);
+}
+
+.top-table-wrap th,
+.supplier-decision-table th,
+.supplier-footwear-table th,
+.sf-decision-table th,
+.ppn-decision-table th,
+.observability-table th {
+  background: var(--analytics-table-head-bg);
+  border-bottom: var(--border-width-sm) solid var(--analytics-border);
+  color: var(--analytics-text-muted);
+  font-weight: var(--font-weight-bold);
+}
+
+.top-table-wrap td,
+.supplier-decision-table td,
+.supplier-footwear-table td,
+.sf-decision-table td,
+.ppn-decision-table td,
+.observability-table td {
+  border-bottom-color: var(--analytics-border-soft);
+  color: var(--analytics-text);
+}
+
+.top-table-wrap tbody tr,
+.supplier-decision-table tbody tr,
+.supplier-footwear-table tbody tr,
+.sf-decision-table tbody tr,
+.ppn-decision-table tbody tr,
+.observability-table tbody tr {
+  background: var(--analytics-row-bg);
+  transition:
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.top-table-wrap tbody tr:hover,
+.supplier-decision-table tbody tr:hover,
+.supplier-footwear-table tbody tr:hover,
+.sf-decision-table tbody tr:hover,
+.ppn-decision-table tbody tr:hover,
+.observability-table tbody tr:hover {
+  background: var(--analytics-row-hover-bg);
+  box-shadow: inset var(--space-1) 0 0 var(--analytics-accent);
+}
+
+.chart-wrap,
+.supplier-decision-chart-wrap,
+.supplier-decision-chart-shell,
+.sf-decision-chart-wrap,
+.ppn-decision-chart-wrap,
+.sdh-decision-chart-wrap,
+.observability-chart {
+  border-radius: var(--analytics-radius-md);
+}
+
+.analytics-empty,
+.supplier-decision-empty,
+.supplier-decision-empty-row,
+.sf-decision-empty,
+.sf-decision-empty-row,
+.ppn-decision-empty,
+.ppn-decision-empty-row,
+.observability-empty,
+.observability-loading {
+  background: color-mix(in srgb, var(--surface-elevated) 82%, transparent);
+  border-color: var(--analytics-border-soft);
+  border-radius: var(--analytics-radius-md);
+  color: var(--analytics-text-muted);
+}
+
+.supplier-decision-message,
+.sf-decision-message,
+.ppn-decision-message,
+.analytics-health,
+.observability-error {
+  border-radius: var(--analytics-radius-md);
+  box-shadow: var(--analytics-shadow-soft);
+}
+
+.supplier-decision-message.info,
+.sf-decision-message.info,
+.ppn-decision-message.info,
+.analytics-health {
+  background: color-mix(in srgb, var(--info) 14%, var(--surface-elevated) 86%);
+  border: var(--border-width-sm) solid color-mix(in srgb, var(--info) 34%, transparent);
+  color: color-mix(in srgb, var(--text-primary) 72%, var(--info) 28%);
+}
+
+.supplier-decision-message.error,
+.sf-decision-message.error,
+.ppn-decision-message.error,
+.observability-error,
+.analytics-errors {
+  background: color-mix(in srgb, var(--error) 12%, var(--surface-elevated) 88%);
+  border-color: color-mix(in srgb, var(--error) 36%, transparent);
+  color: color-mix(in srgb, var(--text-primary) 68%, var(--error) 32%);
+}
+
+[data-theme="neon-dark"] .analytics-dashboard,
+[data-theme="neon-dark"] .analytics-details,
+[data-theme="neon-dark"] .supplier-decision-page,
+[data-theme="neon-dark"] .sf-decision-page,
+[data-theme="neon-dark"] .ppn-decision-page,
+[data-theme="neon-dark"] .observability-page,
+[data-theme="neon-dark"] .sdh-decision-page {
+  box-shadow: var(--analytics-shadow), inset 0 0 0 var(--border-width-sm) color-mix(in srgb, var(--accent-primary) 16%, transparent);
+}
+
+@media (max-width: 900px) {
+  .analytics-dashboard,
+  .analytics-details,
+  .supplier-decision-page,
+  .sf-decision-page,
+  .ppn-decision-page,
+  .observability-page,
+  .sdh-decision-page {
+    border-radius: var(--analytics-radius-lg);
+  }
+
+  .analytics-header,
+  .supplier-decision-header,
+  .sf-decision-header,
+  .ppn-decision-header,
+  .observability-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -8,6 +8,7 @@ import { RequestActivityProvider } from "./context/RequestActivityContext";
 import { installBackendReachabilityFetchLayer } from "./utils/backendReachabilityFetchLayer";
 import { installApiFailoverFetchLayer } from "./utils/apiFailover";
 import "./skeleton.css";
+import "./styles/analytics-system.css";
 
 installApiFailoverFetchLayer();
 installBackendReachabilityFetchLayer();

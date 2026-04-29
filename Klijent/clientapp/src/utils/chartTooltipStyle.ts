@@ -1,15 +1,15 @@
 import type { CSSProperties } from "react";
 
 export const CHART_TOOLTIP_STYLE: CSSProperties = {
-  background: "var(--surface-elevated, var(--theme-color-0f1730, #0f1730))",
-  border: "1px solid var(--border-default, var(--theme-color-32406b, #32406b))",
-  color: "var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb))",
-  borderRadius: "8px",
-  boxShadow: "var(--chart-tooltip-shadow, var(--card-shadow, none))",
+  background: "var(--analytics-chart-tooltip-bg, var(--surface-elevated))",
+  border: "var(--border-width-sm) solid var(--analytics-chart-tooltip-border, var(--border-default))",
+  color: "var(--analytics-text, var(--text-primary))",
+  borderRadius: "var(--analytics-radius-sm, var(--radius-md))",
+  boxShadow: "var(--analytics-chart-tooltip-shadow, var(--chart-tooltip-shadow, var(--card-shadow)))",
 };
 
 export const CHART_TOOLTIP_LABEL_STYLE: CSSProperties = {
-  color: "var(--text-primary, var(--theme-color-e5e7eb, #e5e7eb))",
-  fontWeight: 600,
-  marginBottom: "0.25rem",
+  color: "var(--analytics-title-text, var(--text-primary))",
+  fontWeight: "var(--font-weight-bold)",
+  marginBottom: "var(--space-1)",
 };
