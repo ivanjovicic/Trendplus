@@ -543,3 +543,5 @@ body {
   color: var(--text-muted);
 }
 
+/* InfoTip badge styles are co-located in components/ui/InfoTip.css */
+

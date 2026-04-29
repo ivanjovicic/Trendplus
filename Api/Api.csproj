@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <NoWarn>$(NoWarn);CA1848</NoWarn>
+    <NoWarn>$(NoWarn);CA1848;CA1873</NoWarn>
     <UseAppHost>false</UseAppHost>
     <ClientAppDir>$(MSBuildProjectDirectory)\..\Klijent\clientapp</ClientAppDir>
   </PropertyGroup>

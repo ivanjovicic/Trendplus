@@ -89,11 +89,34 @@ export interface SupplierSalesStat {
   /** @deprecated Use shareOfMarginContribution. */
   shareOfProfit?: number;
   shareOfUnits?: number;
+  footwearBreakdown?: SupplierFootwearBreakdown[];
+  primaryFootwearType?: string;
+  primaryFootwearTypeSharePct?: number;
+  footwearTypeCount?: number;
   reliabilityPct?: number;
   recommendation?: AnalyticsRecommendation;
   // Legacy compatibility aliases (deprecated)
   promenaPrometa?: number | null;
   promenaKolicine?: number | null;
+}
+
+export interface SupplierFootwearBreakdown {
+  tipObuceId: number | null;
+  tipObuceNaziv: string;
+  ukupanPromet: number;
+  ukupnaKolicina: number;
+  brojArtikala: number;
+  marginContribution: number;
+  marginPct: number;
+  shareOfSupplierRevenuePct: number;
+  popRevenueChangePct: number | null;
+  historicalCostCoveragePct: number | null;
+  estimatedCostCoveragePct: number | null;
+  noCostCoveragePct: number | null;
+  snapshotCostCoveragePct: number | null;
+  marginQualityLabel?: string | null;
+  marginQualityTier?: string | null;
+  marginQualityTooltip?: string | null;
 }
 
 export interface SupplierSalesTotals {

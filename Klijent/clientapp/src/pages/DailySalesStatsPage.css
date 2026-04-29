@@ -1,4 +1,10 @@
 .daily-sales-page {
+  --ds-accent: var(--info, #1ec8ff);
+  --ds-success: var(--success, #33f28b);
+  --ds-warning: var(--warning, #fbbf24);
+  --ds-danger: var(--error, #ff6c6c);
+  --ds-surface: var(--surface-elevated, #0b1722);
+  --ds-surface-dark: var(--surface-default, #060f17);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -132,6 +138,7 @@
 }
 
 .daily-sales-kpis article {
+<<<<<<< HEAD
   background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--success) 14%), var(--surface-darker));
   border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
   border-radius: 18px;
@@ -144,10 +151,29 @@
 }
 
 .daily-sales-kpis article:hover {
+=======
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 86%, var(--ds-accent) 14%), var(--ds-surface-dark));
+  border: 1px solid rgba(30, 200, 255, 0.28);
+  border-radius: 18px;
+  box-shadow:
+    0 0 24px rgba(30, 200, 255, 0.10),
+    0 2px 6px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.daily-sales-kpis article:hover {
+  box-shadow:
+    0 0 32px rgba(30, 200, 255, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.20);
+>>>>>>> 388505f18cd1ca720f2e2022c50dd9bee9e69efc
   transform: translateY(-2px);
 }
 
 .daily-sales-kpis span {
+<<<<<<< HEAD
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
@@ -163,11 +189,28 @@
   letter-spacing: -0.01em;
   margin-top: 16px;
   text-shadow: 0 0 12px currentColor;
+=======
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.daily-sales-kpis strong {
+  font-size: 24px;
+  font-weight: 800;
+  margin-top: 16px;
+  text-shadow: 0 0 18px currentColor;
+>>>>>>> 388505f18cd1ca720f2e2022c50dd9bee9e69efc
 }
 
 .daily-sales-kpis small {
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-top: 10px;
+  display: block;
 }
 
 .daily-sales-section-grid {
@@ -225,6 +268,8 @@
   transition: background 0.15s;
 }
 
+/* icon handled globally via tailwind.css [class*="badge"]::before */
+
 .daily-sales-health-badge:hover {
   background: color-mix(in srgb, var(--surface-elevated) 80%, var(--border-default) 20%);
 }
@@ -272,45 +317,72 @@
 
 .daily-sales-compare-card,
 .daily-sales-quality-card {
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
-  background: var(--surface-elevated);
-  padding: 0.8rem 0.85rem;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 86%, var(--ds-accent) 14%), var(--ds-surface-dark));
+  border: 1px solid rgba(30, 200, 255, 0.22);
+  border-radius: 18px;
+  box-shadow:
+    0 0 20px rgba(30, 200, 255, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   gap: 0.28rem;
+  padding: 16px 18px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.daily-sales-compare-card:hover,
+.daily-sales-quality-card:hover {
+  box-shadow:
+    0 0 28px rgba(30, 200, 255, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.20);
+  transform: translateY(-2px);
 }
 
 .daily-sales-compare-card span,
 .daily-sales-quality-card span {
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
 
 .daily-sales-compare-card strong,
 .daily-sales-quality-card strong {
-  font-size: 1.05rem;
+  font-size: 22px;
+  font-weight: 800;
+  margin-top: 12px;
+  text-shadow: 0 0 16px currentColor;
 }
 
 .daily-sales-compare-card small,
 .daily-sales-quality-card small {
   color: var(--text-secondary);
+  font-size: 13px;
   line-height: 1.4;
+  margin-top: 8px;
+  display: block;
 }
 
 .daily-sales-compare-card[data-tone="good"],
 .daily-sales-quality-card[data-tone="good"] {
-  border-color: color-mix(in srgb, var(--accent-success) 50%, var(--border-default));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 86%, var(--ds-success) 14%), var(--ds-surface-dark));
+  border-color: rgba(51, 242, 139, 0.28);
+  box-shadow: 0 0 20px rgba(51, 242, 139, 0.10), 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .daily-sales-compare-card[data-tone="warning"],
 .daily-sales-quality-card[data-tone="warning"] {
-  border-color: color-mix(in srgb, var(--accent-warning) 55%, var(--border-default));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 86%, var(--ds-warning) 14%), var(--ds-surface-dark));
+  border-color: rgba(251, 191, 36, 0.28);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.10), 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .daily-sales-compare-card[data-tone="danger"],
 .daily-sales-quality-card[data-tone="danger"] {
-  border-color: color-mix(in srgb, var(--accent-danger) 50%, var(--border-default));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 86%, var(--ds-danger) 14%), var(--ds-surface-dark));
+  border-color: rgba(255, 108, 108, 0.28);
+  box-shadow: 0 0 20px rgba(255, 108, 108, 0.10), 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .daily-sales-delta {
@@ -328,24 +400,41 @@
 
 .daily-sales-mini-stats div,
 .daily-sales-anomaly-summary div {
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  background: var(--surface-elevated);
-  padding: 0.65rem 0.75rem;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 88%, var(--ds-accent) 12%), var(--ds-surface-dark));
+  border: 1px solid rgba(30, 200, 255, 0.18);
+  border-radius: 14px;
+  box-shadow:
+    0 0 16px rgba(30, 200, 255, 0.07),
+    0 2px 4px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.daily-sales-mini-stats div:hover,
+.daily-sales-anomaly-summary div:hover {
+  box-shadow:
+    0 0 22px rgba(30, 200, 255, 0.13),
+    0 3px 8px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
 }
 
 .daily-sales-mini-stats span,
 .daily-sales-anomaly-summary span {
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .daily-sales-mini-stats strong,
 .daily-sales-anomaly-summary strong {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-shadow: 0 0 12px currentColor;
 }
 
 .daily-sales-insight-list {
@@ -354,10 +443,21 @@
 }
 
 .daily-sales-insight-card {
-  border-radius: 12px;
-  border: 1px solid var(--border-default);
-  background: var(--surface-elevated);
-  padding: 0.8rem 0.9rem;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 88%, var(--ds-accent) 12%), var(--ds-surface-dark));
+  border: 1px solid rgba(30, 200, 255, 0.22);
+  border-radius: 18px;
+  box-shadow:
+    0 0 18px rgba(30, 200, 255, 0.07),
+    0 2px 6px rgba(0, 0, 0, 0.14);
+  padding: 0.9rem 1rem;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.daily-sales-insight-card:hover {
+  box-shadow:
+    0 0 26px rgba(30, 200, 255, 0.14),
+    0 4px 10px rgba(0, 0, 0, 0.20);
+  transform: translateY(-2px);
 }
 
 .daily-sales-insight-card strong {
@@ -372,15 +472,21 @@
 }
 
 .daily-sales-insight-card[data-tone="good"] {
-  border-color: color-mix(in srgb, var(--accent-success) 50%, var(--border-default));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 88%, var(--ds-success) 12%), var(--ds-surface-dark));
+  border-color: rgba(51, 242, 139, 0.28);
+  box-shadow: 0 0 18px rgba(51, 242, 139, 0.09), 0 2px 6px rgba(0, 0, 0, 0.14);
 }
 
 .daily-sales-insight-card[data-tone="warning"] {
-  border-color: color-mix(in srgb, var(--accent-warning) 55%, var(--border-default));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 88%, var(--ds-warning) 12%), var(--ds-surface-dark));
+  border-color: rgba(251, 191, 36, 0.28);
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.09), 0 2px 6px rgba(0, 0, 0, 0.14);
 }
 
 .daily-sales-insight-card[data-tone="danger"] {
-  border-color: color-mix(in srgb, var(--accent-danger) 50%, var(--border-default));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 88%, var(--ds-danger) 12%), var(--ds-surface-dark));
+  border-color: rgba(255, 108, 108, 0.28);
+  box-shadow: 0 0 18px rgba(255, 108, 108, 0.09), 0 2px 6px rgba(0, 0, 0, 0.14);
 }
 
 .daily-sales-anomaly-summary {

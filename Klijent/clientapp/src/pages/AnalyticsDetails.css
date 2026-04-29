@@ -131,33 +131,43 @@
 .ad-main-grid { grid-template-columns: repeat(2, minmax(260px, 1fr)); }
 
 .ad-kpi-card {
-  border-radius: 12px;
-  background: var(--panel-2);
-  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22))));
-  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(30, 200, 255, 0.28);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated, #111c2d) 86%, var(--info, #1ec8ff) 14%), var(--surface-darker, #060d16));
+  padding: 20px;
   display: grid;
-  gap: 6px;
+  gap: 0;
+  box-shadow: 0 0 28px rgba(30, 200, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-.ad-kpi-card span { color: var(--muted); font-size: 12px; }
-.ad-kpi-card strong { font-size: 21px; line-height: 1.1; }
-.ad-kpi-card small { color: var(--text-secondary, var(--theme-color-bdcbef, #bdcbef)); font-size: 11px; }
+.ad-kpi-card:hover { transform: translateY(-2px); }
+.ad-kpi-card span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.22em; color: var(--text-muted, var(--muted)); }
+.ad-kpi-card strong { font-size: 24px; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; margin-top: 16px; display: block; text-shadow: 0 0 18px currentColor; }
+.ad-kpi-card small { font-size: 13px; color: var(--text-muted, var(--muted)); margin-top: 10px; line-height: 1.4; display: block; }
 
 .ad-risk-card {
-  border-radius: 12px;
-  border: 1px solid var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140, 164, 220, 0.22))));
-  background: var(--panel-2);
-  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(138, 160, 214, 0.28);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated, #111c2d) 86%, var(--info, #1ec8ff) 14%), var(--surface-darker, #060d16));
+  padding: 20px;
   display: grid;
-  gap: 6px;
+  gap: 0;
+  box-shadow: 0 0 28px rgba(138, 160, 214, 0.07), 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-.ad-risk-card span { color: var(--muted); font-size: 12px; }
-.ad-risk-card strong { font-size: 18px; line-height: 1.15; }
-.ad-risk-card small { font-size: 11px; color: var(--text-secondary, var(--theme-color-b9c8eb, #b9c8eb)); }
-.ad-risk-card.good { border-color: var(--success-border, var(--theme-color-rgba-51-196-143-0p45, rgba(51, 196, 143, 0.45))); }
-.ad-risk-card.warning { border-color: var(--warning-border, var(--theme-color-rgba-246-189-98-0p5, rgba(246, 189, 98, 0.5))); }
-.ad-risk-card.critical { border-color: var(--error-border, var(--theme-color-rgba-255-109-109-0p5, rgba(255, 109, 109, 0.5))); }
+.ad-risk-card:hover { transform: translateY(-2px); }
+.ad-risk-card span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.22em; color: var(--text-muted, var(--muted)); }
+.ad-risk-card strong { font-size: 24px; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; margin-top: 16px; display: block; text-shadow: 0 0 18px currentColor; }
+.ad-risk-card small { font-size: 13px; color: var(--text-muted, var(--muted)); margin-top: 10px; line-height: 1.4; display: block; }
+
+.ad-risk-card.good { border-color: rgba(102, 255, 126, 0.34); box-shadow: 0 0 28px rgba(102, 255, 126, 0.12), 0 2px 6px rgba(0, 0, 0, 0.15); }
+.ad-risk-card.good strong { color: var(--success, #31c48d); }
+.ad-risk-card.warning { border-color: rgba(250, 204, 21, 0.36); box-shadow: 0 0 28px rgba(250, 204, 21, 0.10), 0 2px 6px rgba(0, 0, 0, 0.15); }
+.ad-risk-card.warning strong { color: var(--warning, #fbbf24); }
+.ad-risk-card.critical { border-color: rgba(255, 108, 108, 0.45); box-shadow: 0 0 28px rgba(255, 108, 108, 0.12), 0 2px 6px rgba(0, 0, 0, 0.15); }
+.ad-risk-card.critical strong { color: var(--error, #ff6c6c); }
 
 .ad-chart { width: 100%; min-height: 260px; }
 .ad-meta { display: flex; gap: 14px; color: var(--text-secondary, var(--theme-color-c6d4f5, #c6d4f5)); font-size: 12px; margin-top: 8px; }

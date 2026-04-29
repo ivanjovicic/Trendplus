@@ -335,7 +335,7 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
             || normalized.Contains("tblart", StringComparison.Ordinal);
     }
 
-    private sealed class RunningCliProcess
+    private sealed class RunningCliProcess : IDisposable
     {
         private readonly Process _process;
         private readonly string _command;
@@ -347,6 +347,7 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
         private readonly CancellationTokenRegistration _killRegistration;
         private readonly Task<string> _stderrTask;
         private bool _finished;
+        private bool _disposed;
 
         public RunningCliProcess(Process process, string command, int timeoutSeconds, ILogger logger, CancellationToken callerCancellationToken)
         {
@@ -381,7 +382,7 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
                 var stderr = await _stderrTask;
 
                 if (_callerCancellationToken.IsCancellationRequested)
-                    throw new OperationCanceledException(_callerCancellationToken);
+                    _callerCancellationToken.ThrowIfCancellationRequested();
 
                 if (_timeoutCts.IsCancellationRequested && !_callerCancellationToken.IsCancellationRequested)
                 {
@@ -438,6 +439,16 @@ public sealed class MdbToolsCliSession : IAccessDataReaderSession
             {
                 // Best-effort cleanup.
             }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _killRegistration.Dispose();
+            _linkedCts.Dispose();
+            _timeoutCts.Dispose();
+            _process.Dispose();
         }
     }
 }
