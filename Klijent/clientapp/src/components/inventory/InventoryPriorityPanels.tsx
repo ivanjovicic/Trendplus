@@ -68,11 +68,11 @@ export function InventoryPriorityPanels({
           <h2 className="text-lg font-semibold text-white">Vrednost po dobavljacu <InfoTip text="Procenjena nabavna vrednost raspolozive zalihe grupisana po dobavljacima za prikazane artikle. Koristiti za prioritizaciju nabavke, pregovaranje i analizu zavisnosti od pojedinih dobavljaca." /></h2>
           <p className="text-sm text-[var(--text-primary)]">Top dobavljaci po procenjenoj vrednosti u trenutnoj tabeli.</p>
         </div>
-        <div className="mt-5 h-[320px]">
+        <div className="mt-5 h-[320px] min-h-[320px] w-full min-w-0">
           {chartData.length === 0 ? (
             <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] text-sm text-[var(--text-primary)]">Nema dovoljno podataka za grafikon.</div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
+            <ResponsiveContainer width="100%" height={320} minWidth={240} minHeight={220}>
               <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 12, bottom: 10, left: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={"var(--border-default, var(--theme-color-233042, #233042))"} />
                 <XAxis type="number" tick={{ fill: "var(--text-muted, var(--theme-color-92a4bf, #92a4bf))", fontSize: 12 }} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
@@ -94,4 +94,3 @@ export function InventoryPriorityPanels({
     </section>
   );
 }
-

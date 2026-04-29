@@ -354,9 +354,10 @@ public static class CachedAnalyticsEndpoints
             int? supplierId = null,
             string? search = null,
             string? sortBy = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
-            var cacheKey = AnalyticsCacheKeys.InventoryInsights(storeId, supplierId, search, sortBy);
+            var cacheKey = AnalyticsCacheKeys.InventoryInsights(storeId, supplierId, search, sortBy, dataScope);
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
@@ -375,6 +376,7 @@ public static class CachedAnalyticsEndpoints
             int[]? compareStoreIds,
             int? supplierId,
             string? search,
+            string? dataScope,
             CancellationToken ct) =>
         {
             var normalizedCompareStoreIds = (compareStoreIds ?? [])
@@ -382,7 +384,7 @@ public static class CachedAnalyticsEndpoints
                 .Distinct()
                 .ToArray();
             var effectiveCompareStoreIds = normalizedCompareStoreIds.Length == 0 ? null : normalizedCompareStoreIds;
-            var cacheKey = AnalyticsCacheKeys.InventoryStoreComparison(normalizedCompareStoreIds, supplierId, search);
+            var cacheKey = AnalyticsCacheKeys.InventoryStoreComparison(normalizedCompareStoreIds, supplierId, search, dataScope);
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,

@@ -20,8 +20,8 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
         {hasBrokenRun ? <span className="inline-flex rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)]">Broken run detektovan</span> : null}
       </div>
 
-      <div className="h-[240px]">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
+      <div className="h-[240px] min-h-[240px] w-full min-w-0">
+        <ResponsiveContainer width="100%" height={240} minWidth={240} minHeight={180}>
           <ComposedChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={"var(--border-default, var(--theme-color-233042, #233042))"} />
               <XAxis dataKey="name" tick={{ fill: "var(--text-muted, var(--theme-color-92a4bf, #92a4bf))", fontSize: 12 }} />
@@ -61,4 +61,3 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
     </div>
   );
 }
-

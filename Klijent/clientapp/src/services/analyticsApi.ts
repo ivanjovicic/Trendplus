@@ -148,6 +148,25 @@ async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage
   }
 }
 
+async function fetchJsonWithCachedFallback<T>(
+  cachedPath: string,
+  fallbackPath: string,
+  params?: URLSearchParams,
+  errorMessage?: string
+): Promise<T> {
+  try {
+    return await fetchJson<T>(cachedPath, params, errorMessage);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const normalized = message.toLowerCase();
+    if (!normalized.includes("404") && !normalized.includes("not found")) {
+      throw error;
+    }
+
+    return fetchJson<T>(fallbackPath, params, errorMessage);
+  }
+}
+
 async function postJson<T>(path: string, body: unknown, errorMessage?: string): Promise<T> {
   const timeoutMs = DEFAULT_ANALYTICS_GET_TIMEOUT_MS;
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
@@ -713,8 +732,9 @@ export async function getInventoryInsights(options?: {
   if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
   if (options?.sortBy) params.append("sortBy", options.sortBy);
 
-  return fetchJson(
+  return fetchJsonWithCachedFallback(
     "/api/analytics/cached/inventory/insights",
+    "/api/analytics/inventory/insights",
     params,
     "Greska pri ucitavanju inventory uvida"
   );
@@ -801,8 +821,9 @@ export async function getInventoryStoreComparison(options?: {
   if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
   if (options?.search) params.append("search", options.search);
 
-  return fetchJson(
+  return fetchJsonWithCachedFallback(
     "/api/analytics/cached/inventory/store-comparison",
+    "/api/analytics/inventory/store-comparison",
     params,
     "Greska pri ucitavanju poredenja prodavnica"
   );

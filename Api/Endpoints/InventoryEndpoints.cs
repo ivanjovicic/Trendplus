@@ -15,6 +15,7 @@ namespace Trendplus2.Endpoints;
 public static class InventoryEndpoints
 {
     private static readonly CultureInfo SerbianCulture = CultureInfo.GetCultureInfo("sr-RS");
+    private const int MovementStatsBatchSize = 5_000;
 
     public static void MapInventoryEndpoints(this WebApplication app)
     {
@@ -555,10 +556,22 @@ public static class InventoryEndpoints
         IQueryable<Domain.Model.Artikli> query,
         int? storeId,
         int? supplierId,
-        string? search)
+        string? search,
+        IReadOnlyCollection<int>? storeIds = null)
     {
         if (storeId.HasValue)
+        {
             query = query.Where(a => a.IDObjekat == storeId.Value);
+        }
+        else if (storeIds is { Count: > 0 })
+        {
+            var normalizedStoreIds = storeIds.Where(id => id > 0).Distinct().ToArray();
+            if (normalizedStoreIds.Length > 0)
+            {
+                query = query.Where(a => a.IDObjekat.HasValue && normalizedStoreIds.Contains(a.IDObjekat.Value));
+            }
+        }
+
         if (supplierId.HasValue)
             query = query.Where(a => a.IDDobavljac == supplierId.Value);
         if (!string.IsNullOrWhiteSpace(search))
@@ -587,10 +600,12 @@ public static class InventoryEndpoints
         int? supplierId,
         string? search,
         string? sortBy,
-        CancellationToken ct)
+        CancellationToken ct,
+        IReadOnlyCollection<int>? storeIds = null,
+        bool applyAbcClassification = true)
     {
         var baseItems = await ApplyInventorySorting(
-                ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, search),
+                ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, search, storeIds),
                 sortBy)
             .Select(a => new InventoryArticleProjection(
                 a.Id,
@@ -616,18 +631,7 @@ public static class InventoryEndpoints
         var storeNameMap = await LoadStoreNamesAsync(analyticsDb, baseItems.Select(x => x.StoreId), ct);
         var supplierNameMap = await LoadSupplierNamesAsync(analyticsDb, db, baseItems.Select(x => x.SupplierId), ct);
         var cutoff30d = DateTime.UtcNow.AddDays(-30);
-
-        var movementStats = await analyticsDb.InventoryMovementFacts
-            .AsNoTracking()
-            .Where(x => x.ArtikalId.HasValue && itemIds.Contains(x.ArtikalId.Value))
-            .GroupBy(x => x.ArtikalId!.Value)
-            .Select(g => new
-            {
-                ArtikalId = g.Key,
-                LastMovementAt = g.Max(x => x.Datum),
-                MovementCount30d = g.Count(x => x.Datum >= cutoff30d)
-            })
-            .ToDictionaryAsync(x => x.ArtikalId, ct);
+        var movementStats = await LoadMovementStatsAsync(analyticsDb, itemIds, cutoff30d, ct);
 
         var items = baseItems
             .Select(item =>
@@ -662,7 +666,37 @@ public static class InventoryEndpoints
             })
             .ToList();
 
-        return ApplyAbcClassification(items);
+        return applyAbcClassification ? ApplyAbcClassification(items) : items;
+    }
+
+    private static async Task<Dictionary<int, InventoryMovementStats>> LoadMovementStatsAsync(
+        IAnalyticsDbContext analyticsDb,
+        List<int> itemIds,
+        DateTime cutoff30d,
+        CancellationToken ct)
+    {
+        var stats = new Dictionary<int, InventoryMovementStats>(itemIds.Count);
+        foreach (var batch in itemIds.Distinct().Chunk(MovementStatsBatchSize))
+        {
+            var batchStats = await analyticsDb.InventoryMovementFacts
+                .AsNoTracking()
+                .Where(x => x.ArtikalId.HasValue && batch.Contains(x.ArtikalId.Value))
+                .GroupBy(x => x.ArtikalId!.Value)
+                .Select(g => new
+                {
+                    ArtikalId = g.Key,
+                    LastMovementAt = g.Max(x => x.Datum),
+                    MovementCount30d = g.Count(x => x.Datum >= cutoff30d)
+                })
+                .ToListAsync(ct);
+
+            foreach (var row in batchStats)
+            {
+                stats[row.ArtikalId] = new InventoryMovementStats(row.LastMovementAt, row.MovementCount30d);
+            }
+        }
+
+        return stats;
     }
 
     private static List<InventoryDatasetItem> ApplyAbcClassification(List<InventoryDatasetItem> items)
@@ -762,7 +796,6 @@ public static class InventoryEndpoints
         string? search,
         CancellationToken ct)
     {
-        var allItems = await BuildInventoryDatasetAsync(db, analyticsDb, null, supplierId, search, "vrednost", ct);
         var selectedStoreIds = (compareStoreIds ?? [])
             .Distinct()
             .Where(id => id > 0)
@@ -770,18 +803,23 @@ public static class InventoryEndpoints
 
         if (selectedStoreIds.Count == 0)
         {
-            selectedStoreIds = allItems
-                .Where(item => item.StoreId.HasValue)
-                .GroupBy(item => item.StoreId!.Value)
-                .OrderByDescending(group => group.Sum(item => item.EstimatedValue))
+            selectedStoreIds = await ApplyInventoryFilters(db.Artikli.AsNoTracking(), null, supplierId, search)
+                .Where(item => item.IDObjekat.HasValue)
+                .GroupBy(item => item.IDObjekat!.Value)
+                .Select(group => new
+                {
+                    StoreId = group.Key,
+                    EstimatedValue = group.Sum(item => (item.NabavnaCena ?? 0m) * ((item.Kolicina ?? 0) > 0 ? (item.Kolicina ?? 0) : 0))
+                })
+                .OrderByDescending(group => group.EstimatedValue)
                 .Take(3)
-                .Select(group => group.Key)
-                .ToList();
+                .Select(group => group.StoreId)
+                .ToListAsync(ct);
         }
 
-        var selectedItems = allItems
-            .Where(item => item.StoreId.HasValue && selectedStoreIds.Contains(item.StoreId.Value))
-            .ToList();
+        var selectedItems = selectedStoreIds.Count == 0
+            ? []
+            : await BuildInventoryDatasetAsync(db, analyticsDb, null, supplierId, search, "vrednost", ct, selectedStoreIds, applyAbcClassification: false);
 
         var storeNames = await LoadStoreNamesAsync(analyticsDb, selectedStoreIds.Select(static id => (int?)id), ct);
         var stores = selectedStoreIds
@@ -1374,6 +1412,10 @@ public static class InventoryEndpoints
         decimal? StaraCena,
         decimal? NovaCena,
         string? Komentar);
+
+    private sealed record InventoryMovementStats(
+        DateTime LastMovementAt,
+        int MovementCount30d);
 
     private sealed record InventoryDatasetItem(
         int Id,
