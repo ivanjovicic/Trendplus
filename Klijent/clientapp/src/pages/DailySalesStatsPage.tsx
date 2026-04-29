@@ -1115,14 +1115,21 @@ export default function DailySalesStatsPage() {
   };
 
   const handlePrintBlank = useCallback(() => {
+    const manualSupplierColumns = Array.from({ length: BLANK_SUPPLIER_COLUMN_COUNT }, (_, index) => ({
+      key: `manualSupplier:${index + 1}`,
+      header: `Dob. ${index + 1}`,
+      dataType: "text",
+    }));
+
     const blankColumns = [
-      { key: "date",    header: "Datum",               dataType: "text" },
-      { key: "worker1", header: "Prodavac (1. smena)",  dataType: "text" },
-      { key: "shift1",  header: "Kom.",                 dataType: "text" },
-      { key: "worker2", header: "Prodavac (2. smena)",  dataType: "text" },
-      { key: "shift2",  header: "Kom.",                 dataType: "text" },
-      { key: "revenue", header: "Prihod (RSD)",         dataType: "text" },
-      { key: "total",   header: "Ukupno (kom.)",        dataType: "text" },
+      { key: "date",    header: "Datum",                    dataType: "text" },
+      { key: "worker1", header: "Prodavac iz prve smene",    dataType: "text" },
+      { key: "shift1",  header: "Kom.",                      dataType: "text" },
+      { key: "worker2", header: "Prodavac iz druge smene",   dataType: "text" },
+      ...manualSupplierColumns,
+      { key: "shift2",  header: "Kom.",                      dataType: "text" },
+      { key: "revenue", header: "Prihod (RSD)",              dataType: "text" },
+      { key: "total",   header: "Ukupno (kom.)",             dataType: "text" },
     ];
 
     const blankRows = Array.from({ length: 30 }, () =>
@@ -1137,7 +1144,7 @@ export default function DailySalesStatsPage() {
       filters: [],
       metadata: [],
       locale: "sr-RS",
-      documentType: "daily-sales-blank-portrait",
+      documentType: "daily-sales-blank",
     });
 
     window.open(
@@ -1299,7 +1306,7 @@ export default function DailySalesStatsPage() {
                 rows={sortedRows}
                 filters={toolbarFilters}
                 metadata={toolbarMetadata}
-                defaultOrientation="portrait"
+                defaultOrientation="landscape"
                 extraActions={(
                   <button
                     type="button"

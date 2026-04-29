@@ -2,6 +2,19 @@ import React from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getPrintPayload } from "../services/analyticsTableState";
 
+function isManualSupplierColumnKey(key: string): boolean {
+  return key.startsWith("manualSupplier:");
+}
+
+function normalizeColumnClassName(key: string): string {
+  return key.replace(/[^a-zA-Z0-9_-]+/g, "-");
+}
+
+function getPrintColumnClassName(column: { key: string; header: string }): string {
+  const baseClass = !column.header || isManualSupplierColumnKey(column.key) ? "blank-col" : "named-col";
+  return `${baseClass} analytics-print-col-${normalizeColumnClassName(column.key)}`;
+}
+
 export default function AnalyticsPrintPage() {
   const params = useParams<{ table?: string }>();
   const [searchParams] = useSearchParams();
@@ -9,19 +22,28 @@ export default function AnalyticsPrintPage() {
     () => getPrintPayload(searchParams.get("stateKey")),
     [searchParams]
   );
-  const isDenseDailySalesBlank = payload?.documentType === "daily-sales-blank";
   const isPortraitShiftBlank = payload?.documentType === "daily-sales-blank-portrait";
+  const isDenseDailySalesBlank =
+    payload?.documentType === "daily-sales-blank" ||
+    (payload?.tableKey === "daily-sales-stats-blank" && !isPortraitShiftBlank);
+  const isFilledDailySalesPrint =
+    payload?.tableKey === "daily-sales-stats" && !isDenseDailySalesBlank && !isPortraitShiftBlank;
   const isDailySalesPrint = payload?.tableKey === "daily-sales-stats" || payload?.tableKey === "daily-sales-stats-blank" || isDenseDailySalesBlank || isPortraitShiftBlank;
-  // Blank forms with many columns need landscape; portrait shift form and filled daily-sales stay portrait
-  const pageOrientation = isDenseDailySalesBlank ? "landscape" : "portrait";
-  const pageMarginMm = isDenseDailySalesBlank ? 7 : isPortraitShiftBlank ? 8 : 14;
-  const tableFontSizePx = isDenseDailySalesBlank ? 9 : 12;
+  const manualSupplierColumnCount = payload?.columns.filter((column) => isManualSupplierColumnKey(column.key)).length ?? 0;
+  const manualSupplierStartIndex = payload?.columns.findIndex((column) => isManualSupplierColumnKey(column.key)) ?? -1;
+  const manualSupplierEndColSpan =
+    manualSupplierStartIndex >= 0 && payload
+      ? payload.columns.length - manualSupplierStartIndex - manualSupplierColumnCount
+      : 0;
+  const pageOrientation = isDenseDailySalesBlank || isFilledDailySalesPrint ? "landscape" : "portrait";
+  const pageMarginMm = isDenseDailySalesBlank || isFilledDailySalesPrint ? 6 : isPortraitShiftBlank ? 8 : 14;
+  const tableFontSizePx = isDenseDailySalesBlank || isFilledDailySalesPrint ? 8 : 12;
   // Separate padding for th and td so we can control row height properly
-  const thPadding = isDenseDailySalesBlank ? "6px 4px" : isDailySalesPrint ? "10px 8px" : "8px";
-  const tdPadding = isDenseDailySalesBlank ? "18px 5px" : isDailySalesPrint ? "10px 8px" : "8px";
+  const thPadding = isDenseDailySalesBlank ? "5px 3px" : isFilledDailySalesPrint ? "5px 3px" : isDailySalesPrint ? "10px 8px" : "8px";
+  const tdPadding = isDenseDailySalesBlank ? "10px 3px" : isFilledDailySalesPrint ? "4px 3px" : isDailySalesPrint ? "10px 8px" : "8px";
   // height on <td> acts as min-height (unlike min-height which is ignored on table cells)
-  const blankTdHeightPx = 46;
-  const titleFontSizePx = isDenseDailySalesBlank ? 22 : isPortraitShiftBlank ? 16 : 28;
+  const blankTdHeightPx = 36;
+  const titleFontSizePx = isDenseDailySalesBlank ? 18 : isFilledDailySalesPrint ? 20 : isPortraitShiftBlank ? 16 : 28;
 
   React.useEffect(() => {
     if (!payload) return;
@@ -40,7 +62,7 @@ export default function AnalyticsPrintPage() {
 
   return (
     <div
-      className={`analytics-print-page${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}${isPortraitShiftBlank ? " analytics-print-page-portrait-shift" : ""}`}
+      className={`analytics-print-page${isFilledDailySalesPrint ? " analytics-print-page-daily-sales" : ""}${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}${isPortraitShiftBlank ? " analytics-print-page-portrait-shift" : ""}`}
       style={{ background: "var(--surface)", color: "var(--foreground)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}
     >
       <style>{`
@@ -51,61 +73,168 @@ export default function AnalyticsPrintPage() {
           body { background: var(--c-fff, var(--theme-color-ffffff, #ffffff)) !important; }
           .analytics-print-page { padding: 0 !important; }
         }
-        .analytics-print-table { width: 100%; border-collapse: collapse; }
+        .analytics-print-table {
+          width: 100%;
+          max-width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          page-break-inside: auto;
+        }
+        .analytics-print-table thead { display: table-header-group; }
+        .analytics-print-table tfoot { display: table-footer-group; }
+        .analytics-print-table tr {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
         .analytics-print-table th,
         .analytics-print-table td {
           border: 1px solid var(--border);
           font-size: ${tableFontSizePx}px;
+          line-height: 1.18;
           vertical-align: top;
+          overflow-wrap: anywhere;
+          word-break: normal;
         }
         .analytics-print-table th { padding: ${thPadding}; }
         .analytics-print-table td { padding: ${tdPadding}; }
         .analytics-print-table th {
           background: var(--surface-elevated);
           text-align: left;
+          font-weight: 700;
+        }
+        @media print {
+          .analytics-print-page,
+          .analytics-print-table {
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
 
-        /* ── Blank daily-sales form ──────────────────────────────── */
-        .analytics-print-page-dense .analytics-print-table {
-          /* auto layout: named cols size to content, blank supplier cols get min-width below */
-          table-layout: auto;
+        /* Filled daily-sales print: landscape A4, compact fixed columns */
+        .analytics-print-page-daily-sales .analytics-print-header {
+          margin-bottom: 8px !important;
         }
-        /* Named columns (Datum, Smena, Prihod, Ostali, Ukupno) */
-        .analytics-print-page-dense .analytics-print-table .named-col {
-          min-width: 28mm;
+        .analytics-print-page-daily-sales .analytics-print-meta {
+          margin-bottom: 8px !important;
+          gap: 8px !important;
+        }
+        .analytics-print-page-daily-sales .analytics-print-meta h2 {
+          font-size: 10px !important;
+          margin-bottom: 3px !important;
+        }
+        .analytics-print-page-daily-sales .analytics-print-meta div {
+          font-size: 8px !important;
+          margin-bottom: 2px !important;
+        }
+        .analytics-print-page-daily-sales .analytics-print-table th,
+        .analytics-print-page-daily-sales .analytics-print-table td {
+          border-color: #666666;
+        }
+        .analytics-print-page-daily-sales .analytics-print-table th {
+          background: #e9edf3 !important;
+          color: #111111 !important;
+          font-size: 7px;
+          line-height: 1.12;
+          padding: 5px 2px;
+          vertical-align: bottom;
+          text-align: right;
+          white-space: normal;
+        }
+        .analytics-print-page-daily-sales .analytics-print-table td {
+          background: #ffffff !important;
+          color: #111111 !important;
+          font-size: 8px;
+          line-height: 1.15;
+          padding: 4px 3px;
+          text-align: right;
+          vertical-align: middle;
+          white-space: nowrap;
+        }
+        .analytics-print-page-daily-sales .analytics-print-table tbody tr:nth-child(even) td {
+          background: #f7f8fa !important;
+        }
+        .analytics-print-page-daily-sales .analytics-print-col-date {
+          width: 20mm;
+          text-align: left !important;
+        }
+        .analytics-print-page-daily-sales .analytics-print-col-firstShiftTotalItems,
+        .analytics-print-page-daily-sales .analytics-print-col-secondShiftTotalItems {
+          width: 16mm;
+        }
+        .analytics-print-page-daily-sales .analytics-print-col-totalRevenue {
+          width: 24mm;
+        }
+        .analytics-print-page-daily-sales .analytics-print-col-othersCount {
+          width: 15mm;
+        }
+        .analytics-print-page-daily-sales .analytics-print-col-totalItemsSold {
+          width: 17mm;
+        }
+        .analytics-print-page-daily-sales th[class*="analytics-print-col-supplier-"],
+        .analytics-print-page-daily-sales td[class*="analytics-print-col-supplier-"] {
+          width: auto;
+        }
+
+        /* Blank daily-sales form: 15 manual supplier columns on landscape A4 */
+        .analytics-print-page-dense .analytics-print-table {
+          table-layout: fixed;
+        }
+        .analytics-print-page-dense .analytics-print-group-row th {
+          border: 1px solid #555555;
+          background: #f0f0f0 !important;
+          color: #111111 !important;
+          padding: 3px 2px;
+          font-size: 7px;
+          line-height: 1.1;
+          text-align: center;
+          vertical-align: middle;
+        }
+        .analytics-print-page-dense .analytics-print-group-row .manual-supplier-group {
+          background: #e6edf7 !important;
+          font-weight: 700;
         }
         .analytics-print-page-dense .analytics-print-table th.named-col {
-          font-size: 8px;
-          line-height: 1.35;
-          padding: 7px 5px;
+          font-size: 7px;
+          line-height: 1.15;
+          padding: 5px 3px;
           vertical-align: bottom;
-          overflow-wrap: break-word;
-          word-break: normal;
-          hyphens: auto;
           white-space: normal;
+          background: #eeeeee !important;
+          color: #111111 !important;
         }
         .analytics-print-page-dense .analytics-print-table td.named-col {
           padding: ${tdPadding};
           height: ${blankTdHeightPx}px;
           vertical-align: middle;
-        }
-        /* Supplier blank columns: narrow slots for hand-written numbers */
-        .analytics-print-page-dense .analytics-print-table .blank-col {
-          min-width: 16mm;
-          max-width: 20mm;
-          width: 18mm;
+          background: #ffffff !important;
         }
         .analytics-print-page-dense .analytics-print-table th.blank-col {
           font-size: 7px;
-          padding: 5px 2px;
+          line-height: 1.1;
+          padding: 5px 1px;
           vertical-align: bottom;
           text-align: center;
+          background: #e6edf7 !important;
+          color: #111111 !important;
         }
         .analytics-print-page-dense .analytics-print-table td.blank-col {
           padding: ${tdPadding};
           height: ${blankTdHeightPx}px;
           vertical-align: middle;
           background: #ffffff !important;
+        }
+        /* Fixed A4 landscape widths for the blank form */
+        .analytics-print-page-dense .analytics-print-col-date { width: 17mm; }
+        .analytics-print-page-dense .analytics-print-col-worker1,
+        .analytics-print-page-dense .analytics-print-col-worker2 { width: 25mm; }
+        .analytics-print-page-dense .analytics-print-col-shift1,
+        .analytics-print-page-dense .analytics-print-col-shift2 { width: 10mm; }
+        .analytics-print-page-dense .analytics-print-col-revenue { width: 18mm; }
+        .analytics-print-page-dense .analytics-print-col-total { width: 16mm; }
+        .analytics-print-page-dense th[class*="analytics-print-col-manualSupplier-"],
+        .analytics-print-page-dense td[class*="analytics-print-col-manualSupplier-"] {
+          width: 10.7mm;
         }
         /* Even rows stay white on blank form — no tinting for clean writing space */
         .analytics-print-page-dense .analytics-print-table tbody tr:nth-child(even) td {
@@ -188,7 +317,7 @@ export default function AnalyticsPrintPage() {
         </button>
       </div>
 
-      <header style={{ marginBottom: 20 }}>
+      <header className="analytics-print-header" style={{ marginBottom: isDailySalesPrint ? 10 : 20 }}>
         <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           Trendplus analitika
         </div>
@@ -201,7 +330,7 @@ export default function AnalyticsPrintPage() {
       </header>
 
       {(payload.filters.length > 0 || payload.metadata.length > 0) ? (
-        <section style={{ marginBottom: 20, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+        <section className="analytics-print-meta" style={{ marginBottom: isDailySalesPrint ? 10 : 20, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           {payload.filters.length > 0 ? (
             <div>
               <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>Filteri</h2>
@@ -228,9 +357,18 @@ export default function AnalyticsPrintPage() {
 
       <table className="analytics-print-table">
         <thead>
+          {isDenseDailySalesBlank && manualSupplierStartIndex >= 0 ? (
+            <tr className="analytics-print-group-row">
+              {manualSupplierStartIndex > 0 ? <th className="group-spacer" colSpan={manualSupplierStartIndex} /> : null}
+              <th className="manual-supplier-group" colSpan={manualSupplierColumnCount}>
+                Dobavljači za ručni unos
+              </th>
+              {manualSupplierEndColSpan > 0 ? <th className="group-spacer" colSpan={manualSupplierEndColSpan} /> : null}
+            </tr>
+          ) : null}
           <tr>
             {payload.columns.map((column) => (
-              <th key={column.key} className={column.header ? "named-col" : "blank-col"}>{column.header}</th>
+              <th key={column.key} className={getPrintColumnClassName(column)}>{column.header}</th>
             ))}
           </tr>
         </thead>
@@ -242,7 +380,7 @@ export default function AnalyticsPrintPage() {
           ) : payload.rows.map((row, index) => (
             <tr key={`${payload.tableKey}-${index}`}>
               {payload.columns.map((column) => (
-                <td key={column.key} className={column.header ? "named-col" : "blank-col"}>{row[column.key] == null ? "" : String(row[column.key])}</td>
+                <td key={column.key} className={getPrintColumnClassName(column)}>{row[column.key] == null ? "" : String(row[column.key])}</td>
               ))}
             </tr>
           ))}
