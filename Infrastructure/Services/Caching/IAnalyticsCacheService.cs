@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -206,6 +207,18 @@ public static class AnalyticsCacheKeys
 
     public static string InventoryAlerts(int? storeId = null, int? supplierId = null, string? severity = null, int top = 100) =>
         $"{Prefix}inventory-alerts:{FilterSuffix(storeId, supplierId)}:severity:{(string.IsNullOrWhiteSpace(severity) ? "all" : severity)}:top:{top}";
+
+    public static string InventoryInsights(int? storeId = null, int? supplierId = null, string? search = null, string? sortBy = null) =>
+        $"{Prefix}inventory-insights:{FilterSuffix(storeId, supplierId)}:search:{HashPart(search)}:sort:{HashPart(sortBy)}";
+
+    public static string InventoryStoreComparison(int[]? compareStoreIds = null, int? supplierId = null, string? search = null)
+    {
+        var normalizedStoreIds = compareStoreIds is { Length: > 0 }
+            ? string.Join(',', compareStoreIds.Where(id => id > 0).Distinct().OrderBy(id => id))
+            : "auto";
+
+        return $"{Prefix}inventory-store-comparison:stores:{normalizedStoreIds}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:search:{HashPart(search)}";
+    }
 
     // Validation endpoints
     public const string ValidationCompleteness = $"{Prefix}validation:completeness";

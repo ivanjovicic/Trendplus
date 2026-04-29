@@ -90,8 +90,7 @@ public static class InventoryEndpoints
             string? sortBy = null,
             CancellationToken ct = default) =>
         {
-            var items = await BuildInventoryDatasetAsync(db, analyticsDb, storeId, supplierId, search, sortBy, ct);
-            return Results.Ok(BuildInsights(items));
+            return Results.Ok(await GetInventoryInsightsAsync(db, analyticsDb, storeId, supplierId, search, sortBy, ct));
         })
         .WithName("GetInventoryInsights");
 
@@ -364,7 +363,7 @@ public static class InventoryEndpoints
             string? search,
             CancellationToken ct) =>
         {
-            var comparison = await BuildStoreComparisonAsync(db, analyticsDb, compareStoreIds, supplierId, search, ct);
+            var comparison = await GetInventoryStoreComparisonAsync(db, analyticsDb, compareStoreIds, supplierId, search, ct);
             return Results.Ok(comparison);
         })
         .WithName("GetInventoryStoreComparison");
@@ -378,7 +377,7 @@ public static class InventoryEndpoints
             string? search,
             CancellationToken ct) =>
         {
-            var workflow = await BuildActionWorkflowAsync(db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
+            var workflow = await GetInventoryActionWorkflowAsync(db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
             return Results.Ok(workflow);
         })
         .WithName("GetInventoryActionSuggestions");
@@ -519,6 +518,38 @@ public static class InventoryEndpoints
         .WithName("RunInventoryReportScheduleNow")
         .RequireRateLimiting("writes");
     }
+
+    public static async Task<InventoryInsightsDto> GetInventoryInsightsAsync(
+        ITrendplusDbContext db,
+        IAnalyticsDbContext analyticsDb,
+        int? storeId,
+        int? supplierId,
+        string? search,
+        string? sortBy,
+        CancellationToken ct)
+    {
+        var items = await BuildInventoryDatasetAsync(db, analyticsDb, storeId, supplierId, search, sortBy, ct);
+        return BuildInsights(items);
+    }
+
+    public static Task<InventoryStoreComparisonDto> GetInventoryStoreComparisonAsync(
+        ITrendplusDbContext db,
+        IAnalyticsDbContext analyticsDb,
+        int[]? compareStoreIds,
+        int? supplierId,
+        string? search,
+        CancellationToken ct) =>
+        BuildStoreComparisonAsync(db, analyticsDb, compareStoreIds, supplierId, search, ct);
+
+    public static Task<InventoryActionWorkflowDto> GetInventoryActionWorkflowAsync(
+        ITrendplusDbContext db,
+        IAnalyticsDbContext analyticsDb,
+        IInventoryActionDecisionService actionDecisionService,
+        int? storeId,
+        int? supplierId,
+        string? search,
+        CancellationToken ct) =>
+        BuildActionWorkflowAsync(db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
 
     private static IQueryable<Domain.Model.Artikli> ApplyInventoryFilters(
         IQueryable<Domain.Model.Artikli> query,

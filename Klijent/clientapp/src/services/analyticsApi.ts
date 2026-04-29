@@ -714,7 +714,7 @@ export async function getInventoryInsights(options?: {
   if (options?.sortBy) params.append("sortBy", options.sortBy);
 
   return fetchJson(
-    "/api/analytics/inventory/insights",
+    "/api/analytics/cached/inventory/insights",
     params,
     "Greska pri ucitavanju inventory uvida"
   );
@@ -802,7 +802,7 @@ export async function getInventoryStoreComparison(options?: {
   if (options?.search) params.append("search", options.search);
 
   return fetchJson(
-    "/api/analytics/inventory/store-comparison",
+    "/api/analytics/cached/inventory/store-comparison",
     params,
     "Greska pri ucitavanju poredenja prodavnica"
   );

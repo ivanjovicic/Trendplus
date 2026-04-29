@@ -7,6 +7,7 @@ using Application.Analytics.Queries.GetRebalanceSuggestions;
 using Application.Analytics.Queries.GetTopProducts;
 using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
+using Application.Common.Interfaces;
 using Infrastructure.Services.Caching;
 using MediatR;
 using Trendplus2.Dtos;
@@ -342,6 +343,54 @@ public static class CachedAnalyticsEndpoints
                 ct);
 
             return Results.Ok(paged);
+        });
+
+        // ========== INVENTORY INSIGHTS (CACHED) ==========
+        group.MapGet("/inventory/insights", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            IAnalyticsDbContext analyticsDb,
+            int? storeId = null,
+            int? supplierId = null,
+            string? search = null,
+            string? sortBy = null,
+            CancellationToken ct = default) =>
+        {
+            var cacheKey = AnalyticsCacheKeys.InventoryInsights(storeId, supplierId, search, sortBy);
+
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await InventoryEndpoints.GetInventoryInsightsAsync(db, analyticsDb, storeId, supplierId, search, sortBy, ct),
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== INVENTORY STORE COMPARISON (CACHED) ==========
+        group.MapGet("/inventory/store-comparison", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            IAnalyticsDbContext analyticsDb,
+            int[]? compareStoreIds,
+            int? supplierId,
+            string? search,
+            CancellationToken ct) =>
+        {
+            var normalizedCompareStoreIds = (compareStoreIds ?? [])
+                .Where(id => id > 0)
+                .Distinct()
+                .ToArray();
+            var effectiveCompareStoreIds = normalizedCompareStoreIds.Length == 0 ? null : normalizedCompareStoreIds;
+            var cacheKey = AnalyticsCacheKeys.InventoryStoreComparison(normalizedCompareStoreIds, supplierId, search);
+
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await InventoryEndpoints.GetInventoryStoreComparisonAsync(db, analyticsDb, effectiveCompareStoreIds, supplierId, search, ct),
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
         });
 
         // ========== INVENTORY FORECAST (CACHED) ==========

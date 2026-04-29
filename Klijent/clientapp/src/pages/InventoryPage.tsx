@@ -153,7 +153,6 @@ export default function InventoryPage() {
     previousLoadRef.current = currentLoad;
 
     let cancelled = false;
-    const errorMessages: string[] = [];
     setLoading(true);
     setInsightsLoading(true);
     setError(null);
@@ -165,56 +164,126 @@ export default function InventoryPage() {
       setForecastError(null);
     }
 
-    const tasks = [
+    const setFirstError = (message: string) => {
+      setError((current) => current ?? message);
+    };
+
+    const primaryTasks = [
       { key: "balance" as const, promise: getInventoryBalance(true, selectedStoreId, selectedSupplierId) },
       { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy }) },
-      { key: "insights" as const, promise: getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy }) },
-      ...(shouldRefreshOperations ? [
-        { key: "storeComparison" as const, promise: getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined }) },
-        { key: "actionWorkflow" as const, promise: getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined }) },
-      ] : []),
-      ...(shouldRefreshSignals ? [
-        { key: "forecast" as const, promise: getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT }) },
-        { key: "alerts" as const, promise: getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId }) },
-        { key: "rebalance" as const, promise: getRebalanceSuggestions({ supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT }) },
-      ] : []),
     ];
 
-    void Promise.allSettled(tasks.map((task) => task.promise))
+    void Promise.allSettled(primaryTasks.map((task) => task.promise))
       .then((results) => {
         if (cancelled) return;
         results.forEach((result, index) => {
-          const task = tasks[index];
+          const task = primaryTasks[index];
           if (result.status === "rejected") {
             const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
-            if (task.key === "forecast") setForecastError(message);
-            else errorMessages.push(message);
+            setFirstError(message);
             return;
           }
           switch (task.key) {
             case "balance": setBalance(result.value as InventoryBalance); break;
             case "list": setPageData(result.value as InventoryPagedResponse); break;
-            case "insights": setInsights(result.value as InventoryInsights); break;
-            case "storeComparison": setStoreComparison(result.value as InventoryStoreComparison); break;
-            case "actionWorkflow": setActionWorkflow(result.value as InventoryActionWorkflow); break;
-            case "forecast": setForecast(result.value as ForecastDto); break;
-            case "alerts": setAlerts(result.value as InventoryAlertListDto); break;
-            case "rebalance": setRebalance(result.value as RebalanceListDto); break;
           }
         });
-        if (errorMessages.length > 0) setError(errorMessages[0]);
       })
       .finally(() => {
         if (cancelled) return;
         setLoading(false);
+      });
+
+    void getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy })
+      .then((result) => {
+        if (!cancelled) setInsights(result);
+      })
+      .catch((reason) => {
+        if (!cancelled) {
+          const message = reason instanceof Error ? reason.message : String(reason);
+          setFirstError(message);
+        }
+      })
+      .finally(() => {
+        if (cancelled) return;
         setInsightsLoading(false);
-        if (shouldRefreshOperations) setOperationsLoading(false);
-        if (shouldRefreshSignals) {
+      });
+
+    if (shouldRefreshOperations) {
+      const operationTasks = [
+        { key: "storeComparison" as const, promise: getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined }) },
+        { key: "actionWorkflow" as const, promise: getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined }) },
+      ];
+
+      void Promise.allSettled(operationTasks.map((task) => task.promise))
+        .then((results) => {
+          if (cancelled) return;
+          results.forEach((result, index) => {
+            const task = operationTasks[index];
+            if (result.status === "rejected") {
+              const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
+              setFirstError(message);
+              return;
+            }
+
+            switch (task.key) {
+              case "storeComparison":
+                setStoreComparison(result.value as InventoryStoreComparison);
+                break;
+              case "actionWorkflow":
+                setActionWorkflow(result.value as InventoryActionWorkflow);
+                break;
+            }
+          });
+        })
+        .finally(() => {
+          if (cancelled) return;
+          setOperationsLoading(false);
+        });
+    }
+
+    if (shouldRefreshSignals) {
+      const signalTasks = [
+        { key: "forecast" as const, promise: getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT }) },
+        { key: "alerts" as const, promise: getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId }) },
+        { key: "rebalance" as const, promise: getRebalanceSuggestions({ supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT }) },
+      ];
+
+      void Promise.allSettled(signalTasks.map((task) => task.promise))
+        .then((results) => {
+          if (cancelled) return;
+          results.forEach((result, index) => {
+            const task = signalTasks[index];
+            if (result.status === "rejected") {
+              const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
+              if (task.key === "forecast") {
+                setForecastError(message);
+              } else {
+                setFirstError(message);
+              }
+              return;
+            }
+
+            switch (task.key) {
+              case "forecast":
+                setForecast(result.value as ForecastDto);
+                break;
+              case "alerts":
+                setAlerts(result.value as InventoryAlertListDto);
+                break;
+              case "rebalance":
+                setRebalance(result.value as RebalanceListDto);
+                break;
+            }
+          });
+        })
+        .finally(() => {
+          if (cancelled) return;
           setForecastLoading(false);
           setAlertsLoading(false);
           setRebalanceLoading(false);
-        }
-      });
+        });
+    }
 
     return () => { cancelled = true; };
   }, [compareStoreIds, pageNumber, pageSize, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);

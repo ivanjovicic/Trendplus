@@ -3,7 +3,9 @@
 .analytics-dashboard,
 .analytics-details,
 .supplier-decision-page,
+.shoetype-decision-page,
 .sf-decision-page,
+.pnp-decision-page,
 .ppn-decision-page,
 .observability-page,
 .sdh-decision-page {
@@ -58,15 +60,33 @@
   color: var(--analytics-text);
 }
 
+.supplier-decision-page {
+  --analytics-accent: var(--success);
+  --analytics-accent-2: var(--info);
+  --analytics-page-bg: radial-gradient(75rem 42rem at 100% -10%, color-mix(in srgb, var(--info) 16%, transparent), transparent 58%), radial-gradient(62rem 38rem at -18% 0%, color-mix(in srgb, var(--success) 13%, transparent), transparent 62%), linear-gradient(160deg, var(--surface-default), var(--surface-darker));
+  --analytics-panel-bg: linear-gradient(160deg, color-mix(in srgb, var(--surface-elevated) 90%, var(--success) 10%), color-mix(in srgb, var(--surface-light) 88%, var(--surface-darker) 12%));
+  --analytics-panel-bg-strong: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--success) 14%), var(--surface-darker));
+  --analytics-border: color-mix(in srgb, var(--info) 28%, var(--border-default) 72%);
+  --analytics-border-soft: color-mix(in srgb, var(--success) 14%, var(--border-default) 86%);
+  --analytics-border-strong: color-mix(in srgb, var(--info) 34%, var(--success) 26%, var(--border-default) 40%);
+  --analytics-value-text: color-mix(in srgb, var(--text-primary) 82%, var(--info) 18%);
+  --analytics-glow: 0 0 24px color-mix(in srgb, var(--info) 14%, transparent);
+  --analytics-glow-strong: 0 0 34px color-mix(in srgb, var(--success) 18%, transparent);
+}
+
 .analytics-header h1,
 .supplier-decision-title,
 .supplier-decision-header h1,
+.shoetype-decision-title,
 .sf-decision-title,
+.pnp-decision-title,
 .ppn-decision-title,
 .observability-title,
 .analytics-section > h2,
 .supplier-decision-card h2,
+.shoetype-decision-card h2,
 .sf-decision-card h2,
+.pnp-decision-card h2,
 .ppn-decision-card h2,
 .sdh-decision-card h2 {
   color: var(--analytics-title-text);
@@ -76,7 +96,9 @@
 
 .analytics-header p,
 .supplier-decision-subtitle,
+.shoetype-decision-subtitle,
 .sf-decision-subtitle,
+.pnp-decision-subtitle,
 .ppn-decision-subtitle,
 .observability-subtitle,
 .section-note {
@@ -95,9 +117,14 @@
 .supplier-decision-card,
 .supplier-decision-detail,
 .supplier-decision-panel,
+.shoetype-decision-kpi,
+.shoetype-decision-card,
+.shoetype-decision-detail,
 .sf-decision-kpi,
 .sf-decision-card,
 .sf-decision-detail,
+.pnp-decision-kpi,
+.pnp-decision-card,
 .ppn-decision-kpi,
 .ppn-decision-signal,
 .ppn-decision-card,
@@ -115,8 +142,27 @@
 }
 
 .metric-card,
+.stock-card,
+.validation-card,
+.ad-kpi-card,
+.ad-risk-card,
 .supplier-decision-kpi,
+.shoetype-decision-kpi,
 .sf-decision-kpi,
+.pnp-decision-kpi,
+.ppn-decision-kpi,
+.observability-kpi,
+.sdh-decision-kpi {
+  min-width: var(--space-0);
+  overflow: hidden;
+  padding: var(--space-5);
+}
+
+.metric-card,
+.supplier-decision-kpi,
+.shoetype-decision-kpi,
+.sf-decision-kpi,
+.pnp-decision-kpi,
 .ppn-decision-kpi,
 .observability-kpi,
 .sdh-decision-kpi,
@@ -124,11 +170,31 @@
   background: var(--analytics-panel-bg-strong);
   border-color: var(--analytics-border-strong);
   box-shadow: var(--analytics-shadow), var(--analytics-glow);
+  min-height: calc(var(--space-12) + var(--space-12));
+}
+
+.supplier-decision-kpi {
+  background: var(--analytics-panel-bg-strong);
+  border-color: var(--analytics-border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--info) 10%, transparent),
+    0 2px 6px color-mix(in srgb, var(--surface-darker) 28%, transparent);
+  min-height: calc(var(--space-12) + var(--space-12));
+  padding: var(--space-4);
+}
+
+.supplier-decision-kpi:hover {
+  box-shadow:
+    0 0 34px color-mix(in srgb, var(--success) 16%, transparent),
+    0 4px 12px color-mix(in srgb, var(--surface-darker) 30%, transparent);
 }
 
 .metric-card:hover,
 .supplier-decision-kpi:hover,
+.shoetype-decision-kpi:hover,
 .sf-decision-kpi:hover,
+.pnp-decision-kpi:hover,
 .ppn-decision-kpi:hover,
 .observability-kpi:hover,
 .sdh-decision-kpi:hover,
@@ -141,34 +207,91 @@
 .metric-card strong,
 .stock-card strong,
 .supplier-decision-kpi strong,
+.shoetype-decision-kpi strong,
 .sf-decision-kpi strong,
+.pnp-decision-kpi strong,
 .ppn-decision-kpi strong,
 .observability-kpi__value,
 .sdh-decision-kpi strong,
 .ad-kpi-card strong,
 .ad-risk-card strong {
   color: var(--analytics-value-text);
+  display: block;
   font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
+  margin-top: var(--space-3);
+  max-width: 100%;
+  min-width: var(--space-0);
+  overflow-wrap: anywhere;
   text-shadow: var(--analytics-glow);
+  white-space: normal;
+  word-break: normal;
 }
 
 .metric-card > span,
 .metric-card .metric-label,
 .supplier-decision-kpi span,
+.shoetype-decision-kpi span,
 .sf-decision-kpi span,
+.pnp-decision-kpi span,
 .ppn-decision-kpi span,
 .observability-kpi__label,
 .sdh-decision-kpi span,
 .ad-kpi-card span,
 .ad-risk-card span {
+  align-items: center;
   color: var(--analytics-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
   letter-spacing: var(--letter-spacing-label);
+  line-height: var(--line-height-title);
+  max-width: 100%;
+  min-width: var(--space-0);
+  overflow-wrap: anywhere;
+  white-space: normal;
+  width: 100%;
+  word-break: normal;
+}
+
+.metric-card small,
+.stock-card small,
+.supplier-decision-kpi small,
+.shoetype-decision-kpi small,
+.sf-decision-kpi small,
+.pnp-decision-kpi small,
+.ppn-decision-kpi small,
+.observability-kpi__meta,
+.sdh-decision-kpi small,
+.ad-kpi-card small,
+.ad-risk-card small {
+  color: var(--analytics-text-muted);
+  display: block;
+  line-height: var(--line-height-title);
+  margin-top: var(--space-2);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.supplier-decision-kpis,
+.shoetype-decision-kpis,
+.sf-decision-kpis,
+.pnp-decision-kpis,
+.ppn-decision-kpis,
+.observability-kpis,
+.sdh-decision-kpis,
+.analytics-card-grid,
+.analytics-skeleton-grid,
+.ad-kpi-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.75rem), 1fr));
 }
 
 .analytics-filter-bar,
 .analytics-custom-range,
 .supplier-decision-filters,
+.shoetype-decision-filters,
 .sf-decision-filters,
+.pnp-decision-filters,
 .ppn-decision-filters,
 .observability-filters,
 .sdh-decision-filters {
@@ -186,8 +309,12 @@
 .analytics-filter-grid input,
 .supplier-decision-field select,
 .supplier-decision-field input,
+.shoetype-decision-field select,
+.shoetype-decision-field input,
 .sf-decision-field select,
 .sf-decision-field input,
+.pnp-decision-field select,
+.pnp-decision-field input,
 .ppn-decision-field select,
 .ppn-decision-field input,
 .observability-input,
@@ -213,8 +340,12 @@
 .analytics-filter-grid input:focus,
 .supplier-decision-field select:focus,
 .supplier-decision-field input:focus,
+.shoetype-decision-field select:focus,
+.shoetype-decision-field input:focus,
 .sf-decision-field select:focus,
 .sf-decision-field input:focus,
+.pnp-decision-field select:focus,
+.pnp-decision-field input:focus,
 .ppn-decision-field select:focus,
 .ppn-decision-field input:focus,
 .observability-input:focus,
@@ -231,7 +362,9 @@
 .analytics-controls button,
 .analytics-custom-range button,
 .supplier-decision-actions button,
+.shoetype-decision-actions button,
 .sf-decision-actions button,
+.pnp-decision-actions button,
 .ppn-decision-actions button,
 .observability-button--primary,
 .sdh-decision-filters button:not(.secondary) {
@@ -243,7 +376,9 @@
 }
 
 .supplier-decision-actions button.secondary,
+.shoetype-decision-actions button.secondary,
 .sf-decision-actions button.secondary,
+.pnp-decision-actions button.secondary,
 .ppn-decision-actions button.secondary,
 .observability-button,
 .observability-icon-button {
@@ -254,9 +389,12 @@
 
 .filter-chip,
 .supplier-decision-generated,
+.shoetype-decision-generated,
 .sf-decision-generated,
+.pnp-decision-generated,
 .ppn-decision-generated,
 .supplier-decision-kpi-badge,
+.shoetype-decision-kpi-badge,
 .quality-snapshot,
 .observability-status,
 .ppn-data-health-badge {
@@ -270,7 +408,9 @@
 .top-table-wrap,
 .supplier-decision-table-wrap,
 .supplier-footwear-table-wrap,
+.shoetype-decision-table-wrap,
 .sf-decision-table-wrap,
+.pnp-decision-table-wrap,
 .ppn-decision-table-wrap,
 .observability-table-shell,
 .observability-table-wrap {
@@ -284,7 +424,9 @@
 .top-table-wrap table,
 .supplier-decision-table,
 .supplier-footwear-table,
+.shoetype-decision-table,
 .sf-decision-table,
+.pnp-decision-table,
 .ppn-decision-table,
 .observability-table {
   border-collapse: separate;
@@ -294,7 +436,9 @@
 .top-table-wrap th,
 .supplier-decision-table th,
 .supplier-footwear-table th,
+.shoetype-decision-table th,
 .sf-decision-table th,
+.pnp-decision-table th,
 .ppn-decision-table th,
 .observability-table th {
   background: var(--analytics-table-head-bg);
@@ -306,7 +450,9 @@
 .top-table-wrap td,
 .supplier-decision-table td,
 .supplier-footwear-table td,
+.shoetype-decision-table td,
 .sf-decision-table td,
+.pnp-decision-table td,
 .ppn-decision-table td,
 .observability-table td {
   border-bottom-color: var(--analytics-border-soft);
@@ -316,7 +462,9 @@
 .top-table-wrap tbody tr,
 .supplier-decision-table tbody tr,
 .supplier-footwear-table tbody tr,
+.shoetype-decision-table tbody tr,
 .sf-decision-table tbody tr,
+.pnp-decision-table tbody tr,
 .ppn-decision-table tbody tr,
 .observability-table tbody tr {
   background: var(--analytics-row-bg);
@@ -328,7 +476,9 @@
 .top-table-wrap tbody tr:hover,
 .supplier-decision-table tbody tr:hover,
 .supplier-footwear-table tbody tr:hover,
+.shoetype-decision-table tbody tr:hover,
 .sf-decision-table tbody tr:hover,
+.pnp-decision-table tbody tr:hover,
 .ppn-decision-table tbody tr:hover,
 .observability-table tbody tr:hover {
   background: var(--analytics-row-hover-bg);
@@ -338,7 +488,9 @@
 .chart-wrap,
 .supplier-decision-chart-wrap,
 .supplier-decision-chart-shell,
+.shoetype-decision-chart-wrap,
 .sf-decision-chart-wrap,
+.pnp-decision-chart-wrap,
 .ppn-decision-chart-wrap,
 .sdh-decision-chart-wrap,
 .observability-chart {
@@ -348,8 +500,12 @@
 .analytics-empty,
 .supplier-decision-empty,
 .supplier-decision-empty-row,
+.shoetype-decision-empty,
+.shoetype-decision-empty-row,
 .sf-decision-empty,
 .sf-decision-empty-row,
+.pnp-decision-empty,
+.pnp-decision-empty-row,
 .ppn-decision-empty,
 .ppn-decision-empty-row,
 .observability-empty,
@@ -361,7 +517,9 @@
 }
 
 .supplier-decision-message,
+.shoetype-decision-message,
 .sf-decision-message,
+.pnp-decision-message,
 .ppn-decision-message,
 .analytics-health,
 .observability-error {
@@ -370,7 +528,9 @@
 }
 
 .supplier-decision-message.info,
+.shoetype-decision-message.info,
 .sf-decision-message.info,
+.pnp-decision-message.info,
 .ppn-decision-message.info,
 .analytics-health {
   background: color-mix(in srgb, var(--info) 14%, var(--surface-elevated) 86%);
@@ -379,7 +539,9 @@
 }
 
 .supplier-decision-message.error,
+.shoetype-decision-message.error,
 .sf-decision-message.error,
+.pnp-decision-message.error,
 .ppn-decision-message.error,
 .observability-error,
 .analytics-errors {
@@ -391,7 +553,9 @@
 [data-theme="neon-dark"] .analytics-dashboard,
 [data-theme="neon-dark"] .analytics-details,
 [data-theme="neon-dark"] .supplier-decision-page,
+[data-theme="neon-dark"] .shoetype-decision-page,
 [data-theme="neon-dark"] .sf-decision-page,
+[data-theme="neon-dark"] .pnp-decision-page,
 [data-theme="neon-dark"] .ppn-decision-page,
 [data-theme="neon-dark"] .observability-page,
 [data-theme="neon-dark"] .sdh-decision-page {
@@ -402,7 +566,9 @@
   .analytics-dashboard,
   .analytics-details,
   .supplier-decision-page,
+  .shoetype-decision-page,
   .sf-decision-page,
+  .pnp-decision-page,
   .ppn-decision-page,
   .observability-page,
   .sdh-decision-page {
@@ -411,7 +577,9 @@
 
   .analytics-header,
   .supplier-decision-header,
+  .shoetype-decision-header,
   .sf-decision-header,
+  .pnp-decision-header,
   .ppn-decision-header,
   .observability-header {
     align-items: stretch;
