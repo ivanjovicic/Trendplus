@@ -9,6 +9,7 @@ import { installBackendReachabilityFetchLayer } from "./utils/backendReachabilit
 import { installApiFailoverFetchLayer } from "./utils/apiFailover";
 import "./skeleton.css";
 import "./styles/analytics-system.css";
+import "./styles/forms.css";
 
 installApiFailoverFetchLayer();
 installBackendReachabilityFetchLayer();

@@ -153,12 +153,12 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
     const handleContinue = useCallback(() => {
         const invoice = normalizeInvoice(brojRacuna);
         if (!selectedDobavljac) {
-            setValidationMessage("Izaberite dobavljaca pre nastavka.");
+            setValidationMessage("Izaberite dobavljača pre nastavka.");
             return;
         }
 
         if (invoice.length < 3) {
-            setValidationMessage("Broj racuna mora imati najmanje 3 karaktera.");
+            setValidationMessage("Broj računa mora imati najmanje 3 karaktera.");
             return;
         }
 
@@ -219,24 +219,24 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
         <div className="space-y-4">
             <section className="rounded-xl border border-border bg-surface p-4">
                 <h2 className="mb-3 text-xl font-semibold text-foreground">Unos robe</h2>
-                <div className="grid gap-2 md:grid-cols-3">
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${invoiceReady ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
-                        {invoiceReady ? <CheckCircle2 size={14} className="mb-1" /> : <Circle size={14} className="mb-1" />}
-                        1) Broj racuna
+                <div className="form-progress">
+                    <div className={`form-step ${invoiceReady ? "form-step--done" : "form-step--pending"}`}>
+                        {invoiceReady ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+                        <span className="form-step-label">Broj računa</span>
                     </div>
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${supplierReady ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
-                        {supplierReady ? <CheckCircle2 size={14} className="mb-1" /> : <Circle size={14} className="mb-1" />}
-                        2) Dobavljac
+                    <div className={`form-step ${supplierReady ? "form-step--done" : "form-step--pending"}`}>
+                        {supplierReady ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+                        <span className="form-step-label">Dobavljač</span>
                     </div>
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${canProceed ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
-                        {canProceed ? <CheckCircle2 size={14} className="mb-1" /> : <Clock3 size={14} className="mb-1" />}
-                        3) Nastavak na stavke
+                    <div className={`form-step ${canProceed ? "form-step--done" : "form-step--pending"}`}>
+                        {canProceed ? <CheckCircle2 size={14} /> : <Clock3 size={14} />}
+                        <span className="form-step-label">Nastavak na stavke</span>
                     </div>
                 </div>
             </section>
 
             <section className="rounded-xl border border-border bg-surface p-4">
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Broj racuna *</label>
+                <label className="form-field-label">Broj računa <span className="form-required">*</span></label>
                 <input
                     type="text"
                     placeholder="Npr. PR-2026-001"
@@ -245,7 +245,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                         setBrojRacuna(event.target.value);
                         setValidationMessage(null);
                     }}
-                    className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary shadow-sm placeholder:text-muted"
+                    className="form-input"
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
                     {invoiceSuggestions.map((suggestion) => (
@@ -253,28 +253,28 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                             key={suggestion}
                             type="button"
                             onClick={() => setBrojRacuna(suggestion)}
-                            className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] text-muted hover:border-primary hover:text-foreground"
+                            className="form-suggestion"
                         >
                             {suggestion}
                         </button>
                     ))}
                 </div>
-                <p className="mt-2 text-xs text-muted">Tip: `Ctrl+Enter` nastavlja cim su polja validna.</p>
+                <p className="form-helper">Tip: Ctrl+Enter nastavlja čim su polja validna.</p>
             </section>
 
             {recentDobavljaci.length > 0 && (
                 <section className="rounded-xl border border-border bg-surface p-4">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-foreground">Poslednje korisceni dobavljaci</h3>
+                        <h3 className="text-sm font-semibold text-foreground">Poslednje korišćeni dobavljači</h3>
                         <button
                             type="button"
                             onClick={() => {
                                 setRecentDobavljaci([]);
                                 saveRecentDobavljaci([]);
                             }}
-                            className="rounded-lg border border-border bg-surface-elevated px-2.5 py-1 text-[11px] text-foreground hover:bg-surface-elevated"
+                            className="form-btn-secondary"
                         >
-                            Ocisti listu
+                            Očisti listu
                         </button>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -287,11 +287,11 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                                     if (match) handleSelectDobavljac(match);
                                     if (recent.lastInvoice && !brojRacuna.trim()) setBrojRacuna(recent.lastInvoice);
                                 }}
-                                className="rounded-lg border border-border bg-surface px-3 py-1.5 text-left text-xs text-foreground hover:border-primary"
+                                className="form-recent-chip"
                             >
-                                <div className="font-semibold">{recent.naziv}</div>
-                                {recent.lastInvoice ? <div className="text-muted">Racun: {recent.lastInvoice}</div> : null}
-                                <div className="text-[11px] text-muted">Koriscen: {formatUsedAt(recent.lastUsedAt)}</div>
+                                <div className="form-recent-chip-name">{recent.naziv}</div>
+                                {recent.lastInvoice ? <div className="form-recent-chip-meta">Račun: {recent.lastInvoice}</div> : null}
+                                <div className="form-recent-chip-meta">Korišćen: {formatUsedAt(recent.lastUsedAt)}</div>
                             </button>
                         ))}
                     </div>
@@ -299,7 +299,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
             )}
 
             <section className="relative rounded-xl border border-border bg-surface p-4" ref={searchRef}>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Pretraga dobavljaca *</label>
+                <label className="form-field-label">Pretraga dobavljača <span className="form-required">*</span></label>
                 <div className="relative">
                     <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                     <input
@@ -314,12 +314,12 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                         }}
                         onFocus={() => setShowSearchResults(true)}
                         onKeyDown={handleKeyDown}
-                        className="w-full rounded-xl border border-border bg-surface-elevated py-2 pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-primary shadow-sm placeholder:text-muted"
+                        className="w-full rounded-xl border border-border bg-surface-elevated py-2 pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-primary focus:shadow-[0_0_0_3px_var(--accent-primary-10,rgba(59,130,246,0.18))] shadow-sm placeholder:text-muted"
                     />
                 </div>
 
                 {showSearchResults && searchQuery.trim() && (
-                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl">
+                    <div className="form-search-results absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2">
                         {filteredDobavljaci.length > 0 ? (
                             filteredDobavljaci.map((dobavljac, index) => (
                                 <button
@@ -327,30 +327,30 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                                     type="button"
                                     onClick={() => handleSelectDobavljac(dobavljac)}
                                     onMouseEnter={() => setSelectedIndex(index)}
-                                    className={`block w-full border-b border-border px-3 py-3 text-left transition ${
-                                        index === selectedIndex ? "bg-surface-elevated" : "hover:bg-surface-elevated"
-                                    }`}
+                                    className={`form-search-item ${index === selectedIndex ? "form-search-item--active" : ""}`}
                                 >
-                                    <div className="font-semibold text-foreground">{dobavljac.naziv}</div>
-                                    {dobavljac.adresa ? <div className="text-xs text-muted">Adresa: {dobavljac.adresa}</div> : null}
-                                    {dobavljac.telefon ? <div className="text-xs text-muted">Telefon: {dobavljac.telefon}</div> : null}
+                                    <div>
+                                        <div className="form-search-item-name">{dobavljac.naziv}</div>
+                                        {dobavljac.adresa ? <div className="form-search-item-meta">Adresa: {dobavljac.adresa}</div> : null}
+                                        {dobavljac.telefon ? <div className="form-search-item-meta">Telefon: {dobavljac.telefon}</div> : null}
+                                    </div>
                                 </button>
                             ))
                         ) : (
-                            <div className="px-3 py-5 text-center text-sm text-muted">Nema rezultata za "{searchQuery}"</div>
+                            <div className="form-search-empty">Nema rezultata za „{searchQuery}“</div>
                         )}
                     </div>
                 )}
             </section>
 
             {selectedDobavljac ? (
-                <section className="rounded-xl border border-success bg-success-10 p-4">
+                <section className="form-selected-entity">
                     <div className="flex items-start justify-between gap-3">
                         <div>
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-success">Izabrani dobavljac</h3>
-                            <p className="mt-1 text-base font-semibold text-foreground">{selectedDobavljac.naziv}</p>
-                            {selectedDobavljac.adresa ? <p className="text-sm text-muted">Adresa: {selectedDobavljac.adresa}</p> : null}
-                            {selectedDobavljac.telefon ? <p className="text-sm text-muted">Telefon: {selectedDobavljac.telefon}</p> : null}
+                            <p className="form-selected-entity-label">Izabrani dobavljač</p>
+                            <p className="form-selected-entity-name">{selectedDobavljac.naziv}</p>
+                            {selectedDobavljac.adresa ? <p className="form-selected-entity-meta">Adresa: {selectedDobavljac.adresa}</p> : null}
+                            {selectedDobavljac.telefon ? <p className="form-selected-entity-meta">Telefon: {selectedDobavljac.telefon}</p> : null}
                         </div>
                         <button
                             type="button"
@@ -358,8 +358,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                                 setSelectedDobavljac(null);
                                 setSearchQuery("");
                             }}
-                            className="inline-flex items-center gap-1 rounded-lg border bg-danger-10 px-3 py-1.5 text-xs font-semibold text-danger"
-                            style={{ borderColor: 'var(--danger)' }}
+                            className="form-btn-danger inline-flex items-center gap-1"
                         >
                             <X size={12} /> Promeni
                         </button>
@@ -367,15 +366,15 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 </section>
             ) : null}
 
-            <section className={`rounded-xl border p-4 ${canProceed ? "border-success bg-success-10" : "border-border bg-surface"}`}>
+            <section className={`form-overview ${canProceed ? "form-overview--ready" : "form-overview--pending"}`}>
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Pregled unosa</h3>
                 <div className="space-y-1 text-sm text-foreground">
-                    <p><span className="text-muted">Broj racuna:</span> {normalizeInvoice(brojRacuna) || "[Nije unet]"}</p>
-                    <p><span className="text-muted">Dobavljac:</span> {selectedDobavljac?.naziv || "[Nije izabran]"}</p>
+                    <p><span className="text-muted">Broj računa:</span> {normalizeInvoice(brojRacuna) || "[Nije unet]"}</p>
+                    <p><span className="text-muted">Dobavljač:</span> {selectedDobavljac?.naziv || "[Nije izabran]"}</p>
                 </div>
 
                 {validationMessage ? (
-                    <div className="mt-3 rounded-lg border bg-danger-10 px-3 py-2 text-xs text-danger" style={{ borderColor: 'var(--danger)' }}>
+                    <div className="mt-3 form-error text-xs">
                         {validationMessage}
                     </div>
                 ) : null}
@@ -383,7 +382,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 <button
                     onClick={handleContinue}
                     disabled={!canProceed}
-                    className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${canProceed ? 'border-success bg-success-10 text-success hover:bg-success' : 'border-border bg-surface text-muted'}`}
+                    className={`mt-4 form-btn-continue ${canProceed ? "form-btn-continue--ready" : ""}`}
                 >
                     Nastavi na unos artikala <ArrowRight size={14} />
                 </button>

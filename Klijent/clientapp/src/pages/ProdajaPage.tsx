@@ -51,7 +51,7 @@ export default function ProdajaPage() {
             } catch (e: unknown) {
                 console.error("Error fetching artikli lookup:", e);
                 if (!aborted) {
-                    setCatalogError("Neuspesno ucitavanje kataloga artikala.");
+                    setCatalogError("Neuspešno učitavanje kataloga artikala.");
                     setLoadingArtikli(false);
                 }
             }
@@ -112,15 +112,15 @@ export default function ProdajaPage() {
         >
             <InventoryKpiRow
                 items={[
-                    { label: "Artikli ucitani", value: `${artikli.length}` },
-                    { label: "Status kataloga", value: loadingArtikli ? "Ucitavanje" : catalogError ? "Greska" : "Spremno", tone: loadingArtikli ? "warning" : catalogError ? "danger" : "positive" },
+                    { label: "Artikli učitani", value: `${artikli.length}` },
+                    { label: "Status kataloga", value: loadingArtikli ? "Učitavanje" : catalogError ? "Greška" : "Spremno", tone: loadingArtikli ? "warning" : catalogError ? "danger" : "positive" },
                     { label: "Pretraga", value: "Lookup API" },
                     { label: "Prikaz", value: dataScope },
                 ]}
             />
 
             <InventoryPanel>
-                {loadingArtikli && <InventoryState message="Ucitavanje artikala..." tone="warning" />}
+                {loadingArtikli && <InventoryState message="Učitavanje artikala..." tone="warning" />}
                 {!loadingArtikli && catalogError && <InventoryState message={catalogError} tone="danger" />}
                 {!loadingArtikli && !catalogError && artikli.length === 0 && (
                     <div className="space-y-3">

@@ -224,7 +224,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
 
         const normalizedRacun = normalizeRacun(brojRacuna);
         if (normalizedRacun.length < 3) {
-            setError("Broj racuna mora imati najmanje 3 karaktera.");
+            setError("Broj računa mora imati najmanje 3 karaktera.");
             return;
         }
 
@@ -234,7 +234,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
         }
 
         if (invalidStavkeCount > 0) {
-            setError("Proverite stavke: kolicina mora biti > 0 i cena ne moze biti negativna.");
+            setError("Proverite stavke: količina mora biti > 0 i cena ne može biti negativna.");
             return;
         }
 
@@ -254,10 +254,10 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
             await onSubmit(payload);
             setBrojRacuna("");
             setStavke([{ idArtikal: knownArtikli[0]?.id ?? 0, kolicina: 1, cena: knownArtikli[0]?.cena ?? 0 }]);
-            toast.success("Prodaja uspesna");
+            toast.success("Prodaja uspešna!");
         } catch (err: unknown) {
             console.error(err);
-            const msg = err instanceof Error ? err.message : "Greska pri kreiranju prodaje";
+            const msg = err instanceof Error ? err.message : "Greška pri kreiranju prodaje";
             setError(msg);
             toast.error(msg);
         } finally {
@@ -305,24 +305,24 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
         <div className="space-y-4">
             <section className="rounded-xl border border-border bg-surface p-4">
                 <h2 className="mb-4 text-xl font-semibold text-foreground">Nova prodaja</h2>
-                <div className="mb-3 grid gap-2 md:grid-cols-3">
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${normalizeRacun(brojRacuna).length >= 3 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
-                        Broj racuna
+                <div className="form-progress mb-3">
+                    <div className={`form-step ${normalizeRacun(brojRacuna).length >= 3 ? "form-step--done" : "form-step--pending"}`}>
+                        <span className="form-step-label">Broj računa</span>
                     </div>
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${stavke.length > 0 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
-                        Stavke: {stavke.length}
+                    <div className={`form-step ${stavke.length > 0 ? "form-step--done" : "form-step--pending"}`}>
+                        <span className="form-step-label">Stavke: {stavke.length}</span>
                     </div>
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${invalidStavkeCount === 0 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-amber-700 bg-amber-950/20 text-amber-300"}`}>
-                        Validacija: {invalidStavkeCount === 0 ? "OK" : `${invalidStavkeCount} problema`}
+                    <div className={`form-step ${invalidStavkeCount === 0 ? "form-step--done" : "form-step--warning"}`}>
+                        <span className="form-step-label">Validacija: {invalidStavkeCount === 0 ? "OK" : `${invalidStavkeCount} problema`}</span>
                     </div>
                 </div>
 
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Broj racuna *</label>
+                <label className="form-field-label">Broj računa <span className="form-required">*</span></label>
                 <input
-                    placeholder="Broj racuna"
+                    placeholder="Npr. POS-2026-001"
                     value={brojRacuna}
                     onChange={(e) => setBrojRacuna(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
+                    className="form-input"
                 />
                 {racunSuggestions.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -331,21 +331,21 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                                 key={suggestion}
                                 type="button"
                                 onClick={() => setBrojRacuna(suggestion)}
-                                className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] text-muted hover:border-primary hover:text-foreground"
+                                className="form-suggestion"
                             >
                                 {suggestion}
                             </button>
                         ))}
                     </div>
                 )}
-                <p className="mt-2 text-xs text-muted">Tip: `Ctrl+Enter` cuva prodaju kada je forma validna.</p>
+                <p className="form-helper">Tip: Ctrl+Enter čuva prodaju kada je forma validna.</p>
             </section>
 
             <section className="relative rounded-xl border border-border bg-surface p-4" ref={searchRef}>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Pretrazi i dodaj artikal</label>
+                <label className="form-field-label">Pretraži i dodaj artikal</label>
                 <input
                     type="text"
-                    placeholder="Pretrazi artikle po nazivu..."
+                    placeholder="Pretraži artikle po nazivu..."
                     value={searchQuery}
                     onChange={(e) => {
                         setSearchQuery(e.target.value);
@@ -353,31 +353,31 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                     }}
                     onFocus={() => setShowSearchResults(true)}
                     onKeyDown={handleKeyDown}
-                    className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
+                    className="form-input"
                 />
 
                 {showSearchResults && searchQuery.trim() && (
-                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl">
+                    <div className="form-search-results absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2">
                         {isSearching ? (
-                            <div className="px-3 py-5 text-center text-sm text-muted">Pretrazujem...</div>
+                            <div className="form-search-loading">Pretražujem...</div>
                         ) : filteredArtikli.length > 0 ? (
                             filteredArtikli.map((art, idx) => (
-                                    <button
+                                <button
                                     key={art.id}
                                     type="button"
                                     onClick={() => quickAddArtikal(art)}
-                                        className={`flex w-full items-center justify-between border-b border-border px-3 py-3 text-left transition ${idx === selectedIndex ? "bg-surface-elevated" : "hover:bg-surface-elevated"}`}
+                                    className={`form-search-item ${idx === selectedIndex ? "form-search-item--active" : ""}`}
                                     onMouseEnter={() => setSelectedIndex(idx)}
                                 >
                                     <div>
-                                        <div className="font-semibold text-foreground">{art.naziv}</div>
-                                        <div className="text-xs text-muted">ID: {art.id}</div>
+                                        <div className="form-search-item-name">{art.naziv}</div>
+                                        <div className="form-search-item-meta">ID: {art.id}</div>
                                     </div>
-                                    <div className="text-sm font-semibold text-success">{art.cena} RSD</div>
+                                    <div className="form-search-item-price">{art.cena} RSD</div>
                                 </button>
                             ))
                         ) : (
-                            <div className="px-3 py-5 text-center text-sm text-muted">Nema rezultata za "{searchQuery}"</div>
+                            <div className="form-search-empty">Nema rezultata za „{searchQuery}“</div>
                         )}
                     </div>
                 )}
@@ -389,7 +389,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                     <button
                         type="button"
                         onClick={addStavka}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-semibold border-success bg-success-10 text-success hover:bg-success"
+                        className="form-btn-add"
                     >
                         + Dodaj stavku
                     </button>
@@ -397,7 +397,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
 
                 <div className="space-y-3">
                     {stavke.map((s, i) => (
-                        <div key={i} className="grid gap-2 rounded-lg border border-border bg-surface p-3 lg:grid-cols-[1.7fr_0.7fr_0.8fr_0.8fr_auto]"> 
+                        <div key={i} className="form-stavka">
                             <div>
                                 <label className="mb-1 block text-xs text-muted">Artikal</label>
                                 <select
@@ -407,20 +407,20 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                                         const art = knownArtikli.find((a) => a.id === id);
                                         updateStavka(i, { idArtikal: id, cena: art?.cena ?? s.cena });
                                     }}
-                                    className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+                                    className="form-input"
                                 >
                                     {artikalOptions}
                                 </select>
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs text-muted">Kolicina</label>
+                                <label className="mb-1 block text-xs text-muted">Količina</label>
                                 <input
                                     type="number"
                                     min={1}
                                     value={s.kolicina}
                                     onChange={(e) => updateStavka(i, { kolicina: Number(e.target.value) })}
-                                    className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+                                    className="form-input"
                                 />
                             </div>
 
@@ -431,13 +431,13 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                                     min={0}
                                     value={s.cena}
                                     onChange={(e) => updateStavka(i, { cena: Number(e.target.value) })}
-                                    className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+                                    className="form-input"
                                 />
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs text-muted">Iznos</label>
-                                <div className="rounded-lg border border-border bg-surface px-2 py-2 text-sm font-semibold text-success">
+                                <label className="mb-1 block text-xs text-muted">Iznos (obračunato)</label>
+                                <div className="form-calculated">
                                     {(safeNumber(s.kolicina, 0) * safeNumber(s.cena, 0)).toFixed(2)} RSD
                                 </div>
                             </div>
@@ -446,7 +446,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                                 <button
                                     type="button"
                                     onClick={() => removeStavka(i)}
-                                    className="rounded-lg border border-danger bg-danger-10 px-3 py-2 text-xs font-semibold text-danger"
+                                    className="form-btn-danger"
                                 >
                                     Ukloni
                                 </button>
@@ -456,19 +456,19 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                 </div>
             </section>
 
-            <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
-                <div className="text-base font-semibold text-foreground">Ukupno: <span className="text-success">{safeNumber(ukupno, 0).toFixed(2)} RSD</span></div>
+            <section className="form-summary-bar">
+                <div className="form-summary-total">Ukupno: <span>{safeNumber(ukupno, 0).toFixed(2)} RSD</span></div>
                 <button
                     type="button"
                     onClick={handleSubmit}
                     disabled={!canSubmit}
-                    className="rounded-xl border border-primary bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition hover:bg-primary-hover disabled:opacity-60"
+                    className="form-btn-primary"
                 >
-                    {isSubmitting ? "Kreiram..." : "Sacuvaj prodaju"}
+                    {isSubmitting ? "Kreiram..." : "Sačuvaj prodaju"}
                 </button>
             </section>
 
-            {error && <p className="rounded-lg border border-danger bg-danger-10 px-3 py-2 text-sm text-danger">{error}</p>}
+            {error && <p className="form-error">{error}</p>}
         </div>
     );
 }
