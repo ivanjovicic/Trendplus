@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Boxes } from "lucide-react";
 import { getInventoryList, getStores } from "../services/analyticsApi";
 import type { InventoryListItem, StoreOption } from "../types/analytics";
 import {
@@ -14,6 +15,19 @@ import {
   type TransferUpdateRequest,
   updateTransfer,
 } from "../services/transferApi";
+import {
+  FormField,
+  FormLayout,
+  FormPageShell,
+  FormProgress,
+  FormSection,
+  LineItemsEditor,
+  ReadonlyField,
+  StickyActionBar,
+  SummaryPanel,
+  ValidationChecklist,
+  type LineItem,
+} from "../components/forms/FormSystem";
 
 type TransferLineDraft = {
   skuId: number;
@@ -339,342 +353,260 @@ export default function TransferPage() {
     setStatusText(INITIAL_STATUS_TEXT);
   }, []);
 
+  const lineRows: Array<LineItem<TransferLineDraft>> = lines.map((line) => ({
+    id: line.skuId,
+    title: line.skuName,
+    status: lineErrors[line.skuId] ? "error" : "ok",
+    error: lineErrors[line.skuId] ?? null,
+    data: line,
+  }));
+
+  const setupReady = !!sourceId && !!destinationId && sourceId !== destinationId;
+  const draftReady = setupReady && lines.length > 0 && Object.keys(lineErrors).length === 0;
+  const primaryDisabledReason = !setupReady
+    ? "Izaberite dve različite radnje."
+    : lines.length === 0
+      ? "Dodajte bar jednu stavku transfera."
+      : Object.keys(lineErrors).length > 0
+        ? "Ispravite količine sa greškom."
+        : undefined;
+
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 text-[var(--text-primary)]">
-      <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-        <h1 className="text-xl font-semibold">Prenosi robe</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Draft - Confirm - Complete workflow sa atomskim OUT/IN stock movement zapisima.
-        </p>
-      </div>
+    <FormPageShell
+      icon={Boxes}
+      title="Prenosi robe"
+      subtitle="Draft, potvrda i završavanje transfera sa jasno odvojenim unosom, statusom i istorijom."
+    >
+      <FormProgress
+        steps={[
+          { label: "Radnje", state: setupReady ? "complete" : "pending" },
+          { label: `Stavke: ${lines.length}`, state: lines.length > 0 ? "complete" : "pending" },
+          { label: selectedTransferStatus, state: selectedTransferStatus === "draft" ? "pending" : "complete" },
+        ]}
+      />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="space-y-3 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4 lg:col-span-2">
-          <div className="grid gap-3 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-secondary)]">Iz radnje</label>
-              <select
-                className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] px-3 py-2 text-sm"
-                value={sourceId ?? ""}
-                disabled={working || !isDraftEditable}
-                onChange={(e) => setSourceId(Number(e.target.value))}
-              >
-                <option value="" disabled>Izaberi source radnju</option>
-                {stores.map((store) => (
-                  <option key={store.storeId} value={store.storeId}>
-                    {store.storeName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-secondary)]">U radnju</label>
-              <select
-                className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] px-3 py-2 text-sm"
-                value={destinationId ?? ""}
-                disabled={working || !isDraftEditable}
-                onChange={(e) => setDestinationId(Number(e.target.value))}
-              >
-                <option value="" disabled>Izaberi destination radnju</option>
-                {stores.map((store) => (
-                  <option key={store.storeId} value={store.storeId}>
-                    {store.storeName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-secondary)]">Brza pretraga artikla (naziv / PLU)</label>
-              <input
-                type="text"
-                className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] px-3 py-2 text-sm"
-                placeholder="Npr. Nike Air, 12345..."
-                value={searchQuery}
-                disabled={working || !isDraftEditable || !sourceId}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchResults.length > 0 && isDraftEditable && !scannerBusy) {
-                    e.preventDefault();
-                    addLine(searchResults[0]);
-                  }
-                }}
-              />
-            </div>
-            <label className="mt-5 inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={reserve}
-                disabled={working || !isDraftEditable}
-                onChange={(e) => setReserve(e.target.checked)}
-              />
-              Rezervisi stock na potvrdi
-            </label>
-          </div>
-
-          <div className="grid gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] p-3 md:grid-cols-4">
-            <label className="inline-flex items-center gap-2 text-sm md:col-span-1">
-              <input
-                type="checkbox"
-                checked={scannerMode}
-                disabled={working || !isDraftEditable}
-                onChange={(e) => setScannerMode(e.target.checked)}
-              />
-              Scanner mode
-            </label>
-            <div className="md:col-span-3">
-              <input
-                ref={scannerInputRef}
-                type="text"
-                className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm"
-                placeholder="Skeniraj barcode/PLU pa Enter"
-                value={scannerInput}
-                disabled={working || scannerBusy || !isDraftEditable || !scannerMode || !sourceId}
-                onChange={(e) => setScannerInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void scanAndAddArticle();
-                  }
-                }}
-              />
-            </div>
-          </div>
-
-          {(searchLoading || searchResults.length > 0) && (
-            <div className="max-h-52 overflow-y-auto rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)]">
-              {searchLoading ? (
-                <div className="p-3 text-sm text-[var(--text-muted)]">Pretraga u toku...</div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-[var(--surface-elevated)] text-[var(--text-secondary)]">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Artikal</th>
-                      <th className="px-3 py-2 text-right">Dostupno</th>
-                      <th className="px-3 py-2 text-right">Akcija</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {searchResults.map((item) => (
-                      <tr key={item.id} className="border-t border-[var(--border-default)]">
-                        <td className="px-3 py-2">
-                          <div className="font-medium">{item.naziv}</div>
-                          <div className="text-xs text-[var(--text-muted)]">{item.plu ?? `SKU #${item.id}`}</div>
-                        </td>
-                        <td className="px-3 py-2 text-right">{item.kolicina ?? 0}</td>
-                        <td className="px-3 py-2 text-right">
-                          <button
-                            type="button"
-                            className="rounded-lg border border-[var(--border-default)] px-3 py-1 text-xs font-semibold"
-                            disabled={!isDraftEditable || (Number(item.kolicina ?? 0) <= 0)}
-                            onClick={() => addLine(item)}
-                          >
-                            Dodaj
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-secondary)]">Napomena</label>
-            <textarea
-              className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] px-3 py-2 text-sm"
-              rows={2}
-              value={notes}
-              disabled={working || !isDraftEditable}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-
-          <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
-            <table className="w-full min-w-[680px] text-sm">
-              <thead className="bg-[var(--surface-default)] text-[var(--text-secondary)]">
-                <tr>
-                  <th className="px-3 py-2 text-left">Artikal</th>
-                  <th className="px-3 py-2 text-right">Dostupno</th>
-                  <th className="px-3 py-2 text-right">Kolicina</th>
-                  <th className="px-3 py-2 text-right">Akcija</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-5 text-center text-[var(--text-muted)]">
-                      Dodaj stavke kroz pretragu iznad.
-                    </td>
-                  </tr>
-                ) : (
-                  lines.map((line) => (
-                    <tr key={line.skuId} className="border-t border-[var(--border-default)]">
-                      <td className="px-3 py-2">
-                        <div className="font-medium">{line.skuName}</div>
-                        <div className="text-xs text-[var(--text-muted)]">{line.skuCode ?? `SKU #${line.skuId}`}</div>
-                        {lineErrors[line.skuId] && (
-                          <div className="mt-1 text-xs text-[var(--error)]">{lineErrors[line.skuId]}</div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right">{line.available}</td>
-                        <td className="px-3 py-2 text-right">
-                        <input
-                          type="number"
-                          min={line.available > 0 ? 1 : 0}
-                          step={1}
-                          className="w-24 rounded-lg border border-[var(--border-default)] bg-[var(--surface-default)] px-2 py-1 text-right"
-                          disabled={working || !isDraftEditable || line.available <= 0}
-                          value={line.quantity}
-                          onChange={(e) => updateLineQuantity(line.skuId, Number(e.target.value))}
-                        />
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          className="rounded-lg border border-[var(--error)] px-2 py-1 text-xs text-[var(--text-on-error)] bg-[var(--error)]"
-                          disabled={working || !isDraftEditable}
-                          onClick={() => removeLine(line.skuId)}
-                        >
-                          Ukloni
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-              <tfoot className="border-t border-[var(--border-default)] bg-[var(--surface-default)]">
-                <tr>
-                  <td className="px-3 py-2 font-semibold" colSpan={2}>Ukupno stavki: {lines.length}</td>
-                  <td className="px-3 py-2 text-right font-semibold" colSpan={2}>Ukupna kolicina: {totalQty}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-default)] px-4 py-2 text-sm font-semibold"
-              onClick={() => void saveDraft()}
-              disabled={working || !isDraftEditable}
-            >
-              Sacuvaj draft
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-[var(--focus-ring)] bg-[var(--focus-ring)] px-4 py-2 text-sm font-semibold text-[var(--text-on-primary)]"
-              onClick={() => void runStateAction(confirmTransfer, "Transfer potvrdjen")}
-              disabled={working || !isDraftEditable}
-            >
-              Potvrdi transfer
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-[var(--success)] bg-[var(--success)] px-4 py-2 text-sm font-semibold text-[var(--text-on-success)]"
-              onClick={() => void runStateAction(completeTransfer, "Transfer zavrsen")}
-              disabled={working || selectedTransferStatus !== "confirmed"}
-            >
-              Zavrsi transfer
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-[var(--error)] px-4 py-2 text-sm font-semibold text-[var(--error)]"
-              onClick={() => void runStateAction(cancelTransfer, "Transfer otkazan")}
-              disabled={working || !selectedTransferId || selectedTransferStatus === "completed" || selectedTransferStatus === "cancelled"}
-            >
-              Otkazi transfer
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-[var(--border-default)] px-4 py-2 text-sm font-semibold"
-              onClick={resetDraft}
-              disabled={working}
-            >
-              Novi transfer
-            </button>
-          </div>
-          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] px-3 py-2 text-sm text-[var(--text-secondary)]">
-            {statusText}
-          </div>
-        </section>
-
-        <aside className="space-y-3 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-          <h2 className="text-base font-semibold">Skoriji prenosi</h2>
-          <div className="space-y-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] p-3">
-            <label className="block text-xs uppercase tracking-wide text-[var(--text-secondary)]">
-              Filter po akteru (audit)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-1.5 text-sm"
-                value={actorFilterInput}
-                onChange={(e) => setActorFilterInput(e.target.value)}
-                placeholder="npr. admin@trendplus"
-              />
-              <button
-                type="button"
-                className="rounded-lg border border-[var(--border-default)] px-2 py-1 text-xs font-semibold"
-                onClick={() => {
-                  setActorFilterApplied(actorFilterInput.trim());
-                }}
-              >
-                Primeni
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-[var(--border-default)] px-2 py-1 text-xs font-semibold"
-                onClick={() => {
-                  setActorFilterInput("");
-                  setActorFilterApplied("");
-                }}
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-          <div className="max-h-[640px] space-y-2 overflow-y-auto pr-1">
-            {transfers.length === 0 ? (
-              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] px-3 py-4 text-sm text-[var(--text-muted)]">
-                Nema transfer dokumenata.
+      <FormLayout
+        main={(
+          <>
+            <FormSection title="Lokacije" description="Izvor i odredište moraju biti različiti." complete={setupReady}>
+              <div className="form-grid form-grid--two">
+                <FormField label="Iz radnje" required>
+                  <select
+                    className="form-control"
+                    value={sourceId ?? ""}
+                    disabled={working || !isDraftEditable}
+                    onChange={(event) => setSourceId(Number(event.target.value))}
+                  >
+                    <option value="" disabled>Izaberite radnju</option>
+                    {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
+                  </select>
+                </FormField>
+                <FormField label="U radnju" required>
+                  <select
+                    className="form-control"
+                    value={destinationId ?? ""}
+                    disabled={working || !isDraftEditable}
+                    onChange={(event) => setDestinationId(Number(event.target.value))}
+                  >
+                    <option value="" disabled>Izaberite radnju</option>
+                    {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
+                  </select>
+                </FormField>
               </div>
-            ) : (
-              transfers.map((item) => (
+              <label className="validation-list__item">
+                <input
+                  type="checkbox"
+                  checked={reserve}
+                  disabled={working || !isDraftEditable}
+                  onChange={(event) => setReserve(event.target.checked)}
+                />
+                Rezerviši stock na potvrdi
+              </label>
+            </FormSection>
+
+            <FormSection title="Dodavanje artikala" description="Koristite pretragu ili scanner mode za brz unos." complete={lines.length > 0}>
+              <div className="form-grid form-grid--two">
+                <FormField label="Brza pretraga artikla">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Naziv / PLU"
+                    value={searchQuery}
+                    disabled={working || !isDraftEditable || !sourceId}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && searchResults.length > 0 && isDraftEditable && !scannerBusy) {
+                        event.preventDefault();
+                        addLine(searchResults[0]);
+                      }
+                    }}
+                  />
+                </FormField>
+                <FormField label="Scanner mode">
+                  <input
+                    ref={scannerInputRef}
+                    type="text"
+                    className="form-control"
+                    placeholder={scannerMode ? "Skeniraj barcode/PLU pa Enter" : "Scanner je isključen"}
+                    value={scannerInput}
+                    disabled={working || scannerBusy || !isDraftEditable || !scannerMode || !sourceId}
+                    onChange={(event) => setScannerInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void scanAndAddArticle();
+                      }
+                    }}
+                  />
+                </FormField>
+              </div>
+              <label className="validation-list__item">
+                <input
+                  type="checkbox"
+                  checked={scannerMode}
+                  disabled={working || !isDraftEditable}
+                  onChange={(event) => setScannerMode(event.target.checked)}
+                />
+                Scanner mode uključen
+              </label>
+              {searchLoading ? <div className="form-note">Pretraga u toku...</div> : null}
+              {searchResults.length > 0 ? (
+                <div className="form-grid">
+                  {searchResults.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="btn btn--secondary btn--full"
+                      disabled={!isDraftEditable || Number(item.kolicina ?? 0) <= 0}
+                      onClick={() => addLine(item)}
+                    >
+                      {item.naziv} | Dostupno: {item.kolicina ?? 0}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </FormSection>
+
+            <FormSection title="Stavke transfera" description="Dostupno je samo za prikaz; količina je izmenjiva." complete={draftReady} warning={Object.keys(lineErrors).length > 0}>
+              <LineItemsEditor
+                title={`Stavke (${lines.length})`}
+                rows={lineRows}
+                grid="transfer"
+                renderRow={(row) => (
+                  <>
+                    <ReadonlyField label="Artikal" value={`${row.data.skuName} (${row.data.skuCode ?? `SKU #${row.data.skuId}`})`} />
+                    <ReadonlyField label="Dostupno" value={row.data.available} />
+                    <FormField label="Količina" required>
+                      <input
+                        className="form-control form-control--number"
+                        type="number"
+                        min={row.data.available > 0 ? 1 : 0}
+                        step={1}
+                        disabled={working || !isDraftEditable || row.data.available <= 0}
+                        value={row.data.quantity}
+                        onChange={(event) => updateLineQuantity(row.data.skuId, Number(event.target.value))}
+                      />
+                    </FormField>
+                    <button
+                      type="button"
+                      className="btn btn--warning"
+                      disabled={working || !isDraftEditable}
+                      onClick={() => removeLine(row.data.skuId)}
+                    >
+                      Ukloni
+                    </button>
+                  </>
+                )}
+              />
+            </FormSection>
+
+            <FormSection title="Napomena" description="Interna napomena za dokument transfera." complete>
+              <FormField label="Napomena">
+                <textarea
+                  className="form-control"
+                  rows={2}
+                  value={notes}
+                  disabled={working || !isDraftEditable}
+                  onChange={(event) => setNotes(event.target.value)}
+                />
+              </FormField>
+            </FormSection>
+          </>
+        )}
+        aside={(
+          <>
+            <SummaryPanel
+              title="Status transfera"
+              actions={(
+                <>
+                  {primaryDisabledReason ? <p className="form-helper">{primaryDisabledReason}</p> : null}
+                  <button type="button" className="btn btn--secondary btn--full" onClick={() => void saveDraft()} disabled={working || !isDraftEditable}>
+                    Sačuvaj draft
+                  </button>
+                  <button type="button" className="btn btn--primary btn--full" onClick={() => void runStateAction(confirmTransfer, "Transfer potvrđen")} disabled={working || !isDraftEditable}>
+                    Potvrdi transfer
+                  </button>
+                  <button type="button" className="btn btn--success btn--full" onClick={() => void runStateAction(completeTransfer, "Transfer završen")} disabled={working || selectedTransferStatus !== "confirmed"}>
+                    Završi transfer
+                  </button>
+                  <button type="button" className="btn btn--warning btn--full" onClick={() => void runStateAction(cancelTransfer, "Transfer otkazan")} disabled={working || !selectedTransferId || selectedTransferStatus === "completed" || selectedTransferStatus === "cancelled"}>
+                    Otkaži transfer
+                  </button>
+                  <button type="button" className="btn btn--secondary btn--full" onClick={resetDraft} disabled={working}>
+                    Novi transfer
+                  </button>
+                </>
+              )}
+            >
+              <ReadonlyField label="Dokument" value={selectedTransferId ? `#${selectedTransferId}` : "Novi draft"} />
+              <ReadonlyField label="Status" value={selectedTransferStatus} />
+              <ReadonlyField label="Stavke" value={lines.length} />
+              <ReadonlyField label="Ukupna količina" value={totalQty} />
+              <ValidationChecklist
+                items={[
+                  { label: "Radnje su različite", valid: setupReady },
+                  { label: "Dodate su stavke", valid: lines.length > 0 },
+                  { label: "Količine su validne", valid: Object.keys(lineErrors).length === 0 },
+                ]}
+              />
+              <div className="form-note">{statusText}</div>
+            </SummaryPanel>
+
+            <FormSection title="Skoriji prenosi" description="Audit filter i lista poslednjih dokumenata." complete={transfers.length > 0}>
+              <FormField label="Filter po akteru">
+                <input className="form-control" value={actorFilterInput} onChange={(event) => setActorFilterInput(event.target.value)} placeholder="Akter" />
+              </FormField>
+              <div className="line-row__header">
+                <button type="button" className="btn btn--secondary" onClick={() => setActorFilterApplied(actorFilterInput.trim())}>Primeni</button>
                 <button
                   type="button"
-                  key={item.id}
-                  className={`w-full rounded-xl border px-3 py-3 text-left ${
-                    selectedTransferId === item.id
-                      ? "border-[var(--focus-ring)] bg-[var(--surface-default)]"
-                      : "border-[var(--border-default)] bg-[var(--surface-default)]"
-                  }`}
-                  onClick={() => void loadTransferDetails(item.id)}
+                  className="btn btn--secondary"
+                  onClick={() => {
+                    setActorFilterInput("");
+                    setActorFilterApplied("");
+                  }}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">#{item.id}</span>
-                    <span className="rounded-md border border-[var(--border-default)] px-2 py-0.5 text-xs uppercase tracking-wide">
-                      {item.status}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-xs text-[var(--text-muted)]">
-                    {getStoreName(stores, item.sourceId)} {"->"} {getStoreName(stores, item.destinationId)}
-                  </div>
-                  <div className="mt-1 text-xs text-[var(--text-muted)]">
-                    Stavke: {item.itemCount} | Kolicina: {item.totalQuantity}
-                  </div>
-                  <div className="mt-1 text-xs text-[var(--text-muted)]">
-                    Akter: {item.updatedBy ?? item.createdBy ?? "-"}
-                  </div>
+                  Reset
                 </button>
-              ))
-            )}
-          </div>
-        </aside>
-      </div>
-    </div>
+              </div>
+              <div className="form-grid">
+                {transfers.length === 0 ? <div className="form-note">Nema transfer dokumenata.</div> : transfers.map((item) => (
+                  <button key={item.id} type="button" className="btn btn--secondary btn--full" onClick={() => void loadTransferDetails(item.id)}>
+                    #{item.id} | {item.status} | {getStoreName(stores, item.sourceId)} - {getStoreName(stores, item.destinationId)}
+                  </button>
+                ))}
+              </div>
+            </FormSection>
+          </>
+        )}
+      />
+
+      <StickyActionBar
+        primaryLabel="Potvrdi transfer"
+        disabled={working || !isDraftEditable || !draftReady}
+        disabledReason={primaryDisabledReason}
+        onPrimary={() => void runStateAction(confirmTransfer, "Transfer potvrđen")}
+      />
+    </FormPageShell>
   );
 }

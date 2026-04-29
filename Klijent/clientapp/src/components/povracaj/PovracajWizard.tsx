@@ -1,16 +1,33 @@
-﻿import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Dobavljac } from "../../types/Dobavljaci";
 import type { PovracajStavka } from "../../types/povracaj";
 import { kreirajPovracaj } from "../../services/povracajApi";
 import { getDobavljaci } from "../../services/dobavljaciApi";
 import { getArtikliPaged } from "../../services/artikliApi";
+import {
+  CalculatedField,
+  EntitySearchCombobox,
+  FormField,
+  FormLayout,
+  FormProgress,
+  FormSection,
+  LineItemsEditor,
+  ReadonlyField,
+  StickyActionBar,
+  SummaryPanel,
+  ValidationChecklist,
+  useLineItems,
+  type EntitySearchItem,
+  type LineItem,
+} from "../forms/FormSystem";
 
 type WizardStep = 1 | 2;
+type ArticleLookup = { id: number; naziv: string; nabavnaCena?: number | null; kolicina?: number | null };
 
 const STANJA_OPTIONS: readonly string[] = [
-  "Osteceno",
-  "Pogresna velicina",
-  "Pogresan model",
+  "Oštećeno",
+  "Pogrešna veličina",
+  "Pogrešan model",
   "Neprodat",
   "Dobar",
   "Ostalo",
@@ -21,508 +38,328 @@ interface PovracajWizardProps {
   onCancel?: () => void;
 }
 
-const themeBorder = "var(--border-default, var(--theme-color-2f323b, #2f323b))";
-const themeSurface = "var(--surface-default, var(--theme-color-14161d, #14161d))";
-const themeSurfaceLight = "var(--surface-light, var(--theme-color-1a1b1f, #1a1b1f))";
-const themeElevation = "var(--surface-elevated, var(--theme-color-222734, #222734))";
-const textPrimary = "var(--text-primary, var(--theme-color-dbe6fb, #dbe6fb))";
-const textSecondary = "var(--text-secondary, var(--theme-color-9aa9c6, #9aa9c6))";
-const textMuted = "var(--text-muted, var(--theme-color-9aabc7, #9aabc7))";
-const successColor = "var(--success, var(--theme-color-10b981, #10b981))";
-const borderAccent = "var(--border-hover, var(--theme-color-4763a6, #4763a6))";
-const primaryAccent = "var(--primary, var(--theme-color-3760b7, #3760b7))";
-const dangerAccent = "var(--error, var(--theme-color-ef4444, #ef4444))";
-const textOnPrimary = "var(--text-on-primary, var(--theme-color-ffffff, #ffffff))";
-const textOnError = "var(--text-on-error, var(--theme-color-ffffff, #ffffff))";
+function makeReturnLine(article: ArticleLookup): LineItem<PovracajStavka> {
+  return {
+    id: article.id,
+    title: article.naziv,
+    status: "error",
+    data: {
+      idArtikal: article.id,
+      artikalNaziv: article.naziv,
+      kolicina: 1,
+      cena: Number(article.nabavnaCena ?? 0),
+      razlog: "",
+      stanjeArtikla: "",
+    },
+    error: "Izaberite stanje artikla.",
+  };
+}
+
+function validateLine(row: LineItem<PovracajStavka>): string | null {
+  if (row.data.kolicina <= 0) return "Količina mora biti veća od 0.";
+  if (row.data.cena < 0) return "Cena ne može biti negativna.";
+  if (!row.data.stanjeArtikla) return "Izaberite stanje artikla.";
+  return null;
+}
 
 export default function PovracajWizard({ onSuccess, onCancel }: PovracajWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [dobavljaci, setDobavljaci] = useState<Dobavljac[]>([]);
   const [selectedDobavljac, setSelectedDobavljac] = useState<number | "">("");
   const [razlogPovracaja, setRazlogPovracaja] = useState("");
   const [komentar, setKomentar] = useState("");
-
-  const [artikli, setArtikli] = useState<any[]>([]);
-  const [loadingArtikli, setLoadingArtikli] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStavke, setSelectedStavke] = useState<PovracajStavka[]>([]);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<ArticleLookup[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [rows, dispatchRows] = useLineItems<PovracajStavka>([]);
 
   useEffect(() => {
-    const loadDobavljaci = async () => {
-      try {
-        const data = await getDobavljaci();
-        setDobavljaci(data);
-      } catch (err) {
-        console.error("Failed to load dobavljaci:", err);
-        setError("Greska pri ucitavanju dobavljaca");
-      }
+    let aborted = false;
+    getDobavljaci()
+      .then((data) => {
+        if (!aborted) setDobavljaci(data);
+      })
+      .catch((reason) => {
+        console.error("Failed to load dobavljaci:", reason);
+        if (!aborted) setError("Greška pri učitavanju dobavljača");
+      });
+    return () => {
+      aborted = true;
     };
-    loadDobavljaci();
   }, []);
 
   useEffect(() => {
-    if (step === 2) {
-      loadArtikli();
-    }
-  }, [step]);
+    const timer = window.setTimeout(() => setDebouncedQuery(searchQuery), 250);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
-  const loadArtikli = async () => {
-    setLoadingArtikli(true);
-    try {
-      const response = await getArtikliPaged(1, 1000);
-      setArtikli(response.items);
-    } catch (err) {
-      console.error("Failed to load artikli:", err);
-      setError("Greska pri ucitavanju artikala");
-    } finally {
-      setLoadingArtikli(false);
+  useEffect(() => {
+    const query = debouncedQuery.trim();
+    if (query.length < 2) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
     }
-  };
 
-  const filteredArtikli = artikli.filter((a) =>
-    a.naziv.toLowerCase().includes(searchQuery.toLowerCase())
+    let cancelled = false;
+    setSearchLoading(true);
+    getArtikliPaged<ArticleLookup>(1, 25, { naziv: query })
+      .then((response) => {
+        if (!cancelled) setSearchResults(response.items ?? []);
+      })
+      .catch((reason) => {
+        if (!cancelled) {
+          console.error("Failed to search return articles:", reason);
+          setSearchResults([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setSearchLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery]);
+
+  const selectedSupplierName = dobavljaci.find((item) => item.id === Number(selectedDobavljac))?.naziv ?? "Nije izabran";
+  const setupValid = !!selectedDobavljac && razlogPovracaja.trim().length > 0;
+  const invalidRows = useMemo(() => rows.filter((row) => validateLine(row) !== null), [rows]);
+  const ukupanIznos = useMemo(() => rows.reduce((sum, row) => sum + row.data.kolicina * row.data.cena, 0), [rows]);
+  const canSubmit = setupValid && rows.length > 0 && invalidRows.length === 0 && !saving;
+  const disabledReason = !setupValid
+    ? "Izaberite dobavljača i unesite razlog."
+    : rows.length === 0
+      ? "Dodajte bar jedan artikal."
+      : invalidRows.length > 0
+        ? "Ispravite stavke sa greškom."
+        : undefined;
+
+  const articleItems = useMemo<EntitySearchItem[]>(
+    () =>
+      searchResults.map((article) => ({
+        id: article.id,
+        title: article.naziv,
+        meta: `Količina: ${article.kolicina ?? 0}`,
+        value: `${Number(article.nabavnaCena ?? 0).toFixed(2)} RSD`,
+      })),
+    [searchResults]
   );
 
-  const handleNext = () => {
-    if (step === 1) {
-      if (!selectedDobavljac) {
-        setError("Morate izabrati dobavljaca");
-        return;
-      }
-      if (!razlogPovracaja.trim()) {
-        setError("Morate uneti razlog povracaja");
-        return;
-      }
-      setError(null);
-      setStep(2);
+  const patchLine = useCallback((row: LineItem<PovracajStavka>, patch: Partial<PovracajStavka>) => {
+    const next = { ...row.data, ...patch };
+    const draft = { ...row, data: next };
+    const rowError = validateLine(draft);
+    dispatchRows({
+      type: "patch",
+      id: row.id,
+      patch,
+      rowPatch: { status: rowError ? "error" : "ok", error: rowError },
+    });
+    setError(null);
+  }, [dispatchRows]);
+
+  const addArticle = useCallback((article: ArticleLookup) => {
+    if (rows.some((row) => row.data.idArtikal === article.id)) return;
+    dispatchRows({ type: "add", row: makeReturnLine(article) });
+    setSearchQuery("");
+  }, [dispatchRows, rows]);
+
+  const handleNext = useCallback(() => {
+    if (!selectedDobavljac) {
+      setError("Morate izabrati dobavljača.");
+      return;
     }
-  };
-
-  const handleBack = () => {
-    if (step === 2) {
-      setStep(1);
+    if (!razlogPovracaja.trim()) {
+      setError("Morate uneti razlog povraćaja.");
+      return;
     }
-  };
+    setError(null);
+    setStep(2);
+  }, [razlogPovracaja, selectedDobavljac]);
 
-  const handleToggleArtikal = (artikal: any) => {
-    const existing = selectedStavke.find((s) => s.idArtikal === artikal.id);
-    if (existing) {
-      setSelectedStavke((prev) => prev.filter((s) => s.idArtikal !== artikal.id));
-    } else {
-      setSelectedStavke((prev) => [
-        ...prev,
-        {
-          idArtikal: artikal.id,
-          artikalNaziv: artikal.naziv,
-          kolicina: 1,
-          cena: artikal.nabavnaCena || 0,
-          razlog: "",
-          stanjeArtikla: "",
-        },
-      ]);
-    }
-  };
-
-  const handleUpdateStavka = (idArtikal: number, field: keyof PovracajStavka, value: any) => {
-    setSelectedStavke((prev) =>
-      prev.map((s) =>
-        s.idArtikal === idArtikal ? { ...s, [field]: value } : s
-      )
-    );
-  };
-
-  const handleSubmit = async () => {
-    if (selectedStavke.length === 0) {
-      setError("Morate izabrati bar jedan artikal");
+  const handleSubmit = useCallback(async () => {
+    if (!canSubmit) {
+      setError(disabledReason ?? "Forma nije validna.");
       return;
     }
 
     setSaving(true);
     setError(null);
-
     try {
       await kreirajPovracaj({
         idDobavljac: Number(selectedDobavljac),
         razlogPovracaja,
         komentar,
-        stavke: selectedStavke.map((s) => ({
-          idArtikal: s.idArtikal,
-          kolicina: s.kolicina,
-          cena: s.cena,
-          razlog: s.razlog,
-          stanjeArtikla: s.stanjeArtikla,
+        stavke: rows.map((row) => ({
+          idArtikal: row.data.idArtikal,
+          kolicina: row.data.kolicina,
+          cena: row.data.cena,
+          razlog: row.data.razlog,
+          stanjeArtikla: row.data.stanjeArtikla,
         })),
       });
-
-      if (onSuccess) onSuccess();
-    } catch (err: any) {
-      setError(err?.message ?? "Greska pri kreiranju povracaja");
+      onSuccess?.();
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "Greška pri kreiranju povraćaja");
     } finally {
       setSaving(false);
     }
-  };
+  }, [canSubmit, komentar, disabledReason, onSuccess, razlogPovracaja, rows, selectedDobavljac]);
 
-  const ukupanIznos = selectedStavke.reduce((sum, s) => sum + s.kolicina * s.cena, 0);
+  const renderRow = useCallback((row: LineItem<PovracajStavka>) => (
+    <>
+      <ReadonlyField label="Artikal" value={row.data.artikalNaziv ?? `#${row.data.idArtikal}`} />
+      <FormField label="Količina" required>
+        <input
+          className="form-control form-control--number"
+          type="number"
+          min={1}
+          value={row.data.kolicina}
+          onChange={(event) => patchLine(row, { kolicina: Number(event.target.value) })}
+        />
+      </FormField>
+      <FormField label="Cena" required>
+        <input
+          className="form-control form-control--number"
+          type="number"
+          min={0}
+          step={0.01}
+          value={row.data.cena}
+          onChange={(event) => patchLine(row, { cena: Number(event.target.value) })}
+        />
+      </FormField>
+      <FormField label="Stanje" required>
+        <select
+          className="form-control"
+          value={row.data.stanjeArtikla || ""}
+          onChange={(event) => patchLine(row, { stanjeArtikla: event.target.value })}
+        >
+          <option value="">Izaberite</option>
+          {STANJA_OPTIONS.map((stanje) => <option key={stanje} value={stanje}>{stanje}</option>)}
+        </select>
+      </FormField>
+      <FormField label="Razlog">
+        <input
+          className="form-control"
+          value={row.data.razlog || ""}
+          onChange={(event) => patchLine(row, { razlog: event.target.value })}
+        />
+      </FormField>
+      <CalculatedField label="Iznos" value={`${(row.data.kolicina * row.data.cena).toFixed(2)} RSD`} tone={row.error ? "warning" : "success"} />
+      <button type="button" className="btn btn--warning" onClick={() => dispatchRows({ type: "remove", id: row.id })}>
+        Ukloni
+      </button>
+    </>
+  ), [dispatchRows, patchLine]);
 
   return (
-    <div className="space-y-4">
-      <div
-        className="rounded-xl border p-4"
-        style={{ borderColor: themeBorder, backgroundColor: themeSurface }}
-      >
-        <h2 className="text-xl font-semibold" style={{ color: textPrimary }}>
-          Novi zapisnik o povracaju
-        </h2>
-        <p className="mt-1 text-sm" style={{ color: textMuted }}>
-          Korak {step} od 2
-        </p>
-      </div>
+    <>
+      <FormProgress
+        steps={[
+          { label: "Dobavljač i razlog", state: setupValid ? "complete" : "pending" },
+          { label: `Artikli: ${rows.length}`, state: rows.length > 0 ? "complete" : "pending" },
+          { label: invalidRows.length === 0 ? "Validacija OK" : `${invalidRows.length} problema`, state: invalidRows.length === 0 ? "complete" : "warning" },
+        ]}
+      />
 
-      {error && (
-        <div className="rounded-xl border border-rose-700 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
-          {error}
-        </div>
-      )}
-
-      {step === 1 && (
-        <div
-          className="grid gap-4 rounded-xl border p-4"
-          style={{ borderColor: themeBorder, backgroundColor: themeSurface }}
-        >
-          <div>
-            <label
-              className="mb-1 block text-xs uppercase tracking-wide"
-              style={{ color: textSecondary }}
-            >
-              Dobavljac *
-            </label>
-            <select
-              className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm text-[var(--text-primary)]"
-              style={{ borderColor: themeBorder, backgroundColor: themeSurfaceLight }}
-              value={selectedDobavljac}
-              onChange={(e) => setSelectedDobavljac(e.target.value ? Number(e.target.value) : "")}
-              required
-            >
-              <option value="">-- Izaberite dobavljaca --</option>
-              {dobavljaci.map((d) => (
-                <option key={d.id} value={d.id}>{d.naziv}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label
-              className="mb-1 block text-xs uppercase tracking-wide"
-              style={{ color: textSecondary }}
-            >
-              Razlog povracaja *
-            </label>
-            <textarea
-              className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm text-[var(--text-primary)]"
-              style={{ borderColor: themeBorder, backgroundColor: themeSurfaceLight }}
-              value={razlogPovracaja}
-              onChange={(e) => setRazlogPovracaja(e.target.value)}
-              rows={3}
-              required
-            />
-          </div>
-
-          <div>
-            <label
-              className="mb-1 block text-xs uppercase tracking-wide"
-              style={{ color: textSecondary }}
-            >
-              Dodatni komentar
-            </label>
-            <textarea
-              className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm text-[var(--text-primary)]"
-              style={{ borderColor: themeBorder, backgroundColor: themeSurfaceLight }}
-              value={komentar}
-              onChange={(e) => setKomentar(e.target.value)}
-              rows={2}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="rounded-lg border px-4 py-2 text-sm"
-              style={{
-                borderColor: borderAccent,
-                backgroundColor: themeElevation,
-                color: textPrimary,
-              }}
-              onClick={onCancel}
-            >
-              Otkazi
-            </button>
-              <button
-                type="button"
-                className="rounded-lg border px-4 py-2 text-sm font-semibold"
-                style={{
-                  borderColor: primaryAccent,
-                  backgroundColor: primaryAccent,
-                  color: textOnPrimary,
-                }}
-                onClick={handleNext}
-              >
-              Dalje
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div
-          className="grid gap-4 rounded-xl border p-4"
-          style={{ borderColor: themeBorder, backgroundColor: themeSurface }}
-        >
-          <div>
-            <label
-              className="mb-1 block text-xs uppercase tracking-wide"
-              style={{ color: textSecondary }}
-            >
-              Pretraga artikala
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm"
-              style={{
-                borderColor: themeBorder,
-                backgroundColor: themeSurfaceLight,
-                color: textPrimary,
-              }}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          {loadingArtikli ? (
-            <p className="py-8 text-center text-sm" style={{ color: textMuted }}>
-              Ucitavanje artikala...
-            </p>
-          ) : (
-            <>
-              <div
-                className="max-h-80 overflow-y-auto rounded-xl border"
-                style={{ borderColor: themeBorder }}
-              >
-                <table
-                  className="min-w-full text-sm"
-                  style={{ borderColor: themeBorder, color: textPrimary }}
-                >
-                  <thead
-                    className="sticky top-0"
-                    style={{ backgroundColor: themeSurface, color: textSecondary }}
+      <FormLayout
+        main={(
+          <>
+            <FormSection title="Osnovni podaci" description="Dobavljač i razlog su obavezni pre izbora artikala." complete={setupValid}>
+              <div className="form-grid form-grid--two">
+                <FormField label="Dobavljač" required>
+                  <select
+                    className="form-control"
+                    value={selectedDobavljac}
+                    onChange={(event) => {
+                      setSelectedDobavljac(event.target.value ? Number(event.target.value) : "");
+                      setError(null);
+                    }}
                   >
-                    <tr>
-                      <th className="px-3 py-2 text-left">Izaberi</th>
-                      <th className="px-3 py-2 text-left">Artikal</th>
-                      <th className="px-3 py-2 text-right">Nabavna cena</th>
-                    </tr>
-                  </thead>
-                  <tbody
-                    className="divide-y"
-                    style={{ backgroundColor: themeSurfaceLight, color: textPrimary }}
-                  >
-                    {filteredArtikli.map((artikal) => (
-                      <tr key={artikal.id} className="hover:bg-[var(--surface-elevated, var(--theme-color-1f2330, #1f2330))]">
-                        <td className="px-3 py-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedStavke.some((s) => s.idArtikal === artikal.id)}
-                            onChange={() => handleToggleArtikal(artikal)}
-                          />
-                        </td>
-                        <td className="px-3 py-2">{artikal.naziv}</td>
-                        <td className="px-3 py-2 text-right">{(artikal.nabavnaCena || 0).toFixed(2)} RSD</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    <option value="">Izaberite dobavljača</option>
+                    {dobavljaci.map((dobavljac) => <option key={dobavljac.id} value={dobavljac.id}>{dobavljac.naziv}</option>)}
+                  </select>
+                </FormField>
+                <FormField label="Razlog povraćaja" required>
+                  <input className="form-control" value={razlogPovracaja} onChange={(event) => setRazlogPovracaja(event.target.value)} />
+                </FormField>
               </div>
-
-              {selectedStavke.length > 0 && (
-                <div>
-              <h3
-                className="mb-2 text-sm font-semibold uppercase tracking-wide"
-                style={{ color: textSecondary }}
-              >
-                Izabrani artikli ({selectedStavke.length})
-              </h3>
-              <div
-                className="overflow-x-auto rounded-xl border"
-                style={{ borderColor: themeBorder }}
-              >
-                <table
-                  className="min-w-full text-sm"
-                  style={{ borderColor: themeBorder, color: textPrimary }}
-                >
-                  <thead
-                    className="bg-[var(--surface-elevated)]"
-                    style={{ backgroundColor: themeSurface, color: textSecondary }}
-                  >
-                    <tr>
-                          <th className="px-3 py-2 text-left">Artikal</th>
-                          <th className="px-3 py-2 text-left">Kolicina</th>
-                          <th className="px-3 py-2 text-left">Cena</th>
-                          <th className="px-3 py-2 text-left">Stanje</th>
-                          <th className="px-3 py-2 text-left">Razlog</th>
-                          <th className="px-3 py-2 text-right">Iznos</th>
-                          <th className="px-3 py-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody
-                        className="divide-y"
-                        style={{ backgroundColor: themeSurfaceLight, color: textPrimary }}
-                      >
-                        {selectedStavke.map((stavka) => (
-                          <tr key={stavka.idArtikal} className="hover:bg-[var(--surface-light)]">
-                            <td className="px-3 py-2">{stavka.artikalNaziv}</td>
-                            <td className="px-3 py-2">
-                              <input
-                                type="number"
-                                value={stavka.kolicina}
-                                onChange={(e) =>
-                                  handleUpdateStavka(stavka.idArtikal, "kolicina", Number(e.target.value))
-                                }
-                                min={1}
-                                className="w-20 rounded-lg border bg-transparent px-2 py-1 text-sm"
-                                style={{
-                                  borderColor: themeBorder,
-                                  backgroundColor: themeSurfaceLight,
-                                  color: textPrimary,
-                                }}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                type="number"
-                                value={stavka.cena}
-                                onChange={(e) =>
-                                  handleUpdateStavka(stavka.idArtikal, "cena", Number(e.target.value))
-                                }
-                                step={0.01}
-                                className="w-24 rounded-lg border bg-transparent px-2 py-1 text-sm"
-                                style={{
-                                  borderColor: themeBorder,
-                                  backgroundColor: themeSurfaceLight,
-                                  color: textPrimary,
-                                }}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <select
-                                value={stavka.stanjeArtikla || ""}
-                                onChange={(e) =>
-                                  handleUpdateStavka(stavka.idArtikal, "stanjeArtikla", e.target.value)
-                                }
-                                className="rounded-lg border bg-transparent px-2 py-1 text-sm"
-                                style={{
-                                  borderColor: themeBorder,
-                                  backgroundColor: themeSurfaceLight,
-                                  color: textPrimary,
-                                }}
-                              >
-                                <option value="">-- stanje --</option>
-                                {STANJA_OPTIONS.map((stanje) => (
-                                  <option key={stanje} value={stanje}>
-                                    {stanje}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                type="text"
-                                value={stavka.razlog || ""}
-                                onChange={(e) =>
-                                  handleUpdateStavka(stavka.idArtikal, "razlog", e.target.value)
-                                }
-                                className="rounded-lg border bg-transparent px-2 py-1 text-sm"
-                                style={{
-                                  borderColor: themeBorder,
-                                  backgroundColor: themeSurfaceLight,
-                                  color: textPrimary,
-                                }}
-                              />
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold" style={{ color: successColor }}>
-                              {(stavka.kolicina * stavka.cena).toFixed(2)} RSD
-                            </td>
-                            <td className="px-3 py-2">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleArtikal({ id: stavka.idArtikal })}
-                                className="rounded-md border px-2 py-1 text-xs font-semibold"
-                                style={{
-                                  borderColor: dangerAccent,
-                                  backgroundColor: "var(--error, var(--theme-color-ef4444, #ef4444))",
-                                  color: textOnError,
-                                  opacity: 0.9,
-                                }}
-                              >
-                                X
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                      <tr
-                        className="font-semibold"
-                        style={{ backgroundColor: themeSurface, color: textPrimary }}
-                      >
-                        <td colSpan={5} className="px-3 py-2 text-right">UKUPNO:</td>
-                        <td
-                          className="px-3 py-2 text-right"
-                          style={{ color: successColor }}
-                        >
-                          {ukupanIznos.toFixed(2)} RSD
-                        </td>
-                          <td></td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+              <FormField label="Komentar">
+                <textarea className="form-control" value={komentar} onChange={(event) => setKomentar(event.target.value)} />
+              </FormField>
+              {step === 1 ? (
+                <div className="line-row__header">
+                  <button type="button" className="btn btn--secondary" onClick={onCancel}>Otkaži</button>
+                  <button type="button" className="btn btn--primary" disabled={!setupValid} onClick={handleNext}>Dalje</button>
                 </div>
-              )}
-            </>
-          )}
+              ) : null}
+            </FormSection>
 
-          <div className="flex justify-between gap-2">
-            <button
-              type="button"
-              className="rounded-lg border px-4 py-2 text-sm"
-              style={{
-                borderColor: borderAccent,
-                backgroundColor: themeElevation,
-                color: textPrimary,
-              }}
-              onClick={handleBack}
-            >
-              Nazad
-            </button>
-              <button
-                type="button"
-                className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50"
-                style={{
-                  borderColor: primaryAccent,
-                  backgroundColor: primaryAccent,
-                  color: textOnPrimary,
-                }}
-                onClick={handleSubmit}
-                disabled={saving || selectedStavke.length === 0}
-              >
-              {saving ? "Cuvam..." : "Kreiraj povracaj"}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+            {step === 2 ? (
+              <>
+                <FormSection title="Dodaj artikle" description="Pretraga je debounced i učitava samo potrebne rezultate." complete={rows.length > 0}>
+                  <EntitySearchCombobox
+                    label="Pretraga artikala"
+                    value={searchQuery}
+                    placeholder="Naziv artikla..."
+                    items={articleItems}
+                    loading={searchLoading}
+                    helper="Unesite najmanje 2 karaktera."
+                    onQueryChange={setSearchQuery}
+                    onSelect={(item) => {
+                      const article = searchResults.find((result) => result.id === Number(item.id));
+                      if (article) addArticle(article);
+                    }}
+                  />
+                </FormSection>
+
+                <FormSection title="Izabrani artikli" description="Količina, cena, stanje i razlog su izmenjivi po stavci." complete={invalidRows.length === 0 && rows.length > 0} warning={invalidRows.length > 0}>
+                  <LineItemsEditor title={`Stavke (${rows.length})`} rows={rows} grid="return" renderRow={renderRow} />
+                </FormSection>
+              </>
+            ) : null}
+          </>
+        )}
+        aside={(
+          <SummaryPanel
+            title="Zapisnik"
+            actions={(
+              <>
+                {error ? <p className="form-error">{error}</p> : null}
+                {disabledReason ? <p className="form-helper">{disabledReason}</p> : null}
+                {step === 2 ? (
+                  <button type="button" className="btn btn--primary btn--full" disabled={!canSubmit} onClick={() => void handleSubmit()}>
+                    {saving ? "Čuvam..." : "Kreiraj povraćaj"}
+                  </button>
+                ) : null}
+              </>
+            )}
+          >
+            <ReadonlyField label="Dobavljač" value={selectedSupplierName} />
+            <ReadonlyField label="Stavke" value={rows.length} />
+            <CalculatedField label="Ukupno" value={`${ukupanIznos.toFixed(2)} RSD`} tone="success" />
+            <ValidationChecklist
+              items={[
+                { label: "Dobavljač je izabran", valid: !!selectedDobavljac },
+                { label: "Razlog je unet", valid: razlogPovracaja.trim().length > 0 },
+                { label: "Dodate su stavke", valid: rows.length > 0 },
+                { label: "Stavke su validne", valid: invalidRows.length === 0 },
+              ]}
+            />
+          </SummaryPanel>
+        )}
+      />
+
+      <StickyActionBar
+        primaryLabel={step === 1 ? "Dalje" : saving ? "Čuvam..." : "Kreiraj povraćaj"}
+        disabled={step === 1 ? !setupValid : !canSubmit}
+        disabledReason={step === 1 ? (!setupValid ? "Izaberite dobavljača i razlog." : undefined) : disabledReason}
+        onPrimary={step === 1 ? handleNext : () => void handleSubmit()}
+      />
+    </>
   );
 }
-

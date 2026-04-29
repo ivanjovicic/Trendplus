@@ -1,8 +1,21 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { GaugeCircle, Check, AlertCircle, X, TrendingUp, TrendingDown } from "lucide-react";
+import { GaugeCircle } from "lucide-react";
 import { getArtikli, nivelacijaCena } from "../services/artikliApi";
 import { Artikal } from "../types/Artikal";
-import { InventoryKpiRow, InventoryPageShell, InventoryPanel } from "../components/inventory/InventoryPageShell";
+import {
+    CalculatedField,
+    EntitySearchCombobox,
+    FormField,
+    FormLayout,
+    FormPageShell,
+    FormProgress,
+    FormSection,
+    ReadonlyField,
+    StickyActionBar,
+    SummaryPanel,
+    ValidationChecklist,
+    type EntitySearchItem,
+} from "../components/forms/FormSystem";
 
 export default function NivelacijaCenaPage() {
     const [artikli, setArtikli] = useState<Artikal[]>([]);
@@ -122,160 +135,135 @@ export default function NivelacijaCenaPage() {
         }
     }
 
+    const searchItems = useMemo<EntitySearchItem[]>(
+        () =>
+            filtered.map((artikal) => ({
+                id: artikal.id,
+                title: artikal.naziv,
+                meta: `ID: ${artikal.id}`,
+                value: `${artikal.prodajnaCena ?? 0} RSD`,
+            })),
+        [filtered]
+    );
+    const delta = selected ? Number(novaProdajnaCena) - Number(selected.prodajnaCena ?? 0) : 0;
+    const deltaPct = selected?.prodajnaCena ? (delta / Number(selected.prodajnaCena)) * 100 : 0;
+    const saveDisabledReason = !selected
+        ? "Izaberite artikal."
+        : Number(novaProdajnaCena) <= 0
+            ? "Nova prodajna cena mora biti veća od 0."
+            : !hasPriceChanged
+                ? "Promenite prodajnu cenu za snimanje."
+                : undefined;
+
     return (
-        <InventoryPageShell
+        <FormPageShell
             icon={GaugeCircle}
             title="Nivelacija cena"
             subtitle="Centar za promenu cena sa instant preview-om stanja izabranog artikla."
         >
-            <InventoryKpiRow
-                items={[
-                    { label: "Artikli", value: `${artikli.length}` },
-                    { label: "Selektovan SKU", value: selected ? `#${selected.id}` : "Nije izabran", tone: selected ? "positive" : "warning" },
-                    { label: "Status snimanja", value: isSaving ? "Snimanje" : "Idle", tone: isSaving ? "warning" : "neutral" },
-                    { label: "Rezultat", value: success ? "Uspeh" : error ? "Greška" : "-", tone: success ? "positive" : error ? "danger" : "neutral" },
+            <FormProgress
+                steps={[
+                    { label: "Izbor artikla", state: selected ? "complete" : "pending" },
+                    { label: "Nova cena", state: canSave ? "complete" : "pending" },
+                    { label: success ? "Sačuvano" : error ? "Proveri" : "Spremno", state: error ? "warning" : success ? "complete" : "pending" },
                 ]}
             />
 
-            <InventoryPanel className="max-w-5xl">
-                <h2 className="mb-4 text-xl font-semibold text-[var(--text-primary)]">Izmena cena po artiklu</h2>
+            <FormLayout
+                main={(
+                    <>
+                        <FormSection title="Izbor artikla" description="Pretraga koristi već učitan katalog ove stranice." complete={!!selected}>
+                            {loading ? <div className="form-note">Učitavanje artikala...</div> : null}
+                            <EntitySearchCombobox
+                                label="Pretraži artikal"
+                                value={query}
+                                placeholder="Unesite naziv artikla..."
+                                items={selected ? [] : searchItems}
+                                onQueryChange={(value) => {
+                                    setQuery(value);
+                                    setSelected(null);
+                                    setSuccess(null);
+                                }}
+                                onSelect={(item) => {
+                                    const artikal = filtered.find((entry) => entry.id === Number(item.id));
+                                    if (artikal) selectArtikal(artikal);
+                                }}
+                            />
+                        </FormSection>
 
-                {loading && <p className="text-sm text-[var(--text-primary)]">Učitavanje artikala...</p>}
-                {error && (
-                  <div className="flex items-start gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)]">
-                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                    <span className="flex-1">{error}</span>
-                    <button type="button" onClick={() => setError(null)} className="shrink-0 hover:text-white"><X size={14} /></button>
-                  </div>
+                        {selected ? (
+                            <>
+                                <FormSection title="Trenutne vrednosti" description="Ovo su read-only vrednosti iz kataloga." complete>
+                                    <div className="form-grid form-grid--three">
+                                        <ReadonlyField label="Artikal" value={selected.naziv} />
+                                        <ReadonlyField label="Prodajna cena" value={`${selected.prodajnaCena ?? 0} RSD`} />
+                                        <ReadonlyField label="Nabavna cena" value={selected.nabavnaCena == null ? "-" : `${selected.nabavnaCena} RSD`} />
+                                    </div>
+                                </FormSection>
+
+                                <FormSection title="Nova cena" description="Snimanje je omogućeno tek kada je prodajna cena promenjena." complete={canSave} warning={!!saveDisabledReason}>
+                                    <div className="form-grid form-grid--three">
+                                        <FormField label="Nova prodajna cena" required>
+                                            <input className="form-control form-control--number" type="number" step={0.01} min={0} value={novaProdajnaCena} onChange={(event) => setNovaProdajnaCena(Number(event.target.value))} />
+                                        </FormField>
+                                        <FormField label="Nova nabavna cena">
+                                            <input className="form-control form-control--number" type="number" step={0.01} min={0} value={novaNabavnaCena ?? ""} onChange={(event) => setNovaNabavnaCena(event.target.value === "" ? null : Number(event.target.value))} />
+                                        </FormField>
+                                        <FormField label="Nova prva prodajna cena">
+                                            <input className="form-control form-control--number" type="number" step={0.01} min={0} value={novaPrvaProdajnaCena ?? ""} onChange={(event) => setNovaPrvaProdajnaCena(event.target.value === "" ? null : Number(event.target.value))} />
+                                        </FormField>
+                                    </div>
+                                    <div className="line-row__header">
+                                        {[-10, -5, 5, 10].map((percent) => (
+                                            <button key={percent} type="button" className="btn btn--secondary" onClick={() => applyPercentAdjustment(percent)}>
+                                                {percent > 0 ? "+" : ""}{percent}%
+                                            </button>
+                                        ))}
+                                    </div>
+                                </FormSection>
+                            </>
+                        ) : null}
+                    </>
                 )}
-                {success && (
-                  <div className="flex items-start gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)]">
-                    <Check size={16} className="mt-0.5 shrink-0" />
-                    <span className="flex-1">{success}</span>
-                    <button type="button" onClick={() => setSuccess(null)} className="shrink-0 hover:text-white"><X size={14} /></button>
-                  </div>
-                )}
-
-                <div className="mt-4">
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Pretraži artikal</label>
-                    <div className="relative">
-                        <input
-                            className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
-                            value={query}
-                            onChange={e => {
-                                setQuery(e.target.value);
-                                setSelected(null);
-                            }}
-                            placeholder="Unesite naziv artikla..."
-                        />
-
-                        {filtered.length > 0 && !selected && (
-                            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] shadow-xl">
-                                {filtered.map(a => (
-                                    <button
-                                        key={a.id}
-                                        type="button"
-                                        onClick={() => selectArtikal(a)}
-                                        className="block w-full border-b border-[var(--border-default)] px-3 py-2 text-left hover:bg-[var(--surface-light)]"
-                                    >
-                                        <div className="text-sm font-semibold text-[var(--text-primary)]">{a.naziv}</div>
-                                        <div className="text-xs text-[var(--text-primary)]">
-                                            ID: {a.id} | Trenutna prodajna: {a.prodajnaCena}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
+                aside={(
+                    <SummaryPanel
+                        title="Pregled nivelacije"
+                        actions={(
+                            <>
+                                {error ? <p className="form-error">{error}</p> : null}
+                                {success ? <p className="validation-list__item validation-list__item--valid">{success}</p> : null}
+                                {saveDisabledReason ? <p className="form-helper">{saveDisabledReason}</p> : null}
+                                <button type="button" className="btn btn--primary btn--full" disabled={!canSave} onClick={() => void save()}>
+                                    {isSaving ? "Snima se..." : "Sačuvaj cenu"}
+                                </button>
+                            </>
                         )}
-                    </div>
-                </div>
-
-                {selected && (
-                    <div className="mt-6">
-                        <div className="mb-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
-                            <div className="font-semibold text-[var(--text-primary)]">{selected.naziv}</div>
-                            <div className="text-sm text-[var(--text-primary)]">
-                                Trenutno: prodajna {selected.prodajnaCena} | nabavna {selected.nabavnaCena ?? "-"} | prva {selected.prvaProdajnaCena ?? "-"}
-                            </div>
-                            {(() => {
-                              const delta = Number(novaProdajnaCena) - (selected.prodajnaCena ?? 0);
-                              const pct = selected.prodajnaCena ? (delta / selected.prodajnaCena) * 100 : 0;
-                              if (delta === 0) return null;
-                              const up = delta > 0;
-                              return (
-                                <div className={`mt-2 flex items-center gap-1.5 text-sm font-semibold ${up ? "text-emerald-300" : "text-rose-300"}`}>
-                                  {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                  {up ? "+" : ""}{delta.toFixed(2)} RSD ({up ? "+" : ""}{pct.toFixed(1)}%)
-                                  <span className="text-xs font-normal text-[var(--text-primary)]">— nova vs stara cena</span>
-                                </div>
-                              );
-                            })()}
-                        </div>
-
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <div>
-                                <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Nova prodajna cena</label>
-                                <input
-                                    className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
-                                    type="number"
-                                    step={0.01}
-                                    min={0}
-                                    value={novaProdajnaCena}
-                                    onChange={e => setNovaProdajnaCena(Number(e.target.value))}
-                                />
-                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                    {[-10, -5, 5, 10].map((percent) => (
-                                        <button
-                                            key={percent}
-                                            type="button"
-                                            onClick={() => applyPercentAdjustment(percent)}
-                                            className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2 py-1 text-xs text-[var(--text-primary)] hover:border-[var(--border-default)]"
-                                        >
-                                            {percent > 0 ? "+" : ""}{percent}%
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Nova nabavna cena</label>
-                                <input
-                                    className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
-                                    type="number"
-                                    step={0.01}
-                                    min={0}
-                                    value={novaNabavnaCena ?? ""}
-                                    onChange={e =>
-                                        setNovaNabavnaCena(e.target.value === "" ? null : Number(e.target.value))
-                                    }
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-primary)]">Nova prva prodajna cena</label>
-                                <input
-                                    className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
-                                    type="number"
-                                    step={0.01}
-                                    min={0}
-                                    value={novaPrvaProdajnaCena ?? ""}
-                                    onChange={e =>
-                                        setNovaPrvaProdajnaCena(e.target.value === "" ? null : Number(e.target.value))
-                                    }
-                                />
-                            </div>
-                        </div>
-
-                        <button
-                            className="mt-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--surface-light)] disabled:opacity-60"
-                            disabled={!canSave}
-                            onClick={save}
-                        >
-                            {isSaving ? "Snima se..." : hasPriceChanged ? "Sačuvaj cenu" : "Promenite cenu za snimanje"}
-                        </button>
-                    </div>
+                    >
+                        <ReadonlyField label="Artikli u katalogu" value={artikli.length} />
+                        <ReadonlyField label="SKU" value={selected ? `#${selected.id}` : "Nije izabran"} />
+                        <CalculatedField
+                            label="Razlika"
+                            value={selected ? `${delta > 0 ? "+" : ""}${delta.toFixed(2)} RSD (${deltaPct > 0 ? "+" : ""}${deltaPct.toFixed(1)}%)` : "-"}
+                            tone={delta === 0 ? "neutral" : delta > 0 ? "success" : "warning"}
+                        />
+                        <ValidationChecklist
+                            items={[
+                                { label: "Artikal je izabran", valid: !!selected },
+                                { label: "Nova cena je veća od 0", valid: Number(novaProdajnaCena) > 0 },
+                                { label: "Prodajna cena je promenjena", valid: hasPriceChanged },
+                            ]}
+                        />
+                    </SummaryPanel>
                 )}
-            </InventoryPanel>
-        </InventoryPageShell>
+            />
+
+            <StickyActionBar
+                primaryLabel={isSaving ? "Snima se..." : "Sačuvaj cenu"}
+                disabled={!canSave}
+                disabledReason={saveDisabledReason}
+                onPrimary={() => void save()}
+            />
+        </FormPageShell>
     );
 }
 

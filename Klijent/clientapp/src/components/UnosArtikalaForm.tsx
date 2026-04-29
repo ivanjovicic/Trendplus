@@ -1,10 +1,26 @@
-﻿import { useState, useEffect } from "react";
-import { createArtikal, getArtikli } from "../services/artikliApi";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createArtikal, getArtikliPaged } from "../services/artikliApi";
 import { getSezone } from "../services/sezoneApi";
-import { Artikal } from "../types/Artikal";
+import type { Artikal } from "../types/Artikal";
 import type { Sezona } from "../types/Sezona";
+import {
+    CalculatedField,
+    EntitySearchCombobox,
+    FormField,
+    FormLayout,
+    FormProgress,
+    FormSection,
+    LineItemsEditor,
+    ReadonlyField,
+    StickyActionBar,
+    SummaryPanel,
+    ValidationChecklist,
+    useLineItems,
+    type EntitySearchItem,
+    type LineItem,
+} from "./forms/FormSystem";
 
-interface ArtikalStavka {
+type ArtikalStavka = {
     id?: number;
     naziv: string;
     kolicina: number;
@@ -14,7 +30,7 @@ interface ArtikalStavka {
     sezonaId: number | null;
     komentar: string;
     isExisting: boolean;
-}
+};
 
 interface UnosArtikalaFormProps {
     dobavljacId: number;
@@ -23,15 +39,12 @@ interface UnosArtikalaFormProps {
     tipoviObuce: { id: number; naziv: string }[];
 }
 
-export default function UnosArtikalaForm({ 
-    dobavljacId, 
-    dobavljacNaziv, 
-    brojRacuna, 
-    tipoviObuce 
-}: UnosArtikalaFormProps) {
-    const [sezone, setSezone] = useState<Sezona[]>([]);
-    const [stavke, setStavke] = useState<ArtikalStavka[]>([
-        {
+function makeEmptyLine(id: number | string): LineItem<ArtikalStavka> {
+    return {
+        id,
+        title: "Novi artikal",
+        status: "new",
+        data: {
             naziv: "",
             kolicina: 1,
             nabavnaCena: 0,
@@ -39,166 +52,175 @@ export default function UnosArtikalaForm({
             tipObuceId: null,
             sezonaId: null,
             komentar: "",
-            isExisting: false
-        }
-    ]);
+            isExisting: false,
+        },
+        error: "Unesite naziv artikla.",
+    };
+}
+
+function makeExistingLine(id: number | string, artikal: Artikal): LineItem<ArtikalStavka> {
+    return {
+        id,
+        title: artikal.naziv,
+        status: "existing",
+        data: {
+            id: artikal.id,
+            naziv: artikal.naziv,
+            kolicina: 1,
+            nabavnaCena: Number(artikal.nabavnaCena ?? 0),
+            prodajnaCena: Number(artikal.prodajnaCena ?? 0),
+            tipObuceId: null,
+            sezonaId: null,
+            komentar: "",
+            isExisting: true,
+        },
+        error: null,
+    };
+}
+
+function validateLine(row: LineItem<ArtikalStavka>): string | null {
+    if (!row.data.naziv.trim()) return "Naziv artikla je obavezan.";
+    if (row.data.kolicina <= 0) return "Količina mora biti veća od 0.";
+    if (row.data.nabavnaCena < 0 || row.data.prodajnaCena < 0) return "Cena ne može biti negativna.";
+    return null;
+}
+
+export default function UnosArtikalaForm({
+    dobavljacId,
+    dobavljacNaziv,
+    brojRacuna,
+    tipoviObuce,
+}: UnosArtikalaFormProps) {
+    const nextLineId = useRef(1);
+    const [sezone, setSezone] = useState<Sezona[]>([]);
+    const [rows, dispatchRows] = useLineItems<ArtikalStavka>([makeEmptyLine(0)]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successCount, setSuccessCount] = useState(0);
-    
-    const [artiklList, setArtiklList] = useState<Artikal[]>([]);
-    const [searchQuery, setSearchQuery] = useState<{ [key: number]: string }>({});
-    const [showDropdown, setShowDropdown] = useState<{ [key: number]: boolean }>({});
-
-    const [fontSize, setFontSize] = useState('0.875rem');
-    const [inputPadding, setInputPadding] = useState('10px');
-
-    useState(() => {
-        const handleResize = () => {
-            const width = window.innerWidth;
-            if (width < 1024) {
-                setFontSize('0.75rem');
-                setInputPadding('8px');
-            } else if (width < 1366) {
-                setFontSize('0.8125rem');
-                setInputPadding('9px');
-            } else {
-                setFontSize('0.875rem');
-                setInputPadding('10px');
-            }
-        };
-
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    });
-
-    useState(() => {
-        const loadArtikli = async () => {
-            try {
-                const data = await getArtikli();
-                setArtiklList(data);
-            } catch (err) {
-                console.error("Failed to load artikli", err);
-            }
-        };
-        loadArtikli();
-    });
+    const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedQuery, setDebouncedQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<Artikal[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
 
     useEffect(() => {
-        const loadSezone = async () => {
-            try {
-                const data = await getSezone();
-                setSezone(data);
-            } catch (err) {
-                console.error("Failed to load sezone:", err);
-            }
+        let aborted = false;
+        getSezone()
+            .then((data) => {
+                if (!aborted) setSezone(data);
+            })
+            .catch((reason) => {
+                console.error("Failed to load sezone:", reason);
+            });
+        return () => {
+            aborted = true;
         };
-        loadSezone();
     }, []);
 
-    const getFilteredArtikli = (rowIndex: number): Artikal[] => {
-        const query = searchQuery[rowIndex]?.toLowerCase() || "";
-        if (!query.trim()) return [];
-        
-        return artiklList
-            .filter(a => a.naziv.toLowerCase().includes(query))
-            .slice(0, 10);
-    };
+    useEffect(() => {
+        const timer = window.setTimeout(() => setDebouncedQuery(searchQuery), 250);
+        return () => window.clearTimeout(timer);
+    }, [searchQuery]);
 
-    const addStavka = () => {
-        setStavke(prev => [
-            ...prev,
-            {
-                naziv: "",
-                kolicina: 1,
-                nabavnaCena: 0,
-                prodajnaCena: 0,
-                tipObuceId: null,
-                sezonaId: null,
-                komentar: "",
-                isExisting: false
-            }
-        ]);
-    };
-
-    const removeStavka = (index: number) => {
-        if (stavke.length > 1) {
-            setStavke(prev => prev.filter((_, i) => i !== index));
-            const newSearchQuery = { ...searchQuery };
-            const newShowDropdown = { ...showDropdown };
-            delete newSearchQuery[index];
-            delete newShowDropdown[index];
-            setSearchQuery(newSearchQuery);
-            setShowDropdown(newShowDropdown);
+    useEffect(() => {
+        const query = debouncedQuery.trim();
+        if (query.length < 2) {
+            setSearchResults([]);
+            setSearchLoading(false);
+            return;
         }
-    };
 
-    const selectExistingArtikal = (rowIndex: number, artikal: Artikal) => {
-        setStavke(prev => {
-            const updated = [...prev];
-            updated[rowIndex] = {
+        let cancelled = false;
+        setSearchLoading(true);
+        getArtikliPaged<Artikal>(1, 20, { naziv: query })
+            .then((response) => {
+                if (!cancelled) setSearchResults(response.items ?? []);
+            })
+            .catch((reason) => {
+                if (!cancelled) {
+                    console.error("Failed to search artikli:", reason);
+                    setSearchResults([]);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setSearchLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [debouncedQuery]);
+
+    const invalidRows = useMemo(() => rows.filter((row) => validateLine(row) !== null), [rows]);
+    const totalValue = useMemo(
+        () => rows.reduce((sum, row) => sum + row.data.kolicina * row.data.nabavnaCena, 0),
+        [rows]
+    );
+    const newCount = rows.filter((row) => !row.data.isExisting).length;
+    const existingCount = rows.filter((row) => row.data.isExisting).length;
+    const canSubmit = rows.length > 0 && invalidRows.length === 0 && !isSubmitting;
+    const disabledReason =
+        rows.length === 0
+            ? "Dodajte bar jedan artikal."
+            : invalidRows.length > 0
+                ? "Ispravite stavke sa greškom."
+                : undefined;
+
+    const searchItems = useMemo<EntitySearchItem[]>(
+        () =>
+            searchResults.map((artikal) => ({
                 id: artikal.id,
-                naziv: artikal.naziv,
-                kolicina: 1,
-                nabavnaCena: artikal.nabavnaCena || 0,
-                prodajnaCena: artikal.prodajnaCena,
-                tipObuceId: null,
-                sezonaId: null,
-                komentar: "",
-                isExisting: true
-            };
-            return updated;
+                title: artikal.naziv,
+                meta: `Količina: ${artikal.kolicina ?? 0}`,
+                value: `${artikal.prodajnaCena ?? 0} RSD`,
+            })),
+        [searchResults]
+    );
+
+    const patchLine = useCallback((row: LineItem<ArtikalStavka>, patch: Partial<ArtikalStavka>) => {
+        const next = { ...row.data, ...patch };
+        const draft = { ...row, data: next };
+        const rowError = validateLine(draft);
+        dispatchRows({
+            type: "patch",
+            id: row.id,
+            patch,
+            rowPatch: {
+                title: next.naziv || "Novi artikal",
+                status: rowError ? "error" : next.isExisting ? "existing" : "new",
+                error: rowError,
+            },
         });
-        
-        setSearchQuery(prev => ({ ...prev, [rowIndex]: artikal.naziv }));
-        setShowDropdown(prev => ({ ...prev, [rowIndex]: false }));
-    };
+        setError(null);
+    }, [dispatchRows]);
 
-    const shouldOpenUpward = (rowIndex: number): boolean => {
-        return rowIndex >= stavke.length - 2 && stavke.length > 3;
-    };
+    const addNewLine = useCallback(() => {
+        dispatchRows({ type: "add", row: makeEmptyLine(nextLineId.current++) });
+    }, [dispatchRows]);
 
-    const updateStavka = (index: number, field: keyof ArtikalStavka, value: unknown) => {
-        setStavke(prev => {
-            const updated = [...prev];
-            updated[index] = { ...updated[index], [field]: value };
-            
-            if (field === 'naziv') {
-                updated[index].isExisting = false;
-                updated[index].id = undefined;
-            }
-            
-            return updated;
-        });
-    };
+    const addExistingLine = useCallback((artikal: Artikal) => {
+        dispatchRows({ type: "add", row: makeExistingLine(nextLineId.current++, artikal) });
+        setSearchQuery("");
+    }, [dispatchRows]);
 
-    const handleSearchChange = (rowIndex: number, value: string) => {
-        setSearchQuery(prev => ({ ...prev, [rowIndex]: value }));
-        setShowDropdown(prev => ({ ...prev, [rowIndex]: true }));
-        updateStavka(rowIndex, 'naziv', value);
-    };
-
-    const handleSubmitAll = async () => {
+    const handleSubmitAll = useCallback(async () => {
         setError(null);
         setSuccessCount(0);
 
-        const hasEmptyNaziv = stavke.some(s => !s.naziv.trim());
-        if (hasEmptyNaziv) {
-            setError("Svi artikli moraju imati naziv");
+        if (!canSubmit) {
+            setError(disabledReason ?? "Forma nije validna.");
             return;
         }
 
         setIsSubmitting(true);
         let successfulCount = 0;
-        const ukupanIznos = stavke.reduce((sum, s) => sum + (s.kolicina * s.nabavnaCena), 0);
 
         try {
-            for (const stavka of stavke) {
+            for (const row of rows) {
+                const stavka = row.data;
                 if (stavka.isExisting && stavka.id) {
-                    console.log(`Updating existing article ID ${stavka.id} with +${stavka.kolicina}`);
+                    console.info(`Existing article selected for receive flow: ${stavka.id}`);
                 } else {
-                    const dto = {
+                    await createArtikal({
                         Naziv: stavka.naziv,
                         ProdajnaCena: stavka.prodajnaCena,
                         NabavnaCena: stavka.nabavnaCena,
@@ -208,374 +230,188 @@ export default function UnosArtikalaForm({
                         Komentar: stavka.komentar || `Unos robe - Račun: ${brojRacuna}`,
                         tipObuceId: stavka.tipObuceId,
                         dobavljacId: dobavljacId,
-                        IDObjekat: null,
-                        IDSezona: stavka.sezonaId,
-                    };
-
-                    await createArtikal(dto);
+                        idObjekat: null,
+                        idSezona: stavka.sezonaId,
+                    });
                 }
-                
+
                 successfulCount++;
                 setSuccessCount(successfulCount);
             }
 
-            console.log("Creating DnevnikPromena entry:", {
-                tipPromene: "Unos robe",
-                datum: new Date().toISOString(),
-                iznos: ukupanIznos,
-                brojRacuna: brojRacuna,
-                dobavljacId: dobavljacId
-            });
-
-            alert(`Uspešno obrađeno ${successfulCount} artikala!\nUkupan iznos: ${ukupanIznos.toFixed(2)} RSD`);
-            setStavke([{
-                naziv: "",
-                kolicina: 1,
-                nabavnaCena: 0,
-                prodajnaCena: 0,
-                tipObuceId: null,
-                sezonaId: null,
-                komentar: "",
-                isExisting: false
-            }]);
+            dispatchRows({ type: "reset", rows: [makeEmptyLine(0)] });
+            setSearchQuery("");
             setSuccessCount(0);
-            setSearchQuery({});
-            setShowDropdown({});
-        } catch (err) {
-            setError((err as Error)?.message || "Greška pri unosu artikala");
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Greška pri unosu artikala");
         } finally {
             setIsSubmitting(false);
         }
-    };
+    }, [brojRacuna, canSubmit, disabledReason, dispatchRows, dobavljacId, rows]);
 
-    const ukupnoStavki = stavke.length;
-    const ukupnaVrednost = stavke.reduce((sum, s) => sum + (s.kolicina * s.nabavnaCena), 0);
-    const novihArtikala = stavke.filter(s => !s.isExisting).length;
-    const postojecihArtikala = stavke.filter(s => s.isExisting).length;
+    const renderRow = useCallback((row: LineItem<ArtikalStavka>) => (
+        <>
+            <FormField label="Naziv artikla" required>
+                <input
+                    className="form-control"
+                    value={row.data.naziv}
+                    readOnly={row.data.isExisting}
+                    onChange={(event) => patchLine(row, { naziv: event.target.value, id: undefined, isExisting: false })}
+                />
+            </FormField>
+            <FormField label="Tip obuće">
+                <select
+                    className="form-control"
+                    value={row.data.tipObuceId ?? ""}
+                    disabled={row.data.isExisting}
+                    onChange={(event) => patchLine(row, { tipObuceId: event.target.value ? Number(event.target.value) : null })}
+                >
+                    <option value="">Izaberite</option>
+                    {tipoviObuce.map((tip) => <option key={tip.id} value={tip.id}>{tip.naziv}</option>)}
+                </select>
+            </FormField>
+            <FormField label="Sezona">
+                <select
+                    className="form-control"
+                    value={row.data.sezonaId ?? ""}
+                    disabled={row.data.isExisting}
+                    onChange={(event) => patchLine(row, { sezonaId: event.target.value ? Number(event.target.value) : null })}
+                >
+                    <option value="">Izaberite</option>
+                    {sezone.map((sezona) => <option key={sezona.id} value={sezona.id}>{sezona.naziv}</option>)}
+                </select>
+            </FormField>
+            <FormField label="Količina" required>
+                <input
+                    className="form-control form-control--number"
+                    type="number"
+                    min={1}
+                    value={row.data.kolicina}
+                    onChange={(event) => patchLine(row, { kolicina: Number(event.target.value) })}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter") addNewLine();
+                    }}
+                />
+            </FormField>
+            <FormField label="Nabavna" required>
+                <input
+                    className="form-control form-control--number"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={row.data.nabavnaCena}
+                    onChange={(event) => patchLine(row, { nabavnaCena: Number(event.target.value) })}
+                />
+            </FormField>
+            <FormField label="Prodajna" required>
+                <input
+                    className="form-control form-control--number"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={row.data.prodajnaCena}
+                    onChange={(event) => patchLine(row, { prodajnaCena: Number(event.target.value) })}
+                />
+            </FormField>
+            <FormField label="Komentar">
+                <input
+                    className="form-control"
+                    value={row.data.komentar}
+                    onChange={(event) => patchLine(row, { komentar: event.target.value })}
+                />
+            </FormField>
+            <button
+                type="button"
+                className="btn btn--warning"
+                disabled={rows.length === 1}
+                onClick={() => dispatchRows({ type: "remove", id: row.id })}
+            >
+                Ukloni
+            </button>
+        </>
+    ), [addNewLine, dispatchRows, patchLine, rows.length, sezone, tipoviObuce]);
 
     return (
-        <div className="card w-full">
-           {/*     <h2 className="text-2xl font-semibold mb-6">Unos artikala</h2>*/}
+        <>
+            <FormProgress
+                steps={[
+                    { label: "Račun i dobavljač", state: "complete" },
+                    { label: `Stavke: ${rows.length}`, state: rows.length > 0 ? "complete" : "pending" },
+                    { label: invalidRows.length === 0 ? "Validacija OK" : `${invalidRows.length} problema`, state: invalidRows.length === 0 ? "complete" : "warning" },
+                ]}
+            />
 
-                <div className="rounded-lg border-2 p-4 mb-5 bg-info-10" style={{ borderColor: 'var(--info)' }}>
-                    <h2 className="font-semibold text-base mb-2 text-info">
-                        Unos robe
-                    </h2>
-                    <div className="text-sm text-info">
-                        <p>Broj računa: <strong>{brojRacuna}</strong></p>
-                        <p>Dobavljač: <strong>{dobavljacNaziv}</strong> (ID: {dobavljacId})</p>
-                        <p className="mt-2 text-muted">Tip: Pretražite postojeće artikle ili unesite novi naziv</p>
-                    </div>
-                </div>
+            <FormLayout
+                main={(
+                    <>
+                        <FormSection title="Kontekst prijema" description="Podaci su preneti iz prvog koraka unosa robe." complete>
+                            <div className="form-grid form-grid--two">
+                                <ReadonlyField label="Broj računa" value={brojRacuna} />
+                                <ReadonlyField label="Dobavljač" value={`${dobavljacNaziv} (#${dobavljacId})`} />
+                            </div>
+                        </FormSection>
 
-            <div className="mb-4">
-                <h3 className="font-semibold text-lg mb-3">Lista artikala ({ukupnoStavki} - {novihArtikala} novih, {postojecihArtikala} postojećih)</h3>
-            </div>
+                        <FormSection title="Pretraga postojećih artikala" description="Dodajte postojeći artikal ili unesite novi kroz stavke." complete={false}>
+                            <EntitySearchCombobox
+                                label="Pretraži artikal"
+                                value={searchQuery}
+                                placeholder="Naziv artikla..."
+                                items={searchItems}
+                                loading={searchLoading}
+                                helper="Pretraga se pokreće nakon najmanje 2 karaktera."
+                                onQueryChange={setSearchQuery}
+                                onSelect={(item) => {
+                                    const artikal = searchResults.find((result) => result.id === Number(item.id));
+                                    if (artikal) addExistingLine(artikal);
+                                }}
+                            />
+                        </FormSection>
 
-            <div className="overflow-x-auto mb-6 w-full min-h-[500px]">
-                <table style={{
-                    width: '100%',
-                    borderCollapse: 'collapse',
-                    fontSize: fontSize,
-                    minWidth: '1200px'
-                }}>
-                    <thead>
-                        <tr style={{
-                            background: 'var(--surface-elevated)'
-                        }}>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '20%', minWidth: '200px' }}>
-                                Naziv artikla (pretraga)
-                            </th>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '12%', minWidth: '120px' }}>
-                                Tip obuće
-                            </th>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '13%', minWidth: '130px' }}>
-                                Sezona
-                            </th>
-                            <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600, width: '8%', minWidth: '90px' }}>
-                                Kolicina
-                            </th>
-                            <th style={{ padding: '12px', textAlign: 'right', fontWeight: 600, width: '11%', minWidth: '110px' }}>
-                                Nabavna cena
-                            </th>
-                            <th style={{ padding: '12px', textAlign: 'right', fontWeight: 600, width: '11%', minWidth: '110px' }}>
-                                Prodajna cena
-                            </th>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '18%', minWidth: '140px' }}>
-                                Komentar
-                            </th>
-                            <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600, width: '7%', minWidth: '80px' }}>
-                                Akcija
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {stavke.map((stavka, index) => {
-                            const filteredArtikli = getFilteredArtikli(index);
-                            const showDropdownForRow = showDropdown[index] && filteredArtikli.length > 0;
-                            const openUpward = shouldOpenUpward(index);
-
-                            return (
-                                <tr key={index} style={{
-                                            borderBottom: '1px solid var(--border-default)',
-                                            background: stavka.isExisting ? 'var(--success-10)' : (index % 2 === 0 ? 'var(--surface-default)' : 'var(--surface-light)'),
-                                            height: '70px'
-                                        }}>
-                                    <td style={{ padding: '8px', position: 'relative' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Unesite novi ili pretražite postojeće..."
-                                            value={searchQuery[index] || stavka.naziv}
-                                            onChange={(e) => handleSearchChange(index, e.target.value)}
-                                            onFocus={() => setShowDropdown(prev => ({ ...prev, [index]: true }))}
-                                            className="input-big placeholder:text-muted"
-                                            style={{
-                                                marginBottom: 0,
-                                                padding: inputPadding,
-                                                fontSize: fontSize,
-                                                background: stavka.isExisting ? 'var(--success-10)' : 'var(--surface-elevated)',
-                                                borderColor: stavka.isExisting ? 'var(--success)' : undefined,
-                                                boxShadow: stavka.isExisting ? undefined : 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))',
-                                                width: '100%'
-                                            }}
-                                        />
-                                        
-                                        {showDropdownForRow && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                ...(openUpward ? { bottom: '100%', marginBottom: '4px' } : { top: '100%', marginTop: '4px' }),
-                                                left: '8px',
-                                                right: '8px',
-                                                background: 'var(--surface-default)',
-                                                border: '2px solid var(--info)',
-                                                borderRadius: '8px',
-                                                maxHeight: '400px',
-                                                overflowY: 'auto',
-                                                zIndex: 1500,
-                                                boxShadow: 'var(--box-shadow-lg, 0 10px 20px var(--theme-color-rgba-0-0-0-0p2, rgba(0, 0, 0, 0.2)))',
-                                                minWidth: '300px',
-                                            }}>
-                                                {filteredArtikli.map((art) => (
-                                                            <div
-                                                                key={art.id}
-                                                                onClick={() => selectExistingArtikal(index, art)}
-                                                                className="p-3 cursor-pointer border-b"
-                                                                style={{ fontSize: fontSize, transition: 'background 0.15s' }}
-                                                                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--info-10)'; }}
-                                                                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-default)'; }}
-                                                            >
-                                                                <div className="font-semibold mb-1">{art.naziv}</div>
-                                                                <div className="text-sm text-muted mt-1">
-                                                                    Cena: {art.prodajnaCena} RSD | Kolicina: {art.kolicina || 0}
-                                                                </div>
-                                                            </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        
-                                        {stavka.isExisting && (
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '4px' }}>
-                                                [Postojeći artikal - ID: {stavka.id}]
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <select
-                                            value={stavka.tipObuceId ?? ""}
-                                            onChange={(e) => updateStavka(index, 'tipObuceId', e.target.value ? Number(e.target.value) : null)}
-                                            className="input-big placeholder:text-muted"
-                                            style={{
-                                                marginBottom: 0,
-                                                padding: inputPadding,
-                                                fontSize: fontSize,
-                                                width: '100%',
-                                                background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
-                                            }}
-                                        >
-                                            <option value="">-- izaberite --</option>
-                                            {tipoviObuce.map(t => (
-                                                <option key={t.id} value={t.id}>{t.naziv}</option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <select
-                                            value={stavka.sezonaId ?? ""}
-                                            onChange={(e) => updateStavka(index, 'sezonaId', e.target.value ? Number(e.target.value) : null)}
-                                            className="input-big placeholder:text-muted"
-                                            style={{
-                                                marginBottom: 0,
-                                                padding: inputPadding,
-                                                fontSize: fontSize,
-                                                width: '100%',
-                                                background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
-                                            }}
-                                        >
-                                            <option value="">-- izaberite --</option>
-                                            {sezone.map(s => (
-                                                <option key={s.id} value={s.id}>{s.naziv}</option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <input
-                                            type="number"
-                                            min={1}
-                                            value={stavka.kolicina}
-                                            onChange={(e) => updateStavka(index, 'kolicina', Number(e.target.value))}
-                                            className="input-big placeholder:text-muted"
-                                            style={{
-                                                marginBottom: 0,
-                                                padding: inputPadding,
-                                                fontSize: fontSize,
-                                                textAlign: 'center',
-                                                width: '100%',
-                                                background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
-                                            }}
-                                        />
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            step={0.01}
-                                            value={stavka.nabavnaCena}
-                                            onChange={(e) => updateStavka(index, 'nabavnaCena', Number(e.target.value))}
-                                            className="input-big placeholder:text-muted"
-                                            style={{
-                                                marginBottom: 0,
-                                                padding: inputPadding,
-                                                fontSize: fontSize,
-                                                textAlign: 'right',
-                                                width: '100%',
-                                                background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
-                                            }}
-                                        />
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            step={0.01}
-                                            value={stavka.prodajnaCena}
-                                            onChange={(e) => updateStavka(index, 'prodajnaCena', Number(e.target.value))}
-                                            className="input-big placeholder:text-muted"
-                                            style={{
-                                                marginBottom: 0,
-                                                padding: inputPadding,
-                                                fontSize: fontSize,
-                                                textAlign: 'right',
-                                                width: '100%',
-                                                background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
-                                            }}
-                                        />
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Opciono..."
-                                            value={stavka.komentar}
-                                            onChange={(e) => updateStavka(index, 'komentar', e.target.value)}
-                                            className="input-big placeholder:text-muted"
-                                            style={{
-                                                marginBottom: 0,
-                                                padding: inputPadding,
-                                                fontSize: fontSize,
-                                                width: '100%',
-                                                background: 'var(--surface-elevated)',
-                                                boxShadow: 'var(--box-shadow-sm, 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04)))'
-                                            }}
-                                        />
-                                    </td>
-                                    <td style={{ padding: '8px', textAlign: 'center' }}>
-                                        <button
-                                            onClick={() => removeStavka(index)}
-                                            disabled={stavke.length === 1}
-                                            className="rounded px-3 py-2 text-sm font-semibold"
-                                            style={{
-                                                background: stavke.length === 1 ? 'var(--muted, var(--theme-color-9ca3af, #9ca3af))' : 'var(--danger)',
-                                                color: 'var(--on-danger, white)',
-                                                padding: '8px 14px',
-                                                borderRadius: '6px',
-                                                border: 'none',
-                                                cursor: stavke.length === 1 ? 'not-allowed' : 'pointer',
-                                                fontSize: '0.875rem',
-                                                fontWeight: 600,
-                                                minWidth: '60px'
-                                            }}
-                                        >
-                                            X
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-
-            <button
-                onClick={addStavka}
-                className="button-big bg-success text-on-success"
-                style={{
-                    maxWidth: '200px',
-                    marginBottom: '1.5rem'
-                }}
-            >
-                + Dodaj artikal
-            </button>
-
-            <div style={{
-                borderTop: '2px solid var(--border-default)',
-                paddingTop: '1rem',
-                marginBottom: '1rem',
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: 600 }}>Ukupno artikala:</span>
-                    <span style={{ fontWeight: 600, color: 'var(--success)' }}>
-                        {ukupnoStavki} ({novihArtikala} novih + {postojecihArtikala} postojećih)
-                    </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 600 }}>Ukupna vrednost (nabavna):</span>
-                    <span style={{ fontWeight: 600, fontSize: '1.125rem', color: 'var(--success)' }}>
-                        {ukupnaVrednost.toFixed(2)} RSD
-                    </span>
-                </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <button
-                    onClick={handleSubmitAll}
-                    disabled={isSubmitting}
-                    className="button-big bg-primary text-on-primary"
-                    style={{
-                        maxWidth: '300px'
-                    }}
-                >
-                    {isSubmitting 
-                        ? `Unosim... (${successCount}/${ukupnoStavki})` 
-                        : `Sačuvaj sve artikle (${ukupnoStavki})`
-                    }
-                </button>
-
-                {isSubmitting && (
-                    <span style={{ fontSize: '0.875rem', color: 'var(--muted)' }}>
-                        Molimo sačekajte...
-                    </span>
+                        <FormSection title="Lista artikala" description="Novi artikli su izmenjivi; postojeći su jasno označeni." complete={invalidRows.length === 0 && rows.length > 0} warning={invalidRows.length > 0}>
+                            <LineItemsEditor
+                                title={`Artikli (${rows.length})`}
+                                rows={rows}
+                                grid="receive"
+                                onAdd={addNewLine}
+                                addLabel="Dodaj novi artikal"
+                                renderRow={renderRow}
+                            />
+                        </FormSection>
+                    </>
                 )}
-            </div>
+                aside={(
+                    <SummaryPanel
+                        title="Pregled unosa"
+                        actions={(
+                            <>
+                                {error ? <p className="form-error">{error}</p> : null}
+                                {disabledReason ? <p className="form-helper">{disabledReason}</p> : null}
+                                <button type="button" className="btn btn--primary btn--full" disabled={!canSubmit} onClick={() => void handleSubmitAll()}>
+                                    {isSubmitting ? `Unosim... (${successCount}/${rows.length})` : `Sačuvaj artikle (${rows.length})`}
+                                </button>
+                            </>
+                        )}
+                    >
+                        <ReadonlyField label="Novi artikli" value={newCount} />
+                        <ReadonlyField label="Postojeći artikli" value={existingCount} />
+                        <CalculatedField label="Ukupna nabavna vrednost" value={`${totalValue.toFixed(2)} RSD`} tone="success" />
+                        <ValidationChecklist
+                            items={[
+                                { label: "Postoji bar jedna stavka", valid: rows.length > 0 },
+                                { label: "Sve stavke imaju naziv", valid: rows.every((row) => row.data.naziv.trim().length > 0) },
+                                { label: "Količine i cene su validne", valid: invalidRows.length === 0 },
+                            ]}
+                        />
+                    </SummaryPanel>
+                )}
+            />
 
-            {error && (
-                <p className="error-msg" style={{ marginTop: '1rem' }}>
-                    {error}
-                </p>
-            )}
-        </div>
+            <StickyActionBar
+                primaryLabel={isSubmitting ? "Čuvam..." : `Sačuvaj artikle (${rows.length})`}
+                disabled={!canSubmit}
+                disabledReason={disabledReason}
+                onPrimary={() => void handleSubmitAll()}
+            />
+        </>
     );
 }
