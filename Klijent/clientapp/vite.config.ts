@@ -8,6 +8,15 @@ export default defineConfig({
     build: {
         sourcemap: true,
         minify: "esbuild", // Changed from 'terser' to 'esbuild' for proper UTF-8 support
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes("node_modules/recharts")) {
+                        return "recharts";
+                    }
+                },
+            },
+        },
     },
     plugins: [react()],
     server: {

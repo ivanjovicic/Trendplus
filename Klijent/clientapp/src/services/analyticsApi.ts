@@ -104,14 +104,8 @@ async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessag
 }
 
 async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage?: string): Promise<T> {
-  // Ensure analytics endpoints include the global dataScope param so the header select affects charts/tables
-  const finalParams = params ? new URLSearchParams(params.toString()) : new URLSearchParams();
-  if (path.startsWith("/api/analytics")) {
-    appendDataScopeToParams(finalParams);
-  }
-
-  const hasParams = Array.from(finalParams.keys()).length > 0;
-  const url = makeUrl(path, hasParams ? finalParams : undefined);
+  const finalParams = params ? new URLSearchParams(params.toString()) : undefined;
+  const url = makeUrl(path, finalParams);
   const cacheTtlMs = resolveClientCacheTtl(path);
 
   if (cacheTtlMs > 0) {

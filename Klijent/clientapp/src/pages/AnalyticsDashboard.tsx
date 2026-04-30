@@ -1,22 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import {
   checkAnalyticsHealth,
   getDashboardBootstrap,
@@ -56,6 +39,8 @@ import "./AnalyticsDashboard.css";
 type TopTabKey = "revenue" | "units" | "velocity" | "margin";
 type Tone = "good" | "warning" | "critical" | "neutral";
 
+const AnalyticsDashboardCharts = lazy(() => import("../components/analytics/AnalyticsDashboardCharts"));
+
 const HELP: Record<string, string> = {
   promet: "Ukupan novac od prodaje u izabranom periodu.",
   transakcije: "Jedan racun = jedna transakcija.",
@@ -71,21 +56,6 @@ const HELP: Record<string, string> = {
   freshness: "Koliko je vremena proslo od poslednjeg osvezavanja podataka.",
   margin: "Procenjeni uticaj na marzu (prodajna - nabavna cena).",
   trend: "Smer promene u odnosu na prethodni uporediv period.",
-};
-
-const CHART_COLORS = ["var(--success)", "var(--info)", "var(--warning)", "var(--error)", "var(--accent-info)", "var(--primary)", "var(--accent-success)", "var(--accent-warning)"];
-const CHART_GRID_STROKE = "rgba(var(--text-muted-rgb, 154, 164, 199), 0.2)";
-const CHART_TEXT_COLOR = "var(--text-muted)";
-const CHART_TOOLTIP_BG = "var(--surface-elevated)";
-const CHART_TOOLTIP_BORDER = "var(--muted)";
-const CHART_TOOLTIP_TEXT = "var(--contrast)";
-
-const CHART_TOOLTIP_CONTENT_STYLE: React.CSSProperties = {
-  background: CHART_TOOLTIP_BG,
-  border: `1px solid ${CHART_TOOLTIP_BORDER}`,
-  color: CHART_TOOLTIP_TEXT,
-  borderRadius: "8px",
-  boxShadow: "var(--tooltip-box-shadow)",
 };
 
 const DEFAULT_WEEKDAYS = ["Nedelja", "Ponedeljak", "Utorak", "Sreda", "Cetvrtak", "Petak", "Subota"];
@@ -244,6 +214,7 @@ export default function AnalyticsDashboard() {
   const [topTab, setTopTab] = useState<TopTabKey>("revenue");
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
 
   const isInvalidFilterRange = useMemo(() => parseInputDate(fromDate) > parseInputDate(toDate), [fromDate, toDate]);
   const selectedDays = useMemo(() => {
@@ -269,6 +240,23 @@ export default function AnalyticsDashboard() {
     }
   }, []);
 
+  const loadHealth = useCallback(async () => {
+    try {
+      const health = await checkAnalyticsHealth();
+      setHealthText(
+        `Analytics baza: ${health.tables.salesFacts} prodaja, ${health.tables.salesLineFacts} stavki, ${health.tables.productsDim} proizvoda`
+      );
+    } catch (error) {
+      setHealthText("");
+      setErrors((current) =>
+        compactErrorMessages([
+          ...current,
+          getErrorText(error, "Provera zdravstvenog stanja podataka nije dostupna."),
+        ])
+      );
+    }
+  }, []);
+
   const load = useCallback(async () => {
     if (isInvalidFilterRange) {
       setErrors(["Proverite filtere: datum od ne moze biti posle datuma do."]);
@@ -276,25 +264,14 @@ export default function AnalyticsDashboard() {
     }
 
     setLoading(true);
+    setShowDetailedAnalysis(false);
     setErrors([]);
 
-    const responses = await Promise.allSettled([
-      checkAnalyticsHealth(),
+    const bootstrapR = await Promise.allSettled([
       getDashboardBootstrap(fromDate, toDate, true, storeId, supplierId),
-    ]);
-
-    const [healthR, bootstrapR] = responses;
+    ]).then(([result]) => result);
 
     const nextErrors: string[] = [];
-    if (healthR.status === "fulfilled") {
-      setHealthText(
-        `Analytics baza: ${healthR.value.tables.salesFacts} prodaja, ${healthR.value.tables.salesLineFacts} stavki, ${healthR.value.tables.productsDim} proizvoda`
-      );
-    } else {
-      setHealthText("");
-      nextErrors.push(getErrorText(healthR.reason, "Provera zdravstvenog stanja podataka nije dostupna."));
-    }
-
     if (bootstrapR.status === "fulfilled") {
       setSummary(bootstrapR.value.summary);
       setInventory(bootstrapR.value.inventory);
@@ -337,7 +314,8 @@ export default function AnalyticsDashboard() {
 
     setErrors(compactErrorMessages(nextErrors));
     setLoading(false);
-  }, [fromDate, isInvalidFilterRange, storeId, supplierId, toDate]);
+    window.setTimeout(() => void loadHealth(), 0);
+  }, [fromDate, isInvalidFilterRange, loadHealth, storeId, supplierId, toDate]);
 
   useEffect(() => {
     void loadStores();
@@ -352,6 +330,32 @@ export default function AnalyticsDashboard() {
     if (supplierOptions.some((item) => item.supplierId === supplierId)) return;
     setSelectedSupplier("");
   }, [selectedSupplier, supplierId, supplierOptions]);
+
+  useEffect(() => {
+    if (loading || !summary) return;
+
+    let cancelled = false;
+    const show = () => {
+      if (!cancelled) setShowDetailedAnalysis(true);
+    };
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const usedIdleCallback = typeof idleWindow.requestIdleCallback === "function";
+    const idleId = usedIdleCallback
+      ? idleWindow.requestIdleCallback(show, { timeout: 900 })
+      : window.setTimeout(show, 180);
+
+    return () => {
+      cancelled = true;
+      if (usedIdleCallback && typeof idleWindow.cancelIdleCallback === "function") {
+        idleWindow.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
+  }, [loading, summary]);
 
   const movingStats = useMemo(() => {
     if (dailySales.length === 0) return { ma7Revenue: 0, momentumPct: null as number | null, elasticity: null as number | null };
@@ -677,166 +681,34 @@ export default function AnalyticsDashboard() {
 
       <section className="analytics-section">
         <h2 className="with-tip"><span>Detaljna analiza</span><InfoTip text="Detaljniji pogled po trendu, raspodeli prodaje, zalihama i top proizvodima." /></h2>
-        {!loading && dailySales.length > 0 && (
+        {!loading && summary && !showDetailedAnalysis && (
           <section className="analytics-panel">
-            <h3 className="with-tip"><span>Dnevni trend prodaje</span><InfoTip text="Linijski grafikon pokazuje kretanje prometa i transakcija po danima." /></h3>
-            <p className="section-note">Koristite ovaj grafikon da brzo uocite dane pada, rasta i nestabilnosti.</p>
-            <div className="chart-wrap">
-              <ResponsiveContainer width="100%" height={320}>
-                <LineChart data={dailySales}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                  <XAxis dataKey="date" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
-                  <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                    formatter={(value: number | string | undefined, name?: string) => [
-                        name === "totalRevenue" ? formatCurrency(typeof value === "number" ? value : Number(value ?? 0)) : formatNumber(typeof value === "number" ? value : Number(value ?? 0)), 
-                        name === "totalRevenue" ? "Promet" : "Transakcije"
-                    ]} 
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="totalRevenue" stroke="var(--success)" strokeWidth={2.5} dot={false} name="Promet" />
-                  <Line type="monotone" dataKey="transactionCount" stroke="var(--info)" strokeWidth={2} dot={false} name="Transakcije" />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="analytics-skeleton-grid">
+              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="analytics-skeleton-card" />)}
             </div>
           </section>
         )}
-
-        <div className="analytics-chart-grid">
+        {showDetailedAnalysis && (
+          <>
+        <Suspense fallback={
           <section className="analytics-panel">
-            <h3>Prodaja po kategorijama</h3>
-            <p className="section-note">Raspodela prihoda po kategorijama artikala.</p>
-            {categoryPieData.length === 0 ? <div className="analytics-empty">Nema podataka za kategorije.</div> : (
-              <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={320}>
-                  <PieChart>
-                    <Pie data={categoryPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={105} innerRadius={48} stroke="transparent">
-                      {categoryPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip 
-                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
-                    />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            <div className="analytics-skeleton-grid">
+              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="analytics-skeleton-card" />)}
+            </div>
           </section>
-
-          <section className="analytics-panel">
-            <h3>Prodaja po polu</h3>
-            <p className="section-note">Donut prikaz pokazuje kome je prodaja najvise usmerena.</p>
-            {genderPieData.length === 0 ? <div className="analytics-empty">Nema podataka za pol.</div> : (
-              <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={320}>
-                  <PieChart>
-                    <Pie data={genderPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={102} innerRadius={58} stroke="transparent">
-                      {genderPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip 
-                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
-                    />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </section>
-
-          <section className="analytics-panel">
-            <h3>Top dobavljaci po prometu</h3>
-            <p className="section-note">Horizontalni pregled top 10 dobavljaca po prihodu.</p>
-            {supplierBarData.length === 0 ? <div className="analytics-empty">Nema podataka za dobavljace.</div> : (
-              <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={supplierBarData} layout="vertical" margin={{ left: 12, right: 12 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                    <XAxis type="number" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
-                    <YAxis type="category" dataKey="name" width={150} tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
-                    <Tooltip 
-                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
-                    />
-                    <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="var(--info)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </section>
-
-          <section className="analytics-panel">
-            <h3>Prodaja po danima u nedelji</h3>
-            <p className="section-note">Koji dan u nedelji pravi najvise prihoda.</p>
-            {weekdayChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po danima.</div> : (
-              <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={weekdayChartData} layout="vertical" margin={{ left: 12, right: 12 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                    <XAxis type="number" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
-                    <YAxis type="category" dataKey="dayName" width={110} tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
-                    <Tooltip 
-                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
-                    />
-                    <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="var(--success)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </section>
-
-          <section className="analytics-panel">
-            <h3>Prodaja po satima</h3>
-            <p className="section-note">Prodajni ritam tokom dana od 00 do 23h.</p>
-            {hourChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po satima.</div> : (
-              <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={320}>
-                  <AreaChart data={hourChartData}>
-                    <defs>
-                      <linearGradient id="hourGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--accent-info)" stopOpacity={0.85} />
-                        <stop offset="95%" stopColor="var(--accent-info)" stopOpacity={0.05} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                    <XAxis dataKey="label" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} interval={1} />
-                    <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
-                    <Tooltip 
-                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
-                    />
-                    <Area type="monotone" dataKey="totalRevenue" stroke="var(--accent-info)" fill="url(#hourGradient)" strokeWidth={2.2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </section>
-
-          <section className="analytics-panel">
-            <h3>Prodaja po nacinu placanja</h3>
-            <p className="section-note">Brz pregled gotovine, kartice i ostalih nacina placanja.</p>
-            {paymentChartData.length === 0 ? <div className="analytics-empty">Nema podataka po nacinu placanja.</div> : (
-              <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={paymentChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                    <XAxis dataKey="name" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
-                    <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
-                    <Tooltip 
-                        contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                        formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))} 
-                    />
-                    <Bar dataKey="totalRevenue" fill="var(--warning)" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </section>
-        </div>
-
+        }>
+          <AnalyticsDashboardCharts
+            dailySales={dailySales}
+            categoryPieData={categoryPieData}
+            genderPieData={genderPieData}
+            supplierBarData={supplierBarData}
+            weekdayChartData={weekdayChartData}
+            hourChartData={hourChartData}
+            paymentChartData={paymentChartData}
+            formatCurrency={formatCurrency}
+            formatNumber={formatNumber}
+          />
+        </Suspense>
         {!loading && inventory && (
           <section className="analytics-panel">
             <h3 className="with-tip"><span>Brzi pregled zaliha</span><InfoTip text="Ukupno stanje i signal rizika od rasprodatosti." /></h3>
@@ -945,6 +817,8 @@ export default function AnalyticsDashboard() {
               ))}
             </div>
           </section>
+        )}
+          </>
         )}
       </section>
     </div>

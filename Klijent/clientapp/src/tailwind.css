@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+.page-loading {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
 /* Base styles reset */
 * {
   box-sizing: border-box;
