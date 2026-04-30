@@ -1138,7 +1138,7 @@ export default function DailySalesStatsPage() {
       { key: "date",    header: "Datum",                    dataType: "text" },
       { key: "worker1", header: "",                         dataType: "text" },
       { key: "worker2", header: "",                         dataType: "text" },
-      { key: "others",  header: "Ostali",                    dataType: "text" },
+      { key: "others",  header: "Ukupno",                    dataType: "text" },
       ...manualSupplierColumns,
       { key: "revenue", header: "Prihod",                    dataType: "text" },
       { key: "total",   header: "Ukupno",                    dataType: "text" },
