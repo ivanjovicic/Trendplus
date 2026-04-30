@@ -1140,7 +1140,7 @@ export default function DailySalesStatsPage() {
       { key: "worker2", header: "",                         dataType: "text" },
       { key: "others",  header: "Ukupno",                    dataType: "text" },
       ...manualSupplierColumns,
-      { key: "revenue", header: "Prihod",                    dataType: "text" },
+      { key: "revenue", header: "ostali",                    dataType: "text" },
       { key: "total",   header: "Ukupno",                    dataType: "text" },
     ];
 
