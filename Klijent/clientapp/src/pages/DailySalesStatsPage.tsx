@@ -599,6 +599,8 @@ export default function DailySalesStatsPage() {
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings.join(" | ") ?? "" },
   ], [data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo]);
 
+  const printRows = useMemo(() => sortedRows.slice(0, 30), [sortedRows]);
+
   const trendData = useMemo<TrendPoint[]>(() => (
     timeSeriesRows.map((row, index) => ({
       date: row.date,
@@ -1304,9 +1306,11 @@ export default function DailySalesStatsPage() {
                 tableTitle="Dnevna prodaja po smeni i dobavljačima"
                 columns={toolbarColumns}
                 rows={sortedRows}
+                printRows={printRows}
                 filters={toolbarFilters}
                 metadata={toolbarMetadata}
-                defaultOrientation="landscape"
+                defaultOrientation="portrait"
+                documentType="daily-sales-filled"
                 extraActions={(
                   <button
                     type="button"

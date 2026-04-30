@@ -29,21 +29,22 @@ export default function AnalyticsPrintPage() {
   const isFilledDailySalesPrint =
     payload?.tableKey === "daily-sales-stats" && !isDenseDailySalesBlank && !isPortraitShiftBlank;
   const isDailySalesPrint = payload?.tableKey === "daily-sales-stats" || payload?.tableKey === "daily-sales-stats-blank" || isDenseDailySalesBlank || isPortraitShiftBlank;
+  const isDailySalesPortraitA4 = isDailySalesPrint;
   const manualSupplierColumnCount = payload?.columns.filter((column) => isManualSupplierColumnKey(column.key)).length ?? 0;
   const manualSupplierStartIndex = payload?.columns.findIndex((column) => isManualSupplierColumnKey(column.key)) ?? -1;
   const manualSupplierEndColSpan =
     manualSupplierStartIndex >= 0 && payload
       ? payload.columns.length - manualSupplierStartIndex - manualSupplierColumnCount
       : 0;
-  const pageOrientation = isDenseDailySalesBlank || isFilledDailySalesPrint ? "landscape" : "portrait";
-  const pageMarginMm = isDenseDailySalesBlank || isFilledDailySalesPrint ? 6 : isPortraitShiftBlank ? 8 : 14;
-  const tableFontSizePx = isDenseDailySalesBlank || isFilledDailySalesPrint ? 8 : 12;
+  const pageOrientation = "portrait";
+  const pageMarginMm = isDailySalesPortraitA4 ? 4 : 14;
+  const tableFontSizePx = isDailySalesPortraitA4 ? 5.5 : 12;
   // Separate padding for th and td so we can control row height properly
-  const thPadding = isDenseDailySalesBlank ? "5px 3px" : isFilledDailySalesPrint ? "5px 3px" : isDailySalesPrint ? "10px 8px" : "8px";
-  const tdPadding = isDenseDailySalesBlank ? "10px 3px" : isFilledDailySalesPrint ? "4px 3px" : isDailySalesPrint ? "10px 8px" : "8px";
+  const thPadding = isDailySalesPortraitA4 ? "1px" : "8px";
+  const tdPadding = isDailySalesPortraitA4 ? "0 1px" : "8px";
   // height on <td> acts as min-height (unlike min-height which is ignored on table cells)
-  const blankTdHeightPx = 36;
-  const titleFontSizePx = isDenseDailySalesBlank ? 18 : isFilledDailySalesPrint ? 20 : isPortraitShiftBlank ? 16 : 28;
+  const blankTdHeightPx = 22;
+  const titleFontSizePx = isDailySalesPortraitA4 ? 10 : 28;
 
   React.useEffect(() => {
     if (!payload) return;
@@ -62,7 +63,7 @@ export default function AnalyticsPrintPage() {
 
   return (
     <div
-      className={`analytics-print-page${isFilledDailySalesPrint ? " analytics-print-page-daily-sales" : ""}${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}${isPortraitShiftBlank ? " analytics-print-page-portrait-shift" : ""}`}
+      className={`analytics-print-page${isDailySalesPortraitA4 ? " analytics-print-page-daily-a4-portrait" : ""}${isFilledDailySalesPrint ? " analytics-print-page-daily-sales" : ""}${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}${isPortraitShiftBlank ? " analytics-print-page-portrait-shift" : ""}`}
       style={{ background: "var(--surface)", color: "var(--foreground)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}
     >
       <style>{`
@@ -304,6 +305,151 @@ export default function AnalyticsPrintPage() {
           }
           .analytics-print-page-portrait-shift .analytics-print-table tbody tr:nth-child(even) td {
             background: #f5f5f5 !important;
+          }
+        }
+
+        /* Daily sales A4 portrait: 30 rows on one printed page */
+        .analytics-print-page-daily-a4-portrait {
+          background: #ffffff !important;
+          color: #111111 !important;
+          width: 202mm;
+          max-width: 202mm;
+          min-height: auto !important;
+          padding: 0 !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-actions {
+          margin-bottom: 8px !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-header {
+          margin-bottom: 2px !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-header > div:first-child,
+        .analytics-print-page-daily-a4-portrait .analytics-print-meta {
+          display: none !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-header h1 {
+          color: #111111 !important;
+          font-size: 10px !important;
+          line-height: 1 !important;
+          margin: 0 0 2px !important;
+          padding: 0 !important;
+          font-weight: 700 !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-group-row {
+          display: none !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-table {
+          width: 202mm !important;
+          max-width: 202mm !important;
+          table-layout: fixed !important;
+          border-collapse: collapse !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          border: 1px solid #555555 !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-table thead {
+          display: table-header-group;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-table tr {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-table th,
+        .analytics-print-page-daily-a4-portrait .analytics-print-table td {
+          border: 0.6px solid #6f6f6f !important;
+          color: #111111 !important;
+          overflow: hidden !important;
+          text-overflow: clip !important;
+          word-break: normal !important;
+          overflow-wrap: normal !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-table th {
+          background: #eeeeee !important;
+          font-size: 4.6px !important;
+          line-height: 1 !important;
+          height: 13px !important;
+          padding: 1px !important;
+          text-align: center !important;
+          vertical-align: middle !important;
+          white-space: nowrap !important;
+          font-weight: 700 !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-table td {
+          background: #ffffff !important;
+          font-size: 5.5px !important;
+          line-height: 1 !important;
+          height: 18px !important;
+          padding: 0 1px !important;
+          text-align: right !important;
+          vertical-align: middle !important;
+          white-space: nowrap !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-table tbody tr:nth-child(even) td {
+          background: #ffffff !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-date {
+          width: 13mm !important;
+          text-align: left !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-firstShiftTotalItems,
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-secondShiftTotalItems {
+          width: 10mm !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-totalRevenue {
+          width: 16mm !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-othersCount {
+          width: 8mm !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-totalItemsSold {
+          width: 10mm !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-worker1,
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-worker2 {
+          width: 22mm !important;
+          text-align: left !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-shift1,
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-shift2 {
+          width: 7mm !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-revenue {
+          width: 15mm !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-total {
+          width: 11mm !important;
+        }
+        .analytics-print-page-daily-a4-portrait th[class*="analytics-print-col-supplier-"],
+        .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-supplier-"] {
+          width: auto !important;
+        }
+        .analytics-print-page-daily-a4-portrait th[class*="analytics-print-col-manualSupplier-"],
+        .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-manualSupplier-"] {
+          width: 6mm !important;
+          text-align: center !important;
+        }
+        .analytics-print-page-daily-a4-portrait .blank-col {
+          background: #ffffff !important;
+        }
+        .analytics-print-page-daily-a4-portrait td.blank-col,
+        .analytics-print-page-daily-a4-portrait.analytics-print-page-dense .analytics-print-table td {
+          height: ${blankTdHeightPx}px !important;
+          font-size: 5px !important;
+        }
+        @media print {
+          html,
+          body {
+            width: 210mm !important;
+            min-width: 210mm !important;
+            background: #ffffff !important;
+          }
+          .analytics-print-page-daily-a4-portrait {
+            width: 202mm !important;
+            max-width: 202mm !important;
+            overflow: hidden !important;
+          }
+          .analytics-print-page-daily-a4-portrait .analytics-print-table {
+            page-break-after: avoid !important;
           }
         }
       `}</style>

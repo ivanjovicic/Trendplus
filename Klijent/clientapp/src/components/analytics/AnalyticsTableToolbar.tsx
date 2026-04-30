@@ -26,6 +26,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
   tableTitle: string;
   columns: AnalyticsTableColumn<Row>[];
   rows: Row[];
+  printRows?: Row[];
   filters?: AnalyticsNamedValue[];
   metadata?: AnalyticsNamedValue[];
   defaultOrientation?: ExportOrientation;
@@ -61,6 +62,25 @@ export default function AnalyticsTableToolbar<Row>(props: {
     [props.columns, props.documentType, props.filters, props.locale, props.metadata, props.rows, props.tableKey, props.tableTitle, props.templateName, props.templateVersion]
   );
 
+  const printPayload = React.useMemo(
+    () =>
+      props.printRows
+        ? resolveAnalyticsTablePayload({
+            tableKey: props.tableKey,
+            tableTitle: props.tableTitle,
+            columns: props.columns,
+            rows: props.printRows,
+            filters: props.filters,
+            metadata: props.metadata,
+            locale: props.locale,
+            documentType: props.documentType,
+            templateName: props.templateName,
+            templateVersion: props.templateVersion,
+          })
+        : payload,
+    [payload, props.columns, props.documentType, props.filters, props.locale, props.metadata, props.printRows, props.tableKey, props.tableTitle, props.templateName, props.templateVersion]
+  );
+
   const openExportModal = (selectedFormat: ExportFormat) => {
     setFormat(selectedFormat);
     setPreview(selectedFormat === "pdf");
@@ -69,7 +89,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
   };
 
   const handlePrint = () => {
-    const stateKey = savePrintPayload(payload);
+    const stateKey = savePrintPayload(printPayload);
     window.open(`/print/analytics/${encodeURIComponent(props.tableKey)}?stateKey=${encodeURIComponent(stateKey)}`, "_blank", "noopener");
   };
 
