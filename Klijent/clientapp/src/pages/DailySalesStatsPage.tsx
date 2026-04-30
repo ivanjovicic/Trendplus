@@ -1026,8 +1026,19 @@ export default function DailySalesStatsPage() {
   ]);
 
   const dayPatternSummary = useMemo(() => {
-    const strongestDay = weekdayData.reduce<WeekdayPoint | null>((best, row) => (!best || row.avgRevenue > best.avgRevenue ? row : best), null);
-    const weakestDay = weekdayData.reduce<WeekdayPoint | null>((lowest, row) => (!lowest || row.avgRevenue < lowest.avgRevenue ? row : lowest), null);
+    const workingDays = weekdayData.filter((row) => row.weekday !== 0 && row.dayCount > 0);
+    const candidateDays = workingDays.length > 0
+      ? workingDays
+      : weekdayData.filter((row) => row.dayCount > 0);
+
+    const strongestDay = candidateDays.reduce<WeekdayPoint | null>(
+      (best, row) => (!best || row.avgRevenue > best.avgRevenue ? row : best),
+      null
+    );
+    const weakestDay = candidateDays.reduce<WeekdayPoint | null>(
+      (lowest, row) => (!lowest || row.avgRevenue < lowest.avgRevenue ? row : lowest),
+      null
+    );
     return { strongestDay, weakestDay };
   }, [weekdayData]);
 
@@ -1641,8 +1652,8 @@ export default function DailySalesStatsPage() {
                     <InfoTip text="Prosecan prihod i komadi po danu u nedelji. Koristi za raspored tima, cilj po danu i dopunu." />
                   </h2>
                   <p>
-                    Najjaci dan: <strong>{dayPatternSummary.strongestDay?.dayName ?? "N/A"}</strong>.
-                    Najslabiji: <strong>{dayPatternSummary.weakestDay?.dayName ?? "N/A"}</strong>.
+                    Najbolji prodajni dan: <strong>{dayPatternSummary.strongestDay?.dayName ?? "N/A"}</strong>.
+                    Najmirniji radni dan: <strong>{dayPatternSummary.weakestDay?.dayName ?? "N/A"}</strong>.
                   </p>
                 </div>
               </div>
