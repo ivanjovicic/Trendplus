@@ -225,17 +225,18 @@ export default function AnalyticsPrintPage() {
           vertical-align: middle;
           background: #ffffff !important;
         }
-        /* Fixed A4 landscape widths for the blank form */
-        .analytics-print-page-dense .analytics-print-col-date { width: 17mm; }
+        /* Fixed blank-form widths. Daily portrait rules below override these for A4 print. */
+        .analytics-print-page-dense .analytics-print-col-date { width: 12mm; }
         .analytics-print-page-dense .analytics-print-col-worker1,
-        .analytics-print-page-dense .analytics-print-col-worker2 { width: 25mm; }
+        .analytics-print-page-dense .analytics-print-col-worker2 { width: 18mm; }
+        .analytics-print-page-dense .analytics-print-col-others { width: 15mm; }
         .analytics-print-page-dense .analytics-print-col-shift1,
         .analytics-print-page-dense .analytics-print-col-shift2 { width: 10mm; }
-        .analytics-print-page-dense .analytics-print-col-revenue { width: 18mm; }
-        .analytics-print-page-dense .analytics-print-col-total { width: 16mm; }
+        .analytics-print-page-dense .analytics-print-col-revenue { width: 14mm; }
+        .analytics-print-page-dense .analytics-print-col-total { width: 12mm; }
         .analytics-print-page-dense th[class*="analytics-print-col-manualSupplier-"],
         .analytics-print-page-dense td[class*="analytics-print-col-manualSupplier-"] {
-          width: 10.7mm;
+          width: 12mm;
         }
         /* Even rows stay white on blank form — no tinting for clean writing space */
         .analytics-print-page-dense .analytics-print-table tbody tr:nth-child(even) td {
@@ -388,7 +389,7 @@ export default function AnalyticsPrintPage() {
           background: #ffffff !important;
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-date {
-          width: 13mm !important;
+          width: 10mm !important;
           text-align: left !important;
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-firstShiftTotalItems,
@@ -406,7 +407,11 @@ export default function AnalyticsPrintPage() {
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-worker1,
         .analytics-print-page-daily-a4-portrait .analytics-print-col-worker2 {
-          width: 22mm !important;
+          width: 16mm !important;
+          text-align: left !important;
+        }
+        .analytics-print-page-daily-a4-portrait .analytics-print-col-others {
+          width: 14mm !important;
           text-align: left !important;
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-shift1,
@@ -414,10 +419,10 @@ export default function AnalyticsPrintPage() {
           width: 7mm !important;
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-revenue {
-          width: 15mm !important;
+          width: 12mm !important;
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-total {
-          width: 11mm !important;
+          width: 10mm !important;
         }
         .analytics-print-page-daily-a4-portrait th[class*="analytics-print-col-supplier-"],
         .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-supplier-"] {
@@ -425,7 +430,7 @@ export default function AnalyticsPrintPage() {
         }
         .analytics-print-page-daily-a4-portrait th[class*="analytics-print-col-manualSupplier-"],
         .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-manualSupplier-"] {
-          width: 6mm !important;
+          width: 8.2mm !important;
           text-align: center !important;
         }
         .analytics-print-page-daily-a4-portrait .blank-col {

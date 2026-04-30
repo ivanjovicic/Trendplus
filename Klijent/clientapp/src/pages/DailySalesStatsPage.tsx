@@ -132,7 +132,7 @@ type AnomalyPoint = {
 
 const DEFAULT_TOP_N = 15;
 const BLANK_SUPPLIER_COLUMN_COUNT = 15;
-const BLANK_PRINT_ROW_COUNT = 32;
+const BLANK_PRINT_ROW_COUNT = 31;
 const SHIFT_PLACEHOLDER = "__________";
 const FIRST_SHIFT_LABEL = "06:00-13:59";
 const SECOND_SHIFT_LABEL = "14:00-21:59";
@@ -1130,22 +1130,21 @@ export default function DailySalesStatsPage() {
   const handlePrintBlank = useCallback(() => {
     const manualSupplierColumns = Array.from({ length: BLANK_SUPPLIER_COLUMN_COUNT }, (_, index) => ({
       key: `manualSupplier:${index + 1}`,
-      header: `Dob. ${index + 1}`,
+      header: "",
       dataType: "text",
     }));
 
     const blankColumns = [
       { key: "date",    header: "Datum",                    dataType: "text" },
-      { key: "worker1", header: "Prodavac iz prve smene",    dataType: "text" },
-      { key: "shift1",  header: "Kom.",                      dataType: "text" },
-      { key: "worker2", header: "Prodavac iz druge smene",   dataType: "text" },
+      { key: "worker1", header: "",                         dataType: "text" },
+      { key: "worker2", header: "",                         dataType: "text" },
+      { key: "others",  header: "Ostali",                    dataType: "text" },
       ...manualSupplierColumns,
-      { key: "shift2",  header: "Kom.",                      dataType: "text" },
-      { key: "revenue", header: "Prihod (RSD)",              dataType: "text" },
-      { key: "total",   header: "Ukupno (kom.)",             dataType: "text" },
+      { key: "revenue", header: "Prihod",                    dataType: "text" },
+      { key: "total",   header: "Ukupno",                    dataType: "text" },
     ];
 
-    const blankRows = Array.from({ length: 30 }, () =>
+    const blankRows = Array.from({ length: BLANK_PRINT_ROW_COUNT }, () =>
       Object.fromEntries(blankColumns.map((col) => [col.key, ""]))
     );
 
