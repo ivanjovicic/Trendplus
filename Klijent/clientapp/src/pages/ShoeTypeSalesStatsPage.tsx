@@ -25,6 +25,13 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
+import { BOOST_SCORE_THRESHOLD, KEEP_SCORE_THRESHOLD } from "../utils/analyticsConstants";
+import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import {
+  analyticsMetricDescriptions,
+  buildPopMetricDescription,
+  buildPrePostNivelacijaImpactDescription,
+} from "../utils/analyticsMetricDescriptions";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import "./ShoeTypeSalesStatsPage.css";
 
@@ -109,24 +116,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function toDateInput(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: string; toDate: string } {
-  const to = new Date();
-  const from = new Date(to);
-  if (preset === "30d") from.setDate(from.getDate() - 29);
-  if (preset === "90d") from.setDate(from.getDate() - 89);
-  if (preset === "180d") from.setDate(from.getDate() - 179);
-  if (preset === "365d") from.setDate(from.getDate() - 364);
-
-  return {
-    fromDate: toDateInput(from),
-    toDate: toDateInput(to),
-  };
-}
-
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
   return {
     fromDate: `${fromDate}T00:00:00Z`,
@@ -145,25 +134,6 @@ function formatDate(value: string | null | undefined): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("sr-RS");
-}
-
-function fmtRsd(value: number): string {
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`;
-}
-
-function fmtPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
-}
-
-function fmtSignedPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${fmtPct(value, digits)}`;
-}
-
-function fmtQty(value: number): string {
-  return `${value.toLocaleString("sr-RS")} kom`;
 }
 
 function smoothScrollToElement(element: HTMLElement, durationMs = 850): void {
@@ -305,7 +275,7 @@ function describePopMetric(item: ShoeTypeSalesStat): { label: string; title: str
   if (item.popRevenueChangePct != null && !Number.isNaN(item.popRevenueChangePct)) {
     return {
       label: fmtSignedPct(item.popRevenueChangePct, 2),
-      title: `PoP trend poredi ukupan promet sa prethodnim uporedivim periodom. Prethodni period: ${fmtRsd(item.previousPeriodRevenue ?? 0)}.`,
+      title: buildPopMetricDescription(item.previousPeriodRevenue),
       className: trendClass(item.popRevenueChangePct),
     };
   }
@@ -327,10 +297,12 @@ function describePopMetric(item: ShoeTypeSalesStat): { label: string; title: str
 
 function describeNivelacijaImpactMetric(item: ShoeTypeSalesStat): { label: string; title: string; className: string } {
   if (item.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(item.prePostNivelacijaRevenueImpactPct)) {
-    const noteSuffix = item.prePostSignalNote ? ` Napomena: ${item.prePostSignalNote}` : "";
     return {
       label: fmtSignedPct(item.prePostNivelacijaRevenueImpactPct, 2),
-      title: `Pre/post nivelacija impact meri promenu prometa samo na uporedivim artiklima sa prodajom i pre i posle prve nivelacije. Pokrice: ${fmtPct(item.prePostNivelacijaRevenueCoveragePct, 1)} prometa.${noteSuffix}`,
+      title: buildPrePostNivelacijaImpactDescription(
+        item.prePostNivelacijaRevenueCoveragePct,
+        item.prePostSignalNote ? `Napomena: ${item.prePostSignalNote}` : undefined
+      ),
       className: trendClass(item.prePostNivelacijaRevenueImpactPct),
     };
   }
@@ -521,8 +493,8 @@ export default function ShoeTypeSalesStatsPage() {
       );
 
       let status: DecisionStatus = "Smanji";
-      if (decisionScore >= 70) status = "Pojačaj";
-      else if (decisionScore >= 45) status = "Zadrži";
+      if (decisionScore >= BOOST_SCORE_THRESHOLD) status = "Pojačaj";
+      else if (decisionScore >= KEEP_SCORE_THRESHOLD) status = "Zadrži";
       if ((!hasPreviousPeriodWindow || isNewType || reliabilityPct < 35) && status === "Pojačaj") status = "Zadrži";
 
       const statusReason = buildStatusReason(status, {
@@ -1199,7 +1171,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
                           data-sort-dir={isSortActive("marginPct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("marginPct")}
                         >
-                          Marža % <span className="sort-indicator" aria-hidden="true">{sortMarker("marginPct", sortField, sortDir)}</span> <InfoTip text="Procenat maržnog doprinosa u prometu sa dostupnim troškom. Formula: maržni doprinos / promet sa dostupnim troškom x 100. Osnova nije ukupan promet, već samo deo sa dostupnim troškom." />
+                          Marža % <span className="sort-indicator" aria-hidden="true">{sortMarker("marginPct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.marginPct} />
                         </button>
                       </th>
                       <th className={isSortActive("popRevenueChangePct", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1210,7 +1182,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
                           data-sort-dir={isSortActive("popRevenueChangePct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("popRevenueChangePct")}
                         >
-                          PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text="Period-over-period promena prometa ovog tipa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni − prethodni) / prethodni × 100. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
+                          PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.popRevenueChangePct} />
                         </button>
                       </th>
                       <th className={isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1221,7 +1193,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
                           data-sort-dir={isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}
                         >
-                          Nivelacija impact <span className="sort-indicator" aria-hidden="true">{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)}</span> <InfoTip text="Promena prometa pre/posle prvog datuma nivelacije (ažuriranja cena) isključivo na artiklima sa prodajom u oba perioda. Nije isto kao PoP trend — meri efekat cenovnog ažuriranja, ne sezonsku promenu." />
+                          Nivelacija impact <span className="sort-indicator" aria-hidden="true">{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.prePostNivelacijaImpactPct} />
                         </button>
                       </th>
                       <th className={isSortActive("status", sortField) ? "is-sorted" : undefined}>
@@ -1232,7 +1204,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
                           data-sort-dir={isSortActive("status", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("status")}
                         >
-                          Preporuka <span className="sort-indicator" aria-hidden="true">{sortMarker("status", sortField, sortDir)}</span> <InfoTip text="Sistemska preporuka za asortiman: Pojačaj / Zadrži / Smanji. Bazira se na udelu u prometu, maržnom doprinosu, PoP trendu i pouzdanosti podataka. Kliknite na red za detaljno objašnjenje." />
+                          Preporuka <span className="sort-indicator" aria-hidden="true">{sortMarker("status", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.recommendation} />
                         </button>
                       </th>
                       <th className="align-center">Detalj <InfoTip text="Proširi inline detalj ili otvori puni detalj za ovaj tip obuće." /></th>
@@ -1345,7 +1317,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
                   <strong>{fmtRsd(selectedRow.marginContribution)}</strong>
                 </article>
                 <article>
-                  <span>Marža % <InfoTip text="Procenat maržnog doprinosa u prometu sa dostupnim troškom. Formula: maržni doprinos / promet sa dostupnim troškom x 100. Osnova nije ukupan promet, već samo deo gde je trošak dostupan." /></span>
+                  <span>Marža % <InfoTip text={analyticsMetricDescriptions.marginPct} /></span>
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
@@ -1369,7 +1341,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
               <h4 className="shoetype-decision-detail-section-title">Trend u odnosu na prethodni period</h4>
               <div className="shoetype-decision-detail-grid">
                 <article>
-                  <span>PoP trend prometa <InfoTip text="Procenat promene prometa ovog tipa obuće u odnosu na prethodni uporediv period." /></span>
+                  <span>PoP trend prometa <InfoTip text={analyticsMetricDescriptions.popRevenueChangePct} /></span>
                   <strong className={describePopMetric(selectedRow).className} title={describePopMetric(selectedRow).title}>
                     {describePopMetric(selectedRow).label}
                   </strong>
@@ -1393,7 +1365,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
               <h4 className="shoetype-decision-detail-section-title">Nivelacija</h4>
               <div className="shoetype-decision-detail-grid">
                 <article>
-                  <span>Nivelacija impact prometa <InfoTip text="Procenat promene prometa pre i posle računovodstvene nivelacije (ažuriranja cena)." /></span>
+                  <span>Nivelacija impact prometa <InfoTip text={analyticsMetricDescriptions.prePostNivelacijaImpactPct} /></span>
                   <strong className={describeNivelacijaImpactMetric(selectedRow).className} title={describeNivelacijaImpactMetric(selectedRow).title}>
                     {describeNivelacijaImpactMetric(selectedRow).label}
                   </strong>
@@ -1439,11 +1411,11 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
                   </strong>
                 </article>
                 <article>
-                  <span>Pouzdanost podataka <InfoTip text="Procenat kvalitete i trenutnosti podataka koji su korišćeni za analizu." /></span>
+                  <span>Pouzdanost podataka <InfoTip text={analyticsMetricDescriptions.reliabilityPct} /></span>
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Pokrice direktnom nabavnom % <InfoTip text="Procenat prometa za koji je trosak preuzet sa prodajne stavke, bez procene iz artikla. Formula: promet sa istorijskim troskom / ukupan promet x 100." /></span>
+                  <span>Pokrice direktnom nabavnom % <InfoTip text={analyticsMetricDescriptions.costCoverage} /></span>
                   <strong>{fmtPct(selectedRow.historicalCostCoveragePct ?? selectedRow.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
@@ -1461,7 +1433,7 @@ notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenje
                   </article>
                 ) : null}
                 <article>
-                  <span>Sigurnost preporuke <InfoTip text="Numerička vrednost koja odražava kvalitet preporuke (viši skor = pouzdanija preporuka)." /></span>
+                  <span>Sigurnost preporuke <InfoTip text={analyticsMetricDescriptions.recommendationConfidencePct} /></span>
                   <strong>{selectedRow.decisionScore}</strong>
                 </article>
               </div>

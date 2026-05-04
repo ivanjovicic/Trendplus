@@ -27,6 +27,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { getDataScope } from "../utils/dataScope";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
+import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import "./DailySalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -150,23 +151,6 @@ const WEEKDAY_ORDER: Array<{ key: number; label: string }> = [
   { key: 0, label: "Ned" },
 ];
 
-function toDateInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: string; toDate: string } {
-  const to = new Date();
-  const from = new Date(to);
-  if (preset === "30d") from.setDate(from.getDate() - 29);
-  if (preset === "90d") from.setDate(from.getDate() - 89);
-  if (preset === "180d") from.setDate(from.getDate() - 179);
-  if (preset === "365d") from.setDate(from.getDate() - 364);
-  return { fromDate: toDateInput(from), toDate: toDateInput(to) };
-}
-
 function parseDateInputOrDefault(value: string | null, fallback: string): string {
   if (!value) return fallback;
   const normalized = value.slice(0, 10);
@@ -197,25 +181,6 @@ function fmtNumber(value: number): string {
 
 function fmtCompactNumber(value: number): string {
   return COMPACT_NUMBER_FORMATTER.format(value);
-}
-
-function fmtRsd(value: number): string {
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RSD`;
-}
-
-function fmtRsdShort(value: number): string {
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`;
-}
-
-function fmtPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
-}
-
-function fmtSignedPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${fmtPct(value, digits)}`;
 }
 
 function fmtDelta(deltaPct: number | null, currentValue: number, previousValue: number): string {
@@ -1268,7 +1233,7 @@ export default function DailySalesStatsPage() {
           <section className="daily-sales-kpis">
             <article>
               <span>Ukupan prihod <InfoTip text="Suma prihoda od prodaje za sve dane u izabranom opsegu i prodavnici. Prihod / dan je prosek po broju kalendarskih dana u opsegu." /></span>
-              <strong>{fmtRsd(currentSummary.totalRevenue)}</strong>
+              <strong>{fmtRsd(currentSummary.totalRevenue, 2)}</strong>
               <small>{fmtRsdShort(currentSummary.avgRevenuePerDay)} / dan</small>
             </article>
             <article>
@@ -1283,7 +1248,7 @@ export default function DailySalesStatsPage() {
             </article>
             <article>
               <span>RSD po komadu <InfoTip text="Prosecna prodajna cena po komadu: Ukupan prihod / Ukupno komada. Bazira se na vidljivim komadima u tabeli, ne na svim transakcijama." /></span>
-              <strong>{fmtRsd(currentSummary.avgRevenuePerItem)}</strong>
+              <strong>{fmtRsd(currentSummary.avgRevenuePerItem, 2)}</strong>
               <small>Na osnovu vidljivih komada u tabeli</small>
             </article>
             <article>
@@ -1399,7 +1364,7 @@ export default function DailySalesStatsPage() {
                           <td>{fmtDate(row.date)}</td>
                           <td className="align-right">{shiftDisplayValue(row, "first")}</td>
                           <td className="align-right">{shiftDisplayValue(row, "second")}</td>
-                          <td className="align-right">{fmtRsd(row.totalRevenue)}</td>
+                          <td className="align-right">{fmtRsd(row.totalRevenue, 2)}</td>
                           {supplierHeaders.map((_, index) => (
                             <td key={`${row.date}-supplier-${index}`} className="align-right">
                               {fmtNumber(row.topSupplierCounts[index] ?? 0)}

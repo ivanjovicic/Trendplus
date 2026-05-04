@@ -15,6 +15,8 @@ import InfoTip from "../components/ui/InfoTip";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
+import { BOOST_SCORE_THRESHOLD, KEEP_SCORE_THRESHOLD } from "../utils/analyticsConstants";
+import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import {
   getVendorSalesNivelacija,
   type VendorSalesNivelacijaResponse,
@@ -84,8 +86,6 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
   Zadrzi: 2,
   Smanji: 1,
 };
-const BOOST_SCORE_THRESHOLD = 68;
-const KEEP_SCORE_THRESHOLD = 43;
 const BOOST_MIN_RELIABILITY_PCT = 40;
 const VENDOR_NIVELACIJA_MAX_ROWS = 50_000;
 const CHART_GRID_STROKE = "var(--dashboard-grid, var(--border-default))";
@@ -146,23 +146,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function toDateInput(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: string; toDate: string } {
-  const to = new Date();
-  const from = new Date(to);
-  if (preset === "30d") from.setDate(from.getDate() - 29);
-  if (preset === "90d") from.setDate(from.getDate() - 89);
-  if (preset === "180d") from.setDate(from.getDate() - 179);
-  if (preset === "365d") from.setDate(from.getDate() - 364);
-  return {
-    fromDate: toDateInput(from),
-    toDate: toDateInput(to),
-  };
-}
-
 function toUtcRange(fromDate: string, toDate: string): { from: string; to: string } {
   return {
     from: `${fromDate}T00:00:00Z`,
@@ -184,15 +167,6 @@ function buildPreviousRange(fromDate: string, toDate: string): { from: string; t
   };
 }
 
-function fmtRsd(value: number): string {
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`;
-}
-
-function fmtPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
-}
-
 function fmtOptionalRsd(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "N/A";
   return fmtRsd(value);
@@ -201,16 +175,6 @@ function fmtOptionalRsd(value: number | null | undefined): string {
 function fmtMetric(value: number | null | undefined, digits = 1): string {
   if (value == null || Number.isNaN(value)) return "N/A";
   return value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-}
-
-function fmtSignedPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${fmtPct(value, digits)}`;
-}
-
-function fmtQty(value: number): string {
-  return `${value.toLocaleString("sr-RS")} kom`;
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {

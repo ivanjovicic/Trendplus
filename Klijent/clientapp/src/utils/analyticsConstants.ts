@@ -1,0 +1,2 @@
+export const BOOST_SCORE_THRESHOLD = 68;
+export const KEEP_SCORE_THRESHOLD = 43;

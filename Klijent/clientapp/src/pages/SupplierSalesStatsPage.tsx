@@ -26,6 +26,12 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
+import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import {
+  analyticsMetricDescriptions,
+  buildPopMetricDescription,
+  buildPrePostNivelacijaImpactDescription,
+} from "../utils/analyticsMetricDescriptions";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import "./SupplierSalesStatsPage.css";
 
@@ -128,24 +134,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function toDateInput(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: string; toDate: string } {
-  const to = new Date();
-  const from = new Date(to);
-  if (preset === "30d") from.setDate(from.getDate() - 29);
-  if (preset === "90d") from.setDate(from.getDate() - 89);
-  if (preset === "180d") from.setDate(from.getDate() - 179);
-  if (preset === "365d") from.setDate(from.getDate() - 364);
-
-  return {
-    fromDate: toDateInput(from),
-    toDate: toDateInput(to),
-  };
-}
-
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
   return {
     fromDate: `${fromDate}T00:00:00Z`,
@@ -176,25 +164,6 @@ function formatDate(value: string | null | undefined): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("sr-RS");
-}
-
-function fmtRsd(value: number): string {
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`;
-}
-
-function fmtPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
-}
-
-function fmtSignedPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${fmtPct(value, digits)}`;
-}
-
-function fmtQty(value: number): string {
-  return `${value.toLocaleString("sr-RS")} kom`;
 }
 
 function smoothScrollToElement(element: HTMLElement, durationMs = 850): void {
@@ -298,7 +267,7 @@ function describePopMetric(supplier: SupplierSalesStat): { label: string; title:
   if (supplier.popRevenueChangePct != null && !Number.isNaN(supplier.popRevenueChangePct)) {
     return {
       label: fmtSignedPct(supplier.popRevenueChangePct, 2),
-      title: `PoP trend poredi ukupan promet sa prethodnim uporedivim periodom. Prethodni period: ${fmtRsd(supplier.previousPeriodRevenue ?? 0)}.`,
+      title: buildPopMetricDescription(supplier.previousPeriodRevenue),
       className: trendClass(supplier.popRevenueChangePct),
     };
   }
@@ -320,10 +289,12 @@ function describePopMetric(supplier: SupplierSalesStat): { label: string; title:
 
 function describeNivelacijaImpactMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
   if (supplier.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(supplier.prePostNivelacijaRevenueImpactPct)) {
-    const noteSuffix = supplier.prePostSignalNote ? ` Napomena: ${supplier.prePostSignalNote}` : "";
     return {
       label: fmtSignedPct(supplier.prePostNivelacijaRevenueImpactPct, 2),
-      title: `Pre/post nivelacija impact meri promenu prometa samo na uporedivim artiklima sa prodajom i pre i posle prve nivelacije. Pokrice: ${fmtPct(supplier.prePostNivelacijaRevenueCoveragePct, 1)} prometa.${noteSuffix}`,
+      title: buildPrePostNivelacijaImpactDescription(
+        supplier.prePostNivelacijaRevenueCoveragePct,
+        supplier.prePostSignalNote ? `Napomena: ${supplier.prePostSignalNote}` : undefined
+      ),
       className: trendClass(supplier.prePostNivelacijaRevenueImpactPct),
     };
   }
@@ -1484,7 +1455,7 @@ export default function SupplierSalesStatsPage() {
                           data-sort-dir={isSortActive("marginPct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("marginPct")}
                         >
-                          Marža % <span className="sort-indicator" aria-hidden="true">{sortMarker("marginPct", sortField, sortDir)}</span> <InfoTip text="Procenat maržnog doprinosa u prometu sa dostupnim troškom. Formula: maržni doprinos / promet sa dostupnim troškom x 100. Osnova nije ukupan promet, već samo deo prometa gde je trošak dostupan." />
+                          Marža % <span className="sort-indicator" aria-hidden="true">{sortMarker("marginPct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.marginPct} />
                         </button>
                       </th>
                       <th className={isSortActive("shareOfMarginContribution", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1506,7 +1477,7 @@ export default function SupplierSalesStatsPage() {
                           data-sort-dir={isSortActive("popRevenueChangePct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("popRevenueChangePct")}
                         >
-                          PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text="Međuperiodni trend prometa (Period over Period). Formula: (trenutni promet − prethodni promet) / prethodni promet × 100. Prethodni period je isti vremenski opseg, pomeren unazad. N/A ako prethodni promet nije dostupan; 'Nova baza' ako je prethodni promet bio 0." />
+                          PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.popRevenueChangePct} />
                         </button>
                       </th>
                       <th className={isSortActive("status", sortField) ? "is-sorted" : undefined}>
@@ -1517,7 +1488,7 @@ export default function SupplierSalesStatsPage() {
                           data-sort-dir={isSortActive("status", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("status")}
                         >
-                          Preporuka <span className="sort-indicator" aria-hidden="true">{sortMarker("status", sortField, sortDir)}</span> <InfoTip text="Sistemska preporuka za ovog dobavljača: Pojačaj, Zadrži, U pregledu ili Smanji. Bazirana na prometu, maržnom doprinosu, marži, PoP trendu i pouzdanosti podataka." />
+                          Preporuka <span className="sort-indicator" aria-hidden="true">{sortMarker("status", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.recommendation} />
                         </button>
                       </th>
                       <th className="align-center">

@@ -347,6 +347,12 @@
   color: var(--error, var(--theme-color-fca5a5, #fca5a5));
 }
 
+.color-decision-status.status-na {
+  background: rgba(148, 163, 184, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: var(--text-secondary);
+}
+
 .trend-up {
   color: var(--success, var(--theme-color-34d399, #34d399));
 }

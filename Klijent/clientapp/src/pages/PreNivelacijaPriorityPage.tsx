@@ -16,6 +16,8 @@ import { getPreNivelacijaPrioriteti } from "../services/preNivelacijaApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { PreNivelacijaPriorityResponse, PreNivelacijaSkuCandidate } from "../types/preNivelacija";
 import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
+import { BOOST_SCORE_THRESHOLD, KEEP_SCORE_THRESHOLD } from "../utils/analyticsConstants";
+import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import "./PreNivelacijaPriorityPage.css";
 
 type SortDir = "asc" | "desc";
@@ -60,8 +62,6 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
   Zadrzi: 2,
   Smanji: 1,
 };
-const BOOST_SCORE_THRESHOLD = 68;
-const KEEP_SCORE_THRESHOLD = 43;
 const BOOST_MIN_RELIABILITY_PCT = 40;
 
 const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
@@ -102,15 +102,6 @@ function CustomSupplierTooltip({ active, payload }: CustomSupplierTooltipProps) 
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-
-function fmtRsd(value: number): string {
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`;
-}
-
-function fmtPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
