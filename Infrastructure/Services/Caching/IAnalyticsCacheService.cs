@@ -283,8 +283,10 @@ public static class AnalyticsCacheKeys
         decimal? minRevenue,
         bool onlyHighConfidence,
         bool excludeOosBeforeMarkdown,
-        int? supplierId) =>
-        $"v1:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:gender:{HashPart(gender)}:season:{FormatNullable(seasonId)}:minRevenue:{FormatNullable(minRevenue)}:high-confidence:{onlyHighConfidence}:exclude-oos:{excludeOosBeforeMarkdown}:supplier:{FormatNullable(supplierId)}";
+        int? supplierId,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"v2:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:gender:{HashPart(gender)}:season:{FormatNullable(seasonId)}:minRevenue:{FormatNullable(minRevenue)}:high-confidence:{onlyHighConfidence}:exclude-oos:{excludeOosBeforeMarkdown}:supplier:{FormatNullable(supplierId)}:store:{FormatNullable(storeId)}:scope:{NormalizeDataScope(dataScope)}";
 
     public static string SupplierDecisionHubSummary(
         DateTime? from,
@@ -295,8 +297,10 @@ public static class AnalyticsCacheKeys
         decimal? minRevenue,
         bool onlyHighConfidence,
         bool excludeOosBeforeMarkdown,
-        int? supplierId) =>
-        $"{Prefix}supplier-decision-hub:summary:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}";
+        int? supplierId,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"{Prefix}supplier-decision-hub:summary:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
 
     public static string SupplierDecisionHubDataset(
         DateTime? from,
@@ -307,8 +311,10 @@ public static class AnalyticsCacheKeys
         decimal? minRevenue,
         bool onlyHighConfidence,
         bool excludeOosBeforeMarkdown,
-        int? supplierId) =>
-        $"{Prefix}supplier-decision-hub:dataset:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}";
+        int? supplierId,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"{Prefix}supplier-decision-hub:dataset:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
 
     public static string SupplierDecisionHubQuadrant(
         DateTime? from,
@@ -319,8 +325,10 @@ public static class AnalyticsCacheKeys
         decimal? minRevenue,
         bool onlyHighConfidence,
         bool excludeOosBeforeMarkdown,
-        int? supplierId) =>
-        $"{Prefix}supplier-decision-hub:quadrant:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}";
+        int? supplierId,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"{Prefix}supplier-decision-hub:quadrant:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
 
     public static string SupplierDecisionHubRanking(
         DateTime? from,
@@ -332,11 +340,13 @@ public static class AnalyticsCacheKeys
         bool onlyHighConfidence,
         bool excludeOosBeforeMarkdown,
         int? supplierId,
+        int? storeId,
+        string? dataScope,
         int page,
         int pageSize,
         string? sortBy,
         string? sortDir) =>
-        $"{Prefix}supplier-decision-hub:ranking:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}:page:{page}:size:{pageSize}:sort-by:{HashPart(sortBy)}:sort-dir:{HashPart(sortDir)}";
+        $"{Prefix}supplier-decision-hub:ranking:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}:page:{page}:size:{pageSize}:sort-by:{HashPart(sortBy)}:sort-dir:{HashPart(sortDir)}";
 
     public static string SupplierDecisionHubDetails(
         DateTime? from,
@@ -347,8 +357,10 @@ public static class AnalyticsCacheKeys
         decimal? minRevenue,
         bool onlyHighConfidence,
         bool excludeOosBeforeMarkdown,
-        int supplierId) =>
-        $"{Prefix}supplier-decision-hub:details:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}";
+        int supplierId,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"{Prefix}supplier-decision-hub:details:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
 
     public static string PreNivelacijaPriority(
         int? supplierId,

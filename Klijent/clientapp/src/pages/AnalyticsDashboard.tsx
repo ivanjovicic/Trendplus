@@ -135,7 +135,22 @@ function downloadCsv(filename: string, content: string) {
 }
 
 function getErrorText(reason: unknown, fallback: string): string {
-  if (reason instanceof Error && reason.message.trim()) return reason.message;
+  if (reason instanceof Error) {
+    const message = reason.message.trim();
+    const signature = `${reason.name} ${message}`.toLowerCase();
+
+    if (
+      signature.includes("apifailovertimeouterror")
+      || signature.includes("api request timed out")
+      || signature.includes("request timeout")
+      || signature.includes("timed out")
+    ) {
+      return "Analytics endpoint trenutno odgovara sporo (timeout). Pokusajte osvezavanje za 30-60 sekundi.";
+    }
+
+    if (message) return message;
+  }
+
   if (typeof reason === "string" && reason.trim()) return reason;
   return fallback;
 }

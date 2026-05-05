@@ -311,10 +311,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     if (!allKeyMetricsZero) return null;
 
     if (ranking.totalCount === 0 || summary.supplierCount === 0) {
-      return "Skorkarta se puni iz artikala koji imaju prvu nivelaciju (first_markdown_date) u izabranom periodu. U ovom opsegu nema takvih zapisa, pa su KPI vrednosti 0. To je ocekivano i kada Pregled tab ima promet, jer Pregled prati prodaju, a Skorkarta prati skup sa prvom nivelacijom.";
+      return "Skorkarta se puni iz supplier decision skupa koji zavisi od prve nivelacije (first_markdown_date) u izabranom periodu. Kada u tom skupu nema zapisa, KPI vrednosti ostaju 0. To moze znaciti da za dati opseg zaista nema kandidata, ali i da analytics izvor za Skorkartu nije dostupan ili nije osvezen. Pregled tab koristi drugaciji prodajni skup, pa moze imati promet i kada je Skorkarta prazna.";
     }
 
-    return "Postoje zapisi za skorkartu, ali u izabranom periodu nema realizovanog prometa ili marznog doprinosa, pa su KPI vrednosti 0. Proveri i filtere Opseg, Objekat i Dobavljac.";
+    return "Postoje zapisi za Skorkartu, ali su kljucni KPI trenutno 0. Proveri filtere Period, Objekat i Dobavljac; ako Pregled ima promet, a Skorkarta i dalje ostaje na nuli, moguc je problem u analytics izvoru ili osvezavanju podataka.";
   }, [ranking, summary, top5SharePct, totalMarginContribution, totalRevenue]);
   const concentrationData = useMemo(() => {
     const top = [...sortedRows].sort((a, b) => b.sharePct - a.sharePct).slice(0, 8).map((row) => ({ name: row.supplierName, sharePct: row.sharePct }));

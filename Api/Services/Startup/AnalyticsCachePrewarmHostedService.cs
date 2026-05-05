@@ -60,6 +60,7 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
         var paths = new[]
         {
             "/api/analytics/cached/filters/stores?prewarm=1",
+            $"/api/analytics/cached/dashboard/bootstrap?fromDate={from}&toDate={to}&dataScope=all&prewarm=1",
             $"/api/analytics/supplier-sales-stats?fromDate={from}&toDate={to}&dataScope=all&prewarm=1",
             $"/api/analytics/shoe-type-sales-stats?fromDate={from}&toDate={to}&dataScope=all&prewarm=1",
             $"/api/analytics/daily-sales?fromDate={from}&toDate={to}&dataScope=all&prewarm=1",

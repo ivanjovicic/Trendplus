@@ -150,11 +150,13 @@ public class AnalyticsAggregationWorker : BackgroundService
             await RefreshTopProductsAsync(connection, today, ct);
             await LogDataQualitySnapshotAsync(connection, ct);
 
-            // === CACHE INVALIDATION ===
+            // Intentionally avoid broad analytics cache purge every 5 minutes.
+            // Full-prefix invalidation (`analytics:`) causes frequent cold starts
+            // on heavy endpoints (for example dashboard bootstrap fan-in). We
+            // rely on endpoint TTLs and targeted invalidation in data-import paths.
             if (cache != null)
             {
-                await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
-                _logger.LogInformation("Analytics cache invalidated after refresh.");
+                _logger.LogDebug("Skipped broad analytics cache invalidation after periodic refresh.");
             }
 
             stopwatch.Stop();

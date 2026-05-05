@@ -33,6 +33,8 @@ public static class SupplierDecisionHubEndpoints
             bool onlyHighConfidence = false,
             bool excludeOosBeforeMarkdown = false,
             int? supplierId = null,
+            int? storeId = null,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
             if (!TryCreateFilters(
@@ -45,6 +47,8 @@ public static class SupplierDecisionHubEndpoints
                     onlyHighConfidence,
                     excludeOosBeforeMarkdown,
                     supplierId,
+                    storeId,
+                    dataScope,
                     out var filters,
                     out var validationError))
             {
@@ -62,7 +66,9 @@ public static class SupplierDecisionHubEndpoints
                 activeFilters.MinRevenue,
                 activeFilters.OnlyHighConfidence,
                 activeFilters.ExcludeOosBeforeMarkdown,
-                activeFilters.SupplierId);
+                activeFilters.SupplierId,
+                activeFilters.StoreId,
+                activeFilters.DataScope);
 
             var response = await cache.GetOrSetAsync(
                 cacheKey,
@@ -89,6 +95,8 @@ public static class SupplierDecisionHubEndpoints
             bool onlyHighConfidence = false,
             bool excludeOosBeforeMarkdown = false,
             int? supplierId = null,
+            int? storeId = null,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
             if (!TryCreateFilters(
@@ -101,6 +109,8 @@ public static class SupplierDecisionHubEndpoints
                     onlyHighConfidence,
                     excludeOosBeforeMarkdown,
                     supplierId,
+                    storeId,
+                    dataScope,
                     out var filters,
                     out var validationError))
             {
@@ -118,7 +128,9 @@ public static class SupplierDecisionHubEndpoints
                 activeFilters.MinRevenue,
                 activeFilters.OnlyHighConfidence,
                 activeFilters.ExcludeOosBeforeMarkdown,
-                activeFilters.SupplierId);
+                activeFilters.SupplierId,
+                activeFilters.StoreId,
+                activeFilters.DataScope);
 
             var response = await cache.GetOrSetAsync(
                 cacheKey,
@@ -158,6 +170,8 @@ public static class SupplierDecisionHubEndpoints
             bool onlyHighConfidence = false,
             bool excludeOosBeforeMarkdown = false,
             int? supplierId = null,
+            int? storeId = null,
+            string dataScope = "all",
             int page = 1,
             int pageSize = DefaultPageSize,
             string? sortBy = null,
@@ -174,6 +188,8 @@ public static class SupplierDecisionHubEndpoints
                     onlyHighConfidence,
                     excludeOosBeforeMarkdown,
                     supplierId,
+                    storeId,
+                    dataScope,
                     out var filters,
                     out var validationError))
             {
@@ -197,6 +213,8 @@ public static class SupplierDecisionHubEndpoints
                 activeFilters.OnlyHighConfidence,
                 activeFilters.ExcludeOosBeforeMarkdown,
                 activeFilters.SupplierId,
+                activeFilters.StoreId,
+                activeFilters.DataScope,
                 page,
                 pageSize,
                 normalizedSortBy,
@@ -249,6 +267,8 @@ public static class SupplierDecisionHubEndpoints
             decimal? minRevenue = null,
             bool onlyHighConfidence = false,
             bool excludeOosBeforeMarkdown = false,
+            int? storeId = null,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
             if (!TryCreateFilters(
@@ -261,6 +281,8 @@ public static class SupplierDecisionHubEndpoints
                     onlyHighConfidence,
                     excludeOosBeforeMarkdown,
                     supplierId,
+                    storeId,
+                    dataScope,
                     out var filters,
                     out var validationError))
             {
@@ -278,7 +300,9 @@ public static class SupplierDecisionHubEndpoints
                 activeFilters.MinRevenue,
                 activeFilters.OnlyHighConfidence,
                 activeFilters.ExcludeOosBeforeMarkdown,
-                supplierId);
+                supplierId,
+                activeFilters.StoreId,
+                activeFilters.DataScope);
 
             var response = await cache.GetOrSetAsync(
                 cacheKey,
@@ -316,7 +340,9 @@ public static class SupplierDecisionHubEndpoints
         decimal? MinRevenue,
         bool OnlyHighConfidence,
         bool ExcludeOosBeforeMarkdown,
-        int? SupplierId);
+        int? SupplierId,
+        int? StoreId,
+        string DataScope);
 
     private sealed record SupplierDecisionHubDetailsCacheEntry(
         bool Found,
@@ -359,6 +385,8 @@ public static class SupplierDecisionHubEndpoints
         bool onlyHighConfidence,
         bool excludeOosBeforeMarkdown,
         int? supplierId,
+        int? storeId,
+        string? dataScope,
         out SupplierDecisionHubFilters? filters,
         out Dictionary<string, string[]>? validationError)
     {
@@ -401,9 +429,17 @@ public static class SupplierDecisionHubEndpoints
             minRevenue,
             onlyHighConfidence,
             excludeOosBeforeMarkdown,
-            supplierId);
+            supplierId,
+            storeId,
+            NormalizeDataScope(dataScope));
 
         return true;
+    }
+
+    private static string NormalizeDataScope(string? value)
+    {
+        var normalized = (value ?? "all").Trim().ToLowerInvariant();
+        return normalized is "all" or "existing" or "imported" ? normalized : "all";
     }
 
     private static DateTime? NormalizeDate(DateTime? value)
@@ -589,7 +625,9 @@ public static class SupplierDecisionHubEndpoints
             filters.MinRevenue,
             filters.OnlyHighConfidence,
             filters.ExcludeOosBeforeMarkdown,
-            filters.SupplierId);
+            filters.SupplierId,
+            filters.StoreId,
+            filters.DataScope);
 
         return cache.GetOrSetAsync(
             cacheKey,
@@ -738,7 +776,9 @@ public static class SupplierDecisionHubEndpoints
         && string.IsNullOrWhiteSpace(filters.Category)
         && string.IsNullOrWhiteSpace(filters.Gender)
         && !filters.SeasonId.HasValue
-        && !filters.ExcludeOosBeforeMarkdown;
+        && !filters.ExcludeOosBeforeMarkdown
+        && !filters.StoreId.HasValue
+        && string.Equals(filters.DataScope, "all", StringComparison.OrdinalIgnoreCase);
 
     private sealed record PrecomputedQueryCapabilities(
         bool HasDecisionScoreCache,
@@ -1263,6 +1303,21 @@ FROM final_suppliers;
 
         where.Append(" AND fs.first_markdown_date <= @toDate");
         parameters.Add(new NpgsqlParameter("toDate", filters.ToDate));
+
+        if (filters.StoreId.HasValue)
+        {
+            where.Append(" AND a.\"IDObjekat\" = @storeId");
+            parameters.Add(new NpgsqlParameter("storeId", filters.StoreId.Value));
+        }
+
+        if (string.Equals(filters.DataScope, "imported", StringComparison.OrdinalIgnoreCase))
+        {
+            where.Append(" AND a.\"DataOrigin\" = 'access'");
+        }
+        else if (string.Equals(filters.DataScope, "existing", StringComparison.OrdinalIgnoreCase))
+        {
+            where.Append(" AND (a.\"DataOrigin\" = 'existing' OR a.\"DataOrigin\" IS NULL OR a.\"DataOrigin\" = '')");
+        }
 
         if (!string.IsNullOrWhiteSpace(filters.Category))
         {
