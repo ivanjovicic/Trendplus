@@ -253,7 +253,7 @@
 
 .pnp-decision-table {
   border-collapse: collapse;
-  min-width: 980px;
+  min-width: auto;
   width: 100%;
 }
 

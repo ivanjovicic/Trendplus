@@ -589,7 +589,7 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 1100px;
+  min-width: auto;
 }
 
 .daily-sales-table thead th {
@@ -658,6 +658,13 @@
   font-size: 0.85rem;
 }
 
+@media (max-width: 1200px) {
+  .daily-sales-shift-head,
+  .daily-sales-filters {
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+  }
+}
+
 @media (max-width: 1024px) {
   .daily-sales-header {
     flex-direction: column;
@@ -675,6 +682,11 @@
     flex: 1;
   }
 
+  .daily-sales-shift-head,
+  .daily-sales-filters {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
   .daily-sales-section-grid--double,
   .daily-sales-section-grid--analytics,
   .daily-sales-compare-cards,
@@ -685,6 +697,32 @@
 
   .daily-sales-mini-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .daily-sales-shift-head,
+  .daily-sales-filters {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .daily-sales-shift-head,
+  .daily-sales-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .daily-sales-page {
+    gap: 0.75rem;
+  }
+
+  .daily-sales-shift-head,
+  .daily-sales-filters {
+    padding: 0.75rem;
+    gap: 0.5rem;
   }
 }
 

@@ -261,7 +261,7 @@
 
 .color-decision-table {
   border-collapse: collapse;
-  min-width: 900px;
+  min-width: auto;
   width: 100%;
 }
 
@@ -468,5 +468,35 @@
 
   .color-decision-actions button {
     flex: 1;
+  }
+}
+
+@media (max-width: 1024px) {
+  .color-decision-detail-grid {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .color-decision-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .color-stats-page {
+    gap: 1rem;
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .color-stats-page {
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+  
+  .color-decision-detail-grid {
+    gap: 6px;
   }
 }

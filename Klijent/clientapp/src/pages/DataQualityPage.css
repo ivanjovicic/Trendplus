@@ -32,6 +32,40 @@
   flex: 0 0 320px;
 }
 
+@media (max-width: 1024px) {
+  .data-quality-header-side {
+    flex: 0 0 280px;
+  }
+}
+
+@media (max-width: 900px) {
+  .data-quality-header {
+    flex-direction: column;
+  }
+  
+  .data-quality-header-side {
+    flex: 1 1 auto;
+    width: 100%;
+    justify-items: stretch;
+  }
+  
+  .data-quality-score-card {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .data-quality-health-grid {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .data-quality-health-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .data-quality-score-card {
   width: min(100%, 320px);
   border: 1px solid var(--border-default);
