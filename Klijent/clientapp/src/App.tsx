@@ -6,6 +6,11 @@ import { ToastProvider } from "./components/Toast";
 import { CircuitBreakerStatus } from "./components/CircuitBreakerStatus";
 import Modal from "./components/Modal";
 import { ThemeProvider } from "./context/ThemeContext";
+import {
+  SupplierSalesStatsRedirect,
+  SupplierDecisionHubRedirect,
+  SupplierFootwearAnalyticsRedirect,
+} from "./pages/SupplierRedirects";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const ArtikliPage = lazy(() => import("./pages/ArtikliPage"));
@@ -47,9 +52,7 @@ const TransferPage = lazy(() => import("./pages/TransferPage"));
 const ProdajaPrePostNivelacijePage = lazy(() => import("./pages/ProdajaPrePostNivelacijePage"));
 const InsightStudioPage = lazy(() => import("./pages/InsightStudioPage"));
 const PreNivelacijaPriorityPage = lazy(() => import("./pages/PreNivelacijaPriorityPage"));
-const SupplierFootwearAnalyticsPage = lazy(() => import("./pages/SupplierFootwearAnalyticsPage"));
-const SupplierDecisionHubPage = lazy(() => import("./pages/SupplierDecisionHubPage"));
-const SupplierSalesStatsPage = lazy(() => import("./pages/SupplierSalesStatsPage"));
+const SupplierConsolidatedPage = lazy(() => import("./pages/SupplierConsolidatedPage"));
 const ShoeTypeSalesStatsPage = lazy(() => import("./pages/ShoeTypeSalesStatsPage"));
 const DailySalesStatsPage = lazy(() => import("./pages/DailySalesStatsPage"));
 const ColorSalesStatsPage = lazy(() => import("./pages/ColorSalesStatsPage"));
@@ -85,7 +88,8 @@ function AppShell() {
                     <Route path="/logs" element={<LogsPage />} />
                     <Route path="/performance" element={<PerformanceDashboard />} />
                     <Route path="/analytics" element={<AnalyticsDashboard />} />
-                    <Route path="/analytics/supplier-sales-stats" element={<SupplierSalesStatsPage />} />
+                    <Route path="/analytics/supplier" element={<SupplierConsolidatedPage />} />
+                    <Route path="/analytics/supplier-sales-stats" element={<SupplierSalesStatsRedirect />} />
                     <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
                     <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
                     <Route path="/analytics/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
@@ -94,8 +98,8 @@ function AppShell() {
                     <Route path="/analytics/data-quality" element={<DataQualityPage />} />
                     <Route path="/analytics/insight-studio" element={<InsightStudioPage />} />
                     <Route path="/analytics/pre-nivelacija-prioriteti" element={<PreNivelacijaPriorityPage />} />
-                    <Route path="/analytics/dobavljaci-tipovi-obuce" element={<SupplierFootwearAnalyticsPage />} />
-                    <Route path="/analytics/supplier-decision-hub" element={<SupplierDecisionHubPage />} />
+                    <Route path="/analytics/dobavljaci-tipovi-obuce" element={<SupplierFootwearAnalyticsRedirect />} />
+                    <Route path="/analytics/supplier-decision-hub" element={<SupplierDecisionHubRedirect />} />
                     <Route path="/analytics-details" element={<AnalyticsDetails />} />
                     <Route path="/analitika/:table/:id" element={<AnalyticsDetailPage />} />
                     <Route path="/print/analytics/:table" element={<AnalyticsPrintPage />} />

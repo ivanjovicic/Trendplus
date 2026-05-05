@@ -530,7 +530,7 @@ export default function DataQualityPage() {
           <button type="button" onClick={() => changeTab("missingSupplier")}>
             Artikli bez dobavljaca
           </button>
-          <Link to={`/analytics/supplier-sales-stats${supplierContextQuery ? `?${supplierContextQuery}` : ""}`}>
+          <Link to={`/analytics/supplier${supplierContextQuery ? `?tab=overview&${supplierContextQuery}` : "?tab=overview"}`}>
             Otvori supplier analitiku
           </Link>
           {returnTo ? <Link to={returnTo}>Nazad na izvorni kontekst</Link> : null}

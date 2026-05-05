@@ -19,6 +19,8 @@ export type SupplierDecisionHubFilters = {
   onlyHighConfidence?: boolean;
   excludeOosBeforeMarkdown?: boolean;
   supplierId?: number;
+  storeId?: number | null;
+  dataScope?: string | null;
 };
 
 export type SupplierDecisionHubSortField =
@@ -209,6 +211,8 @@ function appendFilterParams(params: URLSearchParams, filters: SupplierDecisionHu
   if (filters.onlyHighConfidence) params.append("onlyHighConfidence", "true");
   if (filters.excludeOosBeforeMarkdown) params.append("excludeOosBeforeMarkdown", "true");
   if (filters.supplierId != null) params.append("supplierId", String(filters.supplierId));
+  if (filters.storeId != null) params.append("storeId", String(filters.storeId));
+  if (filters.dataScope) params.append("dataScope", filters.dataScope);
 }
 
 async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage: string): Promise<T> {

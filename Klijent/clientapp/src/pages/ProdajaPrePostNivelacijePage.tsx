@@ -520,15 +520,12 @@ export default function ProdajaPrePostNivelacijePage() {
 
 
     return rows.map((item) => {
-      const recommendation = item.recommendation ?? {
-        status: item.vendorId == null ? "do_not_trust" : "insufficient_data",
-        label: item.vendorId == null ? "Do not trust" : "Insufficient data",
-        summary: "Backend recommendation nije dostupna za ovaj red u trenutnom odgovoru.",
-        confidencePct: 0,
-        reliabilityPct: item.reliabilityPct,
-        dataQualityStatus: "critical",
-        reasonCodes: ["missing_recommendation"],
-      } satisfies VendorSalesNivelacijaRecommendation;
+      const backendRecommendation = item.recommendation;
+      const status = backendRecommendation?.status ?? "insufficient_data";
+      const statusReason = backendRecommendation?.summary
+        ?? "Backend recommendation payload nije dostupan za ovaj red; frontend ne računa zamenski poslovni status.";
+      const confidencePct = backendRecommendation?.confidencePct ?? 0;
+      const recommendationReliabilityPct = backendRecommendation?.reliabilityPct ?? item.reliabilityPct;
 
       const sharePct = item.changeSharePercent ?? (
         totalAbsoluteChangeRevenue > 0 ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100 : 0
@@ -538,7 +535,7 @@ export default function ProdajaPrePostNivelacijePage() {
       );
       const trendPct = item.changePercent;
       const avgCoveragePost30 = (item.avgCoveragePost30 ?? 0) * 100;
-      const reliabilityPct = recommendation.reliabilityPct;
+      const reliabilityPct = recommendationReliabilityPct;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
       const confidence = buildConfidenceMeta(reliabilityPct);
       const volatility = buildVolatilityMeta(item.postRevenue, previousPostRevenue);
@@ -550,9 +547,9 @@ export default function ProdajaPrePostNivelacijePage() {
         trendPct,
         reliabilityPct,
         avgCoveragePost30,
-        confidencePct: recommendation.confidencePct,
-        status: recommendation.status,
-        statusReason: recommendation.summary,
+        confidencePct,
+        status,
+        statusReason,
         confidenceLabel: confidence.label,
         confidenceTone: confidence.tone,
         previousPostRevenue,

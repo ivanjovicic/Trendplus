@@ -162,6 +162,8 @@ export interface VendorSalesNivelacijaQuery {
     category?: string | null;
     includeInactive?: boolean;
     maxRows?: number;
+    storeId?: number | null;
+    dataScope?: string | null;
 }
 
 export interface VendorSalesNivelacijaOption {
@@ -178,6 +180,8 @@ export interface VendorSalesNivelacijaOptionsQuery {
     vendorId?: number | null;
     category?: string | null;
     take?: number;
+    storeId?: number | null;
+    dataScope?: string | null;
 }
 
 export async function getVendorSalesNivelacija(
@@ -191,6 +195,8 @@ export async function getVendorSalesNivelacija(
     if (query.category) params.set("category", query.category);
     if (query.includeInactive != null) params.set("includeInactive", String(query.includeInactive));
     if (query.maxRows != null) params.set("maxRows", String(query.maxRows));
+    if (query.storeId != null) params.set("storeId", String(query.storeId));
+    if (query.dataScope) params.set("dataScope", query.dataScope);
 
     const baseUrl = apiUrl("/api/analytics/vendor-sales-nivelacija");
     const url = params.toString()
@@ -213,6 +219,8 @@ export async function getVendorSalesNivelacijaOptions(
     if (query.vendorId != null) params.set("vendorId", String(query.vendorId));
     if (query.category) params.set("category", query.category);
     if (query.take != null) params.set("take", String(query.take));
+    if (query.storeId != null) params.set("storeId", String(query.storeId));
+    if (query.dataScope) params.set("dataScope", query.dataScope);
 
     const baseUrl = apiUrl("/api/analytics/vendor-sales-nivelacija/options");
     const url = params.toString()

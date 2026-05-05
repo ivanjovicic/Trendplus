@@ -33,6 +33,7 @@ import {
   buildPrePostNivelacijaImpactDescription,
 } from "../utils/analyticsMetricDescriptions";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
+import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -435,7 +436,7 @@ function supplierKey(supplier: { dobavljacId: number | null; dobavljacNaziv: str
   return `name:${normalizeName(supplier.dobavljacNaziv)}`;
 }
 
-export default function SupplierSalesStatsPage() {
+export default function SupplierSalesStatsPage({ embedded = false, sharedFilters }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -444,12 +445,12 @@ export default function SupplierSalesStatsPage() {
 
   const initialRange = useMemo(() => getPresetRange("30d"), []);
   const initialQueryFilters = useMemo(() => {
-    const queryFromDate = parseDateInputOrDefault(searchParams.get("fromDate"), initialRange.fromDate);
-    const queryToDate = parseDateInputOrDefault(searchParams.get("toDate"), initialRange.toDate);
+    const queryFromDate = sharedFilters?.fromDate ?? parseDateInputOrDefault(searchParams.get("fromDate"), initialRange.fromDate);
+    const queryToDate = sharedFilters?.toDate ?? parseDateInputOrDefault(searchParams.get("toDate"), initialRange.toDate);
     const querySezonaId = parseNullableInt(searchParams.get("sezonaId"));
-    const queryStoreId = parseNullableInt(searchParams.get("storeId"));
+    const queryStoreId = sharedFilters ? sharedFilters.storeId : parseNullableInt(searchParams.get("storeId"));
     const hasExplicitDateQuery = searchParams.has("fromDate") || searchParams.has("toDate");
-    const periodPreset: PeriodPreset = hasExplicitDateQuery ? "custom" : "30d";
+    const periodPreset: PeriodPreset = sharedFilters?.periodPreset ?? (hasExplicitDateQuery ? "custom" : "30d");
 
     return {
       periodPreset,
@@ -458,7 +459,7 @@ export default function SupplierSalesStatsPage() {
       sezonaId: querySezonaId,
       storeId: queryStoreId,
     };
-  }, [initialRange.fromDate, initialRange.toDate, searchParams]);
+  }, [initialRange.fromDate, initialRange.toDate, searchParams, sharedFilters]);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(initialQueryFilters.periodPreset);
   const [fromDate, setFromDate] = useState(initialQueryFilters.fromDate);
   const [toDate, setToDate] = useState(initialQueryFilters.toDate);
@@ -479,8 +480,8 @@ export default function SupplierSalesStatsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedSupplierKey, setExpandedSupplierKey] = useState<string | null>(null);
   const activeDataScope = useMemo(
-    () => searchParams.get("dataScope") || getDataScope(),
-    [searchParams]
+    () => sharedFilters?.dataScope ?? searchParams.get("dataScope") ?? getDataScope(),
+    [searchParams, sharedFilters?.dataScope]
   );
   const includeUnknown = useMemo(
     () => (searchParams.get("includeUnknown") ?? "true").toLowerCase() !== "false",
@@ -488,6 +489,7 @@ export default function SupplierSalesStatsPage() {
   );
   const focus = useMemo(() => searchParams.get("focus") ?? "", [searchParams]);
   const focusSupplierId = useMemo(() => searchParams.get("supplierId"), [searchParams]);
+  const activeSupplierId = sharedFilters?.supplierId ?? parseNullableInt(focusSupplierId);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
@@ -495,12 +497,12 @@ export default function SupplierSalesStatsPage() {
   }, [fromDate, toDate]);
 
   useEffect(() => {
-    const queryFromDate = parseDateInputOrDefault(searchParams.get("fromDate"), activeFilters.fromDate);
-    const queryToDate = parseDateInputOrDefault(searchParams.get("toDate"), activeFilters.toDate);
+    const queryFromDate = sharedFilters?.fromDate ?? parseDateInputOrDefault(searchParams.get("fromDate"), activeFilters.fromDate);
+    const queryToDate = sharedFilters?.toDate ?? parseDateInputOrDefault(searchParams.get("toDate"), activeFilters.toDate);
     const querySezonaId = parseNullableInt(searchParams.get("sezonaId"));
-    const queryStoreId = parseNullableInt(searchParams.get("storeId"));
+    const queryStoreId = sharedFilters ? sharedFilters.storeId : parseNullableInt(searchParams.get("storeId"));
     const hasExplicitDateQuery = searchParams.has("fromDate") || searchParams.has("toDate");
-    const queryPreset: PeriodPreset = hasExplicitDateQuery ? "custom" : "30d";
+    const queryPreset: PeriodPreset = sharedFilters?.periodPreset ?? (hasExplicitDateQuery ? "custom" : "30d");
 
     const isSame =
       activeFilters.fromDate === queryFromDate &&
@@ -521,7 +523,14 @@ export default function SupplierSalesStatsPage() {
       sezonaId: querySezonaId,
       storeId: queryStoreId,
     });
-  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, searchParams]);
+  }, [
+    activeFilters.fromDate,
+    activeFilters.sezonaId,
+    activeFilters.storeId,
+    activeFilters.toDate,
+    searchParams,
+    sharedFilters,
+  ]);
 
   useEffect(() => {
     const loadStores = async () => {
@@ -680,8 +689,12 @@ export default function SupplierSalesStatsPage() {
   }, [decisionSuppliers, sortDir, sortField]);
 
   const visibleSuppliers = useMemo(
-    () => (includeUnknown ? sortedSuppliers : sortedSuppliers.filter((row) => !row.isUnknown)),
-    [includeUnknown, sortedSuppliers]
+    () => {
+      const baseRows = includeUnknown ? sortedSuppliers : sortedSuppliers.filter((row) => !row.isUnknown);
+      if (activeSupplierId == null) return baseRows;
+      return baseRows.filter((row) => row.dobavljacId === activeSupplierId);
+    },
+    [activeSupplierId, includeUnknown, sortedSuppliers]
   );
 
   const selectedSupplier = useMemo(
@@ -872,9 +885,10 @@ export default function SupplierSalesStatsPage() {
       { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
       { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
       { key: "dataScope", label: "Opseg podataka", value: activeDataScope },
+      { key: "supplierId", label: "Dobavljac", value: activeSupplierId ?? "Svi dobavljaci" },
       { key: "includeUnknown", label: "Uključi nepoznate", value: includeUnknown ? "da" : "ne" },
     ],
-    [activeDataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, includeUnknown]
+    [activeDataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, activeSupplierId, includeUnknown]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
@@ -936,7 +950,8 @@ export default function SupplierSalesStatsPage() {
     if (focusSupplierId) params.set("supplierId", focusSupplierId);
     if (activeFilters.sezonaId != null) returnParams.set("sezonaId", String(activeFilters.sezonaId));
     if (activeFilters.storeId != null) returnParams.set("storeId", String(activeFilters.storeId));
-    params.set("returnTo", `/analytics/supplier-sales-stats?${returnParams.toString()}`);
+    returnParams.set("tab", "overview");
+    params.set("returnTo", `/analytics/supplier?${returnParams.toString()}`);
     return params.toString();
   }, [
     activeDataScope,
@@ -1089,7 +1104,8 @@ export default function SupplierSalesStatsPage() {
   };
 
   return (
-    <div className="supplier-decision-page">
+    <div className={`supplier-decision-page ${embedded ? "supplier-decision-page--embedded" : ""}`}>
+      {!embedded ? (
       <header className="supplier-decision-header">
         <div>
           <h1 className="supplier-decision-title">Prodaja po dobavljačima</h1>
@@ -1103,7 +1119,9 @@ export default function SupplierSalesStatsPage() {
           </div>
         ) : null}
       </header>
+      ) : null}
 
+      {!embedded ? (
       <section className="supplier-decision-filters">
         <label className="supplier-decision-field">
           <span>Period</span>
@@ -1187,6 +1205,7 @@ export default function SupplierSalesStatsPage() {
           </button>
         </div>
       </section>
+      ) : null}
 
       {invalidRange ? (
         <div className="supplier-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div>

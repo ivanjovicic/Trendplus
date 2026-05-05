@@ -24,6 +24,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import type { Sezona } from "../types/Sezona";
 import { BOOST_SCORE_THRESHOLD, KEEP_SCORE_THRESHOLD } from "../utils/analyticsConstants";
 import { fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierDecisionHubPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -37,6 +38,9 @@ type ActiveFilters = {
   seasonId: number | null;
   minRevenue: number | null;
   onlyHighConfidence: boolean;
+  supplierId: number | null;
+  storeId: number | null;
+  dataScope: string | null;
 };
 
 type DecisionRow = RankingItem & {
@@ -126,19 +130,28 @@ function buildStatusTooltip(row: DecisionRow): string {
   return `${row.status}: ${row.statusReason} | Udeo ${fmtPct(row.sharePct, 1)} | Marza ${fmtPct(row.preMarkdownMarginPct * 100, 1)} | Kvalitet trend ${fmtSignedPct(row.qualityTrendPct, 1)} | Pouzdanost ${fmtPct(row.normalizedConfidence, 0)}`;
 }
 
-export default function SupplierDecisionHubPage() {
+export default function SupplierDecisionHubPage({ embedded = false, sharedFilters }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
   const initialRange = useMemo(() => getPresetRange("30d"), []);
 
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(sharedFilters?.periodPreset ?? "30d");
+  const [fromDate, setFromDate] = useState(sharedFilters?.fromDate ?? initialRange.fromDate);
+  const [toDate, setToDate] = useState(sharedFilters?.toDate ?? initialRange.toDate);
   const [seasonId, setSeasonId] = useState<number | null>(null);
   const [minRevenue, setMinRevenue] = useState<number | null>(null);
   const [onlyHighConfidence, setOnlyHighConfidence] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({ fromDate: initialRange.fromDate, toDate: initialRange.toDate, seasonId: null, minRevenue: null, onlyHighConfidence: false });
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
+    fromDate: sharedFilters?.fromDate ?? initialRange.fromDate,
+    toDate: sharedFilters?.toDate ?? initialRange.toDate,
+    seasonId: null,
+    minRevenue: null,
+    onlyHighConfidence: false,
+    supplierId: sharedFilters?.supplierId ?? null,
+    storeId: sharedFilters?.storeId ?? null,
+    dataScope: sharedFilters?.dataScope ?? null,
+  });
 
   const [seasons, setSeasons] = useState<Sezona[]>([]);
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
@@ -151,6 +164,30 @@ export default function SupplierDecisionHubPage() {
   const [expandedSupplierId, setExpandedSupplierId] = useState<number | null>(null);
 
   const invalidRange = useMemo(() => (!fromDate || !toDate ? false : new Date(fromDate) > new Date(toDate)), [fromDate, toDate]);
+
+  useEffect(() => {
+    if (!sharedFilters) return;
+    setPeriodPreset(sharedFilters.periodPreset);
+    setFromDate(sharedFilters.fromDate);
+    setToDate(sharedFilters.toDate);
+    setActiveFilters((current) => {
+      const next = {
+        ...current,
+        fromDate: sharedFilters.fromDate,
+        toDate: sharedFilters.toDate,
+        supplierId: sharedFilters.supplierId,
+        storeId: sharedFilters.storeId,
+        dataScope: sharedFilters.dataScope,
+      };
+      return current.fromDate === next.fromDate
+        && current.toDate === next.toDate
+        && current.supplierId === next.supplierId
+        && current.storeId === next.storeId
+        && current.dataScope === next.dataScope
+        ? current
+        : next;
+    });
+  }, [sharedFilters]);
 
   useEffect(() => {
     const loadSeasons = async () => {
@@ -170,6 +207,9 @@ export default function SupplierDecisionHubPage() {
         seasonId: filters.seasonId ?? undefined,
         minRevenue: filters.minRevenue ?? undefined,
         onlyHighConfidence: filters.onlyHighConfidence,
+        supplierId: filters.supplierId ?? undefined,
+        storeId: filters.storeId,
+        dataScope: filters.dataScope,
       };
       const prevRange = buildPreviousRange(filters.fromDate, filters.toDate);
       const prevFilters: SupplierDecisionHubFilters = { ...baseFilters, fromDate: prevRange.fromDate, toDate: prevRange.toDate };
@@ -275,7 +315,10 @@ export default function SupplierDecisionHubPage() {
     { key: "seasonId", label: "Sezona", value: activeFilters.seasonId ?? "" },
     { key: "minRevenue", label: "Min prihod", value: activeFilters.minRevenue ?? "" },
     { key: "onlyHighConfidence", label: "Samo visoka pouzdanost", value: activeFilters.onlyHighConfidence },
-  ], [activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.toDate, periodPreset]);
+    { key: "supplierId", label: "Dobavljac", value: activeFilters.supplierId ?? "" },
+    { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "" },
+    { key: "dataScope", label: "Opseg podataka", value: activeFilters.dataScope ?? "" },
+  ], [activeFilters.dataScope, activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.supplierId, activeFilters.toDate, periodPreset]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "summaryFrom", label: "Summary od", value: summary?.from ?? "" },
@@ -296,7 +339,20 @@ export default function SupplierDecisionHubPage() {
     setFromDate(range.fromDate);
     setToDate(range.toDate);
   };
-  const handleApplyFilters = () => { if (!invalidRange) setActiveFilters({ fromDate, toDate, seasonId, minRevenue, onlyHighConfidence }); };
+  const handleApplyFilters = () => {
+    if (!invalidRange) {
+      setActiveFilters({
+        fromDate,
+        toDate,
+        seasonId,
+        minRevenue,
+        onlyHighConfidence,
+        supplierId: sharedFilters?.supplierId ?? null,
+        storeId: sharedFilters?.storeId ?? null,
+        dataScope: sharedFilters?.dataScope ?? null,
+      });
+    }
+  };
   const handleResetFilters = () => {
     const range = getPresetRange("30d");
     setPeriodPreset("30d");
@@ -305,7 +361,16 @@ export default function SupplierDecisionHubPage() {
     setSeasonId(null);
     setMinRevenue(null);
     setOnlyHighConfidence(false);
-    setActiveFilters({ fromDate: range.fromDate, toDate: range.toDate, seasonId: null, minRevenue: null, onlyHighConfidence: false });
+    setActiveFilters({
+      fromDate: sharedFilters?.fromDate ?? range.fromDate,
+      toDate: sharedFilters?.toDate ?? range.toDate,
+      seasonId: null,
+      minRevenue: null,
+      onlyHighConfidence: false,
+      supplierId: sharedFilters?.supplierId ?? null,
+      storeId: sharedFilters?.storeId ?? null,
+      dataScope: sharedFilters?.dataScope ?? null,
+    });
   };
 
   const openSupplierDetail = (row: DecisionRow) => {
@@ -322,14 +387,17 @@ export default function SupplierDecisionHubPage() {
   };
 
   return (
-    <div className="sdh-decision-page">
+    <div className={`sdh-decision-page ${embedded ? "sdh-decision-page--embedded" : ""}`}>
+      {!embedded ? (
       <header className="sdh-decision-header">
         <div>
           <h1 className="sdh-decision-title">Supplier Decision Hub</h1>
           <p className="sdh-decision-subtitle">Executive decision-support: ko nosi prihod, gde je zdrav odnos full-price i markdown prodaje i koji dobavljači zaslužuju veći fokus u nabavci.</p>
         </div>
       </header>
+      ) : null}
 
+      {!embedded ? (
       <section className="sdh-decision-filters">
         <label className="sdh-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="180d">Poslednjih 180 dana</option><option value="365d">Poslednjih 365 dana</option><option value="custom">Prilagođeno</option></select></label>
         <label className="sdh-decision-field"><span>Od</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
@@ -339,6 +407,7 @@ export default function SupplierDecisionHubPage() {
         <label className="sdh-decision-field check"><span>Samo visoka pouzdanost</span><input type="checkbox" checked={onlyHighConfidence} onChange={(e) => setOnlyHighConfidence(e.target.checked)} /></label>
         <div className="sdh-decision-actions"><button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button><button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button></div>
       </section>
+      ) : null}
 
       {invalidRange ? <div className="sdh-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
       {error ? <div className="sdh-decision-message error">{error}</div> : null}
