@@ -473,9 +473,9 @@ export default function DataQualityPage() {
     <div className="data-quality-page">
       <header className="data-quality-header">
         <div>
-          <h1 className="data-quality-title">Centar za kvalitet podataka <InfoTip text="Pregled problema u podacima i prioriteti za ispravku." /></h1>
+          <h1 className="data-quality-title">Provera kvaliteta podataka <InfoTip text="Problemi koji utiču na analytics." /></h1>
           <p className="data-quality-subtitle">
-            Ekran je fokusiran na probleme koji stvarno kvare analytics signale: supplier, kategorija i naziv artikla.
+            Fokus na kritične greške: dobavljač, kategorija, naziv artikla.
           </p>
         </div>
         <div className="data-quality-header-side">

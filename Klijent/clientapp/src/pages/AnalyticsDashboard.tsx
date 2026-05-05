@@ -514,9 +514,9 @@ export default function AnalyticsDashboard() {
     <div className="analytics-dashboard">
       <header className="analytics-header">
         <div>
-          <h1>Analitika - Pregled</h1>
+          <h1>Pregled analitike</h1>
           <p className="with-tip">
-            <span>Pregled KPI, chartova i prodajnih odluka</span>
+            <span>KPI, trendovi i preporuke za odluke</span>
             <InfoTip text="Dashboard je fokusiran na promet, raspodelu prodaje i brze operativne odluke." />
           </p>
         </div>

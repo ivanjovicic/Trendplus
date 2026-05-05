@@ -608,9 +608,9 @@ export default function ColorSalesStatsPage() {
     <div className="color-decision-page">
       <header className="color-decision-header">
         <div>
-          <h1 className="color-decision-title">Prodaja po boji artikla</h1>
+          <h1 className="color-decision-title">Prodaja po boji</h1>
           <p className="color-decision-subtitle">
-            Decision-support pogled za izbor boja koje treba pojaÄati u nabavci.
+            Analiza boja: rast, popularnost i prioriteti za nabavku.
           </p>
         </div>
         {data?.generatedAt ? (

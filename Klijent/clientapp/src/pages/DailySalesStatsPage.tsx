@@ -1135,9 +1135,9 @@ export default function DailySalesStatsPage() {
     <div className="daily-sales-page">
       <header className="daily-sales-header">
         <div>
-          <h1>Dnevna prodaja po smeni i dobavljačima</h1>
+          <h1>Prodaja po smeni</h1>
           <p>
-            Dnevni pregled smenskih količina, prihoda i top dobavljača po prodatim komadima.
+            Dnevni pregled po smenama: količine, prihodi i top dobavljači.
           </p>
         </div>
         <div className="daily-sales-generated">

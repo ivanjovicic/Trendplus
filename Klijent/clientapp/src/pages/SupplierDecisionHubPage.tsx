@@ -407,8 +407,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       {!embedded ? (
       <header className="sdh-decision-header">
         <div>
-          <h1 className="sdh-decision-title">Skorkarta dobavljaca</h1>
-          <p className="sdh-decision-subtitle">Ekran za odluke: ko nosi prihod, gde je zdrav odnos prodaje po punoj ceni i snizenju, i koji dobavljaci zasluzuju veci fokus u nabavci. Napomena: skorkarta koristi artikle sa prvom nivelacijom u izabranom periodu.</p>
+       <h1 className="sdh-decision-title">Prioriteti dobavljača</h1>
+         <p className="sdh-decision-subtitle">Analiza: ko nosi prihod, zdravo cenjenje i prioriteti fokusa. Napomena: koristi artikle sa prvom nivelacijom u periodu.</p>
         </div>
       </header>
       ) : null}
