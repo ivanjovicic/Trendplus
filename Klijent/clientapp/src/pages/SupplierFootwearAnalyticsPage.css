@@ -164,6 +164,26 @@
   padding: 7px 10px;
 }
 
+.sf-decision-message.warning {
+  background: color-mix(in srgb, var(--warning-primary, var(--theme-color-eab308, #eab308)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning-primary, var(--theme-color-eab308, #eab308)) 32%, transparent);
+  color: var(--text-primary, var(--theme-color-111827, #111827));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sf-decision-message.warning strong {
+  color: var(--warning-primary, var(--theme-color-d97706, #d97706));
+  font-weight: 700;
+}
+
+.sf-decision-message.warning p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .sf-decision-kpis {
   display: grid;
   gap: 10px;

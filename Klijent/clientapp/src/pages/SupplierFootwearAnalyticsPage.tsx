@@ -16,6 +16,7 @@ import {
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -23,7 +24,7 @@ type SortDir = "asc" | "desc";
 type SortField = "vendorName" | "postRevenue" | "sharePct" | "topFootwearType" | "trendPct" | "status";
 type DecisionStatus = VendorSalesNivelacijaRecommendation["status"];
 
-type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string };
+type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string; storeId: number | null; dataScope: string | null };
 type SuggestedRange = { fromDate: string; toDate: string; label: string };
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
@@ -140,18 +141,25 @@ function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
   return { byVendor, globalTypeShare };
 }
 
-export default function SupplierFootwearAnalyticsPage() {
+export default function SupplierFootwearAnalyticsPage({ embedded = false, sharedFilters }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
   const initialRange = useMemo(() => getPresetRange("30d"), []);
 
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
-  const [vendorId, setVendorId] = useState<number | null>(null);
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(sharedFilters?.periodPreset ?? "30d");
+  const [fromDate, setFromDate] = useState(sharedFilters?.fromDate ?? initialRange.fromDate);
+  const [toDate, setToDate] = useState(sharedFilters?.toDate ?? initialRange.toDate);
+  const [vendorId, setVendorId] = useState<number | null>(sharedFilters?.supplierId ?? null);
   const [category, setCategory] = useState("");
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({ fromDate: initialRange.fromDate, toDate: initialRange.toDate, vendorId: null, category: "" });
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
+    fromDate: sharedFilters?.fromDate ?? initialRange.fromDate,
+    toDate: sharedFilters?.toDate ?? initialRange.toDate,
+    vendorId: sharedFilters?.supplierId ?? null,
+    category: "",
+    storeId: sharedFilters?.storeId ?? null,
+    dataScope: sharedFilters?.dataScope ?? null,
+  });
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
   const [data, setData] = useState<VendorSalesNivelacijaResponse | null>(null);
@@ -165,6 +173,31 @@ export default function SupplierFootwearAnalyticsPage() {
   const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
 
   const invalidRange = useMemo(() => (!fromDate || !toDate ? false : new Date(fromDate) > new Date(toDate)), [fromDate, toDate]);
+
+  useEffect(() => {
+    if (!sharedFilters) return;
+    setPeriodPreset(sharedFilters.periodPreset);
+    setFromDate(sharedFilters.fromDate);
+    setToDate(sharedFilters.toDate);
+    setVendorId(sharedFilters.supplierId);
+    setActiveFilters((current) => {
+      const next = {
+        ...current,
+        fromDate: sharedFilters.fromDate,
+        toDate: sharedFilters.toDate,
+        vendorId: sharedFilters.supplierId,
+        storeId: sharedFilters.storeId,
+        dataScope: sharedFilters.dataScope,
+      };
+      return current.fromDate === next.fromDate
+        && current.toDate === next.toDate
+        && current.vendorId === next.vendorId
+        && current.storeId === next.storeId
+        && current.dataScope === next.dataScope
+        ? current
+        : next;
+    });
+  }, [sharedFilters]);
 
   useEffect(() => {
     const loadVendors = async () => {
@@ -184,8 +217,8 @@ export default function SupplierFootwearAnalyticsPage() {
       const previousRange = buildPreviousRange(filters.fromDate, filters.toDate);
 
       const [currentResult, previousResult] = await Promise.allSettled([
-        getVendorSalesNivelacija({ ...currentRange, vendorId: filters.vendorId, category: filters.category || null, includeInactive: false }),
-        getVendorSalesNivelacija({ ...previousRange, vendorId: filters.vendorId, category: filters.category || null, includeInactive: false }),
+        getVendorSalesNivelacija({ ...currentRange, vendorId: filters.vendorId, category: filters.category || null, includeInactive: false, storeId: filters.storeId, dataScope: filters.dataScope }),
+        getVendorSalesNivelacija({ ...previousRange, vendorId: filters.vendorId, category: filters.category || null, includeInactive: false, storeId: filters.storeId, dataScope: filters.dataScope }),
       ]);
       if (requestId !== requestIdRef.current) return;
       if (currentResult.status === "rejected") throw currentResult.reason;
@@ -201,6 +234,8 @@ export default function SupplierFootwearAnalyticsPage() {
         const options = await getVendorSalesNivelacijaOptions({
           vendorId: filters.vendorId,
           category: filters.category || undefined,
+          storeId: filters.storeId,
+          dataScope: filters.dataScope,
           take: 60,
         }).catch(() => [] as VendorSalesNivelacijaOption[]);
 
@@ -321,7 +356,9 @@ export default function SupplierFootwearAnalyticsPage() {
     { key: "toDate", label: "Do", value: activeFilters.toDate },
       { key: "vendorId", label: "Dobavljač", value: activeFilters.vendorId ?? "" },
     { key: "category", label: "Kategorija", value: activeFilters.category },
-  ], [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, periodPreset]);
+    { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "" },
+    { key: "dataScope", label: "Opseg podataka", value: activeFilters.dataScope ?? "" },
+  ], [activeFilters.category, activeFilters.dataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.vendorId, periodPreset]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
@@ -342,7 +379,7 @@ export default function SupplierFootwearAnalyticsPage() {
     setFromDate(range.fromDate);
     setToDate(range.toDate);
   };
-  const handleApplyFilters = () => { if (!invalidRange) setActiveFilters({ fromDate, toDate, vendorId, category }); };
+  const handleApplyFilters = () => { if (!invalidRange) setActiveFilters({ fromDate, toDate, vendorId, category, storeId: sharedFilters?.storeId ?? null, dataScope: sharedFilters?.dataScope ?? null }); };
   const handleResetFilters = () => {
     const range = getPresetRange("30d");
     setPeriodPreset("30d");
@@ -350,7 +387,14 @@ export default function SupplierFootwearAnalyticsPage() {
     setToDate(range.toDate);
     setVendorId(null);
     setCategory("");
-    setActiveFilters({ fromDate: range.fromDate, toDate: range.toDate, vendorId: null, category: "" });
+    setActiveFilters({
+      fromDate: sharedFilters?.fromDate ?? range.fromDate,
+      toDate: sharedFilters?.toDate ?? range.toDate,
+      vendorId: sharedFilters?.supplierId ?? null,
+      category: "",
+      storeId: sharedFilters?.storeId ?? null,
+      dataScope: sharedFilters?.dataScope ?? null,
+    });
   };
   const handleApplySuggestedRange = () => {
     if (!suggestedRange) return;
@@ -374,7 +418,8 @@ export default function SupplierFootwearAnalyticsPage() {
   };
 
   return (
-    <div className="sf-decision-page">
+    <div className={`sf-decision-page ${embedded ? "sf-decision-page--embedded" : ""}`}>
+      {!embedded ? (
       <header className="sf-decision-header">
         <div>
           <h1 className="sf-decision-title">Dobavljači i tipovi obuće</h1>
@@ -382,7 +427,9 @@ export default function SupplierFootwearAnalyticsPage() {
         </div>
         <div className="sf-decision-generated">Generisano: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("sr-RS") : "-"}</div>
       </header>
+      ) : null}
 
+      {!embedded ? (
       <section className="sf-decision-filters">
         <label className="sf-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="180d">Poslednjih 180 dana</option><option value="365d">Poslednjih 365 dana</option><option value="custom">Prilagođeno</option></select></label>
         <label className="sf-decision-field"><span>Od</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
@@ -391,6 +438,7 @@ export default function SupplierFootwearAnalyticsPage() {
         <label className="sf-decision-field"><span>Kategorija</span><select value={category} onChange={(e) => setCategory(e.target.value)}><option value="">Sve</option>{(data?.categories ?? []).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <div className="sf-decision-actions"><button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button><button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button></div>
       </section>
+      ) : null}
 
       {invalidRange ? <div className="sf-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
       {error ? <div className="sf-decision-message error">{error}</div> : null}
@@ -405,6 +453,19 @@ export default function SupplierFootwearAnalyticsPage() {
 
       {!loading && data ? (
         <>
+          {totalRevenue === 0 && decisionRows.length === 0 && (
+            <div className="sf-decision-message warning">
+              <strong>Zašto je promet 0 RSD?</strong>
+              <p>
+                {data.dataQuality.rawRows === 0
+                  ? "U izabranom periodu nema evidentirane nivelacije u Dnevniku promena. Pokušajte sa drugačijim periodom ili dobavljačem."
+                  : data.dataQuality.analyzedRows === 0 && data.dataQuality.inactiveRows > 0
+                    ? `Nivelacije postoje (${data.dataQuality.rawRows} redova), ali bez prodaje u 30-dnevnom post-window periodu. Pokušajte sa periodima gde postoji prodajna aktivnost.`
+                    : `Analizirano je ${data.dataQuality.analyzedRows} redova, ali bez detektovanog prometa. Proverite filtere ili proširite vremenski raspon.`}
+              </p>
+            </div>
+          )}
+
           <section className="sf-decision-kpis">
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljača u izabranom periodu."><span>Ukupan promet</span><strong>{fmtRsd(totalRevenue)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drzi pet najjacih dobavljaca."><span>Udeo top 5 dobavljaca</span><strong>{fmtPct(top5SharePct)}</strong></article>
