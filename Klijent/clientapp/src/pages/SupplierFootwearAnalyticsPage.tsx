@@ -364,7 +364,7 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
     { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "vendorsCount", label: "Dobavljača", value: data?.totals.vendorsCount ?? 0 },
     { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
-    { key: "windowDays", label: "Window", value: data?.windowDays ?? 0 },
+    { key: "windowDays", label: "Prozor (dani)", value: data?.windowDays ?? 0 },
   ], [data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.windowDays]);
 
   const handleSort = (field: SortField) => {
@@ -409,7 +409,7 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
       table: "dobavljaci-tipovi-obuce",
       recordId: String(row.vendorId ?? row.vendorName),
       title: row.vendorName,
-      subtitle: "Decision support po dobavljaču i tipu obuće",
+      subtitle: "Podrska odluci po dobavljacu i tipu obuce",
       columns: decisionColumns,
       row,
       metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -423,7 +423,7 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
       <header className="sf-decision-header">
         <div>
           <h1 className="sf-decision-title">Dobavljači i tipovi obuće</h1>
-          <p className="sf-decision-subtitle">Decision-support ekran koji spaja dobavljača i dominantan tip obuće, da se brzo vidi gde je najveći promet, koji tip nosi rezultat i gde treba pojačati fokus.</p>
+          <p className="sf-decision-subtitle">Ekran za podrsku odluci koji spaja dobavljaca i dominantan tip obuce, da se brzo vidi gde je najveci promet, koji tip nosi rezultat i gde treba pojacati fokus.</p>
         </div>
         <div className="sf-decision-generated">Generisano: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("sr-RS") : "-"}</div>
       </header>
@@ -460,7 +460,7 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
                 {data.dataQuality.rawRows === 0
                   ? "U izabranom periodu nema evidentirane nivelacije u Dnevniku promena. Pokušajte sa drugačijim periodom ili dobavljačem."
                   : data.dataQuality.analyzedRows === 0 && data.dataQuality.inactiveRows > 0
-                    ? `Nivelacije postoje (${data.dataQuality.rawRows} redova), ali bez prodaje u 30-dnevnom post-window periodu. Pokušajte sa periodima gde postoji prodajna aktivnost.`
+                    ? `Nivelacije postoje (${data.dataQuality.rawRows} redova), ali bez prodaje u 30-dnevnom post-prozoru. Pokušajte sa periodima gde postoji prodajna aktivnost.`
                     : `Analizirano je ${data.dataQuality.analyzedRows} redova, ali bez detektovanog prometa. Proverite filtere ili proširite vremenski raspon.`}
               </p>
             </div>
@@ -470,7 +470,7 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljača u izabranom periodu."><span>Ukupan promet</span><strong>{fmtRsd(totalRevenue)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drzi pet najjacih dobavljaca."><span>Udeo top 5 dobavljaca</span><strong>{fmtPct(top5SharePct)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/PAD vs prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/pad u odnosu na prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuce koji trenutno nosi najveci deo prometa."><span>Dominantan tip obuce</span><strong>{dominantTypeSummary}</strong></article>
           </section>
 

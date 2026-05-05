@@ -11,14 +11,14 @@ import "./SupplierConsolidatedPage.css";
 
 const tabLabels: Record<SupplierTab, string> = {
   overview: "Pregled",
-  scorecard: "Scorecard",
+  scorecard: "Skorkarta",
   assortment: "Asortiman",
 };
 
 const tabDescriptions: Record<SupplierTab, string> = {
-  overview: "Glavni pregled dobavljača kroz promet, maržni doprinos, trend i prioritetnu akciju.",
+  overview: "Centralni ekran za odluke o dobavljačima kroz promet, maržni doprinos, trend i prioritetnu akciju.",
   scorecard: "Sekundarna procena kvaliteta dobavljača, markdown rizika i pouzdanosti signala.",
-  assortment: "Asortimanski drilldown po dobavljaču i tipu obuće za proveru strukture portfolija.",
+  assortment: "Dodatni asortimanski drilldown po dobavljaču i tipu obuće za proveru strukture portfolija.",
 };
 
 function buildStoreLabel(store: StoreOption): string {
@@ -63,7 +63,7 @@ export default function SupplierConsolidatedPage() {
       <header className="supplier-consolidated-header">
         <div className="supplier-consolidated-header-content">
           <div>
-            <div className="supplier-consolidated-overline">Supplier analytics</div>
+            <div className="supplier-consolidated-overline">Centralna analitika dobavljača</div>
             <h1>Dobavljači</h1>
             <p className="supplier-consolidated-header-desc">{tabDescriptions[currentTab]}</p>
           </div>

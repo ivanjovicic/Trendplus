@@ -67,7 +67,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
   { key: "preMarkdownMarginPct", header: "Marža %", dataType: "percent" },
   { key: "qualityTrendPct", header: "Kvalitet trend %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "decisionScore", header: "Decision score", dataType: "number" },
+  { key: "decisionScore", header: "Skor odluke", dataType: "number" },
 ];
 
 function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
@@ -113,7 +113,7 @@ function buildStatusReason(status: DecisionStatus, code: string, qualityTrendPct
   const lowConfidence = confidence < BOOST_MIN_CONFIDENCE_PCT;
   if (status === "Pojacaj") {
     if (lowConfidence) return "Signal za rast postoji, ali je pouzdanost granična; širiti postepeno.";
-    if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "Dobavljač drži zdrav signal bez pretjerane zavisnosti od markdown-a.";
+    if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "Dobavljač drži zdrav signal bez preterane zavisnosti od snizenja.";
     return "Pozitivan zbirni signal za veci fokus.";
   }
   if (status === "Zadrzi") {
@@ -121,7 +121,7 @@ function buildStatusReason(status: DecisionStatus, code: string, qualityTrendPct
     if (qualityTrendPct < 0) return "Signal kvaliteta slabi; zadržati uz pojačan nadzor.";
     return "Stabilan signal bez jasnog razloga za promenu prioriteta.";
   }
-  if (code === "ASSORTMENT_REDUCE") return "Visoka zavisnost od markdown-a i rizik zaliha; smanjiti fokus.";
+  if (code === "ASSORTMENT_REDUCE") return "Visoka zavisnost od snizenja i rizik zaliha; smanjiti fokus.";
   if (code === "PRICE_NEGOTIATE") return "Potreban je bolji cenovni ulaz pre daljeg širenja.";
   return "Nizak signal doprinosa i rizik po profitabilnost.";
 }
@@ -230,7 +230,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       setSummary(null);
       setPreviousSummary(null);
       setRanking(null);
-      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju Supplier Decision Hub-a.");
+      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju skorkarte dobavljaca.");
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
@@ -300,6 +300,22 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     keep: sortedRows.filter((row) => row.status === "Zadrzi").length,
     reduce: sortedRows.filter((row) => row.status === "Smanji").length,
   }), [sortedRows]);
+  const zeroStateExplanation = useMemo(() => {
+    if (!summary || !ranking) return null;
+    const allKeyMetricsZero =
+      totalRevenue === 0 &&
+      totalMarginContribution === 0 &&
+      (summary.capitalAtRisk ?? 0) === 0 &&
+      top5SharePct === 0;
+
+    if (!allKeyMetricsZero) return null;
+
+    if (ranking.totalCount === 0 || summary.supplierCount === 0) {
+      return "Skorkarta se puni iz artikala koji imaju prvu nivelaciju (first_markdown_date) u izabranom periodu. U ovom opsegu nema takvih zapisa, pa su KPI vrednosti 0. To je ocekivano i kada Pregled tab ima promet, jer Pregled prati prodaju, a Skorkarta prati skup sa prvom nivelacijom.";
+    }
+
+    return "Postoje zapisi za skorkartu, ali u izabranom periodu nema realizovanog prometa ili marznog doprinosa, pa su KPI vrednosti 0. Proveri i filtere Opseg, Objekat i Dobavljac.";
+  }, [ranking, summary, top5SharePct, totalMarginContribution, totalRevenue]);
   const concentrationData = useMemo(() => {
     const top = [...sortedRows].sort((a, b) => b.sharePct - a.sharePct).slice(0, 8).map((row) => ({ name: row.supplierName, sharePct: row.sharePct }));
     const topShare = top.reduce((sum, row) => sum + row.sharePct, 0);
@@ -321,8 +337,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   ], [activeFilters.dataScope, activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.supplierId, activeFilters.toDate, periodPreset]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
-    { key: "summaryFrom", label: "Summary od", value: summary?.from ?? "" },
-    { key: "summaryTo", label: "Summary do", value: summary?.to ?? "" },
+    { key: "summaryFrom", label: "Sazetak od", value: summary?.from ?? "" },
+    { key: "summaryTo", label: "Sazetak do", value: summary?.to ?? "" },
     { key: "supplierCount", label: "Dobavljača", value: summary?.supplierCount ?? 0 },
     { key: "capitalAtRisk", label: "Kapital u riziku", value: summary?.capitalAtRisk ?? 0 },
   ], [summary?.capitalAtRisk, summary?.from, summary?.supplierCount, summary?.to]);
@@ -378,7 +394,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       table: "supplier-decision-hub",
       recordId: String(row.supplierId),
       title: row.supplierName,
-      subtitle: "Supplier decision support",
+      subtitle: "Podrska odluci za dobavljace",
       columns: decisionColumns,
       row,
       metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -391,8 +407,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       {!embedded ? (
       <header className="sdh-decision-header">
         <div>
-          <h1 className="sdh-decision-title">Supplier Decision Hub</h1>
-          <p className="sdh-decision-subtitle">Executive decision-support: ko nosi prihod, gde je zdrav odnos full-price i markdown prodaje i koji dobavljači zaslužuju veći fokus u nabavci.</p>
+          <h1 className="sdh-decision-title">Skorkarta dobavljaca</h1>
+          <p className="sdh-decision-subtitle">Ekran za odluke: ko nosi prihod, gde je zdrav odnos prodaje po punoj ceni i snizenju, i koji dobavljaci zasluzuju veci fokus u nabavci. Napomena: skorkarta koristi artikle sa prvom nivelacijom u izabranom periodu.</p>
         </div>
       </header>
       ) : null}
@@ -412,6 +428,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       {invalidRange ? <div className="sdh-decision-message error" role="alert">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
       {error ? <div className="sdh-decision-message error" role="alert">{error}</div> : null}
       {loading ? <div className="sdh-decision-message loading" role="status" aria-live="polite">Učitavam podatke za analizu dobavljača...</div> : null}
+      {!loading && !error && zeroStateExplanation ? (
+        <div className="sdh-decision-message warning">
+          <strong>Zasto su sve vrednosti nula?</strong>
+          <p>{zeroStateExplanation}</p>
+        </div>
+      ) : null}
 
       {!loading && summary && ranking ? (
         <>
@@ -420,7 +442,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-kpi"><span>Udeo top 5 dobavljača</span><strong>{fmtPct(top5SharePct)}</strong></article>
             <article className="sdh-decision-kpi"><span>Ukupan maržni doprinos</span><strong>{fmtRsd(totalMarginContribution)}</strong></article>
             <article className="sdh-decision-kpi"><span>Kapital u riziku</span><strong className="trend-down">{fmtRsd(summary.capitalAtRisk)}</strong></article>
-            <article className="sdh-decision-kpi"><span>Promena full-price udela vs prethodni period</span><strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPct(fullPriceDeltaPctPoints)}</strong></article>
+            <article className="sdh-decision-kpi"><span>Promena udela pune cene u odnosu na prethodni period</span><strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPct(fullPriceDeltaPctPoints)}</strong></article>
           </section>
 
           <section className="sdh-decision-panels">
@@ -444,7 +466,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-card">
               <div className="sdh-decision-table-head">
                 <div><h2>Prioritetna lista dobavljača</h2><p>Pojačaj: {supplierCounts.boost} | Zadrži: {supplierCounts.keep} | Smanji: {supplierCounts.reduce}</p></div>
-                <AnalyticsTableToolbar tableKey="supplier-decision-hub" tableTitle="Supplier decision hub - compact" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
+                <AnalyticsTableToolbar tableKey="supplier-decision-hub" tableTitle="Skorkarta dobavljaca - kompaktni prikaz" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
               </div>
               <div className="sdh-decision-table-wrap">
                 <table className="sdh-decision-table">
@@ -490,12 +512,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
               <div className="sdh-decision-detail-grid">
                 <article><span>Prihod</span><strong>{fmtRsd(selectedRow.revenue)}</strong></article>
                 <article><span>Komadi</span><strong>{selectedRow.units.toLocaleString("sr-RS")} kom</strong></article>
-                <article><span>Full-price share</span><strong>{fmtPct(selectedRow.fullPriceRevenueShare * 100, 2)}</strong></article>
-                <article><span>Markdown share</span><strong>{fmtPct(selectedRow.markdownRevenueShare * 100, 2)}</strong></article>
-                <article><span>Dead stock</span><strong>{fmtPct(selectedRow.deadStockRate * 100, 2)}</strong></article>
-                <article><span>Unsold stock value</span><strong>{fmtRsd(selectedRow.unsoldStockValue)}</strong></article>
-                <article><span>Repeat winner rate</span><strong>{fmtPct(selectedRow.repeatWinnerRate * 100, 2)}</strong></article>
-                <article><span>AI score / Quality index</span><strong>{selectedRow.mlSupplierScore.toFixed(1)} / {selectedRow.supplierQualityIndex.toFixed(1)}</strong></article>
+                <article><span>Udeo pune cene</span><strong>{fmtPct(selectedRow.fullPriceRevenueShare * 100, 2)}</strong></article>
+                <article><span>Udeo snizenja</span><strong>{fmtPct(selectedRow.markdownRevenueShare * 100, 2)}</strong></article>
+                <article><span>Stopa mrtve zalihe</span><strong>{fmtPct(selectedRow.deadStockRate * 100, 2)}</strong></article>
+                <article><span>Vrednost neprodate zalihe</span><strong>{fmtRsd(selectedRow.unsoldStockValue)}</strong></article>
+                <article><span>Stopa ponovljenih pobednika</span><strong>{fmtPct(selectedRow.repeatWinnerRate * 100, 2)}</strong></article>
+                <article><span>AI skor / indeks kvaliteta</span><strong>{selectedRow.mlSupplierScore.toFixed(1)} / {selectedRow.supplierQualityIndex.toFixed(1)}</strong></article>
                 <article><span>Pouzdanost</span><strong>{fmtPct(selectedRow.normalizedConfidence, 1)}</strong></article>
               </div>
               <p className="sdh-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>

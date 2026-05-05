@@ -152,6 +152,16 @@
   color: var(--error, var(--theme-color-fecaca, #fecaca));
 }
 
+.sdh-decision-message.warning {
+  background: var(--warning-soft, rgba(251, 191, 36, 0.15));
+  border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.45));
+  color: var(--warning, #fcd34d);
+}
+
+.sdh-decision-message.warning p {
+  margin: 6px 0 0;
+}
+
 .sdh-decision-kpis {
   display: grid;
   gap: 10px;
