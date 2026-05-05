@@ -1,4 +1,5 @@
 using Application.Analytics;
+using Infrastructure.Services.Caching;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using System.Data;
@@ -23,6 +24,7 @@ public static class SupplierDecisionHubEndpoints
 
         group.MapGet("/summary", async (
             IConfiguration configuration,
+            IAnalyticsCacheService cache,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -50,13 +52,35 @@ public static class SupplierDecisionHubEndpoints
                 return Results.ValidationProblem(validationError!);
             }
 
-            var rows = await QuerySupplierRowsAsync(GetAnalyticsConnectionString(configuration), filters!, ct);
-            var response = BuildSummaryResponse(rows, filters!);
+            var activeFilters = filters!;
+            var analyticsConnectionString = GetAnalyticsConnectionString(configuration);
+            var cacheKey = AnalyticsCacheKeys.SupplierDecisionHubSummary(
+                activeFilters.FromDate,
+                activeFilters.ToDate,
+                activeFilters.Category,
+                activeFilters.Gender,
+                activeFilters.SeasonId,
+                activeFilters.MinRevenue,
+                activeFilters.OnlyHighConfidence,
+                activeFilters.ExcludeOosBeforeMarkdown,
+                activeFilters.SupplierId);
+
+            var response = await cache.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+                    var rows = await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct);
+                    return BuildSummaryResponse(rows, activeFilters);
+                },
+                CacheExpiration.HeavyAnalytics,
+                ct);
+
             return Results.Ok(response);
         });
 
         group.MapGet("/quadrant", async (
             IConfiguration configuration,
+            IAnalyticsCacheService cache,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -84,27 +108,48 @@ public static class SupplierDecisionHubEndpoints
                 return Results.ValidationProblem(validationError!);
             }
 
-            var rows = await QuerySupplierRowsAsync(GetAnalyticsConnectionString(configuration), filters!, ct);
-            var response = new QuadrantResponse(
-                rows
-                    .OrderByDescending(x => x.Revenue)
-                    .Select(x => new QuadrantItem(
-                        x.SupplierId,
-                        x.SupplierName,
-                        x.Revenue,
-                        x.MarkdownDependencyScore,
-                        x.FullPriceSellthrough,
-                        x.PreMarkdownMarginPct,
-                        x.SupplierQualityIndex,
-                        x.RecommendationCode,
-                        x.ConfidenceScore))
-                    .ToList());
+            var activeFilters = filters!;
+            var analyticsConnectionString = GetAnalyticsConnectionString(configuration);
+            var cacheKey = AnalyticsCacheKeys.SupplierDecisionHubQuadrant(
+                activeFilters.FromDate,
+                activeFilters.ToDate,
+                activeFilters.Category,
+                activeFilters.Gender,
+                activeFilters.SeasonId,
+                activeFilters.MinRevenue,
+                activeFilters.OnlyHighConfidence,
+                activeFilters.ExcludeOosBeforeMarkdown,
+                activeFilters.SupplierId);
+
+            var response = await cache.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+                    var rows = await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct);
+                    return new QuadrantResponse(
+                        rows
+                            .OrderByDescending(x => x.Revenue)
+                            .Select(x => new QuadrantItem(
+                                x.SupplierId,
+                                x.SupplierName,
+                                x.Revenue,
+                                x.MarkdownDependencyScore,
+                                x.FullPriceSellthrough,
+                                x.PreMarkdownMarginPct,
+                                x.SupplierQualityIndex,
+                                x.RecommendationCode,
+                                x.ConfidenceScore))
+                            .ToList());
+                },
+                CacheExpiration.HeavyAnalytics,
+                ct);
 
             return Results.Ok(response);
         });
 
         group.MapGet("/ranking", async (
             IConfiguration configuration,
+            IAnalyticsCacheService cache,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -138,36 +183,65 @@ public static class SupplierDecisionHubEndpoints
 
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+            var normalizedSortBy = NormalizeRankingSortBy(sortBy);
+            var normalizedSortDir = NormalizeRankingSortDir(sortDir);
 
-            var rows = await QuerySupplierRowsAsync(GetAnalyticsConnectionString(configuration), filters!, ct);
-            var ordered = ApplyRankingSort(rows, sortBy, sortDir).ToList();
-            var paged = ordered
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(x => new RankingItem(
-                    x.SupplierId,
-                    x.SupplierName,
-                    x.Revenue,
-                    x.Units,
-                    x.FullPriceRevenueShare,
-                    x.FullPriceSellthrough,
-                    x.PreMarkdownMarginPct,
-                    x.MarkdownRevenueShare,
-                    x.DeadStockRate,
-                    x.UnsoldStockValue,
-                    x.RepeatWinnerRate,
-                    x.MlSupplierScore,
-                    x.SupplierQualityIndex,
-                    x.RecommendationCode,
-                    x.ConfidenceScore))
-                .ToList();
+            var activeFilters = filters!;
+            var analyticsConnectionString = GetAnalyticsConnectionString(configuration);
+            var cacheKey = AnalyticsCacheKeys.SupplierDecisionHubRanking(
+                activeFilters.FromDate,
+                activeFilters.ToDate,
+                activeFilters.Category,
+                activeFilters.Gender,
+                activeFilters.SeasonId,
+                activeFilters.MinRevenue,
+                activeFilters.OnlyHighConfidence,
+                activeFilters.ExcludeOosBeforeMarkdown,
+                activeFilters.SupplierId,
+                page,
+                pageSize,
+                normalizedSortBy,
+                normalizedSortDir);
 
-            return Results.Ok(new RankingResponse(page, pageSize, ordered.Count, paged));
+            var response = await cache.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+                    var rows = await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct);
+                    var ordered = ApplyRankingSort(rows, normalizedSortBy, normalizedSortDir).ToList();
+                    var paged = ordered
+                        .Skip((page - 1) * pageSize)
+                        .Take(pageSize)
+                        .Select(x => new RankingItem(
+                            x.SupplierId,
+                            x.SupplierName,
+                            x.Revenue,
+                            x.Units,
+                            x.FullPriceRevenueShare,
+                            x.FullPriceSellthrough,
+                            x.PreMarkdownMarginPct,
+                            x.MarkdownRevenueShare,
+                            x.DeadStockRate,
+                            x.UnsoldStockValue,
+                            x.RepeatWinnerRate,
+                            x.MlSupplierScore,
+                            x.SupplierQualityIndex,
+                            x.RecommendationCode,
+                            x.ConfidenceScore))
+                        .ToList();
+
+                    return new RankingResponse(page, pageSize, ordered.Count, paged);
+                },
+                CacheExpiration.HeavyAnalytics,
+                ct);
+
+            return Results.Ok(response);
         });
 
         group.MapGet("/{supplierId:int}/details", async (
             int supplierId,
             IConfiguration configuration,
+            IAnalyticsCacheService cache,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -194,17 +268,42 @@ public static class SupplierDecisionHubEndpoints
                 return Results.ValidationProblem(validationError!);
             }
 
+            var activeFilters = filters!;
             var analyticsConnectionString = GetAnalyticsConnectionString(configuration);
-            var rows = await QuerySupplierRowsAsync(analyticsConnectionString, filters!, ct);
-            var supplier = rows.FirstOrDefault();
-            if (supplier is null)
+            var cacheKey = AnalyticsCacheKeys.SupplierDecisionHubDetails(
+                activeFilters.FromDate,
+                activeFilters.ToDate,
+                activeFilters.Category,
+                activeFilters.Gender,
+                activeFilters.SeasonId,
+                activeFilters.MinRevenue,
+                activeFilters.OnlyHighConfidence,
+                activeFilters.ExcludeOosBeforeMarkdown,
+                supplierId);
+
+            var response = await cache.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+                    var rows = await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct);
+                    var supplier = rows.FirstOrDefault();
+                    if (supplier is null)
+                    {
+                        return new SupplierDecisionHubDetailsCacheEntry(false, null);
+                    }
+
+                    var details = await BuildDetailsResponseAsync(analyticsConnectionString, activeFilters, supplier, ct);
+                    return new SupplierDecisionHubDetailsCacheEntry(true, details);
+                },
+                CacheExpiration.HeavyAnalytics,
+                ct);
+
+            if (!response.Found || response.Response is null)
             {
                 return Results.NotFound(new { message = $"Supplier {supplierId} not found for the selected filter set." });
             }
 
-            var response = await BuildDetailsResponseAsync(analyticsConnectionString, filters!, supplier, ct);
-
-            return Results.Ok(response);
+            return Results.Ok(response.Response);
         });
     }
 
@@ -219,6 +318,10 @@ public static class SupplierDecisionHubEndpoints
         bool OnlyHighConfidence,
         bool ExcludeOosBeforeMarkdown,
         int? SupplierId);
+
+    private sealed record SupplierDecisionHubDetailsCacheEntry(
+        bool Found,
+        SupplierDecisionDetailsResponse? Response);
 
     private sealed record SupplierScoreRow(
         int SupplierId,
@@ -419,10 +522,8 @@ public static class SupplierDecisionHubEndpoints
         string? sortBy,
         string? sortDir)
     {
-        var normalizedSort = string.IsNullOrWhiteSpace(sortBy)
-            ? "supplierQualityIndex"
-            : sortBy.Trim();
-        var desc = !string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase);
+        var normalizedSort = NormalizeRankingSortBy(sortBy);
+        var desc = NormalizeRankingSortDir(sortDir) == "desc";
 
         Func<SupplierScoreRow, object> selector = normalizedSort switch
         {
@@ -445,6 +546,34 @@ public static class SupplierDecisionHubEndpoints
             ? rows.OrderByDescending(selector).ThenBy(x => x.SupplierName)
             : rows.OrderBy(selector).ThenBy(x => x.SupplierName);
     }
+
+    private static string NormalizeRankingSortBy(string? sortBy)
+    {
+        var normalizedSort = string.IsNullOrWhiteSpace(sortBy)
+            ? "supplierQualityIndex"
+            : sortBy.Trim();
+
+        return normalizedSort switch
+        {
+            "supplierName" => "supplierName",
+            "revenue" => "revenue",
+            "units" => "units",
+            "fullPriceRevenueShare" => "fullPriceRevenueShare",
+            "fullPriceSellthrough" => "fullPriceSellthrough",
+            "preMarkdownMarginPct" => "preMarkdownMarginPct",
+            "markdownRevenueShare" => "markdownRevenueShare",
+            "deadStockRate" => "deadStockRate",
+            "unsoldStockValue" => "unsoldStockValue",
+            "repeatWinnerRate" => "repeatWinnerRate",
+            "mlSupplierScore" => "mlSupplierScore",
+            "confidenceScore" => "confidenceScore",
+            "supplierQualityIndex" => "supplierQualityIndex",
+            _ => "supplierQualityIndex"
+        };
+    }
+
+    private static string NormalizeRankingSortDir(string? sortDir) =>
+        string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
 
     private static string FormatPercent(decimal value) =>
         $"{(value * 100m).ToString("0.##", CultureInfo.InvariantCulture)}%";

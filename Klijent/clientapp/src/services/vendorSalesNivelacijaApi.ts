@@ -3,6 +3,16 @@ import { apiUrl } from "../utils/apiUrl";
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
+export interface VendorSalesNivelacijaRecommendation {
+    status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
+    label: string;
+    summary: string;
+    confidencePct: number;
+    reliabilityPct: number;
+    dataQualityStatus: string;
+    reasonCodes: string[];
+}
+
 export interface VendorSalesNivelacijaVendorStat {
     vendorId: number | null;
     vendorName: string;
@@ -22,6 +32,8 @@ export interface VendorSalesNivelacijaVendorStat {
     activeArticlesCount: number;
     increasedPriceArticlesCount: number;
     decreasedPriceArticlesCount: number;
+    reliabilityPct: number;
+    recommendation?: VendorSalesNivelacijaRecommendation | null;
 }
 
 export interface VendorSalesNivelacijaArticleStat {

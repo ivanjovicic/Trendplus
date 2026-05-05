@@ -94,6 +94,20 @@ public sealed class PreNivelacijaSkuCandidateDto
     public decimal MarginDeltaHighlightVsMarkdown { get; set; }
     public decimal RevenueDeltaHighlightVsMarkdown { get; set; }
     public string Confidence { get; set; } = "Low";
+    public double ReliabilityPct { get; set; }
+    public int DecisionScore { get; set; }
+    public PreNivelacijaRecommendationDto Recommendation { get; set; } = new();
+}
+
+public sealed class PreNivelacijaRecommendationDto
+{
+    public string Status { get; set; } = "insufficient_data";
+    public string Label { get; set; } = "Insufficient data";
+    public string Summary { get; set; } = string.Empty;
+    public double ConfidencePct { get; set; }
+    public double ReliabilityPct { get; set; }
+    public string DataQualityStatus { get; set; } = "critical";
+    public IReadOnlyList<string> ReasonCodes { get; set; } = [];
 }
 
 public sealed class PreNivelacijaScoreBreakdownDto

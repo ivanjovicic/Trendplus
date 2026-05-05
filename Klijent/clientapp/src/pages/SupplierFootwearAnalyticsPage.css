@@ -340,6 +340,12 @@
   color: var(--warning, var(--theme-color-fcd34d, #fcd34d));
 }
 
+.sf-decision-status.status-review {
+  background: var(--info-soft, rgba(96, 165, 250, 0.14));
+  border: 1px solid var(--info-border, rgba(96, 165, 250, 0.4));
+  color: var(--info, var(--theme-color-93c5fd, #93c5fd));
+}
+
 .sf-decision-status.status-reduce {
   background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15)))));
   border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45))));

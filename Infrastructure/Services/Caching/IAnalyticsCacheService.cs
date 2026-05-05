@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -90,6 +91,9 @@ public static class AnalyticsCacheKeys
 
     private static string FormatNullable(long? value) =>
         value.HasValue ? value.Value.ToString() : string.Empty;
+
+    private static string FormatNullable(decimal? value) =>
+        value.HasValue ? value.Value.ToString(CultureInfo.InvariantCulture) : string.Empty;
 
     private static string HashPart(string? value)
     {
@@ -253,10 +257,87 @@ public static class AnalyticsCacheKeys
         string? category,
         bool includeInactive,
         int maxRows) =>
-        $"{Prefix}vendor-sales-nivelacija:v2:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}";
+        $"{Prefix}vendor-sales-nivelacija:v3:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}";
 
     public static string VendorSalesNivelacijaOptions(int? vendorId, string? category, int take) =>
         $"{Prefix}vendor-sales-nivelacija-options:v1:vendor:{FormatNullable(vendorId)}:category:{HashPart(category)}:take:{take}";
+
+    private static string SupplierDecisionHubFilters(
+        DateTime? from,
+        DateTime? to,
+        string? category,
+        string? gender,
+        int? seasonId,
+        decimal? minRevenue,
+        bool onlyHighConfidence,
+        bool excludeOosBeforeMarkdown,
+        int? supplierId) =>
+        $"v1:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:gender:{HashPart(gender)}:season:{FormatNullable(seasonId)}:minRevenue:{FormatNullable(minRevenue)}:high-confidence:{onlyHighConfidence}:exclude-oos:{excludeOosBeforeMarkdown}:supplier:{FormatNullable(supplierId)}";
+
+    public static string SupplierDecisionHubSummary(
+        DateTime? from,
+        DateTime? to,
+        string? category,
+        string? gender,
+        int? seasonId,
+        decimal? minRevenue,
+        bool onlyHighConfidence,
+        bool excludeOosBeforeMarkdown,
+        int? supplierId) =>
+        $"{Prefix}supplier-decision-hub:summary:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}";
+
+    public static string SupplierDecisionHubQuadrant(
+        DateTime? from,
+        DateTime? to,
+        string? category,
+        string? gender,
+        int? seasonId,
+        decimal? minRevenue,
+        bool onlyHighConfidence,
+        bool excludeOosBeforeMarkdown,
+        int? supplierId) =>
+        $"{Prefix}supplier-decision-hub:quadrant:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}";
+
+    public static string SupplierDecisionHubRanking(
+        DateTime? from,
+        DateTime? to,
+        string? category,
+        string? gender,
+        int? seasonId,
+        decimal? minRevenue,
+        bool onlyHighConfidence,
+        bool excludeOosBeforeMarkdown,
+        int? supplierId,
+        int page,
+        int pageSize,
+        string? sortBy,
+        string? sortDir) =>
+        $"{Prefix}supplier-decision-hub:ranking:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}:page:{page}:size:{pageSize}:sort-by:{HashPart(sortBy)}:sort-dir:{HashPart(sortDir)}";
+
+    public static string SupplierDecisionHubDetails(
+        DateTime? from,
+        DateTime? to,
+        string? category,
+        string? gender,
+        int? seasonId,
+        decimal? minRevenue,
+        bool onlyHighConfidence,
+        bool excludeOosBeforeMarkdown,
+        int supplierId) =>
+        $"{Prefix}supplier-decision-hub:details:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}";
+
+    public static string PreNivelacijaPriority(
+        int? supplierId,
+        int? seasonId,
+        int? footwearTypeId,
+        int? stockMin,
+        int? stockMax,
+        int? noSaleDaysMin,
+        decimal? minScore,
+        decimal? marginFloor,
+        int page,
+        int pageSize) =>
+        $"{Prefix}pre-nivelacija-priority:v1:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:page:{page}:size:{pageSize}";
 }
 
 /// <summary>

@@ -9,19 +9,19 @@ import {
   getVendorSalesNivelacijaOptions,
   type VendorSalesNivelacijaOption,
   type VendorSalesNivelacijaArticleStat,
+  type VendorSalesNivelacijaRecommendation,
   type VendorSalesNivelacijaResponse,
   type VendorSalesNivelacijaVendorStat,
 } from "../services/vendorSalesNivelacijaApi";
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import { BOOST_SCORE_THRESHOLD, KEEP_SCORE_THRESHOLD } from "../utils/analyticsConstants";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import "./SupplierFootwearAnalyticsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField = "vendorName" | "postRevenue" | "sharePct" | "topFootwearType" | "trendPct" | "status";
-type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
+type DecisionStatus = VendorSalesNivelacijaRecommendation["status"];
 
 type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string };
 type SuggestedRange = { fromDate: string; toDate: string; label: string };
@@ -29,18 +29,21 @@ type SuggestedRange = { fromDate: string; toDate: string; label: string };
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   sharePct: number;
   trendPct: number;
-  reliabilityPct: number;
   topFootwearType: string;
   topFootwearTypeSharePct: number;
   avgElasticity: number | null;
-  decisionScore: number;
+  confidencePct: number;
   status: DecisionStatus;
   statusReason: string;
 };
 
-const STATUS_PRIORITY: Record<DecisionStatus, number> = { Pojacaj: 3, Zadrzi: 2, Smanji: 1 };
-const BOOST_MIN_RELIABILITY_PCT = 40;
-const UNKNOWN_SUPPLIERS = new Set(["", "N/A", "NEPOZNATO", "UNKNOWN", "UNKNOWN SUPPLIER"]);
+const STATUS_PRIORITY: Record<DecisionStatus, number> = {
+  increase_focus: 5,
+  maintain: 4,
+  review: 3,
+  insufficient_data: 2,
+  do_not_trust: 1,
+};
 
 const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "vendorName", header: "Dobavljač", dataType: "text" },
@@ -50,10 +53,9 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "topFootwearTypeSharePct", header: "Udeo tipa %", dataType: "percent" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "decisionScore", header: "Decision score", dataType: "number" },
+  { key: "confidencePct", header: "Poverenje %", dataType: "percent" },
 ];
 
-function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
 function toUtcRange(fromDate: string, toDate: string) { return { from: `${fromDate}T00:00:00Z`, to: `${toDate}T23:59:59Z` }; }
 function toDateOnly(value: string): string {
   const parsed = new Date(value);
@@ -74,14 +76,17 @@ function fmtElasticity(value: number | null | undefined): string {
 }
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string { if (field !== activeField) return ""; return dir === "asc" ? " ^" : " v"; }
 function statusClass(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "sf-decision-status status-boost";
-  if (status === "Smanji") return "sf-decision-status status-reduce";
+  if (status === "increase_focus") return "sf-decision-status status-boost";
+  if (status === "review" || status === "insufficient_data") return "sf-decision-status status-review";
+  if (status === "do_not_trust") return "sf-decision-status status-reduce";
   return "sf-decision-status status-keep";
 }
 function statusDisplayLabel(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "Pojačaj";
-  if (status === "Smanji") return "Smanji";
-  return "Zadrži";
+  if (status === "increase_focus") return "Pojačaj fokus";
+  if (status === "maintain") return "Zadrži";
+  if (status === "review") return "Proveri";
+  if (status === "do_not_trust") return "Ne veruj";
+  return "Nedovoljno podataka";
 }
 function trendClass(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "trend-neutral";
@@ -90,32 +95,10 @@ function trendClass(value: number | null | undefined): string {
   return "trend-neutral";
 }
 
-type StatusReasonSignals = { sharePct: number; avgShare: number; trendPct: number; topTypeSharePct: number; reliabilityPct: number };
-type StatusTooltipData = { status: DecisionStatus; statusReason: string; sharePct: number; trendPct: number; topFootwearType: string; topFootwearTypeSharePct: number; reliabilityPct: number };
-
-function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals): string {
-  const lowReliability = signals.reliabilityPct < BOOST_MIN_RELIABILITY_PCT;
-  const positiveTrend = signals.trendPct > 0;
-  const negativeTrend = signals.trendPct < 0;
-  const concentratedType = signals.topTypeSharePct >= 45;
-
-  if (status === "Pojacaj") {
-    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
-    if (positiveTrend && concentratedType) return "Jak trend i dominantan tip obuće koji nosi rezultat.";
-    if (signals.sharePct >= signals.avgShare) return "Stabilan udeo i zdrav signal po tipu obuće.";
-    return "Dobar potencijal rasta uz kontrolisani portfolio tipova.";
-  }
-  if (status === "Zadrzi") {
-    if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
-    if (negativeTrend) return "Trend slabi; zadrzati uz pojacan nadzor tipova koji opadaju.";
-    return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
-  }
-  if (negativeTrend) return "Pad trenda i slab signal po tipu; smanjiti fokus.";
-  return "Nizak doprinos i slabija relevantnost tipova; kandidat za smanjenje fokusa.";
-}
+type StatusTooltipData = { status: DecisionStatus; statusReason: string; sharePct: number; trendPct: number; topFootwearType: string; topFootwearTypeSharePct: number; reliabilityPct: number; confidencePct: number };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${data.status}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${fmtPct(data.topFootwearTypeSharePct, 1)}) | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${fmtPct(data.topFootwearTypeSharePct, 1)}) | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${fmtPct(data.confidencePct, 0)}`;
 }
 function normalizeName(value: string | null | undefined): string { return (value ?? "").trim().toUpperCase(); }
 function vendorKey(vendor: { vendorId: number | null; vendorName: string }): string { if (vendor.vendorId != null) return `id:${vendor.vendorId}`; return `name:${normalizeName(vendor.vendorName)}`; }
@@ -263,49 +246,30 @@ export default function SupplierFootwearAnalyticsPage() {
     if (rows.length === 0) return [];
 
     const totalRevenue = rows.reduce((sum, item) => sum + item.postRevenue, 0);
-    const topShare = rows.reduce((max, item) => Math.max(max, totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0), 0);
-    const deltaValues = rows.map((item) => item.changeRevenue);
-    const minDelta = Math.min(...deltaValues);
-    const maxDelta = Math.max(...deltaValues);
-    const deltaSpan = maxDelta - minDelta;
-    const avgShare = rows.length > 0 ? 100 / rows.length : 0;
+    return rows.flatMap((item) => {
+      const recommendation = item.recommendation;
+      if (!recommendation) return [];
 
-    return rows.map((item) => {
       const key = vendorKey(item);
       const typeInsight = typeInsights.byVendor.get(key);
       const sharePct = totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0;
       const trendPct = item.changePercent;
-      const coveragePct = item.articleCount > 0 ? (item.activeArticlesCount / item.articleCount) * 100 : 0;
-      const knownSupplier = !UNKNOWN_SUPPLIERS.has(normalizeName(item.vendorName));
-      const reliabilityPct = clamp(coveragePct * 0.7 + (knownSupplier ? 30 : 0), 0, 100);
-
-      const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
-      const deltaNorm = deltaSpan > 0 ? clamp(((item.changeRevenue - minDelta) / deltaSpan) * 100, 0, 100) : 50;
-      const trendNorm = clamp(((trendPct + 50) / 100) * 100, 0, 100);
-      const decisionScore = Math.round(shareNorm * 0.35 + deltaNorm * 0.30 + trendNorm * 0.20 + reliabilityPct * 0.15);
-
-      let status: DecisionStatus = "Smanji";
-      if (decisionScore >= BOOST_SCORE_THRESHOLD) status = "Pojacaj";
-      else if (decisionScore >= KEEP_SCORE_THRESHOLD) status = "Zadrzi";
-      if (reliabilityPct < BOOST_MIN_RELIABILITY_PCT && status === "Pojacaj") status = "Zadrzi";
 
       const topFootwearType = typeInsight?.topType ?? "N/A";
       const topFootwearTypeSharePct = typeInsight?.topTypeSharePct ?? 0;
       const avgElasticity = typeInsight?.avgElasticity ?? null;
-      const statusReason = buildStatusReason(status, { sharePct, avgShare, trendPct, topTypeSharePct: topFootwearTypeSharePct, reliabilityPct });
 
-      return {
+      return [{
         ...item,
         sharePct,
         trendPct,
-        reliabilityPct,
         topFootwearType,
         topFootwearTypeSharePct,
         avgElasticity,
-        decisionScore,
-        status,
-        statusReason,
-      };
+        confidencePct: recommendation.confidencePct,
+        status: recommendation.status,
+        statusReason: recommendation.summary,
+      }];
     });
   }, [data?.vendorStats, typeInsights.byVendor]);
 
@@ -319,7 +283,8 @@ export default function SupplierFootwearAnalyticsPage() {
       else if (sortField === "topFootwearType") compare = a.topFootwearType.localeCompare(b.topFootwearType, "sr");
       else if (sortField === "trendPct") compare = a.trendPct - b.trendPct;
       else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
-      if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      if (compare === 0) compare = a.confidencePct - b.confidencePct;
+      if (compare === 0) compare = a.reliabilityPct - b.reliabilityPct;
       return sortDir === "asc" ? compare : -compare;
     });
   }, [decisionRows, sortDir, sortField]);
@@ -342,9 +307,11 @@ export default function SupplierFootwearAnalyticsPage() {
     return `${topType.name} (${fmtPct(topType.sharePct, 1)})`;
   }, [typeInsights.globalTypeShare]);
   const vendorCounts = useMemo(() => ({
-    boost: sortedRows.filter((row) => row.status === "Pojacaj").length,
-    keep: sortedRows.filter((row) => row.status === "Zadrzi").length,
-    reduce: sortedRows.filter((row) => row.status === "Smanji").length,
+    increaseFocus: sortedRows.filter((row) => row.status === "increase_focus").length,
+    maintain: sortedRows.filter((row) => row.status === "maintain").length,
+    review: sortedRows.filter((row) => row.status === "review").length,
+    doNotTrust: sortedRows.filter((row) => row.status === "do_not_trust").length,
+    insufficientData: sortedRows.filter((row) => row.status === "insufficient_data").length,
   }), [sortedRows]);
   const selectedRow = useMemo(() => (!expandedVendorKey ? null : sortedRows.find((row) => vendorKey(row) === expandedVendorKey) ?? null), [expandedVendorKey, sortedRows]);
 
@@ -466,7 +433,7 @@ export default function SupplierFootwearAnalyticsPage() {
 
             <article className="sf-decision-card analytics-surface-panel">
               <div className="sf-decision-table-head">
-                <div><h2>Prioritetna lista dobavljača</h2><p>Pojačaj: {vendorCounts.boost} | Zadrži: {vendorCounts.keep} | Smanji: {vendorCounts.reduce}</p></div>
+                <div><h2>Prioritetna lista dobavljača</h2><p>Pojačaj: {vendorCounts.increaseFocus} | Zadrži: {vendorCounts.maintain} | Proveri: {vendorCounts.review} | Ne veruj: {vendorCounts.doNotTrust} | Nedovoljno: {vendorCounts.insufficientData}</p></div>
                 <AnalyticsTableToolbar tableKey="dobavljaci-tipovi-obuce" tableTitle="Dobavljači i tipovi obuće" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
               </div>
               <div className="sf-decision-table-wrap">
@@ -519,7 +486,7 @@ export default function SupplierFootwearAnalyticsPage() {
                 <article className="analytics-kpi-card analytics-kpi-card--tone-warning"><span>Elastičnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Aktivni artikli</span><strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Decision score</span><strong>{selectedRow.decisionScore}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{fmtPct(selectedRow.confidencePct, 1)}</strong></article>
               </div>
               <p className="sf-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>
             </section>

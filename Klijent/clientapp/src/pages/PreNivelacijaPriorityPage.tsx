@@ -14,9 +14,8 @@ import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getPreNivelacijaPrioriteti } from "../services/preNivelacijaApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import type { PreNivelacijaPriorityResponse, PreNivelacijaSkuCandidate } from "../types/preNivelacija";
+import type { PreNivelacijaPriorityResponse, PreNivelacijaRecommendation, PreNivelacijaSkuCandidate } from "../types/preNivelacija";
 import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
-import { BOOST_SCORE_THRESHOLD, KEEP_SCORE_THRESHOLD } from "../utils/analyticsConstants";
 import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import "./PreNivelacijaPriorityPage.css";
 
@@ -29,7 +28,7 @@ type SortField =
   | "daysSinceLastSale"
   | "revenueDelta"
   | "status";
-type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
+type DecisionStatus = PreNivelacijaRecommendation["status"];
 
 type ActiveFilters = {
   supplierId: number | null;
@@ -42,27 +41,29 @@ type ActiveFilters = {
 type DecisionCandidate = PreNivelacijaSkuCandidate & {
   revenueDelta: number;
   marginDelta: number;
-  reliabilityPct: number;
-  decisionScore: number;
+  confidencePct: number;
   status: DecisionStatus;
   statusReason: string;
 };
 
-type FocusFilter = "all" | "boost" | "keep" | "reduce" | "highPriority";
+type FocusFilter = "all" | "increaseFocus" | "maintain" | "review" | "doNotTrust" | "insufficientData" | "highPriority";
 const FOCUS_LABELS: Record<FocusFilter, string> = {
   all: "Sve",
-  boost: "Pojačaj",
-  keep: "Zadrži",
-  reduce: "Smanji",
+  increaseFocus: "Pojačaj",
+  maintain: "Zadrži",
+  review: "Pažljivo prati",
+  doNotTrust: "Ne veruj",
+  insufficientData: "Nedovoljno podataka",
   highPriority: "Visok prioritet",
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  Pojacaj: 3,
-  Zadrzi: 2,
-  Smanji: 1,
+  increase_focus: 5,
+  maintain: 4,
+  review: 3,
+  insufficient_data: 2,
+  do_not_trust: 1,
 };
-const BOOST_MIN_RELIABILITY_PCT = 40;
 
 const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
@@ -110,17 +111,19 @@ function sortMarker(field: SortField, activeField: SortField, dir: SortDir): str
 }
 
 function statusClass(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "pnp-decision-status status-boost";
-  if (status === "Smanji") return "pnp-decision-status status-reduce";
+  if (status === "increase_focus") return "pnp-decision-status status-boost";
+  if (status === "review" || status === "insufficient_data") return "pnp-decision-status status-review";
+  if (status === "do_not_trust") return "pnp-decision-status status-reduce";
   return "pnp-decision-status status-keep";
 }
 
-type StatusReasonSignals = {
-  priorityBand: string;
-  revenueDelta: number;
-  reliabilityPct: number;
-  decisionScore: number;
-};
+function statusDisplayLabel(status: DecisionStatus): string {
+  if (status === "increase_focus") return "Pojačaj";
+  if (status === "maintain") return "Zadrži";
+  if (status === "review") return "Pažljivo prati";
+  if (status === "do_not_trust") return "Ne veruj";
+  return "Nedovoljno podataka";
+}
 
 type StatusTooltipData = {
   status: DecisionStatus;
@@ -128,40 +131,11 @@ type StatusTooltipData = {
   decisionScore: number;
   revenueDelta: number;
   reliabilityPct: number;
-  confidence: string;
+  confidencePct: number;
 };
 
-function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals): string {
-  const lowReliability = signals.reliabilityPct < BOOST_MIN_RELIABILITY_PCT;
-  const highPriority = signals.priorityBand.toLowerCase() === "high";
-  const negativeDelta = signals.revenueDelta < 0;
-
-  if (status === "Pojacaj") {
-    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
-    if (highPriority && !negativeDelta) return "Visok prioritet i bolji scenario prihoda uz isticanje.";
-    return "Stabilan signal za veci fokus pre nivelacije.";
-  }
-
-  if (status === "Zadrzi") {
-    if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
-    if (negativeDelta) return "Scenario prihoda je slabiji od markdown alternative; pratiti bez eskalacije.";
-    return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
-  }
-
-  if (negativeDelta) return "Nizak prioritet i slab scenario prihoda; spustiti fokus.";
-  return "Nedovoljno jak signal za investiciju u dodatnu vidljivost.";
-}
-
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${data.status}: ${data.statusReason} | Skor ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${data.confidence}`;
-}
-
-function reliabilityFromConfidence(confidence: string): number {
-  const normalized = (confidence ?? "").toLowerCase();
-  if (normalized === "high") return 90;
-  if (normalized === "medium") return 65;
-  if (normalized === "low") return 35;
-  return 50;
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Ocena ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${fmtPct(data.confidencePct, 0)}`;
 }
 
 export default function PreNivelacijaPriorityPage() {
@@ -260,49 +234,18 @@ export default function PreNivelacijaPriorityPage() {
     const rows = data?.candidates ?? [];
     if (rows.length === 0) return [];
 
-    const revenueValues = rows.map((item) => item.revenueDeltaHighlightVsMarkdown);
-    const minRevenueDelta = Math.min(...revenueValues);
-    const maxRevenueDelta = Math.max(...revenueValues);
-    const deltaSpan = maxRevenueDelta - minRevenueDelta;
-
     return rows.map((item) => {
+      const recommendation = item.recommendation;
       const revenueDelta = item.revenueDeltaHighlightVsMarkdown;
       const marginDelta = item.marginDeltaHighlightVsMarkdown;
-      const reliabilityPct = reliabilityFromConfidence(item.confidence);
-      const scoreBase = clamp(item.preNivelacijaScore, 0, 100);
-      const deltaNorm = deltaSpan > 0 ? clamp(((revenueDelta - minRevenueDelta) / deltaSpan) * 100, 0, 100) : 50;
-      const staleRiskNorm = clamp((item.daysSinceLastSale / 90) * 100, 0, 100);
-
-      const decisionScore = Math.round(
-        scoreBase * 0.50 +
-        deltaNorm * 0.20 +
-        staleRiskNorm * 0.15 +
-        reliabilityPct * 0.15
-      );
-
-      let status: DecisionStatus = "Smanji";
-      if (decisionScore >= BOOST_SCORE_THRESHOLD) status = "Pojacaj";
-      else if (decisionScore >= KEEP_SCORE_THRESHOLD) status = "Zadrzi";
-
-      if (reliabilityPct < BOOST_MIN_RELIABILITY_PCT && status === "Pojacaj") status = "Zadrzi";
-      if ((item.priorityBand ?? "").toLowerCase() === "low" && status === "Pojacaj") status = "Zadrzi";
-      if (revenueDelta < 0 && status === "Pojacaj") status = "Zadrzi";
-
-      const statusReason = buildStatusReason(status, {
-        priorityBand: item.priorityBand,
-        revenueDelta,
-        reliabilityPct,
-        decisionScore,
-      });
 
       return {
         ...item,
         revenueDelta,
         marginDelta,
-        reliabilityPct,
-        decisionScore,
-        status,
-        statusReason,
+        confidencePct: recommendation.confidencePct,
+        status: recommendation.status,
+        statusReason: recommendation.summary,
       };
     });
   }, [data?.candidates]);
@@ -321,23 +264,28 @@ export default function PreNivelacijaPriorityPage() {
       else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
 
       if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      if (compare === 0) compare = a.confidencePct - b.confidencePct;
       return sortDir === "asc" ? compare : -compare;
     });
   }, [decisionRows, sortDir, sortField]);
 
   const candidateCounts = useMemo(() => {
-    const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
-    const keep = sortedRows.filter((row) => row.status === "Zadrzi").length;
-    const reduce = sortedRows.filter((row) => row.status === "Smanji").length;
+    const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
+    const maintain = sortedRows.filter((row) => row.status === "maintain").length;
+    const review = sortedRows.filter((row) => row.status === "review").length;
+    const doNotTrust = sortedRows.filter((row) => row.status === "do_not_trust").length;
+    const insufficientData = sortedRows.filter((row) => row.status === "insufficient_data").length;
     const highPriority = sortedRows.filter((row) => (row.priorityBand ?? "").toLowerCase() === "high").length;
-    return { boost, keep, reduce, highPriority };
+    return { increaseFocus, maintain, review, doNotTrust, insufficientData, highPriority };
   }, [sortedRows]);
 
   const filteredRows = useMemo(() => {
     if (focusFilter === "all") return sortedRows;
-    if (focusFilter === "boost") return sortedRows.filter((row) => row.status === "Pojacaj");
-    if (focusFilter === "keep") return sortedRows.filter((row) => row.status === "Zadrzi");
-    if (focusFilter === "reduce") return sortedRows.filter((row) => row.status === "Smanji");
+    if (focusFilter === "increaseFocus") return sortedRows.filter((row) => row.status === "increase_focus");
+    if (focusFilter === "maintain") return sortedRows.filter((row) => row.status === "maintain");
+    if (focusFilter === "review") return sortedRows.filter((row) => row.status === "review");
+    if (focusFilter === "doNotTrust") return sortedRows.filter((row) => row.status === "do_not_trust");
+    if (focusFilter === "insufficientData") return sortedRows.filter((row) => row.status === "insufficient_data");
     if (focusFilter === "highPriority") return sortedRows.filter((row) => (row.priorityBand ?? "").toLowerCase() === "high");
     return sortedRows;
   }, [focusFilter, sortedRows]);
@@ -583,7 +531,7 @@ export default function PreNivelacijaPriorityPage() {
                 <div>
                   <h2>Prioritetna lista SKU</h2>
                   <p>
-                    Pojačaj: {candidateCounts.boost} | Zadrži: {candidateCounts.keep} | Smanji: {candidateCounts.reduce} | Visok prioritet: {candidateCounts.highPriority}
+                    Pojačaj: {candidateCounts.increaseFocus} | Zadrži: {candidateCounts.maintain} | Pažljivo prati: {candidateCounts.review} | Ne veruj: {candidateCounts.doNotTrust} | Nedovoljno podataka: {candidateCounts.insufficientData} | Visok prioritet: {candidateCounts.highPriority}
                   </p>
                 </div>
                 <div className="pnp-decision-table-controls">
@@ -603,14 +551,16 @@ export default function PreNivelacijaPriorityPage() {
               </div>
 
               <div className="pnp-focus-tabs" role="tablist">
-                {(["all", "boost", "keep", "reduce", "highPriority"] as FocusFilter[]).map((f) => {
+                {(["all", "increaseFocus", "maintain", "review", "doNotTrust", "insufficientData", "highPriority"] as FocusFilter[]).map((f) => {
                   const count =
                     f === "all" ? sortedRows.length
-                    : f === "boost" ? candidateCounts.boost
-                    : f === "keep" ? candidateCounts.keep
-                    : f === "reduce" ? candidateCounts.reduce
+                    : f === "increaseFocus" ? candidateCounts.increaseFocus
+                    : f === "maintain" ? candidateCounts.maintain
+                    : f === "review" ? candidateCounts.review
+                    : f === "doNotTrust" ? candidateCounts.doNotTrust
+                    : f === "insufficientData" ? candidateCounts.insufficientData
                     : candidateCounts.highPriority;
-                  const tabClass = f === "boost" ? "tab-boost" : f === "keep" ? "tab-keep" : f === "reduce" ? "tab-reduce" : f === "highPriority" ? "tab-high" : "";
+                  const tabClass = f === "increaseFocus" ? "tab-boost" : f === "maintain" ? "tab-keep" : f === "review" ? "tab-keep" : f === "doNotTrust" ? "tab-reduce" : f === "insufficientData" ? "tab-reduce" : f === "highPriority" ? "tab-high" : "";
                   return (
                     <button
                       key={f}
@@ -654,11 +604,11 @@ export default function PreNivelacijaPriorityPage() {
                       </th>
                       <th className="align-center">
                         Pouzdanost
-                        <InfoTip text="Pouzdanost signala: Visoko / Srednje / Nisko. Okvirne vrednosti: Visoko ≈ 90%, Srednje ≈ 65%, Nisko ≈ 35%. Nije statistički precizan procenat — bazira se na confidence tagu iz modela. Nisko poverenje automatski spušta preporuku 'Pojačaj' → 'Zadrži'." />
+                        <InfoTip text="Backend reliability procenat iz recommendation payload-a. Više vrednosti znače stabilniji signal za odluku pre nivelacije; niže vrednosti zahtevaju ručni oprez i dodatnu proveru." />
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button>
-                        <InfoTip text="Sistemska preporuka: Pojačaj / Zadrži / Smanji — bazirana na oceni preporuke (0–100), pouzdanosti signala i prioritetnoj bandi. Formula: skor nivelacije×50% + delta prihoda×20% + stagnacija×15% + pouzdanost×15%. Pojačaj ≥68, Zadrži 43–67, Smanji <43." />
+                        <InfoTip text="Backend-authoritative recommendation za pre-nivelacija workflow. Status i razlog dolaze iz server-side scoring sloja; frontend više ne računa lokalnu preporuku." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -671,8 +621,8 @@ export default function PreNivelacijaPriorityPage() {
                     ) : (
                       filteredRows.map((row) => {
                         const expanded = expandedArtikalId === row.artikalId;
-                        const reliabilityLabel = row.reliabilityPct >= 70 ? "Visoko" : row.reliabilityPct >= BOOST_MIN_RELIABILITY_PCT ? "Srednje" : "Nisko";
-                        const reliabilityClass = row.reliabilityPct >= 70 ? "signal-strong" : row.reliabilityPct >= BOOST_MIN_RELIABILITY_PCT ? "signal-watch" : "signal-weak";
+                        const reliabilityLabel = row.reliabilityPct >= 70 ? "Visoko" : row.reliabilityPct >= 40 ? "Srednje" : "Nisko";
+                        const reliabilityClass = row.reliabilityPct >= 70 ? "signal-strong" : row.reliabilityPct >= 40 ? "signal-watch" : "signal-weak";
                         return (
                           <tr key={row.artikalId} className={expanded ? "expanded-row" : ""}>
                             <td>{row.sku}</td>
@@ -699,7 +649,7 @@ export default function PreNivelacijaPriorityPage() {
                                 title={buildStatusTooltip(row)}
                                 aria-label={buildStatusTooltip(row)}
                               >
-                                {row.status}
+                                {statusDisplayLabel(row.status)}
                               </span>
                             </td>
                             <td className="align-center">
@@ -764,6 +714,10 @@ export default function PreNivelacijaPriorityPage() {
                 <article>
                   <span>Ocena preporuke</span>
                   <strong>{selectedRow.decisionScore}</strong>
+                </article>
+                <article>
+                  <span>Poverenje preporuke</span>
+                  <strong>{fmtPct(selectedRow.confidencePct, 1)}</strong>
                 </article>
               </div>
 

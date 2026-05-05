@@ -4,6 +4,22 @@ namespace Api.Services;
 
 public interface IPreNivelacijaScoringService
 {
+    public sealed record RecommendationInput(
+        decimal PreNivelacijaScore,
+        decimal RevenueDelta,
+        decimal MinRevenueDelta,
+        decimal MaxRevenueDelta,
+        int DaysSinceLastSale,
+        string PriorityBand,
+        string Confidence,
+        int Units180,
+        int StockUnits);
+
+    public sealed record RecommendationResult(
+        int DecisionScore,
+        double ReliabilityPct,
+        PreNivelacijaRecommendationDto Recommendation);
+
     PreNivelacijaScoreBreakdownDto ComputeScoreBreakdown(
         int stockUnits,
         decimal velocity180,
@@ -26,6 +42,8 @@ public interface IPreNivelacijaScoringService
             decimal sellingPrice,
             decimal purchasePrice,
             decimal preNivelacijaScore);
+
+    RecommendationResult EvaluateRecommendation(RecommendationInput input);
 }
 
 public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
@@ -134,6 +152,47 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         );
     }
 
+    public IPreNivelacijaScoringService.RecommendationResult EvaluateRecommendation(
+        IPreNivelacijaScoringService.RecommendationInput input)
+    {
+        var reliabilityPct = ResolveReliabilityPct(input.Confidence);
+        var scoreBase = Clamp(input.PreNivelacijaScore);
+        var deltaNorm = ResolveRevenueDeltaNorm(input.RevenueDelta, input.MinRevenueDelta, input.MaxRevenueDelta);
+        var staleRiskNorm = Clamp((input.DaysSinceLastSale / 90m) * 100m);
+        var decisionScore = (int)Math.Round(
+            (double)Clamp(scoreBase * 0.50m + deltaNorm * 0.20m + staleRiskNorm * 0.15m + (decimal)reliabilityPct * 0.15m),
+            MidpointRounding.AwayFromZero);
+
+        var lowReliability = reliabilityPct < 40d;
+        var lowPriorityBand = string.Equals(input.PriorityBand, "low", StringComparison.OrdinalIgnoreCase);
+        var negativeDelta = input.RevenueDelta < 0m;
+        var thinSample = input.Units180 < 6 && input.StockUnits < 4;
+
+        var reasons = new List<string>();
+        if (thinSample) reasons.Add("thin_sample");
+        if (lowReliability) reasons.Add("low_confidence_signal");
+        if (lowPriorityBand) reasons.Add("low_priority_band");
+        if (negativeDelta) reasons.Add("highlight_underperforms_markdown");
+        if (input.DaysSinceLastSale >= 60) reasons.Add("stale_inventory_pressure");
+        if (input.PreNivelacijaScore >= 75m) reasons.Add("high_pre_nivelacija_score");
+
+        var status = ResolveStatus(decisionScore, lowReliability, lowPriorityBand, negativeDelta, thinSample);
+        var confidencePct = ResolveConfidencePct(status, decisionScore, reliabilityPct, thinSample);
+
+        var recommendation = new PreNivelacijaRecommendationDto
+        {
+            Status = status,
+            Label = ResolveLabel(status),
+            Summary = BuildSummary(status, lowReliability, lowPriorityBand, negativeDelta, reliabilityPct),
+            ConfidencePct = confidencePct,
+            ReliabilityPct = reliabilityPct,
+            DataQualityStatus = ResolveDataQualityStatus(reliabilityPct, thinSample),
+            ReasonCodes = reasons
+        };
+
+        return new IPreNivelacijaScoringService.RecommendationResult(decisionScore, reliabilityPct, recommendation);
+    }
+
     // Helper methods
 
     private static decimal PercentileNormalize(decimal value, decimal max)
@@ -159,6 +218,127 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         if (units180 >= 18 && stockUnits >= 6) return "High";
         if (units180 >= 6 || stockUnits >= 4) return "Medium";
         return "Low";
+    }
+
+    private static decimal ResolveRevenueDeltaNorm(decimal revenueDelta, decimal minRevenueDelta, decimal maxRevenueDelta)
+    {
+        var span = maxRevenueDelta - minRevenueDelta;
+        if (span <= 0m)
+        {
+            return 50m;
+        }
+
+        return Clamp(((revenueDelta - minRevenueDelta) / span) * 100m);
+    }
+
+    private static double ResolveReliabilityPct(string confidence)
+    {
+        var normalized = (confidence ?? string.Empty).Trim();
+        if (string.Equals(normalized, "High", StringComparison.OrdinalIgnoreCase)) return 90d;
+        if (string.Equals(normalized, "Medium", StringComparison.OrdinalIgnoreCase)) return 65d;
+        if (string.Equals(normalized, "Low", StringComparison.OrdinalIgnoreCase)) return 35d;
+        return 50d;
+    }
+
+    private static string ResolveStatus(
+        int decisionScore,
+        bool lowReliability,
+        bool lowPriorityBand,
+        bool negativeDelta,
+        bool thinSample)
+    {
+        if (thinSample)
+        {
+            return "insufficient_data";
+        }
+
+        if (decisionScore >= 68 && !lowReliability && !lowPriorityBand && !negativeDelta)
+        {
+            return "increase_focus";
+        }
+
+        if (decisionScore >= 43 && !negativeDelta)
+        {
+            return "maintain";
+        }
+
+        return "review";
+    }
+
+    private static double ResolveConfidencePct(string status, int decisionScore, double reliabilityPct, bool thinSample)
+    {
+        var confidencePct = Clamp((decisionScore * 0.60) + (reliabilityPct * 0.40), 0d, 100d);
+
+        if (thinSample || status == "insufficient_data")
+        {
+            return Math.Round(Math.Min(confidencePct, 35d), 2);
+        }
+
+        if (status == "review")
+        {
+            confidencePct = Math.Min(confidencePct, 65d);
+        }
+
+        return Math.Round(confidencePct, 2);
+    }
+
+    private static string ResolveLabel(string status)
+    {
+        return status switch
+        {
+            "increase_focus" => "Increase focus",
+            "maintain" => "Maintain",
+            "review" => "Review",
+            "do_not_trust" => "Do not trust",
+            _ => "Insufficient data"
+        };
+    }
+
+    private static string BuildSummary(
+        string status,
+        bool lowReliability,
+        bool lowPriorityBand,
+        bool negativeDelta,
+        double reliabilityPct)
+    {
+        return status switch
+        {
+            "increase_focus" when !negativeDelta =>
+                "Visok prioritet i bolji scenario prihoda uz isticanje pre nivelacije.",
+            "increase_focus" =>
+                "Signal je dovoljno jak za pojačan fokus pre nivelacije.",
+            "maintain" when negativeDelta =>
+                "Scenario prihoda je slabiji od markdown alternative; zadržati bez eskalacije.",
+            "maintain" =>
+                $"Stabilan signal bez potrebe za većom eskalacijom. Pouzdanost {reliabilityPct:0.#}%.",
+            "review" when lowReliability =>
+                "Signal postoji, ali je pouzdanost niska; proveriti ručno pre odluke.",
+            "review" when lowPriorityBand =>
+                "SKU je u nižoj prioritetnoj bandi; pregledati pre ulaganja u dodatnu vidljivost.",
+            "review" when negativeDelta =>
+                "Scenario isticanja je slabiji od markdown alternative; pregledati pre intervencije.",
+            _ => "Premalo prodajnog ili stok signala za pouzdanu preporuku."
+        };
+    }
+
+    private static string ResolveDataQualityStatus(double reliabilityPct, bool thinSample)
+    {
+        if (thinSample || reliabilityPct < 40d)
+        {
+            return "critical";
+        }
+
+        if (reliabilityPct < 70d)
+        {
+            return "warning";
+        }
+
+        return "good";
+    }
+
+    private static double Clamp(double value, double min, double max)
+    {
+        return Math.Min(Math.Max(value, min), max);
     }
 
     private static decimal Clamp(decimal value, decimal min = 0m, decimal max = 100m)

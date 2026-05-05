@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Api.Models;
 
 public sealed class VendorSalesNivelacijaArticleStatDto
@@ -5,6 +7,8 @@ public sealed class VendorSalesNivelacijaArticleStatDto
     public DateTime EventDate { get; set; }
     public int? VendorId { get; set; }
     public string VendorName { get; set; } = "N/A";
+    [JsonIgnore]
+    public int ArticleId { get; set; }
     public string Sku { get; set; } = string.Empty;
     public string ArticleName { get; set; } = string.Empty;
     public string Category { get; set; } = "N/A";
@@ -35,6 +39,17 @@ public sealed class VendorSalesNivelacijaArticleStatDto
     public string? MetricReason { get; set; } // null if all metrics are valid, else reason for nulls
 }
 
+public sealed class VendorSalesNivelacijaRecommendationDto
+{
+    public string Status { get; set; } = "insufficient_data";
+    public string Label { get; set; } = "Insufficient data";
+    public string Summary { get; set; } = string.Empty;
+    public double ConfidencePct { get; set; }
+    public double ReliabilityPct { get; set; }
+    public string DataQualityStatus { get; set; } = "critical";
+    public IReadOnlyList<string> ReasonCodes { get; set; } = [];
+}
+
 public sealed class VendorSalesNivelacijaVendorStatDto
 {
     public int? VendorId { get; set; }
@@ -55,6 +70,8 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public int ActiveArticlesCount { get; set; }
     public int IncreasedPriceArticlesCount { get; set; }
     public int DecreasedPriceArticlesCount { get; set; }
+    public double ReliabilityPct { get; set; }
+    public VendorSalesNivelacijaRecommendationDto? Recommendation { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaTotalsDto

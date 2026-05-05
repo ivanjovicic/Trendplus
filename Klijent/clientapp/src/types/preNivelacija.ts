@@ -14,6 +14,16 @@ export interface PreNivelacijaScenario {
   effectivePrice: number;
 }
 
+export interface PreNivelacijaRecommendation {
+  status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
+  label: string;
+  summary: string;
+  confidencePct: number;
+  reliabilityPct: number;
+  dataQualityStatus: "good" | "warning" | "critical" | string;
+  reasonCodes: string[];
+}
+
 export interface PreNivelacijaSkuCandidate {
   artikalId: number;
   sku: string;
@@ -40,6 +50,9 @@ export interface PreNivelacijaSkuCandidate {
   marginDeltaHighlightVsMarkdown: number;
   revenueDeltaHighlightVsMarkdown: number;
   confidence: "High" | "Medium" | "Low" | string;
+  reliabilityPct: number;
+  decisionScore: number;
+  recommendation: PreNivelacijaRecommendation;
 }
 
 export interface PreNivelacijaSupplierAction {

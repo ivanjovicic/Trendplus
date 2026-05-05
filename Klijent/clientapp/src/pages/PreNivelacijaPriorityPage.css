@@ -330,6 +330,12 @@
   color: var(--theme-color-fcd34d, #fcd34d);
 }
 
+.pnp-decision-status.status-review {
+  background: rgba(96, 165, 250, 0.14);
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  color: #93c5fd;
+}
+
 .pnp-decision-status.status-reduce {
   background: var(--theme-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15))));
   border: 1px solid var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45))));

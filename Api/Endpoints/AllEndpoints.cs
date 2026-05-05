@@ -3517,6 +3517,7 @@ public static class AllEndpoints
                             EventDate = evDate,
                             VendorId = vId,
                             VendorName = vName,
+                            ArticleId = reader.GetInt32(4),
                             Sku = sku,
                             ArticleName = articleName,
                             Category = string.IsNullOrWhiteSpace(cat) ? "N/A" : cat,
@@ -3649,44 +3650,155 @@ public static class AllEndpoints
                     AvgCoveragePost30 = avgCoveragePost30
                 };
 
+                var productCostsByArticleId = new Dictionary<int, (decimal? ProductCostRsd, decimal? ProductCostLegacy)>();
+                var analyzedArticleIds = analyzed
+                    .Select(x => x.ArticleId)
+                    .Where(id => id > 0)
+                    .Distinct()
+                    .ToArray();
+
+                if (analyzedArticleIds.Length > 0)
+                {
+                    const string productCostsSql = """
+                        SELECT "Id", "NabavnaCenaDin", "NabavnaCena"
+                        FROM "Artikli"
+                        WHERE "Id" = ANY(@articleIds);
+                        """;
+
+                    await using var cmd = new NpgsqlCommand(productCostsSql, connection);
+                    cmd.CommandTimeout = VendorSalesNivelacijaCommandTimeoutSeconds;
+                    cmd.Parameters.Add(new NpgsqlParameter("articleIds", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer)
+                    {
+                        Value = analyzedArticleIds
+                    });
+
+                    await using var reader = await cmd.ExecuteReaderAsync(ct);
+                    while (await reader.ReadAsync(ct))
+                    {
+                        var articleId = reader.GetInt32(0);
+                        var productCostRsd = reader.IsDBNull(1) ? (decimal?)null : reader.GetDecimal(1);
+                        var productCostLegacy = reader.IsDBNull(2) ? (decimal?)null : reader.GetDecimal(2);
+                        productCostsByArticleId[articleId] = (productCostRsd, productCostLegacy);
+                    }
+                }
+
                 // Vendor stats
-                var vendorStats = analyzed
+                var vendorRecommendationRows = analyzed
                     .GroupBy(x => new { x.VendorId, x.VendorName })
                     .Select(g =>
                     {
                         var preRev = g.Sum(x => x.PreRevenue);
                         var postRev = g.Sum(x => x.PostRevenue);
+                        var preQty = g.Sum(x => x.PreQty);
+                        var postQty = g.Sum(x => x.PostQty);
                         var increased = g.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value > 0m);
                         var decreased = g.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value < 0m);
-                        return new VendorSalesNivelacijaVendorStatDto
+
+                        var margin = new MarginAccumulator();
+                        foreach (var row in g)
                         {
-                            VendorId = g.Key.VendorId,
-                            VendorName = g.Key.VendorName,
-                            PreQty = g.Sum(x => x.PreQty),
-                            PreRevenue = preRev,
-                            PostQty = g.Sum(x => x.PostQty),
-                            PostRevenue = postRev,
-                            ChangeQty = g.Sum(x => x.ChangeQty),
-                            ChangeRevenue = g.Sum(x => x.ChangeRevenue),
-                            ChangePercent = Pct(preRev, postRev),
-                            AbsoluteChangeRevenue = Math.Abs(g.Sum(x => x.ChangeRevenue)),
-                            ChangeSharePercent = 0m,
-                            PostRevenueSharePercent = 0m,
-                            AvgCoveragePre30 = Math.Round(g.Average(x => x.CoveragePre30), 4),
-                            AvgCoveragePost30 = Math.Round(g.Average(x => x.CoveragePost30), 4),
-                            ArticleCount = g
-                                .Select(x => x.Sku)
-                                .Where(s => !string.IsNullOrWhiteSpace(s))
-                                .Distinct(StringComparer.Ordinal)
-                                .Count(),
-                            ActiveArticlesCount = g
-                                .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
-                                .Select(x => x.Sku)
-                                .Distinct(StringComparer.Ordinal)
-                                .Count(),
-                            IncreasedPriceArticlesCount = increased,
-                            DecreasedPriceArticlesCount = decreased
+                            if (!productCostsByArticleId.TryGetValue(row.ArticleId, out var costs))
+                            {
+                                continue;
+                            }
+
+                            margin.Add(row.PostRevenue, row.PostQty, null, costs.ProductCostRsd, costs.ProductCostLegacy);
+                        }
+
+                        var marginSnapshot = margin.Build(postRev);
+                        var normalizedVendorName = string.IsNullOrWhiteSpace(g.Key.VendorName)
+                            ? "Nepoznato"
+                            : g.Key.VendorName.Trim();
+                        var isUnknownVendor = !g.Key.VendorId.HasValue
+                            || string.Equals(normalizedVendorName, "Nepoznato", StringComparison.OrdinalIgnoreCase);
+                        var splitCoveragePct = Math.Round((double)(g.Average(x => Math.Min(x.CoveragePre30, x.CoveragePost30)) * 100m), 2);
+
+                        return new
+                        {
+                            Vendor = new VendorSalesNivelacijaVendorStatDto
+                            {
+                                VendorId = g.Key.VendorId,
+                                VendorName = g.Key.VendorName,
+                                PreQty = preQty,
+                                PreRevenue = preRev,
+                                PostQty = postQty,
+                                PostRevenue = postRev,
+                                ChangeQty = g.Sum(x => x.ChangeQty),
+                                ChangeRevenue = g.Sum(x => x.ChangeRevenue),
+                                ChangePercent = Pct(preRev, postRev),
+                                AbsoluteChangeRevenue = Math.Abs(g.Sum(x => x.ChangeRevenue)),
+                                ChangeSharePercent = 0m,
+                                PostRevenueSharePercent = 0m,
+                                AvgCoveragePre30 = Math.Round(g.Average(x => x.CoveragePre30), 4),
+                                AvgCoveragePost30 = Math.Round(g.Average(x => x.CoveragePost30), 4),
+                                ArticleCount = g
+                                    .Select(x => x.Sku)
+                                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                                    .Distinct(StringComparer.Ordinal)
+                                    .Count(),
+                                ActiveArticlesCount = g
+                                    .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
+                                    .Select(x => x.Sku)
+                                    .Distinct(StringComparer.Ordinal)
+                                    .Count(),
+                                IncreasedPriceArticlesCount = increased,
+                                DecreasedPriceArticlesCount = decreased
+                            },
+                            IsUnknownVendor = isUnknownVendor,
+                            SplitCoveragePct = splitCoveragePct,
+                            PopUnitsChangePct = (double)Pct(preQty, postQty),
+                            MarginSnapshot = marginSnapshot,
+                            IsNewVendor = preRev <= 0m && postRev > 0m
                         };
+                    })
+                    .ToList();
+
+                var averageKnownMarginPct = vendorRecommendationRows
+                    .Where(x => !x.IsUnknownVendor)
+                    .Select(x => x.MarginSnapshot.MarginPct)
+                    .DefaultIfEmpty(0d)
+                    .Average();
+                var unknownVendorSharePct = totalPostRevenue == 0m
+                    ? 0d
+                    : Math.Round((double)(vendorRecommendationRows.Where(x => x.IsUnknownVendor).Sum(x => x.Vendor.PostRevenue) / totalPostRevenue * 100m), 2);
+
+                var vendorStats = vendorRecommendationRows
+                    .Select(row =>
+                    {
+                        var sharePct = totalPostRevenue == 0m
+                            ? 0d
+                            : Math.Round((double)(row.Vendor.PostRevenue / totalPostRevenue * 100m), 2);
+                        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                            IsUnknownEntity: row.IsUnknownVendor,
+                            TotalRevenue: row.Vendor.PostRevenue,
+                            TotalUnits: row.Vendor.PostQty,
+                            ItemCount: row.Vendor.ArticleCount,
+                            SharePct: sharePct,
+                            MarginPct: row.MarginSnapshot.MarginPct,
+                            MarginCoveragePct: row.MarginSnapshot.MarginDataCoveragePct,
+                            SplitCoveragePct: row.SplitCoveragePct,
+                            PopRevenueChangePct: (double)row.Vendor.ChangePercent,
+                            PopUnitsChangePct: row.PopUnitsChangePct,
+                            PreviousPeriodRevenue: row.Vendor.PreRevenue,
+                            PreviousPeriodUnits: row.Vendor.PreQty,
+                            HasPreviousPeriodWindow: true,
+                            IsNewEntity: row.IsNewVendor,
+                            UnknownBucketSharePct: unknownVendorSharePct),
+                            averageKnownMarginPct);
+
+                        row.Vendor.ReliabilityPct = recommendation.ReliabilityPct;
+                        row.Vendor.Recommendation = new VendorSalesNivelacijaRecommendationDto
+                        {
+                            Status = recommendation.Status,
+                            Label = recommendation.Label,
+                            Summary = recommendation.Summary,
+                            ConfidencePct = recommendation.ConfidencePct,
+                            ReliabilityPct = recommendation.ReliabilityPct,
+                            DataQualityStatus = recommendation.DataQualityStatus,
+                            ReasonCodes = recommendation.ReasonCodes
+                        };
+
+                        return row.Vendor;
                     })
                     .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
                     .ToList();

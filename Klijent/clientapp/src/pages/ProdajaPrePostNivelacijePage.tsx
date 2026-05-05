@@ -14,23 +14,23 @@ import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar
 import InfoTip from "../components/ui/InfoTip";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
-import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
-import { BOOST_SCORE_THRESHOLD, KEEP_SCORE_THRESHOLD } from "../utils/analyticsConstants";
-import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import {
   getVendorSalesNivelacija,
+  type VendorSalesNivelacijaRecommendation,
   type VendorSalesNivelacijaResponse,
   type VendorSalesNivelacijaVendorStat,
 } from "../services/vendorSalesNivelacijaApi";
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
+import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
+import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import "./ProdajaPrePostNivelacijePage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField = "vendorName" | "postRevenue" | "sharePct" | "changeRevenue" | "trendPct" | "volatilityPct" | "status";
-type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
-type FocusFilter = "all" | "boost" | "keep" | "reduce" | "lowConfidence" | "volatile";
+type DecisionStatus = VendorSalesNivelacijaRecommendation["status"];
+type FocusFilter = "all" | "increaseFocus" | "maintain" | "review" | "doNotTrust" | "insufficientData" | "lowConfidence" | "volatile";
 type ConfidenceTone = "strong" | "watch" | "weak";
 type VolatilityTone = "positive" | "negative" | "warning" | "neutral";
 
@@ -47,7 +47,7 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   trendPct: number;
   reliabilityPct: number;
   avgCoveragePost30: number;
-  decisionScore: number;
+  confidencePct: number;
   status: DecisionStatus;
   statusReason: string;
   confidenceLabel: string;
@@ -82,11 +82,13 @@ type DetailDriverSummary = {
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  Pojacaj: 3,
-  Zadrzi: 2,
-  Smanji: 1,
+  increase_focus: 5,
+  maintain: 4,
+  review: 3,
+  insufficient_data: 2,
+  do_not_trust: 1,
 };
-const BOOST_MIN_RELIABILITY_PCT = 40;
+const MEDIUM_SIGNAL_RELIABILITY_PCT = 40;
 const VENDOR_NIVELACIJA_MAX_ROWS = 50_000;
 const CHART_GRID_STROKE = "var(--dashboard-grid, var(--border-default))";
 const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, var(--text-secondary))", fontSize: 12, fontWeight: 600 };
@@ -103,8 +105,6 @@ const COMMAND_TOOLTIP_LABEL_STYLE = {
   color: "var(--dashboard-tooltip-label, var(--text-primary))",
 };
 
-const UNKNOWN_SUPPLIERS = new Set(["", "N/A", "NEPOZNATO", "UNKNOWN", "UNKNOWN SUPPLIER"]);
-
 const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "vendorName", header: "Dobavljac", dataType: "text" },
   { key: "preRevenue", header: "Promet pre", dataType: "currency" },
@@ -113,9 +113,9 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "reliabilityPct", header: "Pouzdanost %", dataType: "percent" },
+  { key: "confidencePct", header: "Poverenje preporuke %", dataType: "percent" },
   { key: "volatilityLabel", header: "Volatilnost", dataType: "text" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "decisionScore", header: "Decision score", dataType: "number" },
   { key: "articleCount", header: "Artikala", dataType: "number" },
   { key: "activeArticlesCount", header: "Aktivnih artikala", dataType: "number" },
   { key: "statusReason", header: "Razlog preporuke", dataType: "text" },
@@ -183,9 +183,18 @@ function sortMarker(field: SortField, activeField: SortField, dir: SortDir): str
 }
 
 function statusClass(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "ppn-decision-status status-boost";
-  if (status === "Smanji") return "ppn-decision-status status-reduce";
+  if (status === "increase_focus") return "ppn-decision-status status-boost";
+  if (status === "review" || status === "insufficient_data") return "ppn-decision-status status-review";
+  if (status === "do_not_trust") return "ppn-decision-status status-reduce";
   return "ppn-decision-status status-keep";
+}
+
+function statusDisplayLabel(status: DecisionStatus): string {
+  if (status === "increase_focus") return "Pojačaj";
+  if (status === "maintain") return "Zadrži";
+  if (status === "review") return "Proveri";
+  if (status === "do_not_trust") return "Ne veruj";
+  return "Nedovoljno podataka";
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -217,9 +226,11 @@ function insightToneClass(tone: string): string {
 }
 
 function focusFilterLabel(filter: FocusFilter): string {
-  if (filter === "boost") return "Pojacaj";
-  if (filter === "keep") return "Zadrzi";
-  if (filter === "reduce") return "Smanji";
+  if (filter === "increaseFocus") return "Pojačaj";
+  if (filter === "maintain") return "Zadrži";
+  if (filter === "review") return "Proveri";
+  if (filter === "doNotTrust") return "Ne veruj";
+  if (filter === "insufficientData") return "Nedovoljno podataka";
   if (filter === "lowConfidence") return "Nisko poverenje";
   if (filter === "volatile") return "Visoka volatilnost";
   return "Sve";
@@ -245,7 +256,7 @@ const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
     label: "Rolling analiza preskočena",
     severity: "info",
     explanation:
-      "Rolling 7-dnevni pre/post zahteva tačan datum nivelacije. U mode-u pregleda po periodu, ova metrika se ne računa — to je očekivano ponašanje, ne greška.",
+      "Rolling 7-dnevni pre/post zahteva tačan datum nivelacije. U mode-u pregleda po periodu, ova metrika se ne računa, što je očekivano ponašanje.",
     isExpected: true,
   },
   "No rolling data (view missing)": {
@@ -258,53 +269,50 @@ const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
     label: "Momentum signal nedostupan",
     severity: "info",
     explanation:
-      "vw_sales_momentum view nije kreiran. Momentum (trend ubrzanja prodaje) nije uključen u ocenu. Ostale komponente score-a su ispravne.",
+      "vw_sales_momentum view nije kreiran. Momentum signal nije uključen u ocenu, ali je osnovna analiza ispravna.",
     isExpected: true,
   },
   "No OOS data (view missing)": {
     label: "OOS metrika nedostupna",
     severity: "info",
     explanation:
-      "vw_stock_red_zone view nije kreiran. Procena prodajnog gubitka zbog iscrpljenosti zalihe (lost sales OOS) nije dostupna.",
+      "vw_stock_red_zone view nije kreiran. Procena prodajnog gubitka zbog iscrpljenosti zalihe nije dostupna.",
     isExpected: true,
   },
   "No DiD data (view missing)": {
     label: "DiD metrika nedostupna",
     severity: "info",
     explanation:
-      "vw_nivelacija_did view nije kreiran. Difference-in-Differences kauzalna procena nije uključena.",
+      "vw_nivelacija_did view nije kreiran. Difference-in-Differences procena nije uključena.",
     isExpected: true,
   },
   "Article stats capped": {
     label: "Podaci ograničeni (cap)",
     severity: "watch",
     explanation:
-      "Broj article redova je ograničen zbog veličine upita. Neke stavke možda nisu vidljive — suzite filter.",
+      "Broj article redova je ograničen zbog veličine upita. Neke stavke možda nisu vidljive, pa suzite filter.",
     isExpected: false,
   },
   "OOS/DiD mapping failed": {
     label: "OOS/DiD mapiranje neuspešno",
     severity: "watch",
     explanation:
-      "Neočekivana greška pri učitavanju OOS ili DiD podataka. Osnovna analiza je ispravna — proverite konfiguraciju baze.",
+      "Neočekivana greška pri učitavanju OOS ili DiD podataka. Osnovna analiza je ispravna, ali proverite konfiguraciju baze.",
     isExpected: false,
   },
   "Metrics mapping failed": {
     label: "Mapiranje metrika neuspešno",
     severity: "watch",
     explanation:
-      "Greška pri obradi naprednih metrika. Osnovna analiza (promet pre/posle, promena cene) je ispravna.",
+      "Greška pri obradi naprednih metrika. Osnovna analiza prometa pre/posle i promene cene ostaje ispravna.",
     isExpected: false,
   },
 };
 
 function getMetricWarningMeta(rawKey: string): MetricWarningMeta {
-  // Exact match
   if (METRIC_WARNING_META[rawKey]) return METRIC_WARNING_META[rawKey];
-  // Prefix match (e.g. "Article stats capped to 5000 rows")
-  const prefixMatch = Object.entries(METRIC_WARNING_META).find(([k]) => rawKey.startsWith(k));
+  const prefixMatch = Object.entries(METRIC_WARNING_META).find(([key]) => rawKey.startsWith(key));
   if (prefixMatch) return prefixMatch[1];
-  // Fallback
   return {
     label: rawKey,
     severity: "watch",
@@ -321,7 +329,7 @@ function averageNullable(values: Array<number | null | undefined>): number | nul
 
 function buildConfidenceMeta(reliabilityPct: number): { label: string; tone: ConfidenceTone } {
   if (reliabilityPct >= 70) return { label: "Visoko", tone: "strong" };
-  if (reliabilityPct >= BOOST_MIN_RELIABILITY_PCT) return { label: "Srednje", tone: "watch" };
+  if (reliabilityPct >= MEDIUM_SIGNAL_RELIABILITY_PCT) return { label: "Srednje", tone: "watch" };
   return { label: "Nisko", tone: "weak" };
 }
 
@@ -354,21 +362,15 @@ function buildVolatilityMeta(currentRevenue: number, previousRevenue: number | n
 }
 
 function focusFilterMatches(row: DecisionVendor, filter: FocusFilter): boolean {
-  if (filter === "boost") return row.status === "Pojacaj";
-  if (filter === "keep") return row.status === "Zadrzi";
-  if (filter === "reduce") return row.status === "Smanji";
+  if (filter === "increaseFocus") return row.status === "increase_focus";
+  if (filter === "maintain") return row.status === "maintain";
+  if (filter === "review") return row.status === "review";
+  if (filter === "doNotTrust") return row.status === "do_not_trust";
+  if (filter === "insufficientData") return row.status === "insufficient_data";
   if (filter === "lowConfidence") return row.confidenceTone === "weak";
   if (filter === "volatile") return row.volatilityLabel === "Visoka" || row.volatilityLabel === "Promenljivo" || row.volatilityLabel === "Novo";
   return true;
 }
-
-type StatusReasonSignals = {
-  sharePct: number;
-  avgShare: number;
-  trendPct: number;
-  changeRevenue: number;
-  reliabilityPct: number;
-};
 
 type StatusTooltipData = {
   status: DecisionStatus;
@@ -377,32 +379,11 @@ type StatusTooltipData = {
   trendPct: number;
   changeRevenue: number;
   reliabilityPct: number;
+  confidencePct: number;
 };
 
-function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals): string {
-  const lowReliability = signals.reliabilityPct < BOOST_MIN_RELIABILITY_PCT;
-  const positiveTrend = signals.trendPct > 0;
-  const negativeTrend = signals.trendPct < 0;
-
-  if (status === "Pojacaj") {
-    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre većeg ulaganja.";
-    if (positiveTrend && signals.changeRevenue > 0) return "Rast prometa i pozitivan trend posle nivelacije.";
-    if (signals.sharePct >= signals.avgShare) return "Zdrav udeo i stabilan doprinos nakon promene cene.";
-    return "Stabilan doprinos i prostor za veci fokus u nabavci.";
-  }
-
-  if (status === "Zadrzi") {
-    if (lowReliability) return "Niža pouzdanost podataka; odluku držati konzervativnom dok se signal ne stabilizuje.";
-    if (negativeTrend && signals.changeRevenue < 0) return "Pad trenda posle nivelacije; zadržati uz pojačan nadzor.";
-    return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
-  }
-
-  if (negativeTrend) return "Pad trenda uz slabiji efekat nivelacije; smanjiti fokus.";
-  return "Nizak doprinos i ogranicen signal rasta; kandidat za smanjenje fokusa.";
-}
-
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${data.status}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${fmtPct(data.confidencePct, 0)}`;
 }
 
 function normalizeName(value: string | null | undefined): string {
@@ -536,20 +517,19 @@ export default function ProdajaPrePostNivelacijePage() {
     const totalAbsoluteChangeRevenue =
       data?.totals.absoluteChangeRevenue ??
       rows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0);
-    const topShare = rows.reduce((max, item) => {
-      const share = totalAbsoluteChangeRevenue > 0
-        ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100
-        : 0;
-      return Math.max(max, share);
-    }, 0);
 
-    const deltaValues = rows.map((item) => item.changeRevenue);
-    const minDelta = Math.min(...deltaValues);
-    const maxDelta = Math.max(...deltaValues);
-    const deltaSpan = maxDelta - minDelta;
-    const avgShare = rows.length > 0 ? 100 / rows.length : 0;
 
     return rows.map((item) => {
+      const recommendation = item.recommendation ?? {
+        status: item.vendorId == null ? "do_not_trust" : "insufficient_data",
+        label: item.vendorId == null ? "Do not trust" : "Insufficient data",
+        summary: "Backend recommendation nije dostupna za ovaj red u trenutnom odgovoru.",
+        confidencePct: 0,
+        reliabilityPct: item.reliabilityPct,
+        dataQualityStatus: "critical",
+        reasonCodes: ["missing_recommendation"],
+      } satisfies VendorSalesNivelacijaRecommendation;
+
       const sharePct = item.changeSharePercent ?? (
         totalAbsoluteChangeRevenue > 0 ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100 : 0
       );
@@ -557,40 +537,11 @@ export default function ProdajaPrePostNivelacijePage() {
         totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0
       );
       const trendPct = item.changePercent;
-      const coveragePct = item.articleCount > 0 ? (item.activeArticlesCount / item.articleCount) * 100 : 0;
       const avgCoveragePost30 = (item.avgCoveragePost30 ?? 0) * 100;
-      const knownSupplier = !UNKNOWN_SUPPLIERS.has(normalizeName(item.vendorName));
-      const reliabilityPct = clamp(coveragePct * 0.45 + avgCoveragePost30 * 0.25 + (knownSupplier ? 30 : 0), 0, 100);
+      const reliabilityPct = recommendation.reliabilityPct;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
       const confidence = buildConfidenceMeta(reliabilityPct);
       const volatility = buildVolatilityMeta(item.postRevenue, previousPostRevenue);
-
-      const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
-      const deltaNorm = deltaSpan > 0 ? clamp(((item.changeRevenue - minDelta) / deltaSpan) * 100, 0, 100) : 50;
-      const trendNorm = clamp(((trendPct + 50) / 100) * 100, 0, 100);
-
-      const decisionScore = Math.round(
-        shareNorm * 0.35 +
-        deltaNorm * 0.30 +
-        trendNorm * 0.20 +
-        reliabilityPct * 0.15
-      );
-
-      let status: DecisionStatus = "Smanji";
-      if (decisionScore >= BOOST_SCORE_THRESHOLD) status = "Pojacaj";
-      else if (decisionScore >= KEEP_SCORE_THRESHOLD) status = "Zadrzi";
-
-      if (reliabilityPct < BOOST_MIN_RELIABILITY_PCT && status === "Pojacaj") {
-        status = "Zadrzi";
-      }
-
-      const statusReason = buildStatusReason(status, {
-        sharePct,
-        avgShare,
-        trendPct,
-        changeRevenue: item.changeRevenue,
-        reliabilityPct,
-      });
 
       return {
         ...item,
@@ -599,9 +550,9 @@ export default function ProdajaPrePostNivelacijePage() {
         trendPct,
         reliabilityPct,
         avgCoveragePost30,
-        decisionScore,
-        status,
-        statusReason,
+        confidencePct: recommendation.confidencePct,
+        status: recommendation.status,
+        statusReason: recommendation.summary,
         confidenceLabel: confidence.label,
         confidenceTone: confidence.tone,
         previousPostRevenue,
@@ -634,7 +585,11 @@ export default function ProdajaPrePostNivelacijePage() {
       }
 
       if (compare === 0) {
-        compare = a.decisionScore - b.decisionScore;
+        compare = a.confidencePct - b.confidencePct;
+      }
+
+      if (compare === 0) {
+        compare = a.reliabilityPct - b.reliabilityPct;
       }
 
       return sortDir === "asc" ? compare : -compare;
@@ -670,18 +625,22 @@ export default function ProdajaPrePostNivelacijePage() {
   }, [periodGrowthPct, previousRevenue, totalRevenue]);
 
   const vendorCounts = useMemo(() => {
-    const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
-    const keep = sortedRows.filter((row) => row.status === "Zadrzi").length;
-    const reduce = sortedRows.filter((row) => row.status === "Smanji").length;
-    return { boost, keep, reduce };
+    const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
+    const maintain = sortedRows.filter((row) => row.status === "maintain").length;
+    const review = sortedRows.filter((row) => row.status === "review").length;
+    const doNotTrust = sortedRows.filter((row) => row.status === "do_not_trust").length;
+    const insufficientData = sortedRows.filter((row) => row.status === "insufficient_data").length;
+    return { increaseFocus, maintain, review, doNotTrust, insufficientData };
   }, [sortedRows]);
 
   const focusFilterCounts = useMemo(() => {
     return {
       all: sortedRows.length,
-      boost: sortedRows.filter((row) => row.status === "Pojacaj").length,
-      keep: sortedRows.filter((row) => row.status === "Zadrzi").length,
-      reduce: sortedRows.filter((row) => row.status === "Smanji").length,
+      increaseFocus: sortedRows.filter((row) => row.status === "increase_focus").length,
+      maintain: sortedRows.filter((row) => row.status === "maintain").length,
+      review: sortedRows.filter((row) => row.status === "review").length,
+      doNotTrust: sortedRows.filter((row) => row.status === "do_not_trust").length,
+      insufficientData: sortedRows.filter((row) => row.status === "insufficient_data").length,
       lowConfidence: sortedRows.filter((row) => row.confidenceTone === "weak").length,
       volatile: sortedRows.filter((row) => focusFilterMatches(row, "volatile")).length,
     } satisfies Record<FocusFilter, number>;
@@ -703,7 +662,7 @@ export default function ProdajaPrePostNivelacijePage() {
 
     const details = `Analizirano: ${countDetail} | bez prodajnog prozora: ${inactiveRows} | nepromenjene cene: ${unchangedPriceRows} | duplikati uklonjeni: ${duplicateRows}`;
 
-    const hasUnexpectedWarnings = dataQualityWarnings.some((w) => !getMetricWarningMeta(w).isExpected);
+    const hasUnexpectedWarnings = dataQualityWarnings.some((warning) => !getMetricWarningMeta(warning).isExpected);
 
     if (analyzedShare >= 70 && !hasUnexpectedWarnings) {
       return {
@@ -719,7 +678,7 @@ export default function ProdajaPrePostNivelacijePage() {
         tone: "watch" as const,
         details,
       };
-    }
+    };
 
     return {
       label: "Nisko poverenje",
@@ -1250,7 +1209,7 @@ const advancedSignals = useMemo(
                 <div>
                   <h2>Prioritetna lista dobavljača</h2>
                   <p>
-                    Pojačaj: {vendorCounts.boost} | Zadrži: {vendorCounts.keep} | Smanji: {vendorCounts.reduce}
+                    Pojačaj: {vendorCounts.increaseFocus} | Zadrži: {vendorCounts.maintain} | Proveri: {vendorCounts.review} | Ne veruj: {vendorCounts.doNotTrust} | Nedovoljno podataka: {vendorCounts.insufficientData}
                   </p>
                 </div>
                 <AnalyticsTableToolbar
@@ -1263,9 +1222,8 @@ const advancedSignals = useMemo(
                   defaultOrientation="landscape"
                 />
               </div>
-
               <div className="ppn-chip-wrap ppn-focus-filters">
-                {(["all", "boost", "keep", "reduce", "lowConfidence", "volatile"] as FocusFilter[]).map((item) => (
+                {(["all", "increaseFocus", "maintain", "review", "doNotTrust", "insufficientData", "lowConfidence", "volatile"] as FocusFilter[]).map((item) => (
                   <button
                     key={item}
                     type="button"
@@ -1318,7 +1276,7 @@ const advancedSignals = useMemo(
                         <button type="button" onClick={() => handleSort("status")}>
                           Preporuka{sortMarker("status", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Decision score kombinuje: udeo u promeni (35%), veličinu promene (30%), trend (20%), pouzdanost signala (15%). Pojačaj >=68, Zadrži 43-67, Smanji <43. Nisko poverenje automatski spusta Pojačaj na Zadrži." />
+                        <InfoTip text="Backend-authoritative recommendation za ovaj pre/post red. Status, razlog i poverenje dolaze iz server-side analytics recommendation engine-a; frontend više ne računa lokalne threshold odluke." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -1342,7 +1300,7 @@ const advancedSignals = useMemo(
                                 <div className="ppn-chip-wrap">
                                   <span className={confidenceClass(row.confidenceTone)}>
                                     {row.confidenceLabel} signal
-                                    <InfoTip text={`Pouzdanost: ${fmtPct(row.reliabilityPct, 0)} - bazira se na aktivnim artiklima (${row.activeArticlesCount}/${row.articleCount}), poznatosti dobavljača i post-window pokrivenosti (${fmtPct(row.avgCoveragePost30, 0)}). Visoko >=70%, Srednje 40-70%, Nisko <40%.`} />
+                                    <InfoTip text={`Pouzdanost: ${fmtPct(row.reliabilityPct, 0)}. Backend reliability indikator meri koliko je signal stabilan za odluku, uz aktivne artikle (${row.activeArticlesCount}/${row.articleCount}) i post-window pokrivenost (${fmtPct(row.avgCoveragePost30, 0)}). Visoko >=70%, Srednje 40-70%, Nisko <40%.`} />
                                   </span>
                                   <span className="ppn-signal-pill signal-neutral">{row.activeArticlesCount}/{row.articleCount} aktivno</span>
                                 </div>
@@ -1363,7 +1321,7 @@ const advancedSignals = useMemo(
                                 title={buildStatusTooltip(row)}
                                 aria-label={buildStatusTooltip(row)}
                               >
-                                {row.status}
+                                {statusDisplayLabel(row.status)}
                               </span>
                             </td>
                             <td className="align-center">
@@ -1418,7 +1376,7 @@ const advancedSignals = useMemo(
                 <article>
                   <span>
                     Pouzdanost signala
-                    <InfoTip text="Pouzdanost = (aktivni artikli / ukupno artikala) × 70% + (poznati dobavljač ? 30% : 0%). Meri koliko je signal statistički podložan za donosennje odluka." />
+                    <InfoTip text="Backend reliability indikator za ovaj red. Veća vrednost znači stabilniji pre/post signal i kvalitetniju osnovu za preporuku; niže vrednosti traže ručnu proveru." />
                   </span>
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
                 </article>
@@ -1439,10 +1397,10 @@ const advancedSignals = useMemo(
                 </article>
                 <article>
                   <span>
-                    Ocena preporuke
-                    <InfoTip text="Kompozitni score: udeo prometa × 35% + promena prometa × 30% + trend × 20% + pouzdanost × 15%. Normalizovano 0–100. Pojačaj ≥68, Zadrži 43–67, Smanji <43." />
+                    Poverenje preporuke
+                    <InfoTip text="Backend confidence procenat za trenutnu preporuku. Ovo je poverenje u server-side recommendation, odvojeno od signala pouzdanosti i bez lokalnog frontend score thresholdinga." />
                   </span>
-                  <strong>{selectedRow.decisionScore}</strong>
+                  <strong>{fmtPct(selectedRow.confidencePct, 1)}</strong>
                 </article>
               </div>
 

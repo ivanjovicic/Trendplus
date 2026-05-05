@@ -695,6 +695,12 @@
   color: var(--warning);
 }
 
+.ppn-decision-status.status-review {
+  background: var(--info-soft, rgba(96, 165, 250, 0.14));
+  border: 1px solid var(--info-border, rgba(96, 165, 250, 0.4));
+  color: var(--info, var(--theme-color-93c5fd, #93c5fd));
+}
+
 .ppn-decision-status.status-reduce {
   background: var(--error-soft);
   border: 1px solid var(--error-border);
