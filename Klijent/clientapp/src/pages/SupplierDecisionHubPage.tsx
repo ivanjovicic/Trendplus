@@ -409,9 +409,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       </section>
       ) : null}
 
-      {invalidRange ? <div className="sdh-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
-      {error ? <div className="sdh-decision-message error">{error}</div> : null}
-      {loading ? <div className="sdh-decision-message loading">Učitavam podatke za analizu dobavljača...</div> : null}
+      {invalidRange ? <div className="sdh-decision-message error" role="alert">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
+      {error ? <div className="sdh-decision-message error" role="alert">{error}</div> : null}
+      {loading ? <div className="sdh-decision-message loading" role="status" aria-live="polite">Učitavam podatke za analizu dobavljača...</div> : null}
 
       {!loading && summary && ranking ? (
         <>

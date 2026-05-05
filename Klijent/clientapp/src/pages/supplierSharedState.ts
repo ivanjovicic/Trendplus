@@ -1,5 +1,9 @@
 export type SupplierPeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 
+export type SupplierTab = "overview" | "scorecard" | "assortment";
+
+export const SUPPLIER_TABS: SupplierTab[] = ["overview", "scorecard", "assortment"];
+
 export type SupplierCanonicalFilters = {
   periodPreset: SupplierPeriodPreset;
   fromDate: string;

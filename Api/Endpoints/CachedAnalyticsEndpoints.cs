@@ -361,7 +361,7 @@ public static class CachedAnalyticsEndpoints
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await InventoryEndpoints.GetInventoryInsightsAsync(db, analyticsDb, storeId, supplierId, search, sortBy, ct),
+                async () => await InventoryEndpoints.GetInventoryInsightsAsync(cache, db, analyticsDb, storeId, supplierId, search, sortBy, ct),
                 CacheExpiration.Short,
                 ct);
 
@@ -388,7 +388,7 @@ public static class CachedAnalyticsEndpoints
 
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await InventoryEndpoints.GetInventoryStoreComparisonAsync(db, analyticsDb, effectiveCompareStoreIds, supplierId, search, ct),
+                async () => await InventoryEndpoints.GetInventoryStoreComparisonAsync(cache, db, analyticsDb, effectiveCompareStoreIds, supplierId, search, ct),
                 CacheExpiration.Short,
                 ct);
 

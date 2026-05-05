@@ -6,6 +6,11 @@
   padding: 16px;
 }
 
+.sf-decision-page--embedded {
+  border-radius: 12px;
+  margin: 0;
+}
+
 .sf-decision-header {
   align-items: flex-start;
   display: flex;
@@ -124,6 +129,7 @@
 .sf-decision-message {
   border-radius: 10px;
   font-size: 13px;
+  font-weight: 600;
   margin-bottom: 12px;
   padding: 10px 12px;
 }

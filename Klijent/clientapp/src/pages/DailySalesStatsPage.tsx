@@ -889,7 +889,7 @@ export default function DailySalesStatsPage() {
     return { tone: "good" as const, label: "\u2713 Podaci u redu", count: 0 };
   }, [qualitySignals]);
 
-  const decisionInsights = useMemo<InsightCard[]>(() => {
+  const heuristicInsights = useMemo<InsightCard[]>(() => {
     const insights: InsightCard[] = [];
     const revenueDeltaPct = comparisonCards.find((item) => item.key === "revenue")?.deltaPct ?? null;
 
@@ -1660,15 +1660,15 @@ export default function DailySalesStatsPage() {
               <div className="daily-sales-panel-head">
                 <div>
                   <h2 className="with-tip">
-                    <span>Highlights i anomalije</span>
-                    <InfoTip text="Sazetak akcija i nekoliko dana koji najvise odstupaju od 7d proseka." />
+                    <span>Heuristicki signali i anomalije</span>
+                    <InfoTip text="Pregledni heuristicki signali i nekoliko dana koji najvise odstupaju od 7d proseka. Ovo nije recommendation status model." />
                   </h2>
-                  <p>Najbrzi nacin da vidis gde treba da reagujes, bez kopanja po celoj tabeli.</p>
+                  <p>Brz pregled gde treba dodatna analiza, bez kopanja po celoj tabeli.</p>
                 </div>
               </div>
 
               <div className="daily-sales-insight-list">
-                {decisionInsights.map((insight, index) => (
+                {heuristicInsights.map((insight, index) => (
                   <article key={`${insight.title}-${index}`} className="daily-sales-insight-card" data-tone={insight.tone}>
                     <strong>{insight.title}</strong>
                     <p>{insight.detail}</p>

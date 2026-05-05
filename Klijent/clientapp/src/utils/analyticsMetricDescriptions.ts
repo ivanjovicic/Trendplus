@@ -1,20 +1,26 @@
 import { fmtPct, fmtRsd } from "./analyticsFormatters";
+import {
+  RECOMMENDATION_CONFIDENCE_LABEL,
+  RECOMMENDATION_CONFIDENCE_TOOLTIP,
+  RECOMMENDATION_RELIABILITY_LABEL,
+  RECOMMENDATION_RELIABILITY_TOOLTIP,
+} from "./canonicalRecommendationSemantics";
 
 export const analyticsMetricDescriptions = {
   marginPct:
-    "Marža % prikazuje udeo maržnog doprinosa u prometu sa dostupnim troškom. Nije neto profit i mora se čitati uz kvalitet troška.",
+    "Marza % prikazuje udeo marznog doprinosa u prometu sa dostupnim troskom. Nije neto profit i treba je citati uz kvalitet troska.",
   popRevenueChangePct:
-    "PoP promena % poredi promet sa prethodnim uporedivim periodom iste dužine. Ako prethodna baza ne postoji ili je nula, procenat nije pun signal rasta.",
+    "PoP promena % poredi promet sa prethodnim uporedivim periodom iste duzine. Ako prethodna baza ne postoji ili je nula, procenat nije pun signal rasta.",
   reliabilityPct:
-    "Pouzdanost % pokazuje koliko je signal pokriven kvalitetnim podacima. Nije statistički interval poverenja niti garancija ishoda.",
+    `${RECOMMENDATION_RELIABILITY_LABEL} - ${RECOMMENDATION_RELIABILITY_TOOLTIP}`,
   recommendationConfidencePct:
-    "Sigurnost preporuke % pokazuje koliko je preporuka upotrebljiva za odluku. Veća vrednost znači stabilniji signal, ne garanciju poslovnog ishoda.",
+    `${RECOMMENDATION_CONFIDENCE_LABEL} - ${RECOMMENDATION_CONFIDENCE_TOOLTIP}`,
   prePostNivelacijaImpactPct:
-    "Pre/post nivelacija uticaj % meri promenu prometa samo na uporedivom skupu artikala sa prodajom i pre i posle prve nivelacije. Nije isto što i PoP trend.",
+    "Pre/post nivelacija uticaj % meri promenu prometa samo na uporedivom skupu artikala sa prodajom i pre i posle prve nivelacije. Nije isto sto i PoP trend.",
   costCoverage:
-    "Pokrivenost troška pokazuje koliki deo prometa ima direktan ili procenjeni trošak. Niža pokrivenost znači da maržu i preporuku treba čitati opreznije.",
+    "Pokrivenost troska pokazuje koliki deo prometa ima direktan ili procenjeni trosak. Niza pokrivenost znaci da marzu i preporuku treba citati opreznije.",
   recommendation:
-    "Preporuka je pomoćni signal za fokus, a ne automatska odluka. Tumači se zajedno sa razlogom preporuke, maržom, PoP trendom i pokrivenošću podataka.",
+    "Preporuka je pomocni signal za fokus, a ne automatska odluka. Tumaci se zajedno sa razlogom preporuke, marzom, PoP trendom i pokrivenoscu podataka.",
 } as const;
 
 export function buildPopMetricDescription(previousPeriodRevenue: number | null | undefined): string {
@@ -30,8 +36,8 @@ export function buildPrePostNivelacijaImpactDescription(
   noteSuffix?: string
 ): string {
   const coverageText = coveragePct == null
-    ? "Pokriće nije dostupno."
-    : `Pokriće: ${fmtPct(coveragePct, 1)} prometa.`;
+    ? "Pokrice nije dostupno."
+    : `Pokrice: ${fmtPct(coveragePct, 1)} prometa.`;
 
   return `${analyticsMetricDescriptions.prePostNivelacijaImpactPct} ${coverageText}${noteSuffix ? ` ${noteSuffix}` : ""}`;
 }

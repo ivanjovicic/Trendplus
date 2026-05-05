@@ -17,6 +17,15 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import type { PreNivelacijaPriorityResponse, PreNivelacijaRecommendation, PreNivelacijaSkuCandidate } from "../types/preNivelacija";
 import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
+import {
+  RECOMMENDATION_CONFIDENCE_LABEL,
+  RECOMMENDATION_RELIABILITY_LABEL,
+  RECOMMENDATION_STATUS_PRIORITY,
+  recommendationStatusLabel,
+  recommendationStatusTone,
+  recommendationStatusTooltipBrief,
+} from "../utils/canonicalRecommendationSemantics";
 import "./PreNivelacijaPriorityPage.css";
 
 type SortDir = "asc" | "desc";
@@ -49,20 +58,16 @@ type DecisionCandidate = PreNivelacijaSkuCandidate & {
 type FocusFilter = "all" | "increaseFocus" | "maintain" | "review" | "doNotTrust" | "insufficientData" | "highPriority";
 const FOCUS_LABELS: Record<FocusFilter, string> = {
   all: "Sve",
-  increaseFocus: "Pojačaj",
-  maintain: "Zadrži",
-  review: "Pažljivo prati",
-  doNotTrust: "Ne veruj",
+  increaseFocus: recommendationStatusLabel("increase_focus"),
+  maintain: recommendationStatusLabel("maintain"),
+  review: recommendationStatusLabel("review"),
+  doNotTrust: recommendationStatusLabel("do_not_trust"),
   insufficientData: "Nedovoljno podataka",
   highPriority: "Visok prioritet",
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  increase_focus: 5,
-  maintain: 4,
-  review: 3,
-  insufficient_data: 2,
-  do_not_trust: 1,
+  ...RECOMMENDATION_STATUS_PRIORITY,
 };
 
 const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
@@ -72,7 +77,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },
   { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
   { key: "revenueDelta", header: "Isticanje vs sniženje (prihod)", dataType: "currency" },
-  { key: "reliabilityPct", header: "Pouzdanost %", dataType: "number" },
+  { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "number" },
   { key: "decisionScore", header: "Ocena preporuke", dataType: "number" },
   { key: "status", header: "Preporuka", dataType: "text" },
 ];
@@ -111,18 +116,16 @@ function sortMarker(field: SortField, activeField: SortField, dir: SortDir): str
 }
 
 function statusClass(status: DecisionStatus): string {
-  if (status === "increase_focus") return "pnp-decision-status status-boost";
-  if (status === "review" || status === "insufficient_data") return "pnp-decision-status status-review";
-  if (status === "do_not_trust") return "pnp-decision-status status-reduce";
-  return "pnp-decision-status status-keep";
+  const tone = recommendationStatusTone(status);
+  if (tone === "boost") return "pnp-decision-status status-boost";
+  if (tone === "keep") return "pnp-decision-status status-keep";
+  if (tone === "review") return "pnp-decision-status status-review";
+  if (tone === "reduce") return "pnp-decision-status status-reduce";
+  return "pnp-decision-status status-na";
 }
 
 function statusDisplayLabel(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Pojačaj";
-  if (status === "maintain") return "Zadrži";
-  if (status === "review") return "Pažljivo prati";
-  if (status === "do_not_trust") return "Ne veruj";
-  return "Nedovoljno podataka";
+  return recommendationStatusLabel(status);
 }
 
 type StatusTooltipData = {
@@ -135,7 +138,7 @@ type StatusTooltipData = {
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Ocena ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${fmtPct(data.confidencePct, 0)}`;
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Ocena ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${fmtPct(data.reliabilityPct, 0)} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${fmtPct(data.confidencePct, 0)}`;
 }
 
 export default function PreNivelacijaPriorityPage() {
@@ -531,7 +534,7 @@ export default function PreNivelacijaPriorityPage() {
                 <div>
                   <h2>Prioritetna lista SKU</h2>
                   <p>
-                    Pojačaj: {candidateCounts.increaseFocus} | Zadrži: {candidateCounts.maintain} | Pažljivo prati: {candidateCounts.review} | Ne veruj: {candidateCounts.doNotTrust} | Nedovoljno podataka: {candidateCounts.insufficientData} | Visok prioritet: {candidateCounts.highPriority}
+                    {recommendationStatusLabel("increase_focus")}: {candidateCounts.increaseFocus} | {recommendationStatusLabel("maintain")}: {candidateCounts.maintain} | {recommendationStatusLabel("review")}: {candidateCounts.review} | {recommendationStatusLabel("do_not_trust")}: {candidateCounts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {candidateCounts.insufficientData} | Visok prioritet: {candidateCounts.highPriority}
                   </p>
                 </div>
                 <div className="pnp-decision-table-controls">
@@ -603,8 +606,8 @@ export default function PreNivelacijaPriorityPage() {
                         <InfoTip text="Razlika procenjenog prihoda u 30-dnevnom prozoru: scenario isticanja minus scenario sniženja. Pozitivna vrednost = isplativije je istaknuti artikal pre nivelacije nego ga odmah sniziti. Negativno = sniženje verovatno donosi više." />
                       </th>
                       <th className="align-center">
-                        Pouzdanost
-                        <InfoTip text="Backend reliability procenat iz recommendation payload-a. Više vrednosti znače stabilniji signal za odluku pre nivelacije; niže vrednosti zahtevaju ručni oprez i dodatnu proveru." />
+                        {RECOMMENDATION_RELIABILITY_LABEL}
+                        <InfoTip text={analyticsMetricDescriptions.reliabilityPct} />
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button>
@@ -716,7 +719,7 @@ export default function PreNivelacijaPriorityPage() {
                   <strong>{selectedRow.decisionScore}</strong>
                 </article>
                 <article>
-                  <span>Poverenje preporuke</span>
+                  <span>{RECOMMENDATION_CONFIDENCE_LABEL} <InfoTip text={analyticsMetricDescriptions.recommendationConfidencePct} /></span>
                   <strong>{fmtPct(selectedRow.confidencePct, 1)}</strong>
                 </article>
               </div>
@@ -755,7 +758,7 @@ export default function PreNivelacijaPriorityPage() {
             <section className="pnp-queues">
               <h2 className="pnp-queues-title">
                 Redovi čekanja
-                <InfoTip text="SKU raspoređeni u operativne kategorije: 'Odmah istaknuti' (Pojačaj), 'Pod nadzorom' (Zadrži), 'Verovatno sniženje' (Smanji). Raspored se bazira na prioritetnoj bandi i snazi signal kombinacije." />
+                <InfoTip text="SKU su rasporedjeni po backend recommendation statusu (Pojacaj, Zadrzi, Pregledaj, Ne veruj, Nedovoljno podataka) i pomocnim prioritetnim signalima." />
               </h2>
               <div className="pnp-queues-grid">
                 <article className="pnp-queue-panel pnp-queue-panel--boost">

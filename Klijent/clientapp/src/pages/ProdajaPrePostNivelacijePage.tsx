@@ -24,6 +24,15 @@ import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
+import {
+  RECOMMENDATION_CONFIDENCE_LABEL,
+  RECOMMENDATION_RELIABILITY_LABEL,
+  RECOMMENDATION_STATUS_PRIORITY,
+  recommendationStatusLabel,
+  recommendationStatusTone,
+  recommendationStatusTooltipBrief,
+} from "../utils/canonicalRecommendationSemantics";
 import "./ProdajaPrePostNivelacijePage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -82,11 +91,7 @@ type DetailDriverSummary = {
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  increase_focus: 5,
-  maintain: 4,
-  review: 3,
-  insufficient_data: 2,
-  do_not_trust: 1,
+  ...RECOMMENDATION_STATUS_PRIORITY,
 };
 const MEDIUM_SIGNAL_RELIABILITY_PCT = 40;
 const VENDOR_NIVELACIJA_MAX_ROWS = 50_000;
@@ -112,8 +117,8 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "sharePct", header: "Udeo promene %", dataType: "percent" },
   { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
-  { key: "reliabilityPct", header: "Pouzdanost %", dataType: "percent" },
-  { key: "confidencePct", header: "Poverenje preporuke %", dataType: "percent" },
+  { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent" },
+  { key: "confidencePct", header: RECOMMENDATION_CONFIDENCE_LABEL, dataType: "percent" },
   { key: "volatilityLabel", header: "Volatilnost", dataType: "text" },
   { key: "status", header: "Preporuka", dataType: "text" },
   { key: "articleCount", header: "Artikala", dataType: "number" },
@@ -183,18 +188,16 @@ function sortMarker(field: SortField, activeField: SortField, dir: SortDir): str
 }
 
 function statusClass(status: DecisionStatus): string {
-  if (status === "increase_focus") return "ppn-decision-status status-boost";
-  if (status === "review" || status === "insufficient_data") return "ppn-decision-status status-review";
-  if (status === "do_not_trust") return "ppn-decision-status status-reduce";
-  return "ppn-decision-status status-keep";
+  const tone = recommendationStatusTone(status);
+  if (tone === "boost") return "ppn-decision-status status-boost";
+  if (tone === "keep") return "ppn-decision-status status-keep";
+  if (tone === "review") return "ppn-decision-status status-review";
+  if (tone === "reduce") return "ppn-decision-status status-reduce";
+  return "ppn-decision-status status-na";
 }
 
 function statusDisplayLabel(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Pojačaj";
-  if (status === "maintain") return "Zadrži";
-  if (status === "review") return "Proveri";
-  if (status === "do_not_trust") return "Ne veruj";
-  return "Nedovoljno podataka";
+  return recommendationStatusLabel(status);
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -226,10 +229,10 @@ function insightToneClass(tone: string): string {
 }
 
 function focusFilterLabel(filter: FocusFilter): string {
-  if (filter === "increaseFocus") return "Pojačaj";
-  if (filter === "maintain") return "Zadrži";
-  if (filter === "review") return "Proveri";
-  if (filter === "doNotTrust") return "Ne veruj";
+  if (filter === "increaseFocus") return recommendationStatusLabel("increase_focus");
+  if (filter === "maintain") return recommendationStatusLabel("maintain");
+  if (filter === "review") return recommendationStatusLabel("review");
+  if (filter === "doNotTrust") return recommendationStatusLabel("do_not_trust");
   if (filter === "insufficientData") return "Nedovoljno podataka";
   if (filter === "lowConfidence") return "Nisko poverenje";
   if (filter === "volatile") return "Visoka volatilnost";
@@ -383,7 +386,7 @@ type StatusTooltipData = {
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${fmtPct(data.confidencePct, 0)}`;
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${fmtPct(data.reliabilityPct, 0)} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${fmtPct(data.confidencePct, 0)}`;
 }
 
 function normalizeName(value: string | null | undefined): string {
@@ -1206,7 +1209,7 @@ const advancedSignals = useMemo(
                 <div>
                   <h2>Prioritetna lista dobavljača</h2>
                   <p>
-                    Pojačaj: {vendorCounts.increaseFocus} | Zadrži: {vendorCounts.maintain} | Proveri: {vendorCounts.review} | Ne veruj: {vendorCounts.doNotTrust} | Nedovoljno podataka: {vendorCounts.insufficientData}
+                    {recommendationStatusLabel("increase_focus")}: {vendorCounts.increaseFocus} | {recommendationStatusLabel("maintain")}: {vendorCounts.maintain} | {recommendationStatusLabel("review")}: {vendorCounts.review} | {recommendationStatusLabel("do_not_trust")}: {vendorCounts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {vendorCounts.insufficientData}
                   </p>
                 </div>
                 <AnalyticsTableToolbar
@@ -1273,7 +1276,7 @@ const advancedSignals = useMemo(
                         <button type="button" onClick={() => handleSort("status")}>
                           Preporuka{sortMarker("status", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Backend-authoritative recommendation za ovaj pre/post red. Status, razlog i poverenje dolaze iz server-side analytics recommendation engine-a; frontend više ne računa lokalne threshold odluke." />
+                        <InfoTip text="Backend-authoritative recommendation za ovaj pre/post red. Status, razlog i sigurnost preporuke dolaze iz server-side analytics recommendation engine-a; frontend vise ne racuna lokalne threshold odluke." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -1297,7 +1300,7 @@ const advancedSignals = useMemo(
                                 <div className="ppn-chip-wrap">
                                   <span className={confidenceClass(row.confidenceTone)}>
                                     {row.confidenceLabel} signal
-                                    <InfoTip text={`Pouzdanost: ${fmtPct(row.reliabilityPct, 0)}. Backend reliability indikator meri koliko je signal stabilan za odluku, uz aktivne artikle (${row.activeArticlesCount}/${row.articleCount}) i post-window pokrivenost (${fmtPct(row.avgCoveragePost30, 0)}). Visoko >=70%, Srednje 40-70%, Nisko <40%.`} />
+                                    <InfoTip text={`${analyticsMetricDescriptions.reliabilityPct} Aktivni artikli: ${row.activeArticlesCount}/${row.articleCount}. Post-window pokrivenost: ${fmtPct(row.avgCoveragePost30, 0)}.`} />
                                   </span>
                                   <span className="ppn-signal-pill signal-neutral">{row.activeArticlesCount}/{row.articleCount} aktivno</span>
                                 </div>
@@ -1372,8 +1375,8 @@ const advancedSignals = useMemo(
                 </article>
                 <article>
                   <span>
-                    Pouzdanost signala
-                    <InfoTip text="Backend reliability indikator za ovaj red. Veća vrednost znači stabilniji pre/post signal i kvalitetniju osnovu za preporuku; niže vrednosti traže ručnu proveru." />
+                    {RECOMMENDATION_RELIABILITY_LABEL}
+                    <InfoTip text={analyticsMetricDescriptions.reliabilityPct} />
                   </span>
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
                 </article>
@@ -1394,8 +1397,8 @@ const advancedSignals = useMemo(
                 </article>
                 <article>
                   <span>
-                    Poverenje preporuke
-                    <InfoTip text="Backend confidence procenat za trenutnu preporuku. Ovo je poverenje u server-side recommendation, odvojeno od signala pouzdanosti i bez lokalnog frontend score thresholdinga." />
+                    {RECOMMENDATION_CONFIDENCE_LABEL}
+                    <InfoTip text={analyticsMetricDescriptions.recommendationConfidencePct} />
                   </span>
                   <strong>{fmtPct(selectedRow.confidencePct, 1)}</strong>
                 </article>

@@ -33,7 +33,7 @@
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 0.5rem 0;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
 }
 
 .supplier-consolidated-header-desc {
@@ -65,6 +65,7 @@
   color: var(--text-secondary);
   font-size: 0.75rem;
   font-weight: 700;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -95,13 +96,16 @@
 }
 
 .supplier-consolidated-message {
+  font-size: 0.85rem;
+  font-weight: 600;
   margin: 1rem 2rem 0;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   padding: 0.75rem 1rem;
 }
 
 .supplier-consolidated-message.error {
   border: 1px solid var(--danger, #ef4444);
+  background: color-mix(in srgb, var(--danger, #ef4444) 12%, transparent);
   color: var(--danger, #ef4444);
 }
 
@@ -176,7 +180,7 @@
 .supplier-consolidated-content {
   flex: 1;
   width: 100%;
-  padding: 0;
+  padding: 1rem 2rem 2rem;
   background-color: var(--surface-default);
 }
 
@@ -185,16 +189,8 @@
   min-height: calc(100vh - 12rem);
 }
 
-.supplier-embedded-overview {
-  /* Pregled ostaje kao normalna stranica */
-}
-
-.supplier-embedded-scorecard {
-  /* Scorecard inner structure */
-}
-
-.supplier-embedded-assortment {
-  /* Asortiman inner structure */
+.supplier-embedded-container > * {
+  width: 100%;
 }
 
 /* Responsive */
@@ -222,6 +218,10 @@
 
   .supplier-consolidated-filters {
     grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+
+  .supplier-consolidated-content {
     padding: 1rem;
   }
 

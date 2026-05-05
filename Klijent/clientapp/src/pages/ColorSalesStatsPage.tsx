@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
@@ -28,6 +28,16 @@ import {
   buildPopMetricDescription,
   buildPrePostNivelacijaImpactDescription,
 } from "../utils/analyticsMetricDescriptions";
+import {
+  RECOMMENDATION_CONFIDENCE_LABEL,
+  RECOMMENDATION_RELIABILITY_LABEL,
+  RECOMMENDATION_STATUS_PRIORITY,
+  isCanonicalRecommendationStatus,
+  recommendationStatusLabel,
+  recommendationStatusTone,
+  recommendationStatusTooltipBrief,
+  type CanonicalRecommendationStatus,
+} from "../utils/canonicalRecommendationSemantics";
 import "./ColorSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -40,7 +50,7 @@ type SortField =
   | "popRevenueChangePct"
   | "prePostNivelacijaRevenueImpactPct"
   | "status";
-type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji" | "NedovoljnoPodataka";
+type DecisionStatus = CanonicalRecommendationStatus;
 
 type ActiveFilters = {
   fromDate: string;
@@ -55,27 +65,24 @@ type DecisionColor = ColorSalesStat & {
   reliabilityPct: number;
   coveragePct: number;
   splitCoveragePct: number;
-  decisionScore: number;
+  recommendationConfidencePct: number;
   status: DecisionStatus;
   statusReason: string;
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  Pojacaj: 3,
-  Zadrzi: 2,
-  Smanji: 1,
-  NedovoljnoPodataka: 0,
+  ...RECOMMENDATION_STATUS_PRIORITY,
 };
 
 const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "boja", header: "Boja", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
-  { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
+  { key: "marginContribution", header: "MarÅ¾ni doprinos", dataType: "currency" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "decisionScore", header: "Skor odluke", dataType: "number" },
+  { key: "recommendationConfidencePct", header: RECOMMENDATION_CONFIDENCE_LABEL, dataType: "number" },
 ];
 
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
@@ -108,27 +115,20 @@ function sortMarker(field: SortField, activeField: SortField, dir: SortDir): str
 }
 
 function statusClass(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "color-decision-status status-boost";
-  if (status === "Smanji") return "color-decision-status status-reduce";
-  if (status === "NedovoljnoPodataka") return "color-decision-status status-na";
-  return "color-decision-status status-keep";
+  const tone = recommendationStatusTone(status);
+  if (tone === "boost") return "color-decision-status status-boost";
+  if (tone === "keep") return "color-decision-status status-keep";
+  if (tone === "review") return "color-decision-status status-review";
+  if (tone === "reduce") return "color-decision-status status-reduce";
+  return "color-decision-status status-na";
 }
 
 function displayStatusLabel(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "Pojačaj";
-  if (status === "Zadrzi") return "Zadrži";
-  if (status === "Smanji") return "Smanji";
-  if (status === "NedovoljnoPodataka") return "Nedovoljno podataka";
-  return status;
+  return recommendationStatusLabel(status);
 }
 
 function mapRecommendationStatus(status?: string | null): DecisionStatus | null {
-  if (!status) return null;
-  if (status === "increase_focus") return "Pojacaj";
-  if (status === "maintain") return "Zadrzi";
-  if (status === "review" || status === "do_not_trust") return "Smanji";
-  if (status === "insufficient_data") return "NedovoljnoPodataka";
-  return null;
+  return isCanonicalRecommendationStatus(status) ? status : null;
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -159,7 +159,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
-  return `${displayStatusLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
+  return `${displayStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${fmtPct(data.reliabilityPct, 0)}`;
 }
 
 function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
@@ -289,7 +289,7 @@ export default function ColorSalesStatsPage() {
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
-      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka po boji.");
+      setError(reason instanceof Error ? reason.message : "GreÅ¡ka pri uÄitavanju podataka po boji.");
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -314,7 +314,7 @@ export default function ColorSalesStatsPage() {
       const coveragePct = item.brojArtikalaUkupno > 0
         ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
         : 0;
-      const backendStatus = mapRecommendationStatus(item.recommendation?.status) ?? "NedovoljnoPodataka";
+      const backendStatus = mapRecommendationStatus(item.recommendation?.status) ?? "insufficient_data";
 
       return {
         ...item,
@@ -323,7 +323,7 @@ export default function ColorSalesStatsPage() {
         reliabilityPct: item.recommendation?.reliabilityPct ?? item.reliabilityPct ?? (item.marginDataCoveragePct ?? 0),
         coveragePct,
         splitCoveragePct,
-        decisionScore: Math.round(item.recommendation?.confidencePct ?? 0),
+        recommendationConfidencePct: Math.round(item.recommendation?.confidencePct ?? 0),
         status: backendStatus,
         statusReason: item.recommendation?.summary ?? "Nedovoljno podataka za preporuku. Red ostaje informativan dok backend ne vrati stabilan signal.",
       };
@@ -351,7 +351,7 @@ export default function ColorSalesStatsPage() {
         compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
       }
 
-      if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      if (compare === 0) compare = a.recommendationConfidencePct - b.recommendationConfidencePct;
       if (compare === 0) compare = a.ukupanPromet - b.ukupanPromet;
       return sortDir === "asc" ? compare : -compare;
     });
@@ -415,10 +415,12 @@ export default function ColorSalesStatsPage() {
   }, [sortedRows]);
 
   const counts = useMemo(() => {
-    const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
-    const keep = sortedRows.filter((row) => row.status === "Zadrzi").length;
-    const reduce = sortedRows.filter((row) => row.status === "Smanji").length;
-    return { boost, keep, reduce };
+    const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
+    const maintain = sortedRows.filter((row) => row.status === "maintain").length;
+    const review = sortedRows.filter((row) => row.status === "review").length;
+    const doNotTrust = sortedRows.filter((row) => row.status === "do_not_trust").length;
+    const insufficientData = sortedRows.filter((row) => row.status === "insufficient_data").length;
+    return { increaseFocus, maintain, review, doNotTrust, insufficientData };
   }, [sortedRows]);
 
   const activeSezonaLabel = useMemo(() => {
@@ -493,14 +495,18 @@ export default function ColorSalesStatsPage() {
       { key: "bojaCount", label: "Broj boja", value: data?.totals.brojBoja ?? 0 },
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "splitCoverage", label: "Pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
-      { key: "boost", label: "Pojačaj", value: counts.boost },
-      { key: "keep", label: "Zadrži", value: counts.keep },
-      { key: "reduce", label: "Smanji", value: counts.reduce },
+      { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
+      { key: "maintain", label: recommendationStatusLabel("maintain"), value: counts.maintain },
+      { key: "review", label: recommendationStatusLabel("review"), value: counts.review },
+      { key: "doNotTrust", label: recommendationStatusLabel("do_not_trust"), value: counts.doNotTrust },
+      { key: "insufficientData", label: recommendationStatusLabel("insufficient_data"), value: counts.insufficientData },
     ],
     [
-      counts.boost,
-      counts.keep,
-      counts.reduce,
+      counts.doNotTrust,
+      counts.increaseFocus,
+      counts.insufficientData,
+      counts.maintain,
+      counts.review,
       data?.dataQuality.missingCostRevenueSharePct,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.generatedAt,
@@ -604,7 +610,7 @@ export default function ColorSalesStatsPage() {
         <div>
           <h1 className="color-decision-title">Prodaja po boji artikla</h1>
           <p className="color-decision-subtitle">
-            Decision-support pogled za izbor boja koje treba pojačati u nabavci.
+            Decision-support pogled za izbor boja koje treba pojaÄati u nabavci.
           </p>
         </div>
         {data?.generatedAt ? (
@@ -622,7 +628,7 @@ export default function ColorSalesStatsPage() {
             <option value="90d">Poslednjih 90 dana</option>
             <option value="180d">Poslednjih 180 dana</option>
             <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">Prilagođeno</option>
+            <option value="custom">PrilagoÄ‘eno</option>
           </select>
         </label>
 
@@ -723,7 +729,7 @@ export default function ColorSalesStatsPage() {
           <section className="color-decision-panels">
             <article className="color-decision-card">
               <h2>Koncentracija prometa po bojama</h2>
-              <p>Top boje koje nose najveći deo prodaje.</p>
+              <p>Top boje koje nose najveÄ‡i deo prodaje.</p>
               {concentrationData.length > 0 ? (
                 <div className="color-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -746,7 +752,7 @@ export default function ColorSalesStatsPage() {
                 <div>
                   <h2>Prioritetna lista boja</h2>
                   <p>
-                    Pojačaj: {counts.boost} | Zadrži: {counts.keep} | Smanji: {counts.reduce}
+                    {recommendationStatusLabel("increase_focus")}: {counts.increaseFocus} | {recommendationStatusLabel("maintain")}: {counts.maintain} | {recommendationStatusLabel("review")}: {counts.review} | {recommendationStatusLabel("do_not_trust")}: {counts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {counts.insufficientData}
                   </p>
                   <p className="color-decision-metric-note">
                     PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
@@ -754,7 +760,7 @@ export default function ColorSalesStatsPage() {
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="color-sales-stats"
-                  tableTitle="Podrška odluci - boje artikala"
+                  tableTitle="PodrÅ¡ka odluci - boje artikala"
                   columns={decisionColumns}
                   rows={sortedRows}
                   filters={toolbarFilters}
@@ -784,7 +790,7 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marže: razlika između prodajne vrednosti i nabavne vrednosti za prodatu robu." />
+                          MarÅ¾ni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marÅ¾e: razlika izmeÄ‘u prodajne vrednosti i nabavne vrednosti za prodatu robu." />
                         </button>
                       </th>
                       <th className="align-right">
@@ -903,7 +909,7 @@ export default function ColorSalesStatsPage() {
                   <strong>{selectedRow.brojArtikalaSaNivelacijom} / {selectedRow.brojArtikalaUkupno}</strong>
                 </article>
                 <article>
-                  <span>Pouzdanost podataka</span>
+                  <span>{RECOMMENDATION_RELIABILITY_LABEL} <InfoTip text={analyticsMetricDescriptions.reliabilityPct} /></span>
                   <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
@@ -915,8 +921,8 @@ export default function ColorSalesStatsPage() {
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Decision score</span>
-                  <strong>{selectedRow.decisionScore}</strong>
+                  <span>{RECOMMENDATION_CONFIDENCE_LABEL} <InfoTip text={analyticsMetricDescriptions.recommendationConfidencePct} /></span>
+                  <strong>{selectedRow.recommendationConfidencePct}</strong>
                 </article>
               </div>
 

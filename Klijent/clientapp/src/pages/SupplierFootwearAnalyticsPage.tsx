@@ -440,10 +440,10 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
       </section>
       ) : null}
 
-      {invalidRange ? <div className="sf-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
-      {error ? <div className="sf-decision-message error">{error}</div> : null}
-      {loading ? <div className="sf-decision-message loading">Učitavam dobavljače i tipove obuće...</div> : null}
-      {!loading && !error && dataHint ? <div className="sf-decision-message info">{dataHint}</div> : null}
+      {invalidRange ? <div className="sf-decision-message error" role="alert">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
+      {error ? <div className="sf-decision-message error" role="alert">{error}</div> : null}
+      {loading ? <div className="sf-decision-message loading" role="status" aria-live="polite">Učitavam dobavljače i tipove obuće...</div> : null}
+      {!loading && !error && dataHint ? <div className="sf-decision-message info" role="status" aria-live="polite">{dataHint}</div> : null}
       {!loading && !error && suggestedRange ? (
         <div className="sf-decision-message suggestion">
           <span>Predlog: {suggestedRange.label}</span>

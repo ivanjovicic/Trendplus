@@ -50,14 +50,20 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
         var todayUtc = DateTime.UtcNow.Date;
         var fromUtc = todayUtc.AddDays(-29);
         var toUtc = todayUtc.AddDays(1).AddSeconds(-1);
+        var previousToUtc = fromUtc.AddSeconds(-1);
+        var previousFromUtc = previousToUtc.Date.AddDays(-29);
         var from = Uri.EscapeDataString(FormatUtc(fromUtc));
         var to = Uri.EscapeDataString(FormatUtc(toUtc));
+        var previousFrom = Uri.EscapeDataString(FormatUtc(previousFromUtc));
+        var previousTo = Uri.EscapeDataString(FormatUtc(previousToUtc));
 
         var paths = new[]
         {
             "/api/analytics/cached/filters/stores?prewarm=1",
             $"/api/analytics/supplier-sales-stats?fromDate={from}&toDate={to}&dataScope=all&prewarm=1",
-            $"/api/analytics/shoe-type-sales-stats?fromDate={from}&toDate={to}&dataScope=all&prewarm=1"
+            $"/api/analytics/shoe-type-sales-stats?fromDate={from}&toDate={to}&dataScope=all&prewarm=1",
+            $"/api/analytics/daily-sales?fromDate={from}&toDate={to}&dataScope=all&prewarm=1",
+            $"/api/analytics/daily-sales?fromDate={previousFrom}&toDate={previousTo}&dataScope=all&prewarm=1"
         };
 
         _logger.LogInformation(

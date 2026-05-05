@@ -16,10 +16,17 @@ namespace Infrastructure.Services.Caching;
 /// </summary>
 public class InMemoryCacheService : IAnalyticsCacheService
 {
+    private sealed class CacheKeyLock
+    {
+        public SemaphoreSlim Semaphore { get; } = new(1, 1);
+        public int RefCount;
+    }
+
     private readonly IMemoryCache _cache;
     private readonly ILogger<InMemoryCacheService> _logger;
     private readonly ConcurrentDictionary<string, byte> _keys = new();
     private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly ConcurrentDictionary<string, CacheKeyLock> _keyLocks = new();
 
     public InMemoryCacheService(IMemoryCache cache, ILogger<InMemoryCacheService> logger)
     {
@@ -142,10 +149,17 @@ public class InMemoryCacheService : IAnalyticsCacheService
             return cached;
         }
 
-        // Ako nema u cache-u, izvrši factory i sačuvaj
-        await _lock.WaitAsync(ct);
+        // Ako nema u cache-u, izvrši factory i sačuvaj.
+        // Lock je per-key da različiti cache key-evi ne čekaju jedni druge.
+        var keyLock = _keyLocks.GetOrAdd(key, static _ => new CacheKeyLock());
+        Interlocked.Increment(ref keyLock.RefCount);
+        var keyLockAcquired = false;
+
         try
         {
+            await keyLock.Semaphore.WaitAsync(ct);
+            keyLockAcquired = true;
+
             // Double-check nakon lock-a
             cached = await GetAsync<T>(key, ct);
             if (cached != null)
@@ -159,7 +173,15 @@ public class InMemoryCacheService : IAnalyticsCacheService
         }
         finally
         {
-            _lock.Release();
+            if (keyLockAcquired)
+            {
+                keyLock.Semaphore.Release();
+            }
+
+            if (Interlocked.Decrement(ref keyLock.RefCount) == 0)
+            {
+                _keyLocks.TryRemove(new KeyValuePair<string, CacheKeyLock>(key, keyLock));
+            }
         }
     }
 }

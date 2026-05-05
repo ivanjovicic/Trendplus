@@ -34,6 +34,7 @@ using Domain.Model.TrendShoes;
 using Application.TrendShoes;
 using System.Globalization;
 using System.Diagnostics;
+using System.Text.Json;
 using Serilog.Context;
 
 namespace Trendplus2.Endpoints;
@@ -1056,7 +1057,7 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/supplier-sales-stats", async (
             TrendplusDbContext db,
-            IMemoryCache cache,
+            IAnalyticsCacheService cache,
             ILogger<Program> logger,
             HttpContext httpContext,
             IOptions<AnalyticsSnapshotOptions> snapshotOptionsRaw,
@@ -1172,9 +1173,10 @@ public static class AllEndpoints
                 var isPrewarmRequest = IsPrewarmRequest(httpContext);
                 var cacheKey = AnalyticsCacheKeys.SupplierSalesStats(fromUtc, toUtc, storeId, sezonaId, normalizedDataScope, activeBatchId);
                 var cacheMetadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
-                if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
+                var cachedResponse = await cache.GetAsync<AnalyticsJsonCacheEntry>(cacheKey, ct);
+                if (cachedResponse is not null)
                 {
-                    var cacheMetadata = cache.Get<AnalyticsCacheEntryMetadata>(cacheMetadataKey);
+                    var cacheMetadata = await cache.GetAsync<AnalyticsCacheEntryMetadata>(cacheMetadataKey, ct);
                     requestStopwatch.Stop();
                     logger.LogInformation(
                         "Supplier-sales-stats cache hit in {ElapsedMs}ms. Prewarmed={Prewarmed} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId}",
@@ -1186,7 +1188,7 @@ public static class AllEndpoints
                         normalizedDataScope,
                         storeId,
                         sezonaId);
-                    return Results.Ok(cachedResponse);
+                    return Results.Content(cachedResponse.Json, "application/json");
                 }
 
                 logger.LogInformation(
@@ -1854,8 +1856,9 @@ public static class AllEndpoints
                 };
 
                 processingStopwatch.Stop();
-                cache.Set(cacheKey, response, CacheExpiration.HeavyAnalytics);
-                cache.Set(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics);
+                var responseJson = JsonSerializer.Serialize(response);
+                await cache.SetAsync(cacheKey, new AnalyticsJsonCacheEntry(responseJson), CacheExpiration.HeavyAnalytics, ct);
+                await cache.SetAsync(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics, ct);
                 requestStopwatch.Stop();
                 logger.LogInformation(
                     "Supplier-sales-stats cache miss computed in {ElapsedMs}ms. DbMs={DbMs} ProcessingMs={ProcessingMs} DataWindowCacheHit={DataWindowCacheHit} DataWindowMs={DataWindowMs} PrewarmRequest={PrewarmRequest} TtlMinutes={TtlMinutes} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId} SupplierCount={SupplierCount} SnapshotCoveragePct={SnapshotCoveragePct:F2} LiveFallbackPct={LiveFallbackPct:F2} NoCostPct={NoCostPct:F2}",
@@ -1876,7 +1879,7 @@ public static class AllEndpoints
                     totalSnapshotPct,
                     totalEstPct,
                     totalNoCostPct);
-                return Results.Ok(response);
+                return Results.Content(responseJson, "application/json");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -6487,11 +6490,57 @@ public static class AllEndpoints
 
     private sealed record SalesDataWindowResult(DateTime? FromDate, DateTime? ToDate, bool CacheHit, long ElapsedMs);
 
+    private sealed record AnalyticsJsonCacheEntry(string Json);
+
     private sealed record AnalyticsCacheEntryMetadata(bool CreatedByPrewarm, DateTime CreatedAtUtc);
 
     private static bool IsPrewarmRequest(HttpContext context) =>
         string.Equals(context.Request.Query["prewarm"].FirstOrDefault(), "1", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(context.Request.Query["prewarm"].FirstOrDefault(), "true", StringComparison.OrdinalIgnoreCase);
+
+    private static async Task<SalesDataWindowResult> GetSalesDataWindowAsync(
+        TrendplusDbContext db,
+        IAnalyticsCacheService cache,
+        ILogger logger,
+        int? storeId,
+        string normalizedDataScope,
+        CancellationToken ct)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var cacheKey = AnalyticsCacheKeys.SalesDataWindow(storeId, normalizedDataScope);
+        var cachedWindow = await cache.GetAsync<SalesDataWindowCacheEntry>(cacheKey, ct);
+
+        if (cachedWindow is not null)
+        {
+            stopwatch.Stop();
+            logger.LogInformation(
+                "Sales dataWindow cache hit in {ElapsedMs}ms. StoreId={StoreId} DataScope={DataScope}",
+                stopwatch.ElapsedMilliseconds,
+                storeId,
+                normalizedDataScope);
+
+            return new SalesDataWindowResult(
+                EnsureUtc(cachedWindow.FromDate),
+                EnsureUtc(cachedWindow.ToDate),
+                CacheHit: true,
+                stopwatch.ElapsedMilliseconds);
+        }
+
+        var entry = await BuildSalesDataWindowCacheEntryAsync(db, storeId, normalizedDataScope, ct);
+        await cache.SetAsync(cacheKey, entry, CacheExpiration.VeryLong, ct);
+
+        stopwatch.Stop();
+        logger.LogInformation(
+            "Sales dataWindow cache miss computed in {ElapsedMs}ms. StoreId={StoreId} DataScope={DataScope} From={FromDate} To={ToDate} TtlMinutes={TtlMinutes}",
+            stopwatch.ElapsedMilliseconds,
+            storeId,
+            normalizedDataScope,
+            entry.FromDate,
+            entry.ToDate,
+            CacheExpiration.VeryLong.TotalMinutes);
+
+        return new SalesDataWindowResult(entry.FromDate, entry.ToDate, CacheHit: false, stopwatch.ElapsedMilliseconds);
+    }
 
     private static async Task<SalesDataWindowResult> GetSalesDataWindowAsync(
         TrendplusDbContext db,
@@ -6520,6 +6569,28 @@ public static class AllEndpoints
                 stopwatch.ElapsedMilliseconds);
         }
 
+        var entry = await BuildSalesDataWindowCacheEntryAsync(db, storeId, normalizedDataScope, ct);
+        cache.Set(cacheKey, entry, CacheExpiration.VeryLong);
+
+        stopwatch.Stop();
+        logger.LogInformation(
+            "Sales dataWindow cache miss computed in {ElapsedMs}ms. StoreId={StoreId} DataScope={DataScope} From={FromDate} To={ToDate} TtlMinutes={TtlMinutes}",
+            stopwatch.ElapsedMilliseconds,
+            storeId,
+            normalizedDataScope,
+            entry.FromDate,
+            entry.ToDate,
+            CacheExpiration.VeryLong.TotalMinutes);
+
+        return new SalesDataWindowResult(entry.FromDate, entry.ToDate, CacheHit: false, stopwatch.ElapsedMilliseconds);
+    }
+
+    private static async Task<SalesDataWindowCacheEntry> BuildSalesDataWindowCacheEntryAsync(
+        TrendplusDbContext db,
+        int? storeId,
+        string normalizedDataScope,
+        CancellationToken ct)
+    {
         var importedOnly = string.Equals(normalizedDataScope, "imported", StringComparison.OrdinalIgnoreCase);
         var existingOnly = string.Equals(normalizedDataScope, "existing", StringComparison.OrdinalIgnoreCase);
 
@@ -6565,20 +6636,7 @@ public static class AllEndpoints
             toDate = window?.ToDate;
         }
 
-        var entry = new SalesDataWindowCacheEntry(EnsureUtc(fromDate), EnsureUtc(toDate));
-        cache.Set(cacheKey, entry, CacheExpiration.VeryLong);
-
-        stopwatch.Stop();
-        logger.LogInformation(
-            "Sales dataWindow cache miss computed in {ElapsedMs}ms. StoreId={StoreId} DataScope={DataScope} From={FromDate} To={ToDate} TtlMinutes={TtlMinutes}",
-            stopwatch.ElapsedMilliseconds,
-            storeId,
-            normalizedDataScope,
-            entry.FromDate,
-            entry.ToDate,
-            CacheExpiration.VeryLong.TotalMinutes);
-
-        return new SalesDataWindowResult(entry.FromDate, entry.ToDate, CacheHit: false, stopwatch.ElapsedMilliseconds);
+        return new SalesDataWindowCacheEntry(EnsureUtc(fromDate), EnsureUtc(toDate));
     }
 
     private static DateTime? EnsureUtc(DateTime? value)

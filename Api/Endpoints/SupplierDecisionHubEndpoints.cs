@@ -14,7 +14,6 @@ public static class SupplierDecisionHubEndpoints
     private const int DefaultPageSize = 25;
     private const int MaxPageSize = 100;
     private const decimal HighConfidenceThreshold = 60m;
-    private static readonly DateTime GlobalAnalyticsFloorDate = new(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     public static void MapSupplierDecisionHubEndpoints(this WebApplication app)
     {
@@ -69,7 +68,7 @@ public static class SupplierDecisionHubEndpoints
                 cacheKey,
                 async () =>
                 {
-                    var rows = await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct);
+                    var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
                     return BuildSummaryResponse(rows, activeFilters);
                 },
                 CacheExpiration.HeavyAnalytics,
@@ -125,7 +124,7 @@ public static class SupplierDecisionHubEndpoints
                 cacheKey,
                 async () =>
                 {
-                    var rows = await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct);
+                    var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
                     return new QuadrantResponse(
                         rows
                             .OrderByDescending(x => x.Revenue)
@@ -207,7 +206,7 @@ public static class SupplierDecisionHubEndpoints
                 cacheKey,
                 async () =>
                 {
-                    var rows = await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct);
+                    var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
                     var ordered = ApplyRankingSort(rows, normalizedSortBy, normalizedSortDir).ToList();
                     var paged = ordered
                         .Skip((page - 1) * pageSize)
@@ -285,7 +284,7 @@ public static class SupplierDecisionHubEndpoints
                 cacheKey,
                 async () =>
                 {
-                    var rows = await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct);
+                    var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
                     var supplier = rows.FirstOrDefault();
                     if (supplier is null)
                     {
@@ -372,7 +371,7 @@ public static class SupplierDecisionHubEndpoints
 
         var toUtc = normalizedTo ?? DateTime.UtcNow.Date;
         var fromUtc = normalizedFrom
-            ?? (hasExplicitDateRange ? toUtc.AddDays(-DefaultLookbackDays) : GlobalAnalyticsFloorDate);
+            ?? toUtc.AddDays(-DefaultLookbackDays);
 
         if (fromUtc > toUtc)
         {
@@ -574,6 +573,30 @@ public static class SupplierDecisionHubEndpoints
 
     private static string NormalizeRankingSortDir(string? sortDir) =>
         string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+
+    private static Task<List<SupplierScoreRow>> GetSupplierRowsCachedAsync(
+        IAnalyticsCacheService cache,
+        string analyticsConnectionString,
+        SupplierDecisionHubFilters filters,
+        CancellationToken ct)
+    {
+        var cacheKey = AnalyticsCacheKeys.SupplierDecisionHubDataset(
+            filters.FromDate,
+            filters.ToDate,
+            filters.Category,
+            filters.Gender,
+            filters.SeasonId,
+            filters.MinRevenue,
+            filters.OnlyHighConfidence,
+            filters.ExcludeOosBeforeMarkdown,
+            filters.SupplierId);
+
+        return cache.GetOrSetAsync(
+            cacheKey,
+            () => QuerySupplierRowsAsync(analyticsConnectionString, filters, ct),
+            CacheExpiration.HeavyAnalytics,
+            ct);
+    }
 
     private static string FormatPercent(decimal value) =>
         $"{(value * 100m).ToString("0.##", CultureInfo.InvariantCulture)}%";

@@ -43,8 +43,8 @@ export function InventoryItemsTable({
                   <InfoTip text="Naziv artikla i PLU kod. Klik na red otvara detalj sa preporukom akcije, istorijatom i size curve analizom." />
                 </th>
                 <th className="px-4 py-3">
-                  Status
-                  <InfoTip text="Status zalihe: Kritično (ispod minimuma), Niska zaliha (≤ 20% iznad minimuma), Uredu (iznad minimuma). Bazira se na definisanom minimumu ili fallback pragovima." />
+                  Status zalihe
+                  <InfoTip text="Status zalihe: Kriticno (ispod minimuma), Niska zaliha (<= 20% iznad minimuma), U redu (iznad minimuma). Ovo nije workflow status akcije." />
                 </th>
                 <th className="px-4 py-3 text-right">
                   Kolicina
@@ -110,4 +110,3 @@ export function InventoryItemsTable({
     </section>
   );
 }
-

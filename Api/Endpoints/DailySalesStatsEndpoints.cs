@@ -1,7 +1,7 @@
 using Api.Models;
 using Api.Services;
+using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
@@ -18,7 +18,7 @@ public static class DailySalesStatsEndpoints
         app.MapGet("/api/analytics/daily-sales", async (
             [AsParameters] DailySalesStatsRequest request,
             IDailySalesStatsService service,
-            IMemoryCache cache,
+            IAnalyticsCacheService cache,
             ILogger<Program> logger,
             CancellationToken ct) =>
         {
@@ -50,21 +50,26 @@ public static class DailySalesStatsEndpoints
                 }
 
                 var normalizedDataScope = NormalizeDataScope(request.DataScope);
-                var cacheKey = $"daily-sales:{fromUtc:yyyyMMdd}:{toUtc:yyyyMMdd}:{request.StoreId}:{safeTopN}:{normalizedDataScope}";
-                if (cache.TryGetValue(cacheKey, out DailySalesTableResponse? cached) && cached is not null)
-                {
-                    return Results.Ok(cached);
-                }
+                var cacheKey = AnalyticsCacheKeys.DailySales(
+                    fromUtc,
+                    toUtc,
+                    request.StoreId,
+                    null,
+                    normalizedDataScope,
+                    safeTopN);
 
-                var result = await service.GetDailySalesAsync(
-                    requestedFromUtc: fromUtc,
-                    requestedToUtc: toUtc,
-                    storeId: request.StoreId,
-                    topN: safeTopN,
-                    dataScope: normalizedDataScope,
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    () => service.GetDailySalesAsync(
+                        requestedFromUtc: fromUtc,
+                        requestedToUtc: toUtc,
+                        storeId: request.StoreId,
+                        topN: safeTopN,
+                        dataScope: normalizedDataScope,
+                        ct),
+                    CacheExpiration.Long,
                     ct);
 
-                cache.Set(cacheKey, result, TimeSpan.FromMinutes(2));
                 return Results.Ok(result);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

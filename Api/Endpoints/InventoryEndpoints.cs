@@ -5,6 +5,7 @@ using Application.Documents.Interfaces;
 using Application.Inventory.Models;
 using Application.Documents.Models;
 using Infrastructure.Configuration;
+using Infrastructure.Services.Caching;
 using Infrastructure.Services.Inventory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -83,6 +84,7 @@ public static class InventoryEndpoints
         .WithName("GetInventoryList");
 
         group.MapGet("/insights", async (
+            IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
             int? storeId = null,
@@ -91,7 +93,7 @@ public static class InventoryEndpoints
             string? sortBy = null,
             CancellationToken ct = default) =>
         {
-            return Results.Ok(await GetInventoryInsightsAsync(db, analyticsDb, storeId, supplierId, search, sortBy, ct));
+            return Results.Ok(await GetInventoryInsightsAsync(cache, db, analyticsDb, storeId, supplierId, search, sortBy, ct));
         })
         .WithName("GetInventoryInsights");
 
@@ -357,6 +359,7 @@ public static class InventoryEndpoints
         .RequireRateLimiting("writes");
 
         group.MapGet("/store-comparison", async (
+            IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
             int[]? compareStoreIds,
@@ -364,12 +367,13 @@ public static class InventoryEndpoints
             string? search,
             CancellationToken ct) =>
         {
-            var comparison = await GetInventoryStoreComparisonAsync(db, analyticsDb, compareStoreIds, supplierId, search, ct);
+            var comparison = await GetInventoryStoreComparisonAsync(cache, db, analyticsDb, compareStoreIds, supplierId, search, ct);
             return Results.Ok(comparison);
         })
         .WithName("GetInventoryStoreComparison");
 
         group.MapGet("/action-suggestions", async (
+            IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
             IInventoryActionDecisionService actionDecisionService,
@@ -378,7 +382,7 @@ public static class InventoryEndpoints
             string? search,
             CancellationToken ct) =>
         {
-            var workflow = await GetInventoryActionWorkflowAsync(db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
+            var workflow = await GetInventoryActionWorkflowAsync(cache, db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
             return Results.Ok(workflow);
         })
         .WithName("GetInventoryActionSuggestions");
@@ -521,6 +525,7 @@ public static class InventoryEndpoints
     }
 
     public static async Task<InventoryInsightsDto> GetInventoryInsightsAsync(
+        IAnalyticsCacheService cache,
         ITrendplusDbContext db,
         IAnalyticsDbContext analyticsDb,
         int? storeId,
@@ -529,20 +534,22 @@ public static class InventoryEndpoints
         string? sortBy,
         CancellationToken ct)
     {
-        var items = await BuildInventoryDatasetAsync(db, analyticsDb, storeId, supplierId, search, sortBy, ct);
+        var items = await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, storeId, supplierId, search, null, applyAbcClassification: true, ct);
         return BuildInsights(items);
     }
 
     public static Task<InventoryStoreComparisonDto> GetInventoryStoreComparisonAsync(
+        IAnalyticsCacheService cache,
         ITrendplusDbContext db,
         IAnalyticsDbContext analyticsDb,
         int[]? compareStoreIds,
         int? supplierId,
         string? search,
         CancellationToken ct) =>
-        BuildStoreComparisonAsync(db, analyticsDb, compareStoreIds, supplierId, search, ct);
+        BuildStoreComparisonAsync(cache, db, analyticsDb, compareStoreIds, supplierId, search, ct);
 
     public static Task<InventoryActionWorkflowDto> GetInventoryActionWorkflowAsync(
+        IAnalyticsCacheService cache,
         ITrendplusDbContext db,
         IAnalyticsDbContext analyticsDb,
         IInventoryActionDecisionService actionDecisionService,
@@ -550,7 +557,32 @@ public static class InventoryEndpoints
         int? supplierId,
         string? search,
         CancellationToken ct) =>
-        BuildActionWorkflowAsync(db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
+        BuildActionWorkflowAsync(cache, db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
+
+    private static Task<List<InventoryDatasetItem>> GetCachedInventoryDatasetAsync(
+        IAnalyticsCacheService cache,
+        ITrendplusDbContext db,
+        IAnalyticsDbContext analyticsDb,
+        int? storeId,
+        int? supplierId,
+        string? search,
+        IReadOnlyCollection<int>? storeIds,
+        bool applyAbcClassification,
+        CancellationToken ct)
+    {
+        var normalizedStoreIds = storeIds?
+            .Where(id => id > 0)
+            .Distinct()
+            .OrderBy(id => id)
+            .ToArray();
+        var cacheKey = AnalyticsCacheKeys.InventoryDataset(storeId, supplierId, search, normalizedStoreIds, applyAbcClassification);
+
+        return cache.GetOrSetAsync(
+            cacheKey,
+            () => BuildInventoryDatasetAsync(db, analyticsDb, storeId, supplierId, search, null, ct, normalizedStoreIds, applyAbcClassification),
+            CacheExpiration.Short,
+            ct);
+    }
 
     private static IQueryable<Domain.Model.Artikli> ApplyInventoryFilters(
         IQueryable<Domain.Model.Artikli> query,
@@ -789,6 +821,7 @@ public static class InventoryEndpoints
     }
 
     private static async Task<InventoryStoreComparisonDto> BuildStoreComparisonAsync(
+        IAnalyticsCacheService cache,
         ITrendplusDbContext db,
         IAnalyticsDbContext analyticsDb,
         int[]? compareStoreIds,
@@ -819,7 +852,7 @@ public static class InventoryEndpoints
 
         var selectedItems = selectedStoreIds.Count == 0
             ? []
-            : await BuildInventoryDatasetAsync(db, analyticsDb, null, supplierId, search, "vrednost", ct, selectedStoreIds, applyAbcClassification: false);
+            : await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, null, supplierId, search, selectedStoreIds, applyAbcClassification: false, ct);
 
         var storeNames = await LoadStoreNamesAsync(analyticsDb, selectedStoreIds.Select(static id => (int?)id), ct);
         var stores = selectedStoreIds
@@ -896,6 +929,7 @@ public static class InventoryEndpoints
     }
 
     private static async Task<InventoryActionWorkflowDto> BuildActionWorkflowAsync(
+        IAnalyticsCacheService cache,
         ITrendplusDbContext db,
         IAnalyticsDbContext analyticsDb,
         IInventoryActionDecisionService actionDecisionService,
@@ -904,7 +938,7 @@ public static class InventoryEndpoints
         string? search,
         CancellationToken ct)
     {
-        var items = await BuildInventoryDatasetAsync(db, analyticsDb, storeId, supplierId, search, "vrednost", ct);
+        var items = await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, storeId, supplierId, search, null, applyAbcClassification: true, ct);
         var decisions = await actionDecisionService.ListAsync(ct);
         var suggestions = new List<InventoryActionSuggestionDto>();
 

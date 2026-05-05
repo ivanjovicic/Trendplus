@@ -24,6 +24,19 @@ public static class PreNivelacijaPriorityEndpoints
         public DateTime DatumDo { get; init; }
     }
 
+    private sealed class PreNivelacijaPriorityBaseCacheEntry
+    {
+        public DateTime GeneratedAtUtc { get; init; }
+        public string FormulaVersion { get; init; } = "pre_nivelacija_v2";
+        public string FormulaDescription { get; init; } = string.Empty;
+        public PreNivelacijaSummaryDto Summary { get; init; } = new();
+        public List<PreNivelacijaSupplierActionDto> SupplierLeaderboard { get; init; } = [];
+        public List<PreNivelacijaSkuCandidateDto> Candidates { get; init; } = [];
+        public PreNivelacijaQueuesDto Queues { get; init; } = new();
+        public List<PreNivelacijaAlertDto> Alerts { get; init; } = [];
+        public int TotalCandidates { get; init; }
+    }
+
     public static void MapPreNivelacijaPriorityEndpoints(this WebApplication app)
     {
         app.MapGet("/api/analytics/pre-nivelacija-prioriteti", async (
@@ -45,7 +58,7 @@ public static class PreNivelacijaPriorityEndpoints
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
-            var cacheKey = AnalyticsCacheKeys.PreNivelacijaPriority(
+            var cacheKey = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
                 supplierId,
                 seasonId,
                 footwearTypeId,
@@ -53,11 +66,9 @@ public static class PreNivelacijaPriorityEndpoints
                 stockMax,
                 noSaleDaysMin,
                 minScore,
-                marginFloor,
-                page,
-                pageSize);
+                marginFloor);
 
-            var response = await cache.GetOrSetAsync(
+            var baseEntry = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
@@ -130,7 +141,7 @@ public static class PreNivelacijaPriorityEndpoints
 
                     if (artikli.Count == 0)
                     {
-                        return BuildEmptyResponse(nowUtc, page, pageSize);
+                        return BuildEmptyBaseEntry(nowUtc);
                     }
 
                     var artikalIds = artikli.Select(x => x.Id).ToArray();
@@ -293,7 +304,7 @@ public static class PreNivelacijaPriorityEndpoints
 
                     if (allCandidates.Count == 0)
                     {
-                        return BuildEmptyResponse(nowUtc, page, pageSize);
+                        return BuildEmptyBaseEntry(nowUtc);
                     }
 
                     var minRevenueDelta = allCandidates.Min(x => x.RevenueDeltaHighlightVsMarkdown);
@@ -403,23 +414,23 @@ public static class PreNivelacijaPriorityEndpoints
 
                     var alerts = BuildAlerts(allCandidates, supplierLeaderboard);
 
-                    return new PreNivelacijaPriorityResponseDto
+                    return new PreNivelacijaPriorityBaseCacheEntry
                     {
                         GeneratedAtUtc = nowUtc,
                         FormulaVersion = "pre_nivelacija_v2",
                         FormulaDescription = BuildFormulaDescription(),
                         Summary = summary,
                         SupplierLeaderboard = supplierLeaderboard,
-                        Candidates = pagedCandidates,
+                        Candidates = allCandidates,
                         Queues = queues,
                         Alerts = alerts,
-                        Page = page,
-                        PageSize = pageSize,
                         TotalCandidates = totalCandidates
                     };
                 },
                 CacheExpiration.HeavyAnalytics,
                 ct);
+
+            var response = BuildResponse(baseEntry, page, pageSize);
 
             return Results.Ok(response);
         })
@@ -433,9 +444,9 @@ public static class PreNivelacijaPriorityEndpoints
         return "Pre-Nivelacija Score = 0.30*StockPressure + 0.25*VelocityRisk + 0.20*RecencyRisk + 0.10*MarkdownOpportunity + 0.10*MarginPotential + 0.05*SeasonRecencyBoost; Recommendation = 0.50*Score + 0.20*ScenarioDelta + 0.15*StaleRisk + 0.15*Reliability";
     }
 
-    private static PreNivelacijaPriorityResponseDto BuildEmptyResponse(DateTime nowUtc, int page, int pageSize)
+    private static PreNivelacijaPriorityBaseCacheEntry BuildEmptyBaseEntry(DateTime nowUtc)
     {
-        return new PreNivelacijaPriorityResponseDto
+        return new PreNivelacijaPriorityBaseCacheEntry
         {
             GeneratedAtUtc = nowUtc,
             FormulaVersion = "pre_nivelacija_v2",
@@ -454,9 +465,33 @@ public static class PreNivelacijaPriorityEndpoints
             Candidates = [],
             Queues = new PreNivelacijaQueuesDto(),
             Alerts = [],
+            TotalCandidates = 0
+        };
+    }
+
+    private static PreNivelacijaPriorityResponseDto BuildResponse(
+        PreNivelacijaPriorityBaseCacheEntry baseEntry,
+        int page,
+        int pageSize)
+    {
+        var pagedCandidates = baseEntry.Candidates
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new PreNivelacijaPriorityResponseDto
+        {
+            GeneratedAtUtc = baseEntry.GeneratedAtUtc,
+            FormulaVersion = baseEntry.FormulaVersion,
+            FormulaDescription = baseEntry.FormulaDescription,
+            Summary = baseEntry.Summary,
+            SupplierLeaderboard = baseEntry.SupplierLeaderboard,
+            Candidates = pagedCandidates,
+            Queues = baseEntry.Queues,
+            Alerts = baseEntry.Alerts,
             Page = page,
             PageSize = pageSize,
-            TotalCandidates = 0
+            TotalCandidates = baseEntry.TotalCandidates
         };
     }
 

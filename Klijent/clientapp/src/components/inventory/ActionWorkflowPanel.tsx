@@ -24,7 +24,7 @@ export function ActionWorkflowPanel({
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Predlog akcije workflow</h2>
-          <p className="text-sm text-muted">Dopuna, transfer, markdown i clearance predlozi sa statusom obrade i brzim odlukama.</p>
+          <p className="text-sm text-muted">Dopuna, transfer, markdown i clearance predlozi sa workflow statusom obrade i brzim odlukama.</p>
         </div>
         <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
           {workflowItems.length} aktivnih predloga
@@ -48,7 +48,7 @@ export function ActionWorkflowPanel({
                     {item.actionType === "dopuna" ? <Truck size={12} /> : item.actionType === "transfer" ? <GitCompareArrows size={12} /> : item.actionType === "markdown" ? <Tag size={12} /> : <Archive size={12} />}
                     <span className="ml-1 capitalize">{item.actionType}</span>
                   </span>
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getActionStatusTone(item.status)}`}>{item.status}</span>
+                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getActionStatusTone(item.status)}`}>workflow: {item.status}</span>
                   <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${getPriorityTone(item.priority)}`}>{item.priority}</span>
                 </div>
                 <div className="mt-3 text-sm font-semibold text-foreground">{item.label}</div>

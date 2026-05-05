@@ -66,8 +66,8 @@ export function InventoryAlertsFeed({
                 <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getAlertSeverityTone(alert.severity)}`}>
                   {alert.severity === "critical" ? "Kriticno" : alert.severity === "warning" ? "Upozorenje" : "Info"}
                 </div>
-                <div className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
-                  {Math.round(alert.confidenceScore * 100)}%
+                <div className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted" title="Alert confidence">
+                  signal {Math.round(alert.confidenceScore * 100)}%
                 </div>
               </div>
               <div className="mt-3 text-sm font-semibold text-foreground">{alert.title}</div>

@@ -1208,9 +1208,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       ) : null}
 
       {invalidRange ? (
-        <div className="supplier-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
+        <div className="supplier-decision-message error" role="alert">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
-      {error ? <div className="supplier-decision-message error">{error}</div> : null}
+      {error ? <div className="supplier-decision-message error" role="alert">{error}</div> : null}
       {loading && !data ? (
         <div className="supplier-decision-loading" role="status" aria-live="polite">
           <UltraSpinner size="md" label="Učitavam podatke o dobavljačima" />
@@ -1218,7 +1218,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         </div>
       ) : null}
       {!loading && !error && emptyStateHint ? (
-        <div className="supplier-decision-message info">{emptyStateHint}</div>
+        <div className="supplier-decision-message info" role="status" aria-live="polite">{emptyStateHint}</div>
       ) : null}
 
 
@@ -1278,7 +1278,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           </section>
 
           {qualityNotes.length > 0 ? (
-            <div className="supplier-decision-message info">
+            <div className="supplier-decision-message info" role="status" aria-live="polite">
               <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
               <div className="supplier-decision-quality-actions">
                 <Link to={`/analytics/data-quality?${dataQualityContextQuery}`} className="supplier-decision-quality-link">

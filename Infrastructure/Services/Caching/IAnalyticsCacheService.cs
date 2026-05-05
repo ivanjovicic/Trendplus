@@ -114,8 +114,11 @@ public static class AnalyticsCacheKeys
         $"{Prefix}summary:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Daily Sales
-    public static string DailySales(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
-        $"{Prefix}daily:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+    public static string DailySales(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null, int? topN = null)
+    {
+        var baseKey = $"{Prefix}daily:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        return topN.HasValue ? $"{baseKey}:top:{topN.Value}" : baseKey;
+    }
     
     // Top Products
     public static string TopProducts(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
@@ -224,6 +227,15 @@ public static class AnalyticsCacheKeys
         return $"{Prefix}inventory-store-comparison:stores:{normalizedStoreIds}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}:search:{HashPart(search)}";
     }
 
+    public static string InventoryDataset(int? storeId = null, int? supplierId = null, string? search = null, int[]? storeIds = null, bool applyAbcClassification = true)
+    {
+        var normalizedStoreIds = storeIds is { Length: > 0 }
+            ? string.Join(',', storeIds.Where(id => id > 0).Distinct().OrderBy(id => id))
+            : "none";
+
+        return $"{Prefix}inventory-dataset:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:stores:{normalizedStoreIds}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:search:{HashPart(search)}:abc:{applyAbcClassification}";
+    }
+
     // Validation endpoints
     public const string ValidationCompleteness = $"{Prefix}validation:completeness";
     public const string ValidationFreshness = $"{Prefix}validation:freshness";
@@ -286,6 +298,18 @@ public static class AnalyticsCacheKeys
         int? supplierId) =>
         $"{Prefix}supplier-decision-hub:summary:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}";
 
+    public static string SupplierDecisionHubDataset(
+        DateTime? from,
+        DateTime? to,
+        string? category,
+        string? gender,
+        int? seasonId,
+        decimal? minRevenue,
+        bool onlyHighConfidence,
+        bool excludeOosBeforeMarkdown,
+        int? supplierId) =>
+        $"{Prefix}supplier-decision-hub:dataset:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId)}";
+
     public static string SupplierDecisionHubQuadrant(
         DateTime? from,
         DateTime? to,
@@ -338,6 +362,17 @@ public static class AnalyticsCacheKeys
         int page,
         int pageSize) =>
         $"{Prefix}pre-nivelacija-priority:v1:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:page:{page}:size:{pageSize}";
+
+    public static string PreNivelacijaPriorityBase(
+        int? supplierId,
+        int? seasonId,
+        int? footwearTypeId,
+        int? stockMin,
+        int? stockMax,
+        int? noSaleDaysMin,
+        decimal? minScore,
+        decimal? marginFloor) =>
+        $"{Prefix}pre-nivelacija-priority:v2:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}";
 }
 
 /// <summary>
