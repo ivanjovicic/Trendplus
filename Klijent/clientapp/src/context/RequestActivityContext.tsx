@@ -12,6 +12,7 @@ const RequestActivityContext = createContext<RequestActivityState>({
 
 const IGNORED_PATHS = new Set([
   "/health",
+  "/ready",
   "/api/workers/health",
   "/api/redis/status",
 ]);

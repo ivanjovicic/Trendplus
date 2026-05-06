@@ -181,8 +181,8 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
 
             setChecking(true);
             try {
-                const healthUrl = apiUrl("/health");
-                const res = await fetchWithTimeout(healthUrl, undefined, API_HEALTH_TIMEOUT_MS);
+                const readinessUrl = apiUrl("/ready");
+                const res = await fetchWithTimeout(readinessUrl, undefined, API_HEALTH_TIMEOUT_MS);
                 if (cancelled) return;
                 const checkedAt = Date.now();
                 if (res.ok) {
@@ -190,7 +190,7 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
                         checkedAt,
                         source: "health",
                         status: res.status,
-                        url: healthUrl,
+                        url: readinessUrl,
                     });
                 } else if (res.status >= 500) {
                     notifyBackendUnreachable({
@@ -198,7 +198,7 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
                         source: "health",
                         reason: "server-error",
                         status: res.status,
-                        url: healthUrl,
+                        url: readinessUrl,
                     });
                 }
             } catch {
@@ -208,8 +208,8 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
                     checkedAt,
                     source: "health",
                     reason: "timeout",
-                    message: "Health check failed",
-                    url: apiUrl("/health"),
+                    message: "Readiness check failed",
+                    url: apiUrl("/ready"),
                 });
             } finally {
                 if (cancelled) return;

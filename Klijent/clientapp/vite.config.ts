@@ -35,8 +35,12 @@ export default defineConfig({
                 target: "http://127.0.0.1:8080",
                 changeOrigin: true,
             },
-            // Proxy /health for backend status check
+            // Proxy lightweight status probes for backend status/failover checks
             "/health": {
+                target: "http://127.0.0.1:8080",
+                changeOrigin: true,
+            },
+            "/ready": {
                 target: "http://127.0.0.1:8080",
                 changeOrigin: true,
             },

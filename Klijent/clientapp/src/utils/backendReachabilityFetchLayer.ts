@@ -4,7 +4,7 @@ import {
   type BackendUnreachableReason,
 } from "../context/backendReachabilityEvents";
 
-const TRACKED_PREFIXES = ["/api", "/artikli", "/scrapers", "/health", "/admin"];
+const TRACKED_PREFIXES = ["/api", "/artikli", "/scrapers", "/health", "/ready", "/admin"];
 const STATIC_EXTENSIONS = [
   ".png",
   ".jpg",

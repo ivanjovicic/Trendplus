@@ -42,6 +42,10 @@ import type {
 import type { DocumentOperationResponse } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
 import { appendDataScopeToParams } from "../utils/dataScope";
+import {
+  API_FAILOVER_TIMEOUT_MS_OPTION,
+  type ApiFailoverRequestInit,
+} from "../utils/apiFailover";
 import { fetchWithTimeout, FetchTimeoutError } from "../utils/fetchWithTimeout";
 import { API_COLD_START_TIMEOUT_MS, getRetryTimeouts } from "../utils/apiTimeouts";
 
@@ -49,6 +53,10 @@ const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
 const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
 const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
+
+type FailoverAwareWindow = Window & {
+  __trendplusFailoverInstalled?: boolean;
+};
 
 export function makeUrl(path: string, params?: URLSearchParams) {
   const baseUrl = apiUrl(path);
@@ -75,15 +83,44 @@ function appendFilterParams(
   if (supplierId != null) params.append("supplierId", String(supplierId));
 }
 
+function isApiFailoverLayerActive(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean((window as FailoverAwareWindow).__trendplusFailoverInstalled);
+}
+
+async function fetchAnalyticsResponse(
+  url: string,
+  init: RequestInit | undefined,
+  timeoutMs: number
+): Promise<Response> {
+  if (isApiFailoverLayerActive()) {
+    const failoverInit: ApiFailoverRequestInit = {
+      ...init,
+      [API_FAILOVER_TIMEOUT_MS_OPTION]: timeoutMs,
+    };
+    return fetch(url, failoverInit);
+  }
+
+  return fetchWithTimeout(url, init, timeoutMs);
+}
+
 /**
  * Fetch with retry on timeout (for cold-start backends).
  * Tries with shorter timeout first, then retries with longer timeout if first attempt times out.
  */
 async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessage?: string): Promise<T> {
+  if (isApiFailoverLayerActive()) {
+    const res = await fetchAnalyticsResponse(url, undefined, timeoutMs);
+    if (!res.ok) {
+      throw new Error(await parseApiError(res, errorMessage));
+    }
+    return (await res.json()) as T;
+  }
+
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
   
   try {
-    const res = await fetchWithTimeout(url, undefined, firstAttemptTimeoutMs);
+    const res = await fetchAnalyticsResponse(url, undefined, firstAttemptTimeoutMs);
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
@@ -95,7 +132,7 @@ async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessag
     }
 
     // First attempt timed out - retry with longer timeout
-  const res = await fetchWithTimeout(url, undefined, totalTimeoutMs);
+  const res = await fetchAnalyticsResponse(url, undefined, totalTimeoutMs);
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
@@ -163,16 +200,27 @@ async function fetchJsonWithCachedFallback<T>(
 
 async function postJson<T>(path: string, body: unknown, errorMessage?: string): Promise<T> {
   const timeoutMs = DEFAULT_ANALYTICS_GET_TIMEOUT_MS;
+  const init: RequestInit = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  };
+
+  if (isApiFailoverLayerActive()) {
+    const response = await fetchAnalyticsResponse(makeUrl(path), init, timeoutMs);
+    if (!response.ok) {
+      throw new Error(await parseApiError(response, errorMessage));
+    }
+
+    return (await response.json()) as T;
+  }
+
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
   
   try {
-    const response = await fetchWithTimeout(makeUrl(path), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    }, firstAttemptTimeoutMs);
+    const response = await fetchAnalyticsResponse(makeUrl(path), init, firstAttemptTimeoutMs);
 
     if (!response.ok) {
       throw new Error(await parseApiError(response, errorMessage));
@@ -186,13 +234,7 @@ async function postJson<T>(path: string, body: unknown, errorMessage?: string): 
     }
 
     // First attempt timed out - retry with longer timeout
-    const response = await fetchWithTimeout(makeUrl(path), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    }, totalTimeoutMs);
+    const response = await fetchAnalyticsResponse(makeUrl(path), init, totalTimeoutMs);
 
     if (!response.ok) {
       throw new Error(await parseApiError(response, errorMessage));
@@ -875,7 +917,7 @@ export async function createInventoryReportSchedule(input: InventoryReportSchedu
 }
 
 export async function updateInventoryReportSchedule(id: number, input: InventoryReportScheduleInput): Promise<InventoryReportSchedule> {
-  const response = await fetchWithTimeout(makeUrl(`/api/analytics/inventory/report-schedules/${id}`), {
+  const response = await fetchAnalyticsResponse(makeUrl(`/api/analytics/inventory/report-schedules/${id}`), {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

@@ -19,7 +19,7 @@ export type ApiFailoverRequestInit = RequestInit & {
   [API_FAILOVER_TIMEOUT_MS_OPTION]?: number;
 };
 
-const STORAGE_KEY = "trendplus:api-failover-state:v1";
+const STORAGE_KEY = "trendplus:api-failover-state:v2";
 const HOST_CHANGED_EVENT = "trendplus:api-host-changed";
 
 const primaryBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
@@ -35,16 +35,20 @@ const fallbackOrigin = toOrigin(fallbackBaseUrl);
 
 const requestTimeoutMs = readMsFromEnv("VITE_API_REQUEST_TIMEOUT_MS", import.meta.env.DEV ? 15_000 : 25_000);
 const primaryRequestTimeoutMs = Math.min(
-  readMsFromEnv("VITE_API_PRIMARY_REQUEST_TIMEOUT_MS", import.meta.env.DEV ? 8_000 : 5_000),
+  readMsFromEnv("VITE_API_PRIMARY_REQUEST_TIMEOUT_MS", import.meta.env.DEV ? 12_000 : 15_000),
   requestTimeoutMs
 );
 const fallbackRequestTimeoutMs = readMsFromEnv("VITE_API_FALLBACK_REQUEST_TIMEOUT_MS", requestTimeoutMs);
-const probeTimeoutMs = readMsFromEnv("VITE_API_FALLBACK_PROBE_TIMEOUT_MS", import.meta.env.DEV ? 3_000 : 5_000);
-const primaryRetryCooldownMs = readMsFromEnv("VITE_API_PRIMARY_RETRY_COOLDOWN_MS", import.meta.env.DEV ? 30_000 : 180_000);
-const stateTtlMs = readMsFromEnv("VITE_API_FAILOVER_STATE_TTL_MS", import.meta.env.DEV ? 15 * 60_000 : 30 * 60_000);
-const healthProbePath = normalizePath(import.meta.env.VITE_API_HEALTH_PATH || "/health");
+const probeTimeoutMs = readMsFromEnv("VITE_API_FALLBACK_PROBE_TIMEOUT_MS", import.meta.env.DEV ? 6_000 : 8_000);
+const primaryRetryCooldownMs = readMsFromEnv("VITE_API_PRIMARY_RETRY_COOLDOWN_MS", import.meta.env.DEV ? 30_000 : 45_000);
+const stateTtlMs = readMsFromEnv("VITE_API_FAILOVER_STATE_TTL_MS", import.meta.env.DEV ? 5 * 60_000 : 5 * 60_000);
+const recoveryProbePath = normalizePath(
+  import.meta.env.VITE_API_RECOVERY_PROBE_PATH ||
+  import.meta.env.VITE_API_HEALTH_PATH ||
+  "/ready"
+);
 
-const apiPathPrefixes = ["/api", "/health", "/artikli", "/scrapers", "/admin"];
+const apiPathPrefixes = ["/api", "/health", "/ready", "/artikli", "/scrapers", "/admin"];
 const debugEnabled = import.meta.env.DEV || import.meta.env.VITE_API_FALLBACK_DEBUG === "1";
 const primaryMissing = primaryBaseUrl.length === 0;
 const fallbackMatchesPrimary =
@@ -264,6 +268,32 @@ function debugLog(message: string, extra?: Record<string, unknown>): void {
   console.info(`[api-failover] ${message}`);
 }
 
+function describeUrlForTelemetry(rawUrl: string): string {
+  const parsed = toAbsoluteUrl(rawUrl);
+  if (!parsed) return "<unparseable>";
+  return `${parsed.origin}${parsed.pathname}`;
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof ApiFailoverTimeoutError) {
+    return `timeout_${error.timeoutMs}ms`;
+  }
+
+  if (error instanceof DOMException) {
+    return `${error.name}:${error.message}`;
+  }
+
+  if (error instanceof Error) {
+    return `${error.name}:${error.message}`;
+  }
+
+  return String(error);
+}
+
+function elapsedMsSince(startedAt: number): number {
+  return Math.round(performance.now() - startedAt);
+}
+
 function warnIfFailoverIsMisconfigured(): void {
   if (misconfigurationWarned) return;
   misconfigurationWarned = true;
@@ -293,7 +323,11 @@ function markPrimaryFailure(reason: string): void {
   };
   saveState();
   emitHostChanged("fallback");
-  debugLog("Primary API marked unavailable; fallback activated", { reason });
+  debugLog("Primary API marked unavailable; fallback activated", {
+    reason,
+    hostChanged: "primary->fallback",
+    activeHost: "fallback",
+  });
 }
 
 function markPrimaryProbeAttempt(): void {
@@ -312,7 +346,10 @@ function markPrimaryRecovered(): void {
   };
   saveState();
   emitHostChanged("primary");
-  debugLog("Primary API recovered; returning traffic to primary");
+  debugLog("Primary API recovered; returning traffic to primary", {
+    hostChanged: "fallback->primary",
+    activeHost: "primary",
+  });
 }
 
 function keepFallbackActiveAfterPrimaryProbeFailure(reason: string): void {
@@ -439,20 +476,50 @@ async function executeApiRequest(
   const primaryTimeoutMs = getRequestTimeoutMs(init, "primary");
   const fallbackTimeoutMs = getRequestTimeoutMs(init, "fallback");
   const nativeInit = stripFailoverOptions(init);
+  const requestStartedAt = performance.now();
+  const requestedUrl = describeUrlForTelemetry(toRawUrl(requestSource));
+  const activeTargetUrl = describeUrlForTelemetry(targetUrl);
+
+  debugLog("Request started", {
+    originalTarget: requestedUrl,
+    activeTarget: activeTargetUrl,
+    activeHost: initialHost,
+    timeoutMs: initialTimeoutMs,
+  });
 
   try {
     const response = await fetchWithTimeoutVia(nativeFetch, targetInput, nativeInit, initialTimeoutMs);
+    const elapsedMs = elapsedMsSince(requestStartedAt);
 
     if (
       failoverConfigured &&
       initialHost === "primary" &&
       isAvailabilityHttpStatus(response.status)
     ) {
-      markPrimaryFailure(`status_${response.status}`);
+      const failoverReason = `status_${response.status}`;
+      debugLog("Request triggered failover after primary response", {
+        originalTarget: requestedUrl,
+        activeTarget: activeTargetUrl,
+        elapsedMs,
+        status: response.status,
+        failoverReason,
+        hostChanged: "primary->fallback",
+      });
+      markPrimaryFailure(failoverReason);
       const retrySource = requestSource instanceof Request ? requestSource.clone() : requestSource;
       const fallbackUrl = rewriteUrlForTarget(retrySource, fallbackBaseUrl);
       const fallbackInput = buildRewrittenInput(retrySource, fallbackUrl);
-      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, fallbackTimeoutMs);
+      const fallbackStartedAt = performance.now();
+      const fallbackResponse = await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, fallbackTimeoutMs);
+      debugLog("Fallback retry completed", {
+        originalTarget: requestedUrl,
+        activeTarget: describeUrlForTelemetry(fallbackUrl),
+        elapsedMs: elapsedMsSince(fallbackStartedAt),
+        totalElapsedMs: elapsedMsSince(requestStartedAt),
+        status: fallbackResponse.status,
+        activeHost: "fallback",
+      });
+      return fallbackResponse;
     }
 
     if (
@@ -468,12 +535,33 @@ async function executeApiRequest(
         `status_${response.status}`
       );
       if (rescued) {
+        debugLog("Fallback response rescued by primary", {
+          originalTarget: requestedUrl,
+          elapsedMs: elapsedMsSince(requestStartedAt),
+          status: rescued.status,
+          hostChanged: "fallback->primary",
+        });
         return rescued;
       }
     }
 
+    debugLog("Request completed", {
+      originalTarget: requestedUrl,
+      activeTarget: activeTargetUrl,
+      elapsedMs,
+      status: response.status,
+      activeHost: initialHost,
+    });
     return response;
   } catch (error) {
+    debugLog("Request failed", {
+      originalTarget: requestedUrl,
+      activeTarget: activeTargetUrl,
+      elapsedMs: elapsedMsSince(requestStartedAt),
+      activeHost: initialHost,
+      abortReason: describeError(error),
+    });
+
     if (error instanceof DOMException && error.name === "AbortError" && nativeInit?.signal?.aborted) {
       const abortReason = nativeInit.signal.reason;
       const timeoutAbort =
@@ -481,6 +569,10 @@ async function executeApiRequest(
         abortReason.name === "TimeoutError";
 
       if (!timeoutAbort) {
+        debugLog("Request abort was external; failover not triggered", {
+          originalTarget: requestedUrl,
+          abortReason: describeError(abortReason),
+        });
         throw error;
       }
     }
@@ -490,11 +582,29 @@ async function executeApiRequest(
       initialHost === "primary" &&
       isAvailabilityError(error)
     ) {
-      markPrimaryFailure(error instanceof Error ? error.message : "transport_failure");
+      const failoverReason = describeError(error);
+      debugLog("Request triggered failover after primary transport failure", {
+        originalTarget: requestedUrl,
+        activeTarget: activeTargetUrl,
+        elapsedMs: elapsedMsSince(requestStartedAt),
+        failoverReason,
+        hostChanged: "primary->fallback",
+      });
+      markPrimaryFailure(failoverReason);
       const retrySource = requestSource instanceof Request ? requestSource.clone() : requestSource;
       const fallbackUrl = rewriteUrlForTarget(retrySource, fallbackBaseUrl);
       const fallbackInput = buildRewrittenInput(retrySource, fallbackUrl);
-      return await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, fallbackTimeoutMs);
+      const fallbackStartedAt = performance.now();
+      const fallbackResponse = await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, fallbackTimeoutMs);
+      debugLog("Fallback retry completed", {
+        originalTarget: requestedUrl,
+        activeTarget: describeUrlForTelemetry(fallbackUrl),
+        elapsedMs: elapsedMsSince(fallbackStartedAt),
+        totalElapsedMs: elapsedMsSince(requestStartedAt),
+        status: fallbackResponse.status,
+        activeHost: "fallback",
+      });
+      return fallbackResponse;
     }
 
     if (
@@ -510,6 +620,12 @@ async function executeApiRequest(
         error instanceof Error ? error.message : "fallback_transport_failure"
       );
       if (rescued) {
+        debugLog("Fallback failure rescued by primary", {
+          originalTarget: requestedUrl,
+          elapsedMs: elapsedMsSince(requestStartedAt),
+          status: rescued.status,
+          hostChanged: "fallback->primary",
+        });
         return rescued;
       }
     }
@@ -561,16 +677,29 @@ async function tryPrimaryRescueAfterFallbackFailure(
 }
 
 async function probePrimaryAvailability(nativeFetch: typeof window.fetch): Promise<boolean> {
-  const probeUrl = `${primaryBaseUrl}${healthProbePath}`;
+  const probeUrl = `${primaryBaseUrl}${recoveryProbePath}`;
 
   try {
+    const startedAt = performance.now();
     const response = await fetchWithTimeoutVia(nativeFetch, probeUrl, { method: "GET", cache: "no-store" }, probeTimeoutMs);
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    debugLog("Primary recovery probe completed", {
+      recoveryProbeEndpoint: recoveryProbePath,
+      status: response.status,
+      elapsedMs,
+      result: isAvailabilityHttpStatus(response.status) || response.status >= 500 ? "failed" : "healthy",
+    });
     if (isAvailabilityHttpStatus(response.status)) {
       return false;
     }
 
     return response.status < 500;
-  } catch {
+  } catch (error) {
+    debugLog("Primary recovery probe failed", {
+      recoveryProbeEndpoint: recoveryProbePath,
+      result: "failed",
+      reason: describeError(error),
+    });
     return false;
   }
 }
@@ -591,7 +720,7 @@ async function maybeRecoverPrimary(
   markPrimaryProbeAttempt();
 
   primaryProbeInFlight = (async () => {
-    debugLog("Attempting primary API recovery probe", { probePath: healthProbePath });
+    debugLog("Attempting primary API recovery probe", { recoveryProbeEndpoint: recoveryProbePath });
     const healthy = await probePrimaryAvailability(nativeFetch);
     if (healthy) {
       markPrimaryRecovered();
@@ -636,12 +765,14 @@ export function installApiFailoverFetchLayer(): void {
     primaryRequestTimeoutMs,
     fallbackRequestTimeoutMs,
     probeTimeoutMs,
+    recoveryProbePath,
     primaryRetryCooldownMs,
+    stateTtlMs,
   });
 
   // If fallback state was persisted, respect the cooldown before probing the
-  // primary again. A fast /health can recover before slower analytics endpoints
-  // are actually usable, so avoid flipping back on every page reload.
+  // primary again. The recovery probe is intentionally lightweight, but the
+  // cooldown still avoids flipping hosts on every page reload.
   if (runtimeState.activeHost === "fallback") {
     void maybeRecoverPrimary(nativeFetch);
   }
