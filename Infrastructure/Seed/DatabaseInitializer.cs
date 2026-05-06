@@ -112,6 +112,52 @@ public static class DatabaseInitializer
         }
     }
 
+    public static async Task EnsureAnalyticsSupplierDecisionSchemaAsync(
+        IServiceProvider services,
+        IConfiguration configuration,
+        ILogger logger)
+    {
+        logger.LogInformation("Starting analytics supplier decision schema repair.");
+
+        await using var scope = services.CreateAsyncScope();
+        var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
+        var connectionString = analyticsDb.Database.GetConnectionString()
+            ?? analyticsDb.Database.GetDbConnection().ConnectionString;
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            logger.LogWarning("Analytics supplier decision schema repair skipped: AnalyticsDbContext connection string is missing.");
+            return;
+        }
+
+        var defaultConnectionString = configuration.GetConnectionString("DefaultConnection");
+        var unifiedDb = !string.IsNullOrWhiteSpace(defaultConnectionString)
+            && AreSameDatabase(defaultConnectionString, connectionString);
+
+        if (unifiedDb)
+        {
+            logger.LogInformation("Analytics supplier decision schema repair skipped: analytics and trendplus share the same database.");
+            return;
+        }
+
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/011_AddDataOriginColumns.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql", logger);
+
+        if (!await AreVendorSalesNivelacijaViewReadyAsync(connectionString))
+        {
+            logger.LogInformation(
+                "Analytics supplier decision schema repair: vw_vendor_sales_nivelacija is missing required columns. Forcing re-execution of 014 and 016.");
+            await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+            await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql");
+        }
+
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql", logger);
+        await BuildSupplierDecisionHubObjectsAsync(connectionString, logger, "analytics", "supplier-decision-repair");
+
+        logger.LogInformation("Analytics supplier decision schema repair completed.");
+    }
+
     private static string? ResolveSqlFilePath(string sqlFilePath)
     {
         if (Path.IsPathRooted(sqlFilePath) && File.Exists(sqlFilePath))
@@ -332,6 +378,7 @@ public static class DatabaseInitializer
 
             var coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(connectionString);
             var cachesReady = coreViewsReady && await AreSupplierDecisionHubCachesReadyAsync(connectionString);
+            var cachesRefreshed = false;
 
             if (!coreViewsReady)
             {
@@ -378,6 +425,7 @@ public static class DatabaseInitializer
                     databaseLabel);
 
                 await RefreshSupplierDecisionHubCachesAsync(lockConnection, logger, databaseLabel, mode);
+                cachesRefreshed = true;
             }
             else
             {
@@ -385,6 +433,11 @@ public static class DatabaseInitializer
                     "[{Mode}] Supplier decision hub objects already exist in {DatabaseLabel}. Skipping SQL build.",
                     mode,
                     databaseLabel);
+            }
+
+            if (!cachesRefreshed && await AreSupplierDecisionHubCachesReadyAsync(connectionString))
+            {
+                await RefreshSupplierDecisionHubCachesAsync(lockConnection, logger, databaseLabel, mode);
             }
 
             await LogSupplierDecisionHubCacheCountsAsync(lockConnection, logger, databaseLabel, mode);
