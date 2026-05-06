@@ -1,3 +1,4 @@
+using Api.Config;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using NpgsqlTypes;
@@ -881,9 +882,7 @@ LIMIT @limit OFFSET @offset;
     }
 
     private static string GetAnalyticsConnectionString(IConfiguration configuration) =>
-        configuration.GetConnectionString("AnalyticsConnection")
-        ?? configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("AnalyticsConnection or DefaultConnection must be configured.");
+        AnalyticsConnectionResolver.Resolve(configuration);
 
     private static async Task<NpgsqlConnection> OpenConnectionAsync(string analyticsConnectionString, CancellationToken ct)
     {

@@ -1,3 +1,4 @@
+using Api.Config;
 using Application.Analytics;
 using Infrastructure.Services.Caching;
 using Microsoft.Extensions.Configuration;
@@ -1769,9 +1770,7 @@ LIMIT 6;
         };
 
     private static string GetAnalyticsConnectionString(IConfiguration configuration) =>
-        configuration.GetConnectionString("AnalyticsConnection")
-        ?? configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("AnalyticsConnection or DefaultConnection must be configured.");
+        AnalyticsConnectionResolver.Resolve(configuration);
 
     private static async Task<NpgsqlConnection> OpenConnectionAsync(string analyticsConnectionString, CancellationToken ct)
     {

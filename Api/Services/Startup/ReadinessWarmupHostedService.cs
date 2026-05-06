@@ -1,3 +1,4 @@
+using Api.Config;
 using Npgsql;
 
 namespace Api.Services.Startup;
@@ -53,7 +54,19 @@ public sealed class ReadinessWarmupHostedService : BackgroundService
     private async Task<bool> ProbeConfiguredDatabasesAsync(CancellationToken stoppingToken)
     {
         var defaultConnection = _configuration.GetConnectionString("DefaultConnection");
-        var analyticsConnection = _configuration.GetConnectionString("AnalyticsConnection");
+        string analyticsConnection;
+
+        try
+        {
+            analyticsConnection = AnalyticsConnectionResolver.Resolve(
+                _configuration,
+                onWarning: message => _logger.LogWarning("{Message}", message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Startup readiness warmup cannot resolve analytics DB connection string.");
+            return false;
+        }
 
         if (string.IsNullOrWhiteSpace(defaultConnection) || string.IsNullOrWhiteSpace(analyticsConnection))
         {

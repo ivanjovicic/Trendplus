@@ -195,55 +195,6 @@ try
         builder.Configuration.GetValue<int?>("Database:Npgsql:EfRetry:MaxRetryDelaySeconds")
         ?? 5;
 
-    static string SummarizeConnection(string? connectionString)
-    {
-        if (string.IsNullOrWhiteSpace(connectionString))
-            return "<missing>";
-
-        try
-        {
-            var builder = new NpgsqlConnectionStringBuilder(connectionString);
-            var host = string.IsNullOrWhiteSpace(builder.Host) ? "<unknown-host>" : builder.Host;
-            var port = builder.Port;
-            var database = string.IsNullOrWhiteSpace(builder.Database) ? "<unknown-db>" : builder.Database;
-            var username = string.IsNullOrWhiteSpace(builder.Username) ? "<unknown-user>" : builder.Username;
-            return $"{host}:{port}/{database} user={username}";
-        }
-        catch
-        {
-            return "<unparseable>";
-        }
-    }
-
-    static bool IsLoopbackConnectionString(string? connectionString)
-    {
-        if (string.IsNullOrWhiteSpace(connectionString))
-            return false;
-
-        try
-        {
-            var builder = new NpgsqlConnectionStringBuilder(connectionString);
-            var hosts = (builder.Host ?? string.Empty)
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            foreach (var host in hosts)
-            {
-                if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
-                    host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
-                    host.Equals("::1", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-        }
-        catch
-        {
-            // Ignore parse failures, caller can still proceed with original value.
-        }
-
-        return false;
-    }
-
     static string? ApplyNpgsqlTuning(
         string? connectionString,
         int openTimeoutSeconds,
@@ -284,7 +235,12 @@ try
     }
 
     var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
-    var analyticsConnection = builder.Configuration.GetConnectionString("AnalyticsConnection");
+    var configuredAnalyticsConnection = builder.Configuration.GetConnectionString("AnalyticsConnection");
+    var analyticsConnection = AnalyticsConnectionResolver.Resolve(
+        defaultConnection,
+        configuredAnalyticsConnection,
+        builder.Environment.IsDevelopment(),
+        warning => Console.WriteLine($"WARNING: {warning}"));
     var tunedDefaultConnection = ApplyNpgsqlTuning(
         defaultConnection,
         dbOpenTimeoutSeconds,
@@ -304,8 +260,9 @@ try
         dbConnectionIdleLifetimeSeconds,
         dbConnectionPruningIntervalSeconds);
 
-    Console.WriteLine($"DefaultConnection target: {SummarizeConnection(defaultConnection)}");
-    Console.WriteLine($"AnalyticsConnection target: {SummarizeConnection(analyticsConnection)}");
+    Console.WriteLine($"DefaultConnection target: {AnalyticsConnectionResolver.SummarizeConnection(defaultConnection)}");
+    Console.WriteLine($"AnalyticsConnection configured target: {AnalyticsConnectionResolver.SummarizeConnection(configuredAnalyticsConnection)}");
+    Console.WriteLine($"AnalyticsConnection resolved target: {AnalyticsConnectionResolver.SummarizeConnection(analyticsConnection)}");
     Console.WriteLine(
         $"Npgsql tuning: OpenTimeout={dbOpenTimeoutSeconds}s CommandTimeout={dbCommandTimeoutSeconds}s KeepAlive={dbKeepAliveSeconds}s MaxPoolSize={(dbMaxPoolSize?.ToString() ?? "default")} MinPoolSize={(dbMinPoolSize?.ToString() ?? "default")} IdleLifetime={(dbConnectionIdleLifetimeSeconds?.ToString() ?? "default")}s PruningInterval={(dbConnectionPruningIntervalSeconds?.ToString() ?? "default")}s EfRetryEnabled={enableEfRetryOnFailure} EfRetryMaxCount={efRetryMaxCount} EfRetryMaxDelay={efRetryMaxDelaySeconds}s");
 
@@ -365,9 +322,9 @@ try
     // if OpenProductTrainingConnection accidentally points to localhost/loopback in non-dev,
     // fallback to AnalyticsConnection (when available and not loopback).
     if (!builder.Environment.IsDevelopment() &&
-        IsLoopbackConnectionString(openProductTrainingConnection) &&
+        AnalyticsConnectionResolver.IsLoopbackConnectionString(openProductTrainingConnection) &&
         !string.IsNullOrWhiteSpace(analyticsConnection) &&
-        !IsLoopbackConnectionString(analyticsConnection))
+        !AnalyticsConnectionResolver.IsLoopbackConnectionString(analyticsConnection))
     {
         Console.WriteLine(
             "WARNING: OpenProductTrainingConnection points to loopback host in non-development environment. " +
@@ -384,7 +341,7 @@ try
         dbConnectionIdleLifetimeSeconds,
         dbConnectionPruningIntervalSeconds);
 
-    Console.WriteLine($"OpenProductTrainingConnection target: {SummarizeConnection(openProductTrainingConnection)}");
+    Console.WriteLine($"OpenProductTrainingConnection target: {AnalyticsConnectionResolver.SummarizeConnection(openProductTrainingConnection)}");
 
     builder.Services.AddDbContext<OpenProductTrainingDbContext>(options =>
         options.UseNpgsql(
