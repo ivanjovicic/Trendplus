@@ -376,6 +376,8 @@ public static class DatabaseInitializer
                     "[{Mode}] Supplier decision hub SQL build completed for {DatabaseLabel}.",
                     mode,
                     databaseLabel);
+
+                await RefreshSupplierDecisionHubCachesAsync(lockConnection, logger, databaseLabel, mode);
             }
             else
             {
@@ -384,6 +386,8 @@ public static class DatabaseInitializer
                     mode,
                     databaseLabel);
             }
+
+            await LogSupplierDecisionHubCacheCountsAsync(lockConnection, logger, databaseLabel, mode);
         }
         catch (Exception ex)
         {
@@ -400,6 +404,111 @@ public static class DatabaseInitializer
                 await ReleaseSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey);
             }
         }
+    }
+
+    private static async Task RefreshSupplierDecisionHubCachesAsync(
+        NpgsqlConnection connection,
+        ILogger logger,
+        string databaseLabel,
+        string mode)
+    {
+        var materializedViews = new[]
+        {
+            "mv_supplier_markdown_dependency_cache",
+            "mv_supplier_decision_score_cache",
+            "mv_supplier_recommendations_cache"
+        };
+
+        foreach (var materializedView in materializedViews)
+        {
+            if (!await IsPublicMaterializedViewAsync(connection, materializedView))
+            {
+                logger.LogWarning(
+                    "[{Mode}] Supplier decision cache refresh skipped for {DatabaseLabel}: public.{MaterializedView} is missing.",
+                    mode,
+                    databaseLabel,
+                    materializedView);
+                continue;
+            }
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            await using var command = new NpgsqlCommand(
+                $"REFRESH MATERIALIZED VIEW public.{materializedView};",
+                connection);
+            command.CommandTimeout = BootstrapCommandTimeoutSeconds;
+            await command.ExecuteNonQueryAsync();
+            stopwatch.Stop();
+
+            logger.LogInformation(
+                "[{Mode}] Refreshed supplier decision cache {DatabaseLabel}:public.{MaterializedView} in {ElapsedMs}ms.",
+                mode,
+                databaseLabel,
+                materializedView,
+                stopwatch.ElapsedMilliseconds);
+        }
+    }
+
+    private static async Task<bool> IsPublicMaterializedViewAsync(
+        NpgsqlConnection connection,
+        string relationName)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = 'public'
+                  AND c.relname = @relationName
+                  AND c.relkind = 'm'
+            );
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("relationName", relationName);
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
+    }
+
+    private static async Task LogSupplierDecisionHubCacheCountsAsync(
+        NpgsqlConnection connection,
+        ILogger logger,
+        string databaseLabel,
+        string mode)
+    {
+        if (!await IsPublicMaterializedViewAsync(connection, "mv_supplier_markdown_dependency_cache")
+            || !await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache")
+            || !await IsPublicMaterializedViewAsync(connection, "mv_supplier_recommendations_cache"))
+        {
+            logger.LogWarning(
+                "[{Mode}] Supplier decision cache counts skipped for {DatabaseLabel}: one or more cache MVs are missing.",
+                mode,
+                databaseLabel);
+            return;
+        }
+
+        const string sql = """
+            SELECT
+                (SELECT COUNT(*) FROM public.mv_supplier_markdown_dependency_cache) AS markdown_dependency_rows,
+                (SELECT COUNT(*) FROM public.mv_supplier_decision_score_cache) AS decision_score_rows,
+                (SELECT COUNT(*) FROM public.mv_supplier_recommendations_cache) AS recommendations_rows;
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+
+        await using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+        {
+            return;
+        }
+
+        logger.LogInformation(
+            "[{Mode}] Supplier decision cache counts for {DatabaseLabel}: markdown_dependency={MarkdownDependencyRows} decision_score={DecisionScoreRows} recommendations={RecommendationsRows}.",
+            mode,
+            databaseLabel,
+            reader.GetInt64(reader.GetOrdinal("markdown_dependency_rows")),
+            reader.GetInt64(reader.GetOrdinal("decision_score_rows")),
+            reader.GetInt64(reader.GetOrdinal("recommendations_rows")));
     }
 
     private static async Task<bool> AreVendorSalesNivelacijaViewReadyAsync(string connectionString)
