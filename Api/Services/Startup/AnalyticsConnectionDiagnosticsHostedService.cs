@@ -48,7 +48,11 @@ public sealed class AnalyticsConnectionDiagnosticsHostedService : BackgroundServ
                     inet_server_addr()::text AS server_addr,
                     inet_server_port() AS server_port,
                     to_regclass('public.vw_supplier_fullprice_signals')::text AS supplier_fullprice_signals,
-                    to_regclass('public.mv_supplier_decision_score_cache')::text AS supplier_decision_score_cache;
+                    to_regclass('public.vw_supplier_decision_score')::text AS supplier_decision_score,
+                    to_regclass('public.vw_supplier_recommendations')::text AS supplier_recommendations,
+                    to_regclass('public.mv_supplier_markdown_dependency_cache')::text AS supplier_markdown_dependency_cache,
+                    to_regclass('public.mv_supplier_decision_score_cache')::text AS supplier_decision_score_cache,
+                    to_regclass('public.mv_supplier_recommendations_cache')::text AS supplier_recommendations_cache;
                 """;
 
             await using var reader = await command.ExecuteReaderAsync(stoppingToken);
@@ -59,7 +63,7 @@ public sealed class AnalyticsConnectionDiagnosticsHostedService : BackgroundServ
             }
 
             _logger.LogInformation(
-                "Analytics DB runtime target: database={Database} user={User} schema={Schema} search_path={SearchPath} server={ServerAddr}:{ServerPort} vw_supplier_fullprice_signals={SupplierSignalsView} mv_supplier_decision_score_cache={DecisionScoreCache}",
+                "Analytics DB runtime target: database={Database} user={User} schema={Schema} search_path={SearchPath} server={ServerAddr}:{ServerPort} vw_supplier_fullprice_signals={SupplierSignalsView} vw_supplier_decision_score={DecisionScoreView} vw_supplier_recommendations={RecommendationsView} mv_supplier_markdown_dependency_cache={MarkdownDependencyCache} mv_supplier_decision_score_cache={DecisionScoreCache} mv_supplier_recommendations_cache={RecommendationsCache}",
                 ReadString(reader, "database_name"),
                 ReadString(reader, "user_name"),
                 ReadString(reader, "schema_name"),
@@ -67,7 +71,11 @@ public sealed class AnalyticsConnectionDiagnosticsHostedService : BackgroundServ
                 ReadString(reader, "server_addr"),
                 ReadInt32(reader, "server_port"),
                 ReadString(reader, "supplier_fullprice_signals") ?? "<missing>",
-                ReadString(reader, "supplier_decision_score_cache") ?? "<missing>");
+                ReadString(reader, "supplier_decision_score") ?? "<missing>",
+                ReadString(reader, "supplier_recommendations") ?? "<missing>",
+                ReadString(reader, "supplier_markdown_dependency_cache") ?? "<missing>",
+                ReadString(reader, "supplier_decision_score_cache") ?? "<missing>",
+                ReadString(reader, "supplier_recommendations_cache") ?? "<missing>");
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {

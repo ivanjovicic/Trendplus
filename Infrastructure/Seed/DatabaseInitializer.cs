@@ -289,6 +289,119 @@ public static class DatabaseInitializer
         return (bool?)await command.ExecuteScalarAsync() ?? false;
     }
 
+    private static async Task EnsureSupplierDecisionHubObjectsAsync(
+        string connectionString,
+        IConfiguration configuration,
+        ILogger logger,
+        string databaseLabel)
+    {
+        var runFullOnStartup = configuration.GetValue<bool>("DatabaseInitialization:RunFullSupplierDecisionHubOnStartup");
+
+        if (runFullOnStartup)
+        {
+            await BuildSupplierDecisionHubObjectsAsync(connectionString, logger, databaseLabel, "startup");
+            return;
+        }
+
+        _ = Task.Run(() => BuildSupplierDecisionHubObjectsAsync(connectionString, logger, databaseLabel, "background"));
+    }
+
+    private static async Task BuildSupplierDecisionHubObjectsAsync(
+        string connectionString,
+        ILogger logger,
+        string databaseLabel,
+        string mode)
+    {
+        await using var lockConnection = new NpgsqlConnection(connectionString);
+        var lockAcquired = false;
+
+        try
+        {
+            await lockConnection.OpenAsync();
+
+            if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey))
+            {
+                logger.LogInformation(
+                    "[{Mode}] Skipping supplier decision hub SQL build for {DatabaseLabel} because another instance already holds the build lock.",
+                    mode,
+                    databaseLabel);
+                return;
+            }
+
+            lockAcquired = true;
+
+            var coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(connectionString);
+            var cachesReady = coreViewsReady && await AreSupplierDecisionHubCachesReadyAsync(connectionString);
+
+            if (!coreViewsReady)
+            {
+                logger.LogInformation(
+                    "[{Mode}] Supplier decision hub core views are missing in {DatabaseLabel}. Forcing startup-safe prerequisite batch.",
+                    mode,
+                    databaseLabel);
+                await DeleteAppliedStartupSqlHistoryAsync(
+                    connectionString,
+                    "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+
+                await ExecuteSqlFileAsync(
+                    connectionString,
+                    "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+                    logger,
+                    commandTimeoutSeconds: 0,
+                    useTransaction: false,
+                    maxBatchCount: 1,
+                    historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+            }
+
+            if (!cachesReady)
+            {
+                logger.LogInformation(
+                    "[{Mode}] Supplier decision hub materialized caches are missing in {DatabaseLabel}. Building supplier decision stack.",
+                    mode,
+                    databaseLabel);
+                await DeleteAppliedStartupSqlHistoryAsync(
+                    connectionString,
+                    "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+
+                await ExecuteSqlFileAsync(
+                    connectionString,
+                    "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+                    logger,
+                    commandTimeoutSeconds: 0,
+                    useTransaction: false,
+                    startBatchNumber: 2,
+                    historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+
+                logger.LogInformation(
+                    "[{Mode}] Supplier decision hub SQL build completed for {DatabaseLabel}.",
+                    mode,
+                    databaseLabel);
+            }
+            else
+            {
+                logger.LogInformation(
+                    "[{Mode}] Supplier decision hub objects already exist in {DatabaseLabel}. Skipping SQL build.",
+                    mode,
+                    databaseLabel);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "[{Mode}] Supplier decision hub SQL build failed for {DatabaseLabel}. Scorecard views may be unavailable until next startup.",
+                mode,
+                databaseLabel);
+        }
+        finally
+        {
+            if (lockAcquired && lockConnection.State == System.Data.ConnectionState.Open)
+            {
+                await ReleaseSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey);
+            }
+        }
+    }
+
     private static async Task<bool> AreVendorSalesNivelacijaViewReadyAsync(string connectionString)
     {
         if (!await AreRelationsReadyAsync(connectionString, "public.vw_vendor_sales_nivelacija"))
@@ -1851,15 +1964,30 @@ public static class DatabaseInitializer
         // any heavy MV work (the bg task handles the unified case explicitly).
         if (!unifiedDb)
         {
+            if (!await AreVendorSalesNivelacijaViewReadyAsync(connectionString))
+            {
+                logger.LogInformation(
+                    "[Startup] Analytics vw_vendor_sales_nivelacija is missing required columns. Forcing re-execution of 014 and 016.");
+                await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+                await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql");
+            }
+
             await ExecuteSqlFileAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql", logger);
         }
         await ExecuteSqlFileAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql", logger);
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/Intelligence/020_create_intelligence_schema.sql", logger);
-        // 018_AddSupplierDecisionHubViews.sql is NOT run on the analytics DB — it references
-        // trendplus-specific tables and is executed asynchronously on the trendplus DB.
-        // 015_AddSupplierMlRanking.sql is also deferred: it depends on vw_supplier_fullprice_signals
-        // which 018 creates. Both are run sequentially in the 018 background task in
-        // InitializeTrendplusDbAsync (only when analytics and trendplus share the same DB).
+        // Supplier Decision Hub endpoints read through AnalyticsConnection. In split-db
+        // deployments, 013/014/016 provide the compatibility/nivelacija dependencies
+        // and 018 must build the supplier decision views and materialized caches here.
+        if (!unifiedDb)
+        {
+            await EnsureSupplierDecisionHubObjectsAsync(connectionString, configuration, logger, "analytics");
+        }
+        else
+        {
+            logger.LogInformation("Skipping analytics-side supplier decision SQL build: analytics and trendplus share the same database.");
+        }
+        // The optional ML overlay from 015_AddSupplierMlRanking.sql remains separate.
 
         var analyticsIntelligenceScripts = new (string SqlFilePath, string[] RequiredRelations)[]
         {

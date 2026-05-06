@@ -164,6 +164,25 @@ SELECT
 FROM "ReturnFacts" rf
 GROUP BY rf."ReturnId", rf."SupplierId";
 
+DO $$
+BEGIN
+    IF to_regclass('public.povracaj_zaglavlje') IS NULL THEN
+        EXECUTE 'CREATE VIEW povracaj_zaglavlje AS SELECT * FROM povracaj_zaglavlje_mv';
+    ELSIF EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relname = 'povracaj_zaglavlje'
+          AND c.relkind = 'v'
+    ) THEN
+        EXECUTE 'CREATE OR REPLACE VIEW povracaj_zaglavlje AS SELECT * FROM povracaj_zaglavlje_mv';
+    ELSE
+        RAISE NOTICE 'Leaving existing non-view relation public.povracaj_zaglavlje unchanged.';
+    END IF;
+END
+$$;
+
 CREATE OR REPLACE VIEW povracaj_stavke AS
 SELECT
     rf."SourceLineId" AS id,
