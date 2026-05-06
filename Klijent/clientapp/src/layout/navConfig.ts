@@ -157,6 +157,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/outbox/messages", label: "Outbox poruke", icon: Logs },
       { to: "/performance", label: "Performanse", icon: Gauge },
       { to: "/logs", label: "Logovi", icon: Logs },
+      { to: "/admin/configuration", label: "Konfiguracija", icon: Settings2 },
       { to: "/image-upload-test", label: "Upload slika (Test)", icon: PackagePlus },
       { to: "/admin/nivelacija-repair", label: "Nivelacija Repair", icon: Zap },
     ],

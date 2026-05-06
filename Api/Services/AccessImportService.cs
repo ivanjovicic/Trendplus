@@ -3214,6 +3214,13 @@ using NpgsqlTypes;
         return referenceTime <= utcNow.AddMinutes(-safeWindowMinutes);
     }
 
+    internal static bool IsPendingBatchStale(DateTime queuedAtUtc, DateTime? lastHeartbeatUtc, DateTime utcNow, int staleAfterMinutes)
+    {
+        var safeWindowMinutes = Math.Max(1, staleAfterMinutes);
+        var referenceTime = lastHeartbeatUtc ?? queuedAtUtc;
+        return referenceTime <= utcNow.AddMinutes(-safeWindowMinutes);
+    }
+
     private int GetRunningBatchStaleMinutes()
         => Math.Max(15, _options.RunningBatchStaleMinutes);
 
@@ -3229,7 +3236,7 @@ using NpgsqlTypes;
         {
             var staleQuery = _trendDb.DataImportBatches
                 .AsNoTracking()
-                .Where(x => (x.Status == "running" || x.Status == "pending") && x.CompletedAtUtc == null);
+                .Where(x => x.Status == "running" && x.CompletedAtUtc == null);
 
             if (batchId.HasValue)
                 staleQuery = staleQuery.Where(x => x.Id == batchId.Value);
@@ -3263,7 +3270,7 @@ using NpgsqlTypes;
                         "ErrorMessage" = COALESCE(NULLIF("ErrorMessage", ''), @p2),
                         "SummaryJson" = COALESCE("SummaryJson", @p3)
                     WHERE "Id" = @p4
-                      AND "Status" IN ('running', 'pending')
+                      AND "Status" = 'running'
                       AND "CompletedAtUtc" IS NULL;
                     """;
 

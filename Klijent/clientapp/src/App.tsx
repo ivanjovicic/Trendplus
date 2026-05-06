@@ -62,6 +62,7 @@ const DataQualityPage = lazy(() => import("./pages/DataQualityPage"));
 const AnalyticsDetailPage = lazy(() => import("./pages/AnalyticsDetailPage"));
 const AnalyticsPrintPage = lazy(() => import("./pages/AnalyticsPrintPage"));
 const ThemeSettingsPage = lazy(() => import("./pages/ThemeSettingsPage"));
+const ConfigurationPage = lazy(() => import("./pages/ConfigurationPage"));
 
 function RouteFallback() {
     return <div className="page-loading">Učitavanje...</div>;
@@ -129,6 +130,7 @@ function AppShell() {
                     <Route path="/transfers" element={<TransferPage />} />
                     <Route path="/admin/common-products" element={<CommonProductsPage />} />
                     <Route path="/admin/nivelacija-repair" element={<NivelacijaRepairPage />} />
+                    <Route path="/admin/configuration" element={<ConfigurationPage />} />
                     <Route path="/settings/themes" element={<ThemeSettingsPage />} />
                     <Route path="/settings/themes" element={<ThemeSettingsPage />} />
                 </Routes>

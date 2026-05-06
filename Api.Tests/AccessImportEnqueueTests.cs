@@ -65,6 +65,21 @@ namespace Api.Tests
 
             public Task<AccessImportQueuedJob?> ClaimNextAsync(CancellationToken ct = default)
                 => Task.FromResult<AccessImportQueuedJob?>(null);
+
+            public Task<AccessImportEnqueueDiagnostics> GetEnqueueDiagnosticsAsync(long batchId, CancellationToken ct = default)
+                => Task.FromResult(new AccessImportEnqueueDiagnostics(
+                    batchId,
+                    Exists: true,
+                    CurrentStatus: "pending",
+                    HasSourceFilePath: true,
+                    HasSourceStorageKey: false,
+                    CancellationRequested: false,
+                    CompletedAtUtc: null,
+                    Enqueueable: true,
+                    Reason: "enqueueable"));
+
+            public Task<AccessImportPendingRecoveryResult> RecoverStalePendingAsync(TimeSpan staleAfter, CancellationToken ct = default)
+                => Task.FromResult(new AccessImportPendingRecoveryResult(0, 0, 0));
         }
 
         [Fact]

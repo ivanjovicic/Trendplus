@@ -109,6 +109,19 @@ try
         workersEnabledFromConfig,
         processType,
         builder.Environment.IsDevelopment());
+    var accessImportWorkerEnabled = builder.Configuration.GetValue<bool?>("AccessImport:WorkerEnabled")
+        ?? new AccessImportOptions().WorkerEnabled;
+    var accessImportRegisterInWebProcess = builder.Configuration.GetValue<bool?>("AccessImport:RegisterWorkerInWebProcess");
+    var registerAccessImportWorkerInWebProcess = WorkerRuntimeConfig.ResolveAccessImportWorkerInWebProcess(
+        accessImportRegisterInWebProcess,
+        accessImportWorkerEnabled,
+        workersEnabledFromConfig == false,
+        processType);
+    var effectiveWorkersEnabled = workersEnabled || registerAccessImportWorkerInWebProcess;
+    var effectiveWorkersRuntimeToggleAllowed = workersRuntimeToggleAllowed || registerAccessImportWorkerInWebProcess;
+    var effectiveWorkersEnabledSource = registerAccessImportWorkerInWebProcess && !workersEnabled
+        ? "access-import-web-default"
+        : workersEnabledSource;
 
     Console.WriteLine($"Process type: {processType.ToString().ToLowerInvariant()} (source: {processTypeSource})");
     if (processTypeSource == "WORKER_PROCESS")
@@ -121,8 +134,10 @@ try
     }
     else if (!isWorkerProcess && workersEnabledFromConfig == true)
     {
-        Console.WriteLine("Workers:Enabled=true is set, but this process resolved to web mode so worker hosted services will not be registered.");
+        Console.WriteLine("Workers:Enabled=true is set, but this process resolved to web mode. Only web-safe hosted services may be registered.");
     }
+    Console.WriteLine(
+        $"Access import worker config: WorkerEnabled={accessImportWorkerEnabled} RegisterWorkerInWebProcess={(accessImportRegisterInWebProcess ?? true)} WillRegisterInWeb={registerAccessImportWorkerInWebProcess}");
 
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
@@ -416,9 +431,9 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddSingleton<WorkerHealthService>(); // Worker health monitoring
     builder.Services.AddSingleton(sp =>
         new WorkerRuntimeControlService(
-            workersEnabled,
-            workersRuntimeToggleAllowed,
-            workersEnabledSource));
+            effectiveWorkersEnabled,
+            effectiveWorkersRuntimeToggleAllowed,
+            effectiveWorkersEnabledSource));
     
     // Embedding service for AI-powered image search
     var pythonServiceUrl = builder.Configuration["EmbeddingService:BaseUrl"] ?? "http://localhost:8000";
@@ -527,11 +542,15 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     // Image providers for trends carousel are optional and resolved dynamically in endpoints
 
-    // P0 runtime gating: web processes must not register critical worker hosted services.
+    // P0 runtime gating: web processes must not register the full critical worker fleet.
     WorkerRuntimeConfig.RegisterWorkerHostedServices(builder.Services, isWorkerProcess);
-    Console.WriteLine($"Background workers startup state: {(workersEnabled ? "ENABLED" : "DISABLED")}");
-    Console.WriteLine($"Background workers runtime toggle: {(workersRuntimeToggleAllowed ? "ALLOWED" : "LOCKED")}");
-    Console.WriteLine($"Worker hosted services registered: {(isWorkerProcess ? "YES" : "NO")}");
+    if (registerAccessImportWorkerInWebProcess)
+    {
+        builder.Services.AddHostedService<AccessImportBackgroundWorker>();
+    }
+    Console.WriteLine($"Background workers startup state: {(effectiveWorkersEnabled ? "ENABLED" : "DISABLED")}");
+    Console.WriteLine($"Background workers runtime toggle: {(effectiveWorkersRuntimeToggleAllowed ? "ALLOWED" : "LOCKED")}");
+    Console.WriteLine($"Worker hosted services registered: {(isWorkerProcess ? "YES" : registerAccessImportWorkerInWebProcess ? "ACCESS_IMPORT_ONLY" : "NO")}");
 
     builder.Services.AddControllers();
     builder.Services.ConfigureHttpJsonOptions(opts =>
@@ -967,6 +986,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapShopifyEndpoints();
     app.MapAccessImportEndpoints();
     app.MapAdminRepairEndpoints();
+    app.MapAdminConfigEndpoints();
     app.MapRedisEndpoints();
     app.MapOutboxEndpoints();
     app.MapAnalyticsTableEndpoints();

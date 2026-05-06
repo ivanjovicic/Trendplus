@@ -91,6 +91,25 @@ public static class WorkerRuntimeConfig
         // services.AddHostedService<Workers.DatabaseKeepAliveWorker>();
     }
 
+    public static bool ResolveAccessImportWorkerInWebProcess(
+        bool? configuredRegisterInWebProcess,
+        bool accessImportWorkerEnabled,
+        bool workersExplicitlyDisabled,
+        ProcessType processType)
+    {
+        if (processType != ProcessType.Web)
+        {
+            return false;
+        }
+
+        if (workersExplicitlyDisabled || !accessImportWorkerEnabled)
+        {
+            return false;
+        }
+
+        return configuredRegisterInWebProcess ?? true;
+    }
+
     private static bool TryParseBooleanFlag(string? rawValue, out bool value)
     {
         if (bool.TryParse(rawValue, out value))

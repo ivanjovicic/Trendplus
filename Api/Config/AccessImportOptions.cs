@@ -5,6 +5,7 @@ public sealed class AccessImportOptions
     public const string Section = "AccessImport";
 
     public bool WorkerEnabled { get; set; } = true;
+    public bool RegisterWorkerInWebProcess { get; set; } = true;
     public int PollingIntervalSeconds { get; set; } = 2;
     public int MaxConcurrentJobs { get; set; } = 1;
     public int CliTimeoutSeconds { get; set; } = 60;
@@ -17,6 +18,8 @@ public sealed class AccessImportOptions
     public bool EnableAutoRetryForTransientFailures { get; set; } = false;
     public string StorageRoot { get; set; } = "tmp/access-import-jobs";
     public bool EnableSnapshotCopy { get; set; } = true;
+    public int PendingBatchStaleMinutes { get; set; } = 10;
+    public int PendingBatchRecoveryIntervalSeconds { get; set; } = 60;
     public int RunningBatchStaleMinutes { get; set; } = 240;
     public bool EnableRuntimeBatchSchemaBootstrap { get; set; } = false;
     public bool EnableMdbSql { get; set; }

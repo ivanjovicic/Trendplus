@@ -83,6 +83,42 @@ public sealed class WorkerRuntimeConfigTests
     }
 
     [Fact]
+    public void ResolveAccessImportWorkerInWebProcess_DefaultsToTrue_WhenWebAndAccessWorkerEnabled()
+    {
+        var register = WorkerRuntimeConfig.ResolveAccessImportWorkerInWebProcess(
+            configuredRegisterInWebProcess: null,
+            accessImportWorkerEnabled: true,
+            workersExplicitlyDisabled: false,
+            processType: ProcessType.Web);
+
+        Assert.True(register);
+    }
+
+    [Fact]
+    public void ResolveAccessImportWorkerInWebProcess_RespectsExplicitWorkersDisabled()
+    {
+        var register = WorkerRuntimeConfig.ResolveAccessImportWorkerInWebProcess(
+            configuredRegisterInWebProcess: null,
+            accessImportWorkerEnabled: true,
+            workersExplicitlyDisabled: true,
+            processType: ProcessType.Web);
+
+        Assert.False(register);
+    }
+
+    [Fact]
+    public void ResolveAccessImportWorkerInWebProcess_DoesNotDuplicateWorkerProcessRegistration()
+    {
+        var register = WorkerRuntimeConfig.ResolveAccessImportWorkerInWebProcess(
+            configuredRegisterInWebProcess: null,
+            accessImportWorkerEnabled: true,
+            workersExplicitlyDisabled: false,
+            processType: ProcessType.Worker);
+
+        Assert.False(register);
+    }
+
+    [Fact]
     public void ResolveWorkersEnabled_DefaultsToTrue_ForWorkerProcess()
     {
         var enabled = WorkerRuntimeConfig.ResolveWorkersEnabled(

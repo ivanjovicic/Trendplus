@@ -441,6 +441,22 @@ public sealed class AccessImportServiceTests
     }
 
     [Fact]
+    public void AccessImportOptions_RegisterWorkerInWebProcess_DefaultsToTrue()
+    {
+        var options = new AccessImportOptions();
+
+        Assert.True(options.RegisterWorkerInWebProcess);
+    }
+
+    [Fact]
+    public void AccessImportOptions_PendingBatchStaleMinutes_DefaultsToTenMinutes()
+    {
+        var options = new AccessImportOptions();
+
+        Assert.Equal(10, options.PendingBatchStaleMinutes);
+    }
+
+    [Fact]
     public void AccessImportOptions_EnableRuntimeBatchSchemaBootstrap_DefaultsToFalse()
     {
         var options = new AccessImportOptions();
@@ -500,6 +516,29 @@ public sealed class AccessImportServiceTests
         var result = AccessImportService.IsRunningBatchStale(startedAtUtc, lastHeartbeatUtc, utcNow, 240);
 
         Assert.True(result);
+    }
+
+    [Fact]
+    public void IsPendingBatchStale_ReturnsTrue_WhenQueuedPendingBatchExceededRecoveryWindow()
+    {
+        var utcNow = new DateTime(2026, 03, 25, 8, 0, 0, DateTimeKind.Utc);
+        var queuedAtUtc = utcNow.AddMinutes(-11);
+
+        var result = AccessImportService.IsPendingBatchStale(queuedAtUtc, lastHeartbeatUtc: null, utcNow, 10);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsPendingBatchStale_UsesLastHeartbeat_WhenAvailable()
+    {
+        var utcNow = new DateTime(2026, 03, 25, 8, 0, 0, DateTimeKind.Utc);
+        var queuedAtUtc = utcNow.AddMinutes(-60);
+        var lastHeartbeatUtc = utcNow.AddMinutes(-2);
+
+        var result = AccessImportService.IsPendingBatchStale(queuedAtUtc, lastHeartbeatUtc, utcNow, 10);
+
+        Assert.False(result);
     }
 
     #endregion

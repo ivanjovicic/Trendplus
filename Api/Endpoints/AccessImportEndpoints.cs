@@ -200,26 +200,51 @@ public static class AccessImportEndpoints
         group.MapPost("/jobs/{batchId:long}/enqueue", async (
             long batchId,
             IAccessImportJobQueue queue,
-            IAccessImportService service,
             HttpContext httpContext,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
-            var batch = await service.GetBatchAsync(batchId, ct);
-            if (batch is null)
+            var diagnostics = await queue.GetEnqueueDiagnosticsAsync(batchId, ct);
+            if (!diagnostics.Exists)
             {
-                return Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
+                return Results.NotFound(new
+                {
+                    error = $"Batch {batchId} nije pronadjen.",
+                    diagnostics
+                });
+            }
+
+            if (!diagnostics.Enqueueable)
+            {
+                return Results.BadRequest(new
+                {
+                    error = $"Batch {batchId} nije enqueueable: {diagnostics.Reason}.",
+                    diagnostics,
+                    enqueued = false
+                });
             }
 
             try
             {
                 await queue.EnqueueAsync(batchId, ct);
                 logger.LogInformation("Manual enqueue requested for batch {BatchId}.", batchId);
-                return Results.Accepted($"/api/access-import/jobs/{batchId}", new { batchId, enqueued = true });
+                var refreshedDiagnostics = await queue.GetEnqueueDiagnosticsAsync(batchId, ct);
+                return Results.Accepted($"/api/access-import/jobs/{batchId}", new
+                {
+                    batchId,
+                    enqueued = true,
+                    diagnostics = refreshedDiagnostics
+                });
             }
             catch (InvalidOperationException ex)
             {
-                return Results.BadRequest(new { error = ex.Message });
+                var refreshedDiagnostics = await queue.GetEnqueueDiagnosticsAsync(batchId, ct);
+                return Results.BadRequest(new
+                {
+                    error = ex.Message,
+                    diagnostics = refreshedDiagnostics,
+                    enqueued = false
+                });
             }
             catch (Exception ex)
             {

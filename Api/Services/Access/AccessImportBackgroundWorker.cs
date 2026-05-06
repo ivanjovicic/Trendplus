@@ -41,12 +41,20 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Access import background worker started.");
+        _logger.LogInformation(
+            "Access import background worker started. WorkerEnabled: {WorkerEnabled}. GlobalWorkersEnabled: {GlobalWorkersEnabled}. PollingIntervalSeconds: {PollingIntervalSeconds}. MaxConcurrentJobs: {MaxConcurrentJobs}. PendingBatchStaleMinutes: {PendingBatchStaleMinutes}.",
+            _options.WorkerEnabled,
+            _controlService.IsEnabled,
+            _options.PollingIntervalSeconds,
+            _options.MaxConcurrentJobs,
+            _options.PendingBatchStaleMinutes);
         _healthService.ReportRunning(WorkerName, "Starting up...");
 
         var pauseCheckInterval = TimeSpan.FromSeconds(5);
         var pollInterval = TimeSpan.FromSeconds(Math.Max(1, _options.PollingIntervalSeconds));
         var maxConcurrentJobs = Math.Max(1, _options.MaxConcurrentJobs);
+        var pendingRecoveryInterval = TimeSpan.FromSeconds(Math.Max(15, _options.PendingBatchRecoveryIntervalSeconds));
+        var nextPendingRecoveryUtc = DateTime.MinValue;
         var runningJobs = new List<Task>(capacity: maxConcurrentJobs);
         var paused = false;
 
@@ -67,6 +75,12 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
                         WorkerName,
                         _controlService.IsEnabled,
                         _options.WorkerEnabled);
+                    if (!_options.WorkerEnabled)
+                    {
+                        _logger.LogWarning(
+                            "Access import worker disabled by config. Set AccessImport:WorkerEnabled=true to process pending batches.");
+                    }
+
                     _healthService.ReportStopped(WorkerName, reason);
                     paused = true;
                 }
@@ -93,6 +107,12 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
             try
             {
                 runningJobs.RemoveAll(t => t.IsCompleted);
+
+                if (DateTime.UtcNow >= nextPendingRecoveryUtc)
+                {
+                    await RecoverStalePendingBatchesAsync(stoppingToken);
+                    nextPendingRecoveryUtc = DateTime.UtcNow.Add(pendingRecoveryInterval);
+                }
 
                 while (runningJobs.Count < maxConcurrentJobs)
                 {
@@ -171,10 +191,36 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
         }
     }
 
+    private async Task RecoverStalePendingBatchesAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            await using var scope = _serviceProvider.CreateAsyncScope();
+            var queue = scope.ServiceProvider.GetRequiredService<IAccessImportJobQueue>();
+            await queue.RecoverStalePendingAsync(
+                TimeSpan.FromMinutes(Math.Max(1, _options.PendingBatchStaleMinutes)),
+                stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // graceful shutdown path
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Access import stale pending watchdog failed. Worker will continue.");
+        }
+    }
+
     private async Task ProcessJobAsync(AccessImportQueuedJob job, CancellationToken stoppingToken)
     {
         try
         {
+            _logger.LogInformation(
+                "Access import started. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StorageBacked: {StorageBacked}.",
+                job.BatchId,
+                job.SourceFileName,
+                !string.IsNullOrWhiteSpace(job.SourceStorageKey));
+
             var workingFilePath = job.SourceFilePath;
             if (!string.IsNullOrWhiteSpace(job.SourceStorageKey))
             {
