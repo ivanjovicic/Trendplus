@@ -413,6 +413,7 @@ try
     builder.Services.AddHostedService<ReadinessWarmupHostedService>();
     if (!isWorkerProcess)
     {
+        builder.Services.AddHostedService<AnalyticsConnectionDiagnosticsHostedService>();
         builder.Services.AddHostedService<AnalyticsCachePrewarmHostedService>();
     }
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
