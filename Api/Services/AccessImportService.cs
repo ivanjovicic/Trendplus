@@ -2441,100 +2441,104 @@ using NpgsqlTypes;
 
         try
         {
-            await using var tx = await _trendDb.Database.BeginTransactionAsync(ct);
-            var originalAutoDetectChanges = _trendDb.ChangeTracker.AutoDetectChangesEnabled;
-            try
+            var executionStrategy = _trendDb.Database.CreateExecutionStrategy();
+            await executionStrategy.ExecuteAsync(async () =>
             {
-                var startedAt = DateTime.UtcNow;
-                batch.Status = "running";
-                batch.StartedAtUtc = startedAt;
-                batch.ErrorMessage = null;
-                batch.ErrorDetailsJson = null;
-                batch.CompletedAtUtc = null;
-                batch.SummaryJson = null;
-                batch.LastHeartbeatUtc = startedAt;
-                batch.CurrentStep = "starting";
-                batch.CurrentTable = "all";
-                batch.ProgressPercent = 2;
-                batch.RowsRead = 0;
-                batch.RowsAccepted = 0;
-                batch.RowsWritten = 0;
-
-                _trendDb.ChangeTracker.AutoDetectChangesEnabled = false;
-                _pendingTrendWrites = 0;
-                await using var session = CreateReadSession(snapshot.FilePath);
-                using var sessionScope = _logger.BeginScope(new Dictionary<string, object?>
+                await using var tx = await _trendDb.Database.BeginTransactionAsync(ct);
+                var originalAutoDetectChanges = _trendDb.ChangeTracker.AutoDetectChangesEnabled;
+                try
                 {
-                    ["AccessReadMode"] = session.Mode
-                });
-                _logger.LogInformation(
-                    "Access import started. BatchId: {BatchId}. SourceFileName: {SourceFileName}. Mode: {Mode}. IncludeAnalytics: {IncludeAnalytics}. OverwriteExisting: {OverwriteExisting}. IncludeTemporaryTables: {IncludeTemporaryTables}.",
-                    batch.Id,
-                    batch.SourceFileName,
-                    session.Mode,
-                    includeAnalytics,
-                    overwriteExisting,
-                    includeTemporaryTables);
-                await PersistBatchProgressAsync("batch-start", force: true, ct);
-                await ImportTrendplusAsync(session, overwriteExisting, includeTemporaryTables, result, ct);
-                await FlushTrendWritesAsync(force: true, ct);
-                await ResetTrendplusSequencesAsync(ct);
+                    var startedAt = DateTime.UtcNow;
+                    batch.Status = "running";
+                    batch.StartedAtUtc = startedAt;
+                    batch.ErrorMessage = null;
+                    batch.ErrorDetailsJson = null;
+                    batch.CompletedAtUtc = null;
+                    batch.SummaryJson = null;
+                    batch.LastHeartbeatUtc = startedAt;
+                    batch.CurrentStep = "starting";
+                    batch.CurrentTable = "all";
+                    batch.ProgressPercent = 2;
+                    batch.RowsRead = 0;
+                    batch.RowsAccepted = 0;
+                    batch.RowsWritten = 0;
 
-                if (includeAnalytics)
-                    await SyncAnalyticsAsync(result, ct);
-
-                if (_analyticsCache is not null)
-                {
-                    try
+                    _trendDb.ChangeTracker.AutoDetectChangesEnabled = false;
+                    _pendingTrendWrites = 0;
+                    await using var session = CreateReadSession(snapshot.FilePath);
+                    using var sessionScope = _logger.BeginScope(new Dictionary<string, object?>
                     {
-                        await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
-                    }
-                    catch (Exception cacheEx)
-                    {
-                        _logger.LogWarning(cacheEx, "Analytics cache invalidation failed after Access import. BatchId: {BatchId}.", batch.Id);
-                    }
-                }
+                        ["AccessReadMode"] = session.Mode
+                    });
+                    _logger.LogInformation(
+                        "Access import started. BatchId: {BatchId}. SourceFileName: {SourceFileName}. Mode: {Mode}. IncludeAnalytics: {IncludeAnalytics}. OverwriteExisting: {OverwriteExisting}. IncludeTemporaryTables: {IncludeTemporaryTables}.",
+                        batch.Id,
+                        batch.SourceFileName,
+                        session.Mode,
+                        includeAnalytics,
+                        overwriteExisting,
+                        includeTemporaryTables);
+                    await PersistBatchProgressAsync("batch-start", force: true, ct);
+                    await ImportTrendplusAsync(session, overwriteExisting, includeTemporaryTables, result, ct);
+                    await FlushTrendWritesAsync(force: true, ct);
+                    await ResetTrendplusSequencesAsync(ct);
 
-                result.Status = "completed";
-                result.CompletedAtUtc = DateTime.UtcNow;
-                if (_trendDb.Entry(batch).State == EntityState.Detached)
-                {
-                    var trackedBatch = await _trendDb.DataImportBatches.FirstOrDefaultAsync(x => x.Id == batch.Id, ct);
-                    if (trackedBatch is not null)
-                        batch = trackedBatch;
+                    if (includeAnalytics)
+                        await SyncAnalyticsAsync(result, ct);
+
+                    if (_analyticsCache is not null)
+                    {
+                        try
+                        {
+                            await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
+                        }
+                        catch (Exception cacheEx)
+                        {
+                            _logger.LogWarning(cacheEx, "Analytics cache invalidation failed after Access import. BatchId: {BatchId}.", batch.Id);
+                        }
+                    }
+
+                    result.Status = "completed";
+                    result.CompletedAtUtc = DateTime.UtcNow;
+                    if (_trendDb.Entry(batch).State == EntityState.Detached)
+                    {
+                        var trackedBatch = await _trendDb.DataImportBatches.FirstOrDefaultAsync(x => x.Id == batch.Id, ct);
+                        if (trackedBatch is not null)
+                            batch = trackedBatch;
+                    }
+                    batch.Status = "completed";
+                    batch.CompletedAtUtc = result.CompletedAtUtc;
+                    batch.LastHeartbeatUtc = result.CompletedAtUtc;
+                    batch.CurrentStep = null;
+                    batch.CurrentTable = null;
+                    batch.ProgressPercent = 100;
+                    UpdateBatchDurationSeconds(batch, result.CompletedAtUtc ?? DateTime.UtcNow);
+                    ApplyBatchMetricsFromResult(batch, result);
+                    var completedCursorSnapshot = BuildBatchCursorSnapshotJson();
+                    batch.CursorSnapshot = completedCursorSnapshot;
+                    batch.CursorAfterJson = completedCursorSnapshot;
+                    batch.SummaryJson = JsonSerializer.Serialize(result);
+                    await _trendDb.SaveChangesAsync(ct);
+                    await tx.CommitAsync(ct);
+                    _logger.LogInformation(
+                        "Access import completed. BatchId: {BatchId}. SourceFileName: {SourceFileName}. Status: {Status}. IncludeAnalytics: {IncludeAnalytics}. TrendFlushes: {TrendFlushes}. HeartbeatPersists: {HeartbeatPersists}.",
+                        batch.Id,
+                        batch.SourceFileName,
+                        result.Status,
+                        includeAnalytics,
+                        _trendFlushCount,
+                        _batchHeartbeatPersistCount);
                 }
-                batch.Status = "completed";
-                batch.CompletedAtUtc = result.CompletedAtUtc;
-                batch.LastHeartbeatUtc = result.CompletedAtUtc;
-                batch.CurrentStep = null;
-                batch.CurrentTable = null;
-                batch.ProgressPercent = 100;
-                UpdateBatchDurationSeconds(batch, result.CompletedAtUtc ?? DateTime.UtcNow);
-                ApplyBatchMetricsFromResult(batch, result);
-                var completedCursorSnapshot = BuildBatchCursorSnapshotJson();
-                batch.CursorSnapshot = completedCursorSnapshot;
-                batch.CursorAfterJson = completedCursorSnapshot;
-                batch.SummaryJson = JsonSerializer.Serialize(result);
-                await _trendDb.SaveChangesAsync(ct);
-                await tx.CommitAsync(ct);
-                _logger.LogInformation(
-                    "Access import completed. BatchId: {BatchId}. SourceFileName: {SourceFileName}. Status: {Status}. IncludeAnalytics: {IncludeAnalytics}. TrendFlushes: {TrendFlushes}. HeartbeatPersists: {HeartbeatPersists}.",
-                    batch.Id,
-                    batch.SourceFileName,
-                    result.Status,
-                    includeAnalytics,
-                    _trendFlushCount,
-                    _batchHeartbeatPersistCount);
-            }
-            catch
-            {
-                await tx.RollbackAsync(ct);
-                throw;
-            }
-            finally
-            {
-                _trendDb.ChangeTracker.AutoDetectChangesEnabled = originalAutoDetectChanges;
-            }
+                catch
+                {
+                    await tx.RollbackAsync(ct);
+                    throw;
+                }
+                finally
+                {
+                    _trendDb.ChangeTracker.AutoDetectChangesEnabled = originalAutoDetectChanges;
+                }
+            });
 
             return result;
         }
