@@ -236,11 +236,11 @@ try
 
     var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
     var configuredAnalyticsConnection = builder.Configuration.GetConnectionString("AnalyticsConnection");
-    var analyticsConnection = AnalyticsConnectionResolver.Resolve(
-        defaultConnection,
-        configuredAnalyticsConnection,
+    var analyticsConnectionResolution = AnalyticsConnectionResolver.ResolveDetailed(
+        builder.Configuration,
         builder.Environment.IsDevelopment(),
         warning => Console.WriteLine($"WARNING: {warning}"));
+    var analyticsConnection = analyticsConnectionResolution.ConnectionString;
     var tunedDefaultConnection = ApplyNpgsqlTuning(
         defaultConnection,
         dbOpenTimeoutSeconds,
@@ -263,6 +263,7 @@ try
     Console.WriteLine($"DefaultConnection target: {AnalyticsConnectionResolver.SummarizeConnection(defaultConnection)}");
     Console.WriteLine($"AnalyticsConnection configured target: {AnalyticsConnectionResolver.SummarizeConnection(configuredAnalyticsConnection)}");
     Console.WriteLine($"AnalyticsConnection resolved target: {AnalyticsConnectionResolver.SummarizeConnection(analyticsConnection)}");
+    Console.WriteLine($"AnalyticsConnection source: {analyticsConnectionResolution.Source} UsedFallback={analyticsConnectionResolution.UsedFallback}");
     Console.WriteLine(
         $"Npgsql tuning: OpenTimeout={dbOpenTimeoutSeconds}s CommandTimeout={dbCommandTimeoutSeconds}s KeepAlive={dbKeepAliveSeconds}s MaxPoolSize={(dbMaxPoolSize?.ToString() ?? "default")} MinPoolSize={(dbMinPoolSize?.ToString() ?? "default")} IdleLifetime={(dbConnectionIdleLifetimeSeconds?.ToString() ?? "default")}s PruningInterval={(dbConnectionPruningIntervalSeconds?.ToString() ?? "default")}s EfRetryEnabled={enableEfRetryOnFailure} EfRetryMaxCount={efRetryMaxCount} EfRetryMaxDelay={efRetryMaxDelaySeconds}s");
 

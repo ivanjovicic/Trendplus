@@ -3,8 +3,19 @@ using Npgsql;
 
 namespace Api.Config;
 
+public sealed record AnalyticsConnectionResolution(
+    string ConnectionString,
+    string Source,
+    bool UsedFallback,
+    string? Warning);
+
 public static class AnalyticsConnectionResolver
 {
+    public const string SourceAnalyticsConnection = "AnalyticsConnection";
+    public const string SourceDefaultConnectionFallback = "DefaultConnectionFallback";
+    public const string SourceMissingAnalyticsFallback = "MissingAnalyticsFallback";
+    public const string SourceLoopbackAnalyticsFallback = "LoopbackAnalyticsFallback";
+
     public static string Resolve(
         IConfiguration configuration,
         bool? isDevelopment = null,
@@ -12,10 +23,27 @@ public static class AnalyticsConnectionResolver
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        return Resolve(
+        return ResolveDetailed(
+            configuration,
+            isDevelopment,
+            onWarning).ConnectionString;
+    }
+
+    public static AnalyticsConnectionResolution ResolveDetailed(
+        IConfiguration configuration,
+        bool? isDevelopment = null,
+        Action<string>? onWarning = null)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var allowLoopbackInProduction =
+            configuration.GetValue<bool?>("Analytics:AllowLoopbackInProduction") ?? false;
+
+        return ResolveDetailed(
             configuration.GetConnectionString("DefaultConnection"),
             configuration.GetConnectionString("AnalyticsConnection"),
             isDevelopment ?? IsDevelopment(configuration),
+            allowLoopbackInProduction,
             onWarning);
     }
 
@@ -25,33 +53,72 @@ public static class AnalyticsConnectionResolver
         bool isDevelopment,
         Action<string>? onWarning = null)
     {
+        return ResolveDetailed(
+            defaultConnection,
+            analyticsConnection,
+            isDevelopment,
+            allowLoopbackInProduction: false,
+            onWarning).ConnectionString;
+    }
+
+    public static AnalyticsConnectionResolution ResolveDetailed(
+        string? defaultConnection,
+        string? analyticsConnection,
+        bool isDevelopment,
+        bool allowLoopbackInProduction = false,
+        Action<string>? onWarning = null)
+    {
         if (string.IsNullOrWhiteSpace(analyticsConnection))
         {
             if (!string.IsNullOrWhiteSpace(defaultConnection))
             {
+                const string warning =
+                    "AnalyticsConnection is missing or blank in non-development. Falling back to DefaultConnection. Verify ConnectionStrings__AnalyticsConnection.";
+
                 if (!isDevelopment)
                 {
-                    onWarning?.Invoke(
-                        "AnalyticsConnection is missing or blank in non-development. Falling back to DefaultConnection. Verify ConnectionStrings__AnalyticsConnection.");
+                    onWarning?.Invoke(warning);
                 }
 
-                return defaultConnection;
+                return new AnalyticsConnectionResolution(
+                    defaultConnection,
+                    isDevelopment ? SourceDefaultConnectionFallback : SourceMissingAnalyticsFallback,
+                    UsedFallback: true,
+                    isDevelopment ? null : warning);
             }
 
             throw new InvalidOperationException("AnalyticsConnection or DefaultConnection must be configured.");
         }
 
         if (!isDevelopment &&
+            !allowLoopbackInProduction &&
             IsLoopbackConnectionString(analyticsConnection) &&
             !string.IsNullOrWhiteSpace(defaultConnection) &&
             !IsLoopbackConnectionString(defaultConnection))
         {
-            onWarning?.Invoke(
-                "AnalyticsConnection points to a loopback host in non-development. Falling back to DefaultConnection. Verify ConnectionStrings__AnalyticsConnection.");
-            return defaultConnection;
+            const string warning =
+                "AnalyticsConnection points to a loopback host in non-development. Falling back to DefaultConnection. Verify ConnectionStrings__AnalyticsConnection.";
+            onWarning?.Invoke(warning);
+            return new AnalyticsConnectionResolution(
+                defaultConnection,
+                SourceLoopbackAnalyticsFallback,
+                UsedFallback: true,
+                warning);
         }
 
-        return analyticsConnection;
+        if (!isDevelopment &&
+            !allowLoopbackInProduction &&
+            IsLoopbackConnectionString(analyticsConnection))
+        {
+            throw new InvalidOperationException(
+                "AnalyticsConnection points to a loopback host in non-development and no non-loopback DefaultConnection fallback is available.");
+        }
+
+        return new AnalyticsConnectionResolution(
+            analyticsConnection,
+            SourceAnalyticsConnection,
+            UsedFallback: false,
+            Warning: null);
     }
 
     public static bool IsLoopbackConnectionString(string? connectionString)

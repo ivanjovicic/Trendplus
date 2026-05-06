@@ -32,7 +32,7 @@ public sealed class AnalyticsConnectionDiagnosticsHostedService : BackgroundServ
             }
 
             _logger.LogInformation(
-                "Analytics DB configured target: {ConfiguredTarget}",
+                "Analytics DB context target: {ContextTarget}",
                 SummarizeConnection(connectionString));
 
             await using var connection = new NpgsqlConnection(connectionString);

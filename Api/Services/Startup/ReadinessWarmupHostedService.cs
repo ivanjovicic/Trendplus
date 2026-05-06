@@ -54,11 +54,11 @@ public sealed class ReadinessWarmupHostedService : BackgroundService
     private async Task<bool> ProbeConfiguredDatabasesAsync(CancellationToken stoppingToken)
     {
         var defaultConnection = _configuration.GetConnectionString("DefaultConnection");
-        string analyticsConnection;
+        AnalyticsConnectionResolution analyticsConnectionResolution;
 
         try
         {
-            analyticsConnection = AnalyticsConnectionResolver.Resolve(
+            analyticsConnectionResolution = AnalyticsConnectionResolver.ResolveDetailed(
                 _configuration,
                 onWarning: message => _logger.LogWarning("{Message}", message));
         }
@@ -67,6 +67,14 @@ public sealed class ReadinessWarmupHostedService : BackgroundService
             _logger.LogWarning(ex, "Startup readiness warmup cannot resolve analytics DB connection string.");
             return false;
         }
+
+        var analyticsConnection = analyticsConnectionResolution.ConnectionString;
+
+        _logger.LogInformation(
+            "Startup readiness analytics DB target resolved. Source={Source} UsedFallback={UsedFallback} Target={Target}",
+            analyticsConnectionResolution.Source,
+            analyticsConnectionResolution.UsedFallback,
+            AnalyticsConnectionResolver.SummarizeConnection(analyticsConnection));
 
         if (string.IsNullOrWhiteSpace(defaultConnection) || string.IsNullOrWhiteSpace(analyticsConnection))
         {
