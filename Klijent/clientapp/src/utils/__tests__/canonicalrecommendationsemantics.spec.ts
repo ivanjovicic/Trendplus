@@ -5,7 +5,7 @@ import {
   recommendationStatusTone,
   recommendationStatusTooltipBrief,
   RECOMMENDATION_STATUS_PRIORITY,
-} from "../canonicalrecommendationsemantics";
+} from "../canonicalRecommendationSemantics";
 
 describe("canonicalrecommendationsemantics", () => {
   it("recognizes known statuses", () => {

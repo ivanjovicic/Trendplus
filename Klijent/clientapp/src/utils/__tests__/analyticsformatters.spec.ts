@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtRsd, fmtRsdShort, fmtPct, fmtSignedPct, fmtQty } from "../analyticsformatters";
+import { fmtRsd, fmtRsdShort, fmtPct, fmtSignedPct, fmtQty } from "../analyticsFormatters";
 
 describe("analyticsformatters", () => {
   it("formats RSD and includes currency", () => {

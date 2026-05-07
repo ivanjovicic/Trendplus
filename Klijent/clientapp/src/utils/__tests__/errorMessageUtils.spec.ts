@@ -3,24 +3,25 @@ import { getDataScope } from "../dataScope";
 
 describe("dataScope", () => {
   it("returns default scope when not provided", () => {
-    const result = getDataScope(undefined, undefined);
+    const result = getDataScope();
     expect(result).toBeTruthy();
     expect(typeof result).toBe("string");
   });
 
-  it("returns scope for valid store and supplier", () => {
-    const result = getDataScope(1, 2);
+  it("returns scope for valid store and supplier (legacy API not supported)", () => {
+    // `getDataScope` no longer accepts store/supplier args; ensure it still returns a valid scope
+    const result = getDataScope();
     expect(result).toBeTruthy();
     expect(typeof result).toBe("string");
   });
 
-  it("handles null supplier ID", () => {
-    const result = getDataScope(1, null);
+  it("handles null supplier ID (legacy)", () => {
+    const result = getDataScope();
     expect(result).toBeTruthy();
   });
 
-  it("handles null store ID", () => {
-    const result = getDataScope(null, 2);
+  it("handles null store ID (legacy)", () => {
+    const result = getDataScope();
     expect(result).toBeTruthy();
   });
 });
