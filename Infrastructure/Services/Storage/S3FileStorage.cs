@@ -1,10 +1,12 @@
 using System.Net;
+using System.Diagnostics;
 using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Application.Common.Interfaces;
 using Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services.Storage;
@@ -13,10 +15,12 @@ public sealed class S3FileStorage : IFileStorage, IDisposable
 {
     private readonly StorageOptions _options;
     private readonly IAmazonS3 _client;
+    private readonly ILogger<S3FileStorage> _logger;
 
-    public S3FileStorage(IOptions<StorageOptions> options)
+    public S3FileStorage(IOptions<StorageOptions> options, ILogger<S3FileStorage> logger)
     {
         _options = options.Value;
+        _logger = logger;
         if (string.IsNullOrWhiteSpace(_options.Bucket))
         {
             throw new InvalidOperationException("Storage:Bucket must be configured for s3 storage provider.");
@@ -24,7 +28,8 @@ public sealed class S3FileStorage : IFileStorage, IDisposable
 
         var config = new AmazonS3Config
         {
-            ForcePathStyle = _options.UsePathStyle
+            ForcePathStyle = _options.UsePathStyle,
+            MaxErrorRetry = Math.Max(0, _options.MaxErrorRetryCount)
         };
 
         if (!string.IsNullOrWhiteSpace(_options.Endpoint))
@@ -62,6 +67,7 @@ public sealed class S3FileStorage : IFileStorage, IDisposable
         }
 
         var normalizedKey = StorageKeyNormalizer.Normalize(key);
+        var fileSizeBytes = content.CanSeek ? Math.Max(0L, content.Length - content.Position) : (long?)null;
         var request = new PutObjectRequest
         {
             BucketName = _options.Bucket,
@@ -70,7 +76,37 @@ public sealed class S3FileStorage : IFileStorage, IDisposable
             AutoCloseStream = false
         };
 
-        await _client.PutObjectAsync(request, ct);
+        var stopwatch = Stopwatch.StartNew();
+        _logger.LogInformation(
+            "S3 upload started. Key: {Key}. FileSizeBytes: {FileSizeBytes}. MaxErrorRetryCount: {MaxErrorRetryCount}. CorrelationId: {CorrelationId}.",
+            normalizedKey,
+            fileSizeBytes,
+            _options.MaxErrorRetryCount,
+            Activity.Current?.Id);
+
+        try
+        {
+            await _client.PutObjectAsync(request, ct);
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "S3 upload completed. Key: {Key}. FileSizeBytes: {FileSizeBytes}. ElapsedMs: {ElapsedMs}. CorrelationId: {CorrelationId}.",
+                normalizedKey,
+                fileSizeBytes,
+                stopwatch.ElapsedMilliseconds,
+                Activity.Current?.Id);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            _logger.LogWarning(
+                ex,
+                "S3 upload failed. Key: {Key}. FileSizeBytes: {FileSizeBytes}. ElapsedMs: {ElapsedMs}. CorrelationId: {CorrelationId}.",
+                normalizedKey,
+                fileSizeBytes,
+                stopwatch.ElapsedMilliseconds,
+                Activity.Current?.Id);
+            throw;
+        }
     }
 
     public async Task<Stream> OpenReadAsync(string key, CancellationToken ct = default)

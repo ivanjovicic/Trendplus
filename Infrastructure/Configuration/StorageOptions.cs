@@ -12,4 +12,6 @@ public sealed class StorageOptions
     public string AccessKey { get; set; } = string.Empty;
     public string SecretKey { get; set; } = string.Empty;
     public bool UsePathStyle { get; set; } = true;
+    public int UploadTimeoutSeconds { get; set; } = 25;
+    public int MaxErrorRetryCount { get; set; } = 2;
 }

@@ -82,6 +82,29 @@ namespace Api.Tests
                 => Task.FromResult(new AccessImportPendingRecoveryResult(0, 0, 0));
         }
 
+        private sealed class HangingFileStorage : IFileStorage
+        {
+            public int UploadCallCount { get; private set; }
+
+            public async Task UploadAsync(string key, Stream content, CancellationToken ct = default)
+            {
+                UploadCallCount++;
+                await Task.Delay(Timeout.InfiniteTimeSpan, ct);
+            }
+
+            public Task<Stream> OpenReadAsync(string key, CancellationToken ct = default)
+                => throw new NotSupportedException();
+
+            public Task DeleteAsync(string key, CancellationToken ct = default)
+                => Task.CompletedTask;
+
+            public Task<bool> ExistsAsync(string key, CancellationToken ct = default)
+                => Task.FromResult(false);
+
+            public Task<string> GetPresignedUrlAsync(string key, TimeSpan expiry, CancellationToken ct = default)
+                => throw new NotSupportedException();
+        }
+
         [Fact]
         public async Task StartImport_DoesNotEnqueueInlineAndCreatesPendingBatch()
         {
@@ -317,6 +340,51 @@ namespace Api.Tests
                 Assert.True(string.IsNullOrWhiteSpace(batch.SourceStorageKey));
                 Assert.True(string.IsNullOrWhiteSpace(batch.SourceStorageProvider));
                 Assert.Equal(0, storage.UploadCallCount);
+            }
+            finally
+            {
+                try { File.Delete(tmp); } catch { }
+            }
+        }
+
+        [Fact]
+        public async Task StartImport_WhenStorageUploadTimesOut_DoesNotCreateCorruptBatch()
+        {
+            var options = new DbContextOptionsBuilder<TrendplusDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+
+            await using var db = new TrendplusDbContext(options);
+            var tmp = Path.Combine(Path.GetTempPath(), $"test-import-{Guid.NewGuid():N}.accdb");
+            File.WriteAllText(tmp, "dummy");
+            var queue = new RecordingJobQueue();
+            var storage = new HangingFileStorage();
+            var storageOptions = Options.Create(new StorageOptions
+            {
+                Provider = "s3",
+                UploadTimeoutSeconds = 1
+            });
+
+            var service = new AccessImportService(
+                trendDb: db,
+                analyticsDb: null!,
+                logger: NullLogger<AccessImportService>.Instance,
+                options: null,
+                analyticsCache: null,
+                serviceScopeFactory: null,
+                jobQueue: queue,
+                cursorRepository: null,
+                fileStorage: storage,
+                storageOptions: storageOptions);
+
+            try
+            {
+                var ex = await Assert.ThrowsAsync<TimeoutException>(() =>
+                    service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false));
+
+                Assert.Contains("timed out", ex.Message, StringComparison.OrdinalIgnoreCase);
+                Assert.Equal(1, storage.UploadCallCount);
+                Assert.Equal(0, await db.DataImportBatches.CountAsync());
             }
             finally
             {

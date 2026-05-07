@@ -336,6 +336,7 @@ using NpgsqlTypes;
     private readonly IAccessImportCursorRepository? _cursorRepository;
     private readonly IFileStorage? _fileStorage;
     private readonly string _storageProviderName;
+    private readonly TimeSpan _storageUploadTimeout;
     private readonly string _incrementalLeaseOwner = $"{Environment.MachineName}:{Environment.ProcessId}:{Guid.NewGuid():N}";
     private ActiveIncrementalTableScope? _activeIncrementalScope;
     private readonly Dictionary<string, IncrementalTableSnapshot> _incrementalTableSnapshots = new(StringComparer.OrdinalIgnoreCase);
@@ -386,7 +387,9 @@ using NpgsqlTypes;
         _jobQueue = jobQueue;
         _cursorRepository = cursorRepository;
         _fileStorage = fileStorage;
-        _storageProviderName = NormalizeStorageProviderName(storageOptions?.Value?.Provider);
+        var effectiveStorageOptions = storageOptions?.Value ?? new StorageOptions();
+        _storageProviderName = NormalizeStorageProviderName(effectiveStorageOptions.Provider);
+        _storageUploadTimeout = TimeSpan.FromSeconds(Math.Max(5, effectiveStorageOptions.UploadTimeoutSeconds));
     }
 
     private IAccessDataReaderSession CreateReadSession(string accessFilePath)
@@ -2441,10 +2444,8 @@ using NpgsqlTypes;
 
         try
         {
-            var executionStrategy = _trendDb.Database.CreateExecutionStrategy();
-            await executionStrategy.ExecuteAsync(async () =>
+            await RetriableDbContextTransaction.ExecuteAsync(_trendDb, async transactionCt =>
             {
-                await using var tx = await _trendDb.Database.BeginTransactionAsync(ct);
                 var originalAutoDetectChanges = _trendDb.ChangeTracker.AutoDetectChangesEnabled;
                 try
                 {
@@ -2478,19 +2479,19 @@ using NpgsqlTypes;
                         includeAnalytics,
                         overwriteExisting,
                         includeTemporaryTables);
-                    await PersistBatchProgressAsync("batch-start", force: true, ct);
-                    await ImportTrendplusAsync(session, overwriteExisting, includeTemporaryTables, result, ct);
-                    await FlushTrendWritesAsync(force: true, ct);
-                    await ResetTrendplusSequencesAsync(ct);
+                    await PersistBatchProgressAsync("batch-start", force: true, transactionCt);
+                    await ImportTrendplusAsync(session, overwriteExisting, includeTemporaryTables, result, transactionCt);
+                    await FlushTrendWritesAsync(force: true, transactionCt);
+                    await ResetTrendplusSequencesAsync(transactionCt);
 
                     if (includeAnalytics)
-                        await SyncAnalyticsAsync(result, ct);
+                        await SyncAnalyticsAsync(result, transactionCt);
 
                     if (_analyticsCache is not null)
                     {
                         try
                         {
-                            await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
+                            await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, transactionCt);
                         }
                         catch (Exception cacheEx)
                         {
@@ -2502,7 +2503,7 @@ using NpgsqlTypes;
                     result.CompletedAtUtc = DateTime.UtcNow;
                     if (_trendDb.Entry(batch).State == EntityState.Detached)
                     {
-                        var trackedBatch = await _trendDb.DataImportBatches.FirstOrDefaultAsync(x => x.Id == batch.Id, ct);
+                        var trackedBatch = await _trendDb.DataImportBatches.FirstOrDefaultAsync(x => x.Id == batch.Id, transactionCt);
                         if (trackedBatch is not null)
                             batch = trackedBatch;
                     }
@@ -2518,8 +2519,7 @@ using NpgsqlTypes;
                     batch.CursorSnapshot = completedCursorSnapshot;
                     batch.CursorAfterJson = completedCursorSnapshot;
                     batch.SummaryJson = JsonSerializer.Serialize(result);
-                    await _trendDb.SaveChangesAsync(ct);
-                    await tx.CommitAsync(ct);
+                    await _trendDb.SaveChangesAsync(transactionCt);
                     _logger.LogInformation(
                         "Access import completed. BatchId: {BatchId}. SourceFileName: {SourceFileName}. Status: {Status}. IncludeAnalytics: {IncludeAnalytics}. TrendFlushes: {TrendFlushes}. HeartbeatPersists: {HeartbeatPersists}.",
                         batch.Id,
@@ -2529,16 +2529,11 @@ using NpgsqlTypes;
                         _trendFlushCount,
                         _batchHeartbeatPersistCount);
                 }
-                catch
-                {
-                    await tx.RollbackAsync(ct);
-                    throw;
-                }
                 finally
                 {
                     _trendDb.ChangeTracker.AutoDetectChangesEnabled = originalAutoDetectChanges;
                 }
-            });
+            }, _logger, "AccessImportBatchExecution", ct);
 
             return result;
         }
@@ -9139,9 +9134,23 @@ using NpgsqlTypes;
         string sourceFileName,
         CancellationToken ct)
     {
+        var fileSizeBytes = new FileInfo(accessFilePath).Length;
+        var stopwatch = Stopwatch.StartNew();
+        _logger.LogInformation(
+            "Access import source preparation started. SourceFileName: {SourceFileName}. FileSizeBytes: {FileSizeBytes}. StorageProvider: {StorageProvider}.",
+            sourceFileName,
+            fileSizeBytes,
+            _storageProviderName);
+
         if (_fileStorage is null || string.Equals(_storageProviderName, "local", StringComparison.Ordinal))
         {
-            var workingCopy = CreateBackgroundWorkingCopy(accessFilePath);
+            var workingCopy = await CreateBackgroundWorkingCopyAsync(accessFilePath, ct);
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "Access import source preparation completed with local staging. SourceFileName: {SourceFileName}. FileSizeBytes: {FileSizeBytes}. ElapsedMs: {ElapsedMs}.",
+                sourceFileName,
+                fileSizeBytes,
+                stopwatch.ElapsedMilliseconds);
             return new QueuedSourceMetadata(
                 SourceFilePath: workingCopy,
                 SourceStorageKey: null,
@@ -9157,13 +9166,51 @@ using NpgsqlTypes;
             FileShare.Read,
             bufferSize: 81920,
             useAsync: true);
-        await _fileStorage.UploadAsync(storageKey, source, ct);
+
+        using var uploadCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        uploadCts.CancelAfter(_storageUploadTimeout);
+
+        try
+        {
+            await _fileStorage.UploadAsync(storageKey, source, uploadCts.Token);
+        }
+        catch (OperationCanceledException ex) when (!ct.IsCancellationRequested && uploadCts.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            _logger.LogWarning(
+                ex,
+                "Access import source upload timed out. SourceFileName: {SourceFileName}. FileSizeBytes: {FileSizeBytes}. StorageProvider: {StorageProvider}. ElapsedMs: {ElapsedMs}. TimeoutSeconds: {TimeoutSeconds}.",
+                sourceFileName,
+                fileSizeBytes,
+                _storageProviderName,
+                stopwatch.ElapsedMilliseconds,
+                _storageUploadTimeout.TotalSeconds);
+            throw new TimeoutException(
+                $"Access import source upload timed out after {_storageUploadTimeout.TotalSeconds:0} seconds.",
+                ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            _logger.LogWarning(
+                ex,
+                "Access import source preparation failed. SourceFileName: {SourceFileName}. FileSizeBytes: {FileSizeBytes}. StorageProvider: {StorageProvider}. ElapsedMs: {ElapsedMs}.",
+                sourceFileName,
+                fileSizeBytes,
+                _storageProviderName,
+                stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+
+        stopwatch.Stop();
 
         _logger.LogInformation(
-            "Access import source uploaded to durable storage. SourceFileName: {SourceFileName}. StorageProvider: {StorageProvider}. StorageKey: {StorageKey}.",
+            "Access import source uploaded to durable storage. SourceFileName: {SourceFileName}. StorageProvider: {StorageProvider}. StorageKey: {StorageKey}. FileSizeBytes: {FileSizeBytes}. ElapsedMs: {ElapsedMs}.",
             sourceFileName,
             _storageProviderName,
-            storageKey);
+            storageKey,
+            fileSizeBytes,
+            stopwatch.ElapsedMilliseconds);
 
         return new QueuedSourceMetadata(
             SourceFilePath: null,
@@ -9191,7 +9238,7 @@ using NpgsqlTypes;
         }
     }
 
-    private string CreateBackgroundWorkingCopy(string accessFilePath)
+    private async Task<string> CreateBackgroundWorkingCopyAsync(string accessFilePath, CancellationToken ct)
     {
         var storageRoot = string.IsNullOrWhiteSpace(_options.StorageRoot)
             ? Path.Combine(Path.GetTempPath(), "trendplus_access_jobs")
@@ -9208,7 +9255,23 @@ using NpgsqlTypes;
         var tmpName = $"{baseName}_job_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{ext}";
         var tmpPath = Path.Combine(tmpDir, tmpName);
 
-        File.Copy(accessFilePath, tmpPath, overwrite: true);
+        await using var source = new FileStream(
+            accessFilePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 81920,
+            useAsync: true);
+        await using var destination = new FileStream(
+            tmpPath,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 81920,
+            useAsync: true);
+
+        await source.CopyToAsync(destination, ct);
+        await destination.FlushAsync(ct);
         return tmpPath;
     }
 

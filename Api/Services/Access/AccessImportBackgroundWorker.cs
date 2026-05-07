@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Sockets;
@@ -213,6 +214,7 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
 
     private async Task ProcessJobAsync(AccessImportQueuedJob job, CancellationToken stoppingToken)
     {
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             _logger.LogInformation(
@@ -246,16 +248,26 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
                 includeTemporaryTables: job.IncludeTemporaryTables,
                 deleteWorkingFileAfterCompletion: true,
                 ct: stoppingToken);
+
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "Access import worker completed batch. BatchId: {BatchId}. SourceFileName: {SourceFileName}. ElapsedMs: {ElapsedMs}.",
+                job.BatchId,
+                job.SourceFileName,
+                stopwatch.ElapsedMilliseconds);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
+            stopwatch.Stop();
             await MarkBatchInterruptedBestEffortAsync(job.BatchId);
             _logger.LogWarning(
-                "Access import worker stopping while processing batch {BatchId}. The batch will be recovered by stale-recovery on next startup.",
-                job.BatchId);
+                "Access import worker stopping while processing batch {BatchId}. ElapsedMs: {ElapsedMs}. The batch will be recovered by stale-recovery on next startup.",
+                job.BatchId,
+                stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
             if (await TryRequeueForRetryAsync(job, ex, stoppingToken))
             {
                 return;
@@ -263,9 +275,10 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
 
             _logger.LogError(
                 ex,
-                "Access import background job failed unexpectedly. BatchId: {BatchId}. SourceFileName: {SourceFileName}.",
+                "Access import background job failed unexpectedly. BatchId: {BatchId}. SourceFileName: {SourceFileName}. ElapsedMs: {ElapsedMs}.",
                 job.BatchId,
-                job.SourceFileName);
+                job.SourceFileName,
+                stopwatch.ElapsedMilliseconds);
 
             await MarkBatchFailedBestEffortAsync(job.BatchId, ex);
         }
@@ -278,6 +291,13 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
             throw new InvalidOperationException(
                 $"Batch {job.BatchId} is marked as storage-backed but SourceStorageKey is empty.");
         }
+
+        var stopwatch = Stopwatch.StartNew();
+        _logger.LogInformation(
+            "Access import storage staging started. BatchId: {BatchId}. StorageProvider: {StorageProvider}. StorageKey: {StorageKey}.",
+            job.BatchId,
+            string.IsNullOrWhiteSpace(job.SourceStorageProvider) ? "unknown" : job.SourceStorageProvider,
+            job.SourceStorageKey);
 
         var storageRoot = string.IsNullOrWhiteSpace(_options.StorageRoot)
             ? Path.Combine(Path.GetTempPath(), "trendplus_access_jobs")
@@ -317,12 +337,15 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
         await sourceStream.CopyToAsync(destinationStream, ct);
         await destinationStream.FlushAsync(ct);
 
+        stopwatch.Stop();
         _logger.LogInformation(
-            "Access import source staged from storage. BatchId: {BatchId}. StorageProvider: {StorageProvider}. StorageKey: {StorageKey}. LocalPath: {LocalPath}.",
+            "Access import source staged from storage. BatchId: {BatchId}. StorageProvider: {StorageProvider}. StorageKey: {StorageKey}. LocalPath: {LocalPath}. FileSizeBytes: {FileSizeBytes}. ElapsedMs: {ElapsedMs}.",
             job.BatchId,
             string.IsNullOrWhiteSpace(job.SourceStorageProvider) ? "unknown" : job.SourceStorageProvider,
             job.SourceStorageKey,
-            localPath);
+            localPath,
+            new FileInfo(localPath).Length,
+            stopwatch.ElapsedMilliseconds);
 
         return localPath;
     }

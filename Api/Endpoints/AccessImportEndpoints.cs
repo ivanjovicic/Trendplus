@@ -447,85 +447,85 @@ public static class AccessImportEndpoints
                 var trendArchiveEnabled = await EnsureDeletedRowsArchiveAvailableAsync(trendDb, logger, "trendplus", ct);
                 var analyticsArchiveEnabled = await EnsureDeletedRowsArchiveAvailableAsync(analyticsDb, logger, "analytics", ct);
 
-                // Execute deletes in a transaction to ensure integrity
-                await using var tx = await trendDb.Database.BeginTransactionAsync(ct);
+                await RetriableDbContextTransaction.ExecuteAsync(trendDb, async transactionCt =>
+                {
+                    // Child tables first - archive rows before delete
+                    // povracaj_stavke (parent povracaj_zaglavlje uses data_origin column)
+                    await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
+                        INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                        SELECT NULL, 'povracaj_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                        FROM povracaj_stavke t
+                        WHERE t.id_povracaj IN (SELECT id FROM povracaj_zaglavlje WHERE data_origin IS NULL OR data_origin <> 'access')
+                    ", logger, "trendplus", transactionCt);
+                    deleted["povracaj_stavke"] = await trendDb.PovracajStavke.Where(s => trendDb.PovracajZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdPovracaj)).ExecuteDeleteAsync(transactionCt);
 
-                // Child tables first - archive rows before delete
-                // povracaj_stavke (parent povracaj_zaglavlje uses data_origin column)
-                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
-                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
-                    SELECT NULL, 'povracaj_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
-                    FROM povracaj_stavke t
-                    WHERE t.id_povracaj IN (SELECT id FROM povracaj_zaglavlje WHERE data_origin IS NULL OR data_origin <> 'access')
-                ", logger, "trendplus", ct);
-                deleted["povracaj_stavke"] = await trendDb.PovracajStavke.Where(s => trendDb.PovracajZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdPovracaj)).ExecuteDeleteAsync(ct);
+                    await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
+                        INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                        SELECT NULL, 'povracaj_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                        FROM povracaj_zaglavlje t
+                        WHERE t.data_origin IS NULL OR t.data_origin <> 'access'
+                    ", logger, "trendplus", transactionCt);
+                    deleted["povracaj_zaglavlje"] = await trendDb.PovracajZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(transactionCt);
 
-                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
-                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
-                    SELECT NULL, 'povracaj_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
-                    FROM povracaj_zaglavlje t
-                    WHERE t.data_origin IS NULL OR t.data_origin <> 'access'
-                ", logger, "trendplus", ct);
-                deleted["povracaj_zaglavlje"] = await trendDb.PovracajZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+                    // prodaja (prodaja_stavke -> prodaja_zaglavlje.data_origin)
+                    await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
+                        INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                        SELECT NULL, 'prodaja_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                        FROM prodaja_stavke t
+                        WHERE t.id_prodaja IN (SELECT id FROM prodaja_zaglavlje WHERE data_origin IS NULL OR data_origin <> 'access')
+                    ", logger, "trendplus", transactionCt);
+                    deleted["prodaja_stavke"] = await trendDb.ProdajaStavke.Where(s => trendDb.ProdajaZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdProdaja)).ExecuteDeleteAsync(transactionCt);
 
-                // prodaja (prodaja_stavke -> prodaja_zaglavlje.data_origin)
-                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
-                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
-                    SELECT NULL, 'prodaja_stavke', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
-                    FROM prodaja_stavke t
-                    WHERE t.id_prodaja IN (SELECT id FROM prodaja_zaglavlje WHERE data_origin IS NULL OR data_origin <> 'access')
-                ", logger, "trendplus", ct);
-                deleted["prodaja_stavke"] = await trendDb.ProdajaStavke.Where(s => trendDb.ProdajaZaglavlja.Where(z => z.DataOrigin != "access" || z.DataOrigin == null).Select(z => z.Id).Contains(s.IdProdaja)).ExecuteDeleteAsync(ct);
+                    await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
+                        INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                        SELECT NULL, 'prodaja_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                        FROM prodaja_zaglavlje t
+                        WHERE t.data_origin IS NULL OR t.data_origin <> 'access'
+                    ", logger, "trendplus", transactionCt);
+                    deleted["prodaja_zaglavlje"] = await trendDb.ProdajaZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(transactionCt);
 
-                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
-                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
-                    SELECT NULL, 'prodaja_zaglavlje', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
-                    FROM prodaja_zaglavlje t
-                    WHERE t.data_origin IS NULL OR t.data_origin <> 'access'
-                ", logger, "trendplus", ct);
-                deleted["prodaja_zaglavlje"] = await trendDb.ProdajaZaglavlja.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+                    // dnevnik_promena
+                    await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
+                        INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                        SELECT NULL, 'DnevnikPromena', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                        FROM ""DnevnikPromena"" t
+                        WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
+                    ", logger, "trendplus", transactionCt);
+                    deleted["dnevnik_promena"] = await trendDb.DnevnikPromena.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(transactionCt);
 
-                // dnevnik_promena
-                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
-                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
-                    SELECT NULL, 'DnevnikPromena', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
-                    FROM ""DnevnikPromena"" t
-                    WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", logger, "trendplus", ct);
-                deleted["dnevnik_promena"] = await trendDb.DnevnikPromena.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+                    // Master data - artikli, sezone, dobavljaci, tipovi
+                    await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
+                        INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                        SELECT NULL, 'Artikli', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                        FROM ""Artikli"" t
+                        WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
+                    ", logger, "trendplus", transactionCt);
+                    deleted["artikli"] = await trendDb.Artikli.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(transactionCt);
 
-                // Master data - artikli, sezone, dobavljaci, tipovi
-                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
-                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
-                    SELECT NULL, 'Artikli', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
-                    FROM ""Artikli"" t
-                    WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", logger, "trendplus", ct);
-                deleted["artikli"] = await trendDb.Artikli.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+                    await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
+                        INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                        SELECT NULL, 'Sezone', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                        FROM ""Sezone"" t
+                        WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
+                    ", logger, "trendplus", transactionCt);
+                    deleted["sezone"] = await trendDb.Sezone.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(transactionCt);
 
-                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
-                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
-                    SELECT NULL, 'Sezone', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
-                    FROM ""Sezone"" t
-                    WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", logger, "trendplus", ct);
-                deleted["sezone"] = await trendDb.Sezone.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+                    await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
+                        INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                        SELECT NULL, 'Dobavljaci', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                        FROM ""Dobavljaci"" t
+                        WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
+                    ", logger, "trendplus", transactionCt);
+                    deleted["dobavljaci"] = await trendDb.Dobavljaci.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(transactionCt);
 
-                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
-                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
-                    SELECT NULL, 'Dobavljaci', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
-                    FROM ""Dobavljaci"" t
-                    WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", logger, "trendplus", ct);
-                deleted["dobavljaci"] = await trendDb.Dobavljaci.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
-
-                await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
-                    INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
-                    SELECT NULL, 'TipoviObuce', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
-                    FROM ""TipoviObuce"" t
-                    WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
-                ", logger, "trendplus", ct);
-                deleted["tipovi_obuce"] = await trendDb.TipoviObuce.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
+                    await TryArchiveRowsAsync(trendDb, trendArchiveEnabled, @"
+                        INSERT INTO deleted_rows_archive(batch_id, table_name, primary_key, row_json, deleted_at, deleted_by, reason)
+                        SELECT NULL, 'TipoviObuce', jsonb_build_object('id', t.id), to_jsonb(t), NOW(), current_user, 'cleanup-non-access'
+                        FROM ""TipoviObuce"" t
+                        WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
+                    ", logger, "trendplus", transactionCt);
+                    deleted["tipovi_obuce"] = await trendDb.TipoviObuce.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(transactionCt);
+                }, ct);
 
                 // Analytics - archive then delete
                 await TryArchiveRowsAsync(analyticsDb, analyticsArchiveEnabled, @"
@@ -543,8 +543,6 @@ public static class AccessImportEndpoints
                     WHERE t.""DataOrigin"" IS NULL OR t.""DataOrigin"" <> 'access'
                 ", logger, "analytics", ct);
                 deleted["products_dim"] = await analyticsDb.ProductsDim.Where(x => x.DataOrigin != "access" || x.DataOrigin == null).ExecuteDeleteAsync(ct);
-
-                await tx.CommitAsync(ct);
 
                 logger.LogInformation("Cleanup executed: {@Deleted}", deleted);
                 return Results.Ok(new { executed = true, deleted });
@@ -743,6 +741,9 @@ public static class AccessImportEndpoints
         .RequireRateLimiting("writes")
         .DisableAntiforgery()
         .WithName("CreateAccessImportJob");
+
+        group.MapMethods("/run", new[] { HttpMethods.Options }, () => Results.NoContent())
+        .WithName("RunAccessImportOptions");
 
         group.MapPost("/run", async (
             HttpRequest request,
@@ -1055,7 +1056,7 @@ public static class AccessImportEndpoints
         }));
     }
 
-    private static async Task<IResult> StartAccessImportJobAsync(
+    internal static async Task<IResult> StartAccessImportJobAsync(
         HttpRequest request,
         HttpContext httpContext,
         IConfiguration configuration,
@@ -1064,8 +1065,31 @@ public static class AccessImportEndpoints
         ILogger logger,
         CancellationToken ct)
     {
+        var stopwatch = Stopwatch.StartNew();
+        var correlationId = GetCorrelationId(httpContext);
+        var outcome = "started";
+        long? batchId = null;
+        long? sourceFileSizeBytes = null;
+        (bool Success, string? Path, string? Error, bool DeleteAfter) resolved = default;
+
+        using var scope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["CorrelationId"] = correlationId,
+            ["RequestMethod"] = request.Method,
+            ["RequestPath"] = request.Path.Value
+        });
+
+        logger.LogInformation(
+            "Access import run request started. Method: {Method}. Path: {Path}. CorrelationId: {CorrelationId}. ContentLength: {ContentLength}. HasFormContentType: {HasFormContentType}.",
+            request.Method,
+            request.Path.Value,
+            correlationId,
+            request.ContentLength,
+            request.HasFormContentType);
+
         if (!IsAdminRequest(httpContext, configuration, environment))
         {
+            outcome = "unauthorized";
             await PersistHandledIssueAsync(
                 httpContext,
                 level: "Warning",
@@ -1079,6 +1103,7 @@ public static class AccessImportEndpoints
         var runtimeStatus = GetAccessImportRuntimeStatus();
         if (!runtimeStatus.Available)
         {
+            outcome = "runtime_unavailable";
             await PersistHandledIssueAsync(
                 httpContext,
                 level: "Warning",
@@ -1092,9 +1117,10 @@ public static class AccessImportEndpoints
                 statusCode: StatusCodes.Status503ServiceUnavailable);
         }
 
-        var resolved = await ResolveSourceFileAsync(request, ct);
+        resolved = await ResolveSourceFileAsync(request, ct);
         if (!resolved.Success)
         {
+            outcome = "invalid_source";
             await PersistHandledIssueAsync(
                 httpContext,
                 level: "Warning",
@@ -1104,6 +1130,9 @@ public static class AccessImportEndpoints
                 ct);
             return Results.BadRequest(new { error = resolved.Error });
         }
+
+        if (!string.IsNullOrWhiteSpace(resolved.Path) && File.Exists(resolved.Path))
+            sourceFileSizeBytes = new FileInfo(resolved.Path).Length;
 
         var includeAnalytics = true;
         var overwriteExisting = true;
@@ -1120,11 +1149,14 @@ public static class AccessImportEndpoints
         try
         {
             var run = await service.StartImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);
+            batchId = run.BatchId;
+            outcome = "accepted";
             // Return the full run response for backward compatibility with frontend expecting full AccessImportRunResponse
             return Results.Accepted($"/api/access-import/batches/{run.BatchId}", run);
         }
         catch (FileNotFoundException ex)
         {
+            outcome = "file_not_found";
             await PersistHandledIssueAsync(
                 httpContext,
                 level: "Warning",
@@ -1136,6 +1168,7 @@ public static class AccessImportEndpoints
         }
         catch (InvalidOperationException ex)
         {
+            outcome = "invalid_operation";
             await PersistHandledIssueAsync(
                 httpContext,
                 level: "Warning",
@@ -1147,6 +1180,7 @@ public static class AccessImportEndpoints
         }
         catch (ArgumentException ex)
         {
+            outcome = "invalid_argument";
             await PersistHandledIssueAsync(
                 httpContext,
                 level: "Warning",
@@ -1156,8 +1190,19 @@ public static class AccessImportEndpoints
                 ct);
             return Results.BadRequest(new { error = ex.Message });
         }
+        catch (TimeoutException ex)
+        {
+            outcome = "storage_timeout";
+            logger.LogWarning(ex, "Access import run timed out while preparing durable source storage.");
+            await PersistHandledExceptionAsync(httpContext, ex, "Access import storage timeout", ct);
+            return Results.Problem(
+                title: "Access import storage timeout",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status504GatewayTimeout);
+        }
         catch (OdbcException ex)
         {
+            outcome = "odbc_failure";
             await PersistHandledExceptionAsync(httpContext, ex, "Access connection failed", ct);
             return Results.Problem(
                 title: "Access connection failed",
@@ -1166,6 +1211,7 @@ public static class AccessImportEndpoints
         }
         catch (DllNotFoundException ex)
         {
+            outcome = "runtime_missing";
             logger.LogWarning(ex, "Access import run failed due to missing ODBC runtime dependency.");
             await PersistHandledExceptionAsync(httpContext, ex, "Access import runtime missing", ct);
             return Results.Problem(
@@ -1175,6 +1221,7 @@ public static class AccessImportEndpoints
         }
         catch (PlatformNotSupportedException ex)
         {
+            outcome = "platform_not_supported";
             logger.LogWarning(ex, "Access import run is not supported on this platform.");
             await PersistHandledExceptionAsync(httpContext, ex, "Access import not supported", ct);
             return Results.Problem(
@@ -1184,6 +1231,7 @@ public static class AccessImportEndpoints
         }
         catch (TypeInitializationException ex) when (ex.InnerException is DllNotFoundException)
         {
+            outcome = "native_runtime_missing";
             logger.LogWarning(ex, "Access import run failed due to missing native dependency.");
             await PersistHandledExceptionAsync(httpContext, ex, "Access import runtime missing", ct);
             return Results.Problem(
@@ -1193,6 +1241,7 @@ public static class AccessImportEndpoints
         }
         catch (IndexOutOfRangeException ex)
         {
+            outcome = "schema_warning";
             // Schema issue during import: column missing from ODBC provider schema
             logger.LogWarning(ex, "Access import schema handling error during import - provider returned non-standard schema.");
             await PersistHandledIssueAsync(
@@ -1210,6 +1259,7 @@ public static class AccessImportEndpoints
         }
         catch (Exception ex) when (ex.Message.Contains("does not belong to table", StringComparison.OrdinalIgnoreCase))
         {
+            outcome = "schema_structure_warning";
             // Schema issue: specific ODBC provider column-not-found error during import
             logger.LogWarning(ex, "Access import schema error - ODBC provider returned non-standard schema structure.");
             await PersistHandledIssueAsync(
@@ -1227,6 +1277,7 @@ public static class AccessImportEndpoints
         }
         catch (Exception ex)
         {
+            outcome = "unexpected_failure";
             logger.LogWarning(ex, "Access import run failed unexpectedly. Exception: {ExceptionType}: {Message}", ex.GetType().Name, ex.GetBaseException().Message);
             await PersistHandledExceptionAsync(httpContext, ex, "Access import run failed unexpectedly", ct);
 
@@ -1248,6 +1299,17 @@ public static class AccessImportEndpoints
         }
         finally
         {
+            stopwatch.Stop();
+            logger.LogInformation(
+                "Access import run request completed. Method: {Method}. Path: {Path}. CorrelationId: {CorrelationId}. Outcome: {Outcome}. BatchId: {BatchId}. SourceFileSizeBytes: {SourceFileSizeBytes}. ElapsedMs: {ElapsedMs}.",
+                request.Method,
+                request.Path.Value,
+                correlationId,
+                outcome,
+                batchId,
+                sourceFileSizeBytes,
+                stopwatch.ElapsedMilliseconds);
+
             if (resolved.DeleteAfter && File.Exists(resolved.Path))
                 File.Delete(resolved.Path);
         }
@@ -1329,6 +1391,14 @@ public static class AccessImportEndpoints
         {
             // Never break endpoint flow because error persistence failed.
         }
+    }
+
+    private static string GetCorrelationId(HttpContext context)
+    {
+        return context.Response.Headers["X-Correlation-ID"].FirstOrDefault()
+            ?? context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
+            ?? Activity.Current?.Id
+            ?? context.TraceIdentifier;
     }
 
     private static AccessImportRuntimeStatus GetAccessImportRuntimeStatus()

@@ -29,6 +29,16 @@ public sealed class StorageOptionsValidator : IValidateOptions<StorageOptions>
                 return ValidateOptionsResult.Fail("Storage:Bucket is required for s3 storage provider.");
             }
 
+            if (options.UploadTimeoutSeconds <= 0)
+            {
+                return ValidateOptionsResult.Fail("Storage:UploadTimeoutSeconds must be greater than zero.");
+            }
+
+            if (options.MaxErrorRetryCount < 0)
+            {
+                return ValidateOptionsResult.Fail("Storage:MaxErrorRetryCount must be zero or greater.");
+            }
+
             var hasAccessKey = !string.IsNullOrWhiteSpace(options.AccessKey);
             var hasSecretKey = !string.IsNullOrWhiteSpace(options.SecretKey);
             if (hasAccessKey ^ hasSecretKey)

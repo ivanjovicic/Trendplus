@@ -1,6 +1,7 @@
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Diagnostics;
 using System.Data;
 
 namespace Api.Services.Access;
@@ -60,6 +61,9 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
         if (batchId <= 0)
             throw new ArgumentOutOfRangeException(nameof(batchId));
 
+        var stopwatch = Stopwatch.StartNew();
+        _logger.LogInformation("Access import enqueue started. BatchId: {BatchId}.", batchId);
+
         const string sql = """
             UPDATE "DataImportBatches"
             SET "Status" = 'pending',
@@ -77,7 +81,8 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
         if (affected <= 0)
             throw new InvalidOperationException($"Access import batch {batchId} is not enqueueable.");
 
-        _logger.LogInformation("Access import job enqueued. BatchId: {BatchId}.", batchId);
+        stopwatch.Stop();
+        _logger.LogInformation("Access import enqueue completed. BatchId: {BatchId}. ElapsedMs: {ElapsedMs}.", batchId, stopwatch.ElapsedMilliseconds);
     }
 
     public async Task<AccessImportEnqueueDiagnostics> GetEnqueueDiagnosticsAsync(long batchId, CancellationToken ct = default)
@@ -240,6 +245,9 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
 
     public async Task<AccessImportQueuedJob?> ClaimNextAsync(CancellationToken ct = default)
     {
+        var stopwatch = Stopwatch.StartNew();
+        _logger.LogDebug("Access import claim-next started.");
+
         const string claimSqlStorageAware = """
             WITH next_job AS (
                 SELECT "Id"
@@ -329,14 +337,18 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
             if (job is null)
             {
                 await LogNoEligiblePendingBatchAsync(connection, ct);
+                stopwatch.Stop();
+                _logger.LogDebug("Access import claim-next completed with no eligible job. ElapsedMs: {ElapsedMs}.", stopwatch.ElapsedMilliseconds);
                 return null;
             }
 
+            stopwatch.Stop();
             _logger.LogInformation(
-                "Access import job claimed. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StorageBacked: {StorageBacked}.",
+                "Access import claim-next completed. BatchId: {BatchId}. SourceFileName: {SourceFileName}. StorageBacked: {StorageBacked}. ElapsedMs: {ElapsedMs}.",
                 job.BatchId,
                 job.SourceFileName,
-                !string.IsNullOrWhiteSpace(job.SourceStorageKey));
+                !string.IsNullOrWhiteSpace(job.SourceStorageKey),
+                stopwatch.ElapsedMilliseconds);
             return job;
         }
         catch (PostgresException ex) when (
@@ -350,6 +362,7 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            stopwatch.Stop();
             _logger.LogError(ex, "Access import queue claim SQL failed.");
             throw;
         }

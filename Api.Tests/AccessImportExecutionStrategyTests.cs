@@ -1,0 +1,193 @@
+using Domain.Model;
+using Infrastructure.DbContexts;
+using Microsoft.EntityFrameworkCore;
+using Xunit;
+
+namespace Api.Tests;
+
+public sealed class AccessImportExecutionStrategyTests : IClassFixture<PostgresContainerFixture>
+{
+    private readonly PostgresContainerFixture _fixture;
+
+    public AccessImportExecutionStrategyTests(PostgresContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    [Fact]
+    public async Task BeginTransactionAsync_OutsideExecutionStrategy_Throws_WhenRetryStrategyEnabled()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await using var tx = await db.Database.BeginTransactionAsync();
+            db.DataImportBatches.Add(CreateBatch());
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        });
+
+        Assert.Contains("does not support user-initiated transactions", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RetriableDbContextTransaction_CommitsSaveChangesAndExecuteSqlRaw_WhenRetryStrategyEnabled()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        long batchId = 0;
+
+        await RetriableDbContextTransaction.ExecuteAsync(db, async ct =>
+        {
+            var batch = CreateBatch();
+            db.DataImportBatches.Add(batch);
+            await db.SaveChangesAsync(ct);
+            batchId = batch.Id;
+
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                UPDATE "DataImportBatches"
+                SET "Status" = {"running"},
+                    "CurrentStep" = {"starting"},
+                    "CurrentTable" = {"all"},
+                    "RowsWritten" = {42}
+                WHERE "Id" = {batchId};
+                """,
+                ct);
+        });
+
+        await using var verifyDb = CreateDbContext(database.ConnectionString);
+        var persisted = await verifyDb.DataImportBatches.AsNoTracking().SingleAsync(x => x.Id == batchId);
+        Assert.Equal("running", persisted.Status);
+        Assert.Equal("starting", persisted.CurrentStep);
+        Assert.Equal("all", persisted.CurrentTable);
+        Assert.Equal(42, persisted.RowsWritten);
+    }
+
+    [Fact]
+    public async Task RetriableDbContextTransaction_RollsBack_WhenOperationFails()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            RetriableDbContextTransaction.ExecuteAsync(db, async ct =>
+            {
+                db.DataImportBatches.Add(CreateBatch());
+                await db.SaveChangesAsync(ct);
+                throw new InvalidOperationException("forced failure");
+            }));
+
+        await using var verifyDb = CreateDbContext(database.ConnectionString);
+        Assert.Equal(0, await verifyDb.DataImportBatches.CountAsync());
+    }
+
+    private async Task<(TrendplusDbContext? Db, string ConnectionString)> CreateDatabaseAsync()
+    {
+        if (!_fixture.IsAvailable)
+            return (null, string.Empty);
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"tp_access_exec_{Guid.NewGuid():N}");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return (null, string.Empty);
+
+        var db = CreateDbContext(connectionString);
+        await BootstrapQueueSchemaAsync(db);
+        return (db, connectionString);
+    }
+
+    private static TrendplusDbContext CreateDbContext(string connectionString)
+    {
+        var options = new DbContextOptionsBuilder<TrendplusDbContext>()
+            .UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure())
+            .Options;
+        return new TrendplusDbContext(options);
+    }
+
+    private static DataImportBatch CreateBatch()
+    {
+        var now = DateTime.UtcNow;
+        return new DataImportBatch
+        {
+            SourceSystem = "access",
+            SourceFileName = "import.accdb",
+            SourceFilePath = "/tmp/import.accdb",
+            QueuedAtUtc = now,
+            StartedAtUtc = now,
+            LastHeartbeatUtc = now,
+            Status = "pending",
+            CurrentStep = "queued",
+            CurrentTable = "all",
+            IncludeAnalytics = true,
+            OverwriteExisting = true,
+            IncludeTemporaryTables = false,
+            CancellationRequested = false
+        };
+    }
+
+    private static Task BootstrapQueueSchemaAsync(TrendplusDbContext db)
+        => db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "DataImportBatches" (
+                "Id" bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                "SourceSystem" character varying(64) NOT NULL DEFAULT 'access',
+                "SourceFileName" character varying(300) NOT NULL DEFAULT '',
+                "SourceFilePath" character varying(800),
+                "SourceStorageKey" character varying(1024),
+                "SourceStorageProvider" character varying(32),
+                "QueuedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW(),
+                "StartedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW(),
+                "CompletedAtUtc" timestamp with time zone,
+                "LastHeartbeatUtc" timestamp with time zone,
+                "Status" character varying(32) NOT NULL DEFAULT 'pending',
+                "CurrentStep" character varying(64),
+                "CurrentTable" character varying(300),
+                "SummaryJson" text,
+                "ErrorMessage" character varying(4000),
+                "ErrorDetailsJson" text,
+                "RequestedBy" character varying(200),
+                "ImportMode" character varying(16) NOT NULL DEFAULT 'auto',
+                "ImportStrategy" character varying(32) NOT NULL DEFAULT 'full',
+                "IncludeAnalytics" boolean NOT NULL DEFAULT TRUE,
+                "OverwriteExisting" boolean NOT NULL DEFAULT TRUE,
+                "IncludeTemporaryTables" boolean NOT NULL DEFAULT FALSE,
+                "SkipInvalidForeignKeys" boolean NOT NULL DEFAULT TRUE,
+                "CancellationRequested" boolean NOT NULL DEFAULT FALSE,
+                "CancellationRequestedAtUtc" timestamp with time zone,
+                "RetryCount" integer NOT NULL DEFAULT 0,
+                "ProgressPercent" integer NOT NULL DEFAULT 0,
+                "RowsRead" integer NOT NULL DEFAULT 0,
+                "RowsAccepted" integer NOT NULL DEFAULT 0,
+                "RowsWritten" integer NOT NULL DEFAULT 0,
+                "IsIncremental" boolean NOT NULL DEFAULT FALSE,
+                "CursorSnapshot" jsonb,
+                "CursorBeforeJson" jsonb,
+                "CursorAfterJson" jsonb,
+                "ProcessedRowCount" integer NOT NULL DEFAULT 0,
+                "SkippedRowCount" integer NOT NULL DEFAULT 0,
+                "RowsInserted" integer NOT NULL DEFAULT 0,
+                "RowsUpdated" integer NOT NULL DEFAULT 0,
+                "RowsUnchanged" integer NOT NULL DEFAULT 0,
+                "RowsStaged" integer NOT NULL DEFAULT 0,
+                "RowsSkippedStale" integer NOT NULL DEFAULT 0,
+                "RowsRejected" integer NOT NULL DEFAULT 0,
+                "ShadowMismatchCount" integer NOT NULL DEFAULT 0,
+                "SourceFileHash" character varying(128),
+                "DurationSeconds" integer,
+                "TotalImported" integer NOT NULL DEFAULT 0,
+                "TotalUpdated" integer NOT NULL DEFAULT 0,
+                "TotalErrors" integer NOT NULL DEFAULT 0,
+                "DataOrigin" character varying(32) NOT NULL DEFAULT 'access'
+            );
+            """);
+}
