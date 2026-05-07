@@ -22,7 +22,7 @@ public class WorkerConfigurationServiceTests
     }
 
     [Fact]
-    public async Task GetAllWorkersAsync_ReturnsEmptyList_WhenNoWorkersExist()
+    public async Task GetAllWorkersAsync_ReturnsManagedWorkers_WhenNoWorkersExist()
     {
         var db = CreateDbContext();
         var healthService = new WorkerHealthService();
@@ -31,7 +31,9 @@ public class WorkerConfigurationServiceTests
         var result = await service.GetAllWorkersAsync();
 
         Assert.NotNull(result);
-        Assert.Empty(result);
+        Assert.NotEmpty(result);
+        Assert.Contains(result, w => w.WorkerName == "AccessImportBackgroundWorker");
+        Assert.Contains(result, w => w.WorkerName == "SyncWorker");
     }
 
     [Fact]
@@ -47,12 +49,14 @@ public class WorkerConfigurationServiceTests
         var result = await service.GetAllWorkersAsync();
 
         Assert.NotNull(result);
-        Assert.Equal(2, result.Count);
+        Assert.Contains(result, w => w.WorkerName == "TestWorker1");
+        Assert.Contains(result, w => w.WorkerName == "TestWorker2");
         Assert.All(result, w => Assert.True(w.IsScheduleEnabled));
         Assert.All(result, w => Assert.False(w.IsManuallyStopped));
 
-        var dbSettings = await db.WorkerRuntimeSettings.CountAsync();
-        Assert.Equal(2, dbSettings);
+        var dbSettings = await db.WorkerRuntimeSettings.ToListAsync();
+        Assert.Contains(dbSettings, w => w.WorkerName == "TestWorker1");
+        Assert.Contains(dbSettings, w => w.WorkerName == "TestWorker2");
     }
 
     [Fact]

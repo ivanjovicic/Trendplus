@@ -11,6 +11,21 @@ namespace Infrastructure.Services;
 /// </summary>
 public class WorkerConfigurationService
 {
+    // Include managed workers even when this process has not received any heartbeat yet.
+    private static readonly string[] ManagedWorkerNames =
+    {
+        "AccessImportBackgroundWorker",
+        "SyncWorker",
+        "OutboxProcessorWorker",
+        "AnalyticsAggregationWorker",
+        "AnalyticsDataQualityHealthWorker",
+        "NightlyAnalyticsRefreshWorker",
+        "OpenTrainingModelTrainingWorker",
+        "TrendIngestionWorker",
+        "DocumentGenerationWorker",
+        "InventoryReportSchedulerWorker"
+    };
+
     private readonly TrendplusDbContext _db;
     private readonly WorkerHealthService _healthService;
     private readonly ILogger<WorkerConfigurationService> _logger;
@@ -31,7 +46,11 @@ public class WorkerConfigurationService
     public async Task<List<WorkerDetailsDto>> GetAllWorkersAsync(CancellationToken ct = default)
     {
         var healthStatuses = _healthService.GetAllStatuses();
-        var allWorkerNames = new HashSet<string>(healthStatuses.Select(s => s.WorkerName));
+        var allWorkerNames = new HashSet<string>(ManagedWorkerNames, StringComparer.OrdinalIgnoreCase);
+        foreach (var healthStatus in healthStatuses)
+        {
+            allWorkerNames.Add(healthStatus.WorkerName);
+        }
 
         // Get existing settings from database, handle case where table doesn't exist yet
         var settings = new Dictionary<string, WorkerRuntimeSettings>();
@@ -43,6 +62,7 @@ public class WorkerConfigurationService
             foreach (var setting in dbSettings)
             {
                 settings[setting.WorkerName] = setting;
+                allWorkerNames.Add(setting.WorkerName);
             }
         }
         catch (Exception ex)
@@ -89,11 +109,12 @@ public class WorkerConfigurationService
         }
 
         // Combine settings with health status
+        var healthByWorker = healthStatuses.ToDictionary(h => h.WorkerName, StringComparer.OrdinalIgnoreCase);
         var result = new List<WorkerDetailsDto>();
-        foreach (var workerName in allWorkerNames.OrderBy(n => n))
+        foreach (var workerName in allWorkerNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
         {
             var setting = settings.ContainsKey(workerName) ? settings[workerName] : null;
-            var health = healthStatuses.FirstOrDefault(h => h.WorkerName == workerName);
+            healthByWorker.TryGetValue(workerName, out var health);
             
             result.Add(new WorkerDetailsDto
             {
