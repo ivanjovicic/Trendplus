@@ -3354,19 +3354,32 @@ using NpgsqlTypes;
         var storeDeleted = 0;
         var summaryDeleted = 0;
 
-        Task ArchiveTrendAsync(string tableName, string sql, params object[] parameters)
-            => TryArchiveInsertCompatAsync(
+        var trendArchiveEnabled = true;
+        var analyticsArchiveEnabled = true;
+
+        async Task ArchiveTrendAsync(string tableName, string sql, params object[] parameters)
+        {
+            if (!trendArchiveEnabled)
+                return;
+
+            trendArchiveEnabled = await TryArchiveInsertCompatAsync(
                 () => _trendDb.Database.ExecuteSqlRawAsync(sql, parameters),
                 tableName,
                 "delete-batch-archive",
                 batchId);
+        }
 
-        Task ArchiveAnalyticsAsync(string tableName, string sql, params object[] parameters)
-            => TryArchiveInsertCompatAsync(
+        async Task ArchiveAnalyticsAsync(string tableName, string sql, params object[] parameters)
+        {
+            if (!analyticsArchiveEnabled)
+                return;
+
+            analyticsArchiveEnabled = await TryArchiveInsertCompatAsync(
                 () => _analyticsDb.Database.ExecuteSqlRawAsync(sql, parameters),
                 tableName,
                 "delete-batch-analytics-archive",
                 batchId);
+        }
 
         // Delete transactional / master data
         // Stavke must be deleted before zaglavlja (FK constraint), filtered via parent
@@ -3735,11 +3748,12 @@ using NpgsqlTypes;
         }
     }
 
-    private async Task TryArchiveInsertCompatAsync(Func<Task> archiveAction, string tableName, string operation, long batchId)
+    private async Task<bool> TryArchiveInsertCompatAsync(Func<Task> archiveAction, string tableName, string operation, long batchId)
     {
         try
         {
             await archiveAction();
+            return true;
         }
         catch (PostgresException ex) when (IsLegacySchemaArtifact(ex))
         {
@@ -3749,8 +3763,22 @@ using NpgsqlTypes;
                 batchId,
                 tableName,
                 operation);
+            return false;
+        }
+        catch (PostgresException ex) when (IsArchiveStorageLimitExceeded(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "Skipping archive write because PostgreSQL storage quota is full. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                batchId,
+                tableName,
+                operation);
+            return false;
         }
     }
+
+    private static bool IsArchiveStorageLimitExceeded(PostgresException ex)
+        => string.Equals(ex.SqlState, "53100", StringComparison.Ordinal);
 
     private static bool IsLegacySchemaArtifact(PostgresException ex)
         => ex.SqlState is PostgresErrorCodes.UndefinedColumn or PostgresErrorCodes.UndefinedTable;
