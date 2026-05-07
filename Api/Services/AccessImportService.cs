@@ -6259,14 +6259,18 @@ using NpgsqlTypes;
                 continue;
             }
 
-            _trendDb.ProdajaStavke.Add(new Domain.Model.Prodaja.ProdajaStavka
+            var line = new Domain.Model.Prodaja.ProdajaStavka
             {
                 Id = ++maxStavkaId,
                 IdProdaja = zaglavlje.Id,
                 IdArtikal = idArtikal.Value,
                 Kolicina = qty,
                 Cena = cena
-            });
+            };
+            if (_trendDb.Entry(zaglavlje).State == EntityState.Added)
+                line.Prodaja = zaglavlje;
+
+            _trendDb.ProdajaStavke.Add(line);
             result.ProdajaStavkeInserted++;
         }
     }
@@ -6419,14 +6423,18 @@ using NpgsqlTypes;
                     continue;
                 }
 
-                _trendDb.ProdajaStavke.Add(new Domain.Model.Prodaja.ProdajaStavka
+                var stavka = new Domain.Model.Prodaja.ProdajaStavka
                 {
                     Id = ++maxStavkaId,
                     IdProdaja = zaglavlje.Id,
                     IdArtikal = d.ArtikalId!.Value,
                     Kolicina = stavkaQty,
                     Cena = stavkaCena
-                });
+                };
+                if (_trendDb.Entry(zaglavlje).State == EntityState.Added)
+                    stavka.Prodaja = zaglavlje;
+
+                _trendDb.ProdajaStavke.Add(stavka);
                 result.ProdajaStavkeInserted++;
                 insertedStavke++;
                 TrackTrendWrite();
@@ -9688,6 +9696,8 @@ using NpgsqlTypes;
             await EnsureBatchNotCancelledAsync(_activeBatchId.Value, ct);
 
         var writesToFlush = _pendingTrendWrites;
+        _trendDb.ChangeTracker.DetectChanges();
+        await GuardProdajaStavkeForeignKeysBeforeFlushAsync(ct);
         await _trendDb.SaveChangesAsync(ct);
         _trendDb.ChangeTracker.Clear();
         _pendingTrendWrites = 0;
@@ -9699,6 +9709,116 @@ using NpgsqlTypes;
             writesToFlush,
             activeBatchSize,
             force);
+    }
+
+    private async Task GuardProdajaStavkeForeignKeysBeforeFlushAsync(CancellationToken ct)
+    {
+        var lineEntries = _trendDb.ChangeTracker
+            .Entries<Domain.Model.Prodaja.ProdajaStavka>()
+            .Where(e => (e.State == EntityState.Added || e.State == EntityState.Modified) && e.Entity.IdProdaja > 0)
+            .ToList();
+
+        if (lineEntries.Count == 0)
+            return;
+
+        var trackedNewParentIds = _trendDb.ChangeTracker
+            .Entries<Domain.Model.Prodaja.ProdajaZaglavlje>()
+            .Where(e => e.State == EntityState.Added && e.Entity.Id > 0)
+            .Select(e => e.Entity.Id)
+            .ToHashSet();
+
+        var parentIdsToVerify = lineEntries
+            .Select(e => e.Entity.IdProdaja)
+            .Where(id => !trackedNewParentIds.Contains(id))
+            .Distinct()
+            .ToArray();
+
+        if (parentIdsToVerify.Length == 0)
+            return;
+
+        var persistedParentIds = new HashSet<int>();
+        foreach (var chunk in parentIdsToVerify.Chunk(500))
+        {
+            var ids = await _trendDb.ProdajaZaglavlja
+                .AsNoTracking()
+                .Where(x => chunk.Contains(x.Id))
+                .Select(x => x.Id)
+                .ToListAsync(ct);
+            persistedParentIds.UnionWith(ids);
+        }
+
+        var missingParentIds = parentIdsToVerify
+            .Where(id => !persistedParentIds.Contains(id))
+            .ToHashSet();
+
+        if (missingParentIds.Count == 0)
+            return;
+
+        var invalidEntries = lineEntries
+            .Where(e => missingParentIds.Contains(e.Entity.IdProdaja))
+            .ToList();
+
+        var sample = string.Join(
+            ", ",
+            invalidEntries
+                .Take(ForeignKeyWarningSampleLimit)
+                .Select(e => $"stavka={e.Entity.Id}, id_prodaja={e.Entity.IdProdaja}"));
+
+        var sampleMissingParentIds = string.Join(
+            ", ",
+            missingParentIds.Take(ForeignKeyWarningSampleLimit));
+
+        if (!_options.SkipInvalidForeignKeys)
+        {
+            throw new InvalidOperationException(
+                $"prodaja_stavke FK validation failed before flush: missing prodaja_zaglavlje parents count={missingParentIds.Count}; samples={sample}");
+        }
+
+        foreach (var entry in invalidEntries)
+        {
+            if (entry.State == EntityState.Added)
+                entry.State = EntityState.Detached;
+            else
+                entry.State = EntityState.Unchanged;
+        }
+
+        var message =
+            $"Access import skipped {invalidEntries.Count} pending prodaja_stavke rows before DB flush because parent prodaja_zaglavlje rows are missing. Samples: {sample}.";
+        _logger.LogWarning(
+            "Access import skipped pending prodaja_stavke rows with missing parents before DB flush. BatchId: {BatchId}. MissingParentCount: {MissingParentCount}. SkippedLineCount: {SkippedLineCount}. SampleMissingParentIds: {SampleMissingParentIds}. SkipInvalidForeignKeys: {SkipInvalidForeignKeys}.",
+            _activeBatchId,
+            missingParentIds.Count,
+            invalidEntries.Count,
+            sampleMissingParentIds,
+            _options.SkipInvalidForeignKeys);
+
+        var orphanRatioPct = lineEntries.Count > 0
+            ? invalidEntries.Count * 100 / lineEntries.Count
+            : 0;
+        if (orphanRatioPct > 5)
+        {
+            _logger.LogError(
+                "Access import high orphan rate in prodaja_stavke: {SkippedLineCount} of {TotalPendingStavke} pending rows skipped due to missing parents ({OrphanRatioPct}%). BatchId: {BatchId}. SampleMissingParentIds: {SampleMissingParentIds}. SkipInvalidForeignKeys: {SkipInvalidForeignKeys}.",
+                invalidEntries.Count,
+                lineEntries.Count,
+                orphanRatioPct,
+                _activeBatchId,
+                sampleMissingParentIds,
+                _options.SkipInvalidForeignKeys);
+        }
+
+        if (_activeBatchResult is not null)
+            _activeBatchResult.Warnings.Add(message);
+
+        if (_activeBatchId is long batchId)
+        {
+            AddAccessImportLogEntry(
+                batchId,
+                "prodaja_stavke",
+                0,
+                "warning",
+                TrimToMaxLength(message, 2000));
+        }
     }
 
     private static string SerializeRowForDiagnostics(AccessDataRow row)
