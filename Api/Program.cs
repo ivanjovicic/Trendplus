@@ -434,6 +434,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             effectiveWorkersEnabled,
             effectiveWorkersRuntimeToggleAllowed,
             effectiveWorkersEnabledSource));
+    builder.Services.AddSingleton<BackendRoutingPreferenceService>();
     
     // Embedding service for AI-powered image search
     var pythonServiceUrl = builder.Configuration["EmbeddingService:BaseUrl"] ?? "http://localhost:8000";
@@ -987,6 +988,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapAccessImportEndpoints();
     app.MapAdminRepairEndpoints();
     app.MapAdminConfigEndpoints();
+    app.MapAdminBackendRoutingEndpoints();
     app.MapRedisEndpoints();
     app.MapOutboxEndpoints();
     app.MapAnalyticsTableEndpoints();

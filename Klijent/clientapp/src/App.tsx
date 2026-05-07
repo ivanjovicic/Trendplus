@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Route, Routes, useLocation, useNavigate, useParams, type Location } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams, type Location } from "react-router-dom";
 import AppLayout from "./layout/AppLayout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
@@ -131,7 +131,7 @@ function AppShell() {
                     <Route path="/admin/common-products" element={<CommonProductsPage />} />
                     <Route path="/admin/nivelacija-repair" element={<NivelacijaRepairPage />} />
                     <Route path="/admin/configuration" element={<ConfigurationPage />} />
-                    <Route path="/settings/themes" element={<ThemeSettingsPage />} />
+                    <Route path="/configuration" element={<Navigate to="/admin/configuration" replace />} />
                     <Route path="/settings/themes" element={<ThemeSettingsPage />} />
                 </Routes>
             </Suspense>

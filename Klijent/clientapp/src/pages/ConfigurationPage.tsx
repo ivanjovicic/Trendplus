@@ -12,6 +12,7 @@ import {
   Moon,
   Power,
   RefreshCw,
+  Server,
   Settings,
   Sun,
   Terminal,
@@ -19,6 +20,22 @@ import {
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../components/Toast";
+import { usePingControl } from "../context/PingControlContext";
+import { apiUrl } from "../utils/apiUrl";
+import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import { API_COLD_START_TIMEOUT_MS } from "../utils/apiTimeouts";
+import {
+  getBackendRoutingPreference as getBackendRoutingPreferenceApi,
+  updateBackendRoutingPreference,
+  pingBackendProvider,
+  type BackendProvider,
+  type BackendProviderHealth,
+  type BackendRoutingPreference,
+} from "../services/backendRoutingApi";
+import {
+  getBackendRoutingPreference as getLocalBackendRoutingPreference,
+  saveBackendRoutingPreference as saveLocalBackendRoutingPreference,
+} from "../utils/apiFailover";
 import "./ConfigurationPage.css";
 
 interface PendingBatch {
@@ -60,23 +77,41 @@ interface HealthCheck {
   databaseMessage: string;
 }
 
-type Panel = "workers" | "import" | "health" | "toggles" | "diagnostics" | "themes" | "logs";
+interface RedisStatus {
+  enabled: boolean;
+  available: boolean;
+}
+
+type Panel =
+  | "backend"
+  | "workers"
+  | "import"
+  | "health"
+  | "cache"
+  | "toggles"
+  | "diagnostics"
+  | "themes"
+  | "logs";
 
 export default function ConfigurationPage() {
-  const [activePanel, setActivePanel] = useState<Panel>("workers");
+  const [activePanel, setActivePanel] = useState<Panel>("backend");
   const [batches, setBatches] = useState<PendingBatch[]>([]);
   const [workerControl, setWorkerControl] = useState<WorkerControl | null>(null);
   const [health, setHealth] = useState<HealthCheck | null>(null);
+  const [redisStatus, setRedisStatus] = useState<RedisStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backendPreference, setBackendPreference] = useState<BackendRoutingPreference | null>(null);
+  const [providerHealth, setProviderHealth] = useState<Partial<Record<BackendProvider, BackendProviderHealth>>>({});
+  const [savingBackendPreference, setSavingBackendPreference] = useState(false);
+  const [refreshHintVisible, setRefreshHintVisible] = useState(false);
   const { currentTheme, setTheme } = useTheme();
+  const { apiPingEnabled, setApiPingEnabled } = usePingControl();
   const { showToast } = useToast();
-
-  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
   const loadWorkerControl = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/api/workers/control`);
+      const res = await fetchWithTimeout(apiUrl("/api/workers/control"), undefined, API_COLD_START_TIMEOUT_MS);
       if (res.ok) {
         const data = await res.json();
         setWorkerControl(data);
@@ -84,13 +119,13 @@ export default function ConfigurationPage() {
     } catch (e) {
       console.error("Failed to load worker control:", e);
     }
-  }, [apiBase]);
+  }, []);
 
   const loadPendingBatches = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBase}/api/admin/pending-batches?take=50`);
+      const res = await fetchWithTimeout(apiUrl("/api/admin/pending-batches?take=50"), undefined, API_COLD_START_TIMEOUT_MS);
       if (res.ok) {
         const data = (await res.json()) as PendingBatchesData;
         setBatches(data.batches || []);
@@ -103,11 +138,11 @@ export default function ConfigurationPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiBase]);
+  }, []);
 
   const loadHealth = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/api/admin/health-check`);
+      const res = await fetchWithTimeout(apiUrl("/api/admin/health-check"), undefined, API_COLD_START_TIMEOUT_MS);
       if (res.ok) {
         const data = await res.json();
         setHealth(data);
@@ -115,12 +150,88 @@ export default function ConfigurationPage() {
     } catch (e) {
       console.error("Failed to load health check:", e);
     }
-  }, [apiBase]);
+  }, []);
+
+  const loadRedisStatus = useCallback(async () => {
+    try {
+      const res = await fetchWithTimeout(apiUrl("/api/redis/status"), undefined, API_COLD_START_TIMEOUT_MS);
+      if (res.ok) {
+        const data = (await res.json()) as RedisStatus;
+        setRedisStatus(data);
+      }
+    } catch (e) {
+      console.error("Failed to load redis status:", e);
+      setRedisStatus(null);
+    }
+  }, []);
+
+  const toggleRedis = async () => {
+    try {
+      const res = await fetchWithTimeout(apiUrl("/api/redis/toggle"), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
+      if (!res.ok) {
+        showToast("Redis toggle nije uspeo", "error");
+        return;
+      }
+      const data = (await res.json()) as RedisStatus;
+      setRedisStatus(data);
+      showToast(`Redis ${data.enabled ? "ukljucen" : "iskljucen"}`, "success");
+    } catch (e) {
+      showToast("Greska pri promeni Redis stanja", "error");
+      console.error(e);
+    }
+  };
+
+  const loadBackendPreference = useCallback(async () => {
+    try {
+      const serverPreference = await getBackendRoutingPreferenceApi();
+      setBackendPreference(serverPreference);
+      saveLocalBackendRoutingPreference({
+        primaryProvider: serverPreference.primaryProvider,
+        fallbackEnabled: serverPreference.fallbackEnabled,
+        fallbackProvider: serverPreference.fallbackProvider,
+      });
+    } catch (e) {
+      const local = getLocalBackendRoutingPreference();
+      setBackendPreference({
+        primaryProvider: local.primaryProvider,
+        fallbackEnabled: local.fallbackEnabled,
+        fallbackProvider: local.fallbackProvider,
+      });
+      console.error("Failed to load backend preference from API, using local preference.", e);
+    }
+  }, []);
+
+  const runProviderPing = useCallback(async (provider: BackendProvider) => {
+    try {
+      const result = await pingBackendProvider(provider);
+      setProviderHealth((prev) => ({ ...prev, [provider]: result }));
+      return result;
+    } catch (e) {
+      const failResult: BackendProviderHealth = {
+        provider,
+        success: false,
+        statusCode: null,
+        latencyMs: 0,
+        checkedAtUtc: new Date().toISOString(),
+        message: e instanceof Error ? e.message : "Ping failed",
+      };
+      setProviderHealth((prev) => ({ ...prev, [provider]: failResult }));
+      return failResult;
+    }
+  }, []);
+
+  const pingConfiguredProviders = useCallback(async () => {
+    if (!backendPreference) return;
+    await runProviderPing(backendPreference.primaryProvider);
+    if (backendPreference.fallbackEnabled) {
+      await runProviderPing(backendPreference.fallbackProvider);
+    }
+  }, [backendPreference, runProviderPing]);
 
   const toggleWorkers = async (enable: boolean) => {
     try {
-      const url = `${apiBase}/api/workers/control/${enable ? "enable" : "disable"}`;
-      const res = await fetch(url, { method: "POST" });
+      const url = apiUrl(`/api/workers/control/${enable ? "enable" : "disable"}`);
+      const res = await fetchWithTimeout(url, { method: "POST" }, API_COLD_START_TIMEOUT_MS);
       if (res.ok) {
         showToast(`Workers ${enable ? "enabled" : "disabled"}`, "success");
         await loadWorkerControl();
@@ -137,8 +248,8 @@ export default function ConfigurationPage() {
     if (!window.confirm(`Requeue batch ${batchId}?`)) return;
 
     try {
-      const res = await fetch(`${apiBase}/api/admin/requeue-batch/${batchId}`, { method: "POST" });
-      const result = (await res.json()) as any;
+      const res = await fetchWithTimeout(apiUrl(`/api/admin/requeue-batch/${batchId}`), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
+      const result = (await res.json()) as { success: boolean; message: string };
       if (result.success) {
         showToast("Batch requeued", "success");
         await loadPendingBatches();
@@ -155,8 +266,8 @@ export default function ConfigurationPage() {
     if (!window.confirm("Run stale batch recovery? This may mark old pending batches as failed.")) return;
 
     try {
-      const res = await fetch(`${apiBase}/api/admin/run-stale-recovery`, { method: "POST" });
-      const result = (await res.json()) as any;
+      const res = await fetchWithTimeout(apiUrl("/api/admin/run-stale-recovery"), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
+      const result = (await res.json()) as { success: boolean; message: string };
       showToast(result.message, result.success ? "success" : "error");
       if (result.success) {
         await loadPendingBatches();
@@ -164,6 +275,53 @@ export default function ConfigurationPage() {
     } catch (e) {
       showToast("Error running stale recovery", "error");
       console.error(e);
+    }
+  };
+
+  const updateBackendPreferenceField = <K extends keyof BackendRoutingPreference>(
+    key: K,
+    value: BackendRoutingPreference[K]
+  ) => {
+    setBackendPreference((prev) => {
+      const base: BackendRoutingPreference = prev ?? {
+        primaryProvider: "render",
+        fallbackEnabled: true,
+        fallbackProvider: "fly",
+      };
+      const next = { ...base, [key]: value };
+      if (next.fallbackEnabled && next.fallbackProvider === next.primaryProvider) {
+        next.fallbackProvider = next.primaryProvider === "render" ? "fly" : "render";
+      }
+      return next;
+    });
+  };
+
+  const saveBackendPreference = async () => {
+    if (!backendPreference) return;
+    if (
+      backendPreference.fallbackEnabled &&
+      backendPreference.fallbackProvider === backendPreference.primaryProvider
+    ) {
+      showToast("Fallback provider mora da se razlikuje od primary providera.", "error");
+      return;
+    }
+
+    setSavingBackendPreference(true);
+    try {
+      const saved = await updateBackendRoutingPreference(backendPreference);
+      setBackendPreference(saved);
+      saveLocalBackendRoutingPreference({
+        primaryProvider: saved.primaryProvider,
+        fallbackEnabled: saved.fallbackEnabled,
+        fallbackProvider: saved.fallbackProvider,
+      });
+      setRefreshHintVisible(true);
+      showToast("Backend konfiguracija sacuvana.", "success");
+      await pingConfiguredProviders();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Greska pri cuvanju backend konfiguracije", "error");
+    } finally {
+      setSavingBackendPreference(false);
     }
   };
 
@@ -183,10 +341,15 @@ export default function ConfigurationPage() {
     }
   };
 
+  const providerLabel = (provider: BackendProvider) =>
+    provider === "render" ? "Render" : "Fly.io";
+
   useEffect(() => {
     loadWorkerControl();
     loadHealth();
-  }, [loadWorkerControl, loadHealth]);
+    loadRedisStatus();
+    loadBackendPreference();
+  }, [loadWorkerControl, loadHealth, loadRedisStatus, loadBackendPreference]);
 
   useEffect(() => {
     if (activePanel === "import") {
@@ -194,17 +357,31 @@ export default function ConfigurationPage() {
     }
   }, [activePanel, loadPendingBatches]);
 
+  useEffect(() => {
+    if (activePanel === "backend" && backendPreference) {
+      void pingConfiguredProviders();
+    }
+  }, [activePanel, backendPreference, pingConfiguredProviders]);
+
   return (
     <div className="configuration-page">
       <div className="config-header">
         <h1 className="config-title">Konfiguracija i nadzor</h1>
-        <p className="config-subtitle">Upravljanje radnicima, import zadacima, zdravljem sistema i temama</p>
+        <p className="config-subtitle">
+          Jedinstveno mesto za backend rutu, fallback, radnike, import, API zdravlje, cache i teme.
+        </p>
       </div>
 
       <div className="config-layout">
-        {/* Left panel: navigation */}
         <div className="config-sidebar">
           <div className="config-menu">
+            <button
+              className={`config-menu-item ${activePanel === "backend" ? "active" : ""}`}
+              onClick={() => setActivePanel("backend")}
+            >
+              <Server size={18} />
+              <span>Backend</span>
+            </button>
             <button
               className={`config-menu-item ${activePanel === "workers" ? "active" : ""}`}
               onClick={() => setActivePanel("workers")}
@@ -225,6 +402,13 @@ export default function ConfigurationPage() {
             >
               <Gauge size={18} />
               <span>Zdravlje API-ja</span>
+            </button>
+            <button
+              className={`config-menu-item ${activePanel === "cache" ? "active" : ""}`}
+              onClick={() => setActivePanel("cache")}
+            >
+              <Database size={18} />
+              <span>Cache / Redis</span>
             </button>
             <button
               className={`config-menu-item ${activePanel === "toggles" ? "active" : ""}`}
@@ -257,9 +441,160 @@ export default function ConfigurationPage() {
           </div>
         </div>
 
-        {/* Center panel: content */}
         <div className="config-content">
-          {/* Workers Panel */}
+          {activePanel === "backend" && (
+            <div className="config-panel">
+              <h2 className="panel-title">Backend provider i failover</h2>
+              <div className="panel-card">
+                <div className="card-header">
+                  <Server size={20} />
+                  <span className="card-title">Aktivna backend strategija</span>
+                </div>
+                {backendPreference ? (
+                  <div className="card-content">
+                    <div className="health-item">
+                      <span className="health-label">Primary provider</span>
+                      <select
+                        value={backendPreference.primaryProvider}
+                        onChange={(e) =>
+                          updateBackendPreferenceField(
+                            "primaryProvider",
+                            e.target.value as BackendProvider
+                          )
+                        }
+                        className="dark-select control-muted rounded-lg px-2.5 py-2 text-sm"
+                      >
+                        <option value="render">Render</option>
+                        <option value="fly">Fly.io</option>
+                      </select>
+                    </div>
+
+                    <div className="health-item">
+                      <span className="health-label">Fallback backend</span>
+                      <label className="inline-flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={backendPreference.fallbackEnabled}
+                          onChange={(e) =>
+                            updateBackendPreferenceField("fallbackEnabled", e.target.checked)
+                          }
+                        />
+                        Uključen fallback
+                      </label>
+                    </div>
+
+                    {backendPreference.fallbackEnabled && (
+                      <div className="health-item">
+                        <span className="health-label">Fallback provider</span>
+                        <select
+                          value={backendPreference.fallbackProvider}
+                          onChange={(e) =>
+                            updateBackendPreferenceField(
+                              "fallbackProvider",
+                              e.target.value as BackendProvider
+                            )
+                          }
+                          className="dark-select control-muted rounded-lg px-2.5 py-2 text-sm"
+                        >
+                          <option
+                            value="render"
+                            disabled={backendPreference.primaryProvider === "render"}
+                          >
+                            Render
+                          </option>
+                          <option
+                            value="fly"
+                            disabled={backendPreference.primaryProvider === "fly"}
+                          >
+                            Fly.io
+                          </option>
+                        </select>
+                      </div>
+                    )}
+
+                    <p className="text-small text-muted">
+                      Fallback je aktivan samo kada primary backend ne odgovori na API zahtev ili health/ping proveru.
+                    </p>
+
+                    <div className="action-group">
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => void saveBackendPreference()}
+                        disabled={savingBackendPreference}
+                      >
+                        <Settings size={16} />
+                        {savingBackendPreference ? "Čuvanje..." : "Sačuvaj konfiguraciju"}
+                      </button>
+                      <button
+                        className="btn btn-ghost"
+                        onClick={() => void pingConfiguredProviders()}
+                      >
+                        <RefreshCw size={16} /> Proveri API ping
+                      </button>
+                    </div>
+
+                    {refreshHintVisible && (
+                      <div className="alert alert-error" style={{ borderColor: "var(--color-border)" }}>
+                        <AlertCircle size={18} />
+                        Promena provider redosleda važi nakon osvežavanja stranice.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="loading">Učitavanje backend konfiguracije...</div>
+                )}
+              </div>
+
+              <div className="panel-card">
+                <div className="card-header">
+                  <Activity size={20} />
+                  <span className="card-title">Provider ping status</span>
+                </div>
+                <div className="card-content">
+                  {(["render", "fly"] as BackendProvider[]).map((provider) => {
+                    const ping = providerHealth[provider];
+                    return (
+                      <div className="health-item" key={provider}>
+                        <div>
+                          <div className="health-label">{providerLabel(provider)}</div>
+                          <div className="text-small text-muted">
+                            {ping
+                              ? `Poslednja provera: ${formatDate(ping.checkedAtUtc)}`
+                              : "Još nije provereno"}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {ping ? (
+                            <span className={`health-status ${ping.success ? "ok" : "error"}`}>
+                              {ping.success ? (
+                                <>
+                                  <CheckCircle size={16} /> OK ({ping.latencyMs}ms)
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle size={16} /> {ping.message}
+                                </>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="health-status off">N/A</span>
+                          )}
+                          <button
+                            className="btn-small"
+                            onClick={() => void runProviderPing(provider)}
+                            title="Ponovo proveri"
+                          >
+                            <RefreshCw size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {activePanel === "workers" && (
             <div className="config-panel">
               <h2 className="panel-title">Radnici</h2>
@@ -279,19 +614,19 @@ export default function ConfigurationPage() {
                     <div className="action-group">
                       <button
                         className="btn btn-primary"
-                        onClick={() => toggleWorkers(true)}
+                        onClick={() => void toggleWorkers(true)}
                         disabled={workerControl.isEnabled}
                       >
                         <Power size={16} /> Uključi radnike
                       </button>
                       <button
                         className="btn btn-secondary"
-                        onClick={() => toggleWorkers(false)}
+                        onClick={() => void toggleWorkers(false)}
                         disabled={!workerControl.isEnabled}
                       >
                         <Power size={16} /> Isključi radnike
                       </button>
-                      <button className="btn btn-ghost" onClick={loadWorkerControl}>
+                      <button className="btn btn-ghost" onClick={() => void loadWorkerControl()}>
                         <RefreshCw size={16} /> Osveži
                       </button>
                     </div>
@@ -301,7 +636,6 @@ export default function ConfigurationPage() {
             </div>
           )}
 
-          {/* Import Panel */}
           {activePanel === "import" && (
             <div className="config-panel">
               <h2 className="panel-title">Import iz Accessa</h2>
@@ -355,7 +689,7 @@ export default function ConfigurationPage() {
                                 </div>
                               </td>
                               <td className="actions">
-                                <button className="btn-small" onClick={() => requeueBatch(batch.id)} title="Requeue">
+                                <button className="btn-small" onClick={() => void requeueBatch(batch.id)} title="Requeue">
                                   <RefreshCw size={14} />
                                 </button>
                               </td>
@@ -370,7 +704,6 @@ export default function ConfigurationPage() {
             </div>
           )}
 
-          {/* Health Panel */}
           {activePanel === "health" && (
             <div className="config-panel">
               <h2 className="panel-title">Zdravlje API-ja</h2>
@@ -404,43 +737,103 @@ export default function ConfigurationPage() {
                   </div>
                 </div>
               )}
+
+              <div className="panel-card">
+                <div className="card-header">
+                  <Activity size={20} />
+                  <span className="card-title">Frontend API ping kontrola</span>
+                </div>
+                <div className="card-content">
+                  <p className="text-muted">
+                    Periodično pingovanje backend-a iz frontenda možete uključiti ili isključiti ovde.
+                  </p>
+                  <div className="action-group">
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => setApiPingEnabled(true)}
+                      disabled={apiPingEnabled}
+                    >
+                      Uključi API ping
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setApiPingEnabled(false)}
+                      disabled={!apiPingEnabled}
+                    >
+                      Isključi API ping
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Toggles Panel */}
+          {activePanel === "cache" && (
+            <div className="config-panel">
+              <h2 className="panel-title">Cache / Redis</h2>
+              <div className="panel-card">
+                <div className="card-header">
+                  <Database size={20} />
+                  <span className="card-title">Redis status</span>
+                </div>
+                <div className="card-content">
+                  <div className="health-item">
+                    <span className="health-label">Redis state</span>
+                    <span className={`health-status ${redisStatus?.enabled ? "ok" : "off"}`}>
+                      {redisStatus
+                        ? redisStatus.enabled
+                          ? redisStatus.available
+                            ? "Uključen"
+                            : "Uključen (nedostupan)"
+                          : "Isključen"
+                        : "N/A"}
+                    </span>
+                  </div>
+                  <div className="action-group">
+                    <button className="btn btn-primary" onClick={() => void toggleRedis()}>
+                      Promeni Redis stanje
+                    </button>
+                    <button className="btn btn-ghost" onClick={() => void loadRedisStatus()}>
+                      <RefreshCw size={16} /> Osveži
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activePanel === "toggles" && (
             <div className="config-panel">
               <h2 className="panel-title">Runtime opcije</h2>
               <div className="panel-card">
                 <div className="card-content">
                   <p className="text-muted">
-                    Većina runtime opcija se kontroliše kroz /api/workers/control endpoint. Sve vrednosti koje se ovde prikazuju su informativne i zahtevaju
-                    restart za promenu.
+                    Većina runtime opcija se kontroliše kroz /api/workers/control endpoint. Vrednosti su
+                    informativne, a pojedine izmene zahtevaju restart.
                   </p>
                   <ul className="info-list">
-                    <li>WorkerEnabled — Uključivanje/isključivanje background worker-a</li>
-                    <li>AccessImportOptions.PollingIntervalSeconds — Kako često worker proverava pending batches</li>
-                    <li>MaxConcurrentJobs — Broj simultanih import zadataka</li>
-                    <li>EnableAutoRetryForTransientFailures — Automatski retry na privremene greške</li>
-                    <li>PreventConcurrentRuns — Zabrana simultanih import sesija</li>
+                    <li>WorkerEnabled — uključivanje/isključivanje background worker-a</li>
+                    <li>AccessImportOptions.PollingIntervalSeconds — učestalost provere pending batch-eva</li>
+                    <li>MaxConcurrentJobs — broj simultanih import zadataka</li>
+                    <li>EnableAutoRetryForTransientFailures — automatski retry na privremene greške</li>
+                    <li>PreventConcurrentRuns — zabrana simultanih import sesija</li>
                   </ul>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Diagnostics Panel */}
           {activePanel === "diagnostics" && (
             <div className="config-panel">
               <h2 className="panel-title">Dijagnostika i održavanje</h2>
               <div className="panel-card">
                 <div className="card-content">
                   <div className="action-group-vertical">
-                    <button className="btn btn-warning" onClick={runStaleRecovery}>
+                    <button className="btn btn-warning" onClick={() => void runStaleRecovery()}>
                       <Zap size={16} /> Pokreni stale batch recovery
                     </button>
                     <p className="text-small text-muted">
-                      Pronađi abandoned import sesije (long-running bez heartbeat) i označi ih kao failed
+                      Pronađi abandoned import sesije (dugo bez heartbeat-a) i označi ih kao failed.
                     </p>
                   </div>
                 </div>
@@ -448,7 +841,6 @@ export default function ConfigurationPage() {
             </div>
           )}
 
-          {/* Themes Panel */}
           {activePanel === "themes" && (
             <div className="config-panel">
               <h2 className="panel-title">Teme</h2>
@@ -477,25 +869,34 @@ export default function ConfigurationPage() {
             </div>
           )}
 
-          {/* Logs Panel */}
           {activePanel === "logs" && (
             <div className="config-panel">
               <h2 className="panel-title">Audit logovi</h2>
               <div className="panel-card">
                 <div className="card-content">
-                  <p className="text-muted">Audit logovi su dostupni kroz /api/admin/audit-log endpoint</p>
+                  <p className="text-muted">Audit logovi su dostupni kroz /api/admin/audit-log endpoint.</p>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Right side: quick metrics */}
         <div className="config-metrics">
           <div className="metric-card">
             <Clock size={20} />
-            <span>Poslednja osvežavanja: {new Date().toLocaleTimeString()}</span>
+            <span>Poslednje osvežavanje: {new Date().toLocaleTimeString()}</span>
           </div>
+          {backendPreference && (
+            <div className="metric-card">
+              <Server size={20} />
+              <span>
+                Primary: {providerLabel(backendPreference.primaryProvider)}
+                {backendPreference.fallbackEnabled
+                  ? ` | Fallback: ${providerLabel(backendPreference.fallbackProvider)}`
+                  : " | Fallback: isključen"}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

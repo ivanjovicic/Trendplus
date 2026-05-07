@@ -1,4 +1,11 @@
 type ApiHostRole = "primary" | "fallback";
+type BackendProvider = "render" | "fly";
+
+export type BackendRoutingPreference = {
+  primaryProvider: BackendProvider;
+  fallbackEnabled: boolean;
+  fallbackProvider: BackendProvider;
+};
 
 type PersistedFailoverState = {
   activeHost: ApiHostRole;
@@ -20,10 +27,41 @@ export type ApiFailoverRequestInit = RequestInit & {
 };
 
 const STORAGE_KEY = "trendplus:api-failover-state:v2";
+const ROUTING_STORAGE_KEY = "trendplus:backend-routing-preference:v1";
 const HOST_CHANGED_EVENT = "trendplus:api-host-changed";
 
-const primaryBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
-const fallbackBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_FALLBACK_URL);
+const explicitRenderBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_RENDER_BASE_URL);
+const explicitFlyBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_FLY_BASE_URL);
+const legacyPrimaryBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
+const legacyFallbackBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_FALLBACK_URL);
+
+const inferredRenderBaseUrl = inferProviderBaseUrl(
+  "render",
+  legacyPrimaryBaseUrl,
+  legacyFallbackBaseUrl
+);
+const inferredFlyBaseUrl = inferProviderBaseUrl(
+  "fly",
+  legacyPrimaryBaseUrl,
+  legacyFallbackBaseUrl
+);
+
+const renderBaseUrl =
+  explicitRenderBaseUrl ||
+  inferredRenderBaseUrl ||
+  legacyFallbackBaseUrl ||
+  legacyPrimaryBaseUrl;
+const flyBaseUrl =
+  explicitFlyBaseUrl ||
+  inferredFlyBaseUrl ||
+  legacyPrimaryBaseUrl ||
+  legacyFallbackBaseUrl;
+
+const routingPreference = loadRoutingPreference();
+const primaryBaseUrl = getBaseUrlForProvider(routingPreference.primaryProvider);
+const fallbackBaseUrl = routingPreference.fallbackEnabled
+  ? getBaseUrlForProvider(routingPreference.fallbackProvider)
+  : "";
 
 const failoverConfigured =
   primaryBaseUrl.length > 0 &&
@@ -62,6 +100,88 @@ let misconfigurationWarned = false;
 
 function normalizeBaseUrl(raw: string | undefined): string {
   return (raw ?? "").trim().replace(/\/+$/, "");
+}
+
+function inferProviderBaseUrl(
+  provider: BackendProvider,
+  legacyPrimary: string,
+  legacyFallback: string
+): string {
+  const providerPattern =
+    provider === "render"
+      ? /onrender\.com/i
+      : /(fly\.dev|fly\.io)/i;
+
+  if (providerPattern.test(legacyPrimary)) return legacyPrimary;
+  if (providerPattern.test(legacyFallback)) return legacyFallback;
+  return "";
+}
+
+function getBaseUrlForProvider(provider: BackendProvider): string {
+  return provider === "render" ? renderBaseUrl : flyBaseUrl;
+}
+
+function normalizeProvider(value: unknown): BackendProvider {
+  return String(value).toLowerCase() === "fly" ? "fly" : "render";
+}
+
+function getDefaultRoutingPreference(): BackendRoutingPreference {
+  return {
+    primaryProvider: "render",
+    fallbackEnabled: true,
+    fallbackProvider: "fly",
+  };
+}
+
+function loadRoutingPreference(): BackendRoutingPreference {
+  if (typeof window === "undefined") {
+    return getDefaultRoutingPreference();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(ROUTING_STORAGE_KEY);
+    if (!raw) return getDefaultRoutingPreference();
+    const parsed = JSON.parse(raw) as Partial<BackendRoutingPreference>;
+
+    const primaryProvider = normalizeProvider(parsed.primaryProvider);
+    const fallbackProvider = normalizeProvider(parsed.fallbackProvider);
+    const fallbackEnabled = Boolean(parsed.fallbackEnabled);
+
+    if (fallbackEnabled && fallbackProvider === primaryProvider) {
+      return {
+        primaryProvider,
+        fallbackEnabled,
+        fallbackProvider: primaryProvider === "render" ? "fly" : "render",
+      };
+    }
+
+    return {
+      primaryProvider,
+      fallbackEnabled,
+      fallbackProvider,
+    };
+  } catch {
+    return getDefaultRoutingPreference();
+  }
+}
+
+export function getBackendRoutingPreference(): BackendRoutingPreference {
+  return { ...routingPreference };
+}
+
+export function saveBackendRoutingPreference(next: BackendRoutingPreference): void {
+  if (typeof window === "undefined") return;
+  const sanitized: BackendRoutingPreference = {
+    primaryProvider: normalizeProvider(next.primaryProvider),
+    fallbackEnabled: Boolean(next.fallbackEnabled),
+    fallbackProvider: normalizeProvider(next.fallbackProvider),
+  };
+
+  if (sanitized.fallbackEnabled && sanitized.primaryProvider === sanitized.fallbackProvider) {
+    sanitized.fallbackProvider = sanitized.primaryProvider === "render" ? "fly" : "render";
+  }
+
+  window.localStorage.setItem(ROUTING_STORAGE_KEY, JSON.stringify(sanitized));
 }
 
 function normalizePath(raw: string): string {
