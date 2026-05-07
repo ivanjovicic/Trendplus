@@ -49,6 +49,48 @@ public static class AdminConfigEndpoints
             .WithSummary("Get recent admin action audit trail")
             .Produces<AuditLogResponse>(StatusCodes.Status200OK)
             .Produces<object>(StatusCodes.Status401Unauthorized);
+
+        // Worker management endpoints
+        group.MapGet("/workers/list", GetWorkersList)
+            .WithName("GetWorkersList")
+            .WithSummary("Get list of all workers with status and configuration")
+            .Produces<WorkersListResponse>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status401Unauthorized);
+
+        group.MapGet("/workers/{workerName}", GetWorkerDetails)
+            .WithName("GetWorkerDetails")
+            .WithSummary("Get details for a specific worker")
+            .Produces<WorkerDetailsDto>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status404NotFound)
+            .Produces<object>(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/workers/{workerName}/resume", ResumeWorker)
+            .WithName("ResumeWorker")
+            .WithSummary("Resume a manually stopped worker (allows running)")
+            .Produces<WorkerActionResponse>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/workers/{workerName}/stop", StopWorker)
+            .WithName("StopWorker")
+            .WithSummary("Manually stop a worker from running")
+            .Produces<WorkerActionResponse>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/workers/{workerName}/schedule/enable", EnableWorkerSchedule)
+            .WithName("EnableWorkerSchedule")
+            .WithSummary("Enable scheduled execution for a worker")
+            .Produces<WorkerActionResponse>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/workers/{workerName}/schedule/disable", DisableWorkerSchedule)
+            .WithName("DisableWorkerSchedule")
+            .WithSummary("Disable scheduled execution for a worker (manual start still allowed)")
+            .Produces<WorkerActionResponse>(StatusCodes.Status200OK)
+            .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status401Unauthorized);
     }
 
     private static async Task<Ok<PendingBatchesResponse>> GetPendingBatches(
@@ -183,6 +225,77 @@ public static class AdminConfigEndpoints
 
         return TypedResults.Ok(new AuditLogResponse { Entries = recentLogs, Total = recentLogs.Count });
     }
+
+    private static async Task<Ok<WorkersListResponse>> GetWorkersList(
+        WorkerConfigurationService service,
+        CancellationToken ct = default)
+    {
+        var workers = await service.GetAllWorkersAsync(ct);
+        return TypedResults.Ok(new WorkersListResponse { Workers = workers, Total = workers.Count });
+    }
+
+    private static async Task<Results<Ok<WorkerDetailsDto>, NotFound>> GetWorkerDetails(
+        string workerName,
+        WorkerConfigurationService service,
+        CancellationToken ct = default)
+    {
+        var worker = await service.GetWorkerAsync(workerName, ct);
+        if (worker == null)
+            return TypedResults.NotFound();
+        return TypedResults.Ok(worker);
+    }
+
+    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> ResumeWorker(
+        string workerName,
+        WorkerConfigurationService service,
+        HttpContext context,
+        CancellationToken ct = default)
+    {
+        var userName = context.User.Identity?.Name ?? "system";
+        var success = await service.ResumeWorkerAsync(workerName, userName, ct);
+        return success
+            ? TypedResults.Ok(new WorkerActionResponse { Success = true, Message = $"Worker {workerName} has been resumed" })
+            : TypedResults.BadRequest<object>(new { error = "Failed to resume worker" });
+    }
+
+    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> StopWorker(
+        string workerName,
+        WorkerConfigurationService service,
+        HttpContext context,
+        CancellationToken ct = default)
+    {
+        var userName = context.User.Identity?.Name ?? "system";
+        var success = await service.StopWorkerAsync(workerName, userName, ct);
+        return success
+            ? TypedResults.Ok(new WorkerActionResponse { Success = true, Message = $"Worker {workerName} has been stopped" })
+            : TypedResults.BadRequest<object>(new { error = "Failed to stop worker" });
+    }
+
+    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> EnableWorkerSchedule(
+        string workerName,
+        WorkerConfigurationService service,
+        HttpContext context,
+        CancellationToken ct = default)
+    {
+        var userName = context.User.Identity?.Name ?? "system";
+        var success = await service.EnableScheduleAsync(workerName, userName, ct);
+        return success
+            ? TypedResults.Ok(new WorkerActionResponse { Success = true, Message = $"Schedule enabled for worker {workerName}" })
+            : TypedResults.BadRequest<object>(new { error = "Failed to enable schedule" });
+    }
+
+    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> DisableWorkerSchedule(
+        string workerName,
+        WorkerConfigurationService service,
+        HttpContext context,
+        CancellationToken ct = default)
+    {
+        var userName = context.User.Identity?.Name ?? "system";
+        var success = await service.DisableScheduleAsync(workerName, userName, ct);
+        return success
+            ? TypedResults.Ok(new WorkerActionResponse { Success = true, Message = $"Schedule disabled for worker {workerName}" })
+            : TypedResults.BadRequest<object>(new { error = "Failed to disable schedule" });
+    }
 }
 
 public class PendingBatchesResponse { public int Total { get; set; } public List<PendingBatchDto> Batches { get; set; } = new(); }
@@ -192,3 +305,5 @@ public class DiagnosticsResult { public bool Success { get; set; } public string
 public class AdminHealthCheckResponse { public DateTime Timestamp { get; set; } public bool WorkerGlobalEnabled { get; set; } public string WorkerHealthState { get; set; } = "operational"; public DateTime LastWorkerHeartbeat { get; set; } public bool DatabaseConnected { get; set; } public string DatabaseMessage { get; set; } = string.Empty; }
 public class AuditLogResponse { public List<AuditEntry> Entries { get; set; } = new(); public int Total { get; set; } }
 public class AuditEntry { public long Id { get; set; } public DateTime Timestamp { get; set; } public long BatchId { get; set; } public string Severity { get; set; } = string.Empty; public string Message { get; set; } = string.Empty; }
+public class WorkersListResponse { public List<WorkerDetailsDto> Workers { get; set; } = new(); public int Total { get; set; } }
+public class WorkerActionResponse { public bool Success { get; set; } public string Message { get; set; } = string.Empty; }

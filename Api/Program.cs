@@ -434,6 +434,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             effectiveWorkersEnabled,
             effectiveWorkersRuntimeToggleAllowed,
             effectiveWorkersEnabledSource));
+    builder.Services.AddScoped<WorkerConfigurationService>(); // Per-worker runtime settings
     builder.Services.AddSingleton<BackendRoutingPreferenceService>();
     
     // Embedding service for AI-powered image search

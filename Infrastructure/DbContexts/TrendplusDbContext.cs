@@ -560,6 +560,23 @@ namespace Infrastructure.DbContexts
                   .HasDatabaseName("ix_snapshot_lines_batch_source");
             });
 
+            // ── Worker runtime settings ──
+            modelBuilder.Entity<WorkerRuntimeSettings>(eb =>
+            {
+                eb.ToTable("WorkerRuntimeSettings");
+                eb.HasKey(e => e.Id);
+                
+                eb.Property(e => e.WorkerName).IsRequired().HasMaxLength(200);
+                eb.Property(e => e.IsScheduleEnabled).IsRequired().HasDefaultValue(true);
+                eb.Property(e => e.IsManuallyStopped).IsRequired().HasDefaultValue(false);
+                eb.Property(e => e.UpdatedAtUtc).IsRequired().HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
+                eb.Property(e => e.UpdatedBy).HasMaxLength(200);
+                eb.Property(e => e.Notes).HasMaxLength(1000);
+                
+                eb.HasIndex(e => e.WorkerName).IsUnique();
+                eb.HasIndex(e => e.UpdatedAtUtc);
+            });
+
             modelBuilder.Entity<CreatedIdDto>().HasNoKey();
         }
 
@@ -588,6 +605,7 @@ namespace Infrastructure.DbContexts
         public DbSet<Infrastructure.Model.StockReservation> StockReservations { get; set; } = null!;
         public DbSet<AnalyticsCostSnapshotBatch> AnalyticsCostSnapshotBatches { get; set; } = null!;
         public DbSet<AnalyticsSaleLineCostSnapshot> AnalyticsSaleLineCostSnapshots { get; set; } = null!;
+        public DbSet<WorkerRuntimeSettings> WorkerRuntimeSettings { get; set; } = null!;
 
         public DbConnection GetDbConnection()
         {

@@ -21,6 +21,7 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../components/Toast";
 import { usePingControl } from "../context/PingControlContext";
+import { WorkersPanel } from "../components/WorkersPanel";
 import { apiUrl } from "../utils/apiUrl";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 import { API_COLD_START_TIMEOUT_MS } from "../utils/apiTimeouts";
@@ -633,6 +634,9 @@ export default function ConfigurationPage() {
                   </div>
                 </div>
               )}
+              <div className="panel-card" style={{ marginTop: "1.5rem" }}>
+                <WorkersPanel refreshInterval={5000} />
+              </div>
             </div>
           )}
 
