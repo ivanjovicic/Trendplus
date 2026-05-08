@@ -36,6 +36,7 @@ public class WorkerConfigurationService
         CancellationToken ct = default)
     {
         var healthStatuses = _healthService.GetAllStatuses();
+        var schemaReady = await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(_db, _logger, ct);
         var allWorkerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (knownWorkerNames is not null)
         {
@@ -53,7 +54,9 @@ public class WorkerConfigurationService
             allWorkerNames.Add(healthStatus.WorkerName);
         }
 
-        var settings = await GetSettingsMapAsync(allWorkerNames, ct);
+        var settings = schemaReady
+            ? await GetSettingsMapAsync(allWorkerNames, ct)
+            : new Dictionary<string, WorkerRuntimeSettings>(StringComparer.OrdinalIgnoreCase);
         foreach (var setting in settings.Values)
         {
             allWorkerNames.Add(setting.WorkerName);
@@ -79,7 +82,7 @@ public class WorkerConfigurationService
         }
 
         // Try to persist new settings
-        if (settingsToAdd.Count > 0)
+        if (schemaReady && settingsToAdd.Count > 0)
         {
             try
             {
@@ -88,6 +91,10 @@ public class WorkerConfigurationService
                     _db.WorkerRuntimeSettings.Add(newSetting);
                 }
                 await _db.SaveChangesAsync(ct);
+            }
+            catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+            {
+                WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(_logger, ex, "GetAllWorkersAsync:save-defaults");
             }
             catch (Exception ex)
             {
@@ -135,6 +142,11 @@ public class WorkerConfigurationService
         if (workerNameSet.Count == 0)
             return settings;
 
+        if (!await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(_db, _logger, ct))
+        {
+            return settings;
+        }
+
         try
         {
             var dbSettings = await _db.WorkerRuntimeSettings
@@ -146,6 +158,10 @@ public class WorkerConfigurationService
             {
                 settings[setting.WorkerName] = setting;
             }
+        }
+        catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+        {
+            WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(_logger, ex, "GetSettingsMapAsync:query");
         }
         catch (Exception ex)
         {
@@ -160,18 +176,26 @@ public class WorkerConfigurationService
     /// </summary>
     public async Task<WorkerDetailsDto?> GetWorkerAsync(string workerName, CancellationToken ct = default)
     {
+        var schemaReady = await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(_db, _logger, ct);
         WorkerRuntimeSettings? settings = null;
-        
-        try
+
+        if (schemaReady)
         {
-            settings = await _db.WorkerRuntimeSettings
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.WorkerName == workerName, ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Failed to load WorkerRuntimeSettings for {WorkerName}: {Error}", workerName, ex.Message);
-            // Continue with null settings - use defaults
+            try
+            {
+                settings = await _db.WorkerRuntimeSettings
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.WorkerName == workerName, ct);
+            }
+            catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+            {
+                WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(_logger, ex, $"GetWorkerAsync:{workerName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Failed to load WorkerRuntimeSettings for {WorkerName}: {Error}", workerName, ex.Message);
+                // Continue with null settings - use defaults
+            }
         }
 
         // Create default settings if not found and table exists
@@ -185,16 +209,26 @@ public class WorkerConfigurationService
                 UpdatedAtUtc = DateTime.UtcNow,
                 UpdatedBy = "system"
             };
-            
-            try
+
+            if (schemaReady)
             {
-                _db.WorkerRuntimeSettings.Add(settings);
-                await _db.SaveChangesAsync(ct);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("Failed to save default WorkerRuntimeSettings for {WorkerName}: {Error}", workerName, ex.Message);
-                // Continue - settings will be in memory for this request
+                try
+                {
+                    _db.WorkerRuntimeSettings.Add(settings);
+                    await _db.SaveChangesAsync(ct);
+                }
+                catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+                {
+                    WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(
+                        _logger,
+                        ex,
+                        $"GetWorkerAsync:{workerName}:save-default");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Failed to save default WorkerRuntimeSettings for {WorkerName}: {Error}", workerName, ex.Message);
+                    // Continue - settings will be in memory for this request
+                }
             }
         }
 
@@ -219,6 +253,9 @@ public class WorkerConfigurationService
     /// </summary>
     public async Task<bool> EnableScheduleAsync(string workerName, string? updatedBy = null, CancellationToken ct = default)
     {
+        if (!await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(_db, _logger, ct))
+            return true;
+
         try
         {
             var settings = await _db.WorkerRuntimeSettings
@@ -248,6 +285,11 @@ public class WorkerConfigurationService
             _logger.LogInformation("Enabled schedule for worker {WorkerName} by {UpdatedBy}", workerName, updatedBy ?? "api");
             return true;
         }
+        catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+        {
+            WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(_logger, ex, $"EnableScheduleAsync:{workerName}");
+            return true;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning("Failed to enable schedule for worker {WorkerName}: {Error}", workerName, ex.Message);
@@ -261,6 +303,9 @@ public class WorkerConfigurationService
     /// </summary>
     public async Task<bool> DisableScheduleAsync(string workerName, string? updatedBy = null, CancellationToken ct = default)
     {
+        if (!await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(_db, _logger, ct))
+            return true;
+
         try
         {
             var settings = await _db.WorkerRuntimeSettings
@@ -291,6 +336,11 @@ public class WorkerConfigurationService
             _logger.LogInformation("Disabled schedule for worker {WorkerName} by {UpdatedBy}", workerName, updatedBy ?? "api");
             return true;
         }
+        catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+        {
+            WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(_logger, ex, $"DisableScheduleAsync:{workerName}");
+            return true;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning("Failed to disable schedule for worker {WorkerName}: {Error}", workerName, ex.Message);
@@ -303,6 +353,9 @@ public class WorkerConfigurationService
     /// </summary>
     public async Task<bool> StopWorkerAsync(string workerName, string? updatedBy = null, CancellationToken ct = default)
     {
+        if (!await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(_db, _logger, ct))
+            return true;
+
         try
         {
             var settings = await _db.WorkerRuntimeSettings
@@ -333,6 +386,11 @@ public class WorkerConfigurationService
             _logger.LogWarning("Manually stopped worker {WorkerName} by {UpdatedBy}", workerName, updatedBy ?? "api");
             return true;
         }
+        catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+        {
+            WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(_logger, ex, $"StopWorkerAsync:{workerName}");
+            return true;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning("Failed to stop worker {WorkerName}: {Error}", workerName, ex.Message);
@@ -345,6 +403,9 @@ public class WorkerConfigurationService
     /// </summary>
     public async Task<bool> ResumeWorkerAsync(string workerName, string? updatedBy = null, CancellationToken ct = default)
     {
+        if (!await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(_db, _logger, ct))
+            return true;
+
         try
         {
             var settings = await _db.WorkerRuntimeSettings
@@ -372,6 +433,11 @@ public class WorkerConfigurationService
 
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation("Resumed worker {WorkerName} by {UpdatedBy}", workerName, updatedBy ?? "api");
+            return true;
+        }
+        catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+        {
+            WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(_logger, ex, $"ResumeWorkerAsync:{workerName}");
             return true;
         }
         catch (Exception ex)

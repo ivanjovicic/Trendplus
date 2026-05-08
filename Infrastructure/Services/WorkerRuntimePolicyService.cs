@@ -33,6 +33,11 @@ public sealed class WorkerRuntimePolicyService
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            if (!await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(db, _logger, ct))
+            {
+                return CreateAllowFallback(workerName);
+            }
+
             var settings = await GetOrCreateSettingsAsync(db, workerName, updatedBy: "system", ct);
 
             var manualRunToken = TryExtractManualRunToken(settings.Notes);
@@ -54,17 +59,18 @@ public sealed class WorkerRuntimePolicyService
                 CanRunNow: canRunNow,
                 PauseReason: pauseReason);
         }
+        catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+        {
+            WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(
+                _logger,
+                ex,
+                $"GetPolicyAsync:{workerName}");
+            return CreateAllowFallback(workerName);
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to evaluate worker runtime policy for {WorkerName}. Falling back to allow.", workerName);
-            return new WorkerRuntimePolicySnapshot(
-                WorkerName: workerName,
-                IsScheduleEnabled: true,
-                IsManuallyStopped: false,
-                ManualRunRequested: false,
-                ManualRunToken: null,
-                CanRunNow: true,
-                PauseReason: null);
+            return CreateAllowFallback(workerName);
         }
     }
 
@@ -77,6 +83,11 @@ public sealed class WorkerRuntimePolicyService
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            if (!await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(db, _logger, ct))
+            {
+                return DateTime.UtcNow.ToString("O");
+            }
+
             var settings = await GetOrCreateSettingsAsync(db, workerName, updatedBy ?? "api", ct);
 
             var token = DateTime.UtcNow.ToString("O");
@@ -87,6 +98,14 @@ public sealed class WorkerRuntimePolicyService
 
             await db.SaveChangesAsync(ct);
             return token;
+        }
+        catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+        {
+            WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(
+                _logger,
+                ex,
+                $"RequestManualRunAsync:{workerName}");
+            return DateTime.UtcNow.ToString("O");
         }
         catch (Exception ex)
         {
@@ -104,6 +123,11 @@ public sealed class WorkerRuntimePolicyService
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            if (!await WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync(db, _logger, ct))
+            {
+                return false;
+            }
+
             var settings = await db.WorkerRuntimeSettings
                 .FirstOrDefaultAsync(
                     s => s.WorkerName == workerName,
@@ -121,6 +145,14 @@ public sealed class WorkerRuntimePolicyService
             settings.UpdatedBy = "worker";
             await db.SaveChangesAsync(ct);
             return true;
+        }
+        catch (Exception ex) when (WorkerRuntimeSettingsSchemaGuard.IsMissingRelationException(ex))
+        {
+            WorkerRuntimeSettingsSchemaGuard.ReportMissingSchema(
+                _logger,
+                ex,
+                $"TryConsumeManualRunRequestAsync:{workerName}");
+            return false;
         }
         catch (Exception ex)
         {
@@ -200,6 +232,18 @@ public sealed class WorkerRuntimePolicyService
         return lines.Length == 0
             ? null
             : string.Join(Environment.NewLine, lines);
+    }
+
+    private static WorkerRuntimePolicySnapshot CreateAllowFallback(string workerName)
+    {
+        return new WorkerRuntimePolicySnapshot(
+            WorkerName: workerName,
+            IsScheduleEnabled: true,
+            IsManuallyStopped: false,
+            ManualRunRequested: false,
+            ManualRunToken: null,
+            CanRunNow: true,
+            PauseReason: null);
     }
 }
 

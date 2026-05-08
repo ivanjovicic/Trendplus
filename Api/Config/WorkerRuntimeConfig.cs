@@ -160,6 +160,9 @@ public static class WorkerRuntimeConfig
             case "AccessImportBackgroundWorker":
                 services.AddHostedService<AccessImportBackgroundWorker>();
                 return;
+            case "WorkerRuntimeSettingsSchemaBootstrapHostedService":
+                services.AddHostedService<WorkerRuntimeSettingsSchemaBootstrapHostedService>();
+                return;
             case "DeferredStartupTasksHostedService":
                 services.AddHostedService<DeferredStartupTasksHostedService>();
                 return;

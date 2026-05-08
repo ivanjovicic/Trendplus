@@ -155,6 +155,17 @@ public static class WorkerRegistryCatalog
             RuntimeControlDisabledReason: "Startup-only service.",
             ScheduleControlDisabledReason: "Startup-only service."),
         new(
+            WorkerName: "WorkerRuntimeSettingsSchemaBootstrapHostedService",
+            DisplayName: "Worker Runtime Schema Bootstrap",
+            Description: "Startup schema bootstrap for WorkerRuntimeSettings table.",
+            WorkerType: "startup",
+            IsRuntimeControllable: false,
+            IsScheduleControllable: false,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: true,
+            RuntimeControlDisabledReason: "Startup-only service.",
+            ScheduleControlDisabledReason: "Startup-only service."),
+        new(
             WorkerName: "DatabaseKeepAliveWorker",
             DisplayName: "Database Keep Alive",
             Description: "Optional keep-alive worker present in code but not registered.",

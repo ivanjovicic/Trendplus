@@ -194,6 +194,11 @@ public static class AdminConfigEndpoints
         CancellationToken ct = default)
     {
         var response = new AdminHealthCheckResponse { Timestamp = DateTime.UtcNow, WorkerGlobalEnabled = workerControl.IsEnabled };
+        var schemaStatus = WorkerRuntimeSettingsSchemaGuard.GetStatus();
+        response.WorkerRuntimeSettingsSchemaReady = schemaStatus.IsSchemaReady && !schemaStatus.IsSchemaMissing;
+        response.WorkerRuntimeSettingsLastEnsureAttemptUtc = schemaStatus.LastEnsureAttemptUtc?.UtcDateTime;
+        response.WorkerRuntimeSettingsLastEnsureSuccessUtc = schemaStatus.LastEnsureSuccessUtc?.UtcDateTime;
+        response.WorkerRuntimeSettingsSchemaError = schemaStatus.LastEnsureError;
 
         try
         {
@@ -344,7 +349,19 @@ public class PendingBatchesResponse { public int Total { get; set; } public List
 public class PendingBatchDto { public long Id { get; set; } public string SourceFileName { get; set; } = string.Empty; public string Status { get; set; } = string.Empty; public DateTime QueuedAtUtc { get; set; } public DateTime StartedAtUtc { get; set; } public DateTime? CompletedAtUtc { get; set; } public DateTime? LastHeartbeatUtc { get; set; } public string? CurrentStep { get; set; } public string? CurrentTable { get; set; } public int ElapsedSeconds { get; set; } public int RowsRead { get; set; } public int RowsWritten { get; set; } public int ProgressPercent { get; set; } public string? ErrorMessage { get; set; } public bool HasSourceFile { get; set; } public bool HasStorageKey { get; set; } public bool CancellationRequested { get; set; } public int RetryCount { get; set; } }
 public class RequeueResponse { public bool Success { get; set; } public string Message { get; set; } = string.Empty; public long? BatchId { get; set; } }
 public class DiagnosticsResult { public bool Success { get; set; } public string Message { get; set; } = string.Empty; public DateTime Timestamp { get; set; } }
-public class AdminHealthCheckResponse { public DateTime Timestamp { get; set; } public bool WorkerGlobalEnabled { get; set; } public string WorkerHealthState { get; set; } = "operational"; public DateTime LastWorkerHeartbeat { get; set; } public bool DatabaseConnected { get; set; } public string DatabaseMessage { get; set; } = string.Empty; }
+public class AdminHealthCheckResponse
+{
+    public DateTime Timestamp { get; set; }
+    public bool WorkerGlobalEnabled { get; set; }
+    public string WorkerHealthState { get; set; } = "operational";
+    public DateTime LastWorkerHeartbeat { get; set; }
+    public bool DatabaseConnected { get; set; }
+    public string DatabaseMessage { get; set; } = string.Empty;
+    public bool WorkerRuntimeSettingsSchemaReady { get; set; } = true;
+    public DateTime? WorkerRuntimeSettingsLastEnsureAttemptUtc { get; set; }
+    public DateTime? WorkerRuntimeSettingsLastEnsureSuccessUtc { get; set; }
+    public string? WorkerRuntimeSettingsSchemaError { get; set; }
+}
 public class AuditLogResponse { public List<AuditEntry> Entries { get; set; } = new(); public int Total { get; set; } }
 public class AuditEntry { public long Id { get; set; } public DateTime Timestamp { get; set; } public long BatchId { get; set; } public string Severity { get; set; } = string.Empty; public string Message { get; set; } = string.Empty; }
 public class WorkersListResponse { public List<WorkerConfigurationItemDto> Workers { get; set; } = new(); public int Total { get; set; } }

@@ -386,6 +386,7 @@ try
     builder.Services.AddHostedService<ReadinessWarmupHostedService>();
     if (!isWorkerProcess)
     {
+        builder.Services.AddHostedService<WorkerRuntimeSettingsSchemaBootstrapHostedService>();
         builder.Services.AddHostedService<SupplierDecisionSchemaRepairHostedService>();
         builder.Services.AddHostedService<AnalyticsConnectionDiagnosticsHostedService>();
         builder.Services.AddHostedService<AnalyticsCachePrewarmHostedService>();
