@@ -22,6 +22,8 @@ public static class DatabaseInitializer
     private const int AdvisoryLockMaxWaitSeconds = 120;
     private const int BootstrapCommandTimeoutSeconds = 600;
     private const int StartupSqlLockTimeoutSeconds = 15;
+    private const int SupplierDecisionHubCoreBatchCount = 5;
+    private const int SupplierDecisionHubCacheStartBatchNumber = SupplierDecisionHubCoreBatchCount + 1;
 
     public static async Task InitializeDatabasesAsync(
         IServiceProvider services,
@@ -141,6 +143,7 @@ public static class DatabaseInitializer
         }
 
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/011_AddDataOriginColumns.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/012_AddNabavnaCenaToSalesLineFacts.sql", logger);
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql", logger);
 
         if (!await AreVendorSalesNivelacijaViewReadyAsync(connectionString))
@@ -383,7 +386,7 @@ public static class DatabaseInitializer
             if (!coreViewsReady)
             {
                 logger.LogInformation(
-                    "[{Mode}] Supplier decision hub core views are missing in {DatabaseLabel}. Forcing startup-safe prerequisite batch.",
+                    "[{Mode}] Supplier decision hub core views are missing in {DatabaseLabel}. Forcing startup-safe core view batches.",
                     mode,
                     databaseLabel);
                 await DeleteAppliedStartupSqlHistoryAsync(
@@ -396,12 +399,23 @@ public static class DatabaseInitializer
                     logger,
                     commandTimeoutSeconds: 0,
                     useTransaction: false,
-                    maxBatchCount: 1,
+                    maxBatchCount: SupplierDecisionHubCoreBatchCount,
                     historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+
+                coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(connectionString);
             }
 
             if (!cachesReady)
             {
+                if (!coreViewsReady)
+                {
+                    logger.LogWarning(
+                        "[{Mode}] Supplier decision hub materialized caches cannot be built in {DatabaseLabel} because core views are still missing after repair.",
+                        mode,
+                        databaseLabel);
+                    return;
+                }
+
                 logger.LogInformation(
                     "[{Mode}] Supplier decision hub materialized caches are missing in {DatabaseLabel}. Building supplier decision stack.",
                     mode,
@@ -416,7 +430,7 @@ public static class DatabaseInitializer
                     logger,
                     commandTimeoutSeconds: 0,
                     useTransaction: false,
-                    startBatchNumber: 2,
+                    startBatchNumber: SupplierDecisionHubCacheStartBatchNumber,
                     historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
 
                 logger.LogInformation(
@@ -831,13 +845,20 @@ public static class DatabaseInitializer
                             bg018Logger,
                             commandTimeoutSeconds: 0,
                             useTransaction: false,
-                            maxBatchCount: 1,
+                            maxBatchCount: SupplierDecisionHubCoreBatchCount,
                             historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+                        coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
                         bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql core views completed successfully.");
                     }
 
                     if (!cachesReady)
                     {
+                        if (!coreViewsReady)
+                        {
+                            bg018Logger.LogWarning("[BG] Supplier decision hub materialized caches cannot be built because core views are still missing after repair.");
+                            return;
+                        }
+
                         bg018Logger.LogInformation("[BG] Supplier decision hub materialized caches are missing. Forcing re-execution of the cache batches...");
                         await DeleteAppliedStartupSqlHistoryAsync(
                             bg018ConnectionString,
@@ -850,7 +871,7 @@ public static class DatabaseInitializer
                             bg018Logger,
                             commandTimeoutSeconds: 0,
                             useTransaction: false,
-                            startBatchNumber: 2,
+                            startBatchNumber: SupplierDecisionHubCacheStartBatchNumber,
                             historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
                         bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql materialized caches completed successfully.");
                     }
@@ -903,13 +924,20 @@ public static class DatabaseInitializer
                             bg018Logger,
                             commandTimeoutSeconds: 0,
                             useTransaction: false,
-                            maxBatchCount: 1,
+                            maxBatchCount: SupplierDecisionHubCoreBatchCount,
                             historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
+                        coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
                         bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql core views completed successfully.");
                     }
 
                     if (!cachesReady)
                     {
+                        if (!coreViewsReady)
+                        {
+                            bg018Logger.LogWarning("[BG] Supplier decision hub materialized caches cannot be built because core views are still missing after repair.");
+                            return;
+                        }
+
                         bg018Logger.LogInformation("[BG] Supplier decision hub materialized caches are missing. Forcing re-execution of the cache batches...");
                         await DeleteAppliedStartupSqlHistoryAsync(
                             bg018ConnectionString,
@@ -922,7 +950,7 @@ public static class DatabaseInitializer
                             bg018Logger,
                             commandTimeoutSeconds: 0,
                             useTransaction: false,
-                            startBatchNumber: 2,
+                            startBatchNumber: SupplierDecisionHubCacheStartBatchNumber,
                             historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
                         bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql materialized caches completed successfully.");
                     }
@@ -2009,10 +2037,11 @@ public static class DatabaseInitializer
 
         // Access-import origin support patch (idempotent)
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/011_AddDataOriginColumns.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Analytics/012_AddNabavnaCenaToSalesLineFacts.sql", logger);
 
         // 013 creates compatibility views that shadow trendplus operational tables ("Artikli", "Dobavljaci", etc.)
-        // and expects DataOrigin to already exist on analytics fact/dimension tables.
-        // Run 011 first so legacy analytics DBs are patched before those views are created.
+        // and expects DataOrigin/NabavnaCena to already exist on analytics fact/dimension tables.
+        // Run 011/012 first so legacy analytics DBs are patched before those views are created.
         if (!unifiedDb)
         {
             await ExecuteSqlFileAsync(connectionString, "Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql", logger);

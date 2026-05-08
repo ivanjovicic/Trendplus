@@ -984,7 +984,7 @@ SELECT *
 FROM vw_supplier_markdown_dependency;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_supplier_markdown_dependency_cache_pk
-    ON mv_supplier_markdown_dependency_cache (supplier_id, COALESCE(category, ''));
+    ON mv_supplier_markdown_dependency_cache (supplier_id, (COALESCE(category, '')));
 
 CREATE INDEX IF NOT EXISTS idx_mv_supplier_markdown_dependency_cache_supplier
     ON mv_supplier_markdown_dependency_cache (supplier_id);
