@@ -115,25 +115,25 @@
 
 /* Soft Gray theme fallback for no-JS cases */
 [data-theme="soft-gray"] {
-    --bg: var(--theme-color-f5f6f8, #f5f6f8);
-    --surface: var(--theme-color-ffffff, #ffffff);
-    --surface-2: var(--theme-color-fafbfc, #fafbfc);
-    --text: var(--theme-color-0f172a, #0f172a);
-    --muted: var(--theme-color-64748b, #64748b);
+    --bg: var(--theme-color-cfd6df, #cfd6df);
+    --surface: var(--theme-color-e2e8f0, #e2e8f0);
+    --surface-2: var(--theme-color-d8e0ea, #d8e0ea);
+    --text: var(--theme-color-111827, #111827);
+    --muted: var(--theme-color-334155, #334155);
 
-    --border: var(--theme-color-e6e9ee, #e6e9ee);
-    --border-strong: var(--theme-color-d0d6de, #d0d6de);
+    --border: var(--theme-color-94a3b8, #94a3b8);
+    --border-strong: var(--theme-color-64748b, #64748b);
 
-    --primary: var(--theme-color-6b7280, #6b7280);
-    --primary-600: var(--theme-color-575b64, #575b64);
+    --primary: var(--theme-color-475569, #475569);
+    --primary-600: var(--theme-color-334155, #334155);
     --success: var(--theme-color-10b981, #10b981);
     --warning: var(--theme-color-f59e0b, #f59e0b);
     --danger: var(--theme-color-ef4444, #ef4444);
 
-    --shadow-sm: 0 1px 2px var(--theme-color-rgba-0-0-0-0p04, rgba(0,0,0,0.04));
-    --shadow-md: 0 8px 20px var(--theme-color-rgba-0-0-0-0p06, rgba(0,0,0,0.06));
+    --shadow-sm: 0 1px 2px var(--theme-color-rgba-15-23-42-0p12, rgba(15,23,42,0.12));
+    --shadow-md: 0 8px 20px var(--theme-color-rgba-15-23-42-0p18, rgba(15,23,42,0.18));
 
-    --focus-ring: 0 0 0 4px var(--theme-color-rgba-148-163-184-0p18, var(--theme-color-rgba-148-163-184-0p18, rgba(148,163,184,0.18)));
+    --focus-ring: 0 0 0 4px var(--theme-color-rgba-71-85-105-0p24, rgba(71,85,105,0.24));
     --focus-ring-success: 0 0 0 4px var(--theme-color-rgba-16-185-129-0p18, rgba(16,185,129,0.18));
 }
 

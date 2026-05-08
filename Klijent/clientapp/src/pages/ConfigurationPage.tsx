@@ -16,6 +16,7 @@ import {
   Sun,
   Terminal,
   Zap,
+  Contrast,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../components/Toast";
@@ -98,7 +99,7 @@ export default function ConfigurationPage() {
   const [providerHealth, setProviderHealth] = useState<Partial<Record<BackendProvider, BackendProviderHealth>>>({});
   const [savingBackendPreference, setSavingBackendPreference] = useState(false);
   const [refreshHintVisible, setRefreshHintVisible] = useState(false);
-  const { currentTheme, setTheme } = useTheme();
+  const { currentTheme, themes, setTheme } = useTheme();
   const { apiPingEnabled, setApiPingEnabled } = usePingControl();
   const { showToast } = useToast();
 
@@ -308,6 +309,8 @@ export default function ConfigurationPage() {
 
   const providerLabel = (provider: BackendProvider) =>
     provider === "render" ? "Render" : "Fly.io";
+
+  const themeLabel = (themeName: string) => themes[themeName as keyof typeof themes]?.displayName ?? themeName;
 
   useEffect(() => {
     loadHealth();
@@ -779,20 +782,22 @@ export default function ConfigurationPage() {
               <div className="panel-card">
                 <div className="card-content">
                   <div className="themes-grid">
-                    {(["neon-light", "neon-dark", "soft-gray"] as const).map((t) => (
+                    {Object.values(themes).map((theme) => (
                       <button
-                        key={t}
-                        className={`theme-btn ${currentTheme === t ? "selected" : ""}`}
+                        key={theme.name}
+                        className={`theme-btn ${currentTheme === theme.name ? "selected" : ""}`}
                         onClick={() => {
-                          setTheme(t);
-                          localStorage.setItem("trendplus-theme", t);
-                          showToast(`Tema promenjena na ${t}`, "success");
+                          setTheme(theme.name);
+                          showToast(`Tema promenjena na ${themeLabel(theme.name)}`, "success");
                         }}
                       >
-                        {t === "neon-light" && <Sun size={24} />}
-                        {t === "neon-dark" && <Moon size={24} />}
-                        {t === "soft-gray" && <Settings size={24} />}
-                        <span>{t === "neon-light" ? "Svetla" : t === "neon-dark" ? "Tamna" : "Soft Gray"}</span>
+                        {theme.name === "light" && <Sun size={24} />}
+                        {theme.name === "neon-light" && <Sun size={24} />}
+                        {theme.name === "inventory-dark" && <Moon size={24} />}
+                        {theme.name === "neon-dark" && <Moon size={24} />}
+                        {theme.name === "soft-gray" && <Settings size={24} />}
+                        {theme.name === "high-contrast" && <Contrast size={24} />}
+                        <span>{themeLabel(theme.name)}</span>
                       </button>
                     ))}
                   </div>
