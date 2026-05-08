@@ -265,12 +265,14 @@ export default function AnalyticsPrintPage() {
           overflow: hidden;
         }
         .analytics-print-page-portrait-shift .analytics-print-table th {
-          padding: 4px 3px;
+          padding: 2px 3px;
           background: #eeeeee !important;
           font-weight: bold;
           text-align: left;
-          vertical-align: bottom;
-          line-height: 1.3;
+          vertical-align: middle;
+          line-height: 1.1;
+          font-size: 10.5px;
+          height: 42px;
           word-break: break-word;
           white-space: normal;
         }
@@ -288,17 +290,17 @@ export default function AnalyticsPrintPage() {
         .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(1),
         .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(1) { width: 22mm; }
         .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(2),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(2) { width: 40mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(2) { width: 37mm; }
         .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(3),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(3) { width: 20mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(3) { width: 19mm; }
         .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(4),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(4) { width: 40mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(4) { width: 37mm; }
         .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(5),
         .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(5) { width: 20mm; }
         .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(6),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(6) { width: 28mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(6) { width: 24mm; }
         .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(7),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(7) { width: 24mm; }
+        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(7) { width: 35mm; }
         @media print {
           .analytics-print-page-portrait-shift .analytics-print-table td {
             background: #ffffff !important;
@@ -375,6 +377,15 @@ export default function AnalyticsPrintPage() {
           white-space: nowrap !important;
           font-weight: 700 !important;
         }
+        .analytics-print-page-daily-a4-portrait.analytics-print-page-dense .analytics-print-table th {
+          font-size: 7.2px !important;
+          line-height: 1.06 !important;
+          height: 42px !important;
+          padding: 2px 1px !important;
+          white-space: normal !important;
+          word-break: break-word !important;
+          overflow-wrap: anywhere !important;
+        }
         .analytics-print-page-daily-a4-portrait .analytics-print-table td {
           background: #ffffff !important;
           font-size: 5.5px !important;
@@ -407,11 +418,11 @@ export default function AnalyticsPrintPage() {
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-worker1,
         .analytics-print-page-daily-a4-portrait .analytics-print-col-worker2 {
-          width: 13mm !important;
+          width: 11.5mm !important;
           text-align: left !important;
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-others {
-          width: 14mm !important;
+          width: 12.5mm !important;
           text-align: left !important;
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-shift1,
@@ -419,10 +430,10 @@ export default function AnalyticsPrintPage() {
           width: 7mm !important;
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-revenue {
-          width: 10mm !important;
+          width: 8mm !important;
         }
         .analytics-print-page-daily-a4-portrait .analytics-print-col-total {
-          width: 8mm !important;
+          width: 12mm !important;
         }
         .analytics-print-page-daily-a4-portrait th[class*="analytics-print-col-supplier-"],
         .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-supplier-"] {
@@ -512,7 +523,7 @@ export default function AnalyticsPrintPage() {
             <tr className="analytics-print-group-row">
               {manualSupplierStartIndex > 0 ? <th className="group-spacer" colSpan={manualSupplierStartIndex} /> : null}
               <th className="manual-supplier-group" colSpan={manualSupplierColumnCount}>
-                Dobavljači za ručni unos
+                Dobavljači (ručni unos)
               </th>
               {manualSupplierEndColSpan > 0 ? <th className="group-spacer" colSpan={manualSupplierEndColSpan} /> : null}
             </tr>

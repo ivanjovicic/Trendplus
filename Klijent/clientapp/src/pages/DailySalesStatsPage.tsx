@@ -1101,11 +1101,11 @@ export default function DailySalesStatsPage() {
 
     const blankColumns = [
       { key: "date",    header: "Datum",                    dataType: "text" },
-      { key: "worker1", header: "",                         dataType: "text" },
-      { key: "worker2", header: "",                         dataType: "text" },
-      { key: "others",  header: "Ukupno",                    dataType: "text" },
+      { key: "worker1", header: "I sm.",                    dataType: "text" },
+      { key: "worker2", header: "II sm.",                   dataType: "text" },
+      { key: "others",  header: "Uk. sm.",                  dataType: "text" },
       ...manualSupplierColumns,
-      { key: "revenue", header: "ostali",                    dataType: "text" },
+      { key: "revenue", header: "Ost.",                     dataType: "text" },
       { key: "total",   header: "Ukupno",                    dataType: "text" },
     ];
 
