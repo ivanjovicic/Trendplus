@@ -82,12 +82,32 @@ public sealed class ReadinessWarmupHostedService : BackgroundService
             return false;
         }
 
-        return await ProbeDatabaseAsync(defaultConnection, stoppingToken) &&
-               await ProbeDatabaseAsync(analyticsConnection, stoppingToken);
+        var defaultProbe = await ProbeDatabaseAsync(defaultConnection, stoppingToken);
+        var analyticsProbe = await ProbeDatabaseAsync(analyticsConnection, stoppingToken);
+
+        _readiness.ReportProbe(
+            new StartupReadinessState.DatabaseProbeState
+            {
+                Ok = defaultProbe.Ok,
+                LatencyMs = defaultProbe.LatencyMs,
+                Error = defaultProbe.Error
+            },
+            new StartupReadinessState.DatabaseProbeState
+            {
+                Ok = analyticsProbe.Ok,
+                LatencyMs = analyticsProbe.LatencyMs,
+                Error = analyticsProbe.Error
+            });
+
+        return defaultProbe.Ok && analyticsProbe.Ok;
     }
 
-    private async Task<bool> ProbeDatabaseAsync(string connectionString, CancellationToken stoppingToken)
+    private async Task<(bool Ok, long LatencyMs, string? Error)> ProbeDatabaseAsync(
+        string connectionString,
+        CancellationToken stoppingToken)
     {
+        var startedAt = DateTime.UtcNow;
+
         try
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
@@ -102,16 +122,20 @@ public sealed class ReadinessWarmupHostedService : BackgroundService
             };
 
             await command.ExecuteScalarAsync(timeoutCts.Token);
-            return true;
+            return (true, (long)(DateTime.UtcNow - startedAt).TotalMilliseconds, null);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            return false;
+            return (false, (long)(DateTime.UtcNow - startedAt).TotalMilliseconds, "request_aborted");
+        }
+        catch (OperationCanceledException)
+        {
+            return (false, (long)(DateTime.UtcNow - startedAt).TotalMilliseconds, "timeout");
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Startup readiness DB probe failed.");
-            return false;
+            return (false, (long)(DateTime.UtcNow - startedAt).TotalMilliseconds, ex.GetBaseException().Message);
         }
     }
 

@@ -2,6 +2,11 @@ import { createContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePingControl } from "./PingControlContext";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 import {
+    getBackendProviderStateEventName,
+    getBackendProviderStateSnapshot,
+    type BackendProviderStateSnapshot,
+} from "../utils/apiFailover";
+import {
     BACKEND_REACHABLE_EVENT,
     BACKEND_UNREACHABLE_EVENT,
     createBackendAvailabilityChannel,
@@ -29,6 +34,7 @@ export type BackendStatus = {
     hadConfirmedOutage: boolean;
     recoveryNoticeVisible: boolean;
     recoveryNoticeAt: number | null;
+    providerState: BackendProviderStateSnapshot;
 };
 
 export const BackendStatusContext = createContext<BackendStatus>({
@@ -42,6 +48,7 @@ export const BackendStatusContext = createContext<BackendStatus>({
     hadConfirmedOutage: false,
     recoveryNoticeVisible: false,
     recoveryNoticeAt: null,
+    providerState: getBackendProviderStateSnapshot(),
 });
 
 export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -54,6 +61,9 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
     const [hadConfirmedOutage, setHadConfirmedOutage] = useState(false);
     const [recoveryNoticeVisible, setRecoveryNoticeVisible] = useState(false);
     const [recoveryNoticeAt, setRecoveryNoticeAt] = useState<number | null>(null);
+    const [providerState, setProviderState] = useState<BackendProviderStateSnapshot>(
+        getBackendProviderStateSnapshot()
+    );
     const statusRef = useRef<BackendAvailabilityStatus>("unknown");
     const lastReachableAtRef = useRef<number | null>(null);
     const hadConfirmedOutageRef = useRef(false);
@@ -173,6 +183,43 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
     }, []);
 
     useEffect(() => {
+        const eventName = getBackendProviderStateEventName();
+        const onProviderState = (event: Event) => {
+            const detail = (event as CustomEvent<BackendProviderStateSnapshot>).detail;
+            if (!detail) return;
+
+            setProviderState(detail);
+
+            if (detail.phase === "primary_warming" || detail.phase === "checking_primary") {
+                setStatus((prev) => (prev === "down" ? "down" : "recovering"));
+                setChecking(true);
+                setLastError("Backend se budi");
+                return;
+            }
+
+            if (detail.phase === "degraded" || detail.phase === "fallback_failed") {
+                setStatus("down");
+                setChecking(false);
+                setLastError("Backend trenutno nije dostupan");
+                return;
+            }
+
+            if (detail.phase === "fallback_ready" || detail.phase === "primary_ready") {
+                const checkedAt = Date.now();
+                lastReachableAtRef.current = checkedAt;
+                setStatus("up");
+                setChecking(false);
+                setLastCheckedAt(checkedAt);
+                setLastReachableAt(checkedAt);
+                setLastError(null);
+            }
+        };
+
+        window.addEventListener(eventName, onProviderState as EventListener);
+        return () => window.removeEventListener(eventName, onProviderState as EventListener);
+    }, []);
+
+    useEffect(() => {
         let cancelled = false;
         let timeoutId: number | null = null;
 
@@ -193,6 +240,28 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
                         url: readinessUrl,
                     });
                 } else if (res.status >= 500) {
+                    let backendStatus: string | null = null;
+                    let retryAfterSeconds: number | null = null;
+                    try {
+                        const payload = await res.clone().json();
+                        backendStatus = typeof payload?.status === "string" ? payload.status : null;
+                        retryAfterSeconds = typeof payload?.retryAfterSeconds === "number" ? payload.retryAfterSeconds : null;
+                    } catch {
+                        backendStatus = null;
+                    }
+
+                    if (backendStatus === "warming_up" || backendStatus === "starting") {
+                        setStatus("recovering");
+                        setChecking(true);
+                        setLastCheckedAt(checkedAt);
+                        setLastError(
+                            retryAfterSeconds && retryAfterSeconds > 0
+                                ? `Backend se budi (retry za ${retryAfterSeconds}s)`
+                                : "Backend se budi"
+                        );
+                        return;
+                    }
+
                     notifyBackendUnreachable({
                         checkedAt,
                         source: "health",
@@ -277,6 +346,7 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
             hadConfirmedOutage,
             recoveryNoticeVisible,
             recoveryNoticeAt,
+            providerState,
         }),
         [
             checking,
@@ -286,6 +356,7 @@ export const BackendStatusProvider: React.FC<{ children: React.ReactNode }> = ({
             lastReachableAt,
             lastUnavailableAt,
             online,
+            providerState,
             recoveryNoticeAt,
             recoveryNoticeVisible,
             status,

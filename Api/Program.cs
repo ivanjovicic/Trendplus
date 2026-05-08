@@ -760,7 +760,44 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         context.Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
     }
 
-    async Task<IResult> CheckDatabaseHealthAsync(CancellationToken ct)
+    static string ResolveProviderName(HttpContext? context)
+    {
+        var explicitProvider = Environment.GetEnvironmentVariable("BACKEND_PROVIDER");
+        if (!string.IsNullOrWhiteSpace(explicitProvider))
+        {
+            return explicitProvider.Trim().ToLowerInvariant() switch
+            {
+                "fly" or "fly.io" => "fly",
+                "render" => "render",
+                _ => "render"
+            };
+        }
+
+        var host = context?.Request.Host.Host ?? string.Empty;
+        if (host.Contains("fly.dev", StringComparison.OrdinalIgnoreCase) ||
+            host.Contains("fly.io", StringComparison.OrdinalIgnoreCase))
+        {
+            return "fly";
+        }
+
+        return "render";
+    }
+
+    IResult CheckLiveness(HttpContext context)
+    {
+        var readinessState = app.Services.GetRequiredService<StartupReadinessState>();
+        var payload = new
+        {
+            status = "healthy",
+            provider = ResolveProviderName(context),
+            ready = readinessState.IsReady,
+            timestampUtc = DateTimeOffset.UtcNow
+        };
+
+        return Results.Ok(payload);
+    }
+
+    async Task<IResult> CheckDatabaseHealthAsync(HttpContext context, CancellationToken ct)
     {
         static async Task<(bool Ok, long ElapsedMs, string? Error)> ProbeAsync(string name, string? connectionString, CancellationToken requestToken)
         {
@@ -815,14 +852,38 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         var analyticsDb = await ProbeAsync("analytics", analyticsConnection, ct);
         var ok = defaultDb.Ok && analyticsDb.Ok;
 
+        var readinessState = app.Services.GetRequiredService<StartupReadinessState>();
+        readinessState.ReportProbe(
+            new StartupReadinessState.DatabaseProbeState
+            {
+                Ok = defaultDb.Ok,
+                LatencyMs = defaultDb.ElapsedMs,
+                Error = defaultDb.Error
+            },
+            new StartupReadinessState.DatabaseProbeState
+            {
+                Ok = analyticsDb.Ok,
+                LatencyMs = analyticsDb.ElapsedMs,
+                Error = analyticsDb.Error
+            });
+
         if (ok)
         {
-            app.Services.GetRequiredService<StartupReadinessState>().MarkReady();
+            readinessState.MarkReady();
         }
 
         var payload = new
         {
             status = ok ? "healthy" : "unhealthy",
+            provider = ResolveProviderName(context),
+            ready = ok,
+            db = new
+            {
+                ok,
+                latencyMs = Math.Max(defaultDb.ElapsedMs, analyticsDb.ElapsedMs)
+            },
+            timestampUtc = DateTimeOffset.UtcNow,
+            retryAfterSeconds = ok ? (int?)null : 5,
             checks = new
             {
                 defaultDb = new { ok = defaultDb.Ok, elapsedMs = defaultDb.ElapsedMs, error = defaultDb.Error },
@@ -830,7 +891,13 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             }
         };
 
-        return ok ? Results.Ok(payload) : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
+        if (!ok)
+        {
+            context.Response.Headers.RetryAfter = "5";
+            return Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        return Results.Ok(payload);
     }
 
     // --- Optional guarded automatic migrations ---
@@ -960,18 +1027,37 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     // ================= ENDPOINTS =================
 
     // Map controllers and other minimal endpoints
-    app.MapGet("/health", CheckDatabaseHealthAsync).AllowAnonymous();
-    app.MapGet("/ready", (StartupReadinessState readiness) =>
+    app.MapGet("/health", CheckLiveness).AllowAnonymous();
+    app.MapGet("/health/dependencies", CheckDatabaseHealthAsync).AllowAnonymous();
+    app.MapGet("/ready", (StartupReadinessState readiness, HttpContext context) =>
     {
+        var isReady = readiness.IsReady;
+        var status = isReady ? "healthy" : (readiness.Reason.Contains("warmup", StringComparison.OrdinalIgnoreCase) || readiness.Reason.Contains("starting", StringComparison.OrdinalIgnoreCase) ? "warming_up" : "degraded");
+        var retryAfterSeconds = isReady ? (int?)null : 5;
+        if (!isReady)
+        {
+            context.Response.Headers.RetryAfter = retryAfterSeconds!.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
         var payload = new
         {
-            ready = readiness.IsReady,
+            status,
+            provider = ResolveProviderName(context),
+            ready = isReady,
+            db = new
+            {
+                ok = readiness.DefaultDb.Ok && readiness.AnalyticsDb.Ok,
+                latencyMs = Math.Max(readiness.DefaultDb.LatencyMs, readiness.AnalyticsDb.LatencyMs)
+            },
+            timestampUtc = DateTimeOffset.UtcNow,
+            retryAfterSeconds,
             reason = readiness.Reason,
             startedAtUtc = readiness.StartedAtUtc,
-            readyAtUtc = readiness.ReadyAtUtc
+            readyAtUtc = readiness.ReadyAtUtc,
+            lastProbeAtUtc = readiness.LastProbeAtUtc
         };
 
-        return readiness.IsReady
+        return isReady
             ? Results.Ok(payload)
             : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
     }).AllowAnonymous();

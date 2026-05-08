@@ -19,6 +19,13 @@ describe("HeaderStatus", () => {
           hadConfirmedOutage: false,
           recoveryNoticeVisible: false,
           recoveryNoticeAt: null,
+          providerState: {
+            phase: "primary_ready",
+            activeHost: "primary",
+            reason: null,
+            updatedAt: Date.now(),
+            retryAfterMs: null,
+          },
         }}
       >
         <HeaderStatus onOpenMobileNav={() => {}} />

@@ -60,15 +60,19 @@ function shouldTrackBackendRequest(input: RequestInfo | URL): boolean {
 
   const apiOrigin = getOrigin(import.meta.env.VITE_API_BASE_URL);
   const fallbackApiOrigin = getOrigin(import.meta.env.VITE_API_FALLBACK_URL);
+  const renderOrigin = getOrigin(import.meta.env.VITE_API_RENDER_BASE_URL);
+  const flyOrigin = getOrigin(import.meta.env.VITE_API_FLY_BASE_URL);
   return Boolean(
     (apiOrigin && url.origin === apiOrigin) ||
-    (fallbackApiOrigin && url.origin === fallbackApiOrigin)
+    (fallbackApiOrigin && url.origin === fallbackApiOrigin) ||
+    (renderOrigin && url.origin === renderOrigin) ||
+    (flyOrigin && url.origin === flyOrigin)
   );
 }
 
 function classifyTransportFailure(error: unknown): BackendUnreachableReason | null {
   if (error instanceof DOMException && error.name === "AbortError") {
-    return "timeout";
+    return null;
   }
 
   if (error instanceof Error) {

@@ -12,12 +12,13 @@ function buildWaitHint(seconds: number): string {
 }
 
 export default function BackendWakeupNotice() {
-  const { status, checking, lastError, recoveryNoticeVisible } = useBackendStatus();
+  const { status, checking, lastError, recoveryNoticeVisible, providerState } = useBackendStatus();
   const rawWakeupSeconds = Number(import.meta.env.VITE_BACKEND_WAKEUP_SECONDS ?? 60);
   const wakeupSeconds = Number.isFinite(rawWakeupSeconds) && rawWakeupSeconds > 0 ? rawWakeupSeconds : 60;
 
-  const isUnavailable = status === "down";
+  const isUnavailable = status === "down" || status === "recovering";
   const isReconnecting = isUnavailable && checking;
+  const usingFallback = providerState.activeHost === "fallback";
 
   if (!isUnavailable) {
     if (recoveryNoticeVisible) {
@@ -37,7 +38,7 @@ export default function BackendWakeupNotice() {
     return null;
   }
 
-  const title = isReconnecting ? "Ponovno povezivanje sa backendom..." : "Backend trenutno nije dostupan";
+  const title = isReconnecting ? "Backend se budi..." : "Backend trenutno nije dostupan";
   const description = isReconnecting
     ? `Proveravamo da li se server vratio online. Sacekajte ${buildWaitHint(wakeupSeconds)} i ostavite tab otvoren.`
     : `Server je i dalje nedostupan. Sacekajte ${buildWaitHint(wakeupSeconds)} i ostavite tab otvoren dok se ne vrati online.`;
@@ -58,6 +59,7 @@ export default function BackendWakeupNotice() {
 
         <h2>{title}</h2>
         <p>{description}</p>
+        {usingFallback ? <p className="backend-wakeup-overlay__meta">Aktivan je fallback backend.</p> : null}
         {lastError ? <p className="backend-wakeup-overlay__meta">Poslednji signal: {lastError}</p> : null}
         <p>Notice je informativan i ne blokira rad. Sakrice se cim backend ponovo postane dostupan.</p>
       </section>

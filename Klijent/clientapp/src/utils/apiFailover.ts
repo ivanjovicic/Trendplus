@@ -20,6 +20,25 @@ type RuntimeFailoverState = {
   lastPrimaryProbeAt: number | null;
 };
 
+export type BackendProviderStatePhase =
+  | "unknown"
+  | "checking_primary"
+  | "primary_warming"
+  | "primary_ready"
+  | "primary_failed"
+  | "checking_fallback"
+  | "fallback_ready"
+  | "fallback_failed"
+  | "degraded";
+
+export type BackendProviderStateSnapshot = {
+  phase: BackendProviderStatePhase;
+  activeHost: ApiHostRole;
+  reason: string | null;
+  updatedAt: number;
+  retryAfterMs: number | null;
+};
+
 export const API_FAILOVER_TIMEOUT_MS_OPTION = "trendplusTimeoutMs" as const;
 
 export type ApiFailoverRequestInit = RequestInit & {
@@ -29,6 +48,7 @@ export type ApiFailoverRequestInit = RequestInit & {
 const STORAGE_KEY = "trendplus:api-failover-state:v2";
 const ROUTING_STORAGE_KEY = "trendplus:backend-routing-preference:v1";
 const HOST_CHANGED_EVENT = "trendplus:api-host-changed";
+const PROVIDER_STATE_EVENT = "trendplus:backend-provider-state";
 
 const explicitRenderBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_RENDER_BASE_URL);
 const explicitFlyBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_FLY_BASE_URL);
@@ -80,6 +100,22 @@ const fallbackRequestTimeoutMs = readMsFromEnv("VITE_API_FALLBACK_REQUEST_TIMEOU
 const probeTimeoutMs = readMsFromEnv("VITE_API_FALLBACK_PROBE_TIMEOUT_MS", import.meta.env.DEV ? 6_000 : 8_000);
 const primaryRetryCooldownMs = readMsFromEnv("VITE_API_PRIMARY_RETRY_COOLDOWN_MS", import.meta.env.DEV ? 30_000 : 45_000);
 const stateTtlMs = readMsFromEnv("VITE_API_FAILOVER_STATE_TTL_MS", import.meta.env.DEV ? 5 * 60_000 : 5 * 60_000);
+const primaryWarmupWindowMs = readMsFromEnv(
+  "VITE_API_PRIMARY_WARMUP_MAX_MS",
+  import.meta.env.DEV ? 45_000 : 90_000
+);
+const primaryWarmupInitialBackoffMs = readMsFromEnv(
+  "VITE_API_PRIMARY_WARMUP_INITIAL_BACKOFF_MS",
+  import.meta.env.DEV ? 1_500 : 2_500
+);
+const primaryWarmupMaxBackoffMs = readMsFromEnv(
+  "VITE_API_PRIMARY_WARMUP_MAX_BACKOFF_MS",
+  import.meta.env.DEV ? 6_000 : 10_000
+);
+const primaryWarmupMinBackoffMs = readMsFromEnv(
+  "VITE_API_PRIMARY_WARMUP_MIN_BACKOFF_MS",
+  import.meta.env.DEV ? 100 : 500
+);
 const recoveryProbePath = normalizePath(
   import.meta.env.VITE_API_RECOVERY_PROBE_PATH ||
   import.meta.env.VITE_API_HEALTH_PATH ||
@@ -96,7 +132,16 @@ const fallbackMatchesPrimary =
 
 let runtimeState: RuntimeFailoverState = loadInitialState();
 let primaryProbeInFlight: Promise<boolean> | null = null;
+let primaryWarmupInFlight: Promise<boolean> | null = null;
+let primaryWarmupStartedAt: number | null = null;
 let misconfigurationWarned = false;
+let providerState: BackendProviderStateSnapshot = {
+  phase: "unknown",
+  activeHost: runtimeState.activeHost,
+  reason: null,
+  updatedAt: nowMs(),
+  retryAfterMs: null,
+};
 
 function normalizeBaseUrl(raw: string | undefined): string {
   return (raw ?? "").trim().replace(/\/+$/, "");
@@ -379,6 +424,30 @@ function emitHostChanged(nextHost: ApiHostRole): void {
   );
 }
 
+function setProviderState(
+  phase: BackendProviderStatePhase,
+  reason: string | null,
+  retryAfterMs: number | null = null
+): void {
+  providerState = {
+    phase,
+    activeHost: runtimeState.activeHost,
+    reason,
+    updatedAt: nowMs(),
+    retryAfterMs,
+  };
+
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent(PROVIDER_STATE_EVENT, {
+      detail: providerState,
+    })
+  );
+}
+
 function debugLog(message: string, extra?: Record<string, unknown>): void {
   if (!debugEnabled) return;
   if (extra) {
@@ -414,6 +483,50 @@ function elapsedMsSince(startedAt: number): number {
   return Math.round(performance.now() - startedAt);
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(value, max));
+}
+
+function parseRetryAfterMs(value: string | null): number | null {
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  const seconds = Number(trimmed);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return clamp(Math.round(seconds * 1_000), primaryWarmupMinBackoffMs, primaryWarmupMaxBackoffMs);
+  }
+
+  const parsedDate = Date.parse(trimmed);
+  if (!Number.isFinite(parsedDate)) return null;
+
+  const deltaMs = parsedDate - Date.now();
+  if (deltaMs <= 0) return primaryWarmupMinBackoffMs;
+  return clamp(Math.round(deltaMs), primaryWarmupMinBackoffMs, primaryWarmupMaxBackoffMs);
+}
+
+async function waitWithOptionalAbort(ms: number, signal?: AbortSignal): Promise<void> {
+  if (ms <= 0) return;
+
+  if (signal?.aborted) {
+    throw new DOMException("Request aborted", "AbortError");
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const id = window.setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      window.clearTimeout(id);
+      signal?.removeEventListener("abort", onAbort);
+      reject(new DOMException("Request aborted", "AbortError"));
+    };
+
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 function warnIfFailoverIsMisconfigured(): void {
   if (misconfigurationWarned) return;
   misconfigurationWarned = true;
@@ -436,6 +549,8 @@ function warnIfFailoverIsMisconfigured(): void {
 
 function markPrimaryFailure(reason: string): void {
   if (!failoverConfigured) return;
+  primaryWarmupStartedAt = null;
+  primaryWarmupInFlight = null;
   runtimeState = {
     ...runtimeState,
     activeHost: "fallback",
@@ -443,6 +558,7 @@ function markPrimaryFailure(reason: string): void {
   };
   saveState();
   emitHostChanged("fallback");
+  setProviderState("primary_failed", reason);
   debugLog("Primary API marked unavailable; fallback activated", {
     reason,
     hostChanged: "primary->fallback",
@@ -459,6 +575,8 @@ function markPrimaryProbeAttempt(): void {
 }
 
 function markPrimaryRecovered(): void {
+  primaryWarmupStartedAt = null;
+  primaryWarmupInFlight = null;
   runtimeState = {
     activeHost: "primary",
     lastPrimaryFailureAt: null,
@@ -466,6 +584,7 @@ function markPrimaryRecovered(): void {
   };
   saveState();
   emitHostChanged("primary");
+  setProviderState("primary_ready", "primary_recovered");
   debugLog("Primary API recovered; returning traffic to primary", {
     hostChanged: "fallback->primary",
     activeHost: "primary",
@@ -479,6 +598,7 @@ function keepFallbackActiveAfterPrimaryProbeFailure(reason: string): void {
     lastPrimaryFailureAt: nowMs(),
   };
   saveState();
+  setProviderState("fallback_ready", reason);
   debugLog("Primary API probe failed; keeping fallback active", { reason });
 }
 
@@ -500,10 +620,23 @@ function isAvailabilityHttpStatus(status: number): boolean {
   return status === 502 || status === 503 || status === 504;
 }
 
+function isWarmingUpHttpStatus(status: number): boolean {
+  return status === 503 || status === 504;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function isExternalAbortError(error: unknown, init: RequestInit | undefined): boolean {
+  if (!isAbortError(error)) return false;
+  return Boolean(init?.signal?.aborted);
+}
+
 function isAvailabilityError(error: unknown): boolean {
   if (error instanceof ApiFailoverTimeoutError) return true;
   if (error instanceof TypeError) return true;
-  if (error instanceof DOMException && error.name === "AbortError") return true;
+  if (error instanceof DOMException && error.name === "TimeoutError") return true;
 
   if (error instanceof Error) {
     const text = `${error.name} ${error.message}`.toLowerCase();
@@ -582,6 +715,168 @@ async function fetchWithTimeoutVia(
   }
 }
 
+type ProviderProbeResult = {
+  healthy: boolean;
+  warmingUp: boolean;
+  degraded: boolean;
+  statusCode: number | null;
+  retryAfterMs: number | null;
+  latencyMs: number;
+  failureReason: string | null;
+};
+
+async function probeProviderReadiness(
+  nativeFetch: typeof window.fetch,
+  baseUrl: string,
+  signal: AbortSignal | undefined,
+  timeoutMs: number
+): Promise<ProviderProbeResult> {
+  const probeUrl = `${baseUrl}${recoveryProbePath}`;
+  const startedAt = performance.now();
+
+  try {
+    const response = await fetchWithTimeoutVia(
+      nativeFetch,
+      probeUrl,
+      { method: "GET", cache: "no-store", signal },
+      timeoutMs
+    );
+
+    const retryAfterMs = parseRetryAfterMs(response.headers.get("Retry-After"));
+    const latencyMs = elapsedMsSince(startedAt);
+    const healthy = response.ok;
+    const warmingUp = response.status === 503;
+    const degraded = response.status >= 500 && response.status !== 503;
+
+    debugLog("Provider readiness probe completed", {
+      recoveryProbeEndpoint: recoveryProbePath,
+      probeTarget: describeUrlForTelemetry(probeUrl),
+      status: response.status,
+      latencyMs,
+      healthy,
+      warmingUp,
+      retryAfterMs,
+    });
+
+    return {
+      healthy,
+      warmingUp,
+      degraded,
+      statusCode: response.status,
+      retryAfterMs,
+      latencyMs,
+      failureReason: healthy ? null : `status_${response.status}`,
+    };
+  } catch (error) {
+    const latencyMs = elapsedMsSince(startedAt);
+    const isAbort = isAbortError(error);
+    if (isAbort && signal?.aborted) {
+      throw error;
+    }
+
+    const failureReason = describeError(error);
+    debugLog("Provider readiness probe failed", {
+      recoveryProbeEndpoint: recoveryProbePath,
+      probeTarget: describeUrlForTelemetry(probeUrl),
+      latencyMs,
+      failureReason,
+    });
+
+    return {
+      healthy: false,
+      warmingUp: false,
+      degraded: true,
+      statusCode: null,
+      retryAfterMs: null,
+      latencyMs,
+      failureReason,
+    };
+  }
+}
+
+async function waitForPrimaryWarmup(
+  nativeFetch: typeof window.fetch,
+  signal: AbortSignal | undefined,
+  triggerReason: string
+): Promise<boolean> {
+  if (primaryWarmupInFlight) {
+    return primaryWarmupInFlight;
+  }
+
+  primaryWarmupStartedAt ??= nowMs();
+
+  primaryWarmupInFlight = (async () => {
+    let attempt = 0;
+    let backoffMs = primaryWarmupInitialBackoffMs;
+
+    setProviderState("checking_primary", triggerReason);
+
+    while (true) {
+      attempt += 1;
+      const elapsed = nowMs() - (primaryWarmupStartedAt ?? nowMs());
+
+      if (elapsed >= primaryWarmupWindowMs) {
+        setProviderState("primary_failed", "warmup_window_exhausted");
+        return false;
+      }
+
+      const probe = await probeProviderReadiness(nativeFetch, primaryBaseUrl, signal, probeTimeoutMs);
+      if (probe.healthy) {
+        setProviderState("primary_ready", "primary_ready");
+        markPrimaryRecovered();
+        return true;
+      }
+
+      if (!probe.warmingUp && !probe.degraded) {
+        setProviderState("primary_failed", probe.failureReason ?? "primary_probe_failed");
+        return false;
+      }
+
+      const waitMs = clamp(
+        probe.retryAfterMs ?? Math.round(backoffMs * (0.9 + Math.random() * 0.2)),
+        primaryWarmupMinBackoffMs,
+        primaryWarmupMaxBackoffMs
+      );
+
+      setProviderState("primary_warming", probe.failureReason ?? "primary_warming", waitMs);
+      debugLog("Primary warmup retry scheduled", {
+        attempt,
+        waitMs,
+        retryAfterMs: probe.retryAfterMs,
+        elapsedMs: elapsed,
+        maxWarmupWindowMs: primaryWarmupWindowMs,
+      });
+
+      await waitWithOptionalAbort(waitMs, signal);
+      backoffMs = Math.min(Math.round(backoffMs * 1.8), primaryWarmupMaxBackoffMs);
+    }
+  })();
+
+  try {
+    return await primaryWarmupInFlight;
+  } finally {
+    primaryWarmupInFlight = null;
+  }
+}
+
+async function verifyFallbackBeforeSwitch(
+  nativeFetch: typeof window.fetch,
+  reason: string,
+  signal: AbortSignal | undefined
+): Promise<boolean> {
+  if (!failoverConfigured) return false;
+
+  setProviderState("checking_fallback", reason);
+  const probe = await probeProviderReadiness(nativeFetch, fallbackBaseUrl, signal, probeTimeoutMs);
+  if (probe.healthy) {
+    setProviderState("fallback_ready", reason);
+    return true;
+  }
+
+  setProviderState("fallback_failed", probe.failureReason ?? reason);
+  return false;
+}
+
 async function executeApiRequest(
   nativeFetch: typeof window.fetch,
   input: RequestInfo | URL,
@@ -617,6 +912,42 @@ async function executeApiRequest(
       isAvailabilityHttpStatus(response.status)
     ) {
       const failoverReason = `status_${response.status}`;
+      const shouldWarmup = isWarmingUpHttpStatus(response.status);
+
+      if (shouldWarmup) {
+        const warmed = await waitForPrimaryWarmup(nativeFetch, nativeInit?.signal ?? undefined, failoverReason);
+        if (warmed) {
+          const primaryRetrySource = requestSource instanceof Request ? requestSource.clone() : requestSource;
+          const primaryRetryUrl = rewriteUrlForTarget(primaryRetrySource, primaryBaseUrl);
+          const primaryRetryInput = buildRewrittenInput(primaryRetrySource, primaryRetryUrl);
+          const retryStartedAt = performance.now();
+          const retryResponse = await fetchWithTimeoutVia(
+            nativeFetch,
+            primaryRetryInput,
+            nativeInit,
+            primaryTimeoutMs
+          );
+          debugLog("Primary retry completed after warmup", {
+            originalTarget: requestedUrl,
+            activeTarget: describeUrlForTelemetry(primaryRetryUrl),
+            elapsedMs: elapsedMsSince(retryStartedAt),
+            totalElapsedMs: elapsedMsSince(requestStartedAt),
+            status: retryResponse.status,
+          });
+          return retryResponse;
+        }
+      }
+
+      const fallbackReady = await verifyFallbackBeforeSwitch(
+        nativeFetch,
+        failoverReason,
+        nativeInit?.signal ?? undefined
+      );
+      if (!fallbackReady) {
+        setProviderState("degraded", "fallback_unavailable_after_primary_failure");
+        return response;
+      }
+
       debugLog("Request triggered failover after primary response", {
         originalTarget: requestedUrl,
         activeTarget: activeTargetUrl,
@@ -682,19 +1013,13 @@ async function executeApiRequest(
       abortReason: describeError(error),
     });
 
-    if (error instanceof DOMException && error.name === "AbortError" && nativeInit?.signal?.aborted) {
-      const abortReason = nativeInit.signal.reason;
-      const timeoutAbort =
-        abortReason instanceof DOMException &&
-        abortReason.name === "TimeoutError";
-
-      if (!timeoutAbort) {
-        debugLog("Request abort was external; failover not triggered", {
-          originalTarget: requestedUrl,
-          abortReason: describeError(abortReason),
-        });
-        throw error;
-      }
+    if (isExternalAbortError(error, nativeInit)) {
+      const abortReason = nativeInit?.signal?.reason;
+      debugLog("Request abort was external; failover not triggered", {
+        originalTarget: requestedUrl,
+        abortReason: describeError(abortReason),
+      });
+      throw error;
     }
 
     if (
@@ -703,6 +1028,38 @@ async function executeApiRequest(
       isAvailabilityError(error)
     ) {
       const failoverReason = describeError(error);
+      const warmed = await waitForPrimaryWarmup(nativeFetch, nativeInit?.signal ?? undefined, failoverReason);
+      if (warmed) {
+        const primaryRetrySource = requestSource instanceof Request ? requestSource.clone() : requestSource;
+        const primaryRetryUrl = rewriteUrlForTarget(primaryRetrySource, primaryBaseUrl);
+        const primaryRetryInput = buildRewrittenInput(primaryRetrySource, primaryRetryUrl);
+        const retryStartedAt = performance.now();
+        const retryResponse = await fetchWithTimeoutVia(
+          nativeFetch,
+          primaryRetryInput,
+          nativeInit,
+          primaryTimeoutMs
+        );
+        debugLog("Primary retry completed after transport warmup", {
+          originalTarget: requestedUrl,
+          activeTarget: describeUrlForTelemetry(primaryRetryUrl),
+          elapsedMs: elapsedMsSince(retryStartedAt),
+          totalElapsedMs: elapsedMsSince(requestStartedAt),
+          status: retryResponse.status,
+        });
+        return retryResponse;
+      }
+
+      const fallbackReady = await verifyFallbackBeforeSwitch(
+        nativeFetch,
+        failoverReason,
+        nativeInit?.signal ?? undefined
+      );
+      if (!fallbackReady) {
+        setProviderState("degraded", "fallback_unavailable_after_primary_transport_failure");
+        throw error;
+      }
+
       debugLog("Request triggered failover after primary transport failure", {
         originalTarget: requestedUrl,
         activeTarget: activeTargetUrl,
@@ -797,31 +1154,8 @@ async function tryPrimaryRescueAfterFallbackFailure(
 }
 
 async function probePrimaryAvailability(nativeFetch: typeof window.fetch): Promise<boolean> {
-  const probeUrl = `${primaryBaseUrl}${recoveryProbePath}`;
-
-  try {
-    const startedAt = performance.now();
-    const response = await fetchWithTimeoutVia(nativeFetch, probeUrl, { method: "GET", cache: "no-store" }, probeTimeoutMs);
-    const elapsedMs = Math.round(performance.now() - startedAt);
-    debugLog("Primary recovery probe completed", {
-      recoveryProbeEndpoint: recoveryProbePath,
-      status: response.status,
-      elapsedMs,
-      result: isAvailabilityHttpStatus(response.status) || response.status >= 500 ? "failed" : "healthy",
-    });
-    if (isAvailabilityHttpStatus(response.status)) {
-      return false;
-    }
-
-    return response.status < 500;
-  } catch (error) {
-    debugLog("Primary recovery probe failed", {
-      recoveryProbeEndpoint: recoveryProbePath,
-      result: "failed",
-      reason: describeError(error),
-    });
-    return false;
-  }
+  const probe = await probeProviderReadiness(nativeFetch, primaryBaseUrl, undefined, probeTimeoutMs);
+  return probe.healthy;
 }
 
 async function maybeRecoverPrimary(
@@ -841,6 +1175,7 @@ async function maybeRecoverPrimary(
 
   primaryProbeInFlight = (async () => {
     debugLog("Attempting primary API recovery probe", { recoveryProbeEndpoint: recoveryProbePath });
+    setProviderState("checking_primary", "scheduled_recovery_probe");
     const healthy = await probePrimaryAvailability(nativeFetch);
     if (healthy) {
       markPrimaryRecovered();
@@ -888,7 +1223,12 @@ export function installApiFailoverFetchLayer(): void {
     recoveryProbePath,
     primaryRetryCooldownMs,
     stateTtlMs,
+    primaryWarmupWindowMs,
+    primaryWarmupMinBackoffMs,
+    primaryWarmupInitialBackoffMs,
+    primaryWarmupMaxBackoffMs,
   });
+  setProviderState(runtimeState.activeHost === "fallback" ? "fallback_ready" : "primary_ready", "layer_initialized");
 
   // If fallback state was persisted, respect the cooldown before probing the
   // primary again. The recovery probe is intentionally lightweight, but the
@@ -904,6 +1244,12 @@ export function installApiFailoverFetchLayer(): void {
 
     if (runtimeState.activeHost === "fallback") {
       await maybeRecoverPrimary(nativeFetch);
+    }
+
+    if (runtimeState.activeHost === "primary") {
+      setProviderState("checking_primary", "request_dispatch");
+    } else {
+      setProviderState("fallback_ready", "request_dispatch");
     }
 
     return executeApiRequest(nativeFetch, input, init);
@@ -924,4 +1270,37 @@ export function getConfiguredFallbackApiBaseUrl(): string {
 
 export function getApiFailoverHostChangeEventName(): string {
   return HOST_CHANGED_EVENT;
+}
+
+export function getBackendProviderStateEventName(): string {
+  return PROVIDER_STATE_EVENT;
+}
+
+export function getBackendProviderStateSnapshot(): BackendProviderStateSnapshot {
+  return { ...providerState };
+}
+
+export function __resetApiFailoverForTests(): void {
+  runtimeState = {
+    activeHost: "primary",
+    lastPrimaryFailureAt: null,
+    lastPrimaryProbeAt: null,
+  };
+  primaryProbeInFlight = null;
+  primaryWarmupInFlight = null;
+  primaryWarmupStartedAt = null;
+  providerState = {
+    phase: "unknown",
+    activeHost: "primary",
+    reason: null,
+    updatedAt: nowMs(),
+    retryAfterMs: null,
+  };
+
+  if (typeof window !== "undefined") {
+    (window as Window & { __trendplusFailoverInstalled?: boolean }).__trendplusFailoverInstalled = false;
+    if ((window as Window & { __trendplusNativeFetch?: typeof window.fetch }).__trendplusNativeFetch) {
+      window.fetch = (window as Window & { __trendplusNativeFetch?: typeof window.fetch }).__trendplusNativeFetch!;
+    }
+  }
 }
