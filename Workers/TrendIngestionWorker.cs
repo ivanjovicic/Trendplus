@@ -33,6 +33,7 @@ public sealed class TrendIngestionWorker : BackgroundService
     private readonly ILogger<TrendIngestionWorker> _logger;
     private readonly WorkerHealthService _healthService;
     private readonly WorkerRuntimeControlService _controlService;
+    private readonly WorkerRuntimePolicyService _runtimePolicyService;
     private readonly TrendIngestionOptions _options;
     private const int SnapshotWriteChunkSize = 100;
 
@@ -48,6 +49,7 @@ public sealed class TrendIngestionWorker : BackgroundService
         ILogger<TrendIngestionWorker> logger,
         WorkerHealthService healthService,
         WorkerRuntimeControlService controlService,
+        WorkerRuntimePolicyService runtimePolicyService,
         IOptions<TrendIngestionOptions> options)
     {
         _scopeFactory = scopeFactory;
@@ -55,6 +57,7 @@ public sealed class TrendIngestionWorker : BackgroundService
         _logger = logger;
         _healthService = healthService;
         _controlService = controlService;
+        _runtimePolicyService = runtimePolicyService;
         _options = options.Value;
     }
 
@@ -93,10 +96,37 @@ public sealed class TrendIngestionWorker : BackgroundService
                 continue;
             }
 
+            var policy = await _runtimePolicyService.GetPolicyAsync(WorkerName, stoppingToken);
+            var manualRunRequested = false;
+            if (!policy.CanRunNow)
+            {
+                _healthService.ReportStopped(WorkerName, policy.PauseReason ?? "Disabled by worker policy.");
+                try { await Task.Delay(pauseCheckInterval, stoppingToken); } catch (OperationCanceledException) { break; }
+                continue;
+            }
+
+            if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+            {
+                manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
+                    WorkerName,
+                    policy.ManualRunToken,
+                    stoppingToken);
+
+                if (!manualRunRequested)
+                {
+                    try { await Task.Delay(pauseCheckInterval, stoppingToken); } catch (OperationCanceledException) { break; }
+                    continue;
+                }
+            }
+
             var nowUtc = DateTime.UtcNow;
             var todayUtc = DateOnly.FromDateTime(nowUtc);
             var shouldRun = nowUtc.Hour >= _options.RunAtHourUtc
                             && lastRunDate != todayUtc;
+            if (manualRunRequested)
+            {
+                shouldRun = true;
+            }
 
             if (!shouldRun)
             {
@@ -122,7 +152,8 @@ public sealed class TrendIngestionWorker : BackgroundService
             }
 
             // Wait until next check cycle
-            try { await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); } catch (OperationCanceledException) { break; }
+            var delay = manualRunRequested ? pauseCheckInterval : TimeSpan.FromMinutes(1);
+            try { await Task.Delay(delay, stoppingToken); } catch (OperationCanceledException) { break; }
         }
 
         _logger.LogInformation("📈 {Worker} stopped.", WorkerName);

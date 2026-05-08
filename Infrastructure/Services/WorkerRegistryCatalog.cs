@@ -1,0 +1,186 @@
+namespace Infrastructure.Services;
+
+/// <summary>
+/// Central registry of workers that can appear in configuration management.
+/// Keep this list as the single source of truth for worker metadata.
+/// </summary>
+public static class WorkerRegistryCatalog
+{
+    public static readonly IReadOnlyList<WorkerRegistryDefinition> Definitions =
+    [
+        new(
+            WorkerName: "AccessImportBackgroundWorker",
+            DisplayName: "Access Import",
+            Description: "Queue processor for Access import batches and recovery.",
+            WorkerType: "import",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: true,
+            RequiresWebAccessImportFlag: true),
+        new(
+            WorkerName: "SyncWorker",
+            DisplayName: "Analytics Sync",
+            Description: "Synchronizes transactional data into analytics dimensions/facts.",
+            WorkerType: "sync",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
+            WorkerName: "OutboxProcessorWorker",
+            DisplayName: "Outbox Processor",
+            Description: "Processes outbox events and publishes integrations.",
+            WorkerType: "queue",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
+            WorkerName: "AnalyticsAggregationWorker",
+            DisplayName: "Analytics Aggregation",
+            Description: "Periodically refreshes analytics aggregate tables.",
+            WorkerType: "analytics",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
+            WorkerName: "AnalyticsDataQualityHealthWorker",
+            DisplayName: "Data Quality Health",
+            Description: "Runs analytics data quality health checks.",
+            WorkerType: "maintenance",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
+            WorkerName: "NightlyAnalyticsRefreshWorker",
+            DisplayName: "Nightly Analytics Refresh",
+            Description: "Nightly materialized view refresh and maintenance.",
+            WorkerType: "scheduled",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
+            WorkerName: "OpenTrainingModelTrainingWorker",
+            DisplayName: "Model Training",
+            Description: "Consumes queued model training jobs and persists versions.",
+            WorkerType: "queue",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
+            WorkerName: "TrendIngestionWorker",
+            DisplayName: "Trend Ingestion",
+            Description: "Daily ingestion of trend signals from Python API.",
+            WorkerType: "scheduled",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
+            WorkerName: "DocumentGenerationWorker",
+            DisplayName: "Document Generation",
+            Description: "Processes queued document generation/export tasks.",
+            WorkerType: "queue",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
+            WorkerName: "InventoryReportSchedulerWorker",
+            DisplayName: "Inventory Scheduler",
+            Description: "Executes inventory report schedules and delivery.",
+            WorkerType: "scheduled",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
+            WorkerName: "DeferredStartupTasksHostedService",
+            DisplayName: "Deferred Startup Tasks",
+            Description: "One-time startup maintenance tasks.",
+            WorkerType: "startup",
+            IsRuntimeControllable: false,
+            IsScheduleControllable: false,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false,
+            RuntimeControlDisabledReason: "Startup-only service.",
+            ScheduleControlDisabledReason: "Startup-only service."),
+        new(
+            WorkerName: "ReadinessWarmupHostedService",
+            DisplayName: "Readiness Warmup",
+            Description: "Application warmup during startup.",
+            WorkerType: "startup",
+            IsRuntimeControllable: false,
+            IsScheduleControllable: false,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: true,
+            RuntimeControlDisabledReason: "Startup-only service.",
+            ScheduleControlDisabledReason: "Startup-only service."),
+        new(
+            WorkerName: "SupplierDecisionSchemaRepairHostedService",
+            DisplayName: "Schema Repair Warmup",
+            Description: "Startup schema repair helper for supplier decision hub.",
+            WorkerType: "startup",
+            IsRuntimeControllable: false,
+            IsScheduleControllable: false,
+            RegistersInWorkerProcess: false,
+            RegistersInWebProcess: true,
+            RuntimeControlDisabledReason: "Startup-only service.",
+            ScheduleControlDisabledReason: "Startup-only service."),
+        new(
+            WorkerName: "AnalyticsConnectionDiagnosticsHostedService",
+            DisplayName: "Analytics Diagnostics Warmup",
+            Description: "Startup connectivity diagnostics for analytics database.",
+            WorkerType: "startup",
+            IsRuntimeControllable: false,
+            IsScheduleControllable: false,
+            RegistersInWorkerProcess: false,
+            RegistersInWebProcess: true,
+            RuntimeControlDisabledReason: "Startup-only service.",
+            ScheduleControlDisabledReason: "Startup-only service."),
+        new(
+            WorkerName: "AnalyticsCachePrewarmHostedService",
+            DisplayName: "Analytics Cache Prewarm",
+            Description: "Startup prewarm of analytics cache keys.",
+            WorkerType: "startup",
+            IsRuntimeControllable: false,
+            IsScheduleControllable: false,
+            RegistersInWorkerProcess: false,
+            RegistersInWebProcess: true,
+            RuntimeControlDisabledReason: "Startup-only service.",
+            ScheduleControlDisabledReason: "Startup-only service."),
+        new(
+            WorkerName: "DatabaseKeepAliveWorker",
+            DisplayName: "Database Keep Alive",
+            Description: "Optional keep-alive worker present in code but not registered.",
+            WorkerType: "maintenance",
+            IsRuntimeControllable: false,
+            IsScheduleControllable: false,
+            RegistersInWorkerProcess: false,
+            RegistersInWebProcess: false,
+            RuntimeControlDisabledReason: "Not registered in runtime configuration.",
+            ScheduleControlDisabledReason: "Not registered in runtime configuration.")
+    ];
+
+    public static WorkerRegistryDefinition? Find(string workerName) =>
+        Definitions.FirstOrDefault(
+            w => string.Equals(w.WorkerName, workerName, StringComparison.OrdinalIgnoreCase));
+}
+
+public sealed record WorkerRegistryDefinition(
+    string WorkerName,
+    string DisplayName,
+    string Description,
+    string WorkerType,
+    bool IsRuntimeControllable,
+    bool IsScheduleControllable,
+    bool RegistersInWorkerProcess,
+    bool RegistersInWebProcess,
+    bool RequiresWebAccessImportFlag = false,
+    string? RuntimeControlDisabledReason = null,
+    string? ScheduleControlDisabledReason = null);

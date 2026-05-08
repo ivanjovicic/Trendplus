@@ -435,6 +435,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             effectiveWorkersRuntimeToggleAllowed,
             effectiveWorkersEnabledSource));
     builder.Services.AddScoped<WorkerConfigurationService>(); // Per-worker runtime settings
+    builder.Services.AddSingleton<WorkerRuntimePolicyService>();
+    builder.Services.AddScoped<WorkerRegistryService>();
     builder.Services.AddSingleton<BackendRoutingPreferenceService>();
     
     // Embedding service for AI-powered image search
@@ -992,6 +994,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapAdminBackendRoutingEndpoints();
     app.MapRedisEndpoints();
     app.MapOutboxEndpoints();
+    app.MapWorkerConfigurationEndpoints();
     app.MapAnalyticsTableEndpoints();
     app.MapDataQualityEndpoints();
     app.MapDailySalesStatsEndpoints();

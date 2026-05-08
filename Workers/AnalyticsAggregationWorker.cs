@@ -19,6 +19,7 @@ public class AnalyticsAggregationWorker : BackgroundService
     private readonly ILogger<AnalyticsAggregationWorker> _logger;
     private readonly WorkerHealthService _healthService;
     private readonly WorkerRuntimeControlService _controlService;
+    private readonly WorkerRuntimePolicyService _runtimePolicyService;
     
     private const string WorkerName = "AnalyticsAggregationWorker";
     private const int CommandTimeoutSeconds = 300;
@@ -31,12 +32,14 @@ public class AnalyticsAggregationWorker : BackgroundService
         IServiceScopeFactory scopeFactory,
         ILogger<AnalyticsAggregationWorker> logger,
         WorkerHealthService healthService,
-        WorkerRuntimeControlService controlService)
+        WorkerRuntimeControlService controlService,
+        WorkerRuntimePolicyService runtimePolicyService)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
         _healthService = healthService;
         _controlService = controlService;
+        _runtimePolicyService = runtimePolicyService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -72,6 +75,51 @@ public class AnalyticsAggregationWorker : BackgroundService
                 continue;
             }
 
+            var policy = await _runtimePolicyService.GetPolicyAsync(WorkerName, stoppingToken);
+            var manualRunRequested = false;
+            if (!policy.CanRunNow)
+            {
+                if (!paused)
+                {
+                    _logger.LogInformation("{WorkerName} paused. Reason: {Reason}", WorkerName, policy.PauseReason ?? "Worker policy disabled execution.");
+                    _healthService.ReportStopped(WorkerName, policy.PauseReason ?? "Pauziran - worker policy disabled execution.");
+                    paused = true;
+                }
+
+                try
+                {
+                    await Task.Delay(pauseCheckInterval, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+            {
+                manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
+                    WorkerName,
+                    policy.ManualRunToken,
+                    stoppingToken);
+
+                if (!manualRunRequested)
+                {
+                    try
+                    {
+                        await Task.Delay(pauseCheckInterval, stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+            }
+
             if (paused)
             {
                 _logger.LogInformation("📊 {WorkerName} resumed (global workers switch ON).", WorkerName);
@@ -98,7 +146,8 @@ public class AnalyticsAggregationWorker : BackgroundService
 
             try
             {
-                await Task.Delay(_refreshInterval, stoppingToken);
+                var delay = manualRunRequested ? pauseCheckInterval : _refreshInterval;
+                await Task.Delay(delay, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

@@ -27,6 +27,7 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
     private readonly ILogger<OpenTrainingModelTrainingWorker> _logger;
     private readonly WorkerHealthService _healthService;
     private readonly WorkerRuntimeControlService _controlService;
+    private readonly WorkerRuntimePolicyService _runtimePolicyService;
     private readonly OpenTrainingModelTrainingOptions _options;
 
     public OpenTrainingModelTrainingWorker(
@@ -34,12 +35,14 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
         ILogger<OpenTrainingModelTrainingWorker> logger,
         WorkerHealthService healthService,
         WorkerRuntimeControlService controlService,
+        WorkerRuntimePolicyService runtimePolicyService,
         IOptions<OpenTrainingModelTrainingOptions> options)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
         _healthService = healthService;
         _controlService = controlService;
+        _runtimePolicyService = runtimePolicyService;
         _options = options.Value;
     }
 
@@ -85,6 +88,52 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
                 continue;
             }
 
+            var policy = await _runtimePolicyService.GetPolicyAsync(WorkerName, stoppingToken);
+            var manualRunRequested = false;
+            if (!policy.CanRunNow)
+            {
+                if (!paused)
+                {
+                    var reason = policy.PauseReason ?? "Paused - worker policy disabled execution.";
+                    _logger.LogInformation("{WorkerName} paused. Reason: {Reason}", WorkerName, reason);
+                    _healthService.ReportStopped(WorkerName, reason);
+                    paused = true;
+                }
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, _options.PauseCheckSeconds)), stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+            {
+                manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
+                    WorkerName,
+                    policy.ManualRunToken,
+                    stoppingToken);
+
+                if (!manualRunRequested)
+                {
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, _options.PauseCheckSeconds)), stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+            }
+
             if (paused)
             {
                 _logger.LogInformation("{WorkerName} resumed.", WorkerName);
@@ -98,7 +147,10 @@ public sealed class OpenTrainingModelTrainingWorker : BackgroundService
                 if (!didWork)
                 {
                     _healthService.ReportHealthy(WorkerName, "Idle (no queued training runs).");
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, _options.PollSeconds)), stoppingToken);
+                    var delay = manualRunRequested
+                        ? TimeSpan.FromSeconds(Math.Max(1, _options.PauseCheckSeconds))
+                        : TimeSpan.FromSeconds(Math.Max(1, _options.PollSeconds));
+                    await Task.Delay(delay, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

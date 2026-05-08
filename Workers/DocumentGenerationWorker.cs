@@ -15,6 +15,7 @@ public sealed class DocumentGenerationWorker : BackgroundService
     private readonly ILogger<DocumentGenerationWorker> _logger;
     private readonly WorkerHealthService _healthService;
     private readonly WorkerRuntimeControlService _controlService;
+    private readonly WorkerRuntimePolicyService _runtimePolicyService;
     private readonly DocumentExportOptions _options;
 
     public DocumentGenerationWorker(
@@ -22,26 +23,52 @@ public sealed class DocumentGenerationWorker : BackgroundService
         ILogger<DocumentGenerationWorker> logger,
         WorkerHealthService healthService,
         WorkerRuntimeControlService controlService,
+        WorkerRuntimePolicyService runtimePolicyService,
         IOptions<DocumentExportOptions> options)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _healthService = healthService;
         _controlService = controlService;
+        _runtimePolicyService = runtimePolicyService;
         _options = options.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _healthService.ReportRunning(WorkerName, "Starting up...");
+        var pauseCheckInterval = TimeSpan.FromSeconds(5);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             if (!_controlService.IsEnabled)
             {
                 _healthService.ReportStopped(WorkerName, "Paused - workers switch disabled.");
-                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                await Task.Delay(pauseCheckInterval, stoppingToken);
                 continue;
+            }
+
+            var policy = await _runtimePolicyService.GetPolicyAsync(WorkerName, stoppingToken);
+            var manualRunRequested = false;
+            if (!policy.CanRunNow)
+            {
+                _healthService.ReportStopped(WorkerName, policy.PauseReason ?? "Paused - worker policy disabled execution.");
+                await Task.Delay(pauseCheckInterval, stoppingToken);
+                continue;
+            }
+
+            if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+            {
+                manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
+                    WorkerName,
+                    policy.ManualRunToken,
+                    stoppingToken);
+
+                if (!manualRunRequested)
+                {
+                    await Task.Delay(pauseCheckInterval, stoppingToken);
+                    continue;
+                }
             }
 
             try
@@ -54,7 +81,8 @@ public sealed class DocumentGenerationWorker : BackgroundService
                 if (claimedIds.Count == 0)
                 {
                     _healthService.ReportHealthy(WorkerName, "No queued documents.");
-                    await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                    var idleDelay = manualRunRequested ? pauseCheckInterval : TimeSpan.FromSeconds(10);
+                    await Task.Delay(idleDelay, stoppingToken);
                     continue;
                 }
 
@@ -73,7 +101,8 @@ public sealed class DocumentGenerationWorker : BackgroundService
             {
                 _logger.LogError(ex, "Document generation worker iteration failed");
                 _healthService.ReportError(WorkerName, ex);
-                await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+                var retryDelay = manualRunRequested ? pauseCheckInterval : TimeSpan.FromSeconds(15);
+                await Task.Delay(retryDelay, stoppingToken);
             }
         }
 

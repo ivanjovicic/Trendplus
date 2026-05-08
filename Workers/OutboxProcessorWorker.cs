@@ -22,6 +22,7 @@ namespace Workers
         private readonly ILogger<OutboxProcessorWorker> _logger;
         private readonly WorkerHealthService _healthService;
         private readonly WorkerRuntimeControlService _controlService;
+        private readonly WorkerRuntimePolicyService _runtimePolicyService;
         private readonly TimeSpan _interval = TimeSpan.FromSeconds(30);
         
         private const string WorkerName = "OutboxProcessorWorker";
@@ -30,12 +31,14 @@ namespace Workers
             IServiceProvider serviceProvider,
             ILogger<OutboxProcessorWorker> logger,
             WorkerHealthService healthService,
-            WorkerRuntimeControlService controlService)
+            WorkerRuntimeControlService controlService,
+            WorkerRuntimePolicyService runtimePolicyService)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
             _healthService = healthService;
             _controlService = controlService;
+            _runtimePolicyService = runtimePolicyService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -68,6 +71,51 @@ namespace Workers
                     continue;
                 }
 
+                var policy = await _runtimePolicyService.GetPolicyAsync(WorkerName, stoppingToken);
+                var manualRunRequested = false;
+                if (!policy.CanRunNow)
+                {
+                    if (!paused)
+                    {
+                        _logger.LogInformation("{WorkerName} paused. Reason: {Reason}", WorkerName, policy.PauseReason ?? "Worker policy disabled execution.");
+                        _healthService.ReportStopped(WorkerName, policy.PauseReason ?? "Pauziran - worker policy disabled execution.");
+                        paused = true;
+                    }
+
+                    try
+                    {
+                        await Task.Delay(pauseCheckInterval, stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+                {
+                    manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
+                        WorkerName,
+                        policy.ManualRunToken,
+                        stoppingToken);
+
+                    if (!manualRunRequested)
+                    {
+                        try
+                        {
+                            await Task.Delay(pauseCheckInterval, stoppingToken);
+                        }
+                        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                        {
+                            break;
+                        }
+
+                        continue;
+                    }
+                }
+
                 if (paused)
                 {
                     _logger.LogInformation("{WorkerName} resumed (global workers switch ON).", WorkerName);
@@ -97,7 +145,8 @@ namespace Workers
 
                 try
                 {
-                    await Task.Delay(_interval, stoppingToken);
+                    var delay = manualRunRequested ? pauseCheckInterval : _interval;
+                    await Task.Delay(delay, stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {

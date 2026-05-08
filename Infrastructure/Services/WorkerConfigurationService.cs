@@ -11,21 +11,6 @@ namespace Infrastructure.Services;
 /// </summary>
 public class WorkerConfigurationService
 {
-    // Include managed workers even when this process has not received any heartbeat yet.
-    private static readonly string[] ManagedWorkerNames =
-    {
-        "AccessImportBackgroundWorker",
-        "SyncWorker",
-        "OutboxProcessorWorker",
-        "AnalyticsAggregationWorker",
-        "AnalyticsDataQualityHealthWorker",
-        "NightlyAnalyticsRefreshWorker",
-        "OpenTrainingModelTrainingWorker",
-        "TrendIngestionWorker",
-        "DocumentGenerationWorker",
-        "InventoryReportSchedulerWorker"
-    };
-
     private readonly TrendplusDbContext _db;
     private readonly WorkerHealthService _healthService;
     private readonly ILogger<WorkerConfigurationService> _logger;
@@ -43,32 +28,35 @@ public class WorkerConfigurationService
     /// <summary>
     /// Get all registered workers with their current status and configuration.
     /// </summary>
-    public async Task<List<WorkerDetailsDto>> GetAllWorkersAsync(CancellationToken ct = default)
+    public Task<List<WorkerDetailsDto>> GetAllWorkersAsync(CancellationToken ct = default)
+        => GetAllWorkersAsync(knownWorkerNames: null, ct);
+
+    public async Task<List<WorkerDetailsDto>> GetAllWorkersAsync(
+        IEnumerable<string>? knownWorkerNames,
+        CancellationToken ct = default)
     {
         var healthStatuses = _healthService.GetAllStatuses();
-        var allWorkerNames = new HashSet<string>(ManagedWorkerNames, StringComparer.OrdinalIgnoreCase);
+        var allWorkerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (knownWorkerNames is not null)
+        {
+            foreach (var knownWorkerName in knownWorkerNames)
+            {
+                if (!string.IsNullOrWhiteSpace(knownWorkerName))
+                {
+                    allWorkerNames.Add(knownWorkerName.Trim());
+                }
+            }
+        }
+
         foreach (var healthStatus in healthStatuses)
         {
             allWorkerNames.Add(healthStatus.WorkerName);
         }
 
-        // Get existing settings from database, handle case where table doesn't exist yet
-        var settings = new Dictionary<string, WorkerRuntimeSettings>();
-        try
+        var settings = await GetSettingsMapAsync(allWorkerNames, ct);
+        foreach (var setting in settings.Values)
         {
-            var dbSettings = await _db.WorkerRuntimeSettings
-                .AsNoTracking()
-                .ToListAsync(ct);
-            foreach (var setting in dbSettings)
-            {
-                settings[setting.WorkerName] = setting;
-                allWorkerNames.Add(setting.WorkerName);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Failed to load WorkerRuntimeSettings from database (table may not exist yet): {Error}", ex.Message);
-            // Continue with empty settings - will be created on demand
+            allWorkerNames.Add(setting.WorkerName);
         }
 
         // Ensure all workers have settings entries
@@ -132,6 +120,39 @@ public class WorkerConfigurationService
         }
 
         return result;
+    }
+
+    public async Task<Dictionary<string, WorkerRuntimeSettings>> GetSettingsMapAsync(
+        IEnumerable<string> workerNames,
+        CancellationToken ct = default)
+    {
+        var workerNameSet = new HashSet<string>(
+            workerNames.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()),
+            StringComparer.OrdinalIgnoreCase);
+
+        var settings = new Dictionary<string, WorkerRuntimeSettings>(StringComparer.OrdinalIgnoreCase);
+
+        if (workerNameSet.Count == 0)
+            return settings;
+
+        try
+        {
+            var dbSettings = await _db.WorkerRuntimeSettings
+                .AsNoTracking()
+                .Where(s => workerNameSet.Contains(s.WorkerName))
+                .ToListAsync(ct);
+
+            foreach (var setting in dbSettings)
+            {
+                settings[setting.WorkerName] = setting;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Failed to load WorkerRuntimeSettings map: {Error}", ex.Message);
+        }
+
+        return settings;
     }
 
     /// <summary>

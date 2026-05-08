@@ -10,7 +10,6 @@ import {
   HardDrive,
   LogOut,
   Moon,
-  Power,
   RefreshCw,
   Server,
   Settings,
@@ -65,12 +64,6 @@ interface PendingBatchesData {
   batches: PendingBatch[];
 }
 
-interface WorkerControl {
-  isEnabled: boolean;
-  workersEnabled: string;
-  workersEnabledSource: string;
-}
-
 interface HealthCheck {
   timestamp: string;
   workerGlobalEnabled: boolean;
@@ -97,7 +90,6 @@ type Panel =
 export default function ConfigurationPage() {
   const [activePanel, setActivePanel] = useState<Panel>("backend");
   const [batches, setBatches] = useState<PendingBatch[]>([]);
-  const [workerControl, setWorkerControl] = useState<WorkerControl | null>(null);
   const [health, setHealth] = useState<HealthCheck | null>(null);
   const [redisStatus, setRedisStatus] = useState<RedisStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -109,18 +101,6 @@ export default function ConfigurationPage() {
   const { currentTheme, setTheme } = useTheme();
   const { apiPingEnabled, setApiPingEnabled } = usePingControl();
   const { showToast } = useToast();
-
-  const loadWorkerControl = useCallback(async () => {
-    try {
-      const res = await fetchWithTimeout(apiUrl("/api/workers/control"), undefined, API_COLD_START_TIMEOUT_MS);
-      if (res.ok) {
-        const data = await res.json();
-        setWorkerControl(data);
-      }
-    } catch (e) {
-      console.error("Failed to load worker control:", e);
-    }
-  }, []);
 
   const loadPendingBatches = useCallback(async () => {
     setLoading(true);
@@ -229,22 +209,6 @@ export default function ConfigurationPage() {
     }
   }, [backendPreference, runProviderPing]);
 
-  const toggleWorkers = async (enable: boolean) => {
-    try {
-      const url = apiUrl(`/api/workers/control/${enable ? "enable" : "disable"}`);
-      const res = await fetchWithTimeout(url, { method: "POST" }, API_COLD_START_TIMEOUT_MS);
-      if (res.ok) {
-        showToast(`Workers ${enable ? "enabled" : "disabled"}`, "success");
-        await loadWorkerControl();
-      } else {
-        showToast("Failed to toggle workers", "error");
-      }
-    } catch (e) {
-      showToast("Error toggling workers", "error");
-      console.error(e);
-    }
-  };
-
   const requeueBatch = async (batchId: number) => {
     if (!window.confirm(`Requeue batch ${batchId}?`)) return;
 
@@ -346,11 +310,10 @@ export default function ConfigurationPage() {
     provider === "render" ? "Render" : "Fly.io";
 
   useEffect(() => {
-    loadWorkerControl();
     loadHealth();
     loadRedisStatus();
     loadBackendPreference();
-  }, [loadWorkerControl, loadHealth, loadRedisStatus, loadBackendPreference]);
+  }, [loadHealth, loadRedisStatus, loadBackendPreference]);
 
   useEffect(() => {
     if (activePanel === "import") {
@@ -599,42 +562,7 @@ export default function ConfigurationPage() {
           {activePanel === "workers" && (
             <div className="config-panel">
               <h2 className="panel-title">Radnici</h2>
-              {workerControl && (
-                <div className="panel-card">
-                  <div className="card-header">
-                    <Activity size={20} />
-                    <span className="card-title">Globalno stanje radnika</span>
-                    <span className={`status-badge ${workerControl.isEnabled ? "enabled" : "disabled"}`}>
-                      {workerControl.isEnabled ? "Uključeni" : "Isključeni"}
-                    </span>
-                  </div>
-                  <div className="card-content">
-                    <p>
-                      <strong>Izvor:</strong> {workerControl.workersEnabledSource}
-                    </p>
-                    <div className="action-group">
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => void toggleWorkers(true)}
-                        disabled={workerControl.isEnabled}
-                      >
-                        <Power size={16} /> Uključi radnike
-                      </button>
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => void toggleWorkers(false)}
-                        disabled={!workerControl.isEnabled}
-                      >
-                        <Power size={16} /> Isključi radnike
-                      </button>
-                      <button className="btn btn-ghost" onClick={() => void loadWorkerControl()}>
-                        <RefreshCw size={16} /> Osveži
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="panel-card" style={{ marginTop: "1.5rem" }}>
+              <div className="panel-card">
                 <WorkersPanel refreshInterval={5000} />
               </div>
             </div>

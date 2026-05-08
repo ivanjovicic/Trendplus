@@ -227,19 +227,21 @@ public static class AdminConfigEndpoints
     }
 
     private static async Task<Ok<WorkersListResponse>> GetWorkersList(
-        WorkerConfigurationService service,
+        WorkerRegistryService service,
         CancellationToken ct = default)
     {
-        var workers = await service.GetAllWorkersAsync(ct);
-        return TypedResults.Ok(new WorkersListResponse { Workers = workers, Total = workers.Count });
+        var workers = await service.GetConfigurationAsync(ct);
+        return TypedResults.Ok(new WorkersListResponse { Workers = workers.Workers, Total = workers.Total });
     }
 
-    private static async Task<Results<Ok<WorkerDetailsDto>, NotFound>> GetWorkerDetails(
+    private static async Task<Results<Ok<WorkerConfigurationItemDto>, NotFound>> GetWorkerDetails(
         string workerName,
-        WorkerConfigurationService service,
+        WorkerRegistryService service,
         CancellationToken ct = default)
     {
-        var worker = await service.GetWorkerAsync(workerName, ct);
+        var workers = await service.GetConfigurationAsync(ct);
+        var worker = workers.Workers.FirstOrDefault(
+            w => string.Equals(w.WorkerName, workerName, StringComparison.OrdinalIgnoreCase));
         if (worker == null)
             return TypedResults.NotFound();
         return TypedResults.Ok(worker);
@@ -249,8 +251,13 @@ public static class AdminConfigEndpoints
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
+        IConfiguration configuration,
+        IHostEnvironment environment,
         CancellationToken ct = default)
     {
+        if (!IsAdminRequest(context, configuration, environment))
+            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.ResumeWorkerAsync(workerName, userName, ct);
         return success
@@ -262,8 +269,13 @@ public static class AdminConfigEndpoints
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
+        IConfiguration configuration,
+        IHostEnvironment environment,
         CancellationToken ct = default)
     {
+        if (!IsAdminRequest(context, configuration, environment))
+            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.StopWorkerAsync(workerName, userName, ct);
         return success
@@ -275,8 +287,13 @@ public static class AdminConfigEndpoints
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
+        IConfiguration configuration,
+        IHostEnvironment environment,
         CancellationToken ct = default)
     {
+        if (!IsAdminRequest(context, configuration, environment))
+            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.EnableScheduleAsync(workerName, userName, ct);
         return success
@@ -288,13 +305,38 @@ public static class AdminConfigEndpoints
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
+        IConfiguration configuration,
+        IHostEnvironment environment,
         CancellationToken ct = default)
     {
+        if (!IsAdminRequest(context, configuration, environment))
+            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.DisableScheduleAsync(workerName, userName, ct);
         return success
             ? TypedResults.Ok(new WorkerActionResponse { Success = true, Message = $"Schedule disabled for worker {workerName}" })
             : TypedResults.BadRequest<object>(new { error = "Failed to disable schedule" });
+    }
+
+    private static bool IsAdminRequest(
+        HttpContext context,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        if (environment.IsDevelopment())
+            return true;
+
+        var configuredKey = configuration["Admin:ApiKey"];
+        if (string.IsNullOrWhiteSpace(configuredKey))
+            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
+
+        if (string.IsNullOrWhiteSpace(configuredKey))
+            return false;
+
+        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
+        return !string.IsNullOrWhiteSpace(providedKey)
+               && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
     }
 }
 
@@ -305,5 +347,5 @@ public class DiagnosticsResult { public bool Success { get; set; } public string
 public class AdminHealthCheckResponse { public DateTime Timestamp { get; set; } public bool WorkerGlobalEnabled { get; set; } public string WorkerHealthState { get; set; } = "operational"; public DateTime LastWorkerHeartbeat { get; set; } public bool DatabaseConnected { get; set; } public string DatabaseMessage { get; set; } = string.Empty; }
 public class AuditLogResponse { public List<AuditEntry> Entries { get; set; } = new(); public int Total { get; set; } }
 public class AuditEntry { public long Id { get; set; } public DateTime Timestamp { get; set; } public long BatchId { get; set; } public string Severity { get; set; } = string.Empty; public string Message { get; set; } = string.Empty; }
-public class WorkersListResponse { public List<WorkerDetailsDto> Workers { get; set; } = new(); public int Total { get; set; } }
+public class WorkersListResponse { public List<WorkerConfigurationItemDto> Workers { get; set; } = new(); public int Total { get; set; } }
 public class WorkerActionResponse { public bool Success { get; set; } public string Message { get; set; } = string.Empty; }

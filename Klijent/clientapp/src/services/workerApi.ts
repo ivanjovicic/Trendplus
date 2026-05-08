@@ -1,23 +1,35 @@
 /**
- * API service for worker management and configuration
+ * API service for worker configuration management.
  */
 
-export interface WorkerStatus {
+export interface WorkerConfigurationItem {
   workerName: string;
-  runtimeStatus: string;
-  lastHeartbeat?: string;
-  lastError?: string;
-  lastErrorTime?: string;
-  errorCount: number;
-  isScheduleEnabled: boolean;
+  displayName: string;
+  description: string;
+  workerType: string;
+  isRuntimeControllable: boolean;
+  isScheduleControllable: boolean;
+  runtimeControlReason?: string | null;
+  scheduleControlReason?: string | null;
+  status: string;
+  scheduleEnabled: boolean;
   isManuallyStopped: boolean;
-  updatedAtUtc: string;
-  updatedBy?: string;
+  isRegisteredInCurrentProcess: boolean;
+  isConfiguredButNotRunning: boolean;
+  lastHeartbeat?: string | null;
+  lastRunAt?: string | null;
+  nextRunAt?: string | null;
+  lastSuccessAt?: string | null;
+  lastFailureAt?: string | null;
+  lastError?: string | null;
 }
 
-export interface WorkersListResponse {
-  workers: WorkerStatus[];
+export interface WorkerConfigurationResponse {
+  processType: string;
+  workersEnabledGlobally: boolean;
+  runtimeToggleAllowed: boolean;
   total: number;
+  workers: WorkerConfigurationItem[];
 }
 
 export interface WorkerActionResponse {
@@ -26,51 +38,48 @@ export interface WorkerActionResponse {
 }
 
 class WorkerApi {
-  private baseUrl = '/api/admin';
-
-  async getWorkersList(): Promise<WorkersListResponse> {
-    const response = await fetch(`${this.baseUrl}/workers/list`);
+  async getWorkersConfiguration(): Promise<WorkerConfigurationResponse> {
+    const response = await fetch("/api/workers/configuration");
     if (!response.ok) {
-      throw new Error(`Failed to fetch workers list: ${response.statusText}`);
+      throw new Error(`Failed to fetch workers configuration: ${response.statusText}`);
     }
     return response.json();
   }
 
-  async getWorkerDetails(workerName: string): Promise<WorkerStatus> {
-    const response = await fetch(`${this.baseUrl}/workers/${encodeURIComponent(workerName)}`);
+  async startWorker(workerName: string): Promise<WorkerActionResponse> {
+    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/start`, {
+      method: "POST",
+    });
     if (!response.ok) {
-      throw new Error(`Failed to fetch worker details: ${response.statusText}`);
+      throw new Error(`Failed to start worker: ${response.statusText}`);
     }
     return response.json();
   }
 
   async stopWorker(workerName: string): Promise<WorkerActionResponse> {
-    const response = await fetch(
-      `${this.baseUrl}/workers/${encodeURIComponent(workerName)}/stop`,
-      { method: 'POST' }
-    );
+    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/stop`, {
+      method: "POST",
+    });
     if (!response.ok) {
       throw new Error(`Failed to stop worker: ${response.statusText}`);
     }
     return response.json();
   }
 
-  async resumeWorker(workerName: string): Promise<WorkerActionResponse> {
-    const response = await fetch(
-      `${this.baseUrl}/workers/${encodeURIComponent(workerName)}/resume`,
-      { method: 'POST' }
-    );
+  async restartWorker(workerName: string): Promise<WorkerActionResponse> {
+    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/restart`, {
+      method: "POST",
+    });
     if (!response.ok) {
-      throw new Error(`Failed to resume worker: ${response.statusText}`);
+      throw new Error(`Failed to restart worker: ${response.statusText}`);
     }
     return response.json();
   }
 
   async enableSchedule(workerName: string): Promise<WorkerActionResponse> {
-    const response = await fetch(
-      `${this.baseUrl}/workers/${encodeURIComponent(workerName)}/schedule/enable`,
-      { method: 'POST' }
-    );
+    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/schedule/enable`, {
+      method: "POST",
+    });
     if (!response.ok) {
       throw new Error(`Failed to enable schedule: ${response.statusText}`);
     }
@@ -78,10 +87,9 @@ class WorkerApi {
   }
 
   async disableSchedule(workerName: string): Promise<WorkerActionResponse> {
-    const response = await fetch(
-      `${this.baseUrl}/workers/${encodeURIComponent(workerName)}/schedule/disable`,
-      { method: 'POST' }
-    );
+    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/schedule/disable`, {
+      method: "POST",
+    });
     if (!response.ok) {
       throw new Error(`Failed to disable schedule: ${response.statusText}`);
     }

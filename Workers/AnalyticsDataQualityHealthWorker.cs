@@ -15,6 +15,7 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
     private readonly ILogger<AnalyticsDataQualityHealthWorker> _logger;
     private readonly WorkerHealthService _healthService;
     private readonly WorkerRuntimeControlService _controlService;
+    private readonly WorkerRuntimePolicyService _runtimePolicyService;
     private readonly AnalyticsDataQualityHealthOptions _options;
 
     public AnalyticsDataQualityHealthWorker(
@@ -22,12 +23,14 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
         ILogger<AnalyticsDataQualityHealthWorker> logger,
         WorkerHealthService healthService,
         WorkerRuntimeControlService controlService,
+        WorkerRuntimePolicyService runtimePolicyService,
         IOptions<AnalyticsDataQualityHealthOptions> options)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
         _healthService = healthService;
         _controlService = controlService;
+        _runtimePolicyService = runtimePolicyService;
         _options = options.Value;
     }
 
@@ -71,6 +74,52 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                 }
 
                 continue;
+            }
+
+            var policy = await _runtimePolicyService.GetPolicyAsync(WorkerName, stoppingToken);
+            var manualRunRequested = false;
+            if (!policy.CanRunNow)
+            {
+                if (!paused)
+                {
+                    var reason = policy.PauseReason ?? "Pauziran - worker policy disabled execution.";
+                    _logger.LogInformation("{WorkerName} paused. Reason: {Reason}", WorkerName, reason);
+                    _healthService.ReportStopped(WorkerName, reason);
+                    paused = true;
+                }
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Max(5, _options.PauseCheckSeconds)), stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+            {
+                manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
+                    WorkerName,
+                    policy.ManualRunToken,
+                    stoppingToken);
+
+                if (!manualRunRequested)
+                {
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Max(5, _options.PauseCheckSeconds)), stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
             }
 
             if (paused)
@@ -128,7 +177,10 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
 
             try
             {
-                await Task.Delay(TimeSpan.FromMinutes(Math.Max(5, _options.PollIntervalMinutes)), stoppingToken);
+                var delay = manualRunRequested
+                    ? TimeSpan.FromSeconds(Math.Max(5, _options.PauseCheckSeconds))
+                    : TimeSpan.FromMinutes(Math.Max(5, _options.PollIntervalMinutes));
+                await Task.Delay(delay, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

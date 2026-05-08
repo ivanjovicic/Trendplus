@@ -1,5 +1,6 @@
 using Api.Services.Access;
 using Api.Services.Startup;
+using Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -77,18 +78,10 @@ public static class WorkerRuntimeConfig
             return;
         }
 
-        services.AddHostedService<Workers.SyncWorker>();
-        services.AddHostedService<Workers.OutboxProcessorWorker>();
-        services.AddHostedService<Workers.AnalyticsAggregationWorker>();
-        services.AddHostedService<Workers.AnalyticsDataQualityHealthWorker>();
-        services.AddHostedService<Workers.NightlyAnalyticsRefreshWorker>();
-        services.AddHostedService<Workers.OpenTrainingModelTrainingWorker>();
-        services.AddHostedService<Workers.TrendIngestionWorker>();
-        services.AddHostedService<Workers.DocumentGenerationWorker>();
-        services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
-        services.AddHostedService<AccessImportBackgroundWorker>();
-        services.AddHostedService<DeferredStartupTasksHostedService>();
-        // services.AddHostedService<Workers.DatabaseKeepAliveWorker>();
+        foreach (var definition in WorkerRegistryCatalog.Definitions.Where(d => d.RegistersInWorkerProcess))
+        {
+            RegisterByWorkerName(services, definition.WorkerName);
+        }
     }
 
     public static bool ResolveAccessImportWorkerInWebProcess(
@@ -108,6 +101,71 @@ public static class WorkerRuntimeConfig
         }
 
         return configuredRegisterInWebProcess ?? true;
+    }
+
+    public static bool IsRegisteredInCurrentProcess(
+        WorkerRegistryDefinition definition,
+        ProcessType processType,
+        bool registerAccessImportWorkerInWebProcess)
+    {
+        if (processType == ProcessType.Worker)
+        {
+            return definition.RegistersInWorkerProcess;
+        }
+
+        if (!definition.RegistersInWebProcess)
+        {
+            return false;
+        }
+
+        if (definition.RequiresWebAccessImportFlag)
+        {
+            return registerAccessImportWorkerInWebProcess;
+        }
+
+        return true;
+    }
+
+    private static void RegisterByWorkerName(IServiceCollection services, string workerName)
+    {
+        switch (workerName)
+        {
+            case "SyncWorker":
+                services.AddHostedService<Workers.SyncWorker>();
+                return;
+            case "OutboxProcessorWorker":
+                services.AddHostedService<Workers.OutboxProcessorWorker>();
+                return;
+            case "AnalyticsAggregationWorker":
+                services.AddHostedService<Workers.AnalyticsAggregationWorker>();
+                return;
+            case "AnalyticsDataQualityHealthWorker":
+                services.AddHostedService<Workers.AnalyticsDataQualityHealthWorker>();
+                return;
+            case "NightlyAnalyticsRefreshWorker":
+                services.AddHostedService<Workers.NightlyAnalyticsRefreshWorker>();
+                return;
+            case "OpenTrainingModelTrainingWorker":
+                services.AddHostedService<Workers.OpenTrainingModelTrainingWorker>();
+                return;
+            case "TrendIngestionWorker":
+                services.AddHostedService<Workers.TrendIngestionWorker>();
+                return;
+            case "DocumentGenerationWorker":
+                services.AddHostedService<Workers.DocumentGenerationWorker>();
+                return;
+            case "InventoryReportSchedulerWorker":
+                services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
+                return;
+            case "AccessImportBackgroundWorker":
+                services.AddHostedService<AccessImportBackgroundWorker>();
+                return;
+            case "DeferredStartupTasksHostedService":
+                services.AddHostedService<DeferredStartupTasksHostedService>();
+                return;
+            default:
+                return;
+        }
     }
 
     private static bool TryParseBooleanFlag(string? rawValue, out bool value)

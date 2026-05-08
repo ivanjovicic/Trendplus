@@ -21,6 +21,7 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
     private readonly ILogger<AccessImportBackgroundWorker> _logger;
     private readonly WorkerHealthService _healthService;
     private readonly WorkerRuntimeControlService _controlService;
+    private readonly WorkerRuntimePolicyService _runtimePolicyService;
     private readonly IFileStorage _fileStorage;
     private readonly AccessImportOptions _options;
 
@@ -29,6 +30,7 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
         ILogger<AccessImportBackgroundWorker> logger,
         WorkerHealthService healthService,
         WorkerRuntimeControlService controlService,
+        WorkerRuntimePolicyService runtimePolicyService,
         IFileStorage fileStorage,
         IOptions<AccessImportOptions> options)
     {
@@ -36,6 +38,7 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
         _logger = logger;
         _healthService = healthService;
         _controlService = controlService;
+        _runtimePolicyService = runtimePolicyService;
         _fileStorage = fileStorage;
         _options = options.Value;
     }
@@ -98,6 +101,51 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
                 continue;
             }
 
+            var policy = await _runtimePolicyService.GetPolicyAsync(WorkerName, stoppingToken);
+            var manualRunRequested = false;
+            if (!policy.CanRunNow)
+            {
+                if (!paused)
+                {
+                    _logger.LogInformation("{WorkerName} paused. Reason: {Reason}", WorkerName, policy.PauseReason ?? "Worker policy disabled execution.");
+                    _healthService.ReportStopped(WorkerName, policy.PauseReason ?? "Pauziran - worker policy disabled execution.");
+                    paused = true;
+                }
+
+                try
+                {
+                    await Task.Delay(pauseCheckInterval, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+            {
+                manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
+                    WorkerName,
+                    policy.ManualRunToken,
+                    stoppingToken);
+
+                if (!manualRunRequested)
+                {
+                    try
+                    {
+                        await Task.Delay(pauseCheckInterval, stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+            }
+
             if (paused)
             {
                 paused = false;
@@ -133,7 +181,8 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
                 if (runningJobs.Count == 0)
                 {
                     _healthService.ReportHealthy(WorkerName, "Idle - waiting for pending jobs.");
-                    await Task.Delay(pollInterval, stoppingToken);
+                    var delay = manualRunRequested ? pauseCheckInterval : pollInterval;
+                    await Task.Delay(delay, stoppingToken);
                 }
                 else
                 {

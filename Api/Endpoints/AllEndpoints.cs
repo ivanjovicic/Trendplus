@@ -112,8 +112,17 @@ public static class AllEndpoints
         .WithTags("System")
         .RequireRateLimiting("fixed");
 
-        app.MapPost("/api/workers/control/enable", (WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
+        app.MapPost("/api/workers/control/enable", (
+            WorkerRuntimeControlService workerControl,
+            IHostEnvironment env,
+            HttpContext httpContext,
+            IConfiguration configuration) =>
         {
+            if (!IsAdminRequest(httpContext, configuration, env))
+            {
+                return Results.Unauthorized();
+            }
+
             if (!workerControl.IsRuntimeToggleAllowed)
             {
                 return Results.BadRequest(new
@@ -138,8 +147,17 @@ public static class AllEndpoints
         .WithTags("System")
         .RequireRateLimiting("strict");
 
-        app.MapPost("/api/workers/control/disable", (WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
+        app.MapPost("/api/workers/control/disable", (
+            WorkerRuntimeControlService workerControl,
+            IHostEnvironment env,
+            HttpContext httpContext,
+            IConfiguration configuration) =>
         {
+            if (!IsAdminRequest(httpContext, configuration, env))
+            {
+                return Results.Unauthorized();
+            }
+
             var changed = workerControl.SetEnabled(false, $"api:{env.EnvironmentName}");
             return Results.Ok(new
             {

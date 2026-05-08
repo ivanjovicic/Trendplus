@@ -15,30 +15,57 @@ public sealed class InventoryReportSchedulerWorker : BackgroundService
     private readonly ILogger<InventoryReportSchedulerWorker> _logger;
     private readonly WorkerHealthService _healthService;
     private readonly WorkerRuntimeControlService _controlService;
+    private readonly WorkerRuntimePolicyService _runtimePolicyService;
 
     public InventoryReportSchedulerWorker(
         IServiceProvider serviceProvider,
         ILogger<InventoryReportSchedulerWorker> logger,
         WorkerHealthService healthService,
-        WorkerRuntimeControlService controlService)
+        WorkerRuntimeControlService controlService,
+        WorkerRuntimePolicyService runtimePolicyService)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _healthService = healthService;
         _controlService = controlService;
+        _runtimePolicyService = runtimePolicyService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _healthService.ReportRunning(WorkerName, "Starting up...");
+        var pauseCheckInterval = TimeSpan.FromSeconds(10);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             if (!_controlService.IsEnabled)
             {
                 _healthService.ReportStopped(WorkerName, "Pauziran - workers switch je iskljucen.");
-                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                await Task.Delay(pauseCheckInterval, stoppingToken);
                 continue;
+            }
+
+            var policy = await _runtimePolicyService.GetPolicyAsync(WorkerName, stoppingToken);
+            var manualRunRequested = false;
+            if (!policy.CanRunNow)
+            {
+                _healthService.ReportStopped(WorkerName, policy.PauseReason ?? "Pauziran - worker policy disabled execution.");
+                await Task.Delay(pauseCheckInterval, stoppingToken);
+                continue;
+            }
+
+            if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+            {
+                manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
+                    WorkerName,
+                    policy.ManualRunToken,
+                    stoppingToken);
+
+                if (!manualRunRequested)
+                {
+                    await Task.Delay(pauseCheckInterval, stoppingToken);
+                    continue;
+                }
             }
 
             try
@@ -49,7 +76,7 @@ public sealed class InventoryReportSchedulerWorker : BackgroundService
                 var schedules = await scheduleService.ListEnabledAsync(stoppingToken);
 
                 var executed = 0;
-                foreach (var schedule in schedules.Where(IsDue))
+                foreach (var schedule in schedules.Where(schedule => manualRunRequested || IsDue(schedule)))
                 {
                     var result = await deliveryService.RunAsync(
                         schedule,
@@ -74,7 +101,8 @@ public sealed class InventoryReportSchedulerWorker : BackgroundService
                 _healthService.ReportError(WorkerName, ex);
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            var delay = manualRunRequested ? pauseCheckInterval : TimeSpan.FromMinutes(1);
+            await Task.Delay(delay, stoppingToken);
         }
 
         _healthService.ReportStopped(WorkerName, "Graceful shutdown");

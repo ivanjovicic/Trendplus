@@ -21,6 +21,7 @@ namespace Workers
         private readonly IServiceProvider _provider;
         private readonly WorkerHealthService _healthService;
         private readonly WorkerRuntimeControlService _controlService;
+        private readonly WorkerRuntimePolicyService _runtimePolicyService;
         
         private const string WorkerName = "SyncWorker";
         private static readonly TimeSpan InventoryMovementReplayWindow = TimeSpan.FromDays(14);
@@ -30,12 +31,14 @@ namespace Workers
             ILogger<SyncWorker> logger, 
             IServiceProvider provider,
             WorkerHealthService healthService,
-            WorkerRuntimeControlService controlService)
+            WorkerRuntimeControlService controlService,
+            WorkerRuntimePolicyService runtimePolicyService)
         {
             _logger = logger;
             _provider = provider;
             _healthService = healthService;
             _controlService = controlService;
+            _runtimePolicyService = runtimePolicyService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -68,6 +71,49 @@ namespace Workers
                         break;
                     }
                     continue;
+                }
+
+                var policy = await _runtimePolicyService.GetPolicyAsync(WorkerName, stoppingToken);
+                var manualRunRequested = false;
+                if (!policy.CanRunNow)
+                {
+                    if (!paused)
+                    {
+                        _logger.LogInformation("{WorkerName} paused. Reason: {Reason}", WorkerName, policy.PauseReason ?? "Worker policy disabled execution.");
+                        _healthService.ReportStopped(WorkerName, policy.PauseReason ?? "Pauziran - worker policy disabled execution.");
+                        paused = true;
+                    }
+
+                    try
+                    {
+                        await Task.Delay(pauseCheckInterval, stoppingToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    continue;
+                }
+
+                if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+                {
+                    manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
+                        WorkerName,
+                        policy.ManualRunToken,
+                        stoppingToken);
+
+                    if (!manualRunRequested)
+                    {
+                        try
+                        {
+                            await Task.Delay(pauseCheckInterval, stoppingToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                        continue;
+                    }
                 }
 
                 if (paused)
@@ -158,7 +204,8 @@ namespace Workers
                         try { await SyncReturnFacts(td, ad, stoppingToken); }      catch (Exception ex) { _logger.LogWarning(ex, "SyncReturnFacts failed."); }
                     }
 
-                    await Task.Delay(delayInterval, stoppingToken);
+                    var delay = manualRunRequested ? pauseCheckInterval : delayInterval;
+                    await Task.Delay(delay, stoppingToken);
                 }
                 catch (OperationCanceledException)
                 {
