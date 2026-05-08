@@ -946,6 +946,11 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         await next(context);
     });
 
+    // Serve the SPA shell and static assets even while backend dependencies are warming up.
+    // API traffic is gated below, but the frontend must be able to render the wake-up state.
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+
     // 1. Global exception handler (first in pipeline)
     app.UseMiddleware<GlobalExceptionMiddleware>();
     app.UseMiddleware<SqlLoggingRequestContextMiddleware>();
@@ -962,8 +967,17 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             return;
         }
 
+        var shouldGateRequest =
+            path.StartsWithSegments("/api") ||
+            path.StartsWithSegments("/artikli") ||
+            path.StartsWithSegments("/scrapers") ||
+            path.StartsWithSegments("/admin/repair");
+        var gateApiTrafficDuringWarmup =
+            builder.Configuration.GetValue<bool?>("StartupReadiness:GateApiTraffic") ??
+            !app.Environment.IsDevelopment();
+
         var readiness = context.RequestServices.GetRequiredService<StartupReadinessState>();
-        if (!readiness.IsReady)
+        if (gateApiTrafficDuringWarmup && shouldGateRequest && !readiness.IsReady)
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             context.Response.ContentType = "application/json";
@@ -993,9 +1007,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         };
     });
 
-    // 3. Static files & routing
-    app.UseDefaultFiles();
-    app.UseStaticFiles();
+    // 3. Routing
     app.UseRouting();
     app.UseCors("AllowFrontend");
     app.UseRateLimiter();

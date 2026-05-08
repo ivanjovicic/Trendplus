@@ -11,7 +11,7 @@ public enum BackendProvider
 public sealed class BackendRoutingPreference
 {
     public BackendProvider PrimaryProvider { get; set; } = BackendProvider.Render;
-    public bool FallbackEnabled { get; set; } = true;
+    public bool FallbackEnabled { get; set; }
     public BackendProvider FallbackProvider { get; set; } = BackendProvider.Fly;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
     public string UpdatedBy { get; set; } = "startup";
@@ -37,7 +37,7 @@ public sealed class BackendRoutingPreferenceService
     {
         var primaryRaw = configuration["BackendRouting:PrimaryProvider"];
         var fallbackRaw = configuration["BackendRouting:FallbackProvider"];
-        var fallbackEnabled = configuration.GetValue<bool?>("BackendRouting:FallbackEnabled") ?? true;
+        var fallbackEnabled = configuration.GetValue<bool?>("BackendRouting:FallbackEnabled") ?? false;
 
         var primary = ParseProviderOrDefault(primaryRaw, BackendProvider.Render);
         var fallback = ParseProviderOrDefault(fallbackRaw, primary == BackendProvider.Render ? BackendProvider.Fly : BackendProvider.Render);

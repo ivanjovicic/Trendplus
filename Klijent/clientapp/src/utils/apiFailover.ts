@@ -69,13 +69,10 @@ const inferredFlyBaseUrl = inferProviderBaseUrl(
 const renderBaseUrl =
   explicitRenderBaseUrl ||
   inferredRenderBaseUrl ||
-  legacyFallbackBaseUrl ||
   legacyPrimaryBaseUrl;
 const flyBaseUrl =
   explicitFlyBaseUrl ||
-  inferredFlyBaseUrl ||
-  legacyPrimaryBaseUrl ||
-  legacyFallbackBaseUrl;
+  inferredFlyBaseUrl;
 
 const routingPreference = loadRoutingPreference();
 const primaryBaseUrl = getBaseUrlForProvider(routingPreference.primaryProvider);
@@ -171,10 +168,17 @@ function normalizeProvider(value: unknown): BackendProvider {
 }
 
 function getDefaultRoutingPreference(): BackendRoutingPreference {
+  const primaryProvider = normalizeProvider(import.meta.env.VITE_DEFAULT_BACKEND_PROVIDER);
+  const configuredFallbackProvider = normalizeProvider(import.meta.env.VITE_FALLBACK_BACKEND_PROVIDER);
+  const fallbackProvider =
+    configuredFallbackProvider === primaryProvider
+      ? primaryProvider === "render" ? "fly" : "render"
+      : configuredFallbackProvider;
+
   return {
-    primaryProvider: "render",
-    fallbackEnabled: true,
-    fallbackProvider: "fly",
+    primaryProvider,
+    fallbackEnabled: readBooleanFromEnv("VITE_ENABLE_BACKEND_FALLBACK", false),
+    fallbackProvider,
   };
 }
 
@@ -190,7 +194,10 @@ function loadRoutingPreference(): BackendRoutingPreference {
 
     const primaryProvider = normalizeProvider(parsed.primaryProvider);
     const fallbackProvider = normalizeProvider(parsed.fallbackProvider);
-    const fallbackEnabled = Boolean(parsed.fallbackEnabled);
+    const fallbackEnabled =
+      typeof parsed.fallbackEnabled === "boolean"
+        ? parsed.fallbackEnabled
+        : getDefaultRoutingPreference().fallbackEnabled;
 
     if (fallbackEnabled && fallbackProvider === primaryProvider) {
       return {
@@ -236,6 +243,13 @@ function normalizePath(raw: string): string {
 function readMsFromEnv(name: string, fallback: number): number {
   const parsed = Number(import.meta.env[name]);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function readBooleanFromEnv(name: string, fallback: boolean): boolean {
+  const raw = import.meta.env[name];
+  if (raw == null || raw === "") return fallback;
+
+  return ["1", "true", "yes", "on"].includes(String(raw).trim().toLowerCase());
 }
 
 function readPositiveMs(value: unknown): number | null {
@@ -295,10 +309,18 @@ function isApiPath(pathname: string): boolean {
   return apiPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+function isProviderHealthPath(pathname: string): boolean {
+  return pathname === "/ready" || pathname === "/health" || pathname.startsWith("/health/");
+}
+
 function shouldManageRequest(input: RequestInfo | URL): boolean {
   const rawUrl = toRawUrl(input);
   const parsed = toAbsoluteUrl(rawUrl);
   if (!parsed) return false;
+
+  if (isProviderHealthPath(parsed.pathname.toLowerCase())) {
+    return false;
+  }
 
   if (primaryOrigin && parsed.origin === primaryOrigin) return true;
   if (fallbackOrigin && parsed.origin === fallbackOrigin) return true;
@@ -446,6 +468,21 @@ function setProviderState(
       detail: providerState,
     })
   );
+}
+
+function markActiveHostReady(reason: string): void {
+  const readyPhase: BackendProviderStatePhase =
+    runtimeState.activeHost === "fallback" ? "fallback_ready" : "primary_ready";
+
+  if (
+    providerState.phase === readyPhase &&
+    providerState.activeHost === runtimeState.activeHost &&
+    providerState.reason === reason
+  ) {
+    return;
+  }
+
+  setProviderState(readyPhase, reason);
 }
 
 function debugLog(message: string, extra?: Record<string, unknown>): void {
@@ -962,6 +999,9 @@ async function executeApiRequest(
       const fallbackInput = buildRewrittenInput(retrySource, fallbackUrl);
       const fallbackStartedAt = performance.now();
       const fallbackResponse = await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, fallbackTimeoutMs);
+      if (fallbackResponse.status < 500) {
+        markActiveHostReady("fallback_request_succeeded");
+      }
       debugLog("Fallback retry completed", {
         originalTarget: requestedUrl,
         activeTarget: describeUrlForTelemetry(fallbackUrl),
@@ -1003,6 +1043,9 @@ async function executeApiRequest(
       status: response.status,
       activeHost: initialHost,
     });
+    if (response.status < 500) {
+      markActiveHostReady("request_succeeded");
+    }
     return response;
   } catch (error) {
     debugLog("Request failed", {
@@ -1073,6 +1116,9 @@ async function executeApiRequest(
       const fallbackInput = buildRewrittenInput(retrySource, fallbackUrl);
       const fallbackStartedAt = performance.now();
       const fallbackResponse = await fetchWithTimeoutVia(nativeFetch, fallbackInput, nativeInit, fallbackTimeoutMs);
+      if (fallbackResponse.status < 500) {
+        markActiveHostReady("fallback_request_succeeded");
+      }
       debugLog("Fallback retry completed", {
         originalTarget: requestedUrl,
         activeTarget: describeUrlForTelemetry(fallbackUrl),
@@ -1228,8 +1274,6 @@ export function installApiFailoverFetchLayer(): void {
     primaryWarmupInitialBackoffMs,
     primaryWarmupMaxBackoffMs,
   });
-  setProviderState(runtimeState.activeHost === "fallback" ? "fallback_ready" : "primary_ready", "layer_initialized");
-
   // If fallback state was persisted, respect the cooldown before probing the
   // primary again. The recovery probe is intentionally lightweight, but the
   // cooldown still avoids flipping hosts on every page reload.
@@ -1244,12 +1288,6 @@ export function installApiFailoverFetchLayer(): void {
 
     if (runtimeState.activeHost === "fallback") {
       await maybeRecoverPrimary(nativeFetch);
-    }
-
-    if (runtimeState.activeHost === "primary") {
-      setProviderState("checking_primary", "request_dispatch");
-    } else {
-      setProviderState("fallback_ready", "request_dispatch");
     }
 
     return executeApiRequest(nativeFetch, input, init);

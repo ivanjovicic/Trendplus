@@ -25,6 +25,7 @@ public sealed class AdminBackendRoutingEndpointsTests
         var payload = await response.Content.ReadFromJsonAsync<BackendRoutingPayload>();
         Assert.NotNull(payload);
         Assert.Equal("render", payload!.PrimaryProvider);
+        Assert.False(payload.FallbackEnabled);
     }
 
     [Fact]

@@ -251,7 +251,7 @@ export default function ConfigurationPage() {
     setBackendPreference((prev) => {
       const base: BackendRoutingPreference = prev ?? {
         primaryProvider: "render",
-        fallbackEnabled: true,
+        fallbackEnabled: false,
         fallbackProvider: "fly",
       };
       const next = { ...base, [key]: value };
