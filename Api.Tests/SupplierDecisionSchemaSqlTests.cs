@@ -77,6 +77,18 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierDecisionBroadDateRangesUsePrecomputedCaches()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("CanUsePrecomputedDateRange(filters)", endpoint);
+        Assert.Contains("inclusiveDays >= DefaultLookbackDays", endpoint);
+        Assert.DoesNotContain("!filters.HasExplicitDateRange\n        && string.IsNullOrWhiteSpace(filters.Category)", endpoint);
+        Assert.Contains("ds.period_to >= @fromDate AND ds.period_from <= @toDate", endpoint);
+        Assert.Contains("FROM mv_supplier_decision_score_cache ds", endpoint);
+    }
+
+    [Fact]
     public void SupplierDecisionHeavyRefreshIsNotOwnedByWebStartupRepair()
     {
         var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");

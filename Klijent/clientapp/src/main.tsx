@@ -7,12 +7,14 @@ import { PingControlProvider } from "./context/PingControlContext";
 import { RequestActivityProvider } from "./context/RequestActivityContext";
 import { installBackendReachabilityFetchLayer } from "./utils/backendReachabilityFetchLayer";
 import { installApiFailoverFetchLayer } from "./utils/apiFailover";
+import { installChunkLoadRecovery } from "./utils/chunkLoadRecovery";
 import "./skeleton.css";
 import "./styles/analytics-system.css";
 import "./styles/forms.css";
 
 installApiFailoverFetchLayer();
 installBackendReachabilityFetchLayer();
+installChunkLoadRecovery();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>

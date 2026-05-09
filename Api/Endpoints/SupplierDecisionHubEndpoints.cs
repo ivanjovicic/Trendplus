@@ -774,13 +774,24 @@ public static class SupplierDecisionHubEndpoints
     }
 
     private static bool CanUsePrecomputedSupplierRows(SupplierDecisionHubFilters filters) =>
-        !filters.HasExplicitDateRange
+        CanUsePrecomputedDateRange(filters)
         && string.IsNullOrWhiteSpace(filters.Category)
         && string.IsNullOrWhiteSpace(filters.Gender)
         && !filters.SeasonId.HasValue
         && !filters.ExcludeOosBeforeMarkdown
         && !filters.StoreId.HasValue
         && string.Equals(filters.DataScope, "all", StringComparison.OrdinalIgnoreCase);
+
+    private static bool CanUsePrecomputedDateRange(SupplierDecisionHubFilters filters)
+    {
+        if (!filters.HasExplicitDateRange)
+        {
+            return true;
+        }
+
+        var inclusiveDays = (filters.ToDate.Date - filters.FromDate.Date).TotalDays + 1;
+        return inclusiveDays >= DefaultLookbackDays;
+    }
 
     private sealed record PrecomputedQueryCapabilities(
         bool HasDecisionScoreCache,
@@ -946,6 +957,13 @@ LEFT JOIN vw_supplier_ml_latest_predictions ml
         {
             where.Append(" AND ds.supplier_id = @supplierId");
             parameters.Add(new NpgsqlParameter("supplierId", filters.SupplierId.Value));
+        }
+
+        if (filters.HasExplicitDateRange)
+        {
+            where.Append(" AND ds.period_to >= @fromDate AND ds.period_from <= @toDate");
+            parameters.Add(new NpgsqlParameter("fromDate", filters.FromDate));
+            parameters.Add(new NpgsqlParameter("toDate", filters.ToDate));
         }
 
         if (filters.MinRevenue.HasValue)
