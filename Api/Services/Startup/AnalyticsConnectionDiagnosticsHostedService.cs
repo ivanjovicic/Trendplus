@@ -93,7 +93,9 @@ public sealed class AnalyticsConnectionDiagnosticsHostedService : BackgroundServ
                 to_regclass('public.vw_supplier_recommendations')::text AS supplier_recommendations,
                 to_regclass('public.mv_supplier_markdown_dependency_cache')::text AS supplier_markdown_dependency_cache,
                 to_regclass('public.mv_supplier_decision_score_cache')::text AS supplier_decision_score_cache,
-                to_regclass('public.mv_supplier_recommendations_cache')::text AS supplier_recommendations_cache;
+                to_regclass('public.mv_supplier_recommendations_cache')::text AS supplier_recommendations_cache,
+                to_regclass('public.supplier_ml_predictions')::text AS supplier_ml_predictions,
+                to_regclass('public.vw_supplier_ml_latest_predictions')::text AS supplier_ml_latest_predictions;
             """;
 
         await using var reader = await command.ExecuteReaderAsync(stoppingToken);
@@ -109,9 +111,11 @@ public sealed class AnalyticsConnectionDiagnosticsHostedService : BackgroundServ
         var markdownDependencyCache = ReadString(reader, "supplier_markdown_dependency_cache") ?? "<missing>";
         var decisionScoreCache = ReadString(reader, "supplier_decision_score_cache") ?? "<missing>";
         var recommendationsCache = ReadString(reader, "supplier_recommendations_cache") ?? "<missing>";
+        var supplierMlPredictions = ReadString(reader, "supplier_ml_predictions") ?? "<missing>";
+        var supplierMlLatestPredictions = ReadString(reader, "supplier_ml_latest_predictions") ?? "<missing>";
 
         _logger.LogInformation(
-            "Analytics DB runtime target: database={Database} user={User} schema={Schema} search_path={SearchPath} server={ServerAddr}:{ServerPort} vw_supplier_fullprice_signals={SupplierSignalsView} vw_supplier_decision_score={DecisionScoreView} vw_supplier_recommendations={RecommendationsView} mv_supplier_markdown_dependency_cache={MarkdownDependencyCache} mv_supplier_decision_score_cache={DecisionScoreCache} mv_supplier_recommendations_cache={RecommendationsCache}",
+            "Analytics DB runtime target: database={Database} user={User} schema={Schema} search_path={SearchPath} server={ServerAddr}:{ServerPort} vw_supplier_fullprice_signals={SupplierSignalsView} vw_supplier_decision_score={DecisionScoreView} vw_supplier_recommendations={RecommendationsView} mv_supplier_markdown_dependency_cache={MarkdownDependencyCache} mv_supplier_decision_score_cache={DecisionScoreCache} mv_supplier_recommendations_cache={RecommendationsCache} optional_supplier_ml_predictions={SupplierMlPredictions} optional_vw_supplier_ml_latest_predictions={SupplierMlLatestPredictions}",
             ReadString(reader, "database_name"),
             ReadString(reader, "user_name"),
             ReadString(reader, "schema_name"),
@@ -123,7 +127,9 @@ public sealed class AnalyticsConnectionDiagnosticsHostedService : BackgroundServ
             recommendationsView,
             markdownDependencyCache,
             decisionScoreCache,
-            recommendationsCache);
+            recommendationsCache,
+            supplierMlPredictions,
+            supplierMlLatestPredictions);
 
         return supplierSignalsView == "<missing>"
             || decisionScoreView == "<missing>"

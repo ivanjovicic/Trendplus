@@ -670,7 +670,8 @@ public static class SupplierDecisionHubEndpoints
             }
         }
 
-        var (sql, parameters) = BuildSupplierRowsSql(filters);
+        var mlCapabilities = await GetSupplierMlQueryCapabilitiesAsync(analyticsConnectionString, ct);
+        var (sql, parameters) = BuildSupplierRowsSql(filters, mlCapabilities);
         try
         {
             return await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sql, parameters, ct);
@@ -787,6 +788,21 @@ public static class SupplierDecisionHubEndpoints
         bool HasMlLatestPredictionsView,
         bool DecisionScoreCacheHasMlSupplierScore);
 
+    private sealed record SupplierMlQueryCapabilities(
+        bool HasSupplierMlPredictionsTable,
+        bool HasSupplierMlPredictionRequiredColumns,
+        bool HasSupplierMlPredictionModelVersionId,
+        bool HasModelVersionTable)
+    {
+        public bool CanUseSupplierMlPredictions =>
+            HasSupplierMlPredictionsTable && HasSupplierMlPredictionRequiredColumns;
+
+        public bool CanFilterActiveModelVersion =>
+            CanUseSupplierMlPredictions
+            && HasSupplierMlPredictionModelVersionId
+            && HasModelVersionTable;
+    }
+
     private static bool IsMissingPrecomputedDependency(PostgresException ex) =>
         ex.SqlState is "42P01" or "42703";
 
@@ -799,6 +815,8 @@ SELECT
     to_regclass('public.mv_supplier_decision_score_cache') IS NOT NULL AS has_decision_score_cache,
     to_regclass('public.mv_supplier_markdown_dependency_cache') IS NOT NULL AS has_markdown_dependency_cache,
     to_regclass('public.vw_supplier_ml_latest_predictions') IS NOT NULL AS has_ml_latest_predictions_view,
+    to_regclass('public.supplier_ml_predictions') IS NOT NULL AS has_supplier_ml_predictions_table,
+    to_regclass('public.model_version') IS NOT NULL AS has_model_version_table,
     EXISTS (
         SELECT 1
         FROM information_schema.columns
@@ -820,8 +838,61 @@ SELECT
         return new PrecomputedQueryCapabilities(
             GetBoolean(reader, "has_decision_score_cache"),
             GetBoolean(reader, "has_markdown_dependency_cache"),
-            GetBoolean(reader, "has_ml_latest_predictions_view"),
+            GetBoolean(reader, "has_ml_latest_predictions_view")
+                && GetBoolean(reader, "has_supplier_ml_predictions_table")
+                && GetBoolean(reader, "has_model_version_table"),
             GetBoolean(reader, "decision_score_cache_has_ml_supplier_score"));
+    }
+
+    private static async Task<SupplierMlQueryCapabilities> GetSupplierMlQueryCapabilitiesAsync(
+        string analyticsConnectionString,
+        CancellationToken ct)
+    {
+        const string sql = """
+SELECT
+    to_regclass('public.supplier_ml_predictions') IS NOT NULL AS has_supplier_ml_predictions_table,
+    (
+        SELECT COUNT(DISTINCT column_name)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'supplier_ml_predictions'
+          AND column_name = ANY(ARRAY[
+              'id',
+              'supplier_id',
+              'snapshot_date',
+              'model_type',
+              'ml_supplier_score',
+              'top_feature_1',
+              'top_feature_2',
+              'top_feature_3',
+              'explanation_text',
+              'created_at'
+          ])
+    ) = 10 AS has_supplier_ml_prediction_required_columns,
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'supplier_ml_predictions'
+          AND column_name = 'model_version_id'
+    ) AS has_supplier_ml_prediction_model_version_id,
+    to_regclass('public.model_version') IS NOT NULL AS has_model_version_table;
+""";
+
+        await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+
+        if (!await reader.ReadAsync(ct))
+        {
+            return new SupplierMlQueryCapabilities(false, false, false, false);
+        }
+
+        return new SupplierMlQueryCapabilities(
+            GetBoolean(reader, "has_supplier_ml_predictions_table"),
+            GetBoolean(reader, "has_supplier_ml_prediction_required_columns"),
+            GetBoolean(reader, "has_supplier_ml_prediction_model_version_id"),
+            GetBoolean(reader, "has_model_version_table"));
     }
 
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildPrecomputedSupplierRowsSql(
@@ -920,13 +991,70 @@ ORDER BY ds.supplier_quality_index DESC, ds.revenue DESC, ds.supplier_name;
         return (sql, parameters);
     }
 
-    private static (string Sql, List<NpgsqlParameter> Parameters) BuildSupplierRowsSql(SupplierDecisionHubFilters filters)
+    private static (string Sql, List<NpgsqlParameter> Parameters) BuildSupplierRowsSql(
+        SupplierDecisionHubFilters filters,
+        SupplierMlQueryCapabilities mlCapabilities)
     {
         var parameters = new List<NpgsqlParameter>();
         var rowWhere = BuildRowFilters(filters, parameters);
         var supplierWhere = BuildSupplierFilters(filters, parameters);
         var currentCostSql = AnalyticsMarginPolicy.BuildPositiveCostSql(@"a.""NabavnaCenaDin""", @"a.""NabavnaCena""");
         parameters.Add(new NpgsqlParameter("mlAsOfDate", filters.ToDate));
+        var modelVersionJoin = mlCapabilities.CanFilterActiveModelVersion
+            ? """
+        LEFT JOIN model_version mv
+               ON mv.id = p.model_version_id
+"""
+            : string.Empty;
+        var modelVersionWhere = mlCapabilities.CanFilterActiveModelVersion
+            ? "          AND COALESCE(mv.is_active, TRUE)"
+            : string.Empty;
+        var mlSelect = mlCapabilities.CanUseSupplierMlPredictions
+            ? $"""
+        ROUND(COALESCE(ml.ml_supplier_score, fs.supplier_quality_index), 2) AS ml_supplier_score,
+        COALESCE(NULLIF(ml.explanation_text, ''), '') AS ai_explanation,
+        COALESCE(NULLIF(ml.top_feature_1, ''), '') AS top_feature_1,
+        COALESCE(NULLIF(ml.top_feature_2, ''), '') AS top_feature_2,
+        COALESCE(NULLIF(ml.top_feature_3, ''), '') AS top_feature_3,
+        ROUND(
+            LEAST(
+                100,
+                GREATEST(
+                    0,
+                    0.60 * COALESCE(ml.ml_supplier_score, fs.supplier_quality_index)
+                    + 0.40 * fs.supplier_quality_index
+                )
+            ),
+            2
+        ) AS blended_supplier_quality_index
+"""
+            : """
+        ROUND(fs.supplier_quality_index, 2) AS ml_supplier_score,
+        '' AS ai_explanation,
+        '' AS top_feature_1,
+        '' AS top_feature_2,
+        '' AS top_feature_3,
+        fs.supplier_quality_index AS blended_supplier_quality_index
+""";
+        var mlJoin = mlCapabilities.CanUseSupplierMlPredictions
+            ? $"""
+    LEFT JOIN LATERAL (
+        SELECT
+            p.ml_supplier_score,
+            p.top_feature_1,
+            p.top_feature_2,
+            p.top_feature_3,
+            p.explanation_text
+        FROM supplier_ml_predictions p
+{modelVersionJoin}        WHERE p.supplier_id = fs.supplier_id
+          AND p.model_type = 'supplier_ranking_v1'
+          AND p.snapshot_date <= @mlAsOfDate
+{modelVersionWhere}
+        ORDER BY p.snapshot_date DESC, p.created_at DESC, p.id DESC
+        LIMIT 1
+    ) ml ON TRUE
+"""
+            : string.Empty;
 
         var sql = $"""
 WITH filtered_signals AS (
@@ -1209,40 +1337,9 @@ filtered_suppliers AS (
 supplier_rows_with_ml AS (
     SELECT
         fs.*,
-        ROUND(COALESCE(ml.ml_supplier_score, fs.supplier_quality_index), 2) AS ml_supplier_score,
-        COALESCE(NULLIF(ml.explanation_text, ''), '') AS ai_explanation,
-        COALESCE(NULLIF(ml.top_feature_1, ''), '') AS top_feature_1,
-        COALESCE(NULLIF(ml.top_feature_2, ''), '') AS top_feature_2,
-        COALESCE(NULLIF(ml.top_feature_3, ''), '') AS top_feature_3,
-        ROUND(
-            LEAST(
-                100,
-                GREATEST(
-                    0,
-                    0.60 * COALESCE(ml.ml_supplier_score, fs.supplier_quality_index)
-                    + 0.40 * fs.supplier_quality_index
-                )
-            ),
-            2
-        ) AS blended_supplier_quality_index
+{mlSelect}
     FROM filtered_suppliers fs
-    LEFT JOIN LATERAL (
-        SELECT
-            p.ml_supplier_score,
-            p.top_feature_1,
-            p.top_feature_2,
-            p.top_feature_3,
-            p.explanation_text
-        FROM supplier_ml_predictions p
-        LEFT JOIN model_version mv
-               ON mv.id = p.model_version_id
-        WHERE p.supplier_id = fs.supplier_id
-          AND p.model_type = 'supplier_ranking_v1'
-          AND p.snapshot_date <= @mlAsOfDate
-          AND COALESCE(mv.is_active, TRUE)
-        ORDER BY p.snapshot_date DESC, p.created_at DESC, p.id DESC
-        LIMIT 1
-    ) ml ON TRUE
+{mlJoin}
 ),
 final_suppliers AS (
     SELECT

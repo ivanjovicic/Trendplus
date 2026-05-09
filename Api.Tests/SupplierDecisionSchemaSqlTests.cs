@@ -61,6 +61,21 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("startBatchNumber: SupplierDecisionHubCacheStartBatchNumber", initializer);
     }
 
+    [Fact]
+    public void SupplierDecisionLiveQueryDoesNotRequireOptionalMlPredictionTable()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("GetSupplierMlQueryCapabilitiesAsync", endpoint);
+        Assert.Contains("to_regclass('public.supplier_ml_predictions') IS NOT NULL", endpoint);
+        Assert.Contains("CanUseSupplierMlPredictions", endpoint);
+        Assert.Contains("ROUND(fs.supplier_quality_index, 2) AS ml_supplier_score", endpoint);
+        AssertInOrder(
+            endpoint,
+            "var mlJoin = mlCapabilities.CanUseSupplierMlPredictions",
+            "FROM supplier_ml_predictions p");
+    }
+
     private static void AssertInOrder(string text, params string[] fragments)
     {
         var lastIndex = -1;
