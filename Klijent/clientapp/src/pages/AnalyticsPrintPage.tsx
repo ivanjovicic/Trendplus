@@ -15,6 +15,37 @@ function getPrintColumnClassName(column: { key: string; header: string }): strin
   return `${baseClass} analytics-print-col-${normalizeColumnClassName(column.key)}`;
 }
 
+function formatPrintDate(value: string, compact: boolean): string {
+  const normalized = value.slice(0, 10);
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (match) {
+    const [, year, month, day] = match;
+    return compact ? `${day}.${month}.${year.slice(2)}` : `${day}.${month}.${year}.`;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const year = String(parsed.getFullYear());
+  return compact ? `${day}.${month}.${year.slice(2)}` : `${day}.${month}.${year}.`;
+}
+
+function formatPrintCellValue(
+  column: { dataType?: string },
+  value: unknown,
+  options: { compactDate: boolean }
+): string {
+  if (value == null) return "";
+  if (column.dataType === "date" || column.dataType === "datetime") {
+    return formatPrintDate(String(value), options.compactDate);
+  }
+
+  return String(value);
+}
+
 export default function AnalyticsPrintPage() {
   const params = useParams<{ table?: string }>();
   const [searchParams] = useSearchParams();
@@ -435,10 +466,9 @@ export default function AnalyticsPrintPage() {
         .analytics-print-page-daily-a4-portrait .analytics-print-col-total {
           width: 12mm !important;
         }
+        /* Shared supplier column standard for both "Stampaj" and "Stampaj obrazac" */
         .analytics-print-page-daily-a4-portrait th[class*="analytics-print-col-supplier-"],
-        .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-supplier-"] {
-          width: auto !important;
-        }
+        .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-supplier-"],
         .analytics-print-page-daily-a4-portrait th[class*="analytics-print-col-manualSupplier-"],
         .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-manualSupplier-"] {
           width: 8.8mm !important;
@@ -542,7 +572,9 @@ export default function AnalyticsPrintPage() {
           ) : payload.rows.map((row, index) => (
             <tr key={`${payload.tableKey}-${index}`}>
               {payload.columns.map((column) => (
-                <td key={column.key} className={getPrintColumnClassName(column)}>{row[column.key] == null ? "" : String(row[column.key])}</td>
+                <td key={column.key} className={getPrintColumnClassName(column)}>
+                  {formatPrintCellValue(column, row[column.key], { compactDate: isDailySalesPrint })}
+                </td>
               ))}
             </tr>
           ))}

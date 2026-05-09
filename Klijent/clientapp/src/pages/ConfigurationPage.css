@@ -1,6 +1,7 @@
 .configuration-page {
-  padding: 2rem;
-  max-width: 1400px;
+  width: 100%;
+  padding: clamp(1rem, 2vw, 2rem);
+  max-width: none;
   margin: 0 auto;
 }
 
@@ -23,8 +24,13 @@
 
 .config-layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr) 280px;
-  gap: 1.5rem;
+  grid-template-columns: minmax(170px, 200px) minmax(0, 1fr) minmax(220px, 280px);
+  gap: clamp(1rem, 1.4vw, 1.5rem);
+}
+
+.config-layout-workers {
+  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+  align-items: start;
 }
 
 /* Sidebar */
@@ -74,9 +80,13 @@
   background: var(--color-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  padding: 2rem;
+  padding: clamp(1rem, 1.6vw, 2rem);
   min-width: 0;
   min-height: 500px;
+}
+
+.config-content-workers {
+  min-width: 0;
 }
 
 .config-panel {
@@ -456,6 +466,67 @@
   gap: 0.75rem;
   font-size: 0.85rem;
   color: var(--color-muted);
+}
+
+.config-layout-workers .config-metrics {
+  position: static;
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-self: start;
+}
+
+.config-layout-workers .metric-card {
+  min-width: 0;
+}
+
+.config-content-workers .panel-card {
+  padding: clamp(0.75rem, 1vw, 1.5rem);
+}
+
+.config-content-workers .workers-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+}
+
+.config-content-workers .workers-table {
+  min-width: 1120px;
+  table-layout: auto;
+}
+
+.config-content-workers .workers-table th,
+.config-content-workers .workers-table td {
+  padding-left: clamp(0.45rem, 0.6vw, 0.75rem);
+  padding-right: clamp(0.45rem, 0.6vw, 0.75rem);
+}
+
+.config-content-workers .workers-table th:nth-child(1),
+.config-content-workers .workers-table td:nth-child(1) {
+  width: clamp(230px, 24%, 380px);
+}
+
+.config-content-workers .workers-table th:nth-child(2),
+.config-content-workers .workers-table td:nth-child(2) {
+  width: clamp(150px, 15%, 240px);
+}
+
+.config-content-workers .workers-table th:nth-child(3),
+.config-content-workers .workers-table td:nth-child(3) {
+  width: clamp(95px, 9%, 130px);
+}
+
+.config-content-workers .workers-table th:nth-child(4),
+.config-content-workers .workers-table td:nth-child(4),
+.config-content-workers .workers-table th:nth-child(5),
+.config-content-workers .workers-table td:nth-child(5),
+.config-content-workers .workers-table th:nth-child(6),
+.config-content-workers .workers-table td:nth-child(6) {
+  width: clamp(115px, 10%, 160px);
+}
+
+.config-content-workers .workers-table th:nth-child(8),
+.config-content-workers .workers-table td:nth-child(8) {
+  width: clamp(150px, 13%, 210px);
 }
 
 /* Responsive */

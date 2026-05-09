@@ -339,7 +339,7 @@ export default function ConfigurationPage() {
         </p>
       </div>
 
-      <div className="config-layout">
+      <div className={`config-layout ${activePanel === "workers" ? "config-layout-workers" : ""}`}>
         <div className="config-sidebar">
           <div className="config-menu">
             <button
@@ -408,7 +408,7 @@ export default function ConfigurationPage() {
           </div>
         </div>
 
-        <div className="config-content">
+        <div className={`config-content ${activePanel === "workers" ? "config-content-workers" : ""}`}>
           {activePanel === "backend" && (
             <div className="config-panel">
               <h2 className="panel-title">Backend provider i failover</h2>

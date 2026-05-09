@@ -99,7 +99,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
   );
 
   return (
-    <div className="space-y-4">
+    <div className="workers-panel space-y-4">
       <div className="flex justify-end">
         <button
           onClick={() => void fetchWorkers()}
@@ -130,8 +130,8 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
       ) : orderedWorkers.length === 0 ? (
         <div className="text-center py-8 text-gray-500">Nema registrovanih radnika.</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-gray-300">
+        <div className="workers-table-wrapper overflow-x-auto">
+          <table className="workers-table w-full border-collapse border border-gray-300">
             <thead className="bg-gray-100">
               <tr>
                 <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Naziv</th>
