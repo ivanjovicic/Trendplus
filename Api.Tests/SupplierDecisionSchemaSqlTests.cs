@@ -76,6 +76,29 @@ public sealed class SupplierDecisionSchemaSqlTests
             "FROM supplier_ml_predictions p");
     }
 
+    [Fact]
+    public void SupplierDecisionHeavyRefreshIsNotOwnedByWebStartupRepair()
+    {
+        var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
+        var worker = ReadRepoFile("Workers/NightlyAnalyticsRefreshWorker.cs");
+        var options = ReadRepoFile("Infrastructure/Configuration/NightlyAnalyticsRefreshOptions.cs");
+        var appsettings = ReadRepoFile("Api/appsettings.json");
+
+        Assert.Contains("AllowSupplierDecisionHeavyRefreshInInitializer", initializer);
+        Assert.Contains("allowHeavyRefresh: false", initializer);
+        Assert.Contains("NightlyAnalyticsRefreshWorker is the refresh owner", initializer);
+        Assert.Contains("if (!cachesRefreshed && allowHeavyRefresh", initializer);
+        Assert.DoesNotContain("if (!cachesRefreshed && await AreSupplierDecisionHubCachesReadyAsync", initializer);
+        Assert.Contains("\"AllowSupplierDecisionHeavyRefreshInInitializer\": false", appsettings);
+
+        Assert.Contains("CanRefreshMaterializedViewConcurrentlyAsync", worker);
+        Assert.Contains("idx.indexprs IS NULL", worker);
+        Assert.Contains("RefreshConcurrently", options);
+        Assert.Contains("\"mv_supplier_markdown_dependency_cache\"", options);
+        Assert.Contains("\"mv_supplier_decision_score_cache\"", options);
+        Assert.Contains("\"mv_supplier_recommendations_cache\"", options);
+    }
+
     private static void AssertInOrder(string text, params string[] fragments)
     {
         var lastIndex = -1;

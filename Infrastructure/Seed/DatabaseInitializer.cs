@@ -156,7 +156,12 @@ public static class DatabaseInitializer
 
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql", logger);
         await ExecuteSqlFileAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql", logger);
-        await BuildSupplierDecisionHubObjectsAsync(connectionString, logger, "analytics", "supplier-decision-repair");
+        await BuildSupplierDecisionHubObjectsAsync(
+            connectionString,
+            logger,
+            "analytics",
+            "supplier-decision-repair",
+            allowHeavyRefresh: false);
 
         logger.LogInformation("Analytics supplier decision schema repair completed.");
     }
@@ -345,21 +350,23 @@ public static class DatabaseInitializer
         string databaseLabel)
     {
         var runFullOnStartup = configuration.GetValue<bool>("DatabaseInitialization:RunFullSupplierDecisionHubOnStartup");
+        var allowHeavyRefresh = configuration.GetValue<bool?>("DatabaseInitialization:AllowSupplierDecisionHeavyRefreshInInitializer") ?? false;
 
         if (runFullOnStartup)
         {
-            await BuildSupplierDecisionHubObjectsAsync(connectionString, logger, databaseLabel, "startup");
+            await BuildSupplierDecisionHubObjectsAsync(connectionString, logger, databaseLabel, "startup", allowHeavyRefresh);
             return;
         }
 
-        _ = Task.Run(() => BuildSupplierDecisionHubObjectsAsync(connectionString, logger, databaseLabel, "background"));
+        _ = Task.Run(() => BuildSupplierDecisionHubObjectsAsync(connectionString, logger, databaseLabel, "background", allowHeavyRefresh));
     }
 
     private static async Task BuildSupplierDecisionHubObjectsAsync(
         string connectionString,
         ILogger logger,
         string databaseLabel,
-        string mode)
+        string mode,
+        bool allowHeavyRefresh)
     {
         await using var lockConnection = new NpgsqlConnection(connectionString);
         var lockAcquired = false;
@@ -438,8 +445,18 @@ public static class DatabaseInitializer
                     mode,
                     databaseLabel);
 
-                await RefreshSupplierDecisionHubCachesAsync(lockConnection, logger, databaseLabel, mode);
-                cachesRefreshed = true;
+                if (allowHeavyRefresh)
+                {
+                    await RefreshSupplierDecisionHubCachesAsync(lockConnection, logger, databaseLabel, mode);
+                    cachesRefreshed = true;
+                }
+                else
+                {
+                    logger.LogInformation(
+                        "[{Mode}] Supplier decision cache refresh skipped for {DatabaseLabel}: heavy refresh is disabled in initializer. NightlyAnalyticsRefreshWorker is the refresh owner.",
+                        mode,
+                        databaseLabel);
+                }
             }
             else
             {
@@ -449,9 +466,16 @@ public static class DatabaseInitializer
                     databaseLabel);
             }
 
-            if (!cachesRefreshed && await AreSupplierDecisionHubCachesReadyAsync(connectionString))
+            if (!cachesRefreshed && allowHeavyRefresh && await AreSupplierDecisionHubCachesReadyAsync(connectionString))
             {
                 await RefreshSupplierDecisionHubCachesAsync(lockConnection, logger, databaseLabel, mode);
+            }
+            else if (!allowHeavyRefresh && await AreSupplierDecisionHubCachesReadyAsync(connectionString))
+            {
+                logger.LogInformation(
+                    "[{Mode}] Supplier decision cache refresh skipped for {DatabaseLabel}: web/startup initializer is schema-only. Use NightlyAnalyticsRefreshWorker or an explicit maintenance run for heavy refresh.",
+                    mode,
+                    databaseLabel);
             }
 
             await LogSupplierDecisionHubCacheCountsAsync(lockConnection, logger, databaseLabel, mode);
@@ -498,21 +522,53 @@ public static class DatabaseInitializer
                 continue;
             }
 
+            var canRefreshConcurrently = await CanRefreshPublicMaterializedViewConcurrentlyAsync(connection, materializedView);
+            var refreshSql = canRefreshConcurrently
+                ? $"REFRESH MATERIALIZED VIEW CONCURRENTLY public.{materializedView};"
+                : $"REFRESH MATERIALIZED VIEW public.{materializedView};";
+            var refreshMode = canRefreshConcurrently ? "CONCURRENTLY" : "blocking";
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             await using var command = new NpgsqlCommand(
-                $"REFRESH MATERIALIZED VIEW public.{materializedView};",
+                refreshSql,
                 connection);
             command.CommandTimeout = BootstrapCommandTimeoutSeconds;
             await command.ExecuteNonQueryAsync();
             stopwatch.Stop();
 
             logger.LogInformation(
-                "[{Mode}] Refreshed supplier decision cache {DatabaseLabel}:public.{MaterializedView} in {ElapsedMs}ms.",
+                "[{Mode}] Refreshed supplier decision cache {DatabaseLabel}:public.{MaterializedView} using {RefreshMode} in {ElapsedMs}ms.",
                 mode,
                 databaseLabel,
                 materializedView,
+                refreshMode,
                 stopwatch.ElapsedMilliseconds);
         }
+    }
+
+    private static async Task<bool> CanRefreshPublicMaterializedViewConcurrentlyAsync(
+        NpgsqlConnection connection,
+        string relationName)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_class mv
+                JOIN pg_namespace ns ON ns.oid = mv.relnamespace
+                JOIN pg_index idx ON idx.indrelid = mv.oid
+                WHERE ns.nspname = 'public'
+                  AND mv.relname = @relationName
+                  AND mv.relkind = 'm'
+                  AND idx.indisunique
+                  AND idx.indisvalid
+                  AND idx.indpred IS NULL
+                  AND idx.indexprs IS NULL
+            );
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("relationName", relationName);
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
     }
 
     private static async Task<bool> IsPublicMaterializedViewAsync(

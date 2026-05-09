@@ -513,16 +513,25 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             var refreshSw = Stopwatch.StartNew();
             try
             {
-                var refreshSql = _options.RefreshConcurrently
+                var canRefreshConcurrently = _options.RefreshConcurrently
+                    && await CanRefreshMaterializedViewConcurrentlyAsync(connection, schema, rel, ct);
+                var refreshSql = canRefreshConcurrently
                     ? $"REFRESH MATERIALIZED VIEW CONCURRENTLY {quoted};"
                     : $"REFRESH MATERIALIZED VIEW {quoted};";
+                var refreshMode = canRefreshConcurrently ? "CONCURRENTLY" : "blocking";
+
+                if (_options.RefreshConcurrently && !canRefreshConcurrently)
+                {
+                    warnings.Add($"Concurrent refresh unavailable ({sourceLabel}) for {schema}.{rel}; falling back to blocking refresh in worker process.");
+                }
 
                 await ExecuteNonQueryAsync(connection, refreshSql, _options.CommandTimeoutSeconds, ct);
                 refreshSw.Stop();
                 _logger.LogInformation(
-                    "ðŸŒ™ Refreshed {Scope}/{Relation} in {DurationMs}ms",
+                    "ðŸŒ™ Refreshed {Scope}/{Relation} using {RefreshMode} in {DurationMs}ms",
                     sourceLabel,
                     $"{schema}.{rel}",
+                    refreshMode,
                     refreshSw.Elapsed.TotalMilliseconds);
             }
             catch (PostgresException ex) when (ex.SqlState == "0A000")
@@ -659,6 +668,35 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         cmd.Parameters.AddWithValue("name", name);
         var result = await cmd.ExecuteScalarAsync(ct);
         return result is not null;
+    }
+
+    private static async Task<bool> CanRefreshMaterializedViewConcurrentlyAsync(
+        NpgsqlConnection connection,
+        string schema,
+        string name,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_class mv
+                JOIN pg_namespace ns ON ns.oid = mv.relnamespace
+                JOIN pg_index idx ON idx.indrelid = mv.oid
+                WHERE ns.nspname = @schema
+                  AND mv.relname = @name
+                  AND mv.relkind = 'm'
+                  AND idx.indisunique
+                  AND idx.indisvalid
+                  AND idx.indpred IS NULL
+                  AND idx.indexprs IS NULL
+            );
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("schema", schema);
+        cmd.Parameters.AddWithValue("name", name);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is true;
     }
 
     private static async Task<bool> IsVacuumableRelationAsync(NpgsqlConnection connection, string schema, string name, CancellationToken ct)
