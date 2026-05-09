@@ -12,6 +12,13 @@ namespace Infrastructure.Services
 {
     public class DbErrorStore : IErrorStore
     {
+        private const int MessageMaxLength = 2000;
+        private const int ExceptionTypeMaxLength = 500;
+        private const int StackTraceMaxLength = 4000;
+        private const int PathMaxLength = 1000;
+        private const int UserNameMaxLength = 200;
+        private const int ClientAppMaxLength = 1000;
+
         private readonly IDbContextFactory<TrendplusDbContext> _dbFactory;
         private readonly ILogger<DbErrorStore> _logger;
 
@@ -72,6 +79,7 @@ namespace Infrastructure.Services
             {
                 using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
                 record.Timestamp = record.Timestamp == default ? DateTime.UtcNow : record.Timestamp;
+                NormalizeForStorage(record);
                 db.Set<ErrorRecord>().Add(record);
                 await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -147,6 +155,26 @@ namespace Infrastructure.Services
             }
 
             return query;
+        }
+
+        private static void NormalizeForStorage(ErrorRecord record)
+        {
+            record.Message = Truncate(record.Message, MessageMaxLength) ?? string.Empty;
+            record.ExceptionType = Truncate(record.ExceptionType, ExceptionTypeMaxLength) ?? string.Empty;
+            record.StackTrace = Truncate(record.StackTrace, StackTraceMaxLength);
+            record.Path = Truncate(record.Path, PathMaxLength);
+            record.UserName = Truncate(record.UserName, UserNameMaxLength);
+            record.ClientApp = Truncate(record.ClientApp, ClientAppMaxLength);
+        }
+
+        private static string? Truncate(string? value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+            {
+                return value;
+            }
+
+            return value[..maxLength];
         }
     }
 }
