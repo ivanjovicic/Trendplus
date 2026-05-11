@@ -646,6 +646,18 @@ public static class SupplierDecisionHubEndpoints
     private static decimal Round2(decimal value) => decimal.Round(value, 2);
     private static decimal Round4(decimal value) => decimal.Round(value, 4);
 
+    private static string NormalizeSupplierName(int supplierId, string supplierName)
+    {
+        if (!string.IsNullOrWhiteSpace(supplierName))
+        {
+            return supplierName.Trim();
+        }
+
+        return supplierId > 0
+            ? $"Dobavljač #{supplierId.ToString(CultureInfo.InvariantCulture)}"
+            : "Nepoznat dobavljač";
+    }
+
     private static async Task<List<SupplierScoreRow>> QuerySupplierRowsAsync(
         string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
@@ -746,9 +758,12 @@ public static class SupplierDecisionHubEndpoints
 
             while (await reader.ReadAsync(ct))
             {
+                var supplierId = GetInt32(reader, "supplier_id");
+                var supplierName = NormalizeSupplierName(supplierId, GetString(reader, "supplier_name"));
+
                 results.Add(new SupplierScoreRow(
-                    GetInt32(reader, "supplier_id"),
-                    GetString(reader, "supplier_name"),
+                    supplierId,
+                    supplierName,
                     GetDateTime(reader, "period_from"),
                     GetDateTime(reader, "period_to"),
                     GetDecimal(reader, "revenue"),
@@ -990,6 +1005,7 @@ SELECT
         var mvName = SelectDecisionScoreMv(windowDays);
         var parameters = new List<NpgsqlParameter>();
         var where = new StringBuilder("WHERE 1 = 1");
+        where.Append(" AND ds.revenue > 0");
         var markdownSelect = capabilities.HasMarkdownDependencyCache
             ? """
     COALESCE(md.markdown_revenue_share, 0) AS markdown_revenue_share,
@@ -1555,6 +1571,7 @@ FROM final_suppliers;
         List<NpgsqlParameter> parameters)
     {
         var where = new StringBuilder("WHERE 1 = 1");
+        where.Append(" AND sr.revenue > 0");
 
         if (filters.MinRevenue.HasValue)
         {
