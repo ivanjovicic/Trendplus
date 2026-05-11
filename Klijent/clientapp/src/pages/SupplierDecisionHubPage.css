@@ -468,3 +468,97 @@
     flex: 1;
   }
 }
+
+/* Additional styles for new help elements */
+.sdh-decision-help {
+  background: var(--surface-darker, var(--theme-color-f9fafb, #f9fafb));
+  border: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
+  border-radius: 8px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.sdh-decision-help summary {
+  color: var(--accent-primary, var(--theme-color-2563eb, #2563eb));
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  user-select: none;
+}
+
+.sdh-decision-help summary:hover {
+  text-decoration: underline;
+}
+
+.sdh-decision-help summary:focus-visible {
+  outline: 2px solid var(--accent-primary, var(--theme-color-2563eb, #2563eb));
+  outline-offset: 2px;
+}
+
+.sdh-decision-help-content {
+  color: var(--text-secondary, var(--theme-color-6b7280, #6b7280));
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-default, var(--theme-color-e5e7eb, #e5e7eb));
+}
+
+.sdh-decision-help-content p {
+  margin: 8px 0;
+}
+
+.sdh-decision-help-content ul {
+  list-style: disc inside;
+  margin: 8px 0;
+  padding: 0;
+}
+
+.sdh-decision-help-content li {
+  margin: 4px 0 4px 16px;
+}
+
+.sdh-decision-no-data-help {
+  background: var(--warning-soft, rgba(251, 191, 36, 0.08));
+  border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.25));
+  border-radius: 6px;
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.sdh-decision-no-data-help p {
+  color: var(--warning, #fcd34d);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.sdh-decision-no-data-help ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sdh-decision-no-data-help li {
+  background: var(--warning-soft, rgba(251, 191, 36, 0.04));
+  border-radius: 4px;
+  color: var(--warning, #fcd34d);
+  font-size: 12px;
+  margin: 4px 0;
+  padding: 6px 8px;
+}
+
+.sdh-decision-table-subtitle {
+  color: var(--text-secondary, var(--theme-color-9ca3af, #9ca3af)) !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  margin: 4px 0 8px !important;
+}
+
+.sdh-decision-table-helper {
+  color: var(--text-secondary, var(--theme-color-9ca3af, #9ca3af));
+  display: block;
+  font-size: 12px;
+  margin-top: 6px;
+}
