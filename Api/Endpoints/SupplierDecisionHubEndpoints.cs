@@ -682,6 +682,22 @@ public static class SupplierDecisionHubEndpoints
             // Return empty results until the first 018 batches complete.
             return [];
         }
+        catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
+        {
+            // Live query timed out — return empty rather than a 500.
+            Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
+                dbSource: "analytics",
+                commandKind: "ExecuteReader",
+                sql: sql,
+                parameters: null,
+                durationMs: -1,
+                succeeded: false,
+                rowsAffected: null,
+                exception: ex,
+                requestId: Application.Logging.RequestLogContext.Current.RequestId,
+                traceId: Application.Logging.RequestLogContext.Current.TraceId);
+            return [];
+        }
     }
 
     private static async Task<List<SupplierScoreRow>> ExecuteSupplierRowsQueryAsync(
@@ -693,6 +709,7 @@ public static class SupplierDecisionHubEndpoints
         await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
 
         await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = 25; // hard limit: return empty/throw fast rather than hanging
         command.Parameters.AddRange(parameters.ToArray());
 
         var results = new List<SupplierScoreRow>();
@@ -784,13 +801,11 @@ public static class SupplierDecisionHubEndpoints
 
     private static bool CanUsePrecomputedDateRange(SupplierDecisionHubFilters filters)
     {
-        if (!filters.HasExplicitDateRange)
-        {
-            return true;
-        }
-
-        var inclusiveDays = (filters.ToDate.Date - filters.FromDate.Date).TotalDays + 1;
-        return inclusiveDays >= DefaultLookbackDays;
+        // The precomputed MV already filters by period_from/period_to overlap, so any explicit
+        // date range can be served from the cache.  The 180-day threshold was causing short
+        // ranges (e.g. last-30-days) to fall through to the live query, which times out on
+        // the analytics DB under normal load.
+        return true;
     }
 
     private sealed record PrecomputedQueryCapabilities(
