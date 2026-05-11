@@ -779,8 +779,27 @@
 
   /* ── Print table improvements ── */
 
-  /* Wider date column */
-  .daily-sales-table thead th.col-date {
+  /* Wider first 4 columns */
+  .daily-sales-table thead th.col-date,
+  .daily-sales-table tbody td:nth-child(1) {
+    min-width: 150px;
+    width: 150px;
+  }
+
+  .daily-sales-table thead th.col-shift1,
+  .daily-sales-table tbody td:nth-child(2) {
+    min-width: 120px;
+    width: 120px;
+  }
+
+  .daily-sales-table thead th.col-shift2,
+  .daily-sales-table tbody td:nth-child(3) {
+    min-width: 120px;
+    width: 120px;
+  }
+
+  .daily-sales-table thead th.col-revenue,
+  .daily-sales-table tbody td:nth-child(4) {
     min-width: 130px;
     width: 130px;
   }
@@ -788,16 +807,16 @@
   /* Bigger header fonts */
   .daily-sales-table thead th,
   .daily-sales-table thead th button {
-    font-size: 1rem;
+    font-size: 1.15rem;
     font-weight: 700;
   }
 
-  /* +50% row height via padding (header: 0.6rem → 0.9rem, cells: 0.55rem 0.6rem → 0.83rem 0.9rem) */
+  /* +100% row height vs original (×1.5 of previous 0.9rem/0.83rem) */
   .daily-sales-table thead th {
-    padding: 0.9rem 0.6rem;
+    padding: 1.35rem 0.6rem;
   }
 
   .daily-sales-table td {
-    padding: 0.83rem 0.9rem;
+    padding: 1.25rem 0.9rem;
   }
 }

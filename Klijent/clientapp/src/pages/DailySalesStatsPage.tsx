@@ -1308,19 +1308,19 @@ export default function DailySalesStatsPage() {
                         Datum{sortMarker("date", sortKey, sortDir)}
                       </button>
                     </th>
-                    <th className="align-right">
+                    <th className="align-right col-shift1">
                       <button type="button" onClick={() => handleSort("firstShiftTotalItems")}>
                         Prva smena{sortMarker("firstShiftTotalItems", sortKey, sortDir)}{" "}
                         <InfoTip text="Suma komada prodatih od 06:00 do 13:59." />
                       </button>
                     </th>
-                    <th className="align-right">
+                    <th className="align-right col-shift2">
                       <button type="button" onClick={() => handleSort("secondShiftTotalItems")}>
                         Druga smena{sortMarker("secondShiftTotalItems", sortKey, sortDir)}{" "}
                         <InfoTip text="Suma komada prodatih od 14:00 do 21:59." />
                       </button>
                     </th>
-                    <th className="align-right">
+                    <th className="align-right col-revenue">
                       <button type="button" onClick={() => handleSort("totalRevenue")}>
                         Prihod dana{sortMarker("totalRevenue", sortKey, sortDir)}
                       </button>
