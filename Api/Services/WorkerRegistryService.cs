@@ -71,7 +71,17 @@ public sealed class WorkerRegistryService
                 registerAccessImportWorkerInWebProcess);
             var scheduleEnabled = settings?.IsScheduleEnabled ?? true;
             var isManuallyStopped = settings?.IsManuallyStopped ?? false;
-            var configuredButNotRunning = !isRegisteredInCurrentProcess;
+
+            // Web-eligible workers (RegistersInWebProcess=true, no AccessImport flag) are only
+            // registered as IHostedService when Workers__Enabled=true. If the global switch is off,
+            // the worker is not actually running → show ConfiguredButNotRunning, not Unknown.
+            var webEligibleButWorkersDisabled =
+                processType == ProcessType.Web
+                && definition.RegistersInWebProcess
+                && !definition.RequiresWebAccessImportFlag
+                && !_runtimeControlService.IsEnabled;
+
+            var configuredButNotRunning = !isRegisteredInCurrentProcess || webEligibleButWorkersDisabled;
 
             var status = ResolveStatus(health, isManuallyStopped, scheduleEnabled, configuredButNotRunning);
             var nextRunAt = ResolveNextRunAt(definition.WorkerName, nowUtc, scheduleEnabled, configuredButNotRunning);
