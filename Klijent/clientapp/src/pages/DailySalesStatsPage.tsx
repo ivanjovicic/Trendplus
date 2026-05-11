@@ -1303,7 +1303,7 @@ export default function DailySalesStatsPage() {
               <table className="daily-sales-table">
                 <thead>
                   <tr>
-                    <th>
+                    <th className="col-date">
                       <button type="button" onClick={() => handleSort("date")}>
                         Datum{sortMarker("date", sortKey, sortDir)}
                       </button>

@@ -776,4 +776,28 @@
     display: block !important;
     color: var(--text-primary) !important;
   }
+
+  /* ── Print table improvements ── */
+
+  /* Wider date column */
+  .daily-sales-table thead th.col-date {
+    min-width: 130px;
+    width: 130px;
+  }
+
+  /* Bigger header fonts */
+  .daily-sales-table thead th,
+  .daily-sales-table thead th button {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  /* +50% row height via padding (header: 0.6rem → 0.9rem, cells: 0.55rem 0.6rem → 0.83rem 0.9rem) */
+  .daily-sales-table thead th {
+    padding: 0.9rem 0.6rem;
+  }
+
+  .daily-sales-table td {
+    padding: 0.83rem 0.9rem;
+  }
 }
