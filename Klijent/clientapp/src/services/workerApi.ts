@@ -39,11 +39,26 @@ export interface WorkerActionResponse {
   message: string;
 }
 
+async function handleActionResponse(response: Response): Promise<WorkerActionResponse> {
+  if (response.ok) {
+    return response.json() as Promise<WorkerActionResponse>;
+  }
+  // Try to extract a meaningful error from the JSON body
+  let detail = response.statusText;
+  try {
+    const body = await response.json() as { error?: string; message?: string };
+    detail = body.error ?? body.message ?? detail;
+  } catch {
+    // ignore parse errors
+  }
+  throw new Error(detail || `HTTP ${response.status}`);
+}
+
 class WorkerApi {
   async getWorkersConfiguration(): Promise<WorkerConfigurationResponse> {
     const response = await fetch(apiUrl("/api/workers/configuration"));
     if (!response.ok) {
-      throw new Error(`Failed to fetch workers configuration: ${response.statusText}`);
+      throw new Error(`Učitavanje radnika nije uspelo: ${response.statusText}`);
     }
     return response.json();
   }
@@ -52,51 +67,37 @@ class WorkerApi {
     const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/start`), {
       method: "POST",
     });
-    if (!response.ok) {
-      throw new Error(`Failed to start worker: ${response.statusText}`);
-    }
-    return response.json();
+    return handleActionResponse(response);
   }
 
   async stopWorker(workerName: string): Promise<WorkerActionResponse> {
     const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/stop`), {
       method: "POST",
     });
-    if (!response.ok) {
-      throw new Error(`Failed to stop worker: ${response.statusText}`);
-    }
-    return response.json();
+    return handleActionResponse(response);
   }
 
   async restartWorker(workerName: string): Promise<WorkerActionResponse> {
     const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/restart`), {
       method: "POST",
     });
-    if (!response.ok) {
-      throw new Error(`Failed to restart worker: ${response.statusText}`);
-    }
-    return response.json();
+    return handleActionResponse(response);
   }
 
   async enableSchedule(workerName: string): Promise<WorkerActionResponse> {
     const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/schedule/enable`), {
       method: "POST",
     });
-    if (!response.ok) {
-      throw new Error(`Failed to enable schedule: ${response.statusText}`);
-    }
-    return response.json();
+    return handleActionResponse(response);
   }
 
   async disableSchedule(workerName: string): Promise<WorkerActionResponse> {
     const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/schedule/disable`), {
       method: "POST",
     });
-    if (!response.ok) {
-      throw new Error(`Failed to disable schedule: ${response.statusText}`);
-    }
-    return response.json();
+    return handleActionResponse(response);
   }
 }
 
 export const workerApi = new WorkerApi();
+

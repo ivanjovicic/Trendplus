@@ -48,6 +48,52 @@ public sealed class WorkerConfigurationEndpointsTests
     }
 
     [Fact]
+    public async Task StartWorker_AllowsRequest_WhenNoAdminKeyIsConfigured()
+    {
+        // When ADMIN_API_KEY / Admin:ApiKey is not set, the endpoint is open (internal tool).
+        await using var host = await WorkerConfigurationTestHost.CreateAsync(withAdminKey: false);
+
+        using var response = await host.Client.PostAsync("/api/workers/TrendIngestionWorker/start", content: null);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task StartWorker_WithScheduleEnabled_SetsManualRunRequest()
+    {
+        // "Pokreni odmah" must work even when the schedule is enabled.
+        await using var host = await WorkerConfigurationTestHost.CreateAsync();
+        const string workerName = "NightlyAnalyticsRefreshWorker";
+
+        // Schedule is enabled by default; do NOT disable it first.
+        using (var scope = host.App.Services.CreateScope())
+        {
+            var policyService = scope.ServiceProvider.GetRequiredService<WorkerRuntimePolicyService>();
+            var before = await policyService.GetPolicyAsync(workerName);
+            Assert.True(before.IsScheduleEnabled, "Precondition: schedule should be enabled for this test.");
+        }
+
+        var startRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/workers/{workerName}/start");
+        startRequest.Headers.Add("X-Admin-Key", WorkerConfigurationTestHost.AdminApiKey);
+        using var startResponse = await host.Client.SendAsync(startRequest);
+        startResponse.EnsureSuccessStatusCode();
+
+        using var scope2 = host.App.Services.CreateScope();
+        var policy = await scope2.ServiceProvider.GetRequiredService<WorkerRuntimePolicyService>().GetPolicyAsync(workerName);
+        Assert.True(policy.ManualRunRequested, "ManualRunRequested should be true after start with schedule enabled.");
+        Assert.True(policy.CanRunNow, "CanRunNow should be true.");
+    }
+
+    [Fact]
+    public async Task StartWorker_ReturnsNotFound_ForUnknownWorkerName()
+    {
+        await using var host = await WorkerConfigurationTestHost.CreateAsync();
+        var req = new HttpRequestMessage(HttpMethod.Post, "/api/workers/NonExistentWorkerXYZ/start");
+        req.Headers.Add("X-Admin-Key", WorkerConfigurationTestHost.AdminApiKey);
+        using var response = await host.Client.SendAsync(req);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ScheduleDisable_BlocksAutomaticRun_ManualStartStillAllowsSingleRun()
     {
         await using var host = await WorkerConfigurationTestHost.CreateAsync();
@@ -103,7 +149,7 @@ public sealed class WorkerConfigurationEndpointsTests
         public WebApplication App { get; }
         public HttpClient Client { get; }
 
-        public static async Task<WorkerConfigurationTestHost> CreateAsync()
+        public static async Task<WorkerConfigurationTestHost> CreateAsync(bool withAdminKey = true)
         {
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
@@ -111,13 +157,16 @@ public sealed class WorkerConfigurationEndpointsTests
             });
             builder.WebHost.UseTestServer();
 
-            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            var config = new Dictionary<string, string?>
             {
-                ["Admin:ApiKey"] = AdminApiKey,
                 ["PROCESS_TYPE"] = "worker",
                 ["Workers:Enabled"] = "true",
                 ["AccessImport:WorkerEnabled"] = "true"
-            });
+            };
+            if (withAdminKey)
+                config["Admin:ApiKey"] = AdminApiKey;
+
+            builder.Configuration.AddInMemoryCollection(config);
 
             builder.Services.AddRouting();
             builder.Services.AddLogging();

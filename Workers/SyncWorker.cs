@@ -95,7 +95,7 @@ namespace Workers
                     continue;
                 }
 
-                if (!policy.IsScheduleEnabled && policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
+                if (policy.ManualRunRequested && !string.IsNullOrWhiteSpace(policy.ManualRunToken))
                 {
                     manualRunRequested = await _runtimePolicyService.TryConsumeManualRunRequestAsync(
                         WorkerName,

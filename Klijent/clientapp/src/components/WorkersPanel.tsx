@@ -1,6 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { workerApi, type WorkerConfigurationItem } from "../services/workerApi";
-import { AlertCircle, CheckCircle2, Clock, Pause, Play, RefreshCw, RotateCcw } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Pause,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  CalendarCheck,
+  CalendarOff,
+} from "lucide-react";
+import "./WorkersPanel.css";
 
 interface WorkersPanelProps {
   refreshInterval?: number;
@@ -8,244 +19,331 @@ interface WorkersPanelProps {
 
 type WorkerAction = "start" | "stop" | "restart" | "enableSchedule" | "disableSchedule";
 
+type ActionMessages = Record<string, { type: "success" | "error"; text: string }>;
+
 export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 5000 }) => {
   const [workers, setWorkers] = useState<WorkerConfigurationItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [actionMessages, setActionMessages] = useState<ActionMessages>({});
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const actionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const fetchWorkers = async () => {
+  const setActionMessage = useCallback(
+    (workerName: string, type: "success" | "error", text: string) => {
+      setActionMessages((prev) => ({ ...prev, [workerName]: { type, text } }));
+      if (actionTimersRef.current[workerName]) clearTimeout(actionTimersRef.current[workerName]);
+      actionTimersRef.current[workerName] = setTimeout(
+        () => {
+          setActionMessages((prev) => {
+            const next = { ...prev };
+            delete next[workerName];
+            return next;
+          });
+        },
+        type === "success" ? 5000 : 8000,
+      );
+    },
+    [],
+  );
+
+  const fetchWorkers = useCallback(async (isManual = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (isManual) {
+        setLoading(true);
+        setLoadError(null);
+      }
       const response = await workerApi.getWorkersConfiguration();
       setWorkers(response.workers);
+      setLastRefreshedAt(new Date());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Greška pri učitavanju radnika.");
+      if (isManual) setLoadError(err instanceof Error ? err.message : "Greška pri učitavanju radnika.");
     } finally {
-      setLoading(false);
+      if (isManual) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    void fetchWorkers();
+    void fetchWorkers(true);
     const interval = window.setInterval(() => {
-      void fetchWorkers();
+      void fetchWorkers(false);
     }, refreshInterval);
-    return () => window.clearInterval(interval);
-  }, [refreshInterval]);
+    return () => {
+      window.clearInterval(interval);
+      Object.values(actionTimersRef.current).forEach(clearTimeout);
+    };
+  }, [fetchWorkers, refreshInterval]);
 
-  const runAction = async (worker: WorkerConfigurationItem, action: WorkerAction) => {
-    try {
-      setActionInProgress(`${worker.workerName}:${action}`);
-      setError(null);
-
-      let responseMessage = "";
-      switch (action) {
-        case "start":
-          responseMessage = (await workerApi.startWorker(worker.workerName)).message;
-          break;
-        case "stop":
-          responseMessage = (await workerApi.stopWorker(worker.workerName)).message;
-          break;
-        case "restart":
-          responseMessage = (await workerApi.restartWorker(worker.workerName)).message;
-          break;
-        case "enableSchedule":
-          responseMessage = (await workerApi.enableSchedule(worker.workerName)).message;
-          break;
-        case "disableSchedule":
-          responseMessage = (await workerApi.disableSchedule(worker.workerName)).message;
-          break;
+  const runAction = useCallback(
+    async (worker: WorkerConfigurationItem, action: WorkerAction) => {
+      const key = `${worker.workerName}:${action}`;
+      try {
+        setActionInProgress(key);
+        setActionMessages((prev) => {
+          const next = { ...prev };
+          delete next[worker.workerName];
+          return next;
+        });
+        let responseMessage = "";
+        switch (action) {
+          case "start":
+            responseMessage = (await workerApi.startWorker(worker.workerName)).message;
+            break;
+          case "stop":
+            responseMessage = (await workerApi.stopWorker(worker.workerName)).message;
+            break;
+          case "restart":
+            responseMessage = (await workerApi.restartWorker(worker.workerName)).message;
+            break;
+          case "enableSchedule":
+            responseMessage = (await workerApi.enableSchedule(worker.workerName)).message;
+            break;
+          case "disableSchedule":
+            responseMessage = (await workerApi.disableSchedule(worker.workerName)).message;
+            break;
+        }
+        setActionMessage(worker.workerName, "success", responseMessage || "Uspešno.");
+        await fetchWorkers(false);
+      } catch (err) {
+        setActionMessage(
+          worker.workerName,
+          "error",
+          err instanceof Error ? err.message : "Akcija nije uspela.",
+        );
+      } finally {
+        setActionInProgress(null);
       }
-
-      setSuccessMessage(responseMessage);
-      window.setTimeout(() => setSuccessMessage(null), 3000);
-      await fetchWorkers();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Akcija nije uspela.");
-    } finally {
-      setActionInProgress(null);
-    }
-  };
+    },
+    [fetchWorkers, setActionMessage],
+  );
 
   const statusClass = (status: string) => {
-    const normalized = status.toLowerCase();
-    if (normalized.includes("error")) return "bg-red-100 text-red-800";
-    if (normalized.includes("running") || normalized.includes("healthy")) return "bg-green-100 text-green-800";
-    if (normalized.includes("stopped") || normalized.includes("disabled")) return "bg-yellow-100 text-yellow-900";
-    if (normalized.includes("configuredbutnotrunning")) return "bg-gray-100 text-gray-700";
-    return "bg-gray-100 text-gray-800";
+    const n = status.toLowerCase();
+    if (n.includes("error")) return "wp-badge wp-badge--error";
+    if (n.includes("running") || n.includes("healthy")) return "wp-badge wp-badge--healthy";
+    if (n.includes("stopped") || n.includes("disabled") || n.includes("paused"))
+      return "wp-badge wp-badge--stopped";
+    return "wp-badge wp-badge--muted";
   };
 
   const statusIcon = (status: string) => {
-    const normalized = status.toLowerCase();
-    if (normalized.includes("error")) return <AlertCircle className="w-3 h-3" />;
-    if (normalized.includes("running") || normalized.includes("healthy")) return <CheckCircle2 className="w-3 h-3" />;
-    return <Clock className="w-3 h-3" />;
+    const n = status.toLowerCase();
+    if (n.includes("error")) return <AlertCircle className="wp-icon-xs" />;
+    if (n.includes("running") || n.includes("healthy")) return <CheckCircle2 className="wp-icon-xs" />;
+    return <Clock className="wp-icon-xs" />;
   };
 
   const formatDate = (raw?: string | null) => {
     if (!raw) return "-";
-    const date = new Date(raw);
-    if (Number.isNaN(date.getTime())) return raw;
-    return date.toLocaleString("sr-RS");
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return raw;
+    return d.toLocaleString("sr-RS");
   };
 
   const orderedWorkers = useMemo(
     () => [...workers].sort((a, b) => a.displayName.localeCompare(b.displayName)),
-    [workers]
+    [workers],
   );
 
   return (
-    <div className="workers-panel space-y-4">
-      <div className="flex justify-end">
+    <div className="workers-panel">
+      <div className="wp-toolbar">
+        <div className="wp-toolbar-left">
+          <span className="wp-count">
+            {orderedWorkers.length > 0 ? `${orderedWorkers.length} radnik(a)` : ""}
+          </span>
+          {lastRefreshedAt && (
+            <span className="wp-refreshed-at">
+              Osveženo: {lastRefreshedAt.toLocaleTimeString("sr-RS")}
+            </span>
+          )}
+        </div>
         <button
-          onClick={() => void fetchWorkers()}
+          type="button"
+          onClick={() => void fetchWorkers(true)}
           disabled={loading}
-          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 inline-flex items-center gap-2"
+          className="wp-btn wp-btn--primary"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`wp-icon-sm ${loading ? "wp-spin" : ""}`} />
           Osveži
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded p-3 flex items-center gap-2 text-red-700 text-sm">
-          <AlertCircle className="w-4 h-4" />
-          {error}
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 rounded p-3 flex items-center gap-2 text-green-700 text-sm">
-          <CheckCircle2 className="w-4 h-4" />
-          {successMessage}
+      {loadError && (
+        <div className="wp-alert wp-alert--error">
+          <AlertCircle className="wp-icon-sm" />
+          {loadError}
         </div>
       )}
 
       {loading && orderedWorkers.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">Učitavanje radnika...</div>
+        <div className="wp-empty">Učitavanje radnika...</div>
       ) : orderedWorkers.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">Nema registrovanih radnika.</div>
+        <div className="wp-empty">Nema registrovanih radnika.</div>
       ) : (
-        <div className="workers-table-wrapper overflow-x-auto">
-          <table className="workers-table w-full border-collapse border border-gray-300">
-            <thead className="bg-gray-100">
+        <div className="wp-table-scroll">
+          <table className="wp-table">
+            <thead>
               <tr>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Naziv</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Status</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Raspored</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Poslednji heartbeat</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Poslednje pokretanje</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Sledeće pokretanje</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Poslednja greška</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold">Akcije</th>
+                <th className="wp-th wp-col-name">Naziv</th>
+                <th className="wp-th wp-col-status">Status</th>
+                <th className="wp-th wp-col-schedule">Raspored</th>
+                <th className="wp-th wp-col-heartbeat">Heartbeat</th>
+                <th className="wp-th wp-col-lastrun">Poslednje pokretanje</th>
+                <th className="wp-th wp-col-nextrun">Sledeće pokretanje</th>
+                <th className="wp-th wp-col-success">Uspeh</th>
+                <th className="wp-th wp-col-failure">Neuspeh</th>
+                <th className="wp-th wp-col-error">Greška</th>
+                <th className="wp-th wp-col-actions wp-col-sticky">Akcije</th>
               </tr>
             </thead>
             <tbody>
               {orderedWorkers.map((worker) => {
-                const actionKey = (action: WorkerAction) => `${worker.workerName}:${action}`;
-                const runtimeDisabledReason = !worker.isRuntimeControllable
-                  ? worker.runtimeControlReason ?? "Akcija nije podržana za ovaj worker."
+                const actionKey = (a: WorkerAction) => `${worker.workerName}:${a}`;
+                const isRunning = (a: WorkerAction) => actionInProgress === actionKey(a);
+                const anyRunning = (
+                  ["start", "stop", "restart", "enableSchedule", "disableSchedule"] as WorkerAction[]
+                ).some((a) => isRunning(a));
+                const runtimeDisabled = !worker.isRuntimeControllable
+                  ? (worker.runtimeControlReason ?? "Akcija nije podržana.")
                   : undefined;
-                const scheduleDisabledReason = !worker.isScheduleControllable
-                  ? worker.scheduleControlReason ?? "Akcija nije podržana za ovaj worker."
+                const scheduleDisabled = !worker.isScheduleControllable
+                  ? (worker.scheduleControlReason ?? "Akcija nije podržana.")
                   : undefined;
-
+                const msg = actionMessages[worker.workerName];
                 return (
-                  <tr key={worker.workerName} className="hover:bg-gray-50 align-top">
-                    <td className="border border-gray-300 px-3 py-2 text-sm">
-                      <div className="font-semibold">{worker.displayName}</div>
-                      <div className="text-xs text-gray-500">{worker.workerName}</div>
-                      <div className="text-xs text-gray-500 mt-1">{worker.description}</div>
+                  <tr key={worker.workerName} className="wp-row">
+                    <td className="wp-td wp-col-name">
+                      <div className="wp-worker-name">{worker.displayName}</div>
+                      <div className="wp-worker-key">{worker.workerName}</div>
+                      <div className="wp-worker-desc">{worker.description}</div>
                       {worker.isConfiguredButNotRunning && (
-                        <div className="text-xs text-amber-700 mt-1">Konfigurisano, ali ne radi u ovom procesu.</div>
+                        <div className="wp-worker-note wp-worker-note--warn">
+                          Konfigurisano, ali ne radi u ovom procesu.
+                        </div>
+                      )}
+                      {worker.isManuallyStopped && (
+                        <div className="wp-worker-note wp-worker-note--stopped">Ručno zaustavljen.</div>
                       )}
                     </td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1 ${statusClass(worker.status)}`}>
+                    <td className="wp-td wp-col-status">
+                      <span className={statusClass(worker.status)}>
                         {statusIcon(worker.status)}
                         {worker.status}
                       </span>
                     </td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm">
+                    <td className="wp-td wp-col-schedule">
                       {worker.scheduleEnabled ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Omogućen</span>
+                        <span className="wp-badge wp-badge--schedule-on">Omogućen</span>
                       ) : (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Onemogućen</span>
+                        <span className="wp-badge wp-badge--schedule-off">Onemogućen</span>
                       )}
                     </td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">{formatDate(worker.lastHeartbeat)}</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">{formatDate(worker.lastRunAt)}</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">{formatDate(worker.nextRunAt)}</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">
+                    <td className="wp-td wp-col-heartbeat wp-td--date">{formatDate(worker.lastHeartbeat)}</td>
+                    <td className="wp-td wp-col-lastrun wp-td--date">{formatDate(worker.lastRunAt)}</td>
+                    <td className="wp-td wp-col-nextrun wp-td--date">{formatDate(worker.nextRunAt)}</td>
+                    <td className="wp-td wp-col-success wp-td--date">{formatDate(worker.lastSuccessAt)}</td>
+                    <td className="wp-td wp-col-failure wp-td--date">{formatDate(worker.lastFailureAt)}</td>
+                    <td className="wp-td wp-col-error">
                       {worker.lastError ? (
-                        <span className="text-red-700">{worker.lastError}</span>
+                        <span className="wp-error-text" title={worker.lastError}>
+                          {worker.lastError.length > 80
+                            ? `${worker.lastError.slice(0, 80)}…`
+                            : worker.lastError}
+                        </span>
                       ) : (
-                        "-"
+                        <span className="wp-muted">-</span>
                       )}
                     </td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm">
-                      <div className="flex flex-wrap gap-2">
+                    <td className="wp-td wp-col-actions wp-col-sticky">
+                      {msg && (
+                        <div className={`wp-action-msg wp-action-msg--${msg.type}`}>
+                          {msg.type === "success" ? (
+                            <CheckCircle2 className="wp-icon-xs" />
+                          ) : (
+                            <AlertCircle className="wp-icon-xs" />
+                          )}
+                          {msg.text}
+                        </div>
+                      )}
+                      <div className="wp-actions">
                         <button
                           type="button"
                           onClick={() => void runAction(worker, "start")}
-                          disabled={!!runtimeDisabledReason || actionInProgress === actionKey("start")}
-                          title={runtimeDisabledReason}
-                          className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 inline-flex items-center gap-1"
+                          disabled={!!runtimeDisabled || anyRunning}
+                          title={runtimeDisabled ?? "Pokreni odmah"}
+                          className="wp-btn wp-btn--run"
                         >
-                          <Play className="w-3 h-3" />
-                          Pokreni odmah
+                          {isRunning("start") ? (
+                            <RefreshCw className="wp-icon-xs wp-spin" />
+                          ) : (
+                            <Play className="wp-icon-xs" />
+                          )}
+                          {isRunning("start") ? "Pokretanje..." : "Pokreni odmah"}
                         </button>
                         <button
                           type="button"
                           onClick={() => void runAction(worker, "stop")}
-                          disabled={!!runtimeDisabledReason || actionInProgress === actionKey("stop")}
-                          title={runtimeDisabledReason}
-                          className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-1"
+                          disabled={!!runtimeDisabled || anyRunning}
+                          title={runtimeDisabled ?? "Zaustavi"}
+                          className="wp-btn wp-btn--stop"
                         >
-                          <Pause className="w-3 h-3" />
-                          Zaustavi
+                          {isRunning("stop") ? (
+                            <RefreshCw className="wp-icon-xs wp-spin" />
+                          ) : (
+                            <Pause className="wp-icon-xs" />
+                          )}
+                          {isRunning("stop") ? "Zaustavljanje..." : "Zaustavi"}
                         </button>
                         <button
                           type="button"
                           onClick={() => void runAction(worker, "restart")}
-                          disabled={!!runtimeDisabledReason || actionInProgress === actionKey("restart")}
-                          title={runtimeDisabledReason}
-                          className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 inline-flex items-center gap-1"
+                          disabled={!!runtimeDisabled || anyRunning}
+                          title={runtimeDisabled ?? "Restartuj"}
+                          className="wp-btn wp-btn--restart"
                         >
-                          <RotateCcw className="w-3 h-3" />
-                          Restartuj
+                          {isRunning("restart") ? (
+                            <RefreshCw className="wp-icon-xs wp-spin" />
+                          ) : (
+                            <RotateCcw className="wp-icon-xs" />
+                          )}
+                          {isRunning("restart") ? "Restartovanje..." : "Restartuj"}
                         </button>
                         {worker.scheduleEnabled ? (
                           <button
                             type="button"
                             onClick={() => void runAction(worker, "disableSchedule")}
-                            disabled={!!scheduleDisabledReason || actionInProgress === actionKey("disableSchedule")}
-                            title={scheduleDisabledReason}
-                            className="px-2 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50"
+                            disabled={!!scheduleDisabled || anyRunning}
+                            title={scheduleDisabled ?? "Onemogući raspored"}
+                            className="wp-btn wp-btn--sched-off"
                           >
-                            Onemogući raspored
+                            {isRunning("disableSchedule") ? (
+                              <RefreshCw className="wp-icon-xs wp-spin" />
+                            ) : (
+                              <CalendarOff className="wp-icon-xs" />
+                            )}
+                            {isRunning("disableSchedule") ? "..." : "Onemogući raspored"}
                           </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => void runAction(worker, "enableSchedule")}
-                            disabled={!!scheduleDisabledReason || actionInProgress === actionKey("enableSchedule")}
-                            title={scheduleDisabledReason}
-                            className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                            disabled={!!scheduleDisabled || anyRunning}
+                            title={scheduleDisabled ?? "Omogući raspored"}
+                            className="wp-btn wp-btn--sched-on"
                           >
-                            Omogući raspored
+                            {isRunning("enableSchedule") ? (
+                              <RefreshCw className="wp-icon-xs wp-spin" />
+                            ) : (
+                              <CalendarCheck className="wp-icon-xs" />
+                            )}
+                            {isRunning("enableSchedule") ? "..." : "Omogući raspored"}
                           </button>
                         )}
                       </div>
-                      {runtimeDisabledReason && (
-                        <div className="mt-2 text-xs text-gray-500">{runtimeDisabledReason}</div>
-                      )}
-                      {!runtimeDisabledReason && scheduleDisabledReason && (
-                        <div className="mt-2 text-xs text-gray-500">{scheduleDisabledReason}</div>
+                      {(runtimeDisabled ?? scheduleDisabled) && (
+                        <div className="wp-disabled-reason">{runtimeDisabled ?? scheduleDisabled}</div>
                       )}
                     </td>
                   </tr>
@@ -257,9 +355,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
       )}
 
       {orderedWorkers.length > 0 && (
-        <div className="text-xs text-gray-500 mt-2">
-          Prikazano {orderedWorkers.length} radnik(a). Automatsko osvežavanje na {refreshInterval / 1000}s.
-        </div>
+        <div className="wp-footer">Auto-osvežavanje svaki {refreshInterval / 1000}s.</div>
       )}
     </div>
   );

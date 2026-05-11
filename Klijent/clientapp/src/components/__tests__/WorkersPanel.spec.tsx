@@ -96,7 +96,8 @@ describe("WorkersPanel", () => {
 
     expect(await screen.findByText("Access Import")).toBeInTheDocument();
     expect(await screen.findByText("Readiness Warmup")).toBeInTheDocument();
-    expect(screen.getByText("Prikazano 2 radnik(a). Automatsko osvežavanje na 5s.")).toBeInTheDocument();
+    expect(screen.getByText("2 radnik(a)")).toBeInTheDocument();
+    expect(screen.getByText("Auto-osvežavanje svaki 5s.")).toBeInTheDocument();
   });
 
   it("uses Serbian labels and keeps one refresh button", async () => {
@@ -107,10 +108,10 @@ describe("WorkersPanel", () => {
     expect(screen.getByText("Naziv")).toBeInTheDocument();
     expect(screen.getByText("Status")).toBeInTheDocument();
     expect(screen.getByText("Raspored")).toBeInTheDocument();
-    expect(screen.getByText("Poslednji heartbeat")).toBeInTheDocument();
+    expect(screen.getByText("Heartbeat")).toBeInTheDocument();
     expect(screen.getByText("Poslednje pokretanje")).toBeInTheDocument();
     expect(screen.getByText("Sledeće pokretanje")).toBeInTheDocument();
-    expect(screen.getByText("Poslednja greška")).toBeInTheDocument();
+    expect(screen.getByText("Greška")).toBeInTheDocument();
     expect(screen.getByText("Akcije")).toBeInTheDocument();
 
     expect(screen.getAllByRole("button", { name: "Osveži" })).toHaveLength(1);

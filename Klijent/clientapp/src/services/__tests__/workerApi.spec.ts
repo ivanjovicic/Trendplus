@@ -98,16 +98,12 @@ describe("workerApi", () => {
   it("throws when configuration request fails", async () => {
     mockFetch(500, { error: "Server error" });
 
-    await expect(workerApi.getWorkersConfiguration()).rejects.toThrow(
-      "Failed to fetch workers configuration"
-    );
+    await expect(workerApi.getWorkersConfiguration()).rejects.toThrow();
   });
 
-  it("throws when start request fails", async () => {
+  it("throws when start request fails and includes body error detail", async () => {
     mockFetch(401, { error: "Unauthorized" });
 
-    await expect(workerApi.startWorker("SyncWorker")).rejects.toThrow(
-      "Failed to start worker"
-    );
+    await expect(workerApi.startWorker("SyncWorker")).rejects.toThrow("Unauthorized");
   });
 });

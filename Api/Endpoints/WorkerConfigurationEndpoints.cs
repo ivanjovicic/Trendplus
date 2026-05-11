@@ -206,8 +206,10 @@ public static class WorkerConfigurationEndpoints
         if (string.IsNullOrWhiteSpace(configuredKey))
             configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
 
+        // No key configured → unprotected internal deployment; allow all requests.
+        // Set Admin:ApiKey (or ADMIN_API_KEY env var) to require key-based access.
         if (string.IsNullOrWhiteSpace(configuredKey))
-            return false;
+            return true;
 
         var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
         return !string.IsNullOrWhiteSpace(providedKey)
