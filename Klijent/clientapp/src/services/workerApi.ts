@@ -58,7 +58,15 @@ class WorkerApi {
   async getWorkersConfiguration(): Promise<WorkerConfigurationResponse> {
     const response = await fetch(apiUrl("/api/workers/configuration"));
     if (!response.ok) {
-      throw new Error(`Učitavanje radnika nije uspelo: ${response.statusText}`);
+      // Try to extract a meaningful error from the JSON body
+      let detail = response.statusText;
+      try {
+        const body = await response.json() as { error?: string; message?: string };
+        detail = body.error ?? body.message ?? detail;
+      } catch {
+        // ignore parse errors
+      }
+      throw new Error(detail || `Učitavanje radnika nije uspelo (HTTP ${response.status})`);
     }
     return response.json();
   }
