@@ -2,6 +2,8 @@
  * API service for worker configuration management.
  */
 
+import { apiUrl } from "../utils/apiUrl";
+
 export interface WorkerConfigurationItem {
   workerName: string;
   displayName: string;
@@ -39,7 +41,7 @@ export interface WorkerActionResponse {
 
 class WorkerApi {
   async getWorkersConfiguration(): Promise<WorkerConfigurationResponse> {
-    const response = await fetch("/api/workers/configuration");
+    const response = await fetch(apiUrl("/api/workers/configuration"));
     if (!response.ok) {
       throw new Error(`Failed to fetch workers configuration: ${response.statusText}`);
     }
@@ -47,7 +49,7 @@ class WorkerApi {
   }
 
   async startWorker(workerName: string): Promise<WorkerActionResponse> {
-    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/start`, {
+    const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/start`), {
       method: "POST",
     });
     if (!response.ok) {
@@ -57,7 +59,7 @@ class WorkerApi {
   }
 
   async stopWorker(workerName: string): Promise<WorkerActionResponse> {
-    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/stop`, {
+    const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/stop`), {
       method: "POST",
     });
     if (!response.ok) {
@@ -67,7 +69,7 @@ class WorkerApi {
   }
 
   async restartWorker(workerName: string): Promise<WorkerActionResponse> {
-    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/restart`, {
+    const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/restart`), {
       method: "POST",
     });
     if (!response.ok) {
@@ -77,7 +79,7 @@ class WorkerApi {
   }
 
   async enableSchedule(workerName: string): Promise<WorkerActionResponse> {
-    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/schedule/enable`, {
+    const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/schedule/enable`), {
       method: "POST",
     });
     if (!response.ok) {
@@ -87,7 +89,7 @@ class WorkerApi {
   }
 
   async disableSchedule(workerName: string): Promise<WorkerActionResponse> {
-    const response = await fetch(`/api/workers/${encodeURIComponent(workerName)}/schedule/disable`, {
+    const response = await fetch(apiUrl(`/api/workers/${encodeURIComponent(workerName)}/schedule/disable`), {
       method: "POST",
     });
     if (!response.ok) {

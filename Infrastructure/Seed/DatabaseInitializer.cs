@@ -2269,6 +2269,13 @@ public static class DatabaseInitializer
         }
         // The optional ML overlay from 015_AddSupplierMlRanking.sql remains separate.
 
+        // 028: Analytics data quality history table (idempotent: CREATE TABLE IF NOT EXISTS + indexes)
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/028_CreateAnalyticsDataQualityHistory.sql", logger);
+
+        // 029: Windowed materialized views for supplier decision scorecard (90d/180d accuracy fix)
+        // Depends on core supplier decision views from 018 built above.
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/029_AddSupplierDecisionWindowedViews.sql", logger);
+
         var analyticsIntelligenceScripts = new (string SqlFilePath, string[] RequiredRelations)[]
         {
             (
