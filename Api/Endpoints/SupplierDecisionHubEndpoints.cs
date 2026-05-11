@@ -663,7 +663,30 @@ public static class SupplierDecisionHubEndpoints
             var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(filters, capabilities);
             try
             {
-                return await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, precomputedSql, precomputedParameters, ct);
+                var rows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, precomputedSql, precomputedParameters, ct);
+
+                if (rows.Count == 0)
+                {
+                    var windowDays = GetDecisionScoreWindowDays(filters);
+
+                    // 90d windowed MV is empty — try 180d rolling window before giving up.
+                    // This happens when there are no nivelacije in the last 90 days.
+                    if (windowDays == 90)
+                    {
+                        var (sql180, p180) = BuildPrecomputedSupplierRowsSql(filters, capabilities, windowOverride: 180);
+                        rows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sql180, p180, ct);
+                    }
+
+                    // Windowed MV still empty — fall back to all-time cache without date restriction.
+                    // Recent date ranges would otherwise filter out all historical data in the all-time MV.
+                    if (rows.Count == 0 && windowDays is 90 or 180)
+                    {
+                        var (sqlAll, pAll) = BuildPrecomputedSupplierRowsSql(filters, capabilities, windowOverride: 0, applyDateRangeFilter: false);
+                        rows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sqlAll, pAll, ct);
+                    }
+                }
+
+                return rows;
             }
             catch (PostgresException ex) when (IsMissingPrecomputedDependency(ex))
             {
@@ -959,9 +982,11 @@ SELECT
 
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildPrecomputedSupplierRowsSql(
         SupplierDecisionHubFilters filters,
-        PrecomputedQueryCapabilities capabilities)
+        PrecomputedQueryCapabilities capabilities,
+        int? windowOverride = null,
+        bool applyDateRangeFilter = true)
     {
-        var windowDays = GetDecisionScoreWindowDays(filters);
+        var windowDays = windowOverride ?? GetDecisionScoreWindowDays(filters);
         var mvName = SelectDecisionScoreMv(windowDays);
         var parameters = new List<NpgsqlParameter>();
         var where = new StringBuilder("WHERE 1 = 1");
@@ -983,7 +1008,8 @@ LEFT JOIN mv_supplier_markdown_dependency_cache md
       AND md.category IS NULL
 """
             : string.Empty;
-        var mlSupplierScore = capabilities.DecisionScoreCacheHasMlSupplierScore
+        // ml_supplier_score column only exists on the all-time MV, not on windowed MVs.
+        var mlSupplierScore = capabilities.DecisionScoreCacheHasMlSupplierScore && windowDays == 0
             ? "COALESCE(ds.ml_supplier_score, ds.supplier_quality_index)"
             : "ds.supplier_quality_index";
         var mlSelect = capabilities.HasMlLatestPredictionsView
@@ -1012,10 +1038,12 @@ LEFT JOIN vw_supplier_ml_latest_predictions ml
             parameters.Add(new NpgsqlParameter("supplierId", filters.SupplierId.Value));
         }
 
-        if (filters.HasExplicitDateRange && windowDays == 0)
+        if (applyDateRangeFilter && filters.HasExplicitDateRange && windowDays == 0)
         {
             // For all-time MV, filter by period overlap. Windowed MVs are already pre-filtered
             // by the rolling window so this filter is not needed (and would over-restrict results).
+            // applyDateRangeFilter=false is used for fallback queries where recent date ranges
+            // would otherwise exclude all historical data.
             where.Append(" AND ds.period_to >= @fromDate AND ds.period_from <= @toDate");
             parameters.Add(new NpgsqlParameter("fromDate", filters.FromDate));
             parameters.Add(new NpgsqlParameter("toDate", filters.ToDate));
