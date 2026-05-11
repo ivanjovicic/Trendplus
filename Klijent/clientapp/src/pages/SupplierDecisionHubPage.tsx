@@ -437,6 +437,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
       {!loading && summary && ranking ? (
         <>
+          {(summary.dataNote ?? ranking.dataNote) ? (
+            <div className="sdh-decision-message info" role="note">
+              <strong>Obuhvat podataka:</strong> {summary.dataNote ?? ranking.dataNote}
+            </div>
+          ) : null}
           <section className="sdh-decision-kpis">
             <article className="sdh-decision-kpi"><span>Ukupan prihod</span><strong>{fmtRsd(totalRevenue)}</strong></article>
             <article className="sdh-decision-kpi"><span>Udeo top 5 dobavljača</span><strong>{fmtPct(top5SharePct)}</strong></article>

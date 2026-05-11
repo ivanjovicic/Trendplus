@@ -74,6 +74,7 @@ export type SummaryResponse = {
   topGrowSuppliers: SummarySupplierItem[];
   topRiskSuppliers: SummarySupplierItem[];
   keyInsights: KeyInsightItem[];
+  dataNote?: string | null;
 };
 
 export type QuadrantItem = {
@@ -115,6 +116,7 @@ export type RankingResponse = {
   pageSize: number;
   totalCount: number;
   items: RankingItem[];
+  dataNote?: string | null;
 };
 
 export type SupplierHeaderDto = {

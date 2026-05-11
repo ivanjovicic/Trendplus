@@ -50,6 +50,8 @@ public sealed class NightlyAnalyticsRefreshOptions
         "supplier_training_dataset_v1",
         "mv_supplier_markdown_dependency_cache",
         "mv_supplier_decision_score_cache",
+        "mv_supplier_decision_score_cache_90d",
+        "mv_supplier_decision_score_cache_180d",
         "mv_supplier_recommendations_cache"
     };
 

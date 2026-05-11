@@ -248,7 +248,7 @@ public static class SupplierDecisionHubEndpoints
                             x.ConfidenceScore))
                         .ToList();
 
-                    return new RankingResponse(page, pageSize, ordered.Count, paged);
+                    return new RankingResponse(page, pageSize, ordered.Count, paged, BuildDecisionScoreDataNote(activeFilters));
                 },
                 CacheExpiration.HeavyAnalytics,
                 ct);
@@ -529,6 +529,8 @@ public static class SupplierDecisionHubEndpoints
                 worstRisk is null ? "neutral" : "warning")
         };
 
+        var dataNote = BuildDecisionScoreDataNote(filters);
+
         return new SummaryResponse(
             from,
             to,
@@ -540,7 +542,8 @@ public static class SupplierDecisionHubEndpoints
             Round2(rows.Sum(x => x.UnsoldStockValue)),
             topGrow,
             topRisk,
-            insights);
+            insights,
+            dataNote);
     }
 
     private static SummarySupplierItem MapSummarySupplier(SupplierScoreRow row) =>
@@ -921,10 +924,45 @@ SELECT
             GetBoolean(reader, "has_model_version_table"));
     }
 
+    /// Returns the number of lookback days (90 or 180) if a windowed MV should be used,
+    /// or 0 if the all-time cache is most appropriate.
+    private static int GetDecisionScoreWindowDays(SupplierDecisionHubFilters filters)
+    {
+        if (!filters.HasExplicitDateRange)
+            return 0;
+
+        var days = (filters.ToDate - filters.FromDate).TotalDays;
+        if (days <= 90) return 90;
+        if (days <= 180) return 180;
+        return 0;
+    }
+
+    private static string SelectDecisionScoreMv(int windowDays) => windowDays switch
+    {
+        90 => "mv_supplier_decision_score_cache_90d",
+        180 => "mv_supplier_decision_score_cache_180d",
+        _ => "mv_supplier_decision_score_cache"
+    };
+
+    private static string? BuildDecisionScoreDataNote(SupplierDecisionHubFilters filters)
+    {
+        var window = GetDecisionScoreWindowDays(filters);
+        return window switch
+        {
+            90 => "Metrike su izračunate na osnovu nivelacija iz poslednjih 90 dana.",
+            180 => "Metrike su izračunate na osnovu nivelacija iz poslednjih 180 dana.",
+            _ => filters.HasExplicitDateRange
+                ? "Odabrani period prelazi 180 dana — prikazani su ukupni podaci iz cele istorije nivelacija."
+                : null
+        };
+    }
+
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildPrecomputedSupplierRowsSql(
         SupplierDecisionHubFilters filters,
         PrecomputedQueryCapabilities capabilities)
     {
+        var windowDays = GetDecisionScoreWindowDays(filters);
+        var mvName = SelectDecisionScoreMv(windowDays);
         var parameters = new List<NpgsqlParameter>();
         var where = new StringBuilder("WHERE 1 = 1");
         var markdownSelect = capabilities.HasMarkdownDependencyCache
@@ -974,8 +1012,10 @@ LEFT JOIN vw_supplier_ml_latest_predictions ml
             parameters.Add(new NpgsqlParameter("supplierId", filters.SupplierId.Value));
         }
 
-        if (filters.HasExplicitDateRange)
+        if (filters.HasExplicitDateRange && windowDays == 0)
         {
+            // For all-time MV, filter by period overlap. Windowed MVs are already pre-filtered
+            // by the rolling window so this filter is not needed (and would over-restrict results).
             where.Append(" AND ds.period_to >= @fromDate AND ds.period_from <= @toDate");
             parameters.Add(new NpgsqlParameter("fromDate", filters.FromDate));
             parameters.Add(new NpgsqlParameter("toDate", filters.ToDate));
@@ -1015,7 +1055,7 @@ SELECT
     ds.supplier_quality_index,
     ds.recommendation_code,
     ROUND(ds.confidence_score * 100, 2) AS confidence_score
-FROM mv_supplier_decision_score_cache ds
+FROM {mvName} ds
 {markdownJoin}{mlJoin}
 {where}
 ORDER BY ds.supplier_quality_index DESC, ds.revenue DESC, ds.supplier_name;
@@ -1944,7 +1984,8 @@ public sealed record SummaryResponse(
     decimal CapitalAtRisk,
     IReadOnlyList<SummarySupplierItem> TopGrowSuppliers,
     IReadOnlyList<SummarySupplierItem> TopRiskSuppliers,
-    IReadOnlyList<KeyInsightItem> KeyInsights);
+    IReadOnlyList<KeyInsightItem> KeyInsights,
+    string? DataNote = null);
 
 public sealed record SummarySupplierItem(
     int SupplierId,
@@ -1978,7 +2019,8 @@ public sealed record RankingResponse(
     int Page,
     int PageSize,
     int TotalCount,
-    IReadOnlyList<RankingItem> Items);
+    IReadOnlyList<RankingItem> Items,
+    string? DataNote = null);
 
 public sealed record RankingItem(
     int SupplierId,

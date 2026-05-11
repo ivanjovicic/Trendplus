@@ -162,6 +162,13 @@
   margin: 6px 0 0;
 }
 
+.sdh-decision-message.info {
+  background: var(--info-soft, rgba(59, 130, 246, 0.1));
+  border: 1px solid var(--info-border, rgba(96, 165, 250, 0.3));
+  color: var(--info, #bfdbfe);
+  font-weight: 400;
+}
+
 .sdh-decision-kpis {
   display: grid;
   gap: 10px;
