@@ -84,6 +84,11 @@ public static class WorkerRuntimeConfig
         }
     }
 
+    public static void RegisterWebEligibleWorker(IServiceCollection services, string workerName)
+    {
+        RegisterByWorkerName(services, workerName);
+    }
+
     public static bool ResolveAccessImportWorkerInWebProcess(
         bool? configuredRegisterInWebProcess,
         bool accessImportWorkerEnabled,

@@ -553,9 +553,22 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     {
         builder.Services.AddHostedService<AccessImportBackgroundWorker>();
     }
+    // Register workers that declare RegistersInWebProcess=true (e.g. NightlyAnalyticsRefreshWorker).
+    // Only active when workersEnabled=true (set Workers:Enabled=true env var on Render web service).
+    // NOTE: Render free tier spins down after inactivity — nightly refresh won't fire if the process is asleep.
+    var nightlyRegisteredInWeb = false;
+    if (!isWorkerProcess && workersEnabled)
+    {
+        foreach (var def in WorkerRegistryCatalog.Definitions
+            .Where(d => d.RegistersInWebProcess && !d.RequiresWebAccessImportFlag))
+        {
+            WorkerRuntimeConfig.RegisterWebEligibleWorker(builder.Services, def.WorkerName);
+            nightlyRegisteredInWeb = true;
+        }
+    }
     Console.WriteLine($"Background workers startup state: {(effectiveWorkersEnabled ? "ENABLED" : "DISABLED")}");
     Console.WriteLine($"Background workers runtime toggle: {(effectiveWorkersRuntimeToggleAllowed ? "ALLOWED" : "LOCKED")}");
-    Console.WriteLine($"Worker hosted services registered: {(isWorkerProcess ? "YES" : registerAccessImportWorkerInWebProcess ? "ACCESS_IMPORT_ONLY" : "NO")}");
+    Console.WriteLine($"Worker hosted services registered: {(isWorkerProcess ? "YES" : registerAccessImportWorkerInWebProcess ? "ACCESS_IMPORT_ONLY" : nightlyRegisteredInWeb ? "WEB_ELIGIBLE" : "NO")}");
 
     builder.Services.AddControllers();
     builder.Services.ConfigureHttpJsonOptions(opts =>
