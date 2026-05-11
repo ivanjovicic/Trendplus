@@ -114,7 +114,7 @@ function buildStatusReason(status: DecisionStatus, code: string, qualityTrendPct
   const lowConfidence = confidence < BOOST_MIN_CONFIDENCE_PCT;
   if (status === "Pojacaj") {
     if (lowConfidence) return "Signal za rast postoji, ali je pouzdanost granična; širiti postepeno.";
-    if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "Dobavljač drži zdrav signal bez preterane zavisnosti od snizenja.";
+    if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "Dobavljač drži zdrav prodajni signal bez preterane zavisnosti od nivelacija.";
     return "Pozitivan zbirni signal za veći fokus.";
   }
   if (status === "Zadrzi") {
@@ -122,8 +122,8 @@ function buildStatusReason(status: DecisionStatus, code: string, qualityTrendPct
     if (qualityTrendPct < 0) return "Signal kvaliteta slabi; zadržati uz pojačan nadzor.";
     return "Stabilan signal bez jasnog razloga za promenu prioriteta.";
   }
-  if (code === "ASSORTMENT_REDUCE") return "Visoka zavisnost od snizenja i rizik zaliha; smanjiti fokus.";
-  if (code === "PRICE_NEGOTIATE") return "Potreban je bolji cenovni ulaz pre daljeg širenja.";
+  if (code === "ASSORTMENT_REDUCE") return "Visoka zavisnost od nivelacija i rizik neaktivne zalihe — smanjiti fokus u nabavci.";
+  if (code === "PRICE_NEGOTIATE") return "Potreban je bolji cenovni ulaz — pregovoriti nabavne cene pre daljeg proširivanja asortimana.";
   return "Nizak signal doprinosa i rizik po profitabilnost.";
 }
 
@@ -408,23 +408,23 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       {!embedded ? (
       <header className="sdh-decision-header">
         <div>
-          <h1 className="sdh-decision-title">Skorkarta dobavljača</h1>
-          <p className="sdh-decision-subtitle">Brz pregled učinka dobavljača kroz prihod, maržu, kvalitet i dostupne signale za prioritetnu akciju.</p>
+          <h1 className="sdh-decision-title">Bodovna karta dobavljača</h1>
+          <p className="sdh-decision-subtitle">Pregled učinka dobavljača na osnovu prodajnih podataka koji imaju prvu nivelaciju (sniženje cene) u izabranom periodu — prihod, marža, kvalitet prodajnog signala i preporuka za akciju.</p>
           <details className="sdh-decision-help">
             <summary>Kako se čita ovaj ekran?</summary>
             <div className="sdh-decision-help-content">
-              <p><strong>Svrha:</strong> Skorkarta dobavljača pomaže da brzo identifikuješ koji dobavljači donose najveći prihod i maržu, gde postoji rizik od previsokih sniženja i kako osigurati zdrav asortiman i cene.</p>
-              <p><strong>Šta se vidi:</strong> Analiza koristi prodajne podatke sa prvom nivelacijom (markdown) u izabranom periodu. Svaki dobavljač se ocenjuje po: prihodu, marži, kvalitetu signala i dostupnim podacima.</p>
+              <p><strong>Svrha:</strong> Bodovna karta dobavljača pomaže da brzo identifikuješ koji dobavljači donose najveći prihod i maržu, gde postoji rizik od preteranog snižavanja cena (nivelacija) i gde treba pojačati ili smanjiti fokus na nabavku.</p>
+              <p><strong>Važno — osnova analize su nivelacije:</strong> Analiza se zasniva <em>isključivo</em> na artiklima koji su imali prvu nivelaciju (sniženje cene) u izabranom periodu. Ako u tom periodu nema nivelacija, svi pokazatelji biće 0 — čak i ako postoji promet. Tab „Pregled" prikazuje ukupnu prodaju bez ovog ograničenja i može imati podatke i kada je ova karta prazna.</p>
               <p><strong>Šta znače kolone:</strong></p>
               <ul>
-                <li><strong>Prihod:</strong> Ukupna vrednost prodaje dobavljača u periodu.</li>
+                <li><strong>Prihod:</strong> Ukupna vrednost prodaje dobavljača u periodu (samo artikli sa nivelacijom).</li>
                 <li><strong>Udeo:</strong> Koliki deo ukupnog prihoda dolazi od tog dobavljača.</li>
                 <li><strong>Marža:</strong> Razlika između prodajne i nabavne cene kao procenat.</li>
-                <li><strong>Kvalitet trend:</strong> Kako se kvalitet signala menja (pozitivan = više pune cene, negativan = više sniženja).</li>
-                <li><strong>Preporuka:</strong> Pojačaj (rast), Zadrži (stabilno), Smanji (rizik).</li>
+                <li><strong>Kvalitet trend:</strong> Pozitivan = više prodaje po punoj ceni (zdravo), negativan = više snižavanja (rizik precenjenosti).</li>
+                <li><strong>Preporuka:</strong> Pojačaj (zdrava marža, raste kvalitet), Zadrži (stabilan), Smanji (rizik, slaba marža, preterane nivelacije).</li>
               </ul>
-              <p><strong>Zašto nema podataka?</strong> Ako su sve vrednosti 0 ili tabela prazna, mogući razlozi su: nema prodaje u periodu, filteri su uski, dobavljači nisu povezani sa artiklima ili analitika još nije osvežena.</p>
-              <p><strong>Kako koristiti:</strong> Primeni filtere za period, prodavnicu i dobavljač. Pogledaj grafikon za zavisnost od top dobavljača. Klikni "Detalji" za specifičnu preporuku po dobavljaču.</p>
+              <p><strong>Zašto nema podataka?</strong> Najčešći razlozi: nema nivelacija u izabranom periodu, filteri su uski (kratak period ili specifična prodavnica), dobavljači nisu pravilno povezani sa artiklima, ili analitika nije osvežena (pokreni u Konfiguracija → Radnici).</p>
+              <p><strong>Kako koristiti:</strong> Primeni filtere za period i prodavnicu. Grafikon prikazuje zavisnost prihoda od top dobavljača. Klikni „Detalji" za detaljnu procenu i preporuku po dobavljaču.</p>
             </div>
           </details>
         </div>
@@ -523,35 +523,35 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-kpi">
               <span>
                 Ukupan prihod
-                <InfoTip text="Ukupna vrednost prodaje svih dobavljača prikazanih u trenutnom prikazu za izabrani period. Ako je 0 RSD, nema prodaje sa prvom nivelacijom u ovom periodu." />
+                <InfoTip text="Zbir prihoda od prodaje svih prikazanih dobavljača. Računa se SAMO na osnovu artikala koji su imali prvu nivelaciju (sniženje cene) u izabranom periodu. Ako je 0 RSD — u periodu nema nivelacija. Tab Pregled prikazuje ukupan promet bez ovog ograničenja." />
               </span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="sdh-decision-kpi">
               <span>
                 Udeo top 5 dobavljača
-                <InfoTip text="Koliki deo ukupnog prihoda dolazi od 5 najvećih dobavljača. Viši procenat znači jaču zavisnost od manjeg broja dobavljača." />
+                <InfoTip text="Koliki deo ukupnog prihoda dolazi od 5 najvećih dobavljača. Vrednost iznad 70% znači visoku zavisnost — rizik ako jedan od ključnih dobavljača promeni uslove ili kvalitet." />
               </span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="sdh-decision-kpi">
               <span>
                 Ukupan maržni doprinos
-                <InfoTip text="Zbir marže (razlika prodajne i nabavne cene) svih dobavljača u periodu. Pokazuje koliko je zarada dostupna nakon pokrivanja troškova nabavke." />
+                <InfoTip text="Zbir ostvarene marže (prodajna cena minus nabavna cena) svih dobavljača. Ukupna zarada pre ostalih troškova. Ako je marža niska, nabavne cene ili cenovnik treba pregledati." />
               </span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
             </article>
             <article className="sdh-decision-kpi">
               <span>
                 Kapital u riziku
-                <InfoTip text="Procenjena vrednost neprodate zalihe i problematičnih stavki. Viši iznos znači veću potrebu za pažnjom na inventar." />
+                <InfoTip text="Procenjena vrednost artikala koji sporije rotiraju od očekivanog ili se ne prodaju. Visok iznos signalizira da treba pregledati zalihe, razmotriti nivelacije ili smanjiti buduće narudžbine od problematičnih dobavljača." />
               </span>
               <strong className="trend-down">{fmtRsd(summary.capitalAtRisk)}</strong>
             </article>
             <article className="sdh-decision-kpi">
               <span>
-                Promena udela pune cene vs. sniženja
-                <InfoTip text="Kako se kod dobavljača promenio odnos prodaje po punoj ceni naspram prodaje sa sniženjima u odnosu na prethodni isti period. Pozitivan trend = više prodaje po punoj ceni, negativan = više sniženja." />
+                Trend: puna cena vs. nivelacije
+                <InfoTip text="Poređenje sa prethodnim istim periodom: da li raste ili pada udeo prodaje po punoj ceni. Pozitivna vrednost = više prodaje bez sniženja (zdravije). Negativna = raste udeo nivelacija — možda su cene previsoke ili potražnja slabi." />
               </span>
               <strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPct(fullPriceDeltaPctPoints)}</strong>
             </article>
@@ -559,7 +559,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
           <section className="sdh-decision-panels">
             <article className="sdh-decision-card">
-              <h2>Koncentracija prihoda po dobavljačima</h2><p>Brza procena zavisnosti od top dobavljača.</p>
+              <h2>Zavisnost od top dobavljača</h2><p>Svaki blok pokazuje koliki procenat ukupnog prihoda donosi jedan dobavljač. Ako jedan dominira, poslovanje je izloženije riziku promene uslova. Idealno je da nijedan ne prelazi 30–40% ukupnog prihoda.</p>
               {concentrationData.length > 0 ? (
                 <div className="sdh-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -578,9 +578,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-card">
               <div className="sdh-decision-table-head">
                 <div>
-                  <h2>Prioritetna lista dobavljača</h2>
-                  <p>Pojačaj: {supplierCounts.boost} | Zadrži: {supplierCounts.keep} | Smanji: {supplierCounts.reduce}</p>
-                  <p className="sdh-decision-table-subtitle">Tabela prikazuje dobavljače sa podacima za izabrane filtere. Klikni "Detalji" da vidiš detaljnu analizu po dobavljaču.</p>
+                  <h2>Rang lista dobavljača</h2>
+                  <p>Pojačaj: <strong>{supplierCounts.boost}</strong> | Zadrži: <strong>{supplierCounts.keep}</strong> | Smanji: <strong>{supplierCounts.reduce}</strong></p>
+                  <p className="sdh-decision-table-subtitle">Prikazuju se samo dobavljači koji imaju artikle sa nivelacijom u izabranom periodu. Klikni „Detalji" za objašnjenje preporuke za svakog dobavljača.</p>
                 </div>
                 <AnalyticsTableToolbar tableKey="supplier-decision-hub" tableTitle="Skorkarta dobavljaca - kompaktni prikaz" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
               </div>
@@ -591,7 +591,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                       <th>
                         <button type="button" onClick={() => handleSort("supplierName")}>
                           Dobavljač
-                          <InfoTip text="Naziv dobavljača iz sistema." />
+                          <InfoTip text="Naziv dobavljača. Prikazuju se samo dobavljači koji imaju artikle sa prvom nivelacijom u izabranom periodu." />
                           {sortMarker("supplierName", sortField, sortDir)}
                         </button>
                       </th>
@@ -619,14 +619,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("qualityTrendPct")}>
                           Kvalitet trend %
-                          <InfoTip text="Pokazuje da li dobavljač prodaje više po punoj ceni (pozitivan trend) ili više snižavanjem (negativan trend)." />
+                          <InfoTip text="Razlika između udela prodaje po punoj ceni i udela nivelacija. Pozitivan = zdrava prodaja bez prekomernig snižavanja. Negativan = previše nivelacija, mogući rizik precenjenosti asortimana." />
                           {sortMarker("qualityTrendPct", sortField, sortDir)}
                         </button>
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
                           Preporuka
-                          <InfoTip text="Pojačaj = raste kvalitet; Zadrži = stabilno; Smanji = rizik ili niska marža." />
+                          <InfoTip text="Predlog akcije: Pojačaj = zdrava marža i raste prodaja po punoj ceni; Zadrži = stabilan, bez razloga za promenu; Smanji = visoke nivelacije, slaba marža ili neaktivna zaliha." />
                           {sortMarker("status", sortField, sortDir)}
                         </button>
                       </th>
@@ -685,11 +685,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                   <strong>{fmtPct(selectedRow.fullPriceRevenueShare * 100, 2)}</strong>
                 </article>
                 <article>
-                  <span>Udeo sniženja <InfoTip text="Koliki deo prihoda dolazi od prodaje sa sniženjima. Viši procenat znači veću zavisnost od snižavanja." /></span>
+                  <span>Udeo nivelacija <InfoTip text="Koliki deo prihoda od ovog dobavljača dolazi od prodaje sa sniženjima (nivelacijama). Viši procenat može ukazivati da je asortiman precenjen ili da potražnja slabi." /></span>
                   <strong>{fmtPct(selectedRow.markdownRevenueShare * 100, 2)}</strong>
                 </article>
                 <article>
-                  <span>Stopa mrtve zalihe <InfoTip text="Koliki deo artikala dobavljača je na zalihi a nije se prodalo. Viša stopa = rizik za skladište." /></span>
+                  <span>Stopa neaktivnih artikala <InfoTip text="Koliki deo artikala ovog dobavljača leži na zalihi bez prodaje. Viša stopa znači prekomerne narudžbine u odnosu na potražnju — rizik za kapital i skladište." /></span>
                   <strong>{fmtPct(selectedRow.deadStockRate * 100, 2)}</strong>
                 </article>
                 <article>
@@ -697,15 +697,15 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                   <strong>{fmtRsd(selectedRow.unsoldStockValue)}</strong>
                 </article>
                 <article>
-                  <span>Stopa ponovljenih pobednika <InfoTip text="Procenat artikala koji se dobro prodaju (mali deadstock, dobra marža, dobar trend). Viši procenat = pouzdaniji dobavljač." /></span>
+                  <span>Stopa dobrih artikala <InfoTip text="Procenat artikala dobavljača koji se redovno dobro prodaju — malo neaktivne zalihe, dobra marža, pozitivan trend. Viši procenat = pouzdaniji i predvidiviji asortiman." /></span>
                   <strong>{fmtPct(selectedRow.repeatWinnerRate * 100, 2)}</strong>
                 </article>
                 <article>
-                  <span>Skor kvaliteta / indeks <InfoTip text="Dva pokazatelja: prvi je skor dodeljem od modela (0–100), drugi je obračunati indeks na osnovu raspoloživih signala. Koristi oba zajedno sa ostalim metrikama." /></span>
+                  <span>Skor / indeks kvaliteta <InfoTip text="Dva pokazatelja: levi (0–100) je automatski skor na osnovu prodajnih signala, desni je indeks pouzdanosti asortimana. Viši skor = bolji učinak. Korisno za poređenje dobavljača između sebe." /></span>
                   <strong>{selectedRow.mlSupplierScore.toFixed(1)} / {selectedRow.supplierQualityIndex.toFixed(1)}</strong>
                 </article>
                 <article>
-                  <span>Pouzdanost <InfoTip text="Kvalitet dostupnih podataka za preporuku. Niska pouzdanost znači da nedostaju ključni podaci (npr. nabavne cene). Preporuka se koristi sa rezervom ako je pouzdanost niska." /></span>
+                  <span>Pouzdanost podataka <InfoTip text="Koliko su potpuni podaci za ovog dobavljača. Niska pouzdanost (ispod 55%) obično znači da nedostaju nabavne cene ili ima malo prodajnih signala — preporuku u tom slučaju uzmi sa rezervom." /></span>
                   <strong>{fmtPct(selectedRow.normalizedConfidence, 1)}</strong>
                 </article>
               </div>
