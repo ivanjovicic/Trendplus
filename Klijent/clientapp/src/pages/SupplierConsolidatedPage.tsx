@@ -17,8 +17,8 @@ const tabLabels: Record<SupplierTab, string> = {
 
 const tabDescriptions: Record<SupplierTab, string> = {
   overview: "Centralni ekran za odluke o dobavljačima kroz promet, maržni doprinos, trend i prioritetnu akciju.",
-  scorecard: "Sekundarna procena kvaliteta dobavljača, markdown rizika i pouzdanosti signala.",
-  assortment: "Dodatni asortimanski drilldown po dobavljaču i tipu obuće za proveru strukture portfolija.",
+  scorecard: "Skorkarta meri dobavljače kroz artikle sa prvom nivelacijom: prihod, maržu, punu cenu, stock rizik i preporuku.",
+  assortment: "Dodatni asortimanski pregled po dobavljaču i tipu obuće za proveru strukture portfolija.",
 };
 
 function buildStoreLabel(store: StoreOption): string {

@@ -4,16 +4,18 @@ import { createPortal } from "react-dom";
 
 const SHOW_DELAY_MS = 150;
 const HIDE_ANIM_MS = 180;
-const HALF_TOOLTIP_W = 132; // half of max-width (264px)
+const MAX_TOOLTIP_W = 264;
 const EDGE_MARGIN = 12;
 
 type Pos = { top: number; left: number; below: boolean };
 
 function computePos(rect: DOMRect): Pos {
   const vw = window.innerWidth;
+  const tooltipWidth = Math.min(MAX_TOOLTIP_W, Math.max(180, vw - EDGE_MARGIN * 2));
+  const halfTooltipWidth = tooltipWidth / 2;
   let left = rect.left + rect.width / 2;
   // Clamp so tooltip never bleeds off-screen
-  left = Math.max(HALF_TOOLTIP_W + EDGE_MARGIN, Math.min(left, vw - HALF_TOOLTIP_W - EDGE_MARGIN));
+  left = Math.max(halfTooltipWidth + EDGE_MARGIN, Math.min(left, vw - halfTooltipWidth - EDGE_MARGIN));
   const below = rect.top < 120;
   const top = below ? rect.bottom + 8 : rect.top - 8;
   return { top, left, below };
@@ -90,7 +92,7 @@ export default function InfoTip({ text }: { text: string }) {
         onBlur={hide}
         onClick={toggle}
       >
-        {/* Info circle SVG — always centered via flex parent */}
+        {/* Info circle SVG - always centered via flex parent */}
         <svg
           viewBox="0 0 16 16"
           fill="currentColor"

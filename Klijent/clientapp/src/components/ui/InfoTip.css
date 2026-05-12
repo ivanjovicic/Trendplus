@@ -53,7 +53,7 @@
   /* Centering + base animation offset for "above" placement */
   transform: translateX(-50%) translateY(-100%) scale(0.9);
   /* Sizing */
-  max-width: var(--size-tooltip-max-width);
+  max-width: min(var(--size-tooltip-max-width), calc(100vw - 24px));
   width: max-content;
   /* Visual */
   background: var(--analytics-chart-tooltip-bg, var(--surface-darker));

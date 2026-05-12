@@ -268,6 +268,42 @@ export async function getSupplierDecisionRanking(
   );
 }
 
+export async function getAllSupplierDecisionRanking(
+  filters: SupplierDecisionHubFilters,
+  query: SupplierDecisionRankingQuery = {}
+): Promise<RankingResponse> {
+  const requestedPageSize = Math.max(1, Math.min(query.pageSize ?? 100, 100));
+  const firstPage = await getSupplierDecisionRanking(filters, {
+    ...query,
+    page: 1,
+    pageSize: requestedPageSize,
+  });
+
+  if (firstPage.items.length >= firstPage.totalCount) {
+    return firstPage;
+  }
+
+  const totalPages = Math.ceil(firstPage.totalCount / firstPage.pageSize);
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      getSupplierDecisionRanking(filters, {
+        ...query,
+        page: index + 2,
+        pageSize: firstPage.pageSize,
+      })
+    )
+  );
+
+  return {
+    ...firstPage,
+    page: 1,
+    items: [
+      ...firstPage.items,
+      ...remainingPages.flatMap((page) => page.items),
+    ],
+  };
+}
+
 export async function getSupplierDecisionDetails(
   supplierId: number,
   filters: SupplierDecisionHubFilters
