@@ -677,25 +677,16 @@ public static class SupplierDecisionHubEndpoints
             {
                 var rows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, precomputedSql, precomputedParameters, ct);
 
-                if (rows.Count == 0)
+                // Do NOT fall back to a wider window when an explicit date range was given
+                // (30d / 90d / 180d period presets all set HasExplicitDateRange = true).
+                // Silently returning 180d data for a 30d request is misleading — show empty
+                // results instead so the user knows there are no metrics for that period.
+                if (rows.Count == 0 && !filters.HasExplicitDateRange)
                 {
-                    var windowDays = GetDecisionScoreWindowDays(filters);
-
-                    // 90d windowed MV is empty — try 180d rolling window before giving up.
-                    // This happens when there are no nivelacije in the last 90 days.
-                    if (windowDays == 90)
-                    {
-                        var (sql180, p180) = BuildPrecomputedSupplierRowsSql(filters, capabilities, windowOverride: 180);
-                        rows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sql180, p180, ct);
-                    }
-
-                    // Windowed MV still empty — fall back to all-time cache without date restriction.
-                    // Recent date ranges would otherwise filter out all historical data in the all-time MV.
-                    if (rows.Count == 0 && windowDays is 90 or 180)
-                    {
-                        var (sqlAll, pAll) = BuildPrecomputedSupplierRowsSql(filters, capabilities, windowOverride: 0, applyDateRangeFilter: false);
-                        rows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sqlAll, pAll, ct);
-                    }
+                    // Only reached when no date range is specified at all AND the windowed MV
+                    // is somehow empty. Fall back to all-time cache as a last resort.
+                    var (sqlAll, pAll) = BuildPrecomputedSupplierRowsSql(filters, capabilities, windowOverride: 0, applyDateRangeFilter: false);
+                    rows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sqlAll, pAll, ct);
                 }
 
                 return rows;
