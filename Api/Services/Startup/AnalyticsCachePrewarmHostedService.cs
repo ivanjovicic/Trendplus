@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.Extensions.Hosting;
 
 namespace Api.Services.Startup;
 
@@ -8,15 +9,18 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _environment;
     private readonly ILogger<AnalyticsCachePrewarmHostedService> _logger;
+    private readonly IHostApplicationLifetime _hostApplicationLifetime;
 
     public AnalyticsCachePrewarmHostedService(
         IConfiguration configuration,
         IHostEnvironment environment,
-        ILogger<AnalyticsCachePrewarmHostedService> logger)
+        ILogger<AnalyticsCachePrewarmHostedService> logger,
+        IHostApplicationLifetime hostApplicationLifetime)
     {
         _configuration = configuration;
         _environment = environment;
         _logger = logger;
+        _hostApplicationLifetime = hostApplicationLifetime;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -30,6 +34,25 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
 
         var initialDelaySeconds = Math.Max(0, _configuration.GetValue<int?>("AnalyticsPrewarm:InitialDelaySeconds") ?? 12);
         var requestTimeoutSeconds = Math.Max(5, _configuration.GetValue<int?>("AnalyticsPrewarm:RequestTimeoutSeconds") ?? 45);
+
+        // Best-effort wait for the host to signal ApplicationStarted. This reduces
+        // connection-refused races where the HTTP listener isn't bound yet.
+        var waitForAppStartedSeconds = Math.Max(1, _configuration.GetValue<int?>("AnalyticsPrewarm:WaitForApplicationStartedSeconds") ?? 30);
+        try
+        {
+            var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var reg = _hostApplicationLifetime.ApplicationStarted.Register(() => tcs.TrySetResult(null));
+
+            var completed = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(waitForAppStartedSeconds), stoppingToken));
+            if (completed != tcs.Task)
+            {
+                _logger.LogWarning("Analytics cache prewarm: ApplicationStarted event did not fire within {TimeoutSeconds}s, continuing anyway.", waitForAppStartedSeconds);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return;
+        }
 
         try
         {
