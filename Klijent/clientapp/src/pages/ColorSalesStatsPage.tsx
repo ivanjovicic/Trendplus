@@ -548,6 +548,7 @@ export default function ColorSalesStatsPage() {
     setSezonaId(null);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
+    setActiveFilters({ fromDate: range.fromDate, toDate: range.toDate, sezonaId: null, storeId });
   };
 
   const handleSeasonChange = (value: string) => {
@@ -555,26 +556,21 @@ export default function ColorSalesStatsPage() {
     setSezonaId(parsed);
     setPeriodPreset("custom");
 
-    if (parsed == null) return;
-
-    const selected = data?.sezone.find((item) => item.id === parsed);
-    if (!selected) return;
-    setFromDate(toDateOnly(selected.datumOd));
-    setToDate(toDateOnly(selected.datumDo));
-  };
-
-  const applyFilters = () => {
-    if (invalidRange) {
-      setError("Datum od ne moze biti posle datuma do.");
+    if (parsed == null) {
+      setActiveFilters({ fromDate, toDate, sezonaId: null, storeId });
       return;
     }
 
-    setActiveFilters({
-      fromDate,
-      toDate,
-      sezonaId,
-      storeId,
-    });
+    const selected = data?.sezone.find((item) => item.id === parsed);
+    if (!selected) {
+      setActiveFilters({ fromDate, toDate, sezonaId: parsed, storeId });
+      return;
+    }
+    const newFrom = toDateOnly(selected.datumOd);
+    const newTo = toDateOnly(selected.datumDo);
+    setFromDate(newFrom);
+    setToDate(newTo);
+    setActiveFilters({ fromDate: newFrom, toDate: newTo, sezonaId: parsed, storeId });
   };
 
   const resetFilters = () => {
@@ -638,9 +634,13 @@ export default function ColorSalesStatsPage() {
             type="date"
             value={fromDate}
             onChange={(event) => {
+              const newFrom = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setFromDate(event.target.value);
+              setFromDate(newFrom);
+              if (newFrom.length === 10 && new Date(newFrom) <= new Date(toDate)) {
+                setActiveFilters({ fromDate: newFrom, toDate, sezonaId: null, storeId });
+              }
             }}
           />
         </label>
@@ -651,9 +651,13 @@ export default function ColorSalesStatsPage() {
             type="date"
             value={toDate}
             onChange={(event) => {
+              const newTo = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setToDate(event.target.value);
+              setToDate(newTo);
+              if (newTo.length === 10 && new Date(fromDate) <= new Date(newTo)) {
+                setActiveFilters({ fromDate, toDate: newTo, sezonaId: null, storeId });
+              }
             }}
           />
         </label>
@@ -674,7 +678,11 @@ export default function ColorSalesStatsPage() {
           <span>Objekat</span>
           <select
             value={storeId ?? ""}
-            onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
+            onChange={(event) => {
+              const newStore = event.target.value ? Number(event.target.value) : null;
+              setStoreId(newStore);
+              setActiveFilters({ fromDate, toDate, sezonaId, storeId: newStore });
+            }}
           >
             <option value="">Svi objekti</option>
             {stores.map((store) => (
@@ -686,7 +694,6 @@ export default function ColorSalesStatsPage() {
         </label>
 
         <div className="color-decision-actions">
-          <button type="button" onClick={applyFilters} disabled={loading}>Primeni</button>
           <button type="button" className="secondary" onClick={resetFilters} disabled={loading}>Reset</button>
         </div>
       </section>

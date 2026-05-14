@@ -1015,6 +1015,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     setSezonaId(null);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
+    commitFilters({ fromDate: range.fromDate, toDate: range.toDate, sezonaId: null, storeId });
   };
 
   const handleSeasonChange = (value: string) => {
@@ -1022,41 +1023,36 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     setSezonaId(parsed);
     setPeriodPreset("custom");
 
-    if (parsed == null) return;
-
-    const selected = data?.sezone.find((item) => item.id === parsed);
-    if (!selected) return;
-    setFromDate(toDateOnly(selected.datumOd));
-    setToDate(toDateOnly(selected.datumDo));
-  };
-
-  const handleApplyFilters = () => {
-    if (invalidRange) {
-      setError("Datum 'od' ne može biti posle datuma 'do'.");
+    if (parsed == null) {
+      commitFilters({ fromDate, toDate, sezonaId: null, storeId });
       return;
     }
 
-    const nextFilters: ActiveFilters = {
-      fromDate,
-      toDate,
-      sezonaId,
-      storeId,
-    };
-    setActiveFilters(nextFilters);
+    const selected = data?.sezone.find((item) => item.id === parsed);
+    if (!selected) {
+      commitFilters({ fromDate, toDate, sezonaId: parsed, storeId });
+      return;
+    }
+    const newFrom = toDateOnly(selected.datumOd);
+    const newTo = toDateOnly(selected.datumDo);
+    setFromDate(newFrom);
+    setToDate(newTo);
+    commitFilters({ fromDate: newFrom, toDate: newTo, sezonaId: parsed, storeId });
+  };
 
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set("fromDate", nextFilters.fromDate);
-    nextParams.set("toDate", nextFilters.toDate);
-    if (nextFilters.sezonaId != null) nextParams.set("sezonaId", String(nextFilters.sezonaId));
-    else nextParams.delete("sezonaId");
-    if (nextFilters.storeId != null) nextParams.set("storeId", String(nextFilters.storeId));
-    else nextParams.delete("storeId");
-    nextParams.set("dataScope", activeDataScope);
-    nextParams.set("includeUnknown", includeUnknown ? "true" : "false");
-    if (focus) nextParams.set("focus", focus);
-    else nextParams.delete("focus");
-    nextParams.delete("supplierId");
-    setSearchParams(nextParams, { replace: true });
+  const commitFilters = (next: ActiveFilters) => {
+    if (next.fromDate && next.toDate && new Date(next.fromDate) > new Date(next.toDate)) return;
+    setActiveFilters(next);
+    const p = new URLSearchParams(searchParams);
+    p.set("fromDate", next.fromDate);
+    p.set("toDate", next.toDate);
+    if (next.sezonaId != null) p.set("sezonaId", String(next.sezonaId)); else p.delete("sezonaId");
+    if (next.storeId != null) p.set("storeId", String(next.storeId)); else p.delete("storeId");
+    p.set("dataScope", activeDataScope);
+    p.set("includeUnknown", includeUnknown ? "true" : "false");
+    if (focus) p.set("focus", focus); else p.delete("focus");
+    p.delete("supplierId");
+    setSearchParams(p, { replace: true });
   };
 
   const handleResetFilters = () => {
@@ -1066,24 +1062,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     setToDate(range.toDate);
     setSezonaId(null);
     setStoreId(null);
-    setActiveFilters({
-      fromDate: range.fromDate,
-      toDate: range.toDate,
-      sezonaId: null,
-      storeId: null,
-    });
-
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set("fromDate", range.fromDate);
-    nextParams.set("toDate", range.toDate);
-    nextParams.delete("sezonaId");
-    nextParams.delete("storeId");
-    nextParams.set("dataScope", activeDataScope);
-    nextParams.set("includeUnknown", includeUnknown ? "true" : "false");
-    if (focus) nextParams.set("focus", focus);
-    else nextParams.delete("focus");
-    nextParams.delete("supplierId");
-    setSearchParams(nextParams, { replace: true });
+    commitFilters({ fromDate: range.fromDate, toDate: range.toDate, sezonaId: null, storeId: null });
   };
 
   const handleSort = (field: SortField) => {
@@ -1141,9 +1120,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             type="date"
             value={fromDate}
             onChange={(event) => {
+              const newFrom = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setFromDate(event.target.value);
+              setFromDate(newFrom);
+              if (newFrom.length === 10) {
+                commitFilters({ fromDate: newFrom, toDate, sezonaId: null, storeId });
+              }
             }}
           />
         </label>
@@ -1154,9 +1137,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             type="date"
             value={toDate}
             onChange={(event) => {
+              const newTo = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setToDate(event.target.value);
+              setToDate(newTo);
+              if (newTo.length === 10) {
+                commitFilters({ fromDate, toDate: newTo, sezonaId: null, storeId });
+              }
             }}
           />
         </label>
@@ -1177,7 +1164,11 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           <span>Objekat</span>
           <select
             value={storeId ?? ""}
-            onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
+            onChange={(event) => {
+              const newStore = event.target.value ? Number(event.target.value) : null;
+              setStoreId(newStore);
+              commitFilters({ fromDate, toDate, sezonaId, storeId: newStore });
+            }}
           >
             <option value="">Svi objekti</option>
             {stores.map((store) => (
@@ -1198,9 +1189,6 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         </label>
 
         <div className="supplier-decision-actions">
-          <button type="button" onClick={handleApplyFilters} disabled={loading}>
-            Primeni
-          </button>
           <button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>
             Reset
           </button>
@@ -1329,21 +1317,11 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
             <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
               <h2>{canonicalTerms.revenue.label} vs {canonicalTerms.marginContribution.label} <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
-              <p>Poređenje udela u prometu i udela u {canonicalTerms.marginContribution.label.toLowerCase()} - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
+              <p className="supplier-decision-chart-desc">Poređenje udela u prometu i udela u {canonicalTerms.marginContribution.label.toLowerCase()} - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="supplier-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                     <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                      <defs>
-                        <linearGradient id="supplierRevenueGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="var(--dashboard-gradient-revenue-start, var(--dashboard-accent-strong, #8bff00))" />
-                          <stop offset="100%" stopColor="var(--dashboard-gradient-revenue-end, var(--dashboard-accent, #33f28b))" />
-                        </linearGradient>
-                        <linearGradient id="supplierMarginGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="var(--dashboard-gradient-margin-start, var(--dashboard-secondary, #1ec8ff))" />
-                          <stop offset="100%" stopColor="var(--dashboard-gradient-margin-end, var(--dashboard-accent, #11f59e))" />
-                        </linearGradient>
-                      </defs>
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
@@ -1353,9 +1331,17 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                         cursor={CHART_CURSOR_STYLE}
                         formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
                       />
-                      <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
-                      <Bar dataKey="udeoPrometa" fill="url(#supplierRevenueGradient)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
-                      <Bar dataKey="udeoMarznogDoprinosa" fill="url(#supplierMarginGradient)" radius={[0, 6, 6, 0]} name={`Udeo u ${canonicalTerms.marginContribution.label} %`} />
+                      <Legend
+                        wrapperStyle={CHART_LEGEND_STYLE}
+                        iconType="circle"
+                        iconSize={8}
+                        payload={[
+                          { value: 'Udeo u prometu %', type: 'circle' as const, color: 'var(--dashboard-accent, #66ff7e)' },
+                          { value: `Udeo u ${canonicalTerms.marginContribution.label} %`, type: 'circle' as const, color: 'var(--dashboard-secondary, #1ec8ff)' },
+                        ]}
+                      />
+                      <Bar dataKey="udeoPrometa" fill="var(--dashboard-accent, #66ff7e)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--dashboard-secondary, #1ec8ff)" radius={[0, 6, 6, 0]} name={`Udeo u ${canonicalTerms.marginContribution.label} %`} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

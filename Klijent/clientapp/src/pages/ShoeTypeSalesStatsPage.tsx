@@ -673,6 +673,7 @@ export default function ShoeTypeSalesStatsPage() {
     setSezonaId(null);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
+    setActiveFilters({ fromDate: range.fromDate, toDate: range.toDate, sezonaId: null, storeId });
   };
 
   const handleSeasonChange = (value: string) => {
@@ -680,26 +681,21 @@ export default function ShoeTypeSalesStatsPage() {
     setSezonaId(parsed);
     setPeriodPreset("custom");
 
-    if (parsed == null) return;
-
-    const selected = data?.sezone.find((item) => item.id === parsed);
-    if (!selected) return;
-    setFromDate(toDateOnly(selected.datumOd));
-    setToDate(toDateOnly(selected.datumDo));
-  };
-
-  const applyFilters = () => {
-    if (invalidRange) {
-      setError("Datum od ne moze biti posle datuma do.");
+    if (parsed == null) {
+      setActiveFilters({ fromDate, toDate, sezonaId: null, storeId });
       return;
     }
 
-    setActiveFilters({
-      fromDate,
-      toDate,
-      sezonaId,
-      storeId,
-    });
+    const selected = data?.sezone.find((item) => item.id === parsed);
+    if (!selected) {
+      setActiveFilters({ fromDate, toDate, sezonaId: parsed, storeId });
+      return;
+    }
+    const newFrom = toDateOnly(selected.datumOd);
+    const newTo = toDateOnly(selected.datumDo);
+    setFromDate(newFrom);
+    setToDate(newTo);
+    setActiveFilters({ fromDate: newFrom, toDate: newTo, sezonaId: parsed, storeId });
   };
 
   const resetFilters = () => {
@@ -763,9 +759,13 @@ export default function ShoeTypeSalesStatsPage() {
             type="date"
             value={fromDate}
             onChange={(event) => {
+              const newFrom = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setFromDate(event.target.value);
+              setFromDate(newFrom);
+              if (newFrom.length === 10 && new Date(newFrom) <= new Date(toDate)) {
+                setActiveFilters({ fromDate: newFrom, toDate, sezonaId: null, storeId });
+              }
             }}
           />
         </label>
@@ -776,9 +776,13 @@ export default function ShoeTypeSalesStatsPage() {
             type="date"
             value={toDate}
             onChange={(event) => {
+              const newTo = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setToDate(event.target.value);
+              setToDate(newTo);
+              if (newTo.length === 10 && new Date(fromDate) <= new Date(newTo)) {
+                setActiveFilters({ fromDate, toDate: newTo, sezonaId: null, storeId });
+              }
             }}
           />
         </label>
@@ -799,7 +803,11 @@ export default function ShoeTypeSalesStatsPage() {
           <span>Objekat</span>
           <select
             value={storeId ?? ""}
-            onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
+            onChange={(event) => {
+              const newStore = event.target.value ? Number(event.target.value) : null;
+              setStoreId(newStore);
+              setActiveFilters({ fromDate, toDate, sezonaId, storeId: newStore });
+            }}
           >
             <option value="">Svi objekti</option>
             {stores.map((store) => (
@@ -811,7 +819,6 @@ export default function ShoeTypeSalesStatsPage() {
         </label>
 
         <div className="shoetype-decision-actions">
-          <button type="button" onClick={applyFilters} disabled={loading}>Primeni</button>
           <button type="button" className="secondary" onClick={resetFilters} disabled={loading}>Reset</button>
         </div>
       </section>
@@ -922,21 +929,11 @@ export default function ShoeTypeSalesStatsPage() {
 
             <article className="shoetype-decision-card shoetype-decision-card--chart analytics-surface-panel">
               <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu po tipu obuće. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
-              <p>Poređenje udela u prometu i udela u maržnom doprinosu - tipovi obuće s visokim prometom ne moraju imati i visok maržni doprinos.</p>
+              <p className="shoetype-decision-chart-desc">Poređenje udela u prometu i udela u maržnom doprinosu - tipovi obuće s visokim prometom ne moraju imati i visok maržni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                     <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                      <defs>
-                        <linearGradient id="shoeRevenueGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="var(--dashboard-gradient-revenue-start, var(--dashboard-accent-strong, #8bff00))" />
-                          <stop offset="100%" stopColor="var(--dashboard-gradient-revenue-end, var(--dashboard-accent, #33f28b))" />
-                        </linearGradient>
-                        <linearGradient id="shoeMarginGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="var(--dashboard-gradient-margin-start, var(--dashboard-secondary, #1ec8ff))" />
-                          <stop offset="100%" stopColor="var(--dashboard-gradient-margin-end, var(--dashboard-accent, #11f59e))" />
-                        </linearGradient>
-                      </defs>
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
@@ -946,9 +943,17 @@ export default function ShoeTypeSalesStatsPage() {
                         cursor={CHART_CURSOR_STYLE}
                         formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
                       />
-                      <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
-                      <Bar dataKey="udeoPrometa" fill="url(#shoeRevenueGradient)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
-                      <Bar dataKey="udeoMarznogDoprinosa" fill="url(#shoeMarginGradient)" radius={[0, 6, 6, 0]} name="Udeo u maržnom doprinosu %" />
+                      <Legend
+                        wrapperStyle={CHART_LEGEND_STYLE}
+                        iconType="circle"
+                        iconSize={8}
+                        payload={[
+                          { value: 'Udeo u prometu %', type: 'circle' as const, color: 'var(--dashboard-accent, #66ff7e)' },
+                          { value: 'Udeo u maržnom doprinosu %', type: 'circle' as const, color: 'var(--dashboard-secondary, #1ec8ff)' },
+                        ]}
+                      />
+                      <Bar dataKey="udeoPrometa" fill="var(--dashboard-accent, #66ff7e)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--dashboard-secondary, #1ec8ff)" radius={[0, 6, 6, 0]} name="Udeo u maržnom doprinosu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
