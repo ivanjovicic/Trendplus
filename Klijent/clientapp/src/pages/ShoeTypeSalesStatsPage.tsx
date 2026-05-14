@@ -947,10 +947,7 @@ export default function ShoeTypeSalesStatsPage() {
                         wrapperStyle={CHART_LEGEND_STYLE}
                         iconType="circle"
                         iconSize={8}
-                        payload={[
-                          { value: 'Udeo u prometu %', type: 'circle' as const, color: 'var(--dashboard-accent, #66ff7e)' },
-                          { value: 'Udeo u maržnom doprinosu %', type: 'circle' as const, color: 'var(--dashboard-secondary, #1ec8ff)' },
-                        ]}
+                        itemSorter={(item) => (item.dataKey === "udeoPrometa" ? 0 : 1)}
                       />
                       <Bar dataKey="udeoPrometa" fill="var(--dashboard-accent, #66ff7e)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
                       <Bar dataKey="udeoMarznogDoprinosa" fill="var(--dashboard-secondary, #1ec8ff)" radius={[0, 6, 6, 0]} name="Udeo u maržnom doprinosu %" />
