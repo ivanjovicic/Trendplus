@@ -1,4 +1,5 @@
-import { AlertTriangle } from "lucide-react";
+﻿import { AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { InventoryAlertListDto } from "../../types/analytics";
 import { getAlertSeverityTone } from "./inventoryUtils";
 
@@ -56,6 +57,7 @@ export function InventoryAlertsFeed({
       {!alerts?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           {alertsLoading ? "Ucitavam alertove..." : "Alertovi nisu dostupni. Snapshot tabela je prazna ili nije pokrenuta analitika."}
+          <div className="mt-2 text-xs">Otvori <Link to="/analytics/data-quality">Data Quality</Link> ako alert snapshot ili quality signal kasni.</div>
           {alerts?.warning ? <div className="mt-2 text-xs text-warning">{alerts.warning}</div> : null}
         </div>
       ) : (
@@ -71,6 +73,7 @@ export function InventoryAlertsFeed({
                 </div>
               </div>
               <div className="mt-3 text-sm font-semibold text-foreground">{alert.title}</div>
+              <div className="mt-1 text-[11px] text-muted">Data quality status nije dostupan za alert; koristi confidence i <Link to="/analytics/data-quality">Data Quality</Link>.</div>
               <div className="mt-1 text-xs leading-5 text-muted">{alert.message}</div>
               <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted">
                 <span>Tip: {alert.alertType}</span>

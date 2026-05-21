@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   checkAnalyticsHealth,
   getDashboardBootstrap,
@@ -34,6 +34,12 @@ import {
   type AnalyticsPeriodPreset,
   getAnalyticsPeriodPresetRange,
 } from "../utils/analyticsPeriodPresets";
+import {
+  normalizeRecommendationPct,
+  normalizeRecommendationQualityStatus,
+  recommendationQualityLabel,
+  RECOMMENDATION_SIGNAL_UNAVAILABLE,
+} from "../utils/canonicalRecommendationSemantics";
 import "./AnalyticsDashboard.css";
 
 type TopTabKey = "revenue" | "units" | "velocity" | "margin";
@@ -660,15 +666,28 @@ export default function AnalyticsDashboard() {
               <h3 className="with-tip"><span>Preporucene akcije</span><InfoTip text="Prakticni koraci koji pomazu rastu prometa ili smanjenju rizika." /></h3>
               <p className="section-note">P1 je najhitnije, P3 je redovno pracenje.</p>
               {advanced.actions.length === 0 && <div className="analytics-empty">Sve je u redu.</div>}
-              {advanced.actions.map((item, index) => (
-                <div key={`act-${index}`} className="action-row">
-                  <span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span>
-                  <div>
-                    <strong>{item.title.replace("Replenishment", "Dopuna zaliha").replace("Portfolio balance", "Balans asortimana")}</strong>
-                    <p>{item.recommendation.replace("Refresh pipeline", "Osvezavanje pipeline-a").replace("Data quality fix", "Ispravka kvaliteta podataka").replace("Monitor", "Pracenje")}</p>
+              {advanced.actions.map((item, index) => {
+                const confidencePct = normalizeRecommendationPct(item.confidencePct);
+                const reliabilityPct = normalizeRecommendationPct(item.reliabilityPct);
+                const qualityStatus = normalizeRecommendationQualityStatus(item.dataQualityStatus);
+                const hasSignal = confidencePct != null || reliabilityPct != null;
+
+                return (
+                  <div key={`act-${index}`} className="action-row">
+                    <span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span>
+                    <div>
+                      <strong>{item.title.replace("Replenishment", "Dopuna zaliha").replace("Portfolio balance", "Balans asortimana")}</strong>
+                      <p>{item.recommendation.replace("Refresh pipeline", "Osvezavanje pipeline-a").replace("Data quality fix", "Ispravka kvaliteta podataka").replace("Monitor", "Pracenje")}</p>
+                      <p className="section-note">
+                        {hasSignal
+                          ? `Sigurnost ${confidencePct != null ? formatPercent(confidencePct) : RECOMMENDATION_SIGNAL_UNAVAILABLE} | Pouzdanost ${reliabilityPct != null ? formatPercent(reliabilityPct) : RECOMMENDATION_SIGNAL_UNAVAILABLE} | Kvalitet ${recommendationQualityLabel(qualityStatus)}`
+                          : RECOMMENDATION_SIGNAL_UNAVAILABLE}{" "}
+                        <Link to="/analytics/data-quality">Data Quality</Link>
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </section>
           </div>
         )}
@@ -762,7 +781,11 @@ export default function AnalyticsDashboard() {
               <button className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>Top po brzini prodaje</button>
               <button className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Top po marzi</button>
             </div>
-            {topTab === "margin" && !topAdvanced.marginAvailable && <div className="analytics-empty warning">Nema dovoljno podataka za prikaz uticaja na marzu.</div>}
+            {topTab === "margin" && !topAdvanced.marginAvailable && <div className="analytics-empty warning">Nema dovoljno podataka za prikaz uticaja na marzu. <Link to="/analytics/data-quality">Data Quality</Link></div>}
+            <p className="section-note">
+              {topAdvanced.marginMessage ?? "Kvalitet marze po artiklu nije dostupan na ovom dashboard pogledu; backend jos ne vraca cost coverage / margin quality tier po redu."}{" "}
+              <Link to="/analytics/data-quality">Data Quality</Link>
+            </p>
             {topRows.length === 0 ? <div className="analytics-empty">Nema podataka.</div> : (
               <div className="top-table-wrap">
                 <table className="top-table">
@@ -797,8 +820,14 @@ export default function AnalyticsDashboard() {
                         <td>{formatCurrency(row.revenue)}</td>
                         <td>{formatNumber(row.units)}</td>
                         <td>{formatNumber(row.velocityUnitsPerDay, 2)}</td>
-                        <td>{row.marginImpact == null ? "N/A" : formatCurrency(row.marginImpact)}</td>
-                        <td className={row.trendPct != null && row.trendPct < 0 ? "trend down" : "trend up"}>{trendLabel(row.trendPct)} {formatPercent(row.trendPct)}</td>
+                        <td>
+                          <div>{row.marginImpact == null ? "N/A" : formatCurrency(row.marginImpact)}</div>
+                          <small>{row.marginQualityLabel ?? "Kvalitet marze nije dostupan"}</small>
+                        </td>
+                        <td className={row.trendPct != null && row.trendPct < 0 ? "trend down" : "trend up"}>
+                          <div>{trendLabel(row.trendPct)} {formatPercent(row.trendPct)}</div>
+                          {row.trendPct == null ? <small>Nema prethodnog perioda za PoP poredjenje.</small> : null}
+                        </td>
                         <td><span className={`stock-pill ${statusTone(row.stockStatus)}`}>{statusLabel(row.stockStatus)}</span></td>
                       </tr>
                     ))}

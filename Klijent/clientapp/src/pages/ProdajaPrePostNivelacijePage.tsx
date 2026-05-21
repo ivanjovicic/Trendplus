@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -28,10 +28,17 @@ import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescription
 import {
   RECOMMENDATION_CONFIDENCE_LABEL,
   RECOMMENDATION_RELIABILITY_LABEL,
+  RECOMMENDATION_SIGNAL_UNAVAILABLE,
   RECOMMENDATION_STATUS_PRIORITY,
+  normalizeRecommendationPct,
+  normalizeRecommendationQualityStatus,
+  recommendationQualityLabel,
+  recommendationQualityStyle,
+  recommendationReasonHints,
   recommendationStatusLabel,
   recommendationStatusTone,
   recommendationStatusTooltipBrief,
+  type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import "./ProdajaPrePostNivelacijePage.css";
 
@@ -55,10 +62,14 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   postSharePct: number;
   trendPct: number;
   reliabilityPct: number;
+  reliabilityAvailable: boolean;
   avgCoveragePost30: number;
   confidencePct: number;
+  confidenceAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
   confidenceLabel: string;
   confidenceTone: ConfidenceTone;
   previousPostRevenue: number | null;
@@ -383,10 +394,18 @@ type StatusTooltipData = {
   changeRevenue: number;
   reliabilityPct: number;
   confidencePct: number;
+  reliabilityAvailable: boolean;
+  confidenceAvailable: boolean;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${fmtPct(data.reliabilityPct, 0)} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${fmtPct(data.confidencePct, 0)}`;
+  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const qualityText = recommendationQualityLabel(data.dataQualityStatus);
+  const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function normalizeName(value: string | null | undefined): string {
@@ -527,8 +546,8 @@ export default function ProdajaPrePostNivelacijePage() {
       const status = backendRecommendation?.status ?? "insufficient_data";
       const statusReason = backendRecommendation?.summary
         ?? "Backend recommendation payload nije dostupan za ovaj red; frontend ne računa zamenski poslovni status.";
-      const confidencePct = backendRecommendation?.confidencePct ?? 0;
-      const recommendationReliabilityPct = backendRecommendation?.reliabilityPct ?? item.reliabilityPct;
+      const confidencePctValue = normalizeRecommendationPct(backendRecommendation?.confidencePct);
+      const recommendationReliabilityPct = normalizeRecommendationPct(backendRecommendation?.reliabilityPct ?? item.reliabilityPct);
 
       const sharePct = item.changeSharePercent ?? (
         totalAbsoluteChangeRevenue > 0 ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100 : 0
@@ -538,7 +557,7 @@ export default function ProdajaPrePostNivelacijePage() {
       );
       const trendPct = item.changePercent;
       const avgCoveragePost30 = (item.avgCoveragePost30 ?? 0) * 100;
-      const reliabilityPct = recommendationReliabilityPct;
+      const reliabilityPct = recommendationReliabilityPct ?? 0;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
       const confidence = buildConfidenceMeta(reliabilityPct);
       const volatility = buildVolatilityMeta(item.postRevenue, previousPostRevenue);
@@ -549,10 +568,14 @@ export default function ProdajaPrePostNivelacijePage() {
         postSharePct,
         trendPct,
         reliabilityPct,
+        reliabilityAvailable: recommendationReliabilityPct != null,
         avgCoveragePost30,
-        confidencePct,
+        confidencePct: confidencePctValue ?? 0,
+        confidenceAvailable: confidencePctValue != null,
         status,
         statusReason,
+        dataQualityStatus: normalizeRecommendationQualityStatus(backendRecommendation?.dataQualityStatus),
+        reasonCodes: backendRecommendation?.reasonCodes ?? [],
         confidenceLabel: confidence.label,
         confidenceTone: confidence.tone,
         previousPostRevenue,
@@ -1378,7 +1401,11 @@ const advancedSignals = useMemo(
                     {RECOMMENDATION_RELIABILITY_LABEL}
                     <InfoTip text={analyticsMetricDescriptions.reliabilityPct} />
                   </span>
-                  <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
+                  <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                </article>
+                <article>
+                  <span>Status kvaliteta preporuke</span>
+                  <strong style={recommendationQualityStyle(selectedRow.dataQualityStatus)}>{recommendationQualityLabel(selectedRow.dataQualityStatus)}</strong>
                 </article>
                 <article>
                   <span>
@@ -1400,7 +1427,7 @@ const advancedSignals = useMemo(
                     {RECOMMENDATION_CONFIDENCE_LABEL}
                     <InfoTip text={analyticsMetricDescriptions.recommendationConfidencePct} />
                   </span>
-                  <strong>{fmtPct(selectedRow.confidencePct, 1)}</strong>
+                  <strong>{selectedRow.confidenceAvailable ? fmtPct(selectedRow.confidencePct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
               </div>
 
@@ -1445,6 +1472,21 @@ const advancedSignals = useMemo(
               <p className="ppn-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
               </p>
+              {selectedRow.reasonCodes.length > 0 ? (
+                <p className="ppn-decision-reason">
+                  <strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}
+                </p>
+              ) : null}
+              {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (
+                <p key={hint} className="ppn-decision-reason">
+                  <strong>Napomena:</strong> {hint}
+                </p>
+              ))}
+              {(!selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
+                <p className="ppn-decision-reason">
+                  <strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.
+                </p>
+              ) : null}
             </section>
           ) : null}
         </>

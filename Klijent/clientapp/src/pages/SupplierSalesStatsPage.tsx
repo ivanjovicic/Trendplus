@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -33,6 +33,15 @@ import {
   buildPrePostNivelacijaImpactDescription,
   canonicalTerms,
 } from "../utils/analyticsMetricDescriptions";
+import {
+  normalizeRecommendationPct,
+  normalizeRecommendationQualityStatus,
+  recommendationQualityLabel,
+  recommendationQualityStyle,
+  recommendationReasonHintFromCode,
+  RECOMMENDATION_SIGNAL_UNAVAILABLE,
+  type RecommendationQualityStatus,
+} from "../utils/canonicalRecommendationSemantics";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierSalesStatsPage.css";
@@ -66,8 +75,10 @@ type DecisionSupplier = SupplierSalesStat & {
   shareOfMarginContribution: number;
   shareOfUnits: number;
   reliabilityPct: number;
+  reliabilityAvailable: boolean;
   splitCoveragePct: number;
   confidencePct: number;
+  confidenceAvailable: boolean;
   primaryFootwearType: string;
   primaryFootwearTypeSharePct: number;
   footwearTypeCount: number;
@@ -76,7 +87,7 @@ type DecisionSupplier = SupplierSalesStat & {
   statusLabel: string;
   statusReason: string;
   reasonCodes: string[];
-  dataQualityStatus: "good" | "warning" | "critical";
+  dataQualityStatus: RecommendationQualityStatus;
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
@@ -88,16 +99,16 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
 };
 
 const decisionColumns: AnalyticsTableColumn<DecisionSupplier>[] = [
-  { key: "dobavljacNaziv", header: "Dobavljač", dataType: "text" },
+  { key: "dobavljacNaziv", header: "DobavljaÄ", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
-  { key: "ukupnaKolicina", header: "Količina", dataType: "number" },
+  { key: "ukupnaKolicina", header: "KoliÄina", dataType: "number" },
   { key: "totalCost", header: "Nabavna vrednost", dataType: "currency" },
   { key: "sharePct", header: "Udeo prometa %", dataType: "percent" },
-  { key: "primaryFootwearType", header: "Vodeća vrsta obuće", dataType: "text" },
-  { key: "primaryFootwearTypeSharePct", header: "Udeo vodeće vrste %", dataType: "percent" },
+  { key: "primaryFootwearType", header: "VodeÄ‡a vrsta obuÄ‡e", dataType: "text" },
+  { key: "primaryFootwearTypeSharePct", header: "Udeo vodeÄ‡e vrste %", dataType: "percent" },
   { key: "marginContribution", header: canonicalTerms.marginContribution.label, dataType: "currency" },
   { key: "marginPct", header: canonicalTerms.marginPct.label, dataType: "percent" },
-  { key: "marginQualityLabel", header: "Kvalitet marže", dataType: "text" },
+  { key: "marginQualityLabel", header: "Kvalitet marÅ¾e", dataType: "text" },
   { key: "shareOfMarginContribution", header: `Udeo u ${canonicalTerms.marginContribution.label} %`, dataType: "percent" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
@@ -105,14 +116,14 @@ const decisionColumns: AnalyticsTableColumn<DecisionSupplier>[] = [
 
 const REASON_CODE_LABELS: Record<string, string> = {
   unknown_entity: "Nepoznat entitet",
-  new_entity: "Novi dobavljač",
+  new_entity: "Novi dobavljaÄ",
   previous_period_missing: "Nedostaje prethodni period",
   no_previous_baseline: "Nema prethodne baze",
-  missing_cost_coverage: "Nedovoljno pokriće nabavne cene",
+  missing_cost_coverage: "Nedovoljno pokriÄ‡e nabavne cene",
   limited_nivelacija_coverage: "Nizak pre/post split coverage",
   unknown_heavy_dataset: "Unknown-heavy dataset",
   tiny_sample: "Premali uzorak",
-  unstable_margin: "Nestabilna marža",
+  unstable_margin: "Nestabilna marÅ¾a",
   pop_unavailable: "PoP nije dostupan",
 };
 
@@ -193,8 +204,8 @@ function smoothScrollToElement(element: HTMLElement, durationMs = 850): void {
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
-  if (field !== activeField) return " ⇅";
-  return dir === "asc" ? " ↑" : " ↓";
+  if (field !== activeField) return " â‡…";
+  return dir === "asc" ? " â†‘" : " â†“";
 }
 
 function isSortActive(field: SortField, activeField: SortField): boolean {
@@ -209,16 +220,16 @@ function statusClass(status: DecisionStatus): string {
 }
 
 function displayStatusLabel(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Pojačaj";
-  if (status === "maintain") return "Zadrži";
+  if (status === "increase_focus") return "PojaÄaj";
+  if (status === "maintain") return "ZadrÅ¾i";
   if (status === "review") return "Oprez";
   if (status === "do_not_trust") return "Smanji";
   return "Nedovoljno podataka";
 }
 
 function statusLabelSr(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Pojačaj";
-  if (status === "maintain") return "Zadrži";
+  if (status === "increase_focus") return "PojaÄaj";
+  if (status === "maintain") return "ZadrÅ¾i";
   if (status === "review") return "Oprez";
   if (status === "do_not_trust") return "Smanji";
   return "N/A";
@@ -242,7 +253,10 @@ type StatusTooltipData = {
   previousPeriodRevenue: number | null;
   splitCoveragePct: number | null;
   reliabilityPct: number;
+  reliabilityAvailable: boolean;
   confidencePct: number;
+  confidenceAvailable: boolean;
+  dataQualityStatus: RecommendationQualityStatus;
   reasonCodes: string[];
 };
 
@@ -259,10 +273,17 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
+  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const qualityText = recommendationQualityLabel(data.dataQualityStatus);
+  const reasonHints = data.reasonCodes
+    .map((code) => recommendationReasonHintFromCode(code))
+    .filter((hint): hint is string => Boolean(hint));
   const reasons = data.reasonCodes.length > 0
     ? data.reasonCodes.map(formatReasonCode).join(", ")
     : "Nema dodatnih napomena";
-  return `${data.statusLabel}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrivanje ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Sigurnost ${fmtPct(data.confidencePct, 0)} | Razlozi: ${reasons}`;
+  const hintText = reasonHints.length > 0 ? ` | Napomene: ${reasonHints.join(" | ")}` : "";
+  return `${data.statusLabel}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | MarÃ…Â¾a ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrivanje ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText} | Sigurnost ${confidenceText} | Kvalitet ${qualityText} | Razlozi: ${reasons}${hintText}`;
 }
 
 function describePopMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
@@ -277,14 +298,14 @@ function describePopMetric(supplier: SupplierSalesStat): { label: string; title:
   if (supplier.previousPeriodRevenue != null && supplier.previousPeriodRevenue <= 0 && supplier.ukupanPromet > 0) {
     return {
       label: "Novo",
-      title: "Dobavljač nije imao promet u prethodnom uporedivom periodu, pa PoP procenat nije smislen.",
+      title: "DobavljaÄ nije imao promet u prethodnom uporedivom periodu, pa PoP procenat nije smislen.",
       className: "trend-neutral",
     };
   }
 
   return {
     label: "N/A",
-    title: "PoP trend nije dostupan jer ne postoji validna prethodna baza za poređenje.",
+    title: "PoP trend nije dostupan jer ne postoji validna prethodna baza za poreÄ‘enje.",
     className: "trend-neutral",
   };
 }
@@ -336,7 +357,7 @@ function describePopUnitsMetric(supplier: SupplierSalesStat): { label: string; t
   if (supplier.popUnitsChangePct != null && !Number.isNaN(supplier.popUnitsChangePct)) {
     return {
       label: fmtSignedPct(supplier.popUnitsChangePct, 2),
-      title: "Promena prodane količine u odnosu na prethodni uporedivi period iste dužine.",
+      title: "Promena prodane koliÄine u odnosu na prethodni uporedivi period iste duÅ¾ine.",
       className: trendClass(supplier.popUnitsChangePct),
     };
   }
@@ -344,14 +365,14 @@ function describePopUnitsMetric(supplier: SupplierSalesStat): { label: string; t
   if (supplier.previousPeriodUnits != null && supplier.previousPeriodUnits <= 0 && supplier.ukupnaKolicina > 0) {
     return {
       label: "Novo",
-      title: "Dobavljač nije imao prodatu količinu u prethodnom uporedivom periodu.",
+      title: "DobavljaÄ nije imao prodatu koliÄinu u prethodnom uporedivom periodu.",
       className: "trend-neutral",
     };
   }
 
   return {
     label: "N/A",
-    title: "Promena prodane količine nije dostupna jer nedostaje prethodni period za poređenje.",
+    title: "Promena prodane koliÄine nije dostupna jer nedostaje prethodni period za poreÄ‘enje.",
     className: "trend-neutral",
   };
 }
@@ -361,7 +382,7 @@ function describeNivelacijaUnitsImpactMetric(supplier: SupplierSalesStat): { lab
     const noteSuffix = supplier.prePostSignalNote ? ` Napomena: ${supplier.prePostSignalNote}` : "";
     return {
       label: fmtSignedPct(supplier.prePostNivelacijaUnitsImpactPct, 2),
-      title: `Pre/post promena količine unutar uporedivih artikala sa prodajom i pre i posle prve nivelacije.${noteSuffix}`,
+      title: `Pre/post promena koliÄine unutar uporedivih artikala sa prodajom i pre i posle prve nivelacije.${noteSuffix}`,
       className: trendClass(supplier.prePostNivelacijaUnitsImpactPct),
     };
   }
@@ -385,7 +406,7 @@ function describeNivelacijaUnitsImpactMetric(supplier: SupplierSalesStat): { lab
   if (supplier.preNivelacijeKolicina <= 0 && supplier.posleNivelacijeKolicina > 0) {
     return {
       label: "Bez baze",
-      title: "Postoji količina posle prve nivelacije, ali nema pre-nivelacija baze za smislen procenat promene.",
+      title: "Postoji koliÄina posle prve nivelacije, ali nema pre-nivelacija baze za smislen procenat promene.",
       className: "trend-neutral",
     };
   }
@@ -399,18 +420,18 @@ function describeNivelacijaUnitsImpactMetric(supplier: SupplierSalesStat): { lab
 
 function describeFootwearMix(supplier: Pick<DecisionSupplier, "primaryFootwearType" | "primaryFootwearTypeSharePct" | "footwearTypeCount">): string {
   if (supplier.footwearTypeCount <= 0 || supplier.primaryFootwearType === "N/A") {
-    return "Nema dovoljno podataka o vrstama obuće za ovog dobavljača.";
+    return "Nema dovoljno podataka o vrstama obuÄ‡e za ovog dobavljaÄa.";
   }
 
   if (supplier.primaryFootwearTypeSharePct >= 65) {
-    return `${supplier.primaryFootwearType} nosi većinu prometa dobavljača (${fmtPct(supplier.primaryFootwearTypeSharePct, 1)}). Ovo je jak signal koncentracije asortimana.`;
+    return `${supplier.primaryFootwearType} nosi veÄ‡inu prometa dobavljaÄa (${fmtPct(supplier.primaryFootwearTypeSharePct, 1)}). Ovo je jak signal koncentracije asortimana.`;
   }
 
   if (supplier.primaryFootwearTypeSharePct >= 40) {
-    return `${supplier.primaryFootwearType} je vodeća vrsta obuće, ali dobavljač ima i sekundarne segmente.`;
+    return `${supplier.primaryFootwearType} je vodeÄ‡a vrsta obuÄ‡e, ali dobavljaÄ ima i sekundarne segmente.`;
   }
 
-  return `Promet je raspoređen kroz ${supplier.footwearTypeCount} vrste obuće — nema jedne dominantne kategorije.`;
+  return `Promet je rasporeÄ‘en kroz ${supplier.footwearTypeCount} vrste obuÄ‡e â€” nema jedne dominantne kategorije.`;
 }
 
 function footwearMixTone(sharePct: number): string {
@@ -420,7 +441,7 @@ function footwearMixTone(sharePct: number): string {
 }
 
 function buildFootwearRowTooltip(row: SupplierFootwearBreakdown): string {
-  return `${row.tipObuceNaziv}: promet ${fmtRsd(row.ukupanPromet)}, količina ${fmtQty(row.ukupnaKolicina)}, maržni doprinos ${fmtRsd(row.marginContribution)}, marža ${fmtPct(row.marginPct, 1)}, udeo kod dobavljača ${fmtPct(row.shareOfSupplierRevenuePct, 1)}.`;
+  return `${row.tipObuceNaziv}: promet ${fmtRsd(row.ukupanPromet)}, koliÄina ${fmtQty(row.ukupnaKolicina)}, marÅ¾ni doprinos ${fmtRsd(row.marginContribution)}, marÅ¾a ${fmtPct(row.marginPct, 1)}, udeo kod dobavljaÄa ${fmtPct(row.shareOfSupplierRevenuePct, 1)}.`;
 }
 
 function normalizeName(value: string | null | undefined): string {
@@ -573,7 +594,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       if (requestId !== requestIdRef.current) return;
       setData(null);
       setLoading(false);
-      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka o dobavljačima.");
+      setError(reason instanceof Error ? reason.message : "GreÅ¡ka pri uÄitavanju podataka o dobavljaÄima.");
     }
   }, [activeDataScope]);
 
@@ -604,15 +625,16 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const statusLabel = recommended?.label ?? displayStatusLabel(status);
       const statusReason = recommended?.summary
         ?? (supplier.isUnknown
-          ? "Dobavljač je nepoznat u master podacima; signal nije pouzdan za odluku."
+          ? "DobavljaÄ je nepoznat u master podacima; signal nije pouzdan za odluku."
           : "Nedovoljno podataka za pouzdanu preporuku.");
-      const confidencePct = recommended?.confidencePct ?? 0;
+      const confidencePctValue = normalizeRecommendationPct(recommended?.confidencePct);
+      const reliabilityPctValue = normalizeRecommendationPct(recommended?.reliabilityPct ?? supplier.reliabilityPct);
+      const confidenceAvailable = confidencePctValue != null;
+      const reliabilityAvailable = reliabilityPctValue != null;
+      const confidencePct = confidencePctValue ?? 0;
       const reasonCodes = recommended?.reasonCodes ?? [];
-      const dataQualityStatus = recommended?.dataQualityStatus ?? "warning";
-      const reliabilityPct = recommended?.reliabilityPct
-        ?? supplier.reliabilityPct
-        ?? supplier.marginDataCoveragePct
-        ?? 0;
+      const dataQualityStatus = normalizeRecommendationQualityStatus(recommended?.dataQualityStatus);
+      const reliabilityPct = reliabilityPctValue ?? 0;
       const footwearBreakdown = supplier.footwearBreakdown ?? [];
       const primaryFootwearType = supplier.primaryFootwearType
         ?? footwearBreakdown[0]?.tipObuceNaziv
@@ -629,8 +651,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         shareOfMarginContribution,
         shareOfUnits,
         reliabilityPct,
+        reliabilityAvailable,
         splitCoveragePct,
         confidencePct,
+        confidenceAvailable,
         primaryFootwearType,
         primaryFootwearTypeSharePct,
         footwearTypeCount,
@@ -856,19 +880,19 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct;
 
     if (splitCoverage != null && splitCoverage < 60) {
-      notes.push(`Signal pre/posle nivelacije pokriva samo ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa ga treba tumačiti kao delimičan.`);
+      notes.push(`Signal pre/posle nivelacije pokriva samo ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa ga treba tumaÄiti kao delimiÄan.`);
     }
 
     if (historicalCostShare != null && historicalCostShare < 100) {
-      notes.push(`Istorijska nabavna cena dostupna je za ${fmtPct(historicalCostShare, 1)} prometa; za preostali promet maržu ne možemo potvrditi iz istorijskih transakcija.`);
+      notes.push(`Istorijska nabavna cena dostupna je za ${fmtPct(historicalCostShare, 1)} prometa; za preostali promet marÅ¾u ne moÅ¾emo potvrditi iz istorijskih transakcija.`);
     }
 
     if (estimatedCostShare != null && estimatedCostShare > 0) {
-      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenjena (bez direktnog troška) — maržu čitati oprezno.`);
+      notes.push(`Za ${fmtPct(estimatedCostShare, 1)} prometa nabavna cena je procenjena (bez direktnog troÅ¡ka) â€” marÅ¾u Äitati oprezno.`);
     }
 
     if (unknownShare != null && unknownShare > 0) {
-      notes.push(`Nepoznati/N-A dobavljači učestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
+      notes.push(`Nepoznati/N-A dobavljaÄi uÄestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
     }
 
     const snapshotPct = data.totals.snapshotCostCoveragePct;
@@ -887,7 +911,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
       { key: "dataScope", label: "Opseg podataka", value: activeDataScope },
       { key: "supplierId", label: "Dobavljac", value: activeSupplierId ?? "Svi dobavljaci" },
-      { key: "includeUnknown", label: "Uključi nepoznate", value: includeUnknown ? "da" : "ne" },
+      { key: "includeUnknown", label: "UkljuÄi nepoznate", value: includeUnknown ? "da" : "ne" },
     ],
     [activeDataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, activeSupplierId, includeUnknown]
   );
@@ -905,8 +929,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "splitCoverage", label: "Uporedivo pre/post pokrivanje", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
       { key: "snapshotCoverage", label: "Zamrznuta procena (snapshot) %", value: fmtPct(data?.totals.snapshotCostCoveragePct, 1) },
       { key: "isSnapshotActive", label: "Snapshot aktivan", value: data?.totals.isSnapshotActive ? "da" : "ne" },
-      { key: "increaseFocus", label: "Pojačaj fokus", value: supplierCounts.increaseFocus },
-      { key: "maintain", label: "Zadrži", value: supplierCounts.maintain },
+      { key: "increaseFocus", label: "PojaÄaj fokus", value: supplierCounts.increaseFocus },
+      { key: "maintain", label: "ZadrÅ¾i", value: supplierCounts.maintain },
       { key: "review", label: "U pregledu", value: supplierCounts.review },
       { key: "doNotTrust", label: "Smanji", value: supplierCounts.doNotTrust },
       { key: "insufficientData", label: "Nedovoljno podataka", value: supplierCounts.insufficientData },
@@ -1088,9 +1112,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       {!embedded ? (
       <header className="supplier-decision-header">
         <div>
-          <h1 className="supplier-decision-title">Prodaja po dobavljačima</h1>
+          <h1 className="supplier-decision-title">Prodaja po dobavljaÄima</h1>
           <p className="supplier-decision-subtitle">
-            Pregled prodaje po dobavljačima s podrškom za odluku: promet, maržni doprinos i akcija.
+            Pregled prodaje po dobavljaÄima s podrÅ¡kom za odluku: promet, marÅ¾ni doprinos i akcija.
           </p>
         </div>
         {data?.generatedAt ? (
@@ -1110,7 +1134,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             <option value="90d">Poslednjih 90 dana</option>
             <option value="180d">Poslednjih 180 dana</option>
             <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">Prilagođeno</option>
+            <option value="custom">PrilagoÄ‘eno</option>
           </select>
         </label>
 
@@ -1180,7 +1204,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         </label>
 
         <label className="supplier-decision-field supplier-decision-field-checkbox">
-          <span>Prikaži nepoznate</span>
+          <span>PrikaÅ¾i nepoznate</span>
           <input
             type="checkbox"
             checked={includeUnknown}
@@ -1197,13 +1221,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       ) : null}
 
       {invalidRange ? (
-        <div className="supplier-decision-message error" role="alert">Datum 'od' ne može biti posle datuma 'do'.</div>
+        <div className="supplier-decision-message error" role="alert">Datum 'od' ne moÅ¾e biti posle datuma 'do'.</div>
       ) : null}
       {error ? <div className="supplier-decision-message error" role="alert">{error}</div> : null}
       {loading && !data ? (
         <div className="supplier-decision-loading" role="status" aria-live="polite">
-          <UltraSpinner size="md" label="Učitavam podatke o dobavljačima" />
-          <span>Učitavam podatke o dobavljačima...</span>
+          <UltraSpinner size="md" label="UÄitavam podatke o dobavljaÄima" />
+          <span>UÄitavam podatke o dobavljaÄima...</span>
         </div>
       ) : null}
       {!loading && !error && emptyStateHint ? (
@@ -1218,20 +1242,20 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         >
           {loading ? (
             <div className="supplier-decision-refetch-overlay" aria-hidden="true">
-              <UltraSpinner size="sm" label="Osvežavam podatke" />
+              <UltraSpinner size="sm" label="OsveÅ¾avam podatke" />
             </div>
           ) : null}
           <section className="supplier-decision-kpis">
             <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Vrednost prodaje kroz aktivne dobavljace u periodu.">
-              <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljača u izabranom periodu. Formula: zbir prodajnih vrednosti svih prodajnih stavki u periodu. U promet ne ulaze operativni troškovi." /></span>
+              <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljaÄa u izabranom periodu. Formula: zbir prodajnih vrednosti svih prodajnih stavki u periodu. U promet ne ulaze operativni troÅ¡kovi." /></span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
             <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Ukupan obim prodaje izrazen u komadima.">
-              <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljača u izabranom periodu." /></span>
+              <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljaÄa u izabranom periodu." /></span>
               <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
             </article>
-            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe pokriven istorijskim ili procenjenim ulazom.">
-              <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
+            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="TroÅ¡ak robe pokriven istorijskim ili procenjenim ulazom.">
+              <span>Ukupna nabavna vrednost <InfoTip text="Zbir troÅ¡ka robe za deo prometa sa dostupnim troÅ¡kom. Formula: zbir koliÄina x nabavna cena za stavke sa istorijskim ili procenjenim troÅ¡kom. Operativni troÅ¡kovi nisu ukljuÄeni." /></span>
               <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
             </article>
             <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto doprinos marze pre operativnih troskova.">
@@ -1248,20 +1272,20 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   className="supplier-decision-kpi-badge quality-snapshot"
                   title={buildSnapshotTooltip(data.totals.snapshotCostCoveragePct ?? 0, data.totals.snapshotGeneratedAtUtc, fmtPct)}
                 >
-                  ❄ {buildSnapshotBadgeLabel(data.totals.snapshotGeneratedAtUtc)}
+                  â„ {buildSnapshotBadgeLabel(data.totals.snapshotGeneratedAtUtc)}
                 </small>
               ) : null}
             </article>
             <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Signal kvaliteta miks marze kroz dobavljace.">
-              <span>Prosečna marža <InfoTip text="Prosečan procenat maržnog doprinosa po dobavljaču. Formula po dobavljaču: maržni doprinos / promet sa dostupnim troškom × 100. Prikazana vrednost je aritmetički prosek po dobavljačima — nije ponderisana prometom." /></span>
+              <span>ProseÄna marÅ¾a <InfoTip text="ProseÄan procenat marÅ¾nog doprinosa po dobavljaÄu. Formula po dobavljaÄu: marÅ¾ni doprinos / promet sa dostupnim troÅ¡kom Ã— 100. Prikazana vrednost je aritmetiÄki prosek po dobavljaÄima â€” nije ponderisana prometom." /></span>
               <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
             </article>
             <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjacim partnerima.">
-              <span>Udeo top 5 dobavljača <InfoTip text="Procenat ukupnog prometa koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
+              <span>Udeo top 5 dobavljaÄa <InfoTip text="Procenat ukupnog prometa koji dolazi od pet dobavljaÄa sa najveÄ‡im prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
             <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Momentum prema prethodnom uporedivom periodu.">
-              <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet − prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
+              <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste duÅ¾ine. Formula: (trenutni promet âˆ’ prethodni promet) / prethodni promet Ã— 100. N/A ako prethodni period nije dostupan." /></span>
               <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
             </article>
           </section>
@@ -1275,7 +1299,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 </Link>
                 {unknownSuppliers.length > 0 ? (
                   <Link to={`/analytics/data-quality?${dataQualityContextQuery}`} className="supplier-decision-quality-link">
-                    Pregledaj artikle bez dobavljača
+                    Pregledaj artikle bez dobavljaÄa
                   </Link>
                 ) : null}
               </div>
@@ -1284,7 +1308,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
           <section className="supplier-decision-panels">
             <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
-              <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose najveći dobavljači. Koristi samo promet, bez tumačenja profita ili neto marže." /></h2>
+              <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose najveÄ‡i dobavljaÄi. Koristi samo promet, bez tumaÄenja profita ili neto marÅ¾e." /></h2>
               <p>Top udeo prometa za brzu procenu gde je biznis koncentrisan.</p>
               {concentrationData.length > 0 ? (
                 <div className="supplier-decision-chart-wrap">
@@ -1316,8 +1340,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             </article>
 
             <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
-              <h2>{canonicalTerms.revenue.label} vs {canonicalTerms.marginContribution.label} <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
-              <p className="supplier-decision-chart-desc">Poređenje udela u prometu i udela u {canonicalTerms.marginContribution.label.toLowerCase()} - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
+              <h2>{canonicalTerms.revenue.label} vs {canonicalTerms.marginContribution.label} <InfoTip text="Grafikon poredi udeo u prometu i udeo u marÅ¾nom doprinosu. MarÅ¾ni doprinos nije neto profit i ne ukljuÄuje operativne troÅ¡kove. Ako je deo troÅ¡ka procenjen iz raspoloÅ¾ivih podataka, i ovaj signal treba Äitati oprezno." /></h2>
+              <p className="supplier-decision-chart-desc">PoreÄ‘enje udela u prometu i udela u {canonicalTerms.marginContribution.label.toLowerCase()} - dobavljaÄi s visokim prometom ne moraju imati i visok marÅ¾ni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div className="supplier-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -1343,7 +1367,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="supplier-decision-empty">Nema podataka za poređenje.</div>
+                <div className="supplier-decision-empty">Nema podataka za poreÄ‘enje.</div>
               )}
             </article>
           </section>
@@ -1352,26 +1376,26 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             <article className="supplier-decision-card analytics-surface-panel">
               <div className="supplier-decision-table-head">
                 <div>
-                  <h2>Prioritetna lista dobavljača</h2>
+                  <h2>Prioritetna lista dobavljaÄa</h2>
                   <div className="supplier-priority-chip-row" aria-label="Raspodela preporuka">
-                    <span className="priority-chip priority-chip-boost">Pojačaj <strong>{supplierCounts.increaseFocus}</strong></span>
-                    <span className="priority-chip priority-chip-keep">Zadrži <strong>{supplierCounts.maintain}</strong></span>
+                    <span className="priority-chip priority-chip-boost">PojaÄaj <strong>{supplierCounts.increaseFocus}</strong></span>
+                    <span className="priority-chip priority-chip-keep">ZadrÅ¾i <strong>{supplierCounts.maintain}</strong></span>
                     <span className="priority-chip priority-chip-watch">Oprez <strong>{supplierCounts.review}</strong></span>
                     <span className="priority-chip priority-chip-reduce">Smanji <strong>{supplierCounts.doNotTrust}</strong></span>
                     <span className="priority-chip priority-chip-na">N/A <strong>{supplierCounts.insufficientData}</strong></span>
                   </div>
                   <p className="supplier-decision-metric-note">
-                    Preporuka uzima u obzir promet, količinu, maržni doprinos, maržni procenat i PoP trend.
+                    Preporuka uzima u obzir promet, koliÄinu, marÅ¾ni doprinos, marÅ¾ni procenat i PoP trend.
                   </p>
                   {unknownSuppliers.length > 0 ? (
                     <p className="supplier-unknown-note">
-                    N/A dobavljači su prikazani na dnu i nisu uključeni u decision preporuke.
+                    N/A dobavljaÄi su prikazani na dnu i nisu ukljuÄeni u decision preporuke.
                     </p>
                   ) : null}
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="supplier-sales-stats"
-                  tableTitle="Podrška odluci - dobavljači"
+                  tableTitle="PodrÅ¡ka odluci - dobavljaÄi"
                   columns={decisionColumns}
                   rows={visibleSuppliers}
                   filters={toolbarFilters}
@@ -1392,7 +1416,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("dobavljacNaziv", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("dobavljacNaziv")}
                         >
-                          Dobavljač <span className="sort-indicator" aria-hidden="true">{sortMarker("dobavljacNaziv", sortField, sortDir)}</span> <InfoTip text="Naziv dobavljača. Klikom sortirate abecedno." />
+                          DobavljaÄ <span className="sort-indicator" aria-hidden="true">{sortMarker("dobavljacNaziv", sortField, sortDir)}</span> <InfoTip text="Naziv dobavljaÄa. Klikom sortirate abecedno." />
                         </button>
                       </th>
                       <th className={isSortActive("ukupanPromet", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1414,7 +1438,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("ukupnaKolicina", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("ukupnaKolicina")}
                         >
-                          Količina <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupnaKolicina", sortField, sortDir)}</span> <InfoTip text="Ukupan broj prodatih komada." />
+                          KoliÄina <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupnaKolicina", sortField, sortDir)}</span> <InfoTip text="Ukupan broj prodatih komada." />
                         </button>
                       </th>
                       <th className={isSortActive("totalCost", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1425,7 +1449,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("totalCost", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("totalCost")}
                         >
-                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." />
+                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troÅ¡ka robe za ovaj red. Formula: zbir koliÄina x nabavna cena za stavke sa istorijskim ili procenjenim troÅ¡kom. Operativni troÅ¡kovi nisu ukljuÄeni." />
                         </button>
                       </th>
                       <th className={isSortActive("sharePct", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1436,7 +1460,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("sharePct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("sharePct")}
                         >
-                          Udeo u prometu <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog prometa čini ovaj dobavljač. Formula: promet dobavljača / ukupan promet svih prikazanih dobavljača x 100." />
+                          Udeo u prometu <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog prometa Äini ovaj dobavljaÄ. Formula: promet dobavljaÄa / ukupan promet svih prikazanih dobavljaÄa x 100." />
                         </button>
                       </th>
                       <th className={isSortActive("marginContribution", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1469,7 +1493,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("shareOfMarginContribution", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("shareOfMarginContribution")}
                         >
-                          {`Udeo u ${canonicalTerms.marginContribution.label}`} <span className="sort-indicator" aria-hidden="true">{sortMarker("shareOfMarginContribution", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog maržnog doprinosa čini ovaj dobavljač. Formula: maržni doprinos dobavljača / ukupan maržni doprinos svih prikazanih dobavljača x 100. Ovo nije udeo u profitu niti u neto zaradi." />
+                          {`Udeo u ${canonicalTerms.marginContribution.label}`} <span className="sort-indicator" aria-hidden="true">{sortMarker("shareOfMarginContribution", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog marÅ¾nog doprinosa Äini ovaj dobavljaÄ. Formula: marÅ¾ni doprinos dobavljaÄa / ukupan marÅ¾ni doprinos svih prikazanih dobavljaÄa x 100. Ovo nije udeo u profitu niti u neto zaradi." />
                         </button>
                       </th>
                       <th className={isSortActive("popRevenueChangePct", sortField) ? "align-right is-sorted" : "align-right"}>
@@ -1495,7 +1519,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                         </button>
                       </th>
                       <th className="align-center">
-                        Detalj <InfoTip text="Prikaži detaljan pregled po vrstama obuće, trendovima i kvalitetu podataka." />
+                        Detalj <InfoTip text="PrikaÅ¾i detaljan pregled po vrstama obuÄ‡e, trendovima i kvalitetu podataka." />
                       </th>
                     </tr>
                   </thead>
@@ -1535,7 +1559,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                                 {supplier.isUnknown ? (
                                   <span
                                     className="supplier-unknown-label"
-                                    title="Artikli bez dodeljenog dobavljača u bazi"
+                                    title="Artikli bez dodeljenog dobavljaÄa u bazi"
                                   >
                                     {supplier.dobavljacNaziv}
                                   </span>
@@ -1564,7 +1588,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                               <span>{fmtPct(supplier.marginPct, 1)}</span>
                               {tierNeedsWarning(supplier.marginQualityTier) ? (
                                 <span className={`quality-pill ${qualityTierClass(supplier.marginQualityTier)}`} title={supplier.marginQualityTooltip ?? supplier.marginQualityLabel ?? ""}>
-                                  marža
+                                  marÅ¾a
                                 </span>
                               ) : null}
                             </td>
@@ -1609,14 +1633,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
           {selectedSupplier ? (
             <section className="supplier-decision-detail" ref={detailSectionRef}>
-              {/* ── Hero glava ── */}
+              {/* â”€â”€ Hero glava â”€â”€ */}
               <div className="supplier-detail-hero-head">
                 <div className="supplier-detail-hero-left">
-                  <div className="supplier-detail-overline">Detaljan pregled dobavljača</div>
+                  <div className="supplier-detail-overline">Detaljan pregled dobavljaÄa</div>
                   <h3 className="supplier-detail-name">{selectedSupplier.dobavljacNaziv}</h3>
                   <div className="supplier-detail-meta-row">
                     <span className="supplier-detail-meta-chip">
-                      {activeFilters.fromDate} → {activeFilters.toDate}
+                      {activeFilters.fromDate} â†’ {activeFilters.toDate}
                     </span>
                     {activeFilters.storeId != null ? (
                       <span className="supplier-detail-meta-chip">
@@ -1638,7 +1662,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     onClick={() => openSupplierDetail(selectedSupplier)}
                     title="Otvori puni AI detalj sa preporukom, historijom i analizom artikala"
                   >
-                    Puni detalj →
+                    Puni detalj â†’
                   </button>
                   <button
                     type="button"
@@ -1647,19 +1671,19 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     title="Zatvori detalj"
                     aria-label="Zatvori detalj"
                   >
-                    ✕
+                    âœ•
                   </button>
                 </div>
               </div>
 
-              {/* Sažetak razloga preporuke */}
+              {/* SaÅ¾etak razloga preporuke */}
               {selectedSupplier.statusReason ? (
                 <div className="supplier-detail-reason-banner">
                   <span className="supplier-detail-reason-label">Razlog preporuke:</span>
                   <span>{selectedSupplier.statusReason}</span>
                   {selectedSupplier.reasonCodes.length > 0 ? (
                     <span className="supplier-detail-reason-codes">
-                      {selectedSupplier.reasonCodes.map(formatReasonCode).join(" · ")}
+                      {selectedSupplier.reasonCodes.map(formatReasonCode).join(" Â· ")}
                     </span>
                   ) : null}
                 </div>
@@ -1669,15 +1693,15 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               <h4 className="supplier-detail-section-title">Poslovni pokazatelji</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>Promet <InfoTip text="Ukupna vrednost prodaje ovog dobavljača u izabranom periodu. Formula: zbir prodajnih vrednosti stavki ovog dobavljača." /></span>
+                  <span>Promet <InfoTip text="Ukupna vrednost prodaje ovog dobavljaÄa u izabranom periodu. Formula: zbir prodajnih vrednosti stavki ovog dobavljaÄa." /></span>
                   <strong>{fmtRsd(selectedSupplier.ukupanPromet)}</strong>
                 </article>
                 <article>
-                  <span>Prodata količina <InfoTip text="Ukupan broj prodatih komada ovog dobavljača u izabranom periodu." /></span>
+                  <span>Prodata koliÄina <InfoTip text="Ukupan broj prodatih komada ovog dobavljaÄa u izabranom periodu." /></span>
                   <strong>{fmtQty(selectedSupplier.ukupnaKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Nabavna vrednost <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
+                  <span>Nabavna vrednost <InfoTip text="Zbir troÅ¡ka robe za ovaj red. Formula: zbir koliÄina x nabavna cena za stavke sa istorijskim ili procenjenim troÅ¡kom. Operativni troÅ¡kovi nisu ukljuÄeni." /></span>
                   <strong>{fmtRsd(selectedSupplier.totalCost)}</strong>
                 </article>
                 <article>
@@ -1693,33 +1717,33 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   </strong>
                 </article>
                 <article>
-                  <span>Udeo u prometu <InfoTip text="Koliki deo ukupnog prometa čini ovaj dobavljač. Formula: promet dobavljača / ukupan promet svih prikazanih dobavljača x 100." /></span>
+                  <span>Udeo u prometu <InfoTip text="Koliki deo ukupnog prometa Äini ovaj dobavljaÄ. Formula: promet dobavljaÄa / ukupan promet svih prikazanih dobavljaÄa x 100." /></span>
                   <strong>{fmtPct(selectedSupplier.sharePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>{`Udeo u ${canonicalTerms.marginContribution.label}`} <InfoTip text="Koliki procenat ukupnog maržnog doprinosa čini ovaj dobavljač. Formula: maržni doprinos dobavljača / ukupan maržni doprinos svih prikazanih dobavljača x 100. Ovo nije udeo u profitu niti u neto zaradi." /></span>
+                  <span>{`Udeo u ${canonicalTerms.marginContribution.label}`} <InfoTip text="Koliki procenat ukupnog marÅ¾nog doprinosa Äini ovaj dobavljaÄ. Formula: marÅ¾ni doprinos dobavljaÄa / ukupan marÅ¾ni doprinos svih prikazanih dobavljaÄa x 100. Ovo nije udeo u profitu niti u neto zaradi." /></span>
                   <strong>{fmtPct(selectedSupplier.shareOfMarginContribution, 1)}</strong>
                 </article>
                 <article>
-                  <span>Udeo u količini <InfoTip text="Koliki deo ukupne prodane količine čini ovaj dobavljač (%)." /></span>
+                  <span>Udeo u koliÄini <InfoTip text="Koliki deo ukupne prodane koliÄine Äini ovaj dobavljaÄ (%)." /></span>
                   <strong>{fmtPct(selectedSupplier.shareOfUnits, 1)}</strong>
                 </article>
                 <article>
-                  <span>Broj artikala <InfoTip text="Ukupan broj različitih proizvoda/stilova od ovog dobavljača." /></span>
+                  <span>Broj artikala <InfoTip text="Ukupan broj razliÄitih proizvoda/stilova od ovog dobavljaÄa." /></span>
                   <strong>{selectedSupplier.brojArtikalaUkupno}</strong>
                 </article>
                 <article>
-                  <span>Vodeća vrsta obuće <InfoTip text="Vrsta obuće sa najvećim prometom kod ovog dobavljača u izabranom periodu." /></span>
+                  <span>VodeÄ‡a vrsta obuÄ‡e <InfoTip text="Vrsta obuÄ‡e sa najveÄ‡im prometom kod ovog dobavljaÄa u izabranom periodu." /></span>
                   <strong>{selectedSupplier.primaryFootwearType}</strong>
                 </article>
                 <article>
-                  <span>Udeo vodeće vrste <InfoTip text="Procenat ukupnog prometa dobavljača koji potiče od vodeće vrste obuće. Formula: promet vodeće vrste / ukupan promet dobavljača × 100. Udeo iznad 65% signal je koncentracije asortimana." /></span>
+                  <span>Udeo vodeÄ‡e vrste <InfoTip text="Procenat ukupnog prometa dobavljaÄa koji potiÄe od vodeÄ‡e vrste obuÄ‡e. Formula: promet vodeÄ‡e vrste / ukupan promet dobavljaÄa Ã— 100. Udeo iznad 65% signal je koncentracije asortimana." /></span>
                   <strong>{fmtPct(selectedSupplier.primaryFootwearTypeSharePct, 1)}</strong>
                 </article>
               </div>
 
               <h4 className="supplier-detail-section-title">
-                Asortiman po vrstama obuće <InfoTip text="Raspodela asortimana po vrstama obuće. Prikazuje gde dobavljač pravi promet i maržni doprinos, i da li jedan tip obuće dominira ukupnim rezultatom." />
+                Asortiman po vrstama obuÄ‡e <InfoTip text="Raspodela asortimana po vrstama obuÄ‡e. Prikazuje gde dobavljaÄ pravi promet i marÅ¾ni doprinos, i da li jedan tip obuÄ‡e dominira ukupnim rezultatom." />
               </h4>
               {selectedFootwearRows.length > 0 ? (
                 <div className="supplier-footwear-breakdown">
@@ -1733,13 +1757,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     <table className="supplier-footwear-table">
                       <thead>
                         <tr>
-                          <th>Vrsta obuće <InfoTip text="Vrsta obuće iz matičnih podataka artikla. 'Nepoznato' znači da artikli nemaju dodeljenu vrstu obuće u bazi." /></th>
-                          <th className="align-right">Promet <InfoTip text="Ukupna vrednost prodaje za ovu kombinaciju dobavljač × vrsta obuće u izabranom periodu." /></th>
-                          <th className="align-right">Udeo kod dobavljača <InfoTip text="Procenat ukupnog prometa dobavljača koji čini ova vrsta obuće. Formula: promet vrste / ukupan promet dobavljača × 100." /></th>
-                          <th className="align-right">{canonicalTerms.marginContribution.label} <InfoTip text="Razlika prodajne i nabavne vrednosti za deo prometa gde je trošak dostupan ili procenjen. Operativni troškovi nisu uključeni." /></th>
-                          <th className="align-right">{canonicalTerms.marginPct.label} <InfoTip text="Procenat maržnog doprinosa od prodaje. Formula: maržni doprinos / promet sa dostupnim troškom × 100. Ako je trošak procenjen, signal čitati oprezno." /></th>
-                          <th className="align-right">PoP trend <InfoTip text="Promena prometa ove kombinacije u odnosu na prethodni uporedivi period iste dužine. N/A ako prethodni period nije dostupan." /></th>
-                          <th className="align-right">Pokriće troška <InfoTip text="Udeo prometa za koji postoji direktna istorijska nabavna cena. Procenjeni i nedostajući troškovi prikazani su u opisu reda." /></th>
+                          <th>Vrsta obuÄ‡e <InfoTip text="Vrsta obuÄ‡e iz matiÄnih podataka artikla. 'Nepoznato' znaÄi da artikli nemaju dodeljenu vrstu obuÄ‡e u bazi." /></th>
+                          <th className="align-right">Promet <InfoTip text="Ukupna vrednost prodaje za ovu kombinaciju dobavljaÄ Ã— vrsta obuÄ‡e u izabranom periodu." /></th>
+                          <th className="align-right">Udeo kod dobavljaÄa <InfoTip text="Procenat ukupnog prometa dobavljaÄa koji Äini ova vrsta obuÄ‡e. Formula: promet vrste / ukupan promet dobavljaÄa Ã— 100." /></th>
+                          <th className="align-right">{canonicalTerms.marginContribution.label} <InfoTip text="Razlika prodajne i nabavne vrednosti za deo prometa gde je troÅ¡ak dostupan ili procenjen. Operativni troÅ¡kovi nisu ukljuÄeni." /></th>
+                          <th className="align-right">{canonicalTerms.marginPct.label} <InfoTip text="Procenat marÅ¾nog doprinosa od prodaje. Formula: marÅ¾ni doprinos / promet sa dostupnim troÅ¡kom Ã— 100. Ako je troÅ¡ak procenjen, signal Äitati oprezno." /></th>
+                          <th className="align-right">PoP trend <InfoTip text="Promena prometa ove kombinacije u odnosu na prethodni uporedivi period iste duÅ¾ine. N/A ako prethodni period nije dostupan." /></th>
+                          <th className="align-right">PokriÄ‡e troÅ¡ka <InfoTip text="Udeo prometa za koji postoji direktna istorijska nabavna cena. Procenjeni i nedostajuÄ‡i troÅ¡kovi prikazani su u opisu reda." /></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1774,7 +1798,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                             <td className={`align-right ${trendClass(row.popRevenueChangePct)}`}>{fmtSignedPct(row.popRevenueChangePct, 1)}</td>
                             <td className="align-right">
                               <span>{fmtPct(row.historicalCostCoveragePct, 1)}</span>
-                              <span className="supplier-footwear-cost-note" title={`Procenjeno: ${fmtPct(row.estimatedCostCoveragePct, 1)} | Bez troška: ${fmtPct(row.noCostCoveragePct, 1)} | Snapshot: ${fmtPct(row.snapshotCostCoveragePct, 1)}`}>
+                              <span className="supplier-footwear-cost-note" title={`Procenjeno: ${fmtPct(row.estimatedCostCoveragePct, 1)} | Bez troÅ¡ka: ${fmtPct(row.noCostCoveragePct, 1)} | Snapshot: ${fmtPct(row.snapshotCostCoveragePct, 1)}`}>
                                 detalj
                               </span>
                             </td>
@@ -1786,7 +1810,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 </div>
               ) : (
                 <div className="supplier-decision-empty supplier-footwear-empty">
-                  Nema dovoljno podataka o vrstama obuće za ovog dobavljača u izabranom periodu.
+                  Nema dovoljno podataka o vrstama obuÄ‡e za ovog dobavljaÄa u izabranom periodu.
                 </div>
               )}
 
@@ -1794,23 +1818,23 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               <h4 className="supplier-detail-section-title">Trend u odnosu na prethodni period</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>PoP trend prometa <InfoTip text="Promena vrednosti prometa u odnosu na prethodni uporedivi period iste dužine (%)." /></span>
+                  <span>PoP trend prometa <InfoTip text="Promena vrednosti prometa u odnosu na prethodni uporedivi period iste duÅ¾ine (%)." /></span>
                   <strong className={describePopMetric(selectedSupplier).className} title={describePopMetric(selectedSupplier).title}>
                     {describePopMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Prethodni period promet <InfoTip text="Vrednost prometa u prethodnom uporedivom periodu iste dužine." /></span>
+                  <span>Prethodni period promet <InfoTip text="Vrednost prometa u prethodnom uporedivom periodu iste duÅ¾ine." /></span>
                   <strong>{selectedSupplier.previousPeriodRevenue != null ? fmtRsd(selectedSupplier.previousPeriodRevenue) : "N/A"}</strong>
                 </article>
                 <article>
-                  <span>PoP trend količine <InfoTip text="Promena količine prodanih komada u odnosu na prethodni uporedivi period iste dužine (%)." /></span>
+                  <span>PoP trend koliÄine <InfoTip text="Promena koliÄine prodanih komada u odnosu na prethodni uporedivi period iste duÅ¾ine (%)." /></span>
                   <strong className={describePopUnitsMetric(selectedSupplier).className} title={describePopUnitsMetric(selectedSupplier).title}>
                     {describePopUnitsMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Prethodni period količina <InfoTip text="Količina prodanih komada u prethodnom uporedivom periodu iste dužine." /></span>
+                  <span>Prethodni period koliÄina <InfoTip text="KoliÄina prodanih komada u prethodnom uporedivom periodu iste duÅ¾ine." /></span>
                   <strong>{selectedSupplier.previousPeriodUnits != null ? fmtQty(selectedSupplier.previousPeriodUnits) : "N/A"}</strong>
                 </article>
               </div>
@@ -1825,21 +1849,21 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   </strong>
                 </article>
                 <article>
-                  <span>Uticaj na količinu <InfoTip text="Procentualna promena prodane količine pre i posle prve nivelacije, merena na artiklima koji su imali prodaju u oba perioda." /></span>
+                  <span>Uticaj na koliÄinu <InfoTip text="Procentualna promena prodane koliÄine pre i posle prve nivelacije, merena na artiklima koji su imali prodaju u oba perioda." /></span>
                   <strong className={describeNivelacijaUnitsImpactMetric(selectedSupplier).className} title={describeNivelacijaUnitsImpactMetric(selectedSupplier).title}>
                     {describeNivelacijaUnitsImpactMetric(selectedSupplier).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Artikli sa nivelacijom <InfoTip text="Broj artikala koji su imali primenjenu nivelaciju, od ukupnog broja artikala ovog dobavljača." /></span>
+                  <span>Artikli sa nivelacijom <InfoTip text="Broj artikala koji su imali primenjenu nivelaciju, od ukupnog broja artikala ovog dobavljaÄa." /></span>
                   <strong>{selectedSupplier.brojArtikalaSaNivelacijom} / {selectedSupplier.brojArtikalaUkupno}</strong>
                 </article>
                 <article>
-                  <span>Pre/post pokrivanje <InfoTip text="Udeo prometa koji se može pratiti kroz pre/post nivelacija analizu — samo artikli sa prodajom u oba perioda ulaze u ovu metriku." /></span>
+                  <span>Pre/post pokrivanje <InfoTip text="Udeo prometa koji se moÅ¾e pratiti kroz pre/post nivelacija analizu â€” samo artikli sa prodajom u oba perioda ulaze u ovu metriku." /></span>
                   <strong>{fmtPct(selectedSupplier.prePostNivelacijaRevenueCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Uporedivi artikli <InfoTip text="Broj artikala koji su imali prodaju i pre i posle nivelacije — jedini koji daju merodavan signal o uticaju promene cene." /></span>
+                  <span>Uporedivi artikli <InfoTip text="Broj artikala koji su imali prodaju i pre i posle nivelacije â€” jedini koji daju merodavan signal o uticaju promene cene." /></span>
                   <strong>{selectedSupplier.prePostComparableArticleCount ?? 0}</strong>
                 </article>
               </div>
@@ -1848,7 +1872,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               <h4 className="supplier-detail-section-title">Kvalitet podataka</h4>
               <div className="supplier-decision-detail-grid">
                 <article>
-                  <span>Kvalitet marže <InfoTip text="Klasifikacija pouzdanosti obračuna marže na osnovu pokrića nabavnom cenom: Potvrđena (≥80% iz istorije), Delimično (≥50% iz istorije), Procenjena (<50%), Bez troška (0% pokriće)." /></span>
+                  <span>Kvalitet marÅ¾e <InfoTip text="Klasifikacija pouzdanosti obraÄuna marÅ¾e na osnovu pokriÄ‡a nabavnom cenom: PotvrÄ‘ena (â‰¥80% iz istorije), DelimiÄno (â‰¥50% iz istorije), Procenjena (<50%), Bez troÅ¡ka (0% pokriÄ‡e)." /></span>
                   <strong>
                     <span className={`supplier-decision-kpi-badge ${qualityTierClass(selectedSupplier.marginQualityTier)}`}>
                       {qualityTierIcon(selectedSupplier.marginQualityTier)} {selectedSupplier.marginQualityLabel}
@@ -1856,30 +1880,34 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   </strong>
                 </article>
                 <article>
-                  <span>Pouzdanost <InfoTip text="Indeks pouzdanosti preporuke (0–100%) — uzima u obzir pokriće troškom, dostupnost PoP podataka i konzistentnost signala." /></span>
-                  <strong>{fmtPct(selectedSupplier.reliabilityPct, 1)}</strong>
+                  <span>Pouzdanost <InfoTip text="Indeks pouzdanosti preporuke (0â€“100%) â€” uzima u obzir pokriÄ‡e troÅ¡kom, dostupnost PoP podataka i konzistentnost signala." /></span>
+                  <strong>{selectedSupplier.reliabilityAvailable ? fmtPct(selectedSupplier.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
-                  <span>Pokriće direktnom nabavnom % <InfoTip text="Procenat prometa za koji trošak potiče direktno sa prodajne stavke (istorijska nabavna cena). Formula: promet sa direktnim troškom / ukupan promet × 100." /></span>
+                  <span>Status kvaliteta podataka <InfoTip text="Good = zeleno i upotrebljivo. Warning = oprez. Critical = ne veruj bez rucne provere. Insufficient data = backend nije dostavio kompletan quality payload." /></span>
+                  <strong style={recommendationQualityStyle(selectedSupplier.dataQualityStatus)}>{recommendationQualityLabel(selectedSupplier.dataQualityStatus)}</strong>
+                </article>
+                <article>
+                  <span>PokriÄ‡e direktnom nabavnom % <InfoTip text="Procenat prometa za koji troÅ¡ak potiÄe direktno sa prodajne stavke (istorijska nabavna cena). Formula: promet sa direktnim troÅ¡kom / ukupan promet Ã— 100." /></span>
                   <strong>{fmtPct(selectedSupplier.historicalCostCoveragePct ?? selectedSupplier.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Promet sa procenjenom nabavnom % <InfoTip text="Procenat prometa gde je nabavna cena procenjena iz kataloga artikla — bez direktnog troška na stavci prodaje. Formula: promet sa procenjenom nabavnom / ukupan promet × 100. Operativni troškovi nisu uključeni." /></span>
+                  <span>Promet sa procenjenom nabavnom % <InfoTip text="Procenat prometa gde je nabavna cena procenjena iz kataloga artikla â€” bez direktnog troÅ¡ka na stavci prodaje. Formula: promet sa procenjenom nabavnom / ukupan promet Ã— 100. Operativni troÅ¡kovi nisu ukljuÄeni." /></span>
                   <strong>{fmtPct(selectedSupplier.estimatedCostCoveragePct ?? selectedSupplier.fallbackCostCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Promet bez nabavne cene % <InfoTip text="Procenat prometa koji nema ni direktni ni procenjeni trošak — ne ulazi u obračun maržnog doprinosa ni marže %. Formula: promet bez troška / ukupan promet × 100." /></span>
+                  <span>Promet bez nabavne cene % <InfoTip text="Procenat prometa koji nema ni direktni ni procenjeni troÅ¡ak â€” ne ulazi u obraÄun marÅ¾nog doprinosa ni marÅ¾e %. Formula: promet bez troÅ¡ka / ukupan promet Ã— 100." /></span>
                   <strong>{fmtPct(selectedSupplier.noCostCoveragePct, 1)}</strong>
                 </article>
                 {(selectedSupplier.snapshotCostCoveragePct ?? 0) > 0 ? (
                   <article>
-                    <span>Zamrznuta procena (snapshot) % <InfoTip text="Procenat prometa gde je trošak stabilizovan zamrznutom procenom (snapshot) radi reproduktivnosti izveštaja. Ovo nije istorijska nabavna cena sa trenutka prodaje." /></span>
+                    <span>Zamrznuta procena (snapshot) % <InfoTip text="Procenat prometa gde je troÅ¡ak stabilizovan zamrznutom procenom (snapshot) radi reproduktivnosti izveÅ¡taja. Ovo nije istorijska nabavna cena sa trenutka prodaje." /></span>
                     <strong>{fmtPct(selectedSupplier.snapshotCostCoveragePct, 1)}</strong>
                   </article>
                 ) : null}
                 <article>
-                  <span>Sigurnost preporuke <InfoTip text="Ukupna sigurnost sistemske preporuke, bazirana na svim dostupnim signalima (0–100%)." /></span>
-                  <strong>{fmtPct(selectedSupplier.confidencePct, 0)}</strong>
+                  <span>Sigurnost preporuke <InfoTip text="Ukupna sigurnost sistemske preporuke, bazirana na svim dostupnim signalima (0â€“100%)." /></span>
+                  <strong>{selectedSupplier.confidenceAvailable ? fmtPct(selectedSupplier.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
               </div>
 
@@ -1900,7 +1928,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 );
                 return marginNote ? (
                   <div className="supplier-detail-note-box supplier-detail-note-warning">
-                    <strong>Napomena za maržu:</strong> {marginNote}
+                    <strong>Napomena za marÅ¾u:</strong> {marginNote}
                   </div>
                 ) : null;
               })()}

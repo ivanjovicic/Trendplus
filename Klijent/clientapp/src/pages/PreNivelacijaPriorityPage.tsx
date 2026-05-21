@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -21,10 +21,17 @@ import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescription
 import {
   RECOMMENDATION_CONFIDENCE_LABEL,
   RECOMMENDATION_RELIABILITY_LABEL,
+  RECOMMENDATION_SIGNAL_UNAVAILABLE,
   RECOMMENDATION_STATUS_PRIORITY,
+  normalizeRecommendationPct,
+  normalizeRecommendationQualityStatus,
+  recommendationQualityLabel,
+  recommendationQualityStyle,
+  recommendationReasonHints,
   recommendationStatusLabel,
   recommendationStatusTone,
   recommendationStatusTooltipBrief,
+  type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import "./PreNivelacijaPriorityPage.css";
 
@@ -51,8 +58,12 @@ type DecisionCandidate = PreNivelacijaSkuCandidate & {
   revenueDelta: number;
   marginDelta: number;
   confidencePct: number;
+  confidenceAvailable: boolean;
+  reliabilityAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
 };
 
 type FocusFilter = "all" | "increaseFocus" | "maintain" | "review" | "doNotTrust" | "insufficientData" | "highPriority";
@@ -135,10 +146,18 @@ type StatusTooltipData = {
   revenueDelta: number;
   reliabilityPct: number;
   confidencePct: number;
+  reliabilityAvailable: boolean;
+  confidenceAvailable: boolean;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Ocena ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${fmtPct(data.reliabilityPct, 0)} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${fmtPct(data.confidencePct, 0)}`;
+  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const qualityText = recommendationQualityLabel(data.dataQualityStatus);
+  const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Ocena ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 export default function PreNivelacijaPriorityPage() {
@@ -241,14 +260,21 @@ export default function PreNivelacijaPriorityPage() {
       const recommendation = item.recommendation;
       const revenueDelta = item.revenueDeltaHighlightVsMarkdown;
       const marginDelta = item.marginDeltaHighlightVsMarkdown;
+      const confidencePctValue = normalizeRecommendationPct(recommendation.confidencePct);
+      const reliabilityPctValue = normalizeRecommendationPct(recommendation.reliabilityPct ?? item.reliabilityPct);
 
       return {
         ...item,
         revenueDelta,
         marginDelta,
-        confidencePct: recommendation.confidencePct,
+        confidencePct: confidencePctValue ?? 0,
+        confidenceAvailable: confidencePctValue != null,
+        reliabilityAvailable: reliabilityPctValue != null,
+        reliabilityPct: reliabilityPctValue ?? 0,
         status: recommendation.status,
         statusReason: recommendation.summary,
+        dataQualityStatus: normalizeRecommendationQualityStatus(recommendation.dataQualityStatus),
+        reasonCodes: recommendation.reasonCodes ?? [],
       };
     });
   }, [data?.candidates]);
@@ -719,14 +745,37 @@ export default function PreNivelacijaPriorityPage() {
                   <strong>{selectedRow.decisionScore}</strong>
                 </article>
                 <article>
+                  <span>{RECOMMENDATION_RELIABILITY_LABEL} <InfoTip text={analyticsMetricDescriptions.reliabilityPct} /></span>
+                  <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                </article>
+                <article>
+                  <span>Status kvaliteta preporuke</span>
+                  <strong style={recommendationQualityStyle(selectedRow.dataQualityStatus)}>{recommendationQualityLabel(selectedRow.dataQualityStatus)}</strong>
+                </article>
+                <article>
                   <span>{RECOMMENDATION_CONFIDENCE_LABEL} <InfoTip text={analyticsMetricDescriptions.recommendationConfidencePct} /></span>
-                  <strong>{fmtPct(selectedRow.confidencePct, 1)}</strong>
+                  <strong>{selectedRow.confidenceAvailable ? fmtPct(selectedRow.confidencePct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
               </div>
 
               <p className="pnp-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
               </p>
+              {selectedRow.reasonCodes.length > 0 ? (
+                <p className="pnp-decision-reason">
+                  <strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}
+                </p>
+              ) : null}
+              {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (
+                <p key={hint} className="pnp-decision-reason">
+                  <strong>Napomena:</strong> {hint}
+                </p>
+              ))}
+              {(!selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
+                <p className="pnp-decision-reason">
+                  <strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.
+                </p>
+              ) : null}
 
               {selectedRow.scoreBreakdown ? (
                 <div className="pnp-score-breakdown">

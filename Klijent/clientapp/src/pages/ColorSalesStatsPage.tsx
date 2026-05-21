@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -31,13 +31,21 @@ import {
 import {
   RECOMMENDATION_CONFIDENCE_LABEL,
   RECOMMENDATION_RELIABILITY_LABEL,
+  RECOMMENDATION_SIGNAL_UNAVAILABLE,
   RECOMMENDATION_STATUS_PRIORITY,
   isCanonicalRecommendationStatus,
+  normalizeRecommendationPct,
+  normalizeRecommendationQualityStatus,
+  recommendationQualityLabel,
+  recommendationQualityStyle,
+  recommendationReasonHints,
   recommendationStatusLabel,
   recommendationStatusTone,
   recommendationStatusTooltipBrief,
   type CanonicalRecommendationStatus,
+  type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
+import { buildMarginDetailNote, buildRecommendationCaveat, qualityTierClass, qualityTierIcon } from "../utils/marginQuality";
 import "./ColorSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -63,11 +71,16 @@ type DecisionColor = ColorSalesStat & {
   sharePct: number;
   marginContribution: number;
   reliabilityPct: number;
+  reliabilityAvailable: boolean;
   coveragePct: number;
   splitCoveragePct: number;
+  confidencePct: number;
   recommendationConfidencePct: number;
+  confidenceAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
@@ -148,6 +161,11 @@ type StatusTooltipData = {
   previousPeriodRevenue: number | null;
   splitCoveragePct: number | null;
   reliabilityPct: number;
+  reliabilityAvailable: boolean;
+  confidencePct: number;
+  confidenceAvailable: boolean;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
@@ -159,7 +177,11 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
-  return `${displayStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${fmtPct(data.reliabilityPct, 0)}`;
+  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const qualityText = recommendationQualityLabel(data.dataQualityStatus);
+  const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
+  return `${displayStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
@@ -315,17 +337,24 @@ export default function ColorSalesStatsPage() {
         ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
         : 0;
       const backendStatus = mapRecommendationStatus(item.recommendation?.status) ?? "insufficient_data";
+      const reliabilityPctValue = normalizeRecommendationPct(item.recommendation?.reliabilityPct ?? item.reliabilityPct);
+      const confidencePctValue = normalizeRecommendationPct(item.recommendation?.confidencePct);
 
       return {
         ...item,
         sharePct: item.sharePct ?? sharePct,
         marginContribution,
-        reliabilityPct: item.recommendation?.reliabilityPct ?? item.reliabilityPct ?? (item.marginDataCoveragePct ?? 0),
+        reliabilityPct: reliabilityPctValue ?? 0,
+        reliabilityAvailable: reliabilityPctValue != null,
         coveragePct,
         splitCoveragePct,
-        recommendationConfidencePct: Math.round(item.recommendation?.confidencePct ?? 0),
+        confidencePct: confidencePctValue ?? 0,
+        recommendationConfidencePct: confidencePctValue ?? 0,
+        confidenceAvailable: confidencePctValue != null,
         status: backendStatus,
         statusReason: item.recommendation?.summary ?? "Nedovoljno podataka za preporuku. Red ostaje informativan dok backend ne vrati stabilan signal.",
+        dataQualityStatus: normalizeRecommendationQualityStatus(item.recommendation?.dataQualityStatus),
+        reasonCodes: item.recommendation?.reasonCodes ?? [],
       };
     });
   }, [data?.colors]);
@@ -916,12 +945,28 @@ export default function ColorSalesStatsPage() {
                   <strong>{selectedRow.brojArtikalaSaNivelacijom} / {selectedRow.brojArtikalaUkupno}</strong>
                 </article>
                 <article>
+                  <span>Kvalitet marze <InfoTip text="Backend quality tier za margin signal. Ako nije potvrden, marza ili margin contribution nisu za automatsku odluku bez provere." /></span>
+                  <strong>
+                    {selectedRow.marginQualityLabel ? (
+                      <span className={`shoetype-decision-kpi-badge ${qualityTierClass(selectedRow.marginQualityTier)}`}>
+                        {qualityTierIcon(selectedRow.marginQualityTier)} {selectedRow.marginQualityLabel}
+                      </span>
+                    ) : (
+                      "Kvalitet marze nije dostupan"
+                    )}
+                  </strong>
+                </article>
+                <article>
                   <span>{RECOMMENDATION_RELIABILITY_LABEL} <InfoTip text={analyticsMetricDescriptions.reliabilityPct} /></span>
-                  <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
+                  <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                </article>
+                <article>
+                  <span>Status kvaliteta preporuke <InfoTip text="Good = zeleno i upotrebljivo. Warning = oprez. Critical = ne veruj bez rucne provere. Insufficient data = neutralno." /></span>
+                  <strong style={recommendationQualityStyle(selectedRow.dataQualityStatus)}>{recommendationQualityLabel(selectedRow.dataQualityStatus)}</strong>
                 </article>
                 <article>
                   <span>Pokrice marze</span>
-                  <strong>{fmtPct(selectedRow.marginDataCoveragePct, 1)}</strong>
+                  <strong>{fmtPct(selectedRow.historicalCostCoveragePct ?? selectedRow.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
                   <span>Marza %</span>
@@ -929,13 +974,55 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>{RECOMMENDATION_CONFIDENCE_LABEL} <InfoTip text={analyticsMetricDescriptions.recommendationConfidencePct} /></span>
-                  <strong>{selectedRow.recommendationConfidencePct}</strong>
+                  <strong>{selectedRow.confidenceAvailable ? fmtPct(selectedRow.recommendationConfidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
               </div>
 
               <p className="color-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
               </p>
+              {selectedRow.reasonCodes.length > 0 ? (
+                <p className="color-decision-reason">
+                  <strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}
+                </p>
+              ) : null}
+              {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (
+                <p key={hint} className="color-decision-reason">
+                  <strong>Napomena:</strong> {hint}
+                </p>
+              ))}
+              {(() => {
+                const marginNote = buildMarginDetailNote(
+                  selectedRow.marginQualityTier,
+                  selectedRow.estimatedCostCoveragePct ?? selectedRow.fallbackCostCoveragePct,
+                  selectedRow.historicalCostCoveragePct ?? selectedRow.marginDataCoveragePct,
+                  fmtPct,
+                  selectedRow.snapshotCostCoveragePct,
+                  data?.totals.isSnapshotActive
+                );
+                return marginNote ? (
+                  <p className="color-decision-reason">
+                    <strong>Napomena za marzu:</strong> {marginNote}
+                  </p>
+                ) : null;
+              })()}
+              {(() => {
+                const recCaveat = buildRecommendationCaveat(
+                  selectedRow.marginQualityTier,
+                  selectedRow.estimatedCostCoveragePct ?? selectedRow.fallbackCostCoveragePct,
+                  fmtPct
+                );
+                return recCaveat ? (
+                  <p className="color-decision-reason">
+                    <strong>Napomena za preporuku:</strong> {recCaveat}
+                  </p>
+                ) : null;
+              })()}
+              {(!selectedRow.marginQualityLabel || !selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
+                <p className="color-decision-reason">
+                  <strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.
+                </p>
+              ) : null}
             </section>
           ) : null}
         </>

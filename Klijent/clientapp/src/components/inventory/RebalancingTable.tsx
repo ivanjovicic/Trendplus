@@ -1,4 +1,5 @@
 ﻿import { ArrowRightLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { RebalanceListDto, StoreOption } from "../../types/analytics";
 import { formatCurrency, getRebalanceUrgencyTone } from "./inventoryUtils";
 import type { InventoryRow } from "./types";
@@ -39,6 +40,7 @@ export function RebalancingTable({
 
       {!rebalance?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
+          <div className="mt-2 text-xs">Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris snapshot i quality signal.</div>
           {rebalanceLoading ? "Ucitavam predloge za redistribuciju..." : "Redistribucija nije dostupna. Snapshot tabela je prazna."}
         </div>
       ) : (rebalance.items ?? []).length === 0 ? (
@@ -81,7 +83,7 @@ export function RebalancingTable({
                       <td className="px-4 py-3 text-[var(--text-primary)]">{item.sizeCode}</td>
                       <td className="px-4 py-3 text-right font-semibold text-white">{item.recommendedQty}</td>
                       <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatCurrency(item.expectedSavedSales)}</td>
-                      <td className="max-w-[220px] truncate px-4 py-3 text-[var(--text-primary)]">{item.reason}</td>
+                      <td className="max-w-[220px] px-4 py-3 text-[var(--text-primary)]"><div className="truncate">{item.reason}</div><div className="mt-1 text-[11px] text-[var(--text-primary)]">Confidence: {Math.round(item.confidence * 100)}%</div></td>
                       <td className="px-4 py-3 text-right">
                         <button type="button" aria-label={`Uporedi lokacije ${fromStore} i ${toStore}`} onClick={() => onCompareStores(item.fromStoreId, item.toStoreId)} className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-primary)] transition-all duration-200 hover:border-[var(--border-default)] hover:bg-[var(--surface-light)] hover:text-white hover:shadow-md focus:outline-none focus-visible:border-[var(--border-default)] focus-visible:ring-2 focus-visible:ring-[var(--theme-color-44d0ff, #44d0ff)] focus-visible:ring-opacity-30">
                           Uporedi lokacije

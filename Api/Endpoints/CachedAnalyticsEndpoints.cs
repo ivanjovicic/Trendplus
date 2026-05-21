@@ -3652,6 +3652,8 @@ public class SupplierFilterOptionDto
     public string SupplierName { get; set; } = "";
 }
 
+// TODO(backend-dto): expose per-row margin quality tier / cost coverage and recommendation quality payload
+// so dashboard margin tables do not rely on generic "quality unavailable" disclaimers.
 public class TopProductAdvancedItemDto
 {
     public int ProductId { get; set; }
@@ -3693,6 +3695,7 @@ public class DashboardInsightDto
     public string Color { get; set; } = "blue";
 }
 
+// TODO(backend-dto): expose confidence/reliability/dataQualityStatus/statusReason for dashboard actions.
 public class DashboardActionDto
 {
     public string Priority { get; set; } = "P3";

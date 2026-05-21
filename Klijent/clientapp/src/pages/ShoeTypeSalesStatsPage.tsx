@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -34,12 +34,19 @@ import {
 import {
   RECOMMENDATION_CONFIDENCE_LABEL,
   RECOMMENDATION_RELIABILITY_LABEL,
+  RECOMMENDATION_SIGNAL_UNAVAILABLE,
   RECOMMENDATION_STATUS_PRIORITY,
   isCanonicalRecommendationStatus,
+  normalizeRecommendationPct,
+  normalizeRecommendationQualityStatus,
+  recommendationQualityLabel,
+  recommendationQualityStyle,
+  recommendationReasonHints,
   recommendationStatusLabel,
   recommendationStatusTone,
   recommendationStatusTooltipBrief,
   type CanonicalRecommendationStatus,
+  type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import "./ShoeTypeSalesStatsPage.css";
@@ -71,11 +78,16 @@ type DecisionShoeType = ShoeTypeSalesStat & {
   totalCost: number;
   marginContribution: number;
   reliabilityPct: number;
+  reliabilityAvailable: boolean;
   coveragePct: number;
   splitCoveragePct: number;
+  confidencePct: number;
   recommendationConfidencePct: number;
+  confidenceAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
@@ -208,6 +220,11 @@ type StatusTooltipData = {
   previousPeriodRevenue: number | null;
   splitCoveragePct: number | null;
   reliabilityPct: number;
+  reliabilityAvailable: boolean;
+  confidencePct: number;
+  confidenceAvailable: boolean;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
@@ -219,7 +236,11 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
-  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${fmtPct(data.reliabilityPct, 0)}`;
+  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const qualityText = recommendationQualityLabel(data.dataQualityStatus);
+  const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
+  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function describePopMetric(item: ShoeTypeSalesStat): { label: string; title: string; className: string } {
@@ -387,22 +408,29 @@ export default function ShoeTypeSalesStatsPage() {
         ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
         : 0;
       const backendStatus = mapRecommendationStatus(item.recommendation?.status) ?? "insufficient_data";
-      const reliabilityPct = item.recommendation?.reliabilityPct ?? item.reliabilityPct ?? (item.marginDataCoveragePct ?? 0);
-      const recommendationConfidencePct = Math.round(item.recommendation?.confidencePct ?? 0);
+      const reliabilityPctValue = normalizeRecommendationPct(item.recommendation?.reliabilityPct ?? item.reliabilityPct);
+      const confidencePctValue = normalizeRecommendationPct(item.recommendation?.confidencePct);
       const statusReason = item.recommendation?.summary
         ?? "Backend recommendation payload nedostaje; red ostaje informativan bez lokalnog izvodjenja preporuke.";
+      const reliabilityAvailable = reliabilityPctValue != null;
+      const confidenceAvailable = confidencePctValue != null;
 
       return {
         ...item,
         sharePct: item.sharePct ?? sharePct,
         totalCost,
         marginContribution,
-        reliabilityPct,
+        reliabilityPct: reliabilityPctValue ?? 0,
+        reliabilityAvailable,
         coveragePct,
         splitCoveragePct,
-        recommendationConfidencePct,
+        confidencePct: confidencePctValue ?? 0,
+        recommendationConfidencePct: confidencePctValue ?? 0,
+        confidenceAvailable,
         status: backendStatus,
         statusReason,
+        dataQualityStatus: normalizeRecommendationQualityStatus(item.recommendation?.dataQualityStatus),
+        reasonCodes: item.recommendation?.reasonCodes ?? [],
       };
     });
   }, [data?.shoeTypes]);
@@ -1306,7 +1334,11 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>{RECOMMENDATION_RELIABILITY_LABEL} <InfoTip text={analyticsMetricDescriptions.reliabilityPct} /></span>
-                  <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
+                  <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                </article>
+                <article>
+                  <span>Status kvaliteta preporuke <InfoTip text="Good = zeleno i upotrebljivo. Warning = oprez. Critical = ne veruj bez rucne provere. Insufficient data = neutralno." /></span>
+                  <strong style={recommendationQualityStyle(selectedRow.dataQualityStatus)}>{recommendationQualityLabel(selectedRow.dataQualityStatus)}</strong>
                 </article>
                 <article>
                   <span>Pokrice direktnom nabavnom % <InfoTip text={analyticsMetricDescriptions.costCoverage} /></span>
@@ -1328,7 +1360,7 @@ export default function ShoeTypeSalesStatsPage() {
                 ) : null}
                 <article>
                   <span>{RECOMMENDATION_CONFIDENCE_LABEL} <InfoTip text={analyticsMetricDescriptions.recommendationConfidencePct} /></span>
-                  <strong>{selectedRow.recommendationConfidencePct}</strong>
+                  <strong>{selectedRow.confidenceAvailable ? fmtPct(selectedRow.recommendationConfidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
               </div>
 
@@ -1370,6 +1402,21 @@ export default function ShoeTypeSalesStatsPage() {
               <p className="shoetype-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
               </p>
+              {selectedRow.reasonCodes.length > 0 ? (
+                <p className="shoetype-decision-reason">
+                  <strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}
+                </p>
+              ) : null}
+              {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (
+                <p key={hint} className="shoetype-decision-reason">
+                  <strong>Napomena:</strong> {hint}
+                </p>
+              ))}
+              {(!selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
+                <p className="shoetype-decision-reason">
+                  <strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.
+                </p>
+              ) : null}
             </section>
           ) : null}
         </div>

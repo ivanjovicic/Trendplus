@@ -134,6 +134,12 @@ export interface DashboardAction {
   priority: "P1" | "P2" | "P3" | string;
   title: string;
   recommendation: string;
+  // TODO(backend-dto): add confidence/reliability/dataQualityStatus/statusReason to dashboard actions.
+  confidencePct?: number | null;
+  reliabilityPct?: number | null;
+  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  statusReason?: string | null;
+  reasonCodes?: string[] | null;
 }
 
 export interface DashboardValidationItem {
@@ -172,6 +178,14 @@ export interface TopProductAdvancedItem {
   marginImpact?: number | null;
   stockStatus: "good" | "warning" | "critical" | "neutral" | string;
   trendPct?: number | null;
+  // TODO(backend-dto): add per-row margin quality tier / cost coverage and recommendation quality payload.
+  marginQualityLabel?: string | null;
+  marginQualityTier?: string | null;
+  confidencePct?: number | null;
+  reliabilityPct?: number | null;
+  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  statusReason?: string | null;
+  reasonCodes?: string[] | null;
 }
 
 export interface TopProductsAdvancedResult {

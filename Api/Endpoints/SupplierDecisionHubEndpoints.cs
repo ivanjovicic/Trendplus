@@ -2023,6 +2023,9 @@ public sealed record SummaryResponse(
     IReadOnlyList<KeyInsightItem> KeyInsights,
     string? DataNote = null);
 
+// TODO(backend-dto): extend Supplier Decision Hub recommendation DTOs with
+// ReliabilityPct, DataQualityStatus, StatusReason and ReasonCodes so the UI can
+// stop showing "pouzdanost nije dostupna" fallbacks for supplier recommendations.
 public sealed record SummarySupplierItem(
     int SupplierId,
     string SupplierName,
@@ -2040,6 +2043,7 @@ public sealed record KeyInsightItem(
 
 public sealed record QuadrantResponse(IReadOnlyList<QuadrantItem> Items);
 
+// TODO(backend-dto): include recommendation quality payload on quadrant items too.
 public sealed record QuadrantItem(
     int SupplierId,
     string SupplierName,
@@ -2058,6 +2062,7 @@ public sealed record RankingResponse(
     IReadOnlyList<RankingItem> Items,
     string? DataNote = null);
 
+// TODO(backend-dto): include recommendation quality payload and margin quality context on ranking rows.
 public sealed record RankingItem(
     int SupplierId,
     string SupplierName,
@@ -2084,6 +2089,7 @@ public sealed record SupplierDecisionDetailsResponse(
     IReadOnlyList<ArticleDecisionItem> BlockedByOosArticles,
     IReadOnlyList<RecommendationHistoryItem> RecommendationHistory);
 
+// TODO(backend-dto): expose recommendation quality payload on supplier details header.
 public sealed record SupplierHeaderDto(
     int SupplierId,
     string SupplierName,

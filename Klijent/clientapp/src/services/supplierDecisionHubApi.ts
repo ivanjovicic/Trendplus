@@ -53,6 +53,12 @@ export type SummarySupplierItem = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
+  // TODO(backend-dto): extend Supplier Decision Hub DTOs with recommendation reliability, dataQualityStatus,
+  // statusReason/reasonCodes and margin quality context for margin-bearing metrics.
+  reliabilityPct?: number | null;
+  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  statusReason?: string | null;
+  reasonCodes?: string[] | null;
 };
 
 export type KeyInsightItem = {
@@ -87,6 +93,10 @@ export type QuadrantItem = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
+  reliabilityPct?: number | null;
+  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  statusReason?: string | null;
+  reasonCodes?: string[] | null;
 };
 
 export type QuadrantResponse = {
@@ -109,6 +119,10 @@ export type RankingItem = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
+  reliabilityPct?: number | null;
+  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  statusReason?: string | null;
+  reasonCodes?: string[] | null;
 };
 
 export type RankingResponse = {
@@ -132,6 +146,10 @@ export type SupplierHeaderDto = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
+  reliabilityPct?: number | null;
+  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  statusReason?: string | null;
+  reasonCodes?: string[] | null;
 };
 
 export type SupplierKpisDto = {

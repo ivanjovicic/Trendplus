@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import { getDobavljaci } from "../services/dobavljaciApi";
@@ -16,6 +16,15 @@ import {
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import {
+  RECOMMENDATION_SIGNAL_UNAVAILABLE,
+  normalizeRecommendationPct,
+  normalizeRecommendationQualityStatus,
+  recommendationQualityLabel,
+  recommendationQualityStyle,
+  recommendationReasonHints,
+  type RecommendationQualityStatus,
+} from "../utils/canonicalRecommendationSemantics";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
 
@@ -34,8 +43,12 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   topFootwearTypeSharePct: number;
   avgElasticity: number | null;
   confidencePct: number;
+  confidenceAvailable: boolean;
+  reliabilityAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
@@ -96,10 +109,27 @@ function trendClass(value: number | null | undefined): string {
   return "trend-neutral";
 }
 
-type StatusTooltipData = { status: DecisionStatus; statusReason: string; sharePct: number; trendPct: number; topFootwearType: string; topFootwearTypeSharePct: number; reliabilityPct: number; confidencePct: number };
+type StatusTooltipData = {
+  status: DecisionStatus;
+  statusReason: string;
+  sharePct: number;
+  trendPct: number;
+  topFootwearType: string;
+  topFootwearTypeSharePct: number;
+  reliabilityPct: number;
+  confidencePct: number;
+  reliabilityAvailable: boolean;
+  confidenceAvailable: boolean;
+  dataQualityStatus: RecommendationQualityStatus;
+  reasonCodes: string[];
+};
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${fmtPct(data.topFootwearTypeSharePct, 1)}) | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${fmtPct(data.confidencePct, 0)}`;
+  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const qualityText = recommendationQualityLabel(data.dataQualityStatus);
+  const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${fmtPct(data.topFootwearTypeSharePct, 1)}) | Pouzdanost ${reliabilityText} | Poverenje ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 function normalizeName(value: string | null | undefined): string { return (value ?? "").trim().toUpperCase(); }
 function vendorKey(vendor: { vendorId: number | null; vendorName: string }): string { if (vendor.vendorId != null) return `id:${vendor.vendorId}`; return `name:${normalizeName(vendor.vendorName)}`; }
@@ -281,10 +311,8 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
     if (rows.length === 0) return [];
 
     const totalRevenue = rows.reduce((sum, item) => sum + item.postRevenue, 0);
-    return rows.flatMap((item) => {
+    return rows.map((item) => {
       const recommendation = item.recommendation;
-      if (!recommendation) return [];
-
       const key = vendorKey(item);
       const typeInsight = typeInsights.byVendor.get(key);
       const sharePct = totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0;
@@ -293,18 +321,25 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
       const topFootwearType = typeInsight?.topType ?? "N/A";
       const topFootwearTypeSharePct = typeInsight?.topTypeSharePct ?? 0;
       const avgElasticity = typeInsight?.avgElasticity ?? null;
+      const confidencePctValue = normalizeRecommendationPct(recommendation?.confidencePct);
+      const reliabilityPctValue = normalizeRecommendationPct(recommendation?.reliabilityPct ?? item.reliabilityPct);
 
-      return [{
+      return {
         ...item,
         sharePct,
         trendPct,
         topFootwearType,
         topFootwearTypeSharePct,
         avgElasticity,
-        confidencePct: recommendation.confidencePct,
-        status: recommendation.status,
-        statusReason: recommendation.summary,
-      }];
+        confidencePct: confidencePctValue ?? 0,
+        confidenceAvailable: confidencePctValue != null,
+        reliabilityPct: reliabilityPctValue ?? 0,
+        reliabilityAvailable: reliabilityPctValue != null,
+        status: recommendation?.status ?? "insufficient_data",
+        statusReason: recommendation?.summary ?? "Pouzdanost nije dostupna jer backend nije dostavio recommendation payload za ovog dobavljaca.",
+        dataQualityStatus: normalizeRecommendationQualityStatus(recommendation?.dataQualityStatus),
+        reasonCodes: recommendation?.reasonCodes ?? [],
+      };
     });
   }, [data?.vendorStats, typeInsights.byVendor]);
 
@@ -546,10 +581,20 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Glavni tip obuće</span><strong>{selectedRow.topFootwearType} ({fmtPct(selectedRow.topFootwearTypeSharePct, 1)})</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-warning"><span>Elastičnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Aktivni artikli</span><strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{fmtPct(selectedRow.confidencePct, 1)}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Status kvaliteta</span><strong style={recommendationQualityStyle(selectedRow.dataQualityStatus)}>{recommendationQualityLabel(selectedRow.dataQualityStatus)}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{selectedRow.confidenceAvailable ? fmtPct(selectedRow.confidencePct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong></article>
               </div>
               <p className="sf-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>
+              {selectedRow.reasonCodes.length > 0 ? (
+                <p className="sf-decision-reason"><strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}</p>
+              ) : null}
+              {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (
+                <p key={hint} className="sf-decision-reason"><strong>Napomena:</strong> {hint}</p>
+              ))}
+              {(!selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
+                <p className="sf-decision-reason"><strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.</p>
+              ) : null}
             </section>
           ) : null}
         </>
