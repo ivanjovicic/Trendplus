@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   checkAnalyticsHealth,
@@ -18,9 +19,9 @@ import {
   type AnalyticsPeriodPreset,
   getAnalyticsPeriodPresetRange,
 } from "../utils/analyticsPeriodPresets";
+import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import "./AnalyticsDetails.css";
 
-type DatePreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type TopTab = "revenue" | "units" | "velocity" | "margin";
 type Tone = "good" | "warning" | "critical" | "neutral";
 
@@ -32,43 +33,9 @@ interface TrendPoint {
   anomaly: "spike" | "drop" | null;
 }
 
-const PRESETS: Record<DatePreset, string> = {
-  "30d": "Poslednjih 30 dana",
-  "90d": "Poslednjih 90 dana",
-  "180d": "Poslednjih 180 dana",
-  "365d": "Poslednjih 365 dana",
-  custom: "Prilagođeno",
-};
-
-const fmtCur = (v: number) => `${new Intl.NumberFormat("sr-RS", { maximumFractionDigits: 2 }).format(v)} RSD`;
-const fmtNum = (v: number, d = 0) => new Intl.NumberFormat("sr-RS", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
-const fmtPct = (v?: number | null, d = 1) => (v == null || Number.isNaN(v) ? "N/A" : `${fmtNum(v, d)}%`);
 const tone = (s?: string | null): Tone => (!s ? "neutral" : s === "error" ? "critical" : (s as Tone));
 const toneText = (t: Tone) => (t === "good" ? "Dobro" : t === "warning" ? "Upozorenje" : t === "critical" ? "Kriticno" : "Neutralno");
 const trendArrow = (v?: number | null) => (v == null ? "\u2022" : v >= 0 ? "\u2191" : "\u2193");
-
-function inDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  const h = String(date.getHours()).padStart(2, "0");
-  const mi = String(date.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${d}T${h}:${mi}`;
-}
-
-function presetRange(p: DatePreset): { from: string; to: string } | null {
-  const now = new Date();
-  const from = new Date(now);
-  const to = new Date(now);
-  to.setHours(23, 59, 59, 999);
-  if (p === "30d") from.setDate(now.getDate() - 29);
-  else if (p === "90d") from.setDate(now.getDate() - 89);
-  else if (p === "180d") from.setDate(now.getDate() - 179);
-  else if (p === "365d") from.setDate(now.getDate() - 364);
-  else return null;
-  from.setHours(0, 0, 0, 0);
-  return { from: inDate(from), to: inDate(to) };
-}
 
 function moving(values: number[], w: number): Array<number | null> {
   return values.map((_, i) => (i + 1 < w ? null : values.slice(i - w + 1, i + 1).reduce((a, b) => a + b, 0) / w));
@@ -292,6 +259,11 @@ export default function AnalyticsDetails() {
         </div>
       </header>
 
+      <section className="ad-panel ad-legacy-banner">
+        <strong>Legacy prikaz</strong>
+        <p>Ovo je detaljni/legacy prikaz. Glavni analytics dashboard je <Link to="/analytics">Pregled poslovanja</Link>.</p>
+      </section>
+
       {preset === "custom" && (
         <section className="ad-panel ad-custom">
           <label>
@@ -325,22 +297,22 @@ export default function AnalyticsDetails() {
       {!loading && (
         <>
           <section className="ad-grid ad-kpi-grid">
-            <article className="ad-kpi-card"><span>Promet</span><strong>{fmtCur(summary?.totalRevenue ?? 0)}</strong><small>Ukupno u periodu</small></article>
-            <article className="ad-kpi-card"><span>Transakcije</span><strong>{fmtNum(summary?.totalTransactions ?? 0)}</strong><small>Ukupan broj racuna</small></article>
-            <article className="ad-kpi-card"><span>Jedinice</span><strong>{fmtNum(summary?.totalUnits ?? 0)}</strong><small>Ukupan broj komada</small></article>
-            <article className="ad-kpi-card"><span>Promet/dan</span><strong>{fmtCur(derived.revPerDay)}</strong><small>Formula: Promet / broj dana</small></article>
-            <article className="ad-kpi-card"><span>Transakcije/dan</span><strong>{fmtNum(derived.txPerDay, 1)}</strong><small>Formula: Racuni / broj dana</small></article>
-            <article className="ad-kpi-card"><span>Jedinice/dan</span><strong>{fmtNum(derived.unitsPerDay, 1)}</strong><small>Formula: Komadi / broj dana</small></article>
+            <article className="ad-kpi-card"><span>Promet</span><strong>{fmtRsd(summary?.totalRevenue ?? 0)}</strong><small>Ukupno u periodu</small></article>
+            <article className="ad-kpi-card"><span>Transakcije</span><strong>{fmtNumber(summary?.totalTransactions ?? 0)}</strong><small>Ukupan broj racuna</small></article>
+            <article className="ad-kpi-card"><span>Jedinice</span><strong>{fmtNumber(summary?.totalUnits ?? 0)}</strong><small>Ukupan broj komada</small></article>
+            <article className="ad-kpi-card"><span>Promet/dan</span><strong>{fmtRsd(derived.revPerDay)}</strong><small>Formula: Promet / broj dana</small></article>
+            <article className="ad-kpi-card"><span>Transakcije/dan</span><strong>{fmtNumber(derived.txPerDay, 1)}</strong><small>Formula: Racuni / broj dana</small></article>
+            <article className="ad-kpi-card"><span>Jedinice/dan</span><strong>{fmtNumber(derived.unitsPerDay, 1)}</strong><small>Formula: Komadi / broj dana</small></article>
           </section>
 
           <section className="ad-grid ad-risk-grid">
             <article className={`ad-risk-card ${metric.inStock != null && metric.inStock >= 95 ? "good" : metric.inStock != null && metric.inStock >= 90 ? "warning" : "critical"}`}>
               <span>In-stock %</span><strong>{fmtPct(metric.inStock)}</strong><small>(SKU na stanju / ukupan SKU) * 100</small>
             </article>
-            <article className={`ad-risk-card ${tone(validL?.status)}`}><span>OOS + Lost sales</span><strong>{fmtNum(inventory?.outOfStockCount ?? 0)} | {fmtCur(validL?.lostSalesEstimate ?? 0)}</strong><small>Rizik od rasprodatosti</small></article>
+            <article className={`ad-risk-card ${tone(validL?.status)}`}><span>OOS + Lost sales</span><strong>{fmtNumber(inventory?.outOfStockCount ?? 0)} | {fmtRsd(validL?.lostSalesEstimate ?? 0)}</strong><small>Rizik od rasprodatosti</small></article>
             <article className={`ad-risk-card ${metric.red != null && metric.red < 8 ? "good" : metric.red != null && metric.red < 15 ? "warning" : "critical"}`}><span>Red zone SKU %</span><strong>{fmtPct(metric.red)}</strong><small>Niska zaliha / ukupan SKU</small></article>
             <article className={`ad-risk-card ${metric.pareto != null && metric.pareto > 85 ? "warning" : "good"}`}><span>Pareto 80/20</span><strong>{fmtPct(metric.pareto)}</strong><small>Udeo prometa top 20 SKU</small></article>
-            <article className={`ad-risk-card ${tone(validF?.status)}`}><span>Data Health</span><strong>{validC?.score == null ? "N/A" : fmtPct(validC.score * 100)} | {validF?.freshnessHours == null ? "N/A" : `${fmtNum(validF.freshnessHours, 1)}h`}</strong><small>Completeness + freshness</small></article>
+            <article className={`ad-risk-card ${tone(validF?.status)}`}><span>Data Health</span><strong>{validC?.score == null ? "N/A" : fmtPct(validC.score * 100)} | {validF?.freshnessHours == null ? "N/A" : `${fmtNumber(validF.freshnessHours, 1)}h`}</strong><small>Completeness + freshness</small></article>
           </section>
 
           <section className="ad-grid ad-main-grid">
@@ -354,7 +326,7 @@ export default function AnalyticsDetails() {
                       <XAxis dataKey="date" tick={{ fill: "var(--text-secondary, var(--theme-color-9fb2de, #9fb2de))", fontSize: 12 }} />
                       <YAxis tick={{ fill: "var(--text-secondary, var(--theme-color-9fb2de, #9fb2de))", fontSize: 12 }} />
                       <Tooltip
-                        formatter={(v: number | string | undefined, n?: string) => [fmtCur(Number(v ?? 0)), n ?? "vrednost"]}
+                        formatter={(v: number | string | undefined, n?: string) => [fmtRsd(Number(v ?? 0)), n ?? "vrednost"]}
                         contentStyle={{ background: "var(--surface-elev-1, var(--theme-color-0f1730, #0f1730))", border: "1px solid var(--border-default, var(--theme-color-32406b, #32406b))" }}
                       />
                       <Line type="monotone" dataKey="revenue" stroke="var(--series-revenue, var(--theme-color-40d69f, #40d69f))" strokeWidth={2.2} dot={false} name="Promet" />
@@ -366,7 +338,7 @@ export default function AnalyticsDetails() {
               ) : (
                 <div className="ad-empty">Nema podataka za trend grafikon.</div>
               )}
-              <div className="ad-meta"><span>Momentum: {fmtPct(metric.pct)}</span><span>Slope: {metric.sl == null ? "N/A" : fmtNum(metric.sl, 2)}</span></div>
+              <div className="ad-meta"><span>Momentum: {fmtPct(metric.pct)}</span><span>Slope: {metric.sl == null ? "N/A" : fmtNumber(metric.sl, 2)}</span></div>
             </article>
             <article className="ad-panel">
               <h3>Quick Insights</h3>
@@ -416,9 +388,9 @@ export default function AnalyticsDetails() {
             {shortTop.map((row) => (
               <div key={`${topTab}-${row.productId}`} className="ad-table-row">
                 <span><strong>{row.sku}</strong><small>{row.productName}</small></span>
-                <span>{fmtCur(row.revenue)}</span>
-                <span>{fmtNum(row.units)}</span>
-                <span>{fmtNum(row.velocityUnitsPerDay, 2)}</span>
+                <span>{fmtRsd(row.revenue)}</span>
+                <span>{fmtNumber(row.units)}</span>
+                <span>{fmtNumber(row.velocityUnitsPerDay, 2)}</span>
                 <span
                   className={(row.trendPct ?? 0) >= 0 ? "up" : "down"}
                   title="Trend u odnosu na prethodni uporedivi period"
@@ -435,14 +407,14 @@ export default function AnalyticsDetails() {
               <h3>Data quality</h3>
               <div className="ad-row"><span>Completeness</span><strong>{validC?.score == null ? "N/A" : fmtPct(validC.score * 100)}</strong></div>
               <div className="ad-row"><span>Missing core fields</span><strong>{validC?.affectedSku ?? "N/A"}</strong></div>
-              <div className="ad-row"><span>Freshness</span><strong>{validF?.freshnessHours == null ? "N/A" : `${fmtNum(validF.freshnessHours, 1)}h`}</strong></div>
-              <div className="ad-row"><span>Lost sales estimate</span><strong>{fmtCur(validL?.lostSalesEstimate ?? 0)}</strong></div>
+              <div className="ad-row"><span>Freshness</span><strong>{validF?.freshnessHours == null ? "N/A" : `${fmtNumber(validF.freshnessHours, 1)}h`}</strong></div>
+              <div className="ad-row"><span>Lost sales estimate</span><strong>{fmtRsd(validL?.lostSalesEstimate ?? 0)}</strong></div>
               <div className="ad-row">
                 <span>Negative qty</span>
                 <strong>
                   {validN?.negativeQtyCount == null
                     ? "N/A"
-                    : `${fmtNum(validN.negativeQtyCount)}${validN.totalRows && validN.totalRows > 0 ? ` (${fmtPct((validN.negativeQtyCount / validN.totalRows) * 100, 3)})` : ""}`}
+                    : `${fmtNumber(validN.negativeQtyCount)}${validN.totalRows && validN.totalRows > 0 ? ` (${fmtPct((validN.negativeQtyCount / validN.totalRows) * 100, 3)})` : ""}`}
                 </strong>
               </div>
             </article>
@@ -494,9 +466,9 @@ export default function AnalyticsDetails() {
                       <strong>{row.sku}</strong>
                       <small>{row.productName}</small>
                     </span>
-                    <span>{fmtCur(row.revenue)}</span>
-                    <span>{fmtNum(row.units)}</span>
-                    <span>{fmtNum(row.velocityUnitsPerDay, 2)}</span>
+                    <span>{fmtRsd(row.revenue)}</span>
+                    <span>{fmtNumber(row.units)}</span>
+                    <span>{fmtNumber(row.velocityUnitsPerDay, 2)}</span>
                     <span
                       className={(row.trendPct ?? 0) >= 0 ? "up" : "down"}
                       title="Trend u odnosu na prethodni uporedivi period"
@@ -514,3 +486,4 @@ export default function AnalyticsDetails() {
     </div>
   );
 }
+

@@ -16,6 +16,7 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import {
   getAllSupplierDecisionRanking,
   getSupplierDecisionSummary,
+  type RecommendationCode,
   type RankingItem,
   type RankingResponse,
   type SummaryResponse,
@@ -40,7 +41,7 @@ import "./SupplierDecisionHubPage.css";
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField = "supplierName" | "revenue" | "sharePct" | "preMarkdownMarginPct" | "qualityTrendPct" | "status";
-type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
+type DecisionStatus = "Pojacaj" | "Zadrzi" | "Oprez" | "SmanjiNeVeruj" | "NedovoljnoPodataka";
 
 type ActiveFilters = {
   fromDate: string;
@@ -69,11 +70,12 @@ type DecisionRow = RankingItem & {
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  Pojacaj: 3,
-  Zadrzi: 2,
-  Smanji: 1,
+  Pojacaj: 5,
+  Zadrzi: 4,
+  Oprez: 3,
+  NedovoljnoPodataka: 2,
+  SmanjiNeVeruj: 1,
 };
-const BOOST_MIN_CONFIDENCE_PCT = 55;
 
 const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
   { key: "supplierName", header: "DobavljaÄ", dataType: "text" },
@@ -81,20 +83,21 @@ const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
   { key: "preMarkdownMarginPct", header: "MarÅ¾a %", dataType: "percent" },
   { key: "qualityTrendPct", header: "Trend pune cene %", dataType: "percent" },
-  { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "decisionScore", header: "Skor odluke", dataType: "number" },
+  { key: "status", header: "Scorecard signal", dataType: "text" },
 ];
 
 function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string { if (field !== activeField) return ""; return dir === "asc" ? " ^" : " v"; }
 function statusClass(status: DecisionStatus): string {
   if (status === "Pojacaj") return "sdh-decision-status status-boost";
-  if (status === "Smanji") return "sdh-decision-status status-reduce";
+  if (status === "SmanjiNeVeruj") return "sdh-decision-status status-reduce";
   return "sdh-decision-status status-keep";
 }
 function statusDisplayLabel(status: DecisionStatus): string {
   if (status === "Pojacaj") return "PojaÄaj";
-  if (status === "Smanji") return "Smanji";
+  if (status === "SmanjiNeVeruj") return "Smanji / Ne veruj";
+  if (status === "Oprez") return "Oprez";
+  if (status === "NedovoljnoPodataka") return "Nedovoljno podataka";
   return "ZadrÅ¾i";
 }
 function trendClass(value: number | null | undefined): string {
@@ -112,27 +115,40 @@ function buildPreviousRange(fromDate: string, toDate: string): { fromDate: strin
   return { fromDate: previousFrom.toISOString().slice(0, 10), toDate: previousTo.toISOString().slice(0, 10) };
 }
 
-function recommendationToStatus(code: string): DecisionStatus {
+function recommendationToStatus(code: RecommendationCode): DecisionStatus {
   if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "Pojacaj";
-  if (code === "ASSORTMENT_REDUCE" || code === "PRICE_NEGOTIATE") return "Smanji";
-  return "Zadrzi";
+  if (code === "HOLD") return "Zadrzi";
+  if (code === "ASSORTMENT_REDUCE" || code === "PRICE_NEGOTIATE") return "SmanjiNeVeruj";
+  if (code === "OOS_FALSE_NEGATIVE" || code === "REVIEW_QUALITY") return "Oprez";
+  return "NedovoljnoPodataka";
 }
 
-function buildStatusReason(status: DecisionStatus, code: string, qualityTrendPct: number, confidence: number): string {
-  const lowConfidence = confidence < BOOST_MIN_CONFIDENCE_PCT;
+function buildStatusReason(
+  status: DecisionStatus,
+  code: RecommendationCode,
+  qualityTrendPct: number,
+  confidenceAvailable: boolean,
+  normalizedConfidence: number
+): string {
+  const lowConfidence = confidenceAvailable && normalizedConfidence < 55;
+
   if (status === "Pojacaj") {
-    if (lowConfidence) return "Signal za rast postoji, ali je pouzdanost graniÄna; Å¡iri postepeno.";
-    if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "DobavljaÄ drÅ¾i zdrav prodajni signal bez preterane zavisnosti od nivelacija.";
-    return "Pozitivan zbirni signal za veÄ‡i fokus.";
+    if (lowConfidence) return "Signal za rast postoji, ali je pouzdanost granicna; siri postepeno.";
+    if (code === "EXPAND" || code === "EXPAND_SELECTIVELY") return "Backend scorecard kod ukazuje na potencijal za jaci fokus bez preterane zavisnosti od nivelacija.";
+    return "Backend scorecard kod ukazuje na potencijal za jaci fokus.";
   }
   if (status === "Zadrzi") {
-    if (lowConfidence) return "NiÅ¾a pouzdanost podataka; odluku drÅ¾ati konzervativnom dok se signal ne stabilizuje.";
-    if (qualityTrendPct < 0) return "Signal kvaliteta slabi; zadrÅ¾ati uz pojaÄan nadzor.";
-    return "Stabilan signal bez jasnog razloga za promenu prioriteta.";
+    if (lowConfidence) return "Niza pouzdanost podataka; odluku drzi konzervativnom dok se signal ne stabilizuje.";
+    if (qualityTrendPct < 0) return "Signal kvaliteta slabi; zadrzi uz pojacan nadzor.";
+    return "Backend scorecard kod ukazuje da je signal trenutno stabilan.";
   }
-  if (code === "ASSORTMENT_REDUCE") return "Visoka zavisnost od nivelacija i rizik neaktivne zalihe â€” smanjiti fokus u nabavci.";
-  if (code === "PRICE_NEGOTIATE") return "Potreban je bolji cenovni ulaz â€” pregovoriti nabavne cene pre daljeg proÅ¡irivanja asortimana.";
-  return "Nizak signal doprinosa i rizik po profitabilnost.";
+  if (status === "Oprez") return "Backend signal trazi dodatnu rucnu proveru kvaliteta podataka ili OOS konteksta.";
+  if (status === "SmanjiNeVeruj") {
+    if (code === "ASSORTMENT_REDUCE") return "Backend signal predlaze smanjenje asortimana.";
+    if (code === "PRICE_NEGOTIATE") return "Backend signal predlaze pregovor o nabavnoj ceni pre sirenja.";
+    return "Backend signal ukazuje na rizik i potrebu za oprezom.";
+  }
+  return "Nedovoljno signala u scorecard modelu; konacnu odluku donesi iz taba Pregled.";
 }
 
 function buildStatusTooltip(row: DecisionRow): string {
@@ -140,15 +156,7 @@ function buildStatusTooltip(row: DecisionRow): string {
   const reliabilityText = row.reliabilityAvailable ? fmtPct(row.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(row.dataQualityStatus);
   const hintText = recommendationReasonHints(row.reasonCodes).join(" | ");
-  return statusDisplayLabel(row.status)
-    + ": " + row.statusReason
-    + " | Udeo " + fmtPct(row.sharePct, 1)
-    + " | MarÅ¾a " + fmtPct(row.preMarkdownMarginPct * 100, 1)
-    + " | Trend pune cene " + fmtSignedPct(row.qualityTrendPct, 1)
-    + " | Confidence " + confidenceText
-    + " | Pouzdanost " + reliabilityText
-    + " | Kvalitet " + qualityText
-    + (hintText ? " | Napomene: " + hintText : "");
+  return `${statusDisplayLabel(row.status)}: ${row.statusReason} | Udeo ${fmtPct(row.sharePct, 1)} | Marza ${fmtPct(row.preMarkdownMarginPct * 100, 1)} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Data quality ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 export default function SupplierDecisionHubPage({ embedded = false, sharedFilters }: SupplierEmbeddedPageProps = {}) {
@@ -278,7 +286,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
       const status = recommendationToStatus(item.recommendationCode);
       const statusReason = item.statusReason
-        ?? buildStatusReason(status, item.recommendationCode, qualityTrendPct, normalizedConfidence);
+        ?? buildStatusReason(status, item.recommendationCode, qualityTrendPct, confidencePctValue != null, normalizedConfidence);
+      const reliabilityPctValue = normalizeRecommendationPct(item.reliabilityPct);
 
       return {
         ...item,
@@ -290,8 +299,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         statusReason,
         normalizedConfidence,
         confidenceAvailable: confidencePctValue != null,
-        reliabilityPct: normalizeRecommendationPct(item.reliabilityPct) ?? 0,
-        reliabilityAvailable: normalizeRecommendationPct(item.reliabilityPct) != null,
+        reliabilityPct: reliabilityPctValue ?? 0,
+        reliabilityAvailable: reliabilityPctValue != null,
         dataQualityStatus: normalizeRecommendationQualityStatus(item.dataQualityStatus),
         reasonCodes: item.reasonCodes ?? [],
       };
@@ -308,7 +317,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       else if (sortField === "preMarkdownMarginPct") compare = a.preMarkdownMarginPct - b.preMarkdownMarginPct;
       else if (sortField === "qualityTrendPct") compare = a.qualityTrendPct - b.qualityTrendPct;
       else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
-      if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      if (compare === 0) compare = a.normalizedConfidence - b.normalizedConfidence;
       return sortDir === "asc" ? compare : -compare;
     });
   }, [decisionRows, sortDir, sortField]);
@@ -327,7 +336,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const supplierCounts = useMemo(() => ({
     boost: sortedRows.filter((row) => row.status === "Pojacaj").length,
     keep: sortedRows.filter((row) => row.status === "Zadrzi").length,
-    reduce: sortedRows.filter((row) => row.status === "Smanji").length,
+    caution: sortedRows.filter((row) => row.status === "Oprez").length,
+    reduce: sortedRows.filter((row) => row.status === "SmanjiNeVeruj").length,
+    insufficient: sortedRows.filter((row) => row.status === "NedovoljnoPodataka").length,
   }), [sortedRows]);
   const zeroStateExplanation = useMemo(() => {
     if (!summary || !ranking) return null;
@@ -436,8 +447,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       {!embedded ? (
       <header className="sdh-decision-header">
         <div>
-          <h1 className="sdh-decision-title">Skorkarta dobavljaÄa</h1>
-          <p className="sdh-decision-subtitle">Skorkarta je radni ekran za odluke o dobavljaÄima. Kombinuje prihod, prodaju po punoj ceni, marÅ¾u, rizik zaliha i zavisnost od nivelacija za artikle koji imaju prvi signal sniÅ¾enja u izabranom periodu.</p>
+          <h1 className="sdh-decision-title">Skorkarta dobavljaca (dodatni signal)</h1>
+          <p className="sdh-decision-subtitle">Skorkarta je pomocni scorecard signal. Konacna poslovna preporuka za dobavljaca dolazi iz taba Pregled, dok ovaj ekran daje dodatni pogled na kvalitet signala i rizike.</p>
           <details className="sdh-decision-help">
             <summary>Kako se Äita ovaj ekran?</summary>
             <div className="sdh-decision-help-content">
@@ -450,7 +461,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <li><strong>Udeo:</strong> Koliki deo ukupnog prihoda dolazi od tog dobavljaÄa.</li>
                 <li><strong>MarÅ¾a:</strong> Razlika izmeÄ‘u prodajne i nabavne cene kao procenat.</li>
                 <li><strong>Trend pune cene:</strong> Pozitivan = veÄ‡i udeo prodaje po punoj ceni od udela nivelacija; negativan = veÄ‡a zavisnost od sniÅ¾enja.</li>
-                <li><strong>Preporuka:</strong> Akcioni label za ekran: PojaÄaj, ZadrÅ¾i ili Smanji. Dobija se iz backend preporuke, skora odluke i pouzdanosti signala.</li>
+                <li><strong>Scorecard signal:</strong> Pojacaj, Zadrzi, Oprez, Smanji / Ne veruj ili Nedovoljno podataka. Ovo nije finalna preporuka.</li>
               </ul>
               <p><strong>ZaÅ¡to nema podataka?</strong> NajÄeÅ¡Ä‡i razlozi: nema nivelacija u izabranom periodu, filteri su uski (kratak period ili specifiÄna prodavnica), dobavljaÄi nisu pravilno povezani sa artiklima, ili analitika nije osveÅ¾ena (pokreni u Konfiguracija â†’ Radnici).</p>
               <p><strong>Kako koristiti:</strong> Uporedi 30, 90 i 180 dana. KraÄ‡i period pokazuje sveÅ¾ signal, a duÅ¾i stabilniju sliku. Grafikon pokazuje koncentraciju prihoda, a tabela objaÅ¡njava akciju po dobavljaÄu.</p>
@@ -468,6 +479,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         <div>
           <strong>Kako Äitati niske vrednosti?</strong>
           <span>Niska ili prazna Skorkarta ne znaÄi automatski da dobavljaÄ nema promet; moÅ¾e znaÄiti da u periodu nema dovoljno nivelacija za procenu.</span>
+        </div>
+        <div>
+          <strong>Odnos sa tabom Pregled</strong>
+          <span>Pregled je canonical decision surface za finalnu preporuku. Skorkarta ovde služi kao dodatni signal za proveru.</span>
         </div>
       </section>
 
@@ -624,9 +639,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-card">
               <div className="sdh-decision-table-head">
                 <div>
-                  <h2>Rang lista dobavljaÄa</h2>
-                  <p>PojaÄaj: <strong>{supplierCounts.boost}</strong> | ZadrÅ¾i: <strong>{supplierCounts.keep}</strong> | Smanji: <strong>{supplierCounts.reduce}</strong></p>
-                  <p className="sdh-decision-table-subtitle">Lista koristi sve uÄitane scorecard dobavljaÄe, ne samo prvih 100 iz API paginacije. Sortiranje je lokalno po izabranoj koloni; preporuka je akcioni label izveden iz backend signala, skora odluke i pouzdanosti.</p>
+                  <h2>Rang lista dobavljaca</h2>
+                  <p>Pojacaj: <strong>{supplierCounts.boost}</strong> | Zadrzi: <strong>{supplierCounts.keep}</strong> | Oprez: <strong>{supplierCounts.caution}</strong> | Smanji / Ne veruj: <strong>{supplierCounts.reduce}</strong> | Nedovoljno podataka: <strong>{supplierCounts.insufficient}</strong></p>
+                  <p className="sdh-decision-table-subtitle">Lista koristi backend scorecard kod kao primarni signal, dok lokalni skor odluke sluzi samo za dodatno rangiranje dok backend jos ne posalje pun quality payload.</p>
                 </div>
                 <AnalyticsTableToolbar tableKey="supplier-decision-hub" tableTitle="Skorkarta dobavljaÄa - kompaktni prikaz" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
               </div>
@@ -671,8 +686,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka
-                          <InfoTip text="Akcioni label za odluku: PojaÄaj, ZadrÅ¾i ili Smanji. Nije ruÄna ocena; izveden je iz backend preporuke, skora odluke i pouzdanosti." />
+                          Scorecard signal
+                          <InfoTip text="Dodatni scorecard signal (Pojacaj, Zadrzi, Oprez, Smanji / Ne veruj, Nedovoljno podataka). Nije finalna preporuka." />
                           {sortMarker("status", sortField, sortDir)}
                         </button>
                       </th>
@@ -714,7 +729,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           {selectedRow ? (
             <section className="sdh-decision-detail">
               <div className="sdh-decision-detail-head">
-                <h3>Detalj odluke: {selectedRow.supplierName}</h3>
+                <h3>Detalj scorecard signala: {selectedRow.supplierName}</h3>
                 <button type="button" onClick={() => openSupplierDetail(selectedRow)}>Otvori puni detalj</button>
               </div>
               <div className="sdh-decision-detail-grid">
@@ -764,7 +779,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 </article>
               </div>
               <p className="sdh-decision-reason">
-                <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
+                <strong>Razlog scorecard signala:</strong> {selectedRow.statusReason}
               </p>
               <p className="sdh-decision-reason">
                 <strong>Skor odluke:</strong> {selectedRow.decisionScore} (lokalni pomocni indeks za rangiranje; backend jos nije poslao pun quality payload za ovaj screen)
@@ -791,3 +806,5 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     </div>
   );
 }
+
+

@@ -23,7 +23,7 @@ import {
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
-import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import {
   RECOMMENDATION_CONFIDENCE_LABEL,
@@ -181,16 +181,6 @@ function buildPreviousRange(fromDate: string, toDate: string): { from: string; t
     from: previousFrom.toISOString(),
     to: previousTo.toISOString(),
   };
-}
-
-function fmtOptionalRsd(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  return fmtRsd(value);
-}
-
-function fmtMetric(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  return value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
@@ -774,25 +764,25 @@ const advancedSignals = useMemo(
     () => [
       {
         label: "Momentum",
-        value: fmtOptionalRsd(data?.avgMomentumRevenue),
+        value: fmtRsd(data?.avgMomentumRevenue),
         hint: "avg rev",
         tip: "Prosečan prihod od ubrzanja prodaje (momentum signal). Pokazuje da li prodajni trend dobija na brzini pre/posle nivelacije. Nedostupno ako vw_sales_momentum view nije kreiran u bazi.",
       },
       {
         label: "Elasticnost",
-        value: fmtMetric(data?.avgElasticity, 2),
+        value: fmtNumber(data?.avgElasticity, 2),
         hint: "avg",
         tip: "Prosečna cenovana elastičnost po artiklima dobavljača. Vrednost < 0 znači da rast cene smanjuje prodaju. Računa se kao %Δqty / %Δcena za svaki artikal.",
       },
       {
         label: "DID",
-        value: fmtOptionalRsd(data?.avgDidRevenue),
+        value: fmtRsd(data?.avgDidRevenue),
         hint: "avg rev",
         tip: "Difference-in-Differences procena uzročnog efekta nivelacije. Poredi promenu prodaje sa kontrolnom grupom (artikli bez nivelacije). Nedostupno ako vw_nivelacija_did nije kreiran.",
       },
       {
         label: "Lost sales OOS",
-        value: fmtOptionalRsd(data?.avgLostSalesOOS),
+        value: fmtRsd(data?.avgLostSalesOOS),
         hint: "avg",
         tip: "Procena prihoda izgubljenog zbog iscrpljenosti zalihe (Out of Stock). Izračunava se iz vw_stock_red_zone podataka. Nedostupno dok taj view nije kreiran u bazi.",
       },
@@ -1450,13 +1440,13 @@ const advancedSignals = useMemo(
                   </article>
                   <article>
                     <span>Momentum / Elasticnost</span>
-                    <strong>{fmtOptionalRsd(selectedDriverSummary.avgMomentumRevenue)}</strong>
-                    <small>Elasticnost {fmtMetric(selectedDriverSummary.avgElasticity, 2)}</small>
+                    <strong>{fmtRsd(selectedDriverSummary.avgMomentumRevenue)}</strong>
+                    <small>Elasticnost {fmtNumber(selectedDriverSummary.avgElasticity, 2)}</small>
                   </article>
                   <article>
                     <span>DID / Lost sales OOS</span>
-                    <strong>{fmtOptionalRsd(selectedDriverSummary.avgDidRevenue)}</strong>
-                    <small>Lost sales {fmtOptionalRsd(selectedDriverSummary.avgLostSalesOOS)}</small>
+                    <strong>{fmtRsd(selectedDriverSummary.avgDidRevenue)}</strong>
+                    <small>Lost sales {fmtRsd(selectedDriverSummary.avgLostSalesOOS)}</small>
                   </article>
                   <article>
                     <span>

@@ -1050,6 +1050,36 @@ public static class CachedAnalyticsEndpoints
             return Results.Ok(result);
         });
 
+        // ========== PRODUCT DECISION CENTER (CACHED) ==========
+        group.MapGet("/products/decision-center", async (
+            IAnalyticsCacheService cache,
+            ITrendplusDbContext db,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
+            int top = 500,
+            string dataScope = "all",
+            CancellationToken ct = default) =>
+        {
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            top = Math.Clamp(top, 50, 2000);
+
+            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
+                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
+                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            var cacheKey = AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, top, normalizedDataScope);
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct),
+                CacheExpiration.Short,
+                ct);
+
+            return Results.Ok(result);
+        });
+
         // ========== CATEGORY TRENDS (CACHED) ==========
         group.MapGet("/sales/category-trends", async (
             IAnalyticsCacheService cache,
@@ -1280,6 +1310,23 @@ public static class CachedAnalyticsEndpoints
                                 ct),
                             response.Errors,
                             "Napredne metrike nisu dostupne.");
+
+                        var productDecisionSnapshot = await TrySectionAsync(
+                            async () => await cache.GetOrSetAsync(
+                                AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, 300, normalizedDataScope),
+                                async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, 300, normalizedDataScope, ct),
+                                CacheExpiration.Short,
+                                ct),
+                            response.Errors,
+                            "Product Decision Center nije dostupan.");
+
+                        response.DecisionActions = BuildDashboardDecisionActions(
+                            productDecisionSnapshot,
+                            response.Advanced,
+                            fromDate,
+                            toDate,
+                            storeId,
+                            supplierId);
 
                         response.TopAdvanced = await TrySectionAsync(
                             async () => await cache.GetOrSetAsync(
@@ -2744,6 +2791,220 @@ public static class CachedAnalyticsEndpoints
         return snapshot;
     }
 
+    private static List<DashboardDecisionActionDto> BuildDashboardDecisionActions(
+        ProductDecisionCenterResponseDto? productDecisionSnapshot,
+        DashboardAdvancedSnapshotDto? advancedSnapshot,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId)
+    {
+        var actions = new List<DashboardDecisionActionDto>();
+
+        if (productDecisionSnapshot?.Rows is { Count: > 0 })
+        {
+            var rows = productDecisionSnapshot.Rows;
+
+            TryAddDecisionActionFromRows(
+                actions,
+                rows,
+                recommendationStatus: "REPLENISH",
+                minRows: 2,
+                minConfidence: 55,
+                priority: "P1",
+                title: "Dopuni artikle sa visokim velocity i niskom zalihom",
+                impactTemplate: "Smanjenje procenjene izgubljene prodaje oko {0} RSD.",
+                link: BuildDashboardActionLink("/analytics/inventory", fromDate, toDate, storeId, supplierId));
+
+            TryAddDecisionActionFromRows(
+                actions,
+                rows,
+                recommendationStatus: "FIX_DATA",
+                minRows: 1,
+                minConfidence: 0,
+                priority: "P1",
+                title: "Proveri artikle bez dobavljača, nabavne cene ili kategorije",
+                impactTemplate: "Bez ispravke podataka preporuke ostaju nepouzdane za {0} RSD prometa.",
+                link: BuildDashboardActionLink("/analytics/data-quality", fromDate, toDate, storeId, supplierId));
+
+            TryAddDecisionActionFromRows(
+                actions,
+                rows,
+                recommendationStatus: "MARKDOWN",
+                minRows: 2,
+                minConfidence: 55,
+                priority: "P1",
+                title: "Snizi artikle sa starom zalihom i slabom prodajom",
+                impactTemplate: "Ubrzanje obrta na sporoj zalihi vrednoj oko {0} RSD.",
+                link: BuildDashboardActionLink("/analytics/pre-nivelacija-prioriteti", fromDate, toDate, storeId, supplierId));
+
+            TryAddDecisionActionFromRows(
+                actions,
+                rows,
+                recommendationStatus: "BOOST",
+                minRows: 1,
+                minConfidence: 60,
+                priority: "P2",
+                title: "Pojačaj artikle sa rastom i zdravom maržom",
+                impactTemplate: "Potencijal dodatnog rasta kroz artikle sa prometom oko {0} RSD.",
+                link: BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId));
+
+            TryAddDecisionActionFromRows(
+                actions,
+                rows,
+                recommendationStatus: "DO_NOT_ORDER",
+                minRows: 2,
+                minConfidence: 55,
+                priority: "P2",
+                title: "Zaustavi porudžbine artikala sa padom i viškom zalihe",
+                impactTemplate: "Smanjenje vezanog kapitala na artiklima vrednim oko {0} RSD.",
+                link: BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId));
+
+            TryAddDecisionActionFromRows(
+                actions,
+                rows,
+                recommendationStatus: "INSUFFICIENT_DATA",
+                minRows: 3,
+                minConfidence: 0,
+                priority: "P3",
+                title: "Proveri artikle sa velikim padom ili nedovoljno signala",
+                impactTemplate: "Potrebna ručna provera za grupu artikala sa prometom oko {0} RSD.",
+                link: BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId));
+        }
+
+        if (actions.Count == 0 && advancedSnapshot?.Actions is { Count: > 0 })
+        {
+            foreach (var action in advancedSnapshot.Actions.Take(4))
+            {
+                var mappedLink = MapLegacyAdvancedActionLink(action.Title, fromDate, toDate, storeId, supplierId);
+                actions.Add(new DashboardDecisionActionDto
+                {
+                    Priority = string.IsNullOrWhiteSpace(action.Priority) ? "P3" : action.Priority,
+                    Title = TranslateLegacyActionTitle(action.Title),
+                    Reason = action.Recommendation,
+                    StatusReason = action.Recommendation,
+                    ExpectedImpact = null,
+                    ConfidencePct = null,
+                    ReliabilityPct = null,
+                    DataQualityStatus = "insufficient_data",
+                    Link = mappedLink,
+                    LinkLabel = "Otvori povezani ekran"
+                });
+            }
+        }
+
+        return actions
+            .OrderBy(a => DecisionPriorityRank(a.Priority))
+            .ThenByDescending(a => a.ConfidencePct ?? 0)
+            .Take(8)
+            .ToList();
+    }
+
+    private static void TryAddDecisionActionFromRows(
+        List<DashboardDecisionActionDto> actions,
+        List<ProductDecisionCenterRowDto> rows,
+        string recommendationStatus,
+        int minRows,
+        int minConfidence,
+        string priority,
+        string title,
+        string impactTemplate,
+        string link)
+    {
+        var candidates = rows
+            .Where(x => x.RecommendationStatus == recommendationStatus)
+            .ToList();
+
+        if (candidates.Count < minRows)
+            return;
+
+        var reliable = minConfidence <= 0
+            ? candidates
+            : candidates.Where(x => x.ConfidencePct >= minConfidence).ToList();
+
+        if (reliable.Count == 0)
+            return;
+
+        var exemplar = reliable
+            .OrderByDescending(x => x.ConfidencePct)
+            .ThenByDescending(x => x.Revenue)
+            .First();
+
+        var avgConfidence = reliable.Count > 0
+            ? (int)Math.Round(reliable.Average(x => x.ConfidencePct), MidpointRounding.AwayFromZero)
+            : 0;
+
+        var impactedRevenue = reliable.Sum(x => x.Revenue);
+        var reason = $"{reliable.Count} artikala imaju signal '{exemplar.RecommendationLabel}'. Primer: {exemplar.ProductName} ({exemplar.RecommendationReason})";
+        var impact = string.Format(CultureInfo.InvariantCulture, impactTemplate, Math.Round(impactedRevenue, 0).ToString("0", CultureInfo.InvariantCulture));
+
+        actions.Add(new DashboardDecisionActionDto
+        {
+            Priority = priority,
+            Title = title,
+            Reason = reason,
+            StatusReason = exemplar.RecommendationReason,
+            ExpectedImpact = impact,
+            ConfidencePct = avgConfidence,
+            ReliabilityPct = null, // TODO: Extend ProductDecisionCenterRowDto with backend reliabilityPct for dashboard action quality context.
+            DataQualityStatus = string.IsNullOrWhiteSpace(exemplar.DataQualityStatus) ? "insufficient_data" : exemplar.DataQualityStatus,
+            Link = link,
+            LinkLabel = "Otvori detalj"
+        });
+    }
+
+    private static int DecisionPriorityRank(string priority) => priority switch
+    {
+        "P1" => 1,
+        "P2" => 2,
+        _ => 3
+    };
+
+    private static string BuildDashboardActionLink(
+        string basePath,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId)
+    {
+        var query = new List<string>();
+        if (fromDate.HasValue) query.Add($"fromDate={Uri.EscapeDataString(fromDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}");
+        if (toDate.HasValue) query.Add($"toDate={Uri.EscapeDataString(toDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}");
+        if (storeId.HasValue) query.Add($"storeId={storeId.Value}");
+        if (supplierId.HasValue) query.Add($"supplierId={supplierId.Value}");
+
+        return query.Count == 0 ? basePath : $"{basePath}?{string.Join("&", query)}";
+    }
+
+    private static string MapLegacyAdvancedActionLink(
+        string title,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId)
+    {
+        var normalized = (title ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized.Contains("replenishment")) return BuildDashboardActionLink("/analytics/inventory", fromDate, toDate, storeId, supplierId);
+        if (normalized.Contains("data")) return BuildDashboardActionLink("/analytics/data-quality", fromDate, toDate, storeId, supplierId);
+        if (normalized.Contains("portfolio")) return BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId);
+        if (normalized.Contains("refresh")) return BuildDashboardActionLink("/analytics/data-quality", fromDate, toDate, storeId, supplierId);
+        return BuildDashboardActionLink("/analytics", fromDate, toDate, storeId, supplierId);
+    }
+
+    private static string TranslateLegacyActionTitle(string title)
+    {
+        return (title ?? string.Empty).Trim() switch
+        {
+            "Replenishment" => "Dopuni kritične artikle",
+            "Data quality fix" => "Proveri kvalitet podataka",
+            "Portfolio balance" => "Balansiraj portfolio artikala",
+            "Refresh pipeline" => "Osveži pipeline podataka",
+            "Monitor" => "Nastavi praćenje ključnih signala",
+            var value when !string.IsNullOrWhiteSpace(value) => value,
+            _ => "Operativna akcija"
+        };
+    }
+
     private static async Task<T?> TrySectionAsync<T>(
         Func<Task<T>> factory,
         List<string> errors,
@@ -3545,6 +3806,462 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
+    private sealed class ProductDecisionArticleSnapshot
+    {
+        public int ProductId { get; init; }
+        public string Sku { get; init; } = string.Empty;
+        public string ProductName { get; init; } = string.Empty;
+        public int? SupplierId { get; init; }
+        public string? SupplierName { get; init; }
+        public string? Category { get; init; }
+        public string? ShoeTypeName { get; init; }
+        public string? Color { get; init; }
+        public string? Size { get; init; }
+        public int CurrentStock { get; init; }
+        public int MinStock { get; init; }
+        public decimal? UnitCost { get; init; }
+        public DateTime UpdatedAtUtc { get; init; }
+    }
+
+    private sealed class ProductDecisionSalesAggregate
+    {
+        public int ProductId { get; init; }
+        public decimal Revenue { get; init; }
+        public int UnitsSold { get; init; }
+        public decimal MarginContribution { get; init; }
+        public decimal CostCoveredRevenue { get; init; }
+    }
+
+    private static async Task<ProductDecisionCenterResponseDto> BuildProductDecisionCenterAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        int top,
+        string dataScope,
+        CancellationToken ct)
+    {
+        var normalizedDataScope = NormalizeDataScope(dataScope);
+        var importedOnly = normalizedDataScope == "imported";
+        var existingOnly = normalizedDataScope == "existing";
+
+        var nowUtc = DateTime.UtcNow;
+        var periodToExclusiveUtc = (toDate?.Date ?? nowUtc.Date).AddDays(1);
+        var periodFromUtc = fromDate?.Date ?? periodToExclusiveUtc.AddDays(-30);
+        if (periodFromUtc >= periodToExclusiveUtc)
+        {
+            periodFromUtc = periodToExclusiveUtc.AddDays(-1);
+        }
+
+        var periodDays = Math.Max(1, (int)Math.Ceiling((periodToExclusiveUtc - periodFromUtc).TotalDays));
+        var previousFromUtc = periodFromUtc.AddDays(-periodDays);
+        var previousToExclusiveUtc = periodFromUtc;
+
+        var articles = await (
+            from a in db.Artikli.AsNoTracking()
+            join d in db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into supplierJoin
+            from d in supplierJoin.DefaultIfEmpty()
+            join t in db.TipoviObuce.AsNoTracking() on a.IDTipObuce equals t.Id into shoeTypeJoin
+            from t in shoeTypeJoin.DefaultIfEmpty()
+            where (!storeId.HasValue || a.IDObjekat == storeId.Value)
+                  && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                  && (!importedOnly || a.DataOrigin == "access")
+                  && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+            select new ProductDecisionArticleSnapshot
+            {
+                ProductId = a.Id,
+                Sku = a.PLU ?? string.Empty,
+                ProductName = a.Naziv ?? string.Empty,
+                SupplierId = a.IDDobavljac,
+                SupplierName = d != null ? d.Naziv : null,
+                Category = a.Kategorija,
+                ShoeTypeName = t != null ? t.Naziv : null,
+                Color = a.Boja,
+                Size = a.Velicina,
+                CurrentStock = a.Kolicina ?? 0,
+                MinStock = a.MinimalnaKolicina ?? 0,
+                UnitCost = a.NabavnaCena,
+                UpdatedAtUtc = a.UpdatedAt
+            })
+            .ToListAsync(ct);
+
+        if (articles.Count == 0)
+        {
+            return new ProductDecisionCenterResponseDto
+            {
+                GeneratedAtUtc = nowUtc,
+                PeriodFromUtc = periodFromUtc,
+                PeriodToUtc = periodToExclusiveUtc.AddDays(-1),
+                Summary = new ProductDecisionCenterSummaryDto(),
+                Rows = []
+            };
+        }
+
+        var articleIds = articles.Select(x => x.ProductId).ToHashSet();
+
+        var currentSales = await (
+            from pz in db.ProdajaZaglavlja.AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where articleIds.Contains(ps.IdArtikal)
+                  && pz.DatumProdaje >= periodFromUtc
+                  && pz.DatumProdaje < periodToExclusiveUtc
+                  && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                  && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                  && (!importedOnly || pz.DataOrigin == "access")
+                  && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
+            group new { ps, a } by ps.IdArtikal
+            into g
+            select new ProductDecisionSalesAggregate
+            {
+                ProductId = g.Key,
+                Revenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                UnitsSold = g.Sum(x => x.ps.Kolicina),
+                MarginContribution = g.Sum(x =>
+                    (x.ps.NabavnaCena ?? x.a.NabavnaCena).HasValue
+                        ? (x.ps.Cena - (x.ps.NabavnaCena ?? x.a.NabavnaCena)!.Value) * x.ps.Kolicina
+                        : 0m),
+                CostCoveredRevenue = g.Sum(x =>
+                    (x.ps.NabavnaCena ?? x.a.NabavnaCena).HasValue
+                        ? x.ps.Kolicina * x.ps.Cena
+                        : 0m)
+            })
+            .ToListAsync(ct);
+
+        var previousRevenue = await (
+            from pz in db.ProdajaZaglavlja.AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where articleIds.Contains(ps.IdArtikal)
+                  && pz.DatumProdaje >= previousFromUtc
+                  && pz.DatumProdaje < previousToExclusiveUtc
+                  && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                  && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                  && (!importedOnly || pz.DataOrigin == "access")
+                  && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
+            group ps by ps.IdArtikal
+            into g
+            select new
+            {
+                ProductId = g.Key,
+                Revenue = g.Sum(x => x.Kolicina * x.Cena)
+            })
+            .ToListAsync(ct);
+
+        var lastSales = await (
+            from pz in db.ProdajaZaglavlja.AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where articleIds.Contains(ps.IdArtikal)
+                  && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                  && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                  && (!importedOnly || pz.DataOrigin == "access")
+                  && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
+            group pz by ps.IdArtikal
+            into g
+            select new
+            {
+                ProductId = g.Key,
+                LastSaleAtUtc = g.Max(x => x.DatumProdaje)
+            })
+            .ToListAsync(ct);
+
+        var currentByProduct = currentSales.ToDictionary(x => x.ProductId);
+        var previousByProduct = previousRevenue.ToDictionary(x => x.ProductId, x => x.Revenue);
+        var lastSaleByProduct = lastSales.ToDictionary(x => x.ProductId, x => x.LastSaleAtUtc);
+
+        var rows = new List<ProductDecisionCenterRowDto>(articles.Count);
+        var totalLostSalesEstimate = 0m;
+        var totalSlowStockCapital = 0m;
+
+        foreach (var article in articles)
+        {
+            currentByProduct.TryGetValue(article.ProductId, out var sales);
+            previousByProduct.TryGetValue(article.ProductId, out var previousRevenueValue);
+            lastSaleByProduct.TryGetValue(article.ProductId, out var lastSaleAtUtc);
+
+            var revenue = sales?.Revenue ?? 0m;
+            var unitsSold = sales?.UnitsSold ?? 0;
+            var velocityUnitsPerDay = periodDays > 0 ? (decimal)unitsSold / periodDays : 0m;
+            var marginContribution = sales?.MarginContribution ?? 0m;
+            var marginPct = revenue > 0m ? (marginContribution / revenue) * 100m : (decimal?)null;
+            var marginCoveragePct = revenue > 0m
+                ? ((sales?.CostCoveredRevenue ?? 0m) / revenue) * 100m
+                : 0m;
+            var marginQualityLabel = marginCoveragePct >= 85m
+                ? "Visok kvalitet"
+                : marginCoveragePct >= 60m
+                    ? "Srednji kvalitet"
+                    : "Nizak kvalitet";
+
+            var stockGap = Math.Max(0, article.MinStock - article.CurrentStock);
+            var daysSinceLastSale = lastSaleAtUtc > default(DateTime)
+                ? (int?)Math.Max(0, (int)Math.Floor((nowUtc - DateTime.SpecifyKind(lastSaleAtUtc, DateTimeKind.Utc)).TotalDays))
+                : null;
+
+            decimal? trendPct = null;
+            if (previousRevenueValue > 0m)
+            {
+                trendPct = ((revenue - previousRevenueValue) / previousRevenueValue) * 100m;
+            }
+            else if (revenue > 0m)
+            {
+                trendPct = 100m;
+            }
+
+            var avgUnitPrice = unitsSold > 0 ? revenue / unitsSold : 0m;
+            var lostSalesEstimate = stockGap > 0 && velocityUnitsPerDay > 0m && avgUnitPrice > 0m
+                ? Math.Round(stockGap * avgUnitPrice, 2)
+                : 0m;
+
+            var missingSupplier = !article.SupplierId.HasValue || string.IsNullOrWhiteSpace(article.SupplierName);
+            var missingCost = !article.UnitCost.HasValue;
+            var missingCategory = string.IsNullOrWhiteSpace(article.Category) && string.IsNullOrWhiteSpace(article.ShoeTypeName);
+            var missingVariantData = string.IsNullOrWhiteSpace(article.Color) || string.IsNullOrWhiteSpace(article.Size);
+
+            var dataQualityStatus = missingSupplier || missingCost || missingCategory
+                ? "critical"
+                : (marginCoveragePct < 60m || missingVariantData ? "warning" : "good");
+
+            var recommendationStatus = ResolveRecommendationStatus(
+                missingSupplier,
+                missingCost,
+                missingCategory,
+                revenue,
+                unitsSold,
+                velocityUnitsPerDay,
+                marginPct,
+                trendPct,
+                stockGap,
+                article.CurrentStock,
+                article.MinStock,
+                daysSinceLastSale);
+
+            var confidencePct = ResolveRecommendationConfidence(
+                recommendationStatus,
+                revenue,
+                unitsSold,
+                marginCoveragePct,
+                trendPct,
+                daysSinceLastSale);
+
+            var recommendationReason = BuildRecommendationReason(
+                recommendationStatus,
+                revenue,
+                unitsSold,
+                velocityUnitsPerDay,
+                marginPct,
+                trendPct,
+                stockGap,
+                article.CurrentStock,
+                article.MinStock,
+                daysSinceLastSale,
+                dataQualityStatus);
+
+            var recommendationLabel = RecommendationLabel(recommendationStatus);
+            var recommendedAction = RecommendedAction(recommendationStatus);
+            var slowStockCapital = velocityUnitsPerDay < 0.15m && article.CurrentStock > article.MinStock * 2
+                ? Math.Round((article.UnitCost ?? 0m) * article.CurrentStock, 2)
+                : 0m;
+
+            totalLostSalesEstimate += lostSalesEstimate;
+            totalSlowStockCapital += slowStockCapital;
+
+            rows.Add(new ProductDecisionCenterRowDto
+            {
+                ProductId = article.ProductId,
+                Sku = article.Sku,
+                ProductName = article.ProductName,
+                SupplierId = article.SupplierId,
+                SupplierName = article.SupplierName,
+                Category = article.Category,
+                TipObuce = article.ShoeTypeName,
+                Color = article.Color,
+                Size = article.Size,
+                Revenue = Math.Round(revenue, 2),
+                UnitsSold = unitsSold,
+                VelocityUnitsPerDay = Math.Round(velocityUnitsPerDay, 3),
+                MarginContribution = Math.Round(marginContribution, 2),
+                MarginPct = marginPct.HasValue ? Math.Round(marginPct.Value, 2) : null,
+                MarginQualityLabel = marginQualityLabel,
+                MarginCoveragePct = Math.Round(marginCoveragePct, 2),
+                CurrentStock = article.CurrentStock,
+                MinStock = article.MinStock,
+                StockGap = stockGap,
+                DaysSinceLastSale = daysSinceLastSale,
+                TrendPct = trendPct.HasValue ? Math.Round(trendPct.Value, 2) : null,
+                LostSalesEstimate = lostSalesEstimate,
+                DataQualityStatus = dataQualityStatus,
+                ConfidencePct = confidencePct,
+                RecommendationStatus = recommendationStatus,
+                RecommendationLabel = recommendationLabel,
+                RecommendationReason = recommendationReason,
+                RecommendedAction = recommendedAction
+            });
+        }
+
+        var sortedRows = rows
+            .OrderByDescending(x => RecommendationPriority(x.RecommendationStatus))
+            .ThenByDescending(x => x.ConfidencePct)
+            .ThenByDescending(x => x.Revenue)
+            .Take(top)
+            .ToList();
+
+        return new ProductDecisionCenterResponseDto
+        {
+            GeneratedAtUtc = nowUtc,
+            PeriodFromUtc = periodFromUtc,
+            PeriodToUtc = periodToExclusiveUtc.AddDays(-1),
+            TotalRows = sortedRows.Count,
+            Summary = new ProductDecisionCenterSummaryDto
+            {
+                ReplenishCount = sortedRows.Count(x => x.RecommendationStatus == "REPLENISH"),
+                MarkdownCount = sortedRows.Count(x => x.RecommendationStatus == "MARKDOWN"),
+                HighPotentialCount = sortedRows.Count(x => x.RecommendationStatus == "BOOST"),
+                BadDataCount = sortedRows.Count(x => x.RecommendationStatus == "FIX_DATA"),
+                LostSalesEstimate = Math.Round(totalLostSalesEstimate, 2),
+                SlowStockCapital = Math.Round(totalSlowStockCapital, 2)
+            },
+            Rows = sortedRows
+        };
+    }
+
+    private static string ResolveRecommendationStatus(
+        bool missingSupplier,
+        bool missingCost,
+        bool missingCategory,
+        decimal revenue,
+        int unitsSold,
+        decimal velocityUnitsPerDay,
+        decimal? marginPct,
+        decimal? trendPct,
+        int stockGap,
+        int currentStock,
+        int minStock,
+        int? daysSinceLastSale)
+    {
+        if (missingSupplier || missingCost || missingCategory)
+            return "FIX_DATA";
+
+        if (unitsSold < 3 || revenue <= 0m || !daysSinceLastSale.HasValue)
+            return "INSUFFICIENT_DATA";
+
+        var goodTrend = (trendPct ?? 0m) >= 10m;
+        var badTrend = (trendPct ?? 0m) <= -10m;
+        var goodMargin = (marginPct ?? 0m) >= 22m;
+        var lowMargin = (marginPct ?? 0m) < 10m;
+        var highVelocity = velocityUnitsPerDay >= 0.8m;
+        var lowVelocity = velocityUnitsPerDay < 0.15m;
+        var staleStock = daysSinceLastSale.Value >= 45;
+        var highStock = currentStock > Math.Max(minStock * 3, minStock + 10);
+
+        if (goodTrend && goodMargin && highVelocity && stockGap > 0)
+            return "BOOST";
+
+        if (highVelocity && stockGap > 0)
+            return "REPLENISH";
+
+        if ((staleStock && lowVelocity && (badTrend || lowMargin)) && currentStock > minStock)
+            return "MARKDOWN";
+
+        if ((badTrend && lowMargin && highStock) || (staleStock && highStock && lowVelocity))
+            return "DO_NOT_ORDER";
+
+        return "WATCH";
+    }
+
+    private static int ResolveRecommendationConfidence(
+        string recommendationStatus,
+        decimal revenue,
+        int unitsSold,
+        decimal marginCoveragePct,
+        decimal? trendPct,
+        int? daysSinceLastSale)
+    {
+        var confidence = 35m;
+
+        if (unitsSold >= 20) confidence += 20m;
+        else if (unitsSold >= 8) confidence += 10m;
+
+        if (revenue >= 100_000m) confidence += 10m;
+        if (marginCoveragePct >= 80m) confidence += 15m;
+        else if (marginCoveragePct < 50m) confidence -= 20m;
+
+        if (trendPct.HasValue) confidence += 10m;
+        if (daysSinceLastSale.HasValue && daysSinceLastSale.Value > 90) confidence -= 15m;
+
+        if (recommendationStatus is "FIX_DATA" or "INSUFFICIENT_DATA")
+        {
+            confidence = Math.Min(confidence, 35m);
+        }
+
+        confidence = Math.Clamp(confidence, 5m, 99m);
+        return (int)Math.Round(confidence, MidpointRounding.AwayFromZero);
+    }
+
+    private static string BuildRecommendationReason(
+        string recommendationStatus,
+        decimal revenue,
+        int unitsSold,
+        decimal velocityUnitsPerDay,
+        decimal? marginPct,
+        decimal? trendPct,
+        int stockGap,
+        int currentStock,
+        int minStock,
+        int? daysSinceLastSale,
+        string dataQualityStatus)
+    {
+        var trendText = trendPct.HasValue ? $"{trendPct.Value:0.0}%" : "N/A";
+        var marginText = marginPct.HasValue ? $"{marginPct.Value:0.0}%" : "N/A";
+        var staleText = daysSinceLastSale.HasValue ? $"{daysSinceLastSale.Value} dana" : "N/A";
+
+        return recommendationStatus switch
+        {
+            "BOOST" => $"Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan i gap zalihe {stockGap}.",
+            "REPLENISH" => $"Brza rotacija ({velocityUnitsPerDay:0.00}/dan) uz manjak zalihe ({currentStock}/{minStock}).",
+            "MARKDOWN" => $"Spora prodaja ({velocityUnitsPerDay:0.00}/dan), trend {trendText} i starost bez prodaje {staleText}.",
+            "DO_NOT_ORDER" => $"Visoka zaliha ({currentStock}), slab trend {trendText} i marža {marginText}.",
+            "FIX_DATA" => $"Kritični problemi kvaliteta podataka ({dataQualityStatus}) blokiraju pouzdanu preporuku.",
+            "INSUFFICIENT_DATA" => $"Nedovoljno signala: promet {revenue:0.##} RSD, komadi {unitsSold}, poslednja prodaja {staleText}.",
+            _ => $"Stabilan signal bez hitne akcije. Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan."
+        };
+    }
+
+    private static int RecommendationPriority(string status) => status switch
+    {
+        "FIX_DATA" => 7,
+        "BOOST" => 6,
+        "REPLENISH" => 5,
+        "MARKDOWN" => 4,
+        "DO_NOT_ORDER" => 3,
+        "WATCH" => 2,
+        _ => 1
+    };
+
+    private static string RecommendationLabel(string status) => status switch
+    {
+        "BOOST" => "Pojačaj",
+        "REPLENISH" => "Dopuni",
+        "WATCH" => "Prati",
+        "MARKDOWN" => "Snizi cenu",
+        "DO_NOT_ORDER" => "Ne naručuj",
+        "FIX_DATA" => "Proveri podatke",
+        _ => "Nedovoljno podataka"
+    };
+
+    private static string RecommendedAction(string status) => status switch
+    {
+        "BOOST" => "Povećaj vidljivost artikla i planiraj brzu dopunu.",
+        "REPLENISH" => "Aktiviraj dopunu prema minimalnoj zalihi.",
+        "WATCH" => "Nastavi praćenje bez hitne intervencije.",
+        "MARKDOWN" => "Pokreni ciljano sniženje i testiraj elastičnost cene.",
+        "DO_NOT_ORDER" => "Zaustavi novu narudžbinu dok se signal ne oporavi.",
+        "FIX_DATA" => "Ispravi dobavljača, nabavnu cenu ili kategoriju pre odluke.",
+        _ => "Sačekaj dodatne podatke pre poslovne odluke."
+    };
+
     private static string NormalizeDataScope(string? dataScope)
     {
         var normalized = (dataScope ?? "all").Trim().ToLowerInvariant();
@@ -3677,6 +4394,59 @@ public class TopProductsAdvancedResultDto
     public string? MarginMessage { get; set; }
 }
 
+public class ProductDecisionCenterSummaryDto
+{
+    public int ReplenishCount { get; set; }
+    public int MarkdownCount { get; set; }
+    public int HighPotentialCount { get; set; }
+    public int BadDataCount { get; set; }
+    public decimal LostSalesEstimate { get; set; }
+    public decimal SlowStockCapital { get; set; }
+}
+
+public class ProductDecisionCenterRowDto
+{
+    public int ProductId { get; set; }
+    public string Sku { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public int? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
+    public string? Category { get; set; }
+    public string? TipObuce { get; set; }
+    public string? Color { get; set; }
+    public string? Size { get; set; }
+    public decimal Revenue { get; set; }
+    public int UnitsSold { get; set; }
+    public decimal VelocityUnitsPerDay { get; set; }
+    public decimal MarginContribution { get; set; }
+    public decimal? MarginPct { get; set; }
+    public string? MarginQualityLabel { get; set; }
+    public decimal? MarginCoveragePct { get; set; }
+    public int CurrentStock { get; set; }
+    public int MinStock { get; set; }
+    public int StockGap { get; set; }
+    public int? DaysSinceLastSale { get; set; }
+    public decimal? TrendPct { get; set; }
+    public decimal LostSalesEstimate { get; set; }
+    public string DataQualityStatus { get; set; } = "warning";
+    public int ConfidencePct { get; set; }
+    // TODO: Add ReliabilityPct once product-level recommendation reliability signal is exposed by backend model.
+    public string RecommendationStatus { get; set; } = "INSUFFICIENT_DATA";
+    public string RecommendationLabel { get; set; } = "Nedovoljno podataka";
+    public string RecommendationReason { get; set; } = string.Empty;
+    public string RecommendedAction { get; set; } = string.Empty;
+}
+
+public class ProductDecisionCenterResponseDto
+{
+    public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime PeriodFromUtc { get; set; }
+    public DateTime PeriodToUtc { get; set; }
+    public int TotalRows { get; set; }
+    public ProductDecisionCenterSummaryDto Summary { get; set; } = new();
+    public List<ProductDecisionCenterRowDto> Rows { get; set; } = [];
+}
+
 public class DashboardMetricCardDto
 {
     public string Key { get; set; } = "";
@@ -3701,6 +4471,20 @@ public class DashboardActionDto
     public string Priority { get; set; } = "P3";
     public string Title { get; set; } = "";
     public string Recommendation { get; set; } = "";
+}
+
+public class DashboardDecisionActionDto
+{
+    public string Priority { get; set; } = "P3";
+    public string Title { get; set; } = "";
+    public string Reason { get; set; } = "";
+    public string? StatusReason { get; set; }
+    public string? ExpectedImpact { get; set; }
+    public int? ConfidencePct { get; set; }
+    public int? ReliabilityPct { get; set; }
+    public string DataQualityStatus { get; set; } = "insufficient_data";
+    public string Link { get; set; } = "/analytics";
+    public string? LinkLabel { get; set; }
 }
 
 public class DashboardValidationDto
@@ -3751,6 +4535,7 @@ public class AnalyticsDashboardBootstrapDto
     public DashboardValidationEndpointDto? ValidationCompleteness { get; set; }
     public DashboardValidationEndpointDto? ValidationFreshness { get; set; }
     public DashboardValidationEndpointDto? ValidationLostSales { get; set; }
+    public List<DashboardDecisionActionDto> DecisionActions { get; set; } = [];
     public List<string> Errors { get; set; } = [];
 }
 

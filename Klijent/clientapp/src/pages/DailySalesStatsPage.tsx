@@ -27,7 +27,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { getDataScope } from "../utils/dataScope";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
-import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { fmtNumber, fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
 import "./DailySalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -175,10 +175,6 @@ function buildStoreLabel(store: StoreOption): string {
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
 
-function fmtNumber(value: number): string {
-  return value.toLocaleString("sr-RS");
-}
-
 function fmtCompactNumber(value: number): string {
   return COMPACT_NUMBER_FORMATTER.format(value);
 }
@@ -189,24 +185,6 @@ function fmtDelta(deltaPct: number | null, currentValue: number, previousValue: 
     return "N/A";
   }
   return fmtSignedPct(deltaPct, 1);
-}
-
-function fmtDate(value: string): string {
-  const normalized = value.slice(0, 10);
-  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleDateString("sr-RS");
-  }
-
-  const [, yearRaw, monthRaw, dayRaw] = match;
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  const parsed = new Date(year, month - 1, day);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("sr-RS");
 }
 
 function fmtDateShort(value: string | null | undefined): string {
@@ -570,7 +548,7 @@ export default function DailySalesStatsPage() {
     timeSeriesRows.map((row, index) => ({
       date: row.date,
       label: fmtDateShort(row.date),
-      fullLabel: fmtDate(row.date),
+      fullLabel: formatDate(row.date),
       totalRevenue: row.totalRevenue,
       totalItemsSold: row.totalItemsSold,
       ma7Revenue: buildRollingAverage(timeSeriesRows, index, (currentRow) => currentRow.totalRevenue, 7),
@@ -582,7 +560,7 @@ export default function DailySalesStatsPage() {
     timeSeriesRows.map((row) => ({
       date: row.date,
       label: fmtDateShort(row.date),
-      fullLabel: fmtDate(row.date),
+      fullLabel: formatDate(row.date),
       firstShiftTotalItems: row.firstShiftTotalItems,
       secondShiftTotalItems: row.secondShiftTotalItems,
       totalItemsSold: row.totalItemsSold,
@@ -759,7 +737,7 @@ export default function DailySalesStatsPage() {
       const revenueDelta = current.totalRevenue - previous.totalRevenue;
       changes.push({
         date: current.date,
-        label: fmtDate(current.date),
+        label: formatDate(current.date),
         revenueDelta,
         revenueDeltaPct: calculateDeltaPct(current.totalRevenue, previous.totalRevenue),
       });
@@ -1361,7 +1339,7 @@ export default function DailySalesStatsPage() {
                       const mismatch = supplierTotal !== row.totalItemsSold;
                       return (
                         <tr key={row.date} className={mismatch ? "row-mismatch" : ""}>
-                          <td>{fmtDate(row.date)}</td>
+                          <td>{formatDate(row.date)}</td>
                           <td className="align-right">{shiftDisplayValue(row, "first")}</td>
                           <td className="align-right">{shiftDisplayValue(row, "second")}</td>
                           <td className="align-right">{fmtRsd(row.totalRevenue, 2)}</td>
@@ -1393,8 +1371,8 @@ export default function DailySalesStatsPage() {
             <section className="daily-sales-no-data-banner">
               <p>
                 Nema prodaje u izabranom periodu. Podaci su dostupni od{" "}
-                <strong>{fmtDate(data.metadata.minAvailableDate)}</strong> do{" "}
-                <strong>{fmtDate(data.metadata.maxAvailableDate!)}</strong>.
+                <strong>{formatDate(data.metadata.minAvailableDate)}</strong> do{" "}
+                <strong>{formatDate(data.metadata.maxAvailableDate!)}</strong>.
               </p>
               <button type="button" onClick={handleJumpToAvailableData}>
                 Prikazi dostupne podatke
@@ -1679,11 +1657,11 @@ export default function DailySalesStatsPage() {
               <div className="daily-sales-anomaly-summary">
                 <div>
                   <span>Najbolji dan</span>
-                  <strong>{bestRevenueDay ? `${fmtDate(bestRevenueDay.date)} | ${fmtRsdShort(bestRevenueDay.totalRevenue)}` : "N/A"}</strong>
+                  <strong>{bestRevenueDay ? `${formatDate(bestRevenueDay.date)} | ${fmtRsdShort(bestRevenueDay.totalRevenue)}` : "N/A"}</strong>
                 </div>
                 <div>
                   <span>Najslabiji dan</span>
-                  <strong>{weakestRevenueDay ? `${fmtDate(weakestRevenueDay.date)} | ${fmtRsdShort(weakestRevenueDay.totalRevenue)}` : "N/A"}</strong>
+                  <strong>{weakestRevenueDay ? `${formatDate(weakestRevenueDay.date)} | ${fmtRsdShort(weakestRevenueDay.totalRevenue)}` : "N/A"}</strong>
                 </div>
                 <div>
                   <span>Najveci skok</span>

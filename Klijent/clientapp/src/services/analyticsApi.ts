@@ -21,6 +21,7 @@ import type {
   InventoryItemDetail,
   PaymentData,
   QuickInsights,
+  ProductDecisionCenterResponse,
   RebalanceListDto,
   ReorderSuggestion,
   InventoryStoreComparison,
@@ -568,6 +569,29 @@ export async function getDashboardBootstrap(
     "/api/analytics/cached/dashboard/bootstrap",
     params,
     "Greska pri ucitavanju analytics dashboard bootstrapa"
+  );
+}
+
+export async function getProductDecisionCenter(options?: {
+  fromDate?: string;
+  toDate?: string;
+  storeId?: number | null;
+  supplierId?: number | null;
+  top?: number;
+  dataScope?: string | null;
+}): Promise<ProductDecisionCenterResponse> {
+  const params = new URLSearchParams();
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.top != null) params.append("top", String(options.top));
+  if (options?.dataScope) params.append("dataScope", options.dataScope);
+
+  return fetchJson(
+    "/api/analytics/cached/products/decision-center",
+    params,
+    "Greska pri ucitavanju Product Decision Center pregleda"
   );
 }
 

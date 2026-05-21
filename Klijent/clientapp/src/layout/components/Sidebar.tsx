@@ -138,19 +138,24 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
 
                 {isOpen ? (
                   <ul className="space-y-0.5 px-1.5 pb-1.5">
-                    {group.items.map((item) => {
+                    {group.items.filter((item) => !item.hidden).map((item) => {
                       const ItemIcon = item.icon;
                       const isTestItem = Boolean(group.badge || item.badge);
                       const badge = item.badge ?? group.badge;
                       return (
                         <li key={item.to}>
-                          <NavLink to={item.to} onClick={onCloseMobile} className={
-                            `group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition ${
-                              item.to === activeItemTo
-                                ? "bg-[var(--surface-light)] text-contrast ring-1 ring-[var(--info)]"
-                                : "text-secondary hover:bg-[var(--surface-default)] hover:text-contrast"
-                            }`
-                          }>
+                          <NavLink
+                            to={item.to}
+                            onClick={onCloseMobile}
+                            title={item.title}
+                            className={
+                              `group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition ${
+                                item.to === activeItemTo
+                                  ? "bg-[var(--surface-light)] text-contrast ring-1 ring-[var(--info)]"
+                                  : "text-secondary hover:bg-[var(--surface-default)] hover:text-contrast"
+                              }`
+                            }
+                          >
                             <ItemIcon size={15} className="shrink-0 text-[var(--info)] group-hover:opacity-80" />
                             <span className="truncate flex items-center gap-2">
                               <span>{item.label}</span>

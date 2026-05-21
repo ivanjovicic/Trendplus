@@ -9,6 +9,7 @@ import type {
   CategoryData,
   DailySale,
   DashboardAdvancedSnapshot,
+  DashboardDecisionAction,
   DashboardMetricCard,
   DashboardValidationEndpoint,
   GenderData,
@@ -37,9 +38,14 @@ import {
 import {
   normalizeRecommendationPct,
   normalizeRecommendationQualityStatus,
-  recommendationQualityLabel,
-  RECOMMENDATION_SIGNAL_UNAVAILABLE,
 } from "../utils/canonicalRecommendationSemantics";
+import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import {
+  dataQualityStatusLabel,
+  formatConfidence as formatDecisionConfidence,
+  formatReliability as formatDecisionReliability,
+  normalizeDataQualityStatus,
+} from "../utils/analyticsQuality";
 import "./AnalyticsDashboard.css";
 
 type TopTabKey = "revenue" | "units" | "velocity" | "margin";
@@ -107,17 +113,54 @@ function statusLabel(value?: string | null): string {
   return "Neutralno";
 }
 
+function decisionPriorityRank(priority?: string | null): number {
+  if (priority === "P1") return 1;
+  if (priority === "P2") return 2;
+  return 3;
+}
+
+function mapLegacyActionLink(title: string): string {
+  const normalized = title.trim().toLowerCase();
+  if (normalized.includes("replenishment")) return "/analytics/inventory";
+  if (normalized.includes("data")) return "/analytics/data-quality";
+  if (normalized.includes("portfolio")) return "/analytics/products";
+  if (normalized.includes("refresh")) return "/analytics/data-quality";
+  return "/analytics";
+}
+
+function buildFallbackDecisionActionsFromAdvanced(advanced: DashboardAdvancedSnapshot | null): DashboardDecisionAction[] {
+  if (!advanced?.actions?.length) return [];
+
+  return advanced.actions.slice(0, 4).map((item) => {
+    const confidencePct = normalizeRecommendationPct(item.confidencePct);
+    const reliabilityPct = normalizeRecommendationPct(item.reliabilityPct);
+    const dataQualityStatus = normalizeRecommendationQualityStatus(item.dataQualityStatus);
+
+    return {
+      priority: item.priority || "P3",
+      title: item.title || "Operativna akcija",
+      reason: item.recommendation || "Potrebna je dodatna provera signala.",
+      statusReason: item.statusReason || item.recommendation || "Pouzdanost preporuke nije dostupna.",
+      expectedImpact: null,
+      confidencePct,
+      reliabilityPct,
+      dataQualityStatus,
+      link: mapLegacyActionLink(item.title || ""),
+      linkLabel: dataQualityStatus !== "good" ? "Otvori kvalitet podataka" : "Otvori povezani ekran",
+    };
+  });
+}
+
 function formatCurrency(value: number): string {
-  return `${new Intl.NumberFormat("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value)} RSD`;
+  return fmtRsd(value);
 }
 
 function formatNumber(value: number, digits = 0): string {
-  return new Intl.NumberFormat("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+  return fmtNumber(value, digits);
 }
 
 function formatPercent(value?: number | null, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  return `${formatNumber(value, digits)}%`;
+  return fmtPct(value, digits);
 }
 
 function trendLabel(value?: number | null): string {
@@ -231,6 +274,7 @@ export default function AnalyticsDashboard() {
   const [validCompleteness, setValidCompleteness] = useState<DashboardValidationEndpoint | null>(null);
   const [validFreshness, setValidFreshness] = useState<DashboardValidationEndpoint | null>(null);
   const [validLostSales, setValidLostSales] = useState<DashboardValidationEndpoint | null>(null);
+  const [decisionActions, setDecisionActions] = useState<DashboardDecisionAction[]>([]);
   const [healthText, setHealthText] = useState("");
   const [topTab, setTopTab] = useState<TopTabKey>("revenue");
   const [errors, setErrors] = useState<string[]>([]);
@@ -311,6 +355,11 @@ export default function AnalyticsDashboard() {
       setValidCompleteness(bootstrapR.value.validationCompleteness);
       setValidFreshness(bootstrapR.value.validationFreshness);
       setValidLostSales(bootstrapR.value.validationLostSales);
+      setDecisionActions(
+        (bootstrapR.value.decisionActions ?? []).length > 0
+          ? [...(bootstrapR.value.decisionActions ?? [])]
+          : buildFallbackDecisionActionsFromAdvanced(bootstrapR.value.advanced)
+      );
       nextErrors.push(...bootstrapR.value.errors);
     } else {
       setSummary(null);
@@ -330,6 +379,7 @@ export default function AnalyticsDashboard() {
       setValidCompleteness(null);
       setValidFreshness(null);
       setValidLostSales(null);
+      setDecisionActions([]);
       nextErrors.push(getErrorText(bootstrapR.reason, "Analytics dashboard bootstrap nije ucitan."));
     }
 
@@ -379,24 +429,32 @@ export default function AnalyticsDashboard() {
   }, [loading, summary]);
 
   const movingStats = useMemo(() => {
-    if (dailySales.length === 0) return { ma7Revenue: 0, momentumPct: null as number | null, elasticity: null as number | null };
+    if (dailySales.length === 0) return {
+      ma7Revenue: 0,
+      ma30Revenue: 0,
+      momentumPct: null as number | null,
+      elasticity: null as number | null,
+    };
     const sorted = [...dailySales].sort((a, b) => a.date.localeCompare(b.date));
     const last7 = sorted.slice(-7);
+    const last30 = sorted.slice(-30);
     const prev7 = sorted.slice(-14, -7);
     const sumRevenue = (items: DailySale[]) => items.reduce((acc, item) => acc + item.totalRevenue, 0);
     const sumUnits = (items: DailySale[]) => items.reduce((acc, item) => acc + item.totalUnits, 0);
     const lastRevenue = sumRevenue(last7);
+    const last30Revenue = sumRevenue(last30);
     const prevRevenue = sumRevenue(prev7);
     const lastUnits = sumUnits(last7);
     const prevUnits = sumUnits(prev7);
     const ma7Revenue = last7.length > 0 ? lastRevenue / last7.length : 0;
+    const ma30Revenue = last30.length > 0 ? last30Revenue / last30.length : 0;
     const momentumPct = prevRevenue > 0 ? Number((((lastRevenue - prevRevenue) / prevRevenue) * 100).toFixed(2)) : null;
     const lastPrice = lastUnits > 0 ? lastRevenue / lastUnits : 0;
     const prevPrice = prevUnits > 0 ? prevRevenue / prevUnits : 0;
     const qtyChange = prevUnits > 0 ? (lastUnits - prevUnits) / prevUnits : 0;
     const priceChange = prevPrice > 0 ? (lastPrice - prevPrice) / prevPrice : 0;
     const elasticity = prevUnits > 0 && prevPrice > 0 && priceChange !== 0 ? Number((qtyChange / priceChange).toFixed(2)) : null;
-    return { ma7Revenue, momentumPct, elasticity };
+    return { ma7Revenue, ma30Revenue, momentumPct, elasticity };
   }, [dailySales]);
 
   const derived = useMemo(() => {
@@ -420,6 +478,24 @@ export default function AnalyticsDashboard() {
     return topAdvanced.byMarginImpact ?? [];
   }, [topAdvanced, topTab]);
 
+  const topGainers = useMemo(
+    () =>
+      (topAdvanced?.byRevenue ?? [])
+        .filter((row) => (row.trendPct ?? 0) > 0)
+        .sort((a, b) => (b.trendPct ?? 0) - (a.trendPct ?? 0))
+        .slice(0, 5),
+    [topAdvanced]
+  );
+
+  const topLosers = useMemo(
+    () =>
+      (topAdvanced?.byRevenue ?? [])
+        .filter((row) => (row.trendPct ?? 0) < 0)
+        .sort((a, b) => (a.trendPct ?? 0) - (b.trendPct ?? 0))
+        .slice(0, 5),
+    [topAdvanced]
+  );
+
   const validationRows = useMemo(
     () =>
       [
@@ -428,6 +504,19 @@ export default function AnalyticsDashboard() {
         validLostSales ? { name: "Izgubljena prodaja", ...validLostSales } : null,
       ].filter((item): item is { name: string } & DashboardValidationEndpoint => item !== null),
     [validCompleteness, validFreshness, validLostSales]
+  );
+
+  const prioritizedDecisionActions = useMemo(
+    () =>
+      [...decisionActions]
+        .filter((item) => item && item.title && item.reason)
+        .sort((a, b) => {
+          const byPriority = decisionPriorityRank(a.priority) - decisionPriorityRank(b.priority);
+          if (byPriority !== 0) return byPriority;
+          return (b.confidencePct ?? -1) - (a.confidencePct ?? -1);
+        })
+        .slice(0, 8),
+    [decisionActions]
   );
 
   const categoryPieData = useMemo(() => {
@@ -607,6 +696,56 @@ export default function AnalyticsDashboard() {
         </section>
       )}
 
+      <section className="analytics-panel analytics-decision-cockpit">
+        <div className="decision-cockpit-head">
+          <h2>Najvaznije odluke</h2>
+          <p>Prioriteti generisani iz prodaje, zaliha, marze i kvaliteta podataka.</p>
+        </div>
+        {loading ? (
+          <div className="analytics-skeleton-grid">
+            {Array.from({ length: 4 }).map((_, i) => <div key={`decision-skeleton-${i}`} className="analytics-skeleton-card" />)}
+          </div>
+        ) : prioritizedDecisionActions.length === 0 ? (
+          <div className="analytics-empty warning">Nema dovoljno pouzdanih podataka za automatske odluke.</div>
+        ) : (
+          <div className="decision-action-list">
+            {prioritizedDecisionActions.map((action, index) => (
+              <article
+                key={`${action.priority}-${action.title}-${index}`}
+                className={`decision-action-card priority-${(action.priority || "P3").toLowerCase()}`}
+              >
+                <div className="decision-action-top">
+                  <span className={`priority ${(action.priority || "P3").toLowerCase()}`}>{action.priority || "P3"}</span>
+                  <strong>{action.title}</strong>
+                </div>
+                <p className="decision-action-reason">{action.reason}</p>
+                {action.expectedImpact ? <p className="decision-action-impact">Ocekivani uticaj: {action.expectedImpact}</p> : null}
+                <div className="decision-action-foot">
+                  <div className="decision-quality-stack">
+                    <span className="decision-confidence">
+                      Sigurnost preporuke: {formatDecisionConfidence(action.confidencePct)}
+                    </span>
+                    <span className="decision-confidence">
+                      Pouzdanost signala: {formatDecisionReliability(action.reliabilityPct)}
+                    </span>
+                    <span className={`decision-quality quality-${normalizeDataQualityStatus(action.dataQualityStatus)}`}>
+                      Data quality: {dataQualityStatusLabel(action.dataQualityStatus)}
+                    </span>
+                    {normalizeDataQualityStatus(action.dataQualityStatus) !== "good" ? (
+                      <Link to="/analytics/data-quality" className="decision-quality-link">
+                        Otvori kvalitet podataka
+                      </Link>
+                    ) : null}
+                    {action.statusReason ? <small className="decision-status-reason">{action.statusReason}</small> : null}
+                  </div>
+                  <Link to={action.link} className="decision-link">{action.linkLabel || "Otvori ekran"}</Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="analytics-section">
         <h2 className="with-tip"><span>Pregledni dashboard</span><InfoTip text="Kljucne metrike za brzo poslovno odlucivanje." /></h2>
         {loading && <div className="analytics-skeleton-grid">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="analytics-skeleton-card" />)}</div>}
@@ -649,52 +788,23 @@ export default function AnalyticsDashboard() {
         )}
 
         {!loading && advanced && (
-          <div className="analytics-panels-2">
-            <section className="analytics-panel">
-              <h3 className="with-tip"><span>Uvidi</span><InfoTip text="Automatski izdvojeni najvazniji signali iz podataka." /></h3>
-              <p className="section-note">Kratko objasnjenje sta se desava i zasto je vazno za posao.</p>
-              {advanced.insights.length === 0 && <div className="analytics-empty">Nema podataka za panel uvida.</div>}
-              {advanced.insights.map((item, index) => (
-                <div key={`ins-${index}`} className={`insight-row ${item.color}`}>
-                  <span className="badge">{item.badge}</span>
-                  <p>{item.description.replace("Lost sales estimate indicates stock-out pressure.", "Procena izgubljene prodaje ukazuje na pritisak rasprodatosti.").replace("Pareto concentration is elevated.", "Pareto koncentracija je povecana.")}</p>
-                </div>
-              ))}
-            </section>
-
-            <section className="analytics-panel">
-              <h3 className="with-tip"><span>Preporucene akcije</span><InfoTip text="Prakticni koraci koji pomazu rastu prometa ili smanjenju rizika." /></h3>
-              <p className="section-note">P1 je najhitnije, P3 je redovno pracenje.</p>
-              {advanced.actions.length === 0 && <div className="analytics-empty">Sve je u redu.</div>}
-              {advanced.actions.map((item, index) => {
-                const confidencePct = normalizeRecommendationPct(item.confidencePct);
-                const reliabilityPct = normalizeRecommendationPct(item.reliabilityPct);
-                const qualityStatus = normalizeRecommendationQualityStatus(item.dataQualityStatus);
-                const hasSignal = confidencePct != null || reliabilityPct != null;
-
-                return (
-                  <div key={`act-${index}`} className="action-row">
-                    <span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span>
-                    <div>
-                      <strong>{item.title.replace("Replenishment", "Dopuna zaliha").replace("Portfolio balance", "Balans asortimana")}</strong>
-                      <p>{item.recommendation.replace("Refresh pipeline", "Osvezavanje pipeline-a").replace("Data quality fix", "Ispravka kvaliteta podataka").replace("Monitor", "Pracenje")}</p>
-                      <p className="section-note">
-                        {hasSignal
-                          ? `Sigurnost ${confidencePct != null ? formatPercent(confidencePct) : RECOMMENDATION_SIGNAL_UNAVAILABLE} | Pouzdanost ${reliabilityPct != null ? formatPercent(reliabilityPct) : RECOMMENDATION_SIGNAL_UNAVAILABLE} | Kvalitet ${recommendationQualityLabel(qualityStatus)}`
-                          : RECOMMENDATION_SIGNAL_UNAVAILABLE}{" "}
-                        <Link to="/analytics/data-quality">Data Quality</Link>
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </section>
-          </div>
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Uvidi</span><InfoTip text="Automatski izdvojeni najvazniji signali iz podataka." /></h3>
+            <p className="section-note">Kratko objasnjenje sta se desava i zasto je vazno za posao.</p>
+            {advanced.insights.length === 0 && <div className="analytics-empty">Nema podataka za panel uvida.</div>}
+            {advanced.insights.map((item, index) => (
+              <div key={`ins-${index}`} className={`insight-row ${item.color}`}>
+                <span className="badge">{item.badge}</span>
+                <p>{item.description.replace("Lost sales estimate indicates stock-out pressure.", "Procena izgubljene prodaje ukazuje na pritisak rasprodatosti.").replace("Pareto concentration is elevated.", "Pareto koncentracija je povecana.")}</p>
+              </div>
+            ))}
+          </section>
         )}
 
         {!loading && validationRows.length > 0 && (
           <section className="analytics-panel">
-            <h3 className="with-tip"><span>Backend validacije</span><InfoTip text="Tehnicke kontrole kvaliteta podataka: kompletnost, svezina i procena izgubljene prodaje." /></h3>
+            <h3 className="with-tip"><span>Kvalitet podataka</span><InfoTip text="Pouzdanost podataka koji hrane preporuke: kompletnost, svezina i procena izgubljene prodaje." /></h3>
+            <p className="section-note">Ako je signal kritican, prvo resite kvalitet podataka pa tek onda donesite poslovnu odluku.</p>
             <div className="validation-grid">
               {validationRows.map((row) => (
                 <article key={row.name} className={`validation-card ${statusTone(row.status)}`}>
@@ -724,6 +834,31 @@ export default function AnalyticsDashboard() {
         )}
         {showDetailedAnalysis && (
           <>
+        {!loading && (
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Trend i promene</span><InfoTip text="Brz pregled dinamike prodaje kroz MA7, MA30 i momentum poslednjih 7 dana." /></h3>
+            <div className="trend-signal-grid">
+              <article className="trend-signal-card">
+                <span>MA7 promet</span>
+                <strong>{formatCurrency(movingStats.ma7Revenue)}</strong>
+              </article>
+              <article className="trend-signal-card">
+                <span>MA30 promet</span>
+                <strong>{formatCurrency(movingStats.ma30Revenue)}</strong>
+              </article>
+              <article className="trend-signal-card">
+                <span>Momentum 7d</span>
+                <strong className={movingStats.momentumPct != null && movingStats.momentumPct < 0 ? "trend down" : "trend up"}>
+                  {formatPercent(movingStats.momentumPct)}
+                </strong>
+              </article>
+              <article className="trend-signal-card">
+                <span>Elasticnost</span>
+                <strong>{movingStats.elasticity == null ? "N/A" : formatNumber(movingStats.elasticity, 2)}</strong>
+              </article>
+            </div>
+          </section>
+        )}
         <Suspense fallback={
           <section className="analytics-panel">
             <div className="analytics-skeleton-grid">
@@ -751,6 +886,34 @@ export default function AnalyticsDashboard() {
               <article className="stock-card"><span>Ukupno na stanju</span><strong>{formatNumber(inventory.totalOnHand)}</strong></article>
               <article className="stock-card warning"><span>Niska zaliha</span><strong>{formatNumber(inventory.lowStockCount)}</strong></article>
               <article className="stock-card critical"><span>Bez zaliha</span><strong>{formatNumber(inventory.outOfStockCount)}</strong></article>
+            </div>
+          </section>
+        )}
+
+        {!loading && topAdvanced && (
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Top rast / Top pad</span><InfoTip text="Najvece promene po trendu iz top prometa. Klik na red otvara detalj artikla." /></h3>
+            <div className="trend-split-grid">
+              <article className="trend-list">
+                <h4>Top rast</h4>
+                {topGainers.length === 0 && <div className="analytics-empty">Nema pozitivnih trendova.</div>}
+                {topGainers.map((row) => (
+                  <button key={`gain-${row.productId}`} type="button" className="trend-list-row up" onClick={() => openTopProductDetail(row)}>
+                    <span>{row.productName}</span>
+                    <strong>+{formatPercent(row.trendPct)}</strong>
+                  </button>
+                ))}
+              </article>
+              <article className="trend-list">
+                <h4>Top pad</h4>
+                {topLosers.length === 0 && <div className="analytics-empty">Nema negativnih trendova.</div>}
+                {topLosers.map((row) => (
+                  <button key={`loss-${row.productId}`} type="button" className="trend-list-row down" onClick={() => openTopProductDetail(row)}>
+                    <span>{row.productName}</span>
+                    <strong>{formatPercent(row.trendPct)}</strong>
+                  </button>
+                ))}
+              </article>
             </div>
           </section>
         )}

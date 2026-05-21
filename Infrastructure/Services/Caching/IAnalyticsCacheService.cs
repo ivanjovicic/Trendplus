@@ -203,6 +203,9 @@ public static class AnalyticsCacheKeys
     public static string DashboardBootstrap(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) =>
         $"{Prefix}dashboard-bootstrap:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
+    public static string ProductDecisionCenter(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, int top = 500, string? dataScope = null) =>
+        $"{Prefix}product-decision-center:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}:top:{top}";
+
     public static string InventoryForecast(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200) =>
         $"{Prefix}inventory-forecast:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode)}:top:{top}";
 

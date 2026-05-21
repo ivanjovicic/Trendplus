@@ -1,0 +1,214 @@
+.product-decision-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.product-decision-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  background: var(--surface-elevated);
+  padding: 1rem;
+}
+
+.product-decision-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.product-decision-header p {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.product-decision-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.kpi-card {
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.kpi-card span {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kpi-card strong {
+  font-size: 1.05rem;
+}
+
+.product-decision-filters {
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  background: var(--surface-elevated);
+  padding: 0.9rem;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.filter-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.filter-grid input,
+.filter-grid select {
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-light);
+  color: var(--text-primary);
+  padding: 0.55rem 0.65rem;
+}
+
+.product-decision-message {
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  padding: 0.8rem 1rem;
+  color: var(--text-secondary);
+}
+
+.product-decision-message-error {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--error);
+}
+
+.product-decision-table-wrap {
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  overflow: auto;
+  background: var(--surface-elevated);
+}
+
+.product-decision-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1160px;
+}
+
+.product-decision-table th,
+.product-decision-table td {
+  padding: 0.58rem 0.62rem;
+  border-bottom: 1px solid var(--border-default);
+  vertical-align: top;
+  text-align: left;
+}
+
+.product-decision-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-darker);
+  z-index: 1;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.product-decision-table td {
+  font-size: 0.82rem;
+}
+
+.product-decision-table td small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.data-row {
+  cursor: pointer;
+}
+
+.data-row:hover {
+  background: var(--surface-light);
+}
+
+.empty-cell {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1.2rem 0;
+}
+
+.decision-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.13rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.decision-pill-boost { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+.decision-pill-replenish { background: rgba(59, 130, 246, 0.14); color: #60a5fa; }
+.decision-pill-watch { background: rgba(250, 204, 21, 0.14); color: #facc15; }
+.decision-pill-markdown { background: rgba(249, 115, 22, 0.14); color: #fb923c; }
+.decision-pill-stop { background: rgba(244, 63, 94, 0.14); color: #fb7185; }
+.decision-pill-fix { background: rgba(239, 68, 68, 0.14); color: #f87171; }
+.decision-pill-na { background: rgba(148, 163, 184, 0.14); color: #94a3b8; }
+
+.why-button {
+  margin-left: 0.4rem;
+  border: 1px solid var(--border-default);
+  background: var(--surface-default);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.68rem;
+}
+
+.reason-row td {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.reason-content {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1180px) {
+  .product-decision-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .product-decision-header {
+    flex-direction: column;
+  }
+
+  .product-decision-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+}
