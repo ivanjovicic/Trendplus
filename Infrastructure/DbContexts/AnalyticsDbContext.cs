@@ -367,6 +367,11 @@ namespace Infrastructure.DbContexts
                     .IsUnique()
                     .HasFilter("\"Status\" IN ('new', 'accepted', 'deferred')")
                     .HasDatabaseName("idx_analytics_action_sourcekey_open");
+                // Additional composite indexes to improve common queries
+                entity.HasIndex(e => new { e.SourceType, e.SourceKey, e.Status })
+                    .HasDatabaseName("idx_analytics_action_sourcekey_status");
+                entity.HasIndex(e => new { e.Priority, e.Status })
+                    .HasDatabaseName("idx_analytics_action_priority_status");
                 entity.HasIndex(e => e.Status)
                     .HasDatabaseName("idx_analytics_action_status");
                 entity.HasIndex(e => e.Priority)

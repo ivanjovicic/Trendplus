@@ -203,6 +203,9 @@ namespace Infrastructure.Migrations.AnalyticsDb
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_analytics_action_status");
 
+                    b.HasIndex("Priority", "Status")
+                        .HasDatabaseName("idx_analytics_action_priority_status");
+
                     b.HasIndex("UpdatedAtUtc")
                         .HasDatabaseName("idx_analytics_action_updated");
 
@@ -213,6 +216,9 @@ namespace Infrastructure.Migrations.AnalyticsDb
                         .IsUnique()
                         .HasDatabaseName("idx_analytics_action_sourcekey_open")
                         .HasFilter("\"Status\" IN ('new', 'accepted', 'deferred')");
+
+                    b.HasIndex("SourceType", "SourceKey", "Status")
+                        .HasDatabaseName("idx_analytics_action_sourcekey_status");
 
                     b.HasIndex("Status", "UpdatedAtUtc")
                         .HasDatabaseName("idx_analytics_action_status_updated");
