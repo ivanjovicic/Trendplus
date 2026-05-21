@@ -109,6 +109,34 @@
   color: var(--text-on-error, var(--theme-color-ffd5d5, #ffd5d5));
 }
 
+.ad-legacy-banner {
+  margin-bottom: 12px;
+  border-color: var(--theme-color-rgba-255-188-87-0p5, rgba(255, 188, 87, 0.5));
+  background: color-mix(in srgb, var(--panel, rgba(10, 17, 34, 0.85)) 85%, var(--warning, #f6bd62) 15%);
+}
+
+.ad-legacy-banner strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.ad-legacy-banner p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, var(--muted));
+}
+
+.ad-legacy-banner a {
+  color: var(--info, #6ca8ff);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ad-legacy-banner a:hover {
+  text-decoration: underline;
+}
+
 .ad-skeleton-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(220px, 1fr));

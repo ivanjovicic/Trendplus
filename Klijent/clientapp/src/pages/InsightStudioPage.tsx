@@ -88,6 +88,7 @@ import {
   mergeSmartReorderAsPrimary,
 } from "../services/analyticsIntelligenceDerived";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
+import { fmtNumber as fmtNum, fmtPct, fmtRsdCompact as fmtRsd } from "../utils/analyticsFormatters";
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -302,9 +303,6 @@ const reorderSupplierColumns: AnalyticsTableColumn<SmartReorderResult["bySupplie
 
 const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return d; };
-const fmtRsd = (v: number) => { if (Math.abs(v) >= 1e6) return `${(v / 1e6).toFixed(1)}M`; if (Math.abs(v) >= 1e3) return `${(v / 1e3).toFixed(0)}k`; return v.toLocaleString("sr-RS"); };
-const fmtPct = (v: number, d = 1) => `${v.toFixed(d)}%`;
-const fmtNum = (v: number) => v.toLocaleString("sr-RS");
 
 function changeBadge(change: number, suffix = "%") {
   const up = change >= 0;

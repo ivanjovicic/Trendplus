@@ -210,6 +210,134 @@
   font-size: 13px;
 }
 
+.analytics-decision-cockpit {
+  margin-bottom: 14px;
+}
+
+.decision-cockpit-head {
+  margin-bottom: 12px;
+}
+
+.decision-cockpit-head h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.decision-cockpit-head p {
+  margin: 6px 0 0;
+  color: var(--text-secondary, var(--muted));
+  font-size: 13px;
+}
+
+.decision-action-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.decision-action-card {
+  border: 1px solid var(--border-hover, var(--panel-border));
+  background: var(--surface-light, var(--panel));
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.decision-action-card.priority-p1 {
+  border-color: rgba(255, 108, 108, 0.55);
+  box-shadow: 0 0 0 1px rgba(255, 108, 108, 0.22) inset;
+}
+
+.decision-action-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.decision-action-top strong {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.decision-action-reason {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, var(--theme-color-ccd8fb, #ccd8fb));
+}
+
+.decision-action-impact {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary, var(--muted));
+}
+
+.decision-action-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.decision-confidence {
+  font-size: 12px;
+  color: var(--text-secondary, var(--muted));
+}
+
+.decision-quality-stack {
+  display: grid;
+  gap: 2px;
+}
+
+.decision-quality {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.decision-quality.quality-good {
+  color: var(--success, #31c48d);
+}
+
+.decision-quality.quality-warning {
+  color: var(--warning, #fbbf24);
+}
+
+.decision-quality.quality-critical {
+  color: var(--error, #ff6c6c);
+}
+
+.decision-quality.quality-insufficient_data {
+  color: var(--text-secondary, var(--muted));
+}
+
+.decision-quality-link {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-primary, #2563eb);
+  text-decoration: none;
+}
+
+.decision-quality-link:hover {
+  text-decoration: underline;
+}
+
+.decision-status-reason {
+  color: var(--text-muted, var(--muted));
+  font-size: 11px;
+}
+
+.decision-link {
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--accent-primary, #2563eb);
+}
+
+.decision-link:hover {
+  text-decoration: underline;
+}
+
 .analytics-skeleton-grid,
 .analytics-card-grid {
   display: grid;
@@ -486,6 +614,80 @@
   gap: 10px;
 }
 
+.trend-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.trend-signal-card {
+  border-radius: 12px;
+  border: 1px solid var(--panel-border, var(--theme-color-d3dce9, #d3dce9));
+  background: var(--surface-light, var(--panel));
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.trend-signal-card span {
+  font-size: 12px;
+  color: var(--text-secondary, var(--muted));
+}
+
+.trend-signal-card strong {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.trend-split-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.trend-list {
+  border: 1px solid var(--panel-border, var(--theme-color-d3dce9, #d3dce9));
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--surface-light, var(--panel));
+}
+
+.trend-list h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.trend-list-row {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border-hover, rgba(138, 160, 214, 0.24));
+  background: transparent;
+  color: inherit;
+  padding: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trend-list-row:last-child {
+  border-bottom: 0;
+}
+
+.trend-list-row:hover {
+  opacity: 0.9;
+}
+
+.trend-list-row span {
+  font-size: 13px;
+}
+
+.trend-list-row strong {
+  font-size: 13px;
+}
+
 .stock-card {
   border-radius: 18px;
   border: 1px solid rgba(30, 200, 255, 0.28);
@@ -742,6 +944,10 @@
   .stock-grid {
     grid-template-columns: repeat(2, minmax(150px, 1fr));
   }
+
+  .trend-signal-grid {
+    grid-template-columns: repeat(2, minmax(170px, 1fr));
+  }
 }
 
 @media (max-width: 920px) {
@@ -761,7 +967,13 @@
   .analytics-panels-2,
   .validation-grid,
   .analytics-chart-grid,
-  .analytics-filter-grid {
+  .analytics-filter-grid,
+  .trend-split-grid,
+  .trend-signal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-action-list {
     grid-template-columns: 1fr;
   }
 

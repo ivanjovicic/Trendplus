@@ -136,6 +136,19 @@ export interface DashboardAction {
   recommendation: string;
 }
 
+export interface DashboardDecisionAction {
+  priority: "P1" | "P2" | "P3" | string;
+  title: string;
+  reason: string;
+  statusReason?: string | null;
+  expectedImpact?: string | null;
+  confidencePct?: number | null;
+  reliabilityPct?: number | null;
+  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  link: string;
+  linkLabel?: string | null;
+}
+
 export interface DashboardValidationItem {
   severity: "error" | "warning" | "info" | string;
   message: string;
@@ -183,6 +196,64 @@ export interface TopProductsAdvancedResult {
   marginMessage?: string | null;
 }
 
+export type ProductDecisionRecommendationStatus =
+  | "BOOST"
+  | "REPLENISH"
+  | "WATCH"
+  | "MARKDOWN"
+  | "DO_NOT_ORDER"
+  | "FIX_DATA"
+  | "INSUFFICIENT_DATA";
+
+export interface ProductDecisionCenterItem {
+  productId: number;
+  sku: string;
+  productName: string;
+  supplierId?: number | null;
+  supplierName?: string | null;
+  category?: string | null;
+  tipObuce?: string | null;
+  color?: string | null;
+  size?: string | null;
+  revenue: number;
+  unitsSold: number;
+  velocityUnitsPerDay: number;
+  marginContribution: number;
+  marginPct?: number | null;
+  marginQualityLabel?: string | null;
+  marginCoveragePct?: number | null;
+  currentStock: number;
+  minStock: number;
+  stockGap: number;
+  daysSinceLastSale?: number | null;
+  trendPct?: number | null;
+  lostSalesEstimate: number;
+  dataQualityStatus: string;
+  confidencePct: number;
+  recommendationStatus: ProductDecisionRecommendationStatus;
+  recommendationLabel: string;
+  recommendationReason: string;
+  recommendedAction: string;
+}
+
+export interface ProductDecisionCenterSummary {
+  replenishCount: number;
+  markdownCount: number;
+  highPotentialCount: number;
+  badDataCount: number;
+  lostSalesEstimate: number;
+  slowStockCapital: number;
+}
+
+export interface ProductDecisionCenterResponse {
+  generatedAtUtc: string;
+  periodFromUtc: string;
+  periodToUtc: string;
+  totalRows: number;
+  summary: ProductDecisionCenterSummary;
+  rows: ProductDecisionCenterItem[];
+}
+
 export interface AnalyticsDashboardBootstrap {
   summary: SalesSummary | null;
   inventory: InventoryStatus | null;
@@ -201,6 +272,7 @@ export interface AnalyticsDashboardBootstrap {
   validationCompleteness: DashboardValidationEndpoint | null;
   validationFreshness: DashboardValidationEndpoint | null;
   validationLostSales: DashboardValidationEndpoint | null;
+  decisionActions: DashboardDecisionAction[];
   errors: string[];
 }
 

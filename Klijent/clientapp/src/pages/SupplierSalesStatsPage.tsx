@@ -26,7 +26,7 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
-import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import {
   analyticsMetricDescriptions,
   buildPopMetricDescription,
@@ -161,13 +161,6 @@ function parseNullableInt(value: string | null): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("sr-RS");
-}
-
 function smoothScrollToElement(element: HTMLElement, durationMs = 850): void {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     element.scrollIntoView({ behavior: "auto", block: "start" });
@@ -212,16 +205,8 @@ function displayStatusLabel(status: DecisionStatus): string {
   if (status === "increase_focus") return "Pojačaj";
   if (status === "maintain") return "Zadrži";
   if (status === "review") return "Oprez";
-  if (status === "do_not_trust") return "Smanji";
+  if (status === "do_not_trust") return "Smanji / Ne veruj";
   return "Nedovoljno podataka";
-}
-
-function statusLabelSr(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Pojačaj";
-  if (status === "maintain") return "Zadrži";
-  if (status === "review") return "Oprez";
-  if (status === "do_not_trust") return "Smanji";
-  return "N/A";
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -908,7 +893,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "increaseFocus", label: "Pojačaj fokus", value: supplierCounts.increaseFocus },
       { key: "maintain", label: "Zadrži", value: supplierCounts.maintain },
       { key: "review", label: "U pregledu", value: supplierCounts.review },
-      { key: "doNotTrust", label: "Smanji", value: supplierCounts.doNotTrust },
+      { key: "doNotTrust", label: "Smanji / Ne veruj", value: supplierCounts.doNotTrust },
       { key: "insufficientData", label: "Nedovoljno podataka", value: supplierCounts.insufficientData },
     ],
     [
@@ -1357,15 +1342,15 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     <span className="priority-chip priority-chip-boost">Pojačaj <strong>{supplierCounts.increaseFocus}</strong></span>
                     <span className="priority-chip priority-chip-keep">Zadrži <strong>{supplierCounts.maintain}</strong></span>
                     <span className="priority-chip priority-chip-watch">Oprez <strong>{supplierCounts.review}</strong></span>
-                    <span className="priority-chip priority-chip-reduce">Smanji <strong>{supplierCounts.doNotTrust}</strong></span>
-                    <span className="priority-chip priority-chip-na">N/A <strong>{supplierCounts.insufficientData}</strong></span>
+                    <span className="priority-chip priority-chip-reduce">Smanji / Ne veruj <strong>{supplierCounts.doNotTrust}</strong></span>
+                    <span className="priority-chip priority-chip-na">Nedovoljno podataka <strong>{supplierCounts.insufficientData}</strong></span>
                   </div>
                   <p className="supplier-decision-metric-note">
                     Preporuka uzima u obzir promet, količinu, maržni doprinos, maržni procenat i PoP trend.
                   </p>
                   {unknownSuppliers.length > 0 ? (
                     <p className="supplier-unknown-note">
-                    N/A dobavljači su prikazani na dnu i nisu uključeni u decision preporuke.
+                    Nepoznati dobavljači su prikazani na dnu i nisu uključeni u decision preporuke.
                     </p>
                   ) : null}
                 </div>
@@ -1579,7 +1564,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                                   title={buildStatusTooltip(supplier)}
                                   aria-label={buildStatusTooltip(supplier)}
                                 >
-                                  {statusLabelSr(supplier.status)}
+                                  {displayStatusLabel(supplier.status)}
                                 </span>
                                 {supplier.statusReason ? (
                                   <span className="supplier-status-reason-chip" title={supplier.statusReason}>
@@ -1630,7 +1615,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     className={`${statusClass(selectedSupplier.status)} supplier-detail-status-badge`}
                     title={buildStatusTooltip(selectedSupplier)}
                   >
-                    {statusLabelSr(selectedSupplier.status)}
+                    {displayStatusLabel(selectedSupplier.status)}
                   </div>
                   <button
                     type="button"
@@ -1924,3 +1909,4 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     </div>
   );
 }
+

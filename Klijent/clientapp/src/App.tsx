@@ -61,6 +61,7 @@ const UnosHubPage = lazy(() => import("./pages/UnosHubPage"));
 const DataQualityPage = lazy(() => import("./pages/DataQualityPage"));
 const AnalyticsDetailPage = lazy(() => import("./pages/AnalyticsDetailPage"));
 const AnalyticsPrintPage = lazy(() => import("./pages/AnalyticsPrintPage"));
+const ProductDecisionCenterPage = lazy(() => import("./pages/ProductDecisionCenterPage"));
 const ThemeSettingsPage = lazy(() => import("./pages/ThemeSettingsPage"));
 const ConfigurationPage = lazy(() => import("./pages/ConfigurationPage"));
 
@@ -89,6 +90,8 @@ function AppShell() {
                     <Route path="/logs" element={<LogsPage />} />
                     <Route path="/performance" element={<PerformanceDashboard />} />
                     <Route path="/analytics" element={<AnalyticsDashboard />} />
+                    <Route path="/analytics/products" element={<ProductDecisionCenterPage />} />
+                    <Route path="/analytics/product-decision-center" element={<Navigate to="/analytics/products" replace />} />
                     <Route path="/analytics/supplier" element={<SupplierConsolidatedPage />} />
                     <Route path="/analytics/supplier-sales-stats" element={<SupplierSalesStatsRedirect />} />
                     <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />

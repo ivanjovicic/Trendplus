@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { getStores, getSupplierFilters } from "../services/analyticsApi";
 import type { StoreOption, SupplierFilterOption } from "../types/analytics";
 import SupplierSalesStatsPage from "./SupplierSalesStatsPage";
@@ -16,9 +16,9 @@ const tabLabels: Record<SupplierTab, string> = {
 };
 
 const tabDescriptions: Record<SupplierTab, string> = {
-  overview: "Centralni ekran za odluke o dobavljačima kroz promet, maržni doprinos, trend i prioritetnu akciju.",
-  scorecard: "Skorkarta meri dobavljače kroz artikle sa prvom nivelacijom: prihod, maržu, punu cenu, stock rizik i preporuku.",
-  assortment: "Dodatni asortimanski pregled po dobavljaču i tipu obuće za proveru strukture portfolija.",
+  overview: "Pregled: glavna preporuka za dobavljača i centralni ekran za poslovnu odluku.",
+  scorecard: "Skorkarta: dodatni scorecard signal (nije paralelna finalna preporuka).",
+  assortment: "Asortiman: drilldown strukture prometa po tipu obuće, bez posebne finalne preporuke.",
 };
 
 function buildStoreLabel(store: StoreOption): string {
@@ -63,8 +63,8 @@ export default function SupplierConsolidatedPage() {
       <header className="supplier-consolidated-header">
         <div className="supplier-consolidated-header-content">
           <div>
-            <div className="supplier-consolidated-overline">Centralna analitika dobavljača</div>
-            <h1>Dobavljači</h1>
+            <div className="supplier-consolidated-overline">Centralna analitika dobavljaÄa</div>
+            <h1>DobavljaÄi</h1>
             <p className="supplier-consolidated-header-desc">{tabDescriptions[currentTab]}</p>
           </div>
         </div>
@@ -78,7 +78,7 @@ export default function SupplierConsolidatedPage() {
             <option value="90d">Poslednjih 90 dana</option>
             <option value="180d">Poslednjih 180 dana</option>
             <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">Prilagođeno</option>
+            <option value="custom">PrilagoÄ‘eno</option>
           </select>
         </label>
 
@@ -96,7 +96,7 @@ export default function SupplierConsolidatedPage() {
           <span>Opseg</span>
           <select value={canonicalFilters.dataScope} onChange={(event) => setDataScope(event.target.value)}>
             <option value="all">Svi podaci</option>
-            <option value="existing">Postojeći artikli</option>
+            <option value="existing">PostojeÄ‡i artikli</option>
             <option value="imported">Uvezeni podaci</option>
           </select>
         </label>
@@ -112,9 +112,9 @@ export default function SupplierConsolidatedPage() {
         </label>
 
         <label className="supplier-consolidated-field">
-          <span>Dobavljač</span>
+          <span>DobavljaÄ</span>
           <select value={canonicalFilters.supplierId ?? ""} onChange={(event) => setSupplier(event.target.value)}>
-            <option value="">Svi dobavljači</option>
+            <option value="">Svi dobavljaÄi</option>
             {suppliers.map((supplier) => (
               <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierName}</option>
             ))}
@@ -126,7 +126,7 @@ export default function SupplierConsolidatedPage() {
         </div>
       </section>
 
-      {invalidRange ? <div className="supplier-consolidated-message error" role="alert">Datum od ne može biti posle datuma do.</div> : null}
+      {invalidRange ? <div className="supplier-consolidated-message error" role="alert">Datum od ne moÅ¾e biti posle datuma do.</div> : null}
 
       <nav className="supplier-consolidated-tabs" aria-label="Supplier analytics tabovi">
         {SUPPLIER_TABS.map((tab) => (
@@ -164,3 +164,4 @@ export default function SupplierConsolidatedPage() {
     </div>
   );
 }
+
