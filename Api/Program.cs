@@ -924,9 +924,26 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         try
         {
             var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
-            Console.WriteLine("Auto-migrate enabled - applying EF Core migrations...");
+            Console.WriteLine("Auto-migrate enabled - applying EF Core migrations for main DB...");
             db.Database.Migrate();
-            Console.WriteLine("Database migrations applied successfully.");
+            Console.WriteLine("Main database migrations applied successfully.");
+
+            // Also apply analytics DB migrations when available to ensure analytics tables exist
+            try
+            {
+                var analyticsDb = scope.ServiceProvider.GetService<Infrastructure.DbContexts.AnalyticsDbContext>();
+                if (analyticsDb is not null)
+                {
+                    Console.WriteLine("Applying EF Core migrations for AnalyticsDb...");
+                    analyticsDb.Database.Migrate();
+                    Console.WriteLine("Analytics database migrations applied successfully.");
+                }
+            }
+            catch (Exception ex)
+            {
+                var logger = scope.ServiceProvider.GetService<Microsoft.Extensions.Logging.ILogger<Program>>();
+                logger?.LogWarning(ex, "Applying analytics DB migrations failed (continuing)");
+            }
         }
         catch (Exception ex)
         {
