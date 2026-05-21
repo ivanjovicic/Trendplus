@@ -703,6 +703,12 @@ export type AnalyticsActionStatus =
 
 export type AnalyticsActionPriority = "P1" | "P2" | "P3";
 
+export type AnalyticsActionDataQualityStatus =
+  | "good"
+  | "warning"
+  | "critical"
+  | "insufficient_data";
+
 export interface AnalyticsActionItem {
   id: number;
   sourceType: AnalyticsActionSourceType;

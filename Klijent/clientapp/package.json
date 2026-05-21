@@ -8,6 +8,7 @@
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "check:analytics-guardrails": "node scripts/check-analytics-guardrails.mjs",
     "test": "vitest",
     "test:watch": "vitest --watch"
   },

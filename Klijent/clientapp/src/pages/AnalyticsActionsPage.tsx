@@ -11,6 +11,7 @@ import type {
   AnalyticsActionStatus,
   AnalyticsActionSourceType,
   AnalyticsActionPriority,
+  AnalyticsActionDataQualityStatus,
 } from "../types/analytics";
 import "./AnalyticsActionsPage.css";
 
@@ -45,11 +46,40 @@ const PRIORITY_CSS: Record<AnalyticsActionPriority, string> = {
   P3: "badge-priority p3",
 };
 
+const DATA_QUALITY_LABELS: Record<AnalyticsActionDataQualityStatus | "legacy-fair" | "legacy-poor", string> = {
+  good: "Dobar",
+  warning: "Upozorenje",
+  critical: "Kritičan",
+  insufficient_data: "Nedovoljno podataka",
+  "legacy-fair": "Srednji",
+  "legacy-poor": "Loš",
+};
+
 const DATA_QUALITY_CSS: Record<string, string> = {
   good: "dq-good",
-  fair: "dq-fair",
-  poor: "dq-poor",
+  warning: "dq-warning",
+  critical: "dq-critical",
+  insufficient_data: "dq-insufficient",
+  fair: "dq-warning", // legacy -> warning
+  poor: "dq-critical", // legacy -> critical
 };
+
+// Normalize legacy dataQualityStatus values to canonical ones
+function normalizeDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus | null {
+  if (!value) return null;
+  const lower = value.toLowerCase();
+  if (lower === "fair") return "warning";
+  if (lower === "poor") return "critical";
+  if (["good", "warning", "critical", "insufficient_data"].includes(lower)) return lower as AnalyticsActionDataQualityStatus;
+  return null;
+}
+
+// Get display label for data quality status (supports legacy values)
+function getDataQualityLabel(value: string | null | undefined): string {
+  if (!value) return "—";
+  const lower = value.toLowerCase();
+  return DATA_QUALITY_LABELS[lower as keyof typeof DATA_QUALITY_LABELS] ?? value;
+}
 
 function fmt(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -204,8 +234,9 @@ export default function AnalyticsActionsPage() {
         >
           <option value="">Svi kvaliteti</option>
           <option value="good">Dobar</option>
-          <option value="fair">Srednji</option>
-          <option value="poor">Loš</option>
+          <option value="warning">Upozorenje</option>
+          <option value="critical">Kritičan</option>
+          <option value="insufficient_data">Nedovoljno podataka</option>
         </select>
         <input
           type="search"
@@ -272,8 +303,8 @@ export default function AnalyticsActionsPage() {
                       <td className="td-num">{item.confidencePct != null ? `${fmt(item.confidencePct)}%` : "—"}</td>
                       <td>
                         {item.dataQualityStatus ? (
-                          <span className={`dq-badge ${DATA_QUALITY_CSS[item.dataQualityStatus] ?? ""}`}>
-                            {item.dataQualityStatus}
+                          <span className={`dq-badge ${DATA_QUALITY_CSS[item.dataQualityStatus.toLowerCase()] ?? ""}`}>
+                            {getDataQualityLabel(item.dataQualityStatus)}
                           </span>
                         ) : "—"}
                       </td>

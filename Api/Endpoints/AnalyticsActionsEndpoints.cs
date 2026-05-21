@@ -1,3 +1,4 @@
+using Application.Analytics;
 using Infrastructure.Services.Analytics;
 using Microsoft.AspNetCore.Http;
 
@@ -69,12 +70,21 @@ public static class AnalyticsActionsEndpoints
         {
             if (string.IsNullOrWhiteSpace(body.SourceType))
                 return Results.BadRequest("sourceType is required");
+
+            if (!AnalyticsActionConstants.IsValidSourceType(body.SourceType))
+                return Results.BadRequest($"sourceType must be one of: {string.Join(", ", AnalyticsActionConstants.SourceTypes.AllValues)}");
+
             if (string.IsNullOrWhiteSpace(body.SourceKey))
                 return Results.BadRequest("sourceKey is required");
             if (string.IsNullOrWhiteSpace(body.Title))
                 return Results.BadRequest("title is required");
-            if (string.IsNullOrWhiteSpace(body.Priority) || body.Priority is not ("P1" or "P2" or "P3"))
-                return Results.BadRequest("priority must be P1, P2, or P3");
+            if (!AnalyticsActionConstants.IsValidPriority(body.Priority))
+                return Results.BadRequest($"priority must be one of: {string.Join(", ", AnalyticsActionConstants.Priorities.AllValues)}");
+
+            // Validate and normalize dataQualityStatus
+            var normalizedDataQualityStatus = AnalyticsActionConstants.NormalizeDataQualityStatus(body.DataQualityStatus);
+            if (normalizedDataQualityStatus != null && !AnalyticsActionConstants.IsValidDataQualityStatus(normalizedDataQualityStatus))
+                return Results.BadRequest($"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}, or legacy: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.LegacyMappings.Keys)}");
 
             var userId = httpContext.User?.FindFirst("sub")?.Value
                       ?? httpContext.User?.FindFirst("userId")?.Value;
@@ -90,7 +100,7 @@ public static class AnalyticsActionsEndpoints
                 ImpactEstimateRsd: body.ImpactEstimateRsd,
                 ConfidencePct: body.ConfidencePct,
                 ReliabilityPct: body.ReliabilityPct,
-                DataQualityStatus: body.DataQualityStatus,
+                DataQualityStatus: normalizedDataQualityStatus,
                 ActionUrl: body.ActionUrl,
                 MetadataJson: body.MetadataJson
             );
@@ -108,9 +118,8 @@ public static class AnalyticsActionsEndpoints
             HttpContext httpContext,
             CancellationToken ct) =>
         {
-            var allowedStatuses = new[] { "new", "accepted", "deferred", "rejected", "done" };
-            if (!allowedStatuses.Contains(body.Status))
-                return Results.BadRequest($"status must be one of: {string.Join(", ", allowedStatuses)}");
+            if (!AnalyticsActionConstants.IsValidStatus(body.Status))
+                return Results.BadRequest($"status must be one of: {string.Join(", ", AnalyticsActionConstants.Statuses.AllValues)}");
 
             var userId = httpContext.User?.FindFirst("sub")?.Value
                       ?? httpContext.User?.FindFirst("userId")?.Value;
