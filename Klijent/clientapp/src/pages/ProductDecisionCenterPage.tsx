@@ -6,6 +6,7 @@ import {
   getProductDecisionCenter,
   getStores,
   getSupplierFilters,
+  upsertAnalyticsAction,
 } from "../services/analyticsApi";
 import type {
   ProductDecisionCenterItem,
@@ -143,6 +144,7 @@ export default function ProductDecisionCenterPage() {
   const [payload, setPayload] = useState<ProductDecisionCenterResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [addedToQueueIds, setAddedToQueueIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -496,6 +498,34 @@ export default function ProductDecisionCenterPage() {
                         <td>
                           <span>{row.recommendedAction}</span>
                           <small>Data quality: {row.dataQualityStatus}</small>
+                          <button
+                            type="button"
+                            className={`btn-add-to-queue${addedToQueueIds.has(row.productId) ? " added" : ""}`}
+                            title="Dodaj u centralni red akcija"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await upsertAnalyticsAction({
+                                  sourceType: "product",
+                                  sourceKey: `product_${row.productId}_${row.recommendationStatus}`,
+                                  sourceId: row.productId,
+                                  title: `${row.productName} — ${row.recommendationLabel ?? row.recommendationStatus}`,
+                                  description: row.recommendationReason,
+                                  recommendationStatus: row.recommendationStatus,
+                                  priority: row.confidencePct != null && row.confidencePct >= 80 ? "P1" : row.confidencePct != null && row.confidencePct >= 50 ? "P2" : "P3",
+                                  impactEstimateRsd: row.revenue ?? undefined,
+                                  confidencePct: row.confidencePct ?? undefined,
+                                  dataQualityStatus: row.dataQualityStatus ?? undefined,
+                                  actionUrl: `/analitika/top-products-advanced/${row.productId}`,
+                                });
+                                setAddedToQueueIds((prev) => new Set([...prev, row.productId]));
+                              } catch {
+                                // silently ignore
+                              }
+                            }}
+                          >
+                            {addedToQueueIds.has(row.productId) ? "✓ Dodato" : "+ Dodaj u akcije"}
+                          </button>
                         </td>
                       </tr>
                       {expanded ? (

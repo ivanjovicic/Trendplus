@@ -183,6 +183,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: Microscope,
         title: "Napredne analize i dublji uvidi za strateške odluke.",
       },
+      {
+        to: "/analytics/actions",
+        label: "Akcije i preporuke",
+        icon: ListChecks,
+        title: "Centralni red akcija iz svih analitičkih izvora: dodajte, prihvatite, odložite ili završite preporuke.",
+      },
     ],
   },
   {

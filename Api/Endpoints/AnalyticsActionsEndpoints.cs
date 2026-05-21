@@ -1,0 +1,148 @@
+using Infrastructure.Services.Analytics;
+using Microsoft.AspNetCore.Http;
+
+namespace Api.Endpoints;
+
+public static class AnalyticsActionsEndpoints
+{
+    public static void MapAnalyticsActionsEndpoints(this WebApplication app)
+    {
+        var group = app.MapGroup("/api/analytics/actions")
+            .WithTags("Analytics");
+
+        // GET /api/analytics/actions
+        group.MapGet("/", async (
+            AnalyticsActionItemService svc,
+            string? status,
+            string? priority,
+            string? sourceType,
+            string? dataQualityStatus,
+            string? search,
+            int page = 1,
+            int pageSize = 50,
+            CancellationToken ct = default) =>
+        {
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 200);
+
+            var (items, totalCount) = await svc.ListAsync(status, priority, sourceType, dataQualityStatus, search, page, pageSize, ct);
+
+            return Results.Ok(new
+            {
+                items,
+                totalCount,
+                page,
+                pageSize,
+                totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            });
+        })
+        .WithName("GetAnalyticsActions");
+
+        // GET /api/analytics/actions/counts
+        group.MapGet("/counts", async (
+            AnalyticsActionItemService svc,
+            CancellationToken ct) =>
+        {
+            var counts = await svc.GetCountsAsync(ct);
+            return Results.Ok(counts);
+        })
+        .WithName("GetAnalyticsActionCounts");
+
+        // GET /api/analytics/actions/{id}
+        group.MapGet("/{id:long}", async (
+            long id,
+            AnalyticsActionItemService svc,
+            CancellationToken ct) =>
+        {
+            var item = await svc.GetByIdAsync(id, ct);
+            return item is null ? Results.NotFound() : Results.Ok(item);
+        })
+        .WithName("GetAnalyticsActionById");
+
+        // POST /api/analytics/actions
+        // Upserts: returns existing open action if same sourceType+sourceKey already open
+        group.MapPost("/", async (
+            AnalyticsActionUpsertBody body,
+            AnalyticsActionItemService svc,
+            HttpContext httpContext,
+            CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(body.SourceType))
+                return Results.BadRequest("sourceType is required");
+            if (string.IsNullOrWhiteSpace(body.SourceKey))
+                return Results.BadRequest("sourceKey is required");
+            if (string.IsNullOrWhiteSpace(body.Title))
+                return Results.BadRequest("title is required");
+            if (string.IsNullOrWhiteSpace(body.Priority) || body.Priority is not ("P1" or "P2" or "P3"))
+                return Results.BadRequest("priority must be P1, P2, or P3");
+
+            var userId = httpContext.User?.FindFirst("sub")?.Value
+                      ?? httpContext.User?.FindFirst("userId")?.Value;
+
+            var request = new AnalyticsActionUpsertRequest(
+                SourceType: body.SourceType,
+                SourceKey: body.SourceKey,
+                SourceId: body.SourceId,
+                Title: body.Title,
+                Description: body.Description,
+                RecommendationStatus: body.RecommendationStatus,
+                Priority: body.Priority,
+                ImpactEstimateRsd: body.ImpactEstimateRsd,
+                ConfidencePct: body.ConfidencePct,
+                ReliabilityPct: body.ReliabilityPct,
+                DataQualityStatus: body.DataQualityStatus,
+                ActionUrl: body.ActionUrl,
+                MetadataJson: body.MetadataJson
+            );
+
+            var item = await svc.UpsertAsync(request, userId, ct);
+            return Results.Ok(item);
+        })
+        .WithName("UpsertAnalyticsAction");
+
+        // PATCH /api/analytics/actions/{id}/status
+        group.MapMethods("/{id:long}/status", ["PATCH"], async (
+            long id,
+            AnalyticsActionStatusUpdateBody body,
+            AnalyticsActionItemService svc,
+            HttpContext httpContext,
+            CancellationToken ct) =>
+        {
+            var allowedStatuses = new[] { "new", "accepted", "deferred", "rejected", "done" };
+            if (!allowedStatuses.Contains(body.Status))
+                return Results.BadRequest($"status must be one of: {string.Join(", ", allowedStatuses)}");
+
+            var userId = httpContext.User?.FindFirst("sub")?.Value
+                      ?? httpContext.User?.FindFirst("userId")?.Value;
+            var userName = httpContext.User?.FindFirst("name")?.Value
+                        ?? httpContext.User?.FindFirst("preferred_username")?.Value;
+
+            var updated = await svc.UpdateStatusAsync(id, body.Status, body.Note, userId, userName, ct);
+            return updated is null ? Results.NotFound() : Results.Ok(updated);
+        })
+        .WithName("UpdateAnalyticsActionStatus");
+    }
+}
+
+// ── Request bodies ────────────────────────────────────────────────────────────
+
+public sealed record AnalyticsActionUpsertBody(
+    string SourceType,
+    string SourceKey,
+    int? SourceId,
+    string Title,
+    string? Description,
+    string? RecommendationStatus,
+    string Priority,
+    decimal? ImpactEstimateRsd,
+    int? ConfidencePct,
+    int? ReliabilityPct,
+    string? DataQualityStatus,
+    string? ActionUrl,
+    string? MetadataJson
+);
+
+public sealed record AnalyticsActionStatusUpdateBody(
+    string Status,
+    string? Note
+);

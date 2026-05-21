@@ -4,6 +4,7 @@ import {
   checkAnalyticsHealth,
   getDashboardBootstrap,
   getStores,
+  upsertAnalyticsAction,
 } from "../services/analyticsApi";
 import type {
   CategoryData,
@@ -275,6 +276,7 @@ export default function AnalyticsDashboard() {
   const [validFreshness, setValidFreshness] = useState<DashboardValidationEndpoint | null>(null);
   const [validLostSales, setValidLostSales] = useState<DashboardValidationEndpoint | null>(null);
   const [decisionActions, setDecisionActions] = useState<DashboardDecisionAction[]>([]);
+  const [addedToQueueKeys, setAddedToQueueKeys] = useState<Set<string>>(new Set());
   const [healthText, setHealthText] = useState("");
   const [topTab, setTopTab] = useState<TopTabKey>("revenue");
   const [errors, setErrors] = useState<string[]>([]);
@@ -738,7 +740,36 @@ export default function AnalyticsDashboard() {
                     ) : null}
                     {action.statusReason ? <small className="decision-status-reason">{action.statusReason}</small> : null}
                   </div>
-                  <Link to={action.link} className="decision-link">{action.linkLabel || "Otvori ekran"}</Link>
+                  <div className="decision-action-links">
+                    <Link to={action.link} className="decision-link">{action.linkLabel || "Otvori ekran"}</Link>
+                    <button
+                      type="button"
+                      className={`btn-add-to-queue${addedToQueueKeys.has(`${action.priority}|${action.title}`) ? " added" : ""}`}
+                      title="Dodaj u centralni red akcija"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const key = `dashboard|${action.priority}|${action.title}`;
+                        try {
+                          await upsertAnalyticsAction({
+                            sourceType: "dashboard",
+                            sourceKey: key,
+                            title: action.title,
+                            description: action.reason,
+                            priority: (action.priority === "P1" || action.priority === "P2" || action.priority === "P3") ? action.priority : "P3",
+                            confidencePct: action.confidencePct ?? undefined,
+                            reliabilityPct: action.reliabilityPct ?? undefined,
+                            dataQualityStatus: normalizeDataQualityStatus(action.dataQualityStatus) ?? undefined,
+                            actionUrl: action.link,
+                          });
+                          setAddedToQueueKeys((prev) => new Set([...prev, `${action.priority}|${action.title}`]));
+                        } catch {
+                          // silently ignore — not critical
+                        }
+                      }}
+                    >
+                      {addedToQueueKeys.has(`${action.priority}|${action.title}`) ? "✓ Dodato" : "+ Dodaj u akcije"}
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}

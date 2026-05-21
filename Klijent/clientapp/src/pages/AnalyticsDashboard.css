@@ -338,6 +338,35 @@
   text-decoration: underline;
 }
 
+.decision-action-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-add-to-queue {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--accent-primary, #2563eb);
+  background: transparent;
+  color: var(--accent-primary, #2563eb);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-add-to-queue:hover {
+  background: var(--accent-primary, #2563eb);
+  color: #fff;
+}
+.btn-add-to-queue.added {
+  border-color: #198754;
+  color: #198754;
+  cursor: default;
+}
+
 .analytics-skeleton-grid,
 .analytics-card-grid {
   display: grid;

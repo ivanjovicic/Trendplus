@@ -163,33 +163,6 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => e.TipPromene);
             });
 
-            modelBuilder.Entity<ReturnFact>(entity =>
-            {
-                entity.ToTable("ReturnFacts");
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.SourceLineId).IsRequired();
-                entity.Property(e => e.ReturnId).IsRequired();
-                entity.Property(e => e.ProductId).IsRequired();
-                entity.Property(e => e.SupplierId).IsRequired();
-                entity.Property(e => e.Qty).IsRequired();
-                entity.Property(e => e.UnitCost).HasColumnType("numeric(18,2)");
-                entity.Property(e => e.LineAmount).HasColumnType("numeric(18,2)");
-                entity.Property(e => e.ReturnTimestampUtc).IsRequired();
-                entity.Property(e => e.Status).HasMaxLength(100).IsRequired();
-                entity.Property(e => e.HeaderReason).HasMaxLength(500);
-                entity.Property(e => e.LineReason).HasMaxLength(500);
-                entity.Property(e => e.ItemCondition).HasMaxLength(200);
-                entity.Property(e => e.BrojZapisnika).HasMaxLength(100);
-                entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
-
-                entity.HasIndex(e => e.SourceLineId).IsUnique();
-                entity.HasIndex(e => e.ReturnId);
-                entity.HasIndex(e => e.ProductId);
-                entity.HasIndex(e => e.SupplierId);
-                entity.HasIndex(e => e.ReturnTimestampUtc);
-                entity.HasIndex(e => new { e.SupplierId, e.ReturnTimestampUtc });
-            });
-
             // Global Trends Tables
             modelBuilder.Entity<EuTrend>(entity =>
             {
@@ -335,6 +308,76 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => new { e.ProductId, e.SnapshotDate })
                       .HasDatabaseName("idx_inv_rec_product");
             });
+
+            // ── Analytics Action Queue ───────────────────────────────────
+            modelBuilder.Entity<AnalyticsActionItem>(entity =>
+            {
+                entity.ToTable("analytics_action_items");
+                entity.HasKey(e => e.Id);
+                
+                // Core fields
+                entity.Property(e => e.SourceType)
+                    .HasMaxLength(32)
+                    .IsRequired();
+                entity.Property(e => e.SourceKey)
+                    .HasMaxLength(500)
+                    .IsRequired();
+                entity.Property(e => e.Title)
+                    .HasMaxLength(500)
+                    .IsRequired();
+                entity.Property(e => e.Description)
+                    .HasMaxLength(2000);
+                entity.Property(e => e.RecommendationStatus)
+                    .HasMaxLength(200);
+                entity.Property(e => e.Priority)
+                    .HasMaxLength(8)
+                    .IsRequired();
+                entity.Property(e => e.Status)
+                    .HasMaxLength(32)
+                    .IsRequired();
+
+                // Quality/impact fields
+                entity.Property(e => e.ImpactEstimateRsd)
+                    .HasColumnType("numeric(18,2)");
+                entity.Property(e => e.ConfidencePct);
+                entity.Property(e => e.ReliabilityPct);
+                entity.Property(e => e.DataQualityStatus)
+                    .HasMaxLength(32);
+                
+                // Audit fields
+                entity.Property(e => e.ActionUrl)
+                    .HasMaxLength(1000);
+                entity.Property(e => e.MetadataJson)
+                    .HasColumnType("jsonb");
+                entity.Property(e => e.CreatedAtUtc)
+                    .IsRequired()
+                    .HasDefaultValueSql("now()");
+                entity.Property(e => e.UpdatedAtUtc)
+                    .IsRequired()
+                    .HasDefaultValueSql("now()");
+                entity.Property(e => e.CreatedByUserId)
+                    .HasMaxLength(200);
+                entity.Property(e => e.UpdatedByUserId)
+                    .HasMaxLength(200);
+                entity.Property(e => e.UpdatedByUserName)
+                    .HasMaxLength(200);
+
+                // Indexes for filtering and duplicate detection
+                entity.HasIndex(e => new { e.SourceType, e.SourceKey })
+                    .IsUnique()
+                    .HasFilter("\"Status\" IN ('new', 'accepted', 'deferred')")
+                    .HasDatabaseName("idx_analytics_action_sourcekey_open");
+                entity.HasIndex(e => e.Status)
+                    .HasDatabaseName("idx_analytics_action_status");
+                entity.HasIndex(e => e.Priority)
+                    .HasDatabaseName("idx_analytics_action_priority");
+                entity.HasIndex(e => new { e.SourceType, e.CreatedAtUtc })
+                    .HasDatabaseName("idx_analytics_action_source_created");
+                entity.HasIndex(e => e.UpdatedAtUtc)
+                    .HasDatabaseName("idx_analytics_action_updated");
+                entity.HasIndex(e => new { e.Status, e.UpdatedAtUtc })
+                    .HasDatabaseName("idx_analytics_action_status_updated");
+            });
         }
 
         public DbSet<ProductsDim> ProductsDim => Set<ProductsDim>();
@@ -368,6 +411,9 @@ namespace Infrastructure.DbContexts
         public DbSet<TrendProductMomentum> TrendProductMomentums => Set<TrendProductMomentum>();
         public DbSet<TrendplusIndexRecord> TrendplusIndexRecords => Set<TrendplusIndexRecord>();
         public DbSet<InventoryRecommendation> InventoryRecommendations => Set<InventoryRecommendation>();
+
+        // ── Analytics Action Queue ───────────────────────────────────────
+        public DbSet<AnalyticsActionItem> AnalyticsActionItems => Set<AnalyticsActionItem>();
 
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }

@@ -39,6 +39,12 @@ import type {
   TopProductsResult,
   TransactionStats,
   WeekdayData,
+  AnalyticsActionItem,
+  AnalyticsActionListResponse,
+  AnalyticsActionCounts,
+  AnalyticsActionUpsertInput,
+  AnalyticsActionStatusUpdateInput,
+  AnalyticsActionFilters,
 } from "../types/analytics";
 import type { DocumentOperationResponse } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
@@ -930,6 +936,66 @@ export async function getInventoryReportSchedules(): Promise<InventoryReportSche
     undefined,
     "Greska pri ucitavanju rasporeda za mail izvestaje"
   );
+}
+
+// ── Analytics Action Queue ─────────────────────────────────────────────────
+
+export async function getAnalyticsActions(
+  filters?: AnalyticsActionFilters
+): Promise<AnalyticsActionListResponse> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.priority) params.append("priority", filters.priority);
+  if (filters?.sourceType) params.append("sourceType", filters.sourceType);
+  if (filters?.dataQualityStatus) params.append("dataQualityStatus", filters.dataQualityStatus);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.page != null) params.append("page", String(filters.page));
+  if (filters?.pageSize != null) params.append("pageSize", String(filters.pageSize));
+  return fetchJson<AnalyticsActionListResponse>(
+    "/api/analytics/actions",
+    params,
+    "Greška pri učitavanju liste akcija"
+  );
+}
+
+export async function getAnalyticsActionCounts(): Promise<AnalyticsActionCounts> {
+  return fetchJson<AnalyticsActionCounts>(
+    "/api/analytics/actions/counts",
+    undefined,
+    "Greška pri učitavanju brojača akcija"
+  );
+}
+
+export async function getAnalyticsActionById(id: number): Promise<AnalyticsActionItem> {
+  return fetchJson<AnalyticsActionItem>(
+    `/api/analytics/actions/${id}`,
+    undefined,
+    "Greška pri učitavanju akcije"
+  );
+}
+
+export async function upsertAnalyticsAction(
+  input: AnalyticsActionUpsertInput
+): Promise<AnalyticsActionItem> {
+  return postJson<AnalyticsActionItem>(
+    "/api/analytics/actions",
+    input,
+    "Greška pri dodavanju akcije"
+  );
+}
+
+export async function updateAnalyticsActionStatus(
+  id: number,
+  input: AnalyticsActionStatusUpdateInput
+): Promise<AnalyticsActionItem> {
+  const url = apiUrl(`/api/analytics/actions/${id}/status`);
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`Greška pri ažuriranju statusa akcije (${res.status})`);
+  return res.json() as Promise<AnalyticsActionItem>;
 }
 
 export async function createInventoryReportSchedule(input: InventoryReportScheduleInput): Promise<InventoryReportSchedule> {

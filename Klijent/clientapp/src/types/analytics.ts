@@ -683,3 +683,95 @@ export interface InventoryScheduleRunResponse {
   documentId?: string | null;
   executedAtUtc: string;
 }
+
+// ── Analytics Action Queue ─────────────────────────────────────────────────
+
+export type AnalyticsActionSourceType =
+  | "dashboard"
+  | "product"
+  | "supplier"
+  | "inventory"
+  | "nivelacija"
+  | "data_quality";
+
+export type AnalyticsActionStatus =
+  | "new"
+  | "accepted"
+  | "deferred"
+  | "rejected"
+  | "done";
+
+export type AnalyticsActionPriority = "P1" | "P2" | "P3";
+
+export interface AnalyticsActionItem {
+  id: number;
+  sourceType: AnalyticsActionSourceType;
+  sourceKey: string;
+  sourceId?: number | null;
+  title: string;
+  description?: string | null;
+  recommendationStatus?: string | null;
+  priority: AnalyticsActionPriority;
+  impactEstimateRsd?: number | null;
+  confidencePct?: number | null;
+  reliabilityPct?: number | null;
+  dataQualityStatus?: string | null;
+  status: AnalyticsActionStatus;
+  actionUrl?: string | null;
+  metadataJson?: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  resolvedAtUtc?: string | null;
+  createdByUserId?: string | null;
+  updatedByUserId?: string | null;
+  updatedByUserName?: string | null;
+}
+
+export interface AnalyticsActionListResponse {
+  items: AnalyticsActionItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface AnalyticsActionCounts {
+  new: number;
+  accepted: number;
+  deferred: number;
+  rejected: number;
+  done: number;
+  p1Open: number;
+}
+
+export interface AnalyticsActionUpsertInput {
+  sourceType: AnalyticsActionSourceType;
+  sourceKey: string;
+  sourceId?: number | null;
+  title: string;
+  description?: string | null;
+  recommendationStatus?: string | null;
+  priority: AnalyticsActionPriority;
+  impactEstimateRsd?: number | null;
+  confidencePct?: number | null;
+  reliabilityPct?: number | null;
+  dataQualityStatus?: string | null;
+  actionUrl?: string | null;
+  metadataJson?: string | null;
+}
+
+export interface AnalyticsActionStatusUpdateInput {
+  status: AnalyticsActionStatus;
+  note?: string | null;
+}
+
+export interface AnalyticsActionFilters {
+  status?: AnalyticsActionStatus;
+  priority?: AnalyticsActionPriority;
+  sourceType?: AnalyticsActionSourceType;
+  dataQualityStatus?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+

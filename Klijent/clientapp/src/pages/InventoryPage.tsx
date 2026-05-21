@@ -4,8 +4,10 @@ import { createInventoryReportSchedule, exportInventoryReport, getForecast, getI
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import { ActionWorkflowPanel } from "../components/inventory/ActionWorkflowPanel";
+import { DecisionSummaryBar } from "../components/inventory/DecisionSummaryBar";
 import { DemandForecastPanel } from "../components/inventory/DemandForecastPanel";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { ExportSchedulerPanel } from "../components/inventory/ExportSchedulerPanel";
 import { InventoryAlertsFeed } from "../components/inventory/InventoryAlertsFeed";
 import { InventoryInsightPanels } from "../components/inventory/InventoryInsightPanels";
 import { InventoryItemsTable } from "../components/inventory/InventoryItemsTable";
@@ -712,21 +714,75 @@ export default function InventoryPage() {
         </div>
       </section>
 
+      {/* Decision Summary Bar - quick status at a glance */}
+      <DecisionSummaryBar
+        balance={balance}
+        actionWorkflow={actionWorkflow}
+        outOfStockCount={balance?.outOfStockCount}
+        lowStockCount={balance?.lowStockCount}
+        dataQualityWarning={false}
+        loading={loading && !balance && !actionWorkflow}
+      />
+
+      {/* Decision-Critical Workflow Panel */}
+      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Workflow panel nije mogao da se prikaže. Osvezi stranicu.</div>}>
+        <ActionWorkflowPanel sectionId={ACTION_WORKFLOW_SECTION_ID} actionWorkflow={actionWorkflow} operationsLoading={operationsLoading} workflowBusyKey={workflowBusyKey} onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)} />
+      </ErrorBoundary>
+
+      {/* Decision-Critical Alerts & Forecasting */}
+      <div className="grid gap-5 xl:grid-cols-2">
+        <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Alerts nisu dostupni. Osvezi stranicu.</div>}>
+          <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
+        </ErrorBoundary>
+        <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Forecast nije dostupan. Osvezi stranicu.</div>}>
+          <DemandForecastPanel forecast={forecast} forecastLoading={forecastLoading} forecastError={forecastError} rows={rows} stores={stores} oosThreshold={OOS_RISK_THRESHOLD} overstockThreshold={OVERSTOCK_RISK_THRESHOLD} oosDisplayCount={FORECAST_OOS_DISPLAY} overstockDisplayCount={FORECAST_OVERSTOCK_DISPLAY} onSuggestRestock={queueForecastRestock} />
+        </ErrorBoundary>
+      </div>
+
+      {/* Rebalancing & Transfer Suggestions */}
+      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Rebalancing sugestije nisu dostupne. Osvezi stranicu.</div>}>
+        <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} onCompareStores={compareStoresFromRebalance} />
+      </ErrorBoundary>
+
+      {/* Support & Insight Panels */}
       <InventoryKPICards totalSku={balance?.totalSku} totalOnHand={balance?.totalOnHand} lowStockCount={balance?.lowStockCount} lowStockShare={lowStockShare} avgUnitsPerSku={avgUnitsPerSku} totalValue={totalValue} />
-      <MailSchedulerPanel scheduleDraft={scheduleDraft} setScheduleDraft={setScheduleDraft} schedules={schedules} schedulerBusy={schedulerBusy} schedulerMessage={schedulerMessage} onCopyCurrentFilters={copyCurrentFiltersToSchedule} onSaveSchedule={saveSchedule} onRunScheduleNow={(id) => void runScheduleNow(id)} />
+      <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={openDetail} />
+      <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={openDetail} />
 
       <div className="grid gap-5 xl:grid-cols-2">
         <StoreComparisonPanel sectionId={STORE_COMPARISON_SECTION_ID} stores={stores} compareStoreIds={compareStoreIds} comparison={storeComparison} operationsLoading={operationsLoading} onToggleStore={toggleCompareStore} />
-        <ActionWorkflowPanel sectionId={ACTION_WORKFLOW_SECTION_ID} actionWorkflow={actionWorkflow} operationsLoading={operationsLoading} workflowBusyKey={workflowBusyKey} onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)} />
+        <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} onChangeSkuId={setSizeCurveSkuId} />
       </div>
 
-      <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={openDetail} />
-      <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={openDetail} />
-      <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
-      <DemandForecastPanel forecast={forecast} forecastLoading={forecastLoading} forecastError={forecastError} rows={rows} stores={stores} oosThreshold={OOS_RISK_THRESHOLD} overstockThreshold={OVERSTOCK_RISK_THRESHOLD} oosDisplayCount={FORECAST_OOS_DISPLAY} overstockDisplayCount={FORECAST_OVERSTOCK_DISPLAY} onSuggestRestock={queueForecastRestock} />
-      <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} onChangeSkuId={setSizeCurveSkuId} />
-      <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} onCompareStores={compareStoresFromRebalance} />
+      {/* Detail Table - scrollable inventory list */}
       <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} />
+
+      {/* Export & Scheduler - secondary/admin panel */}
+      <ExportSchedulerPanel
+        printOrientation={printOrientation}
+        onPrintOrientationChange={setPrintOrientation}
+        onPrintPreview={() => void runServerExport("pdf", true)}
+        onPrintBlank={() => void runBlankPrint()}
+        onExportCsv={exportVisibleCsv}
+        onExportCsvFiltered={() => void runServerExport("csv")}
+        onExportExcel={() => void runServerExport("xlsx")}
+        onExportPdf={() => void runServerExport("pdf")}
+        onRefresh={() => window.location.reload()}
+        schedules={schedules}
+        scheduleDraft={scheduleDraft}
+        setScheduleDraft={setScheduleDraft}
+        schedulerBusy={schedulerBusy}
+        schedulerMessage={schedulerMessage}
+        onCopyCurrentFilters={copyCurrentFiltersToSchedule}
+        onSaveSchedule={saveSchedule}
+        onRunScheduleNow={(id) => void runScheduleNow(id)}
+        exportBusy={exportBusy}
+        totalCount={totalCount}
+        rowsLength={rows.length}
+        exportStatus={exportStatus}
+      />
+
+      {/* Detail Modal */}
       <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} detailTab={detailTab} detailSizeCurve={detailSizeCurve} detailSizeCurveLoading={detailSizeCurveLoading} onRetry={retryDetailFetch} onTabChange={setDetailTab} onClose={() => setDetailRow(null)} />
       </div>
     </ErrorBoundary>

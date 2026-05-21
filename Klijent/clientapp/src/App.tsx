@@ -62,6 +62,7 @@ const DataQualityPage = lazy(() => import("./pages/DataQualityPage"));
 const AnalyticsDetailPage = lazy(() => import("./pages/AnalyticsDetailPage"));
 const AnalyticsPrintPage = lazy(() => import("./pages/AnalyticsPrintPage"));
 const ProductDecisionCenterPage = lazy(() => import("./pages/ProductDecisionCenterPage"));
+const AnalyticsActionsPage = lazy(() => import("./pages/AnalyticsActionsPage"));
 const ThemeSettingsPage = lazy(() => import("./pages/ThemeSettingsPage"));
 const ConfigurationPage = lazy(() => import("./pages/ConfigurationPage"));
 
@@ -102,6 +103,7 @@ function AppShell() {
                     <Route path="/analytics/data-quality" element={<DataQualityPage />} />
                     <Route path="/analytics/insight-studio" element={<InsightStudioPage />} />
                     <Route path="/analytics/pre-nivelacija-prioriteti" element={<PreNivelacijaPriorityPage />} />
+                    <Route path="/analytics/actions" element={<AnalyticsActionsPage />} />
                     <Route path="/analytics/dobavljaci-tipovi-obuce" element={<SupplierFootwearAnalyticsRedirect />} />
                     <Route path="/analytics/supplier-decision-hub" element={<SupplierDecisionHubRedirect />} />
                     <Route path="/analytics-details" element={<AnalyticsDetails />} />

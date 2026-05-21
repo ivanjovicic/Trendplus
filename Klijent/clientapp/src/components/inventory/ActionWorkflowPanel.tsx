@@ -63,9 +63,36 @@ export function ActionWorkflowPanel({
                 {item.note ? <div className="mt-2 text-xs text-muted">Napomena: {item.note}</div> : null}
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => onUpdateWorkflowStatus(item, "approved")} disabled={workflowBusyKey === item.suggestionKey} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-success disabled:cursor-not-allowed disabled:opacity-60"><CheckCircle2 size={14} />Odobri</button>
-                <button type="button" onClick={() => onUpdateWorkflowStatus(item, "deferred")} disabled={workflowBusyKey === item.suggestionKey} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"><Clock3 size={14} />Odlozi</button>
-                <button type="button" onClick={() => onUpdateWorkflowStatus(item, "closed")} disabled={workflowBusyKey === item.suggestionKey} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-warning disabled:cursor-not-allowed disabled:opacity-60"><XCircle size={14} />Zatvori</button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateWorkflowStatus(item, "approved")}
+                  disabled={workflowBusyKey === item.suggestionKey}
+                  title="Označi predlog kao odobren - akcija je validna i može se izvršiti."
+                  className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-success disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <CheckCircle2 size={14} />
+                  Odobri
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateWorkflowStatus(item, "deferred")}
+                  disabled={workflowBusyKey === item.suggestionKey}
+                  title="Odlozi odluku - ponovo ćeš videti predlog kasnije."
+                  className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Clock3 size={14} />
+                  Odlozi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateWorkflowStatus(item, "closed")}
+                  disabled={workflowBusyKey === item.suggestionKey}
+                  title="Zatvori predlog - akcija nije relevantna u ovom trenutku ili je rešena na drugi način."
+                  className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-warning disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <XCircle size={14} />
+                  Zatvori
+                </button>
               </div>
             </div>
           </div>

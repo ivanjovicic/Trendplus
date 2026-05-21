@@ -178,6 +178,30 @@
   font-size: 0.68rem;
 }
 
+.btn-add-to-queue {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--accent-primary, #2563eb);
+  background: transparent;
+  color: var(--accent-primary, #2563eb);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-add-to-queue:hover {
+  background: var(--accent-primary, #2563eb);
+  color: #fff;
+}
+.btn-add-to-queue.added {
+  border-color: #198754;
+  color: #198754;
+  cursor: default;
+}
+
 .reason-row td {
   background: rgba(59, 130, 246, 0.06);
 }
