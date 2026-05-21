@@ -2199,6 +2199,25 @@ public static class DatabaseInitializer
 
         logger.LogInformation("✓ Analytics DB initialized");
 
+        // Ensure important analytics_action_items composite indexes exist (idempotent)
+        try
+        {
+            if (await TableExistsAsync(connectionString, "analytics_action_items", logger))
+            {
+                const string ensureIndexesSql = @"
+                    CREATE INDEX IF NOT EXISTS idx_analytics_action_sourcekey_status ON analytics_action_items (""SourceType"", ""SourceKey"", ""Status"");
+                    CREATE INDEX IF NOT EXISTS idx_analytics_action_priority_status ON analytics_action_items (""Priority"", ""Status"");
+                ";
+
+                await ExecuteSqlCommandAsync(connectionString, ensureIndexesSql, logger);
+                logger.LogInformation("Ensured analytics_action_items composite indexes exist.");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to ensure analytics_action_items composite indexes; continuing startup.");
+        }
+
         // 5️⃣ Defer backfill operations to background task (these are I/O heavy and can start after startup)
         if (runBackfillOnStartup)
         {
